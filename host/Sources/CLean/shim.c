@@ -7,14 +7,13 @@
 extern void lean_initialize_thread(void);
 extern void lean_finalize_thread(void);
 extern void lean_initialize_runtime_module(void);
-extern lean_object *initialize_cairn_Examples(uint8_t builtin);
 
 #define L(o) ((lean_object *)(o))
 #define C(o) ((cairn_obj *)(o))
 
-void cairn_lean_init(void) {
+void cairn_lean_init(cairn_module_init init) {
     lean_initialize_runtime_module();
-    lean_object *res = initialize_cairn_Examples(1);
+    lean_object *res = L(init(1));
     if (!lean_io_result_is_ok(res)) {
         lean_io_result_show_error(res);
         abort();
