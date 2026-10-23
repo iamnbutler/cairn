@@ -122,4 +122,14 @@ assume ^971 hostSecret "A secret is read from the environment or its file, and n
   does "A secret's value is the environment variable if set and not empty, else its line in the KEY=value file as Yap's Secrets.parseDotEnv reads it (comments, export, quotes, a later line wins); a missing one is failed notFound; the value appears in the request's header and in no reply, failure message or debug description."
   check "effects.secret"
 
+/-! Wrapped text (workstream V, docs/layout.md "Wrapped text"), ids 990–999. -/
+
+assume ^990 wrapPainted "Wrapped lines paint as wide as Lean measured them" where
+  does "On left-to-right text without controls or tabs, each line Lean's wrapping chose, shaped again on its own by the host, is within 1 + ceil(0.15 em) points of the width Lean took from the whole string's carets, and so fits the width up to that slack; laid lines sit at x 0, one line height apart."
+  check "text.wrap.painted"
+
+assume ^991 wrapCoreText "Lean breaks lines where Core Text would" where
+  does "On left-to-right letters, digits and spaces, Lean's lines are Core Text's (CTTypesetterSuggestLineBreak, trailing spaces trimmed) except where a line is within one point of the width or a word is cut, where the cut is within two scalars of Core Text's."
+  check "text.wrap.coretext"
+
 end Cairn.Fuzz.Trusted.Claims
