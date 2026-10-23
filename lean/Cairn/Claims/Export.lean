@@ -5,7 +5,7 @@ submodules), as JSON, for the map.
 
 Each claim has its id, kind, title, does, sees, place, module and declaration, the hash of its
 formal statement, kind-specific facts (a move's triggers and keyedness, a flow's path through
-moves, the machine a flow or invariant is about), and its evidence: each theorem's name and
+moves, the machine a flow or invariant is about, an assumption's fuzzer check), and its evidence: each theorem's name and
 whether it is proved from Lean's standard axioms only. -/
 
 namespace Cairn.Claims.Export
@@ -64,6 +64,7 @@ unsafe def claimJson (env : Environment) (e : Entry) : IO Json := do
     ("passes", toJson e.passes), ("witness", witnessJson env e),
     ("pos", ← posJson env e),
     ("machine", opt (e.machine.map (·.toString))),
+    ("check", opt e.check),
     ("evidence", Json.arr ev)]
 
 unsafe def main (args : List String) : IO UInt32 := do

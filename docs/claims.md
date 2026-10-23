@@ -123,11 +123,18 @@ invariant as not runnable; give the predicate a `Decidable` instance to fix that
 assume ^7 hostClicks "The host reports clicks where they happen" where
   does "The host sends a pointer down and up at the logical point the person clicked."
   statement := ∀ m : TextMetrics, m.Valid   -- optional
+  check "frame.decode"                      -- optional
 ```
 
 Recorded, never proved: `hostClicks.statement : Prop` is a definition, not an axiom. Theorems
 that rely on it take it as a hypothesis, so every use is visible in their statements and the
 axiom audit stays clean.
+
+`check` (optional) names the runnable check that gathers evidence for the assumption: a check in
+the trusted-base fuzzer's report, `build/fuzz/trusted.json` (docs/fuzz.md, "Trusted base"). The
+name is lowercase letters, digits, `.` and `-`. `lake exe claims` exports it as `"check"`, so a
+reader can join each assumption to its evidence ("held in 20000 cases"). Evidence, not proof:
+the claim stays an assumption.
 
 ### `place`
 

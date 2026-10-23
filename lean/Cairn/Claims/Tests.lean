@@ -99,6 +99,12 @@ open Lean in
 
 assume ^9108 world "Clicks arrive" where
   does "The host delivers clicks."
+  check "host.clicks"
+
+open Lean in
+#eval show MetaM Unit from do
+  let e? := (entries (← getEnv)).find? (·.info.id == 9108)
+  unless e?.bind (·.check) == some "host.clicks" do throwError "^9108 should record its check"
 
 retire ^9109 move "Old thing" because "Replaced by ^9101."
 
@@ -200,6 +206,14 @@ error: ^9101 is not a place: ^9101 move “Increment” (Cairn.Claims.Tests.inc,
     apply := s
     post _ := True
     sound := by intro; trivial
+
+/--
+error: `check` names a fuzzer check, like "frame.decode" (lowercase, digits, `.` and `-`); got "Frame decode"
+-/
+#guard_msgs in
+#reject assume ^9126 badCheck "Bad check" where
+  does "Something."
+  check "Frame decode"
 
 /--
 error: a retired claim says why it was retired

@@ -47,6 +47,9 @@ structure Entry where
   passes : Array ClaimId := #[]
   /-- Flows and invariants: the machine they are stated against. -/
   machine : Option Name := none
+  /-- Assumptions: the runnable check that gathers evidence for it (a check name in the trusted
+  fuzzer's report, `build/fuzz/trusted.json`; docs/fuzz.md, "Trusted base"). -/
+  check : Option String := none
 deriving Inhabited
 
 def Entry.label (e : Entry) : String :=
