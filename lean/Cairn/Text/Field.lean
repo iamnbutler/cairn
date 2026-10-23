@@ -120,6 +120,13 @@ def textString (f : Field) : String := String.ofList f.text
 selection. -/
 def target (f : Field) : Nat × Nat := f.marked.getD (f.lo, f.hi)
 
+/-- The range an input-method edit replaces: the explicit `replace` range when the input system
+gives one (press-and-hold accents, reconversion, Korean IMEs that rewrite the last syllable),
+clamped into the text, else `target`. -/
+def targetOr (f : Field) : Option (Nat × Nat) → Nat × Nat
+  | none => f.target
+  | some (a, b) => (min a (min b f.len), min b f.len)
+
 /-! ## Primitive transitions -/
 
 /-- Set the text and selection after an edit. When the text really changes, the old state is
@@ -150,10 +157,10 @@ def deleteSelOr (f : Field) (a b : Nat) (coalesce : Bool := false) : Field :=
 
 /-- Typed or committed text replaces the marked text, else the selection. Consecutive typing at
 a collapsed caret is one undo step; committing a composition joins the step its first
-`setMarked` opened. -/
-def insert (f : Field) (s : String) : Field :=
-  let a := f.target.1
-  let b := f.target.2
+`setMarked` opened. `replace` is the input system's replacement range (see `targetOr`). -/
+def insert (f : Field) (s : String) (replace : Option (Nat × Nat) := none) : Field :=
+  let a := (f.targetOr replace).1
+  let b := (f.targetOr replace).2
   let cs := clean s
   let push := f.marked.isNone && !(f.typing && f.lo == f.hi)
   f.edit (splice f.text a b cs) (a + cs.length) (a + cs.length) push true
@@ -168,10 +175,11 @@ def paste (f : Field) (s : String) : Field :=
 /-- IME composition: replace the marked text (or, when composition starts, the selection) with
 `s`, mark it, and put the selection at `[selStart, selStart + selLen)` within it, clamped.
 Starting a composition opens an undo step; the whole composition, through its commit, is that
-one step. An empty composition ends it. -/
-def setMarked (f : Field) (s : String) (selStart selLen : Nat) : Field :=
-  let a := f.target.1
-  let b := f.target.2
+one step. An empty composition ends it. `replace` is as for `insert`. -/
+def setMarked (f : Field) (s : String) (selStart selLen : Nat)
+    (replace : Option (Nat × Nat) := none) : Field :=
+  let a := (f.targetOr replace).1
+  let b := (f.targetOr replace).2
   let cs := clean s
   let n := cs.length
   let text := splice f.text a b cs
@@ -372,6 +380,11 @@ private def eff (f : Field) (op : TextOp) : List Effect := (apply op f).2
 -- movement ends a composition, keeping its text
 #guard st (run "a" [.setMarked "k" 1 0, .moveLeft false]) == ("ak", 1, 1)
 #guard (run "a" [.setMarked "k" 1 0, .moveLeft false]).marked == none
+-- replacement ranges from the input system (not yet in `TextOp`; see docs/text.md)
+#guard st ((run "abe" []).insert "è" (some (2, 3))) == ("abè", 3, 3)
+#guard st (((run "ab" []).setMarked "에" 1 0 (some (1, 2)))) == ("a에", 2, 2)
+#guard st ((run "ab" []).insert "x" (some (5, 9))) == ("abx", 3, 3)
+#guard st ((run "abc" []).insert "x" (some (2, 1))) == ("axbc", 2, 2)
 -- view
 #guard (run "hi" [.moveLeft true]).view true ==
   { text := "hi", caret := 1, anchor := 2, focused := true }

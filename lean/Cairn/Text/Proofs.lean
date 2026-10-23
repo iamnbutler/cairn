@@ -10,7 +10,8 @@ import Cairn.Text.Field
 3. **Undo.** `Field.undo_apply` (one edit, outside a typing run or composition),
    `Field.undo_typing_run` (a run of coalesced typing), `Field.undo_composition` (a whole IME
    composition), `Field.redo_undo`.
-4. **Selection replace.** `Field.insert_replaces_selection`, `Field.insert_replaces_selection'`.
+4. **Selection replace.** `Field.insert_replaces_selection`, `Field.insert_replaces_selection'`,
+   `Field.insert_replace`.
 5. **Copy is pure.** `Field.apply_copy`, `Field.selected_spec`.
 6. **Movement never edits.** `Field.apply_movement_text`.
 7. **Single line.** `Field.singleLine_apply`, `Field.view_no_newline` (and `WF.single`). -/
@@ -103,6 +104,12 @@ theorem target_wf {f : Field} (h : f.WF) : f.target.1 ≤ f.target.2 ∧ f.targe
   | none => exact ⟨lo_le_hi f, hi_le h⟩
   | some m => exact h.marked_le m.1 m.2 hm
 
+theorem targetOr_wf {f : Field} (h : f.WF) (r : Option (Nat × Nat)) :
+    (f.targetOr r).1 ≤ (f.targetOr r).2 ∧ (f.targetOr r).2 ≤ f.text.length := by
+  cases r with
+  | none => exact target_wf h
+  | some r => simp only [targetOr, len]; omega
+
 @[simp] theorem edit_text (f : Field) (t c a p ty) : (f.edit t c a p ty).text = t := by
   unfold edit; split <;> simp_all
 @[simp] theorem edit_caret (f : Field) (t c a p ty) : (f.edit t c a p ty).caret = c := by
@@ -147,8 +154,9 @@ theorem wf_deleteSelOr {f : Field} (h : f.WF) {a b : Nat} (hab : a ≤ b) (hb : 
   · exact wf_deleteRange h (lo_le_hi f) (hi_le h)
   · exact wf_deleteRange h hab hb co
 
-theorem wf_insert {f : Field} (h : f.WF) (s : String) : (f.insert s).WF := by
-  obtain ⟨hab, hb⟩ := target_wf h
+theorem wf_insert {f : Field} (h : f.WF) (s : String) (r : Option (Nat × Nat) := none) :
+    (f.insert s r).WF := by
+  obtain ⟨hab, hb⟩ := targetOr_wf h r
   simp only [insert]
   apply wf_edit h _ _ (singleLine_splice _ _ h.single (singleLine_clean s)) <;>
     rw [length_splice _ _ _ _ hab hb] <;> omega
@@ -171,8 +179,9 @@ theorem mem_clear {p : Prop} [Decidable p] {t : Snapshot} {l : List Snapshot}
   · simp at h
   · exact h
 
-theorem wf_setMarked {f : Field} (h : f.WF) (s : String) (i n : Nat) : (f.setMarked s i n).WF := by
-  obtain ⟨hab, hb⟩ := target_wf h
+theorem wf_setMarked {f : Field} (h : f.WF) (s : String) (i n : Nat)
+    (r : Option (Nat × Nat) := none) : (f.setMarked s i n r).WF := by
+  obtain ⟨hab, hb⟩ := targetOr_wf h r
   have hlen := length_splice f.text (clean s) _ _ hab hb
   refine ⟨?_, ?_, ?_, singleLine_splice _ _ h.single (singleLine_clean s), ?_, ?_⟩
   · simp only [setMarked]; omega
@@ -333,13 +342,22 @@ theorem insert_replaces_selection (f : Field) (s : String) (hm : f.marked = none
     (apply (.insert s) f).1.text = f.text.take f.lo ++ clean s ++ f.text.drop f.hi ∧
     (apply (.insert s) f).1.caret = f.lo + (clean s).length ∧
     (apply (.insert s) f).1.anchor = f.lo + (clean s).length := by
-  simp [apply, insert, target, hm, splice]
+  simp [apply, insert, targetOr, target, hm, splice]
 
 /-- The same, for a string with no line breaks: exactly `before ++ s ++ after`. -/
 theorem insert_replaces_selection' (f : Field) (s : String) (hm : f.marked = none)
     (hs : SingleLine s.toList) :
     (apply (.insert s) f).1.text = f.text.take f.lo ++ s.toList ++ f.text.drop f.hi := by
   rw [(insert_replaces_selection f s hm).1, clean_of_singleLine hs]
+
+/-- With a replacement range from the input system, insert replaces exactly that range. -/
+theorem insert_replace (f : Field) (s : String) {a b : Nat} (hab : a ≤ b)
+    (hb : b ≤ f.text.length) :
+    (f.insert s (some (a, b))).text = f.text.take a ++ clean s ++ f.text.drop b ∧
+    (f.insert s (some (a, b))).caret = a + (clean s).length := by
+  have h1 : min b f.len = b := Nat.min_eq_left hb
+  have h2 : min a b = a := Nat.min_eq_left hab
+  simp [insert, targetOr, h1, h2, splice]
 
 /-! ## 2. Insert / delete round trip -/
 
@@ -468,7 +486,7 @@ theorem typing_step (op : TextOp) (g : Field) (hop : op.isTyping) (hm : g.marked
   have hhi : g.hi = g.caret := by simp [hi, hc]
   cases op with
   | insert s =>
-    simp only [apply, insert, target, hm, hlo, hhi, Option.getD_none, edit_text] at hch ⊢
+    simp only [apply, insert, targetOr, target, hm, hlo, hhi, Option.getD_none, edit_text] at hch ⊢
     simp only [edit, hch, ite_false, Option.isNone_none, beq_self_eq_true, Bool.and_true,
       Bool.true_and, true_and]
     cases g.typing <;> rfl

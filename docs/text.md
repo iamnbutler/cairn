@@ -152,7 +152,7 @@ with no axioms beyond Lean's standard three.
 | 1 | Every index stays in `0 … length`, for every op from every well-formed field | `wf_empty`, `wf_ofString`, `wf_apply`, `wf_applyAll`, `wf_reachable`, `view_wf` |
 | 2 | Typing a string at a collapsed caret (no composition), then Backspace once per scalar, restores the text, caret and anchor | `insert_deleteBackward`, `insert_deleteBackward'` |
 | 3 | Undo restores | `undo_apply`, `undo_typing_run`, `undo_composition`, `redo_undo` |
-| 4 | Insert over a selection is `before ++ s ++ after` | `insert_replaces_selection`, `insert_replaces_selection'` |
+| 4 | Insert over a selection is `before ++ s ++ after` (and over a replacement range) | `insert_replaces_selection`, `insert_replaces_selection'`, `insert_replace` |
 | 5 | Copy changes nothing and emits exactly the selection | `apply_copy`, `selected_spec` |
 | 6 | Movement never edits | `apply_movement_text` |
 | 7 | The text never contains a line break | `WF.single`, `singleLine_apply`, `view_no_newline` |
@@ -180,6 +180,14 @@ composition over a selection and its undo, and every coalescing case above.
 
 - The host converts AppKit's UTF-16 `NSRange`s to scalar indices before sending `setMarked` and
   after reading `FieldView`, including for characters outside the BMP.
-- `TextOp.setMarked` has no replacement range, so an IME's request to replace text outside the
-  composition (reconversion) can't be expressed; the host passes only the common case.
+- **Replacement ranges are not in the contract yet.** `insertText:replacementRange:` and
+  `setMarkedText:selectedRange:replacementRange:` carry a range the input system wants replaced:
+  press-and-hold accents (`e`, then `è` replacing it), reconversion, and Korean IMEs that rewrite
+  the last syllable without marked text (`research/macos/text-input-ime.md` §4). `TextOp.insert`
+  and `TextOp.setMarked` have no field for it. `Field.insert` and `Field.setMarked` already take
+  an optional `replace : Option (Nat × Nat)` (scalar indices, clamped into the text, a reversed
+  range collapses to its end) and the bounds theorems cover it (`wf_insert`, `wf_setMarked`,
+  `insert_replace`); `apply` passes `none`. Adding `(replace : Option (Nat × Nat) := none)` to
+  both `TextOp` constructors and the matching `Event`s is a contract PR for the lead; until then
+  the host should turn press-and-hold off or drop the range.
 - `paste` carries plain text; the host reads `NSPasteboard` and the field never sees rich text.
