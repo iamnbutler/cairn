@@ -139,6 +139,9 @@ inductive Request where
   | upload (method url : String) (headers : List (String × String)) (secret : Option Secret)
       (body : List Part) (timeoutMs : Nat)
   | forgetClip (clip : Nat)
+  | openItem (target : String)                       -- Yap on Cairn, below
+  | appRunning (bundleId : String)
+  | readDefault (domain key : String)
 
 inductive Part where
   | bytes (b : ByteArray)
@@ -149,13 +152,13 @@ structure Secret where
 
 inductive Reply where
   | done                                              -- writeFile, appendFile, deleteFile, playSound,
-                                                      -- typeText, forgetClip
-  | bytes (data : ByteArray)                          -- readFile
+                                                      -- typeText, forgetClip, openItem
+  | bytes (data : ByteArray)                          -- readFile, readDefault
   | http (status : Nat) (headers : List (String × String)) (body : ByteArray)   -- http, upload
   | failed (fault : Fault) (message : String)          -- any request
   | names (names : List String)                       -- listDir
   | app (pid : Nat) (name : String)                   -- frontmostApp
-  | flag (granted : Bool)                             -- permission
+  | flag (granted : Bool)                             -- permission, appRunning
 
 inductive Fault where
   | notFound | denied | timeout | network | invalid | other
@@ -288,6 +291,15 @@ check that touches nothing outside a scratch directory and prompts no one.
 | `Sub.watchFile path` | `changed` events | polls `stat` every 250 ms on the world's queue | ^963 `subs.watch-file` |
 | `frontmostApp` | `app pid name` | `NSWorkspace.frontmostApplication` | ^964 `effects.frontmost-app` |
 | `permission p prompt` | `flag granted` | `AXIsProcessTrustedWithOptions`; `AVCaptureDevice.authorizationStatus`/`requestAccess` | ^965 `effects.permission` |
+| `openItem target` | `done` | `NSWorkspace.open`: a URL with a scheme as it is, a path (`~/` expanded) only when it exists | ^1000 `effects.open-item` |
+| `appRunning bundleId` | `flag running` | `NSRunningApplication.runningApplications(withBundleIdentifier:)`, not terminated | ^1001 `effects.app-running` |
+| `readDefault domain key` | `bytes text` | `CFPreferencesCopyAppValue`: a string as UTF-8, a boolean `1`/`0`, a number in decimal | ^1002 `effects.read-default` |
+
+The last three came with Yap on Cairn (workstream W, docs/yap.md): Open Transcripts Folder,
+Edit Dictionary and Edit Settings open files, the Accessibility and Microphone items open
+System Settings; Yap (Cairn) leaves the dictation key alone while the original Yap
+(`dev.yap.Yap`) runs; and it reads the model the original keeps in its defaults. `readDefault`
+only reads: Yap (Cairn) keeps its own settings in a file.
 
 Decisions, and why:
 
@@ -518,6 +530,9 @@ Each kind of host effect is an `assume` claim naming a check of the trusted-base
 | ^969 | `typeText` types exactly the text into that app, or nothing | `effects.type-text` |
 | ^970 | `upload` sends the body assembled from its parts, with the secret in its header | `effects.upload` |
 | ^971 | a secret is read from the environment or its file, and never shown | `effects.secret` |
+| ^1000 | `openItem` opens exactly the URL or existing file it names | `effects.open-item` |
+| ^1001 | `appRunning` answers whether an app with that bundle id runs | `effects.app-running` |
+| ^1002 | `readDefault` answers the default's value as text | `effects.read-default` |
 
 The new records are also covered by ^901 and ^902 (the Swift codecs against Lean's), whose
 generators now produce them. The suites (`clock`, `world`, `files`, `http`, `sound`, `fileops`, `system`, `audio`, `input`, `upload` in

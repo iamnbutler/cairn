@@ -355,6 +355,20 @@ in a scratch directory and never prompts.
   and each request is answered once; live, without prompting, the answers equal
   `AXIsProcessTrusted()` and the microphone's `authorizationStatus`. **Not checked:** the
   prompts themselves (they need a person), and that TCC's answer is right.
+- **Fuzzed** (^1000 `effects.open-item`, workstream W): against a stubbed workspace, a target
+  with a scheme is opened as that URL, a path (`~/` expanded) as a file URL only when it
+  exists (`notFound` otherwise), the answer is `done` exactly when the workspace took it, and
+  empty or NUL targets open nothing. **Not checked:** what the system opens it with (the
+  Finder for a folder, the default editor for a `.txt` or `.json`, System Settings for its
+  URLs); that needs a screen.
+- **Fuzzed** (^1001 `effects.app-running`): the flag is whether the stub counts a running app
+  with that id; live, it agrees with `NSRunningApplication` for the Finder, and an id no app
+  has is not running. **Also assumed:** an app that is starting or quitting is reported as the
+  system lists it at that moment; Yap (Cairn) polls every two seconds.
+- **Fuzzed** (^1002 `effects.read-default`): strings, booleans, numbers, missing values and
+  other types give the documented answer, read from the domain and key asked for. **Also
+  assumed:** `CFPreferencesCopyAppValue` returns what another app last wrote to its domain
+  (cfprefsd keeps them in step); it never writes.
 - **Permissions.** None of these needs one. Accessibility and Microphone are what
   `permission` reports; they are granted to the app's code signature, so an unsigned or
   re-signed build is a new app to TCC (docs/effects.md).

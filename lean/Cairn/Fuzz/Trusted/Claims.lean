@@ -7,7 +7,7 @@ meta import Cairn.Claims.Elab
 fuzzer that gathers its evidence (`make fuzz-trusted`, `build/fuzz/trusted.json`, docs/fuzz.md
 "Trusted base"). Evidence, not proof: these stay assumptions.
 
-Ids 901–999 are for framework-level assumptions; apps' own assumptions use their apps' ranges.
+Ids 901–999 and 1000 on are for framework-level assumptions; apps' own assumptions use their apps' ranges.
 Not imported by `Cairn` (the host links that); the ledger reads this module as a root. -/
 
 namespace Cairn.Fuzz.Trusted.Claims
@@ -153,5 +153,19 @@ assume ^943 hostPanelInert "An overlay panel never takes focus or clicks" where
 assume ^944 hostPanelPlace "An overlay panel is where its anchor says" where
   does "A shown panel's frame has its canvas's size, horizontally centred in the chosen screen's visible frame and the anchor's offset above its bottom, on whole points; the screen is chosen when it appears and kept until it is hidden."
   check "panel.place"
+
+/-! Yap on Cairn (workstream W): opening files and URLs, other apps, other domains' defaults, ids 1000–. -/
+
+assume ^1000 hostOpenItem "openItem opens exactly the URL or existing file it names" where
+  does "openItem with a target that has a URL scheme asks the system to open that URL; with a path (a leading ~/ is the home folder) it opens that file or folder with its default app only when it exists, and answers notFound otherwise; it answers done exactly when the system took it, and an empty target or one with NUL is invalid and opens nothing."
+  check "effects.open-item"
+
+assume ^1001 hostAppRunning "appRunning answers whether an app with that bundle id runs" where
+  does "appRunning answers flag true exactly when the system lists a running, not terminated app with that bundle identifier; an empty identifier is invalid."
+  check "effects.app-running"
+
+assume ^1002 hostReadDefault "readDefault answers the default's value as text" where
+  does "readDefault answers the value CFPreferences holds for the key in the domain as UTF-8 bytes: a string as it is, a boolean as 1 or 0, a number as its decimal text; a missing value is notFound, any other type and an empty domain or key invalid. It never writes a default."
+  check "effects.read-default"
 
 end Cairn.Fuzz.Trusted.Claims

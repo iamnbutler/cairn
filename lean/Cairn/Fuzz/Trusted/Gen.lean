@@ -124,7 +124,7 @@ def part : Gen Part := do
 def secret : Gen Secret := do return ⟨← str, ← str, ← str, ← str⟩
 
 def request : Gen Request := do
-  match ← Gen.below 12 with
+  match ← Gen.below 15 with
   | 0 => return .readFile (← str)
   | 1 => return .writeFile (← str) (← bytes)
   | 2 => return .playSound (← str)
@@ -136,6 +136,9 @@ def request : Gen Request := do
   | 8 => return .typeText (← u32) (← str) (← Gen.chance 1 2)
   | 9 => return .upload (← str) (← str) (← headers) (← opt secret) (← array 4 part).toList (← u32)
   | 10 => return .forgetClip (← u32)
+  | 11 => return .openItem (← str)
+  | 12 => return .appRunning (← str)
+  | 13 => return .readDefault (← str) (← str)
   | _ => return .http (← str) (← str) (← headers) (← bytes) (← u32)
 
 def effect : Gen Effect := do

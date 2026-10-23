@@ -158,6 +158,12 @@ public enum Request: Equatable, Sendable {
     case upload(method: String, url: String, headers: [Header], secret: Secret?, body: [Part], timeoutMs: UInt32)
     /// Drop a recorded clip's samples.
     case forgetClip(clip: UInt32)
+    /// Open a path (`~/` is home) or a URL with its default app.
+    case openItem(target: String)
+    /// Whether an app with this bundle identifier is running.
+    case appRunning(bundleId: String)
+    /// A value from another domain's defaults, as text.
+    case readDefault(domain: String, key: String)
 
     /// The kind code on the wire (`Request.Kind.code`).
     public var kindCode: UInt8 {
@@ -174,6 +180,9 @@ public enum Request: Equatable, Sendable {
         case .typeText: 9
         case .upload: 10
         case .forgetClip: 11
+        case .openItem: 12
+        case .appRunning: 13
+        case .readDefault: 14
         }
     }
 }

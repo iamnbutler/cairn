@@ -43,6 +43,9 @@ public struct Handlers: Sendable {
         6: { r, reply in if case let .deleteFile(p) = r { reply(Files.delete(p)) } },
         7: { _, reply in reply(Apps.frontmost()) },
         8: { r, reply in if case let .permission(p, prompt) = r { Permissions.check(p, prompt: prompt, .live, reply) } },
+        12: { r, reply in if case let .openItem(t) = r { reply(Opening.open(t)) } },
+        13: { r, reply in if case let .appRunning(b) = r { reply(Opening.running(b)) } },
+        14: { r, reply in if case let .readDefault(d, k) = r { reply(Opening.readDefault(d, k)) } },
     ])
 }
 
