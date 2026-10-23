@@ -40,6 +40,39 @@
 222	flow	active	b0d8d8a6a65e2c5f	Clear completed
 223	flow	active	36d2b8e708c4eceb	Mark all as complete, then undo it
 224	flow	active	06954be5c9e714a8	A new todo under the Completed filter
+301	place	active	-	Menu bar menu
+302	move	active	e403d98cf80e9881	Copy Last Transcript
+303	move	active	8059a050b360bad0	Recent transcript
+304	move	active	5dcc037d4a581b1c	Keep Transcripts
+305	move	active	19a4b0515a1c98a8	Press Return After Dictating
+306	move	active	0124cabb11882ac7	Dictate with Key
+307	move	active	17bf9466fe350731	Open Transcripts Folder
+308	move	active	b245d33387b2d78e	Edit Dictionary
+309	move	active	a6fd7ce24680ec93	Edit Settings
+310	move	active	b3e2e1df48707733	Grant Accessibility Access
+311	invariant	active	9309577e9e05ab79	A shortcut never sends
+312	invariant	active	47b715f8c425d620	Hold to talk, tap to latch: 300 ms
+313	invariant	active	f4a85759114de36a	One recording at a time
+314	invariant	active	b16fa05730949547	Every recording ends
+315	invariant	active	e5b1f488dcbe6dc1	Kept before it is typed
+316	invariant	active	19892eb3ce386d70	A failed type is kept and flagged
+317	invariant	active	5c3bad68609b96ca	Late and cancelled replies never type
+318	invariant	active	e21e087d3dc541a6	Each clip is typed at most once
+319	invariant	active	f2502c90e2ba080d	Fixes replace whole words
+320	invariant	active	fb1768953072d86f	Retention never deletes today
+321	invariant	active	e11086b8194dfda6	Only the first 25 terms are sent
+322	invariant	active	074086b305a36577	Recent Transcripts holds five
+323	invariant	active	6b1ded141cfc9285	Too short, silent or nowhere to type: never sent
+330	assume	active	-	The host reports the dictation key and every other key
+331	assume	active	-	The host delivers the ticks it is asked for
+332	assume	active	-	The host answers requests by id, in order of commands
+333	assume	active	-	The host reports the microphone faithfully
+334	assume	active	-	The host transcribes the samples it was asked for
+335	assume	active	-	The host types into the app it was given
+336	assume	active	-	The host reports config.json and dictionary.txt when they change
+337	assume	active	-	The host lists day files and today by the local calendar
+340	flow	active	bad8bdb6bf0aa529	Turn Dictate with Key off
+341	flow	active	d43c1efda3e84fcb	Keep Transcripts off and on again
 901	assume	active	-	The Swift frame decoder agrees with Lean's
 902	assume	active	-	Lean decodes what the Swift event encoder writes
 903	assume	active	-	UTF-16 offsets and scalar indices convert exactly
