@@ -1,5 +1,5 @@
 import Cairn.Runtime.Abi
-import Cairn.Runtime.Stub
+import Cairn.Frame.Boundary
 
 /-! Concrete checks of the runtime on a small app, laid out by `Cairn.Layout.layout`. -/
 
@@ -142,14 +142,11 @@ def resetByKey : List Event := click 60 25 ++ [.pointerMove ⟨500, 500⟩, tab 
 #guard (ui [down 60 25, .windowFocus false]).pressed == none
 #guard log [down 60 25, .windowFocus false, up 60 25] == []
 
--- The byte ABI with the stub codec: two spike-format clicks on ^1.
-def evBytes : ByteArray := Id.run do
-  let mut b := ByteArray.empty
-  for k in [1, 2, 1, 2] do
-    b := Spike.pushI32 (Spike.pushI32 (b.push k) 60) 25
-  return b
-def boundary : Boundary := { decode := Stub.decode, render := Stub.frame, encode := Stub.encode }
+-- The byte ABI with the v1 boundary: two clicks on ^1, then the frame decodes and shows ^1.
+def evBytes : ByteArray := encodeEvents #[down 60 25, up 60 25, down 60 25, up 60 25]
+def boundary : Boundary := Frame.boundary
 #guard (stepBytes app cfg boundary (initState app cfg 800 600 200) evBytes).app.count == 2
-#guard (frameBytes boundary (initState app cfg 800 600 200)).size > 16
+#guard ((decodeFrame (frameBytes boundary (initState app cfg 800 600 200))).map
+  fun f => f.ax.any (·.control == some (ref 1))) == some true
 
 end Cairn.Runtime.Tests

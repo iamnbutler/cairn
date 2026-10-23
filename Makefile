@@ -5,7 +5,7 @@ LEAN_PREFIX = $(shell cd lean && lean --print-prefix)
 LIB = build/lib/libcairn_lean.a
 VENDOR = host/Sources/CLean/vendor/lean
 
-.PHONY: lean host build check audit kernel lint test bench selftest demo fixture clean record site
+.PHONY: lean host build check audit kernel lint test corpus bench bench-frame selftest demo fixture clean record site
 
 lean:
 	cd lean && lake build
@@ -40,8 +40,18 @@ lint:
 
 # Swift tests: renderer goldens, pixel probes, text metrics (offscreen; needs a Metal device),
 # and the host's unit tests (index conversion, text-input shadow, input mapping, NSTextInputClient).
-test: lean
+test: lean corpus
 	cd host && swift test
+	cd lean && .lake/build/bin/framecorpus verify ../build/corpus
+
+# The frame/event corpus (docs/frame.md): Lean writes frames, event batches and their canonical
+# dumps; the Swift tests decode and encode against them and write Swift-encoded batches, which
+# `test` then decodes with Lean's proved decoder.
+CORPUS = build/corpus
+corpus: lean
+	cd lean && lake build framecorpus
+	rm -rf $(CORPUS)
+	cd lean && .lake/build/bin/framecorpus gen ../$(CORPUS)
 
 # Everything a PR must pass.
 check: lint audit kernel test selftest
@@ -50,6 +60,11 @@ bench: lean
 	cd lean && lake build bench && .lake/build/bin/bench
 	cd host && swift run -c release CairnCounter --bench
 	cd host && CAIRN_BENCH=1 swift test -c release -Xswiftc -enable-testing --filter RenderBench
+
+# Lean encode and Swift decode times for 1,000- and 10,000-node frames (bench/frame.md).
+bench-frame: lean
+	cd lean && lake build framecorpus && .lake/build/bin/framecorpus bench ../$(CORPUS)
+	cd host && CAIRN_BENCH=1 swift test -c release -Xswiftc -enable-testing --filter DecodeBench
 
 # Drives the Counter app headlessly through the host's real threads and accessibility mirror.
 selftest: host

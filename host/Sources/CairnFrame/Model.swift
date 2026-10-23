@@ -77,16 +77,20 @@ public struct TextInput: Equatable, Sendable {
     public var text: String
     public var selection: (start: UInt32, end: UInt32)
     public var marked: (start: UInt32, end: UInt32)?
+    /// The left end of the text's baseline in window coordinates, after any horizontal scroll:
+    /// where scalar 0 starts.
+    public var textOrigin: Point
     public init(control: ControlRef, rect: Rect, caret: Rect, text: String,
-                selection: (start: UInt32, end: UInt32), marked: (start: UInt32, end: UInt32)?) {
+                selection: (start: UInt32, end: UInt32), marked: (start: UInt32, end: UInt32)?,
+                textOrigin: Point = Point(x: 0, y: 0)) {
         self.control = control; self.rect = rect; self.caret = caret; self.text = text
-        self.selection = selection; self.marked = marked
+        self.selection = selection; self.marked = marked; self.textOrigin = textOrigin
     }
 
     public static func == (a: TextInput, b: TextInput) -> Bool {
         a.control == b.control && a.rect == b.rect && a.caret == b.caret && a.text == b.text
             && a.selection == b.selection && a.marked?.start == b.marked?.start
-            && a.marked?.end == b.marked?.end
+            && a.marked?.end == b.marked?.end && a.textOrigin == b.textOrigin
     }
 }
 

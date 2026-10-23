@@ -22,14 +22,15 @@ reference to the state into `cairn_app_step` and keeps the one that comes back, 
 
 namespace Cairn.Runtime
 
-/-- The byte formats at the boundary. Workstream E supplies the real ones (`Frame.ofLaid` and
-the v1 encoding); `Cairn.Runtime.Stub` has stand-ins. -/
+/-- The byte formats at the boundary: `Cairn.Frame.boundary` (`Frame.ofLaid` and the v1
+encoding, docs/frame.md). -/
 structure Boundary where
   /-- Host event bytes → events, in order. -/
   decode : ByteArray → List Event
-  /-- The draws, accessibility nodes and text input of a laid tree. The runtime fills in the
+  /-- The draws, accessibility nodes and text input of a laid tree. It reads the `UI` for the
+  window size and focus (the caret, `AxNode.focused`, `textInput`). The runtime fills in the
   cursor and effects. -/
-  render : Laid → Size → Frame
+  render : Laid → UI → Frame
   encode : Frame → ByteArray
 
 variable {S : Type}
@@ -44,7 +45,7 @@ def stepBytes (app : App S) (cfg : Config) (b : Boundary) (s : State S) (events 
   { s' with effects := effs.toArray }
 
 def frame (b : Boundary) (s : State S) : Frame :=
-  { b.render s.laid s.ui.size with cursor := cursor s, effects := s.effects }
+  { b.render s.laid s.ui with cursor := cursor s, effects := s.effects }
 
 def frameBytes (b : Boundary) (s : State S) : ByteArray := b.encode (frame b s)
 

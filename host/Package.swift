@@ -17,6 +17,8 @@ let package = Package(
         ),
         // The frame and event model (and, from workstream E, their byte codecs).
         .target(name: "CairnFrame"),
+        // Decoder and event encoder against the corpus Lean writes (`make corpus`).
+        .testTarget(name: "CairnFrameTests", dependencies: ["CairnFrame"]),
         .target(name: "CairnRender", dependencies: ["CairnFrame"]),
         .testTarget(name: "CairnRenderTests", dependencies: ["CairnRender", "CairnFrame"], exclude: ["Goldens"]),
         // Lean's TextMetrics.host against the renderer, through the real extern and C glue.
