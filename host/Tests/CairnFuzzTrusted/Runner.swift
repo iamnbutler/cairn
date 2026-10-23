@@ -90,8 +90,10 @@ final class Recorder {
     }
 
     /// `check(cond, …)`: one evaluation of `check`, failing when `cond` is false.
-    func expect(_ check: String, _ cond: Bool, _ message: @autoclosure () -> String, repro: (() -> String?)? = nil) {
+    @discardableResult
+    func expect(_ check: String, _ cond: Bool, _ message: @autoclosure () -> String, repro: (() -> String?)? = nil) -> Bool {
         if cond { ran(check) } else { fail(check, message(), repro: repro) }
+        return cond
     }
 }
 
