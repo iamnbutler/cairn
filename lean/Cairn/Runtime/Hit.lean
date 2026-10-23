@@ -212,15 +212,38 @@ theorem Rect.contains_center {r : Rect} (h : r.nonempty) : r.contains r.center =
   simp only [Rect.contains, Rect.center]
   exact decide_eq_true ⟨by omega, by omega, by omega, by omega⟩
 
-theorem find?_reverse_of_split {α : Type} {q : α → Bool} {pre post : List α} {a : α}
-    (ha : q a = true) (hpost : ∀ b ∈ post, q b = true → b = a) :
-    (pre ++ a :: post).reverse.find? q = some a := by
+/-- The last element satisfying `q` in `pre ++ a :: post` is `a` or comes after it. -/
+theorem find?_reverse_split {α : Type} {q : α → Bool} {pre post : List α} {a : α}
+    (ha : q a = true) :
+    ∃ b, (pre ++ a :: post).reverse.find? q = some b ∧ (b = a ∨ (b ∈ post ∧ q b = true)) := by
   rw [List.reverse_append, List.reverse_cons, List.append_assoc, List.find?_append]
   cases hf : post.reverse.find? q with
-  | none => simp [ha]
+  | none => exact ⟨a, by simp [ha], .inl rfl⟩
   | some b =>
-    have hb := List.find?_some hf
-    have hm := List.mem_reverse.mp (List.mem_of_find?_eq_some hf)
-    simp [hpost b hm hb]
+    exact ⟨b, by simp, .inr ⟨List.mem_reverse.mp (List.mem_of_find?_eq_some hf), List.find?_some hf⟩⟩
+
+/-- Hit-test level pressability at a point. -/
+theorem hitTarget_of_reaches {laid : Laid} {t : Target} {p : Point} (h : Reaches laid t p) :
+    hitTarget laid p = some t := by
+  obtain ⟨pre, post, hs, hc, hpost⟩ := h
+  obtain ⟨b, hb, hb'⟩ := find?_reverse_split (q := fun h : Hit => h.visible.contains p)
+    (pre := pre) (post := post) (a := ⟨t.visible, some t⟩) hc
+  unfold hitTarget
+  rw [hs, hb]
+  rcases hb' with rfl | ⟨hm, hq⟩
+  · rfl
+  · exact hpost b hm hq
+
+theorem reaches_mem {laid : Laid} {t : Target} {p : Point} (h : Reaches laid t p) :
+    t ∈ targets laid := hitTarget_mem (hitTarget_of_reaches h)
+
+/-- **Pressable, hit-test level.** Under the layout facts, hit testing at the centre of a
+control's visible rect returns that control. -/
+theorem hitTest_center {laid : Laid} {t : Target} (h : LayoutFacts laid t) :
+    hitTest laid t.visible.center = some t.control := by
+  simp [hitTest, hitTarget_of_reaches h.reaches]
+
+theorem LayoutFacts.contains_center {laid : Laid} {t : Target} (h : LayoutFacts laid t) :
+    t.visible.contains t.visible.center = true := Rect.contains_center h.nonempty
 
 end Cairn.Runtime
