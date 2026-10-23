@@ -1,7 +1,7 @@
 import Cairn.Runtime.Abi
 import Cairn.Runtime.Stub
 
-/-! Concrete checks of the runtime on a small app, laid out by the stub layout. -/
+/-! Concrete checks of the runtime on a small app, laid out by `Cairn.Layout.layout`. -/
 
 namespace Cairn.Runtime.Tests
 
@@ -26,7 +26,7 @@ the count is positive, and ^5 a delete button shown only while ^1 is hovered. -/
 def view (s : TState) (ui : UI) : Node :=
   .box { width := .fill, height := .fill, padding := ⟨10, 10, 10, 10⟩, gap := 10 } none <|
     [btn 1 "Increment",
-     .field { width := .fixed 200 } {} { ref := ref 2, role := .textField, label := "Name" }
+     .field { width := .fixed 200, padding := ⟨4, 4, 4, 4⟩ } {} { ref := ref 2, role := .textField, label := "Name" }
        { text := s.text, caret := s.caret, anchor := s.caret, focused := ui.focus == some (ref 2) },
      btn 3 "Label"] ++
     (if s.count > 0 then [btn 4 "Reset"] else []) ++
@@ -43,7 +43,7 @@ def update (s : TState) (a : Action) : TState × List Effect :=
   | _ => (s, [])
 
 def app : App TState := { init := {}, view, update, claims := [] }
-def cfg : Config := { layout := Stub.layout }
+def cfg : Config := { layout := Cairn.Layout.layout }
 def s0 : State TState := start app cfg ⟨800, 600⟩
 
 def run (es : List Event) : State TState × List Effect := steps app cfg s0 es
@@ -54,7 +54,7 @@ def down (x y : Int) (clicks : Nat := 1) (mods : Mods := {}) : Event := .pointer
 def up (x y : Int) : Event := .pointerUp ⟨x, y⟩ .primary {}
 def click (x y : Int) : List Event := [down x y, up x y]
 
--- Layout: ^1 at (10,10,100,30), ^2 at (10,50,200,21), ^3 at (10,81,100,30).
+-- Layout: ^1 at (10,10,100,30), ^2 at (10,50,200,20), ^3 at (10,80,100,30).
 #guard (targets s0.laid).map (·.ref.claim) == [1, 2, 3]
 #guard hitRef s0.laid ⟨60, 25⟩ == some (ref 1)
 #guard hitRef s0.laid ⟨60, 45⟩ == none     -- in the gap
@@ -86,7 +86,7 @@ def click (x y : Int) : List Event := [down x y, up x y]
 #guard cursor (run [.pointerMove ⟨60, 60⟩]).1 == .text
 #guard cursor (run [.pointerMove ⟨500, 500⟩]).1 == .arrow
 -- Hover is recomputed after the tree changes under a still pointer: after the first click,
--- ^4 (Reset) sits at y 112..142; clicking it removes it, and the pointer is then over nothing.
+-- ^4 (Reset) sits at y 120..150; clicking it removes it, and the pointer is then over nothing.
 #guard (ui (click 60 25 ++ click 60 125)).hover == none
 #guard (run (click 60 25 ++ click 60 125)).1.app.count == 0
 
