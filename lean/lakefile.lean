@@ -110,6 +110,11 @@ lean_lib Fuzz where
 lean_exe fuzz where
   root := `FuzzMain
 
+/-- `lake exe yapfuzz [--seed S] [--iterations N] [--steps K] [--out DIR]`: Yap's dictation
+machine against a random host (`Examples/Yap/Fuzz.lean`). -/
+lean_exe yapfuzz where
+  root := `YapFuzz
+
 /-- Lean's side of the trusted-base fuzzer (docs/fuzz.md, "Trusted base"): generators, the
 proved decoders' verdicts and a one-field app, exported over C for the Swift executable
 `cairn-fuzz-trusted`, which links this next to `libcairn_lean.a`. No `import Lean`. It carries

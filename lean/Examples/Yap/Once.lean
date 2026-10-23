@@ -248,8 +248,7 @@ theorem reply_rel (s : State) (q : Nat) (x : Reply) : Rel s (reply s q x) := by
       rw [hlv, hn]
       unfold fresh
       dsimp only
-      rw [if_neg (by omega)]
-      omega
+      split <;> omega
     all_goals
       refine Rel.weaken (s' := { s with reqs := s.reqs.eraseP (·.1 == q) }) rfl
         (fun n => by have := hlive n; (try dsimp only at this); (try simp only [List.count_nil] at this); omega) ?_
@@ -273,7 +272,7 @@ theorem setKey_rel (s : State) (k : Hotkey) : Rel s (setKey s k) := by
     split
     · refine Rel.trans_same (Rel.congr (s' := { s with keyHeld := false }) rfl rfl
         (release_rel _)) rfl ?_ rfl
-      simp [typedClips_append, typedClips]
+      simp [typedClips]
     · exact Rel.of rfl (by simp [typedClips]) (List.Sublist.refl _)
 
 theorem applySettings_rel (s : State) (cfg : Settings) : Rel s (applySettings s cfg) := by
