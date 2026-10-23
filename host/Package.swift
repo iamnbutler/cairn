@@ -16,7 +16,10 @@ let package = Package(
         ),
         .target(name: "CairnFrame"),
         .target(name: "CairnRender", dependencies: ["CairnFrame"]),
-        .testTarget(name: "CairnRenderTests", dependencies: ["CairnRender", "CairnFrame"]),
+        .testTarget(name: "CairnRenderTests", dependencies: ["CairnRender", "CairnFrame"], exclude: ["Goldens"]),
+        // Lean's TextMetrics.host against the renderer, through the real extern and C glue.
+        .target(name: "CairnLeanText", dependencies: ["CLean"], path: "Tests/CairnLeanText"),
+        .testTarget(name: "CairnRenderLeanTests", dependencies: ["CairnRender", "CairnLeanText"]),
         .executableTarget(
             name: "CairnSpike",
             dependencies: ["CLean"],
