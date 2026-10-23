@@ -1,5 +1,17 @@
 [
   {
+    "video": "/m/videos/c8a7c8d6ab57ac2f.mp4",
+    "poster": "/m/videos/c8a7c8d6ab57ac2f.jpg",
+    "title": "Basics: the first Lean app",
+    "caption": "A whole app written in Lean: adding, ticking and deleting items. Lean decides the layout, focus, text editing and hit testing; Swift only draws. Every control is a claim (^101 to ^104). Lean proves that an item's Delete button exists exactly when the item does, and that the 'items left' count is right.",
+    "date": "2026-10-23",
+    "commit": "733224a",
+    "width": 960,
+    "height": 1264,
+    "seconds": 17,
+    "feature": true
+  },
+  {
     "video": "/m/videos/9cb67df1092eb561.mp4",
     "poster": "/m/videos/9cb67df1092eb561.jpg",
     "title": "The host, with text",
@@ -9,7 +21,7 @@
     "width": 1040,
     "height": 904,
     "seconds": 18,
-    "feature": true
+    "feature": false
   },
   {
     "video": "/m/videos/4dff72519883d7d3.mp4",
