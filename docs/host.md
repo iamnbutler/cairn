@@ -21,6 +21,12 @@ Every app accepts these flags:
 
 `CAIRN_LOG_EVENTS=1` logs every event batch sent to the app.
 
+`CAIRN_DEBUG_SOCKET=1` (or `--debug-socket [path]`) opens the debug socket, which lets a tool
+drive this one app through its view and read back its frame, AX tree and pixels. Under the
+socket the app runs as an accessory app, is never activated, ignores the real mouse, records its
+effects (clipboard writes go to a private pasteboard) and draws through `DebugRenderer`. See
+[conformance.md](conformance.md).
+
 One executable per app, linking one app library. An app describes itself as a `LeanApp` and
 calls `CairnApp.main`. Basics (`host/Sources/CairnBasics`) is on the v1 ABI:
 

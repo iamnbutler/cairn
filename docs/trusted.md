@@ -191,3 +191,45 @@ See [host.md](host.md) for how each piece works.
   - The Lean thread's 64 MB stack is assumed to be enough for the app's recursion depth.
   - Release builds keep Lean's default panic behaviour, where `panic!` returns a default value
     and execution continues. Debug builds abort on panic.
+
+## Conformance (workstream J)
+
+See [conformance.md](conformance.md). A passing run means that, for the sequences it ran, the
+app showed exactly what the model says, judged through the pieces below. Each one is trusted.
+
+- **Injection at the view.** The debug socket builds `NSEvent`s and calls `HostView`'s
+  responder methods (`mouseDown(with:)`, `keyDown(with:)`, …), `NSTextInputClient` and
+  `NSApp.sendAction` directly. That bypasses the window server's routing and
+  `NSWindow.sendEvent`, so window-level hit testing, key-window and first-responder routing
+  aren't covered. The socket also sets `clickCount` itself, so the user's double-click interval
+  isn't exercised.
+- **The events are like the keyboard's.** Key events carry the key code, characters,
+  `charactersIgnoringModifiers` and flags a US keyboard would produce (the table is in
+  `DebugServer.key`). AppKit's key bindings read these, and so does the host outside a field.
+  A wrong synthesized field reads as a host bug. One did: Shift-Tab, conformance.md "Bugs
+  found".
+- **IME shapes.** Compositions are `setMarkedText`/`insertText`/`unmarkText` calls shaped like
+  an input method's. No real input method runs.
+- **Key bindings.** Results inside a field go through the current user's AppKit key bindings
+  (`interpretKeyEvents`). They match the standard bindings unless the user customized them.
+- **Effects through the hook.** Under the socket, effects pass through `HostView.effectHook`.
+  A clipboard write goes to a private pasteboard through the host's own code, and a beep is
+  recorded but not sounded. `NSSound.beep` and the general pasteboard aren't exercised.
+- **DebugRenderer for MetalRenderer.** Under the socket, the window draws through
+  `DebugRenderer`. It uses the same `Renderer`, clear colour and layer format, and adds a blit
+  and a GPU wait. Pixels are read from that copy of the presented drawable, so the compositor
+  and the display aren't covered. When the window isn't drawing, the socket falls back to
+  `Renderer.probe` (reported as `source: "offscreen"`). The Basics run never needed it.
+- **`ignoresMouseEvents` and no activation.** The app runs as an accessory app with its window
+  not key. Nothing in Basics reads window focus, so this doesn't change its frames. An app that
+  reads `UI.windowFocused` would see `true`, the runtime's default.
+- **Restart.** Sequences reset with `Engine.restart`, which re-runs `cairn_app_init` in the same
+  process. Host-side state that survives (the AX mirror's element identities, the pointer's last
+  position in AppKit, the cursor) isn't reset. Each sequence's initial frame and AX tree are
+  checked.
+- **The model's metrics.** The generator links the host's Core Text metrics (`CairnMetrics`,
+  through `-force_load` over the weak fallback). Its frames are the app's only if both measure
+  on the same machine with the same fonts.
+- **The comparison code.** Frames are compared through two JSON printers, `Conformance.jframe`
+  in Lean and `DebugJSON.frame` in Swift. The expected AX tree is derived in the driver from the
+  host's table (`expectedAx` in driver.ts). That table is written by hand, like the mirror's.
