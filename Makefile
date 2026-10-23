@@ -26,7 +26,7 @@ lean:
 		$(LEAN_PREFIX)/lib/libgmp.a 2>&1 | grep -v "has no symbols" || true
 	@for a in $(APPS); do \
 		cp lean/.lake/build/lib/libcairn_$${a%%:*}.a build/lib/libcairn_app_$${a##*:}.a; done
-	@! nm -gU $(LIB) 2>/dev/null | grep -E ' _cairn_(app|counter)_' \
+	@! nm -gU $(LIB) 2>/dev/null | grep -E ' _cairn_app_' \
 	  || (echo "lean: app exports in the shared library $(LIB)"; exit 1)
 	@for a in $(APPS); do n=$$(nm -gU build/lib/libcairn_app_$${a##*:}.a 2>/dev/null | grep -c ' _cairn_app_init$$'); \
 	  [ "$$n" -le 1 ] || { echo "lean: libcairn_app_$${a##*:}.a defines cairn_app_init $$n times"; exit 1; }; done
@@ -75,7 +75,6 @@ check: lint audit ledger kernel test selftest fuzz-quick
 
 bench: lean
 	cd lean && lake build bench && .lake/build/bin/bench
-	cd host && swift run -c release CairnCounter --bench
 	cd host && swift run -c release CairnBasics --bench
 	cd host && LEAN_ABORT_ON_NONLINEAR=1 swift run -c release CairnTodo --bench
 	cd host && CAIRN_BENCH=1 swift test -c release -Xswiftc -enable-testing --filter RenderBench

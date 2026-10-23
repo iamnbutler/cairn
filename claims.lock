@@ -5,7 +5,7 @@
 3	place	active	-	Counter window
 4	flow	active	8e8ea87eb87cc917	Count to three
 5	flow	active	a3b193af912012c1	Start over
-6	invariant	active	2450dcc1d0d8c984	Moves never leave a press in progress
+6	invariant	active	5de1d6cd863262b8	Moves never leave a press in progress
 7	assume	active	-	The host reports clicks where they happen
 101	move	active	5f27d0063f678333	Type a new item
 102	move	active	e2ed8588311ec433	Add

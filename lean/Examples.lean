@@ -1,4 +1,6 @@
 import Examples.Counter
+import Examples.Counter.Proofs
+import Examples.Counter.Tests
 import Examples.Basics
 import Examples.Basics.Proofs
 import Examples.Basics.Tests

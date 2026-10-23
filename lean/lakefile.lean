@@ -49,14 +49,15 @@ host/Package.swift): v1 apps all export `cairn_app_init/step/frame`, so two in o
 clash. Each needs `claims_meta.o` (docs/claims.md, "Linking"). The host calls the app module's
 `runtime_initialize_*`. -/
 
-/-- The spike's Counter (`Examples.Counter`, `cairn_counter_*`, frame v0). -/
+/-- Counter: its exports (`Examples.Counter.Abi`) and the app. The exports are a separate module
+so that executables linking all of `Examples` (the fuzzer) don't get two `cairn_app_init`s. -/
 @[default_target]
 lean_lib Counter where
-  roots := #[`Examples.Counter]
+  roots := #[`Examples.Counter.Abi, `Examples.Counter]
   defaultFacets := #[LeanLib.staticFacet]
   moreLinkObjs := #[claims_meta.o]
 
-/-- Basics (`Examples.Basics`), the first app on the v1 ABI. -/
+/-- Basics (`Examples.Basics`). -/
 @[default_target]
 lean_lib Basics where
   roots := #[`Examples.Basics]

@@ -24,6 +24,4 @@ import Cairn.App
 import Cairn.Claims.Core
 import Cairn.Runtime
 import Cairn.Claims.Deliver
-import Cairn.Spike.Bytes
-import Cairn.Spike.Frame
 import Cairn.Layout
