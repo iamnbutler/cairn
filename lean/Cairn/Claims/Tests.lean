@@ -81,6 +81,22 @@ invariant ^9107 small "Log keys are small" for machine where
       (Move.all_cons (field.preserves _ (fun s op h => by cases op <;> exact h) fun s h => h)
       Move.all_nil)))
 
+-- A decidable invariant gets a runnable `check` (`decide (holds s)`).
+#guard small.check { log := [1, 9] } && !small.check { log := [10] }
+
+/-- An invariant over a predicate with no `Decidable` instance gets no `check`. -/
+def Opaque (s : St) : Prop := ∃ f : Nat → Nat, f s.n = 0
+
+invariant ^9110 undecidable "Opaque" for machine where
+  does "Holds, but can't be decided."
+  holds s := Opaque s
+  init := ⟨fun _ => 0, rfl⟩
+  step := fun _ _ _ => ⟨fun _ => 0, rfl⟩
+
+open Lean in
+#eval show MetaM Unit from do
+  if (← getEnv).contains `Cairn.Claims.Tests.undecidable.check then throwError "undecidable.check should not exist"
+
 assume ^9108 world "Clicks arrive" where
   does "The host delivers clicks."
 
@@ -88,7 +104,7 @@ retire ^9109 move "Old thing" because "Replaced by ^9101."
 
 def claims : List ClaimInfo := claims%
 
-#guard claims.map (·.id) == [9100, 9101, 9102, 9103, 9104, 9105, 9106, 9107, 9108, 9109]
+#guard claims.map (·.id) == [9100, 9101, 9102, 9103, 9104, 9105, 9106, 9107, 9108, 9109, 9110]
 #guard (claims.find? (·.id == 9109)).bind (·.retired) == some "Replaced by ^9101."
 #guard (claims.find? (·.id == 9101)).bind (·.place) == some 9100
 #guard (machine.update {} (.press ⟨9101, 0⟩)).1.n == 1
