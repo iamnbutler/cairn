@@ -60,6 +60,11 @@ are one JSON object per line, and every reply carries `ok`, plus `error` when `o
 | `{"cmd":"key","key":"left","mods":["shift"],"char":" "}` | `keyDown` on the view | `seq` |
 | `{"cmd":"text","op":"insert"\|"marked"\|"unmark","text":…,"sel":[start,len]}` | `insertText`, `setMarkedText` or `unmarkText` (`NSTextInputClient`); `sel` is in scalars | `seq` |
 | `{"cmd":"menu","name":"copy"…}` | `NSApp.sendAction(copy:, to: view)`, as the Edit menu does | `seq` |
+| `{"cmd":"menu","place":P}` (no `name`) | | status item `P`'s `NSMenu` as AppKit holds it: per item `kind`, `title`, `enabled`, `state`, `id` (`^N#K`, a submenu's `^P`), `key`, `mods`, `items` |
+| `{"cmd":"menuOpen","place":P}`, `{"cmd":"menuClose",…}` | the menu delegate's `menuWillOpen` / `menuDidClose` on the root menu | `seq` |
+| `{"cmd":"menuSelect","place":P,"id":"^N#K"}` | an enabled item through `NSMenu.performActionForItem(at:)`; a greyed-out item's action sent directly (`"direct":true`), as when the menu changed while open | `seq` |
+| `{"cmd":"menuSelect","place":P,"ref":[N,K]}` | a `menuSelect` event with any ref | `seq` |
+| `{"cmd":"surfaces"}` | | activation policy, key window, main menu, and each surface: kind, place, shown, and its AppKit object (status item, panel properties and frame) |
 | `{"cmd":"wait","seq":n}` | waits until a frame through input `n` is applied on the main thread | the frame's `seq`, `version`, effects run since the last wait, new text-shadow divergences |
 | `{"cmd":"frame"}` | | the applied frame, decoded, in the generator's JSON shape |
 | `{"cmd":"ax"}` | | every accessibility element under the view, as `NSAccessibility` answers it |
@@ -90,11 +95,14 @@ screen capture.
 
 ### Hooks
 
-The socket changes three things about the app:
+The socket changes four things about the app:
 
 - **Effects.** An effect hook records every effect. A clipboard write goes to a private
   pasteboard (`cairn.debug.<pid>`) instead of the general one, and paste reads from it, so the
-  user's clipboard is untouched. A beep is recorded and not sounded.
+  user's clipboard is untouched. A beep is recorded and not sounded. A `quit` is recorded and not run.
+- **Surfaces.** Status items and panels are built detached (`SurfaceHost` `.detached`): the menu
+  is a real `NSMenu` but nothing is added to the menu bar, and panels are never ordered onto the
+  screen.
 - **Restart.** `Engine.restart` re-runs `cairn_app_init` at the view's size and scale, ordered
   with input by seq. Sequences don't need a relaunch.
 - **Renderer.** `DebugRenderer` replaces `MetalRenderer`. It uses the same `Renderer`, clear
@@ -262,6 +270,34 @@ No failures. ^3 (place) and ^7 (assumption) aren't run. That run also checked in
 every step; ^6 has since been retired (its `pressed` field was vacuous on v1), and a rerun after
 the retirement, `N=200`, passed 200/200 walks and both flows (2,406 steps, 4,037 probes, ^1 974
 steps, ^2 419).
+
+## Tray: menus
+
+Tray (lean/Examples/Tray.lean) has no window: a status item with a native menu and an overlay
+panel. The generator offers, for each shown status item:
+
+- **open the menu**: `menuOpen` then `menuClose`, the move being a press on the item's control;
+- **choose an item**: `menuSelect` for each item that is enabled (with every submenu around it)
+  and whose move is enabled; the driver goes through `performActionForItem(at:)`;
+- **choose a greyed-out item**: `menuSelect` for each other item, as a plain-UI step; the model
+  expects nothing to change (`menu_select_stale`).
+
+Window gestures (Tab, hover, clicking empty space) are offered only when the app has a window.
+After every step the driver compares, besides the window's frame, each status item's menu (the
+model's records printed in `DebugJSON.menu`'s shape: the host's key-equivalent table, and items in
+a disabled submenu reported disabled, as AppKit reports them) with the socket's `menu`, and each
+surface's kind, place and `shown` with `surfaces`. A flow witness's press on a status item's
+control becomes open/close, and on a menu item a `menuSelect`.
+
+`make conformance APP=Tray N=200` (macOS 27, Apple silicon, debug build) passed 200/200 walks
+and both flows (^461, ^462): 2,404 steps; ^453 (open) 451, ^454 383, ^455 402, ^456 257, ^457
+105, ^458 62, ^459 (Quit, recorded not run) 424. 87.8 s in all; per step p50 51.4 ms, p90 54.4
+ms, max 62.4 ms, nearly all of it `performActionForItem`. Turning one model field wrong (a status
+line reported enabled) fails every sequence at its initial frame with a `menus` problem.
+
+Not covered: the real menu bar (clicking the status item, keyboard navigation in the open menu,
+VoiceOver), and the panel's pixels (it has no AX nodes or probes; its canvas is checked through
+the frame codec and Tray's self test). See [surfaces-checklist.md](surfaces-checklist.md).
 
 ## What it does not check
 
