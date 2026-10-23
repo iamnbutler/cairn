@@ -1,4 +1,6 @@
-import Cairn.Geometry
+module
+
+public import Cairn.Geometry
 
 /-! Text metrics: the one place layout depends on the host.
 
@@ -6,6 +8,9 @@ Layout is parameterised by a `TextMetrics`. Theorems quantify over every metrics
 `Valid`; at run time the host supplies Core Text's (an `assume` claim, checked by logging and
 replay). Text indices are Unicode scalar positions (`String.length`), not bytes and not UTF-16.
 Grapheme clusters are not modelled in M1. Text is single-line in M1: no wrapping. -/
+
+@[expose] public section
+
 
 namespace Cairn
 

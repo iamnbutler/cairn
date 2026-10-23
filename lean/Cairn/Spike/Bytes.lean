@@ -1,4 +1,9 @@
+module
+
 /-! Little-endian byte encoding for the spike's frame and event buffers. -/
+
+@[expose] public section
+
 
 namespace Cairn.Spike
 

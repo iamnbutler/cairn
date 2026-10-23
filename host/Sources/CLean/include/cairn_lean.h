@@ -30,7 +30,11 @@ size_t cairn_bytes_size(cairn_obj *b);
 // Module initializers of the Lake libraries linked into libcairn_lean.a.
 // `Cairn` must be initialized before Lean measures text (`TextMetrics.host`, docs/render.md).
 cairn_obj *initialize_cairn_Cairn(uint8_t builtin);
-cairn_obj *initialize_cairn_Examples(uint8_t builtin);
+// `Examples` is a Lean `module` whose apps `meta import` the claim commands (which use the Lean
+// compiler). Its `runtime_` initializer runs only what the app needs at run time; the full
+// `initialize_cairn_Examples` would also initialize the commands, and so all of `Lean`, which the
+// host does not link (docs/claims.md, "Linking").
+cairn_obj *runtime_initialize_cairn_Examples(uint8_t builtin);
 
 // Exported from Examples/Counter.lean (frame v0, docs/spike-boundary.md). Every argument is
 // owned (consumed). The v1 app ABI is `<app>_init(w, h, scalePercent)`, `<app>_step(state,

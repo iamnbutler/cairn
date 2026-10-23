@@ -1,7 +1,12 @@
+module
+
 /-! Claims: statements about the product with durable ids.
 
 The vocabulary is fixed here; the `move`, `flow`, `invariant`, `assume` and `place` commands
 that create claims, and the ledger that guards their ids, live in `Cairn.Claims`. -/
+
+@[expose] public section
+
 
 namespace Cairn
 
@@ -10,7 +15,7 @@ abbrev ClaimId := Nat
 
 inductive ClaimKind where
   | move | flow | invariant | assume | place
-deriving Repr, BEq, DecidableEq, Inhabited
+deriving Repr, DecidableEq, Inhabited
 
 /-- The human half of a claim: what a reviewer reads next to the formal statement. -/
 structure ClaimInfo where
@@ -32,9 +37,12 @@ per todo; `key` tells them apart (0 when there is only one). Shown as `^5` or `^
 structure ControlRef where
   claim : ClaimId
   key : Nat := 0
-deriving Repr, BEq, DecidableEq, Inhabited, Hashable
+deriving Repr, DecidableEq, Inhabited, Hashable
 
 def ControlRef.label (c : ControlRef) : String :=
   if c.key == 0 then s!"^{c.claim}" else s!"^{c.claim}#{c.key}"
 
 end Cairn
+
+/-- `==` on control references is the lawful one from `DecidableEq`, so proofs can use it. -/
+example : LawfulBEq Cairn.ControlRef := inferInstance

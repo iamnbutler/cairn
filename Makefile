@@ -5,7 +5,7 @@ LEAN_PREFIX = $(shell cd lean && lean --print-prefix)
 LIB = build/lib/libcairn_lean.a
 VENDOR = host/Sources/CLean/vendor/lean
 
-.PHONY: lean host build check audit kernel lint test corpus bench bench-frame selftest demo fixture clean record site
+.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-frame selftest demo fixture clean record site
 
 lean:
 	cd lean && lake build
@@ -26,6 +26,11 @@ build: host
 
 audit: lean
 	cd lean && lake build audit && lake env .lake/build/bin/audit
+
+# Claim ids: every id in claims.lock is still issued (or retired), none is reused, and every
+# claim in the code is locked. See docs/claims.md.
+ledger: lean
+	cd lean && lake exe ledger check
 
 # Replay every declaration through the kernel. Catches proofs that skipped kernel checking
 # (debug.skipKernelTC), which #print axioms and the audit cannot see. The sandboxed mode needs
@@ -54,7 +59,7 @@ corpus: lean
 	cd lean && .lake/build/bin/framecorpus gen ../$(CORPUS)
 
 # Everything a PR must pass.
-check: lint audit kernel test selftest
+check: lint audit ledger kernel test selftest
 
 bench: lean
 	cd lean && lake build bench && .lake/build/bin/bench

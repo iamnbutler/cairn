@@ -1,5 +1,10 @@
+module
+
 /-! Geometry in integer logical points, origin top-left, y down. No floats anywhere a theorem
 looks. The host multiplies by the backing scale when it paints. -/
+
+@[expose] public section
+
 
 namespace Cairn
 

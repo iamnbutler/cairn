@@ -1,0 +1,9 @@
+# claims.lock: every claim id ever issued. Written by `lake exe ledger update`; never edit by hand.
+# id	kind	status	statement	title
+1	move	active	1c77a9411d162684	Increment
+2	move	active	5ace86b109a74bf5	Reset
+3	place	active	-	Counter window
+4	flow	active	8e8ea87eb87cc917	Count to three
+5	flow	active	a3b193af912012c1	Start over
+6	invariant	active	2450dcc1d0d8c984	Moves never leave a press in progress
+7	assume	active	-	The host reports clicks where they happen

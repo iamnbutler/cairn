@@ -1,12 +1,17 @@
-import Cairn.Geometry
-import Cairn.Claim
-import Cairn.Text.Metrics
+module
+
+public import Cairn.Geometry
+public import Cairn.Claim
+public import Cairn.Text.Metrics
 
 /-! What `view` returns (`Node`) and what layout produces (`Laid`).
 
 A `Node` says what is on screen and how it wants to be sized; layout turns it into a `Laid`
 with every rect and clip resolved. A node that performs a move carries a `Control` naming the
 claim, which is how presence, pressability and the accessibility mirror find it. -/
+
+@[expose] public section
+
 
 namespace Cairn
 

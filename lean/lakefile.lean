@@ -16,9 +16,33 @@ lean_lib Cairn where
   defaultFacets := #[LeanLib.staticFacet]
   moreLinkObjs := #[text_host.o]
 
+/-- A weak stand-in for the claim commands' full initializer, so the host links apps that
+`meta import` them without libLean (see lean/c/claims_meta.c). -/
+target claims_meta.o pkg : System.FilePath := do
+  let src ← inputTextFile <| pkg.dir / "c" / "claims_meta.c"
+  let args := #["-I", (← getLeanIncludeDir).toString]
+  buildO (pkg.buildDir / "c" / "claims_meta.o") src args #["-O2", "-fPIC"] "cc"
+
 @[default_target]
 lean_lib Examples where
   defaultFacets := #[LeanLib.staticFacet]
+  moreLinkObjs := #[claims_meta.o]
+
+/-- Tests for the claim commands. Not imported by `Cairn` or `Examples`, so their ids stay out of
+the ledger. -/
+@[default_target]
+lean_lib ClaimsTests where
+  roots := #[`Cairn.Claims.Tests]
+
+/-- `lake exe ledger check|update`: guards `claims.lock` (see docs/claims.md). -/
+lean_exe ledger where
+  root := `Cairn.Claims.Ledger
+  supportInterpreter := true
+
+/-- `lake exe claims <Module>…`: every claim as JSON, for the map. -/
+lean_exe claims where
+  root := `Cairn.Claims.Export
+  supportInterpreter := true
 
 lean_exe bench where
   root := `Bench

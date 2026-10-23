@@ -24,7 +24,7 @@ Every app accepts these flags:
 One executable per app. An app describes itself as a `LeanApp` and calls `CairnApp.main`:
 
 ```swift
-let counter = LeanApp(module: initialize_cairn_Examples,
+let counter = LeanApp(module: runtime_initialize_cairn_Examples,
                       initialize: { w, h, _ in cairn_counter_new(w, h) },
                       step: { cairn_counter_step($0, $1) },
                       frame: { cairn_counter_frame($0) },

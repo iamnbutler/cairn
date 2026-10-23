@@ -1,10 +1,15 @@
-import Cairn.UI.Node
-import Cairn.Input
-import Cairn.Claim
+module
+
+public import Cairn.UI.Node
+public import Cairn.Input
+public import Cairn.Claim
 
 /-! An app is its state, its view, and its moves. The runtime (`Cairn.Runtime`) owns
 interaction state (hover, press, focus, window size), turns events into actions by hit testing
 the laid-out frame, and calls `update`. -/
+
+@[expose] public section
+
 
 namespace Cairn
 
@@ -15,7 +20,7 @@ structure UI where
   pressed : Option ControlRef := none
   focus : Option ControlRef := none
   windowFocused : Bool := true
-deriving Repr, BEq, Inhabited
+deriving Repr, DecidableEq, Inhabited
 
 structure App (S : Type) where
   init : S
@@ -25,3 +30,6 @@ structure App (S : Type) where
   claims : List ClaimInfo
 
 end Cairn
+
+/-- `==` on `UI` is the lawful one from `DecidableEq`, so proofs can use it. -/
+example : LawfulBEq Cairn.UI := inferInstance
