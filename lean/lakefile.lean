@@ -34,6 +34,13 @@ the ledger. -/
 lean_lib ClaimsTests where
   roots := #[`Cairn.Claims.Tests]
 
+/-- The trusted base's `assume` claims (`Cairn.Fuzz.Trusted.Claims`). They use the claim commands
+(`import Lean` at compile time), so they stay out of `Cairn`, which the host links; the ledger
+reads them as a root. -/
+@[default_target]
+lean_lib TrustedClaims where
+  roots := #[`Cairn.Fuzz.Trusted.Claims]
+
 /-- `lake exe ledger check|update`: guards `claims.lock` (see docs/claims.md). -/
 lean_exe ledger where
   root := `Cairn.Claims.Ledger
