@@ -169,6 +169,12 @@ enum Runner {
         try? FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tmp) }
         let progress = tmp.appendingPathComponent("progress"), stats = tmp.appendingPathComponent("stats.json")
+        // Workers' stderr goes to a log (Core Text logs every unmapped string there); the
+        // supervisor echoes the lines that matter: failures and how a crash ended.
+        try? FileManager.default.createDirectory(at: reproDir, withIntermediateDirectories: true)
+        let log = reproDir.appendingPathComponent("\(suite.name).stderr.log")
+        FileManager.default.createFile(atPath: log.path, contents: nil)
+        var logged = 0
         var from = 0
         var crashes = 0
         while from < count {
@@ -177,8 +183,19 @@ enum Runner {
             p.executableURL = URL(fileURLWithPath: Bundle.main.executablePath ?? CommandLine.arguments[0])
             p.arguments = ["--worker", suite.name, "--seed", String(seed), "--from", String(from), "--to", String(count),
                            "--progress", progress.path, "--stats", stats.path] + (verbose ? ["-v"] : [])
+            let logHandle = try? FileHandle(forWritingTo: log)
+            logHandle?.seekToEndOfFile()
+            p.standardError = logHandle
             do { try p.run() } catch { fatalError("cannot start worker: \(error)") }
             p.waitUntilExit()
+            try? logHandle?.close()
+            if let d = try? Data(contentsOf: log), d.count > logged {
+                for line in String(decoding: d[logged...], as: UTF8.self).split(separator: "\n")
+                where line.hasPrefix("FAIL ") || line.contains("Fatal error") || line.contains("PANIC") || line.contains("INTERNAL PANIC") {
+                    FileHandle.standardError.write((line + "\n").data(using: .utf8)!)
+                }
+                logged = d.count
+            }
             if let d = try? Data(contentsOf: stats),
                let o = try? JSONSerialization.jsonObject(with: d) as? [String: [String: Any]] {
                 for (k, v) in o { total[k, default: CheckStats()].merge(CheckStats(json: v, check: k)) }

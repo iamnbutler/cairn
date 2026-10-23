@@ -3,11 +3,15 @@ import Foundation
 
 // cairn-fuzz-trusted: fuzzes the trusted base (docs/fuzz.md, "Trusted base", docs/trusted.md).
 //
-//   CairnFuzzTrusted [--n N] [--seed S] [--only frame,events,…] [--out build/fuzz/trusted.json] [-v]
+//   CairnFuzzTrusted [--n N] [--seed S] [--only frame,events,…] [--out build/fuzz/trusted.json]
+//                    [--claims claims.json] [-v]
 //   CairnFuzzTrusted --replay SUITE --case I [--seed S]   run one case in this process, verbosely
 //
 // Each suite runs in a child process (`--worker`), so a crash in trusted code is reported with
 // its case instead of ending the run. Exit status 1 when any check failed.
+//
+// --claims reads `lake exe claims Cairn.Fuzz.Trusted.Claims` and lists, under each check, the
+// `assume` claims that name it (`check "…"`); a claim naming a check no suite has is an error.
 
 setvbuf(stdout, nil, _IOLBF, 0)
 
@@ -66,6 +70,22 @@ let out = URL(fileURLWithPath: take("--out") ?? "build/fuzz/trusted.json")
 let only = take("--only").map { Set($0.split(separator: ",").map(String.init)) }
 let reproDir = out.deletingLastPathComponent().appendingPathComponent("trusted")
 
+/// check name → the claims (`^901`) that name it.
+var claimsByCheck: [String: [String]] = [:]
+if let path = take("--claims") {
+    let data = try Data(contentsOf: URL(fileURLWithPath: path))
+    let doc = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+    let known = Set(allSuites.flatMap { $0.checks.keys })
+    for c in doc?["claims"] as? [[String: Any]] ?? [] {
+        guard let check = c["check"] as? String, let ref = c["ref"] as? String else { continue }
+        guard known.contains(check) else {
+            FileHandle.standardError.write("claims: \(ref) names check \(check), which no suite has; checks: \(known.sorted().joined(separator: ", "))\n".data(using: .utf8)!)
+            exit(2)
+        }
+        claimsByCheck[check, default: []].append(ref)
+    }
+}
+
 var report: [String: Any] = [:]
 var failed = false
 let t0 = Date()
@@ -82,6 +102,7 @@ for s in allSuites where only?.contains(s.name) ?? true {
         o["trusted"] = info.trusted
         o["oracle"] = info.oracle
         o["suite"] = s.name
+        o["claims"] = claimsByCheck[check] ?? []
         o["pass"] = st.cases == 0 ? NSNull() : pass as Any
         o["casesPerSecond"] = st.seconds > 0 ? Double(st.cases) / st.seconds : 0
         o["evidence"] = st.cases == 0 ? "not run"
