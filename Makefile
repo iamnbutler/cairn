@@ -170,7 +170,7 @@ fuzz: lean
 
 # The quick run in `make check`: every app, 200 sequences of 50 steps (about a second).
 # Written to build/fuzz/quick/ so it doesn't replace a longer run's evidence.
-FUZZ_APPS = Counter Basics
+FUZZ_APPS = Counter Basics Todo
 fuzz-quick: lean
 	cd lean && lake build fuzz
 	@for a in $(FUZZ_APPS); do (cd lean && .lake/build/bin/fuzz $$a --iterations 200 --out ../build/fuzz/quick) || exit 1; done

@@ -13,7 +13,7 @@ import QuartzCore
 //   CairnTodo --bench       update + view + layout + encode (and decode) at 100, 1,000, 10,000 nodes
 
 let todo = LeanApp(
-    module: runtime_initialize_cairn_Examples_Todo,
+    module: runtime_initialize_cairn_Examples_Todo_Abi,
     initialize: { w, h, scale in cairn_app_init(w, h, scale) },
     step: { cairn_app_step($0, $1) },
     frame: { cairn_app_frame($0) },

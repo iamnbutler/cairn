@@ -4,15 +4,13 @@ public import Cairn.Claims.Core
 meta import Cairn.Claims.Elab
 public import Examples.Todo.Model
 public import Examples.Todo.View
-public import Cairn.Text.Host
 public import Cairn.Layout.Core
-public import Cairn.Runtime.Abi
-public import Cairn.Frame.Boundary
+public import Cairn.Fuzz.Rng
 
 /-! # TodoMVC
 
 The app (workstream I, GOAL.md M1): the claims over `Examples.Todo.Model`, the machine they
-make, and the v1 ABI. `update` is `machine.update`, built from these moves and nothing else. The
+make; the v1 exports are in `Examples.Todo.Abi`. `update` is `machine.update`, built from these moves and nothing else. The
 view is `Examples.Todo.View`; theorems about it (presence, pressability) are in
 `Examples.Todo.Proofs`, runtime checks in `Examples.Todo.Tests`, the mapping from the TodoMVC
 requirements (`research/todomvc`, T1–T50) to these ids in `Examples/Todo/README.md`, and the
@@ -274,20 +272,9 @@ def claimInfos : List ClaimInfo := claims%
 /-- At launch, keyboard focus is in the new-todo field (T5). -/
 def app : App State := machine.toApp view claimInfos (some newRef)
 
-/-! ## The app ABI (docs/runtime.md) -/
-
-/-- Core Text metrics in the running app (the Swift host links `cairn_text_metrics`). -/
-def cfg : Runtime.Config := { metrics := TextMetrics.host }
-
-@[export cairn_app_init]
-def appInit (w h scalePercent : UInt32) : Runtime.State State :=
-  Runtime.initState app cfg w h scalePercent
-
-@[export cairn_app_step]
-def appStep (s : Runtime.State State) (events : ByteArray) : Runtime.State State :=
-  Runtime.stepBytes app cfg Frame.boundary s events
-
-@[export cairn_app_frame]
-def appFrame (s : Runtime.State State) : ByteArray := Runtime.frameBytes Frame.boundary s
+/-- For the fuzzer (docs/fuzz.md): the smallest window the view fits in a state, which is what
+the pressability proofs assume (`Examples.Todo.Proofs`). -/
+def fuzz : Cairn.Fuzz.Custom State where
+  minSize := fun s => some ⟨minWidth, height s⟩
 
 end Examples.Todo

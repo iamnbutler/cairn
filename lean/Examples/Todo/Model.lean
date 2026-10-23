@@ -274,6 +274,13 @@ def Ascending (lo : Nat) : List Todo → Prop
   | [] => True
   | t :: ts => lo < t.id ∧ Ascending t.id ts
 
+/-- `Ascending` is decidable, so ^212 gets a runnable `check` (docs/fuzz.md). -/
+instance Ascending.decidable : (lo : Nat) → (xs : List Todo) → Decidable (Ascending lo xs)
+  | _, [] => isTrue trivial
+  | lo, t :: ts =>
+    have := Ascending.decidable t.id ts
+    inferInstanceAs (Decidable (lo < t.id ∧ Ascending t.id ts))
+
 /-- ^212's statement: the count of active todos is right, and ids are distinct, positive and
 below `nextId`. -/
 def Inv (s : State) : Prop :=

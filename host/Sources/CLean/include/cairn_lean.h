@@ -50,8 +50,8 @@ cairn_obj *cairn_app_frame(cairn_obj *state);
 // libcairn_app_basics.a: lean/Examples/Basics.lean, v1.
 cairn_obj *runtime_initialize_cairn_Examples_Basics(uint8_t builtin);
 
-// libcairn_app_todo.a: lean/Examples/Todo.lean (TodoMVC), v1.
-cairn_obj *runtime_initialize_cairn_Examples_Todo(uint8_t builtin);
+// libcairn_app_todo.a: lean/Examples/Todo.lean (TodoMVC), v1, exported from Examples/Todo/Abi.lean.
+cairn_obj *runtime_initialize_cairn_Examples_Todo_Abi(uint8_t builtin);
 
 // libcairn_app_counter.a: lean/Examples/Counter.lean, the spike's v0 exports
 // (docs/spike-boundary.md). Remove these and SpikeV0Codec when Counter moves to v1.
