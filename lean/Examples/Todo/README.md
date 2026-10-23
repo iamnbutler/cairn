@@ -67,4 +67,5 @@ returns to the new-todo field after Enter or Escape in an edit.
 
 Known gaps: persistence (T44, T47); editing has no keyboard or VoiceOver path (the title is not
 focusable, and double-click is pointer-only); a click whose target moves because the save
-deleted a row above it is dropped, as in a browser.
+deleted a row above it is dropped, as in a browser (`Tests.lean`; the fuzzer finds it too, e.g.
+`lake exe fuzz Todo` with 1,000 sequences reports one "performed" failure of this kind).
