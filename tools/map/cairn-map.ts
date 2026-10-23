@@ -4,7 +4,8 @@
 //       the capture script: the initial state, each flow's witness, and each move no flow presses
 //   bun tools/map/cairn-map.ts build --app Counter --dir build/map/Counter
 //       reads <dir>/claims.json (lake exe claims), <dir>/audit.json (lake exe audit --json),
-//       claims.lock, build/conformance/<App>.json (workstream J; optional) and <dir>/capture/
+//       claims.lock, build/fuzz/<App>.json (make fuzz; optional), build/conformance/<App>.json
+//       (workstream J; optional) and <dir>/capture/
 //       (<App> --map-capture), then writes map.yaml, areas/, img/, notes/evidence.html,
 //       evidence.json and ids.txt into <dir>, and builds <dir>/dist with the map skill's map.ts.
 //
@@ -59,6 +60,10 @@ type Lock = { id: number; kind: string; status: string; statement: string; title
 // Workstream J's results. Proposed shape: per claim ref, whether every generated sequence that
 // exercised it passed, and how many did.
 type Conformance = { runs?: number; commit?: string; claims: Record<string, { pass: boolean; runs?: number; note?: string }> };
+// `make fuzz` (docs/fuzz.md): per claim ref, whether every check on it passed (null: not run,
+// not runnable or n/a), how many steps and sequences checked it, and the first failure.
+type FuzzClaim = { pass: boolean | null; steps?: number; sequences?: number; note?: string; failure?: { check: string; seed: number; step: number; message: string } };
+type Fuzz = { seed: number; iterations: number; stepsRun: number; claims: Record<string, FuzzClaim> };
 type Control = { ref: string; claim: number; key: number; role: string; label: string; rect: number[] };
 type Shot = { after?: number; image: string; pinned: string; width: number; height: number; controls: Control[] };
 type StepResult = { step: Step; ref: string; outcome: "ok" | "absent" | "unsupported" | "inert"; at?: number[] };
@@ -87,7 +92,7 @@ function script() {
 
 // ---- Evidence ----------------------------------------------------------------------------------
 
-type Cell = "yes" | "no" | "n/a" | "fails" | "missing" | "not run" | "pass" | "fail";
+type Cell = "yes" | "no" | "n/a" | "fails" | "missing" | "not run" | "not runnable" | "pass" | "fail";
 type Row = {
 	id: number;
 	ref: string;
@@ -96,6 +101,7 @@ type Row = {
 	status: string;
 	closed?: string;
 	proved: Cell;
+	fuzzed: Cell;
 	assumed: Cell;
 	conformance: Cell;
 	seen: Cell;
@@ -121,6 +127,8 @@ function build() {
 	const lockById = new Map(lock.map((l) => [l.id, l]));
 	const confPath = join(opts.root!, "build/conformance", `${app}.json`);
 	const conformance: Conformance | null = existsSync(confPath) ? json(confPath) : null;
+	const fuzzPath = join(opts.root!, "build/fuzz", `${app}.json`);
+	const fuzz: Fuzz | null = existsSync(fuzzPath) ? json(fuzzPath) : null;
 	const capture: Capture | null = existsSync(at("capture/capture.json")) ? json(at("capture/capture.json")) : null;
 	const byId = new Map(claims.map((c) => [c.id, c]));
 
@@ -169,6 +177,13 @@ function build() {
 		const proved: Cell = !provable ? "n/a" : !theorems.length ? "missing" : theorems.some((t) => t.ok === null) ? "missing" : theorems.every((t) => t.ok) ? "yes" : "fails";
 		const assumed: Cell = c.kind === "assume" ? "yes" : "no";
 
+		// Fuzzed: the claim's checks ran in `make fuzz` (moves and invariants; docs/fuzz.md).
+		const fz = fuzz?.claims[c.ref];
+		const fuzzable = c.kind === "move" || c.kind === "invariant";
+		const fuzzed: Cell = !fuzzable ? "n/a" : !fz ? "not run" : fz.pass === true ? "pass" : fz.pass === false ? "fail" : fz.note?.startsWith("not runnable") ? "not runnable" : "not run";
+		if (fz?.failure)
+			findings.push({ text: `Fuzzing failed (${fz.failure.check}, seed ${fz.failure.seed}, step ${fz.failure.step}): ${fz.failure.message}. Replay with \`lake exe fuzz ${app} --seed ${fz.failure.seed} --iterations 1 -v\`.` });
+
 		const conf = conformance?.claims[c.ref];
 		const conformanceCell: Cell = c.kind === "place" || c.kind === "assume" ? "n/a" : !conformance || !conf ? "not run" : conf.pass ? "pass" : "fail";
 		if (conf && !conf.pass) findings.push({ text: `Conformance failed${conf.note ? `: ${conf.note}` : "."}` });
@@ -211,7 +226,7 @@ function build() {
 		}
 
 		// Status, from the evidence only (docs/map.md has the table).
-		const broken = proved === "fails" || proved === "missing" || conformanceCell === "fail" || findings.some((f) => /the model's witness is live/.test(f.text));
+		const broken = proved === "fails" || proved === "missing" || fuzzed === "fail" || conformanceCell === "fail" || findings.some((f) => /the model's witness is live/.test(f.text));
 		let status: string;
 		if (c.retired) status = "closed";
 		else if (broken) status = "broken";
@@ -227,6 +242,7 @@ function build() {
 			status,
 			closed: c.retired ? `retired: ${c.retired}` : undefined,
 			proved,
+			fuzzed,
 			assumed,
 			conformance: conformanceCell,
 			seen,
@@ -241,7 +257,7 @@ function build() {
 	// ---- The map's sources -----------------------------------------------------------------------
 	const cell = (name: string, v: Cell) => (v === "n/a" ? "" : `${name} ${v === "yes" || v === "pass" ? "✓" : `**${v}**`}`);
 	const evidenceLine = (r: Row) =>
-		[cell("proved", r.proved), r.assumed === "yes" ? "assumed" : "", r.kind === "assume" ? "" : cell("conformance", r.conformance), cell("seen", r.seen)].filter(Boolean).join(" · ");
+		[cell("proved", r.proved), cell("fuzzed", r.fuzzed), r.assumed === "yes" ? "assumed" : "", r.kind === "assume" ? "" : cell("conformance", r.conformance), cell("seen", r.seen)].filter(Boolean).join(" · ");
 	const placeTitle = (p: number | null) => (p !== null && byId.get(p) ? `${byId.get(p)!.title} (^${p})` : "");
 	const where = (c: Claim, r: Row) => [placeTitle(c.place), evidenceLine(r)].filter(Boolean).join(" — ");
 	const code = (c: Claim) => [c.pos.line ? `${c.pos.file}:${c.pos.line}` : c.pos.file];
@@ -318,12 +334,12 @@ function build() {
 	const summary = {
 		app,
 		generated: new Date().toISOString(),
-		inputs: { conformance: conformance ? confPath : null, capture: !!capture, theoremsAudited: Object.keys(audit.theorems).length },
+		inputs: { fuzz: fuzz ? fuzzPath : null, conformance: conformance ? confPath : null, capture: !!capture, theoremsAudited: Object.keys(audit.theorems).length },
 		claims: rows.map(({ shots, ...r }) => ({ ...r, shots: shots.map((s) => `img/${s}`) })),
 		retiredElsewhere: lockOnly,
 	};
 	writeFileSync(at("evidence.json"), JSON.stringify(summary, null, 2));
-	writeFileSync(at("notes/evidence.html"), evidencePage(app, rows, conformance, !!capture, lockOnly));
+	writeFileSync(at("notes/evidence.html"), evidencePage(app, rows, fuzz, conformance, !!capture, lockOnly));
 
 	// ---- Build with the map skill's renderer ---------------------------------------------------------
 	const mapTs = [process.env.MAP_TS, join(homedir(), ".claude/skills/map/map.ts"), join(homedir(), "code/prompts/skills/map/map.ts")].find((p) => p && existsSync(p));
@@ -346,17 +362,17 @@ function clean<T>(v: T): T {
 	return JSON.parse(JSON.stringify(v));
 }
 
-function evidencePage(app: string, rows: Row[], conformance: Conformance | null, captured: boolean, lockOnly: Lock[]) {
+function evidencePage(app: string, rows: Row[], fuzz: Fuzz | null, conformance: Conformance | null, captured: boolean, lockOnly: Lock[]) {
 	const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 	const mark = (v: Cell) => `<td class="c ${v.replace(" ", "-")}">${v === "yes" || v === "pass" ? "✓" : v === "n/a" ? "·" : v === "no" ? "–" : esc(v)}</td>`;
-	const tr = (r: Row) => `<tr${r.closed ? ' class="closed"' : ""}><td><code>${r.ref}</code></td><td>${r.kind}</td><td>${esc(r.title)}</td>${mark(r.proved)}${mark(r.assumed)}${mark(r.conformance)}${mark(r.seen)}<td><span class="st ${r.status}">${r.status}</span></td><td class="thm">${r.theorems.map((t) => `<div><span class="${t.ok ? "ok" : "bad"}">${t.ok ? "✓" : "✗"}</span> <code>${esc(t.theorem.replace(/^Examples\./, ""))}</code> <small>${esc(t.role)}</small></div>`).join("")}</td><td><small>${esc(r.lock)}</small></td></tr>`;
+	const tr = (r: Row) => `<tr${r.closed ? ' class="closed"' : ""}><td><code>${r.ref}</code></td><td>${r.kind}</td><td>${esc(r.title)}</td>${mark(r.proved)}${mark(r.fuzzed)}${mark(r.assumed)}${mark(r.conformance)}${mark(r.seen)}<td><span class="st ${r.status}">${r.status}</span></td><td class="thm">${r.theorems.map((t) => `<div><span class="${t.ok ? "ok" : "bad"}">${t.ok ? "✓" : "✗"}</span> <code>${esc(t.theorem.replace(/^Examples\./, ""))}</code> <small>${esc(t.role)}</small></div>`).join("")}</td><td><small>${esc(r.lock)}</small></td></tr>`;
 	return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Evidence</title><link rel="stylesheet" href="../style.css">
 <style>
 .ev { width: 100%; border-collapse: collapse; font-size: 14px; }
 .ev th, .ev td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line, #ddd); vertical-align: top; }
 .ev td.c { text-align: center; font-weight: 600; }
-.ev td.not-run, .ev td.no { color: var(--muted, #888); font-weight: 400; }
+.ev td.not-run, .ev td.not-runnable, .ev td.no { color: var(--muted, #888); font-weight: 400; }
 .ev td.fails, .ev td.missing, .ev td.fail { color: #c33; }
 .ev tr.closed { opacity: .55; }
 .ev .thm div { white-space: nowrap; }
@@ -365,11 +381,12 @@ function evidencePage(app: string, rows: Row[], conformance: Conformance | null,
 </style></head><body><main>
 <header><div class="eyebrow">${esc(app)} · evidence</div><h1>Evidence</h1>
 <p class="lede">One row per claim. Each column is computed from the build: nothing here is written by hand. A step's status on the map is derived from these columns.</p></header>
-<div class="wrap"><table class="ev"><thead><tr><th>Id</th><th>Kind</th><th>Claim</th><th>Proved</th><th>Assumed</th><th>Conformance</th><th>Seen</th><th>Status</th><th>Theorems (axiom audit)</th><th>Ledger</th></tr></thead>
+<div class="wrap"><table class="ev"><thead><tr><th>Id</th><th>Kind</th><th>Claim</th><th>Proved</th><th>Fuzzed</th><th>Assumed</th><th>Conformance</th><th>Seen</th><th>Status</th><th>Theorems (axiom audit)</th><th>Ledger</th></tr></thead>
 <tbody>${rows.map(tr).join("\n")}</tbody></table></div>
 ${lockOnly.length ? `<h2>Retired elsewhere</h2><p>Retired ids in <code>claims.lock</code> that no module declares any more: ${lockOnly.map((l) => `<code>^${l.id}</code> ${esc(l.title)}`).join(", ")}.</p>` : ""}
 <section class="flow"><h2>Columns</h2>
 <p><b>Proved.</b> Every theorem the claim names (each move handler's <code>sound</code>; a flow's <code>live</code> and <code>reaches</code>; an invariant's <code>init</code>, <code>step</code> and <code>reachable</code>) is in <code>lake exe audit --json</code> and depends only on <code>propext</code>, <code>Classical.choice</code> and <code>Quot.sound</code>. <code>make check</code> also replays every declaration through the kernel.</p>
+<p><b>Fuzzed.</b> ${fuzz ? `From <code>build/fuzz/${esc(app)}.json</code> (<code>make fuzz</code>): ${fuzz.iterations} sequences, ${fuzz.stepsRun} steps, from seed ${fuzz.seed}.` : "Not run: <code>make fuzz APP=" + esc(app) + "</code> writes <code>build/fuzz/&lt;App&gt;.json</code>."} After every step of random sequences of enabled moves (performed through the runtime as clicks and keys), each invariant's <code>check</code> ran, each move's controls were present exactly when it was enabled, and enabled pointer moves were hit at their centres when the window was at least the view's size (docs/fuzz.md). It checks the Lean model, not the running host, so it sits between proved and seen. The map skill's status ladder has no rung for it: a pass doesn't raise a status, and a failure makes the claim broken.</p>
 <p><b>Assumed.</b> The claim is an <code>assume</code>: recorded, never proved. Theorems that rely on it take it as a hypothesis.</p>
 <p><b>Conformance.</b> ${conformance ? `From <code>build/conformance/${esc(app)}.json</code>${conformance.runs ? `, ${conformance.runs} sequences` : ""}.` : "Not run: workstream J's driver will write <code>build/conformance/&lt;App&gt;.json</code>. Until then this column is a placeholder."}</p>
 <p><b>Seen.</b> ${captured ? "A headless capture (the app's own <code>step</code> and <code>frame</code>, rendered offscreen by CairnRender) shows the control, pinned from its accessibility rect; for a flow, every witness step was performed on its control (a click at its centre; text and keys to the focused field)." : "No capture ran."}</p></section>
