@@ -110,8 +110,15 @@ invariant ^105 itemsLeft "Items left" for machine where   -- Examples.Basics
 `init : holds machine.init`, `step : ∀ s a, holds s → holds (machine.update s a).1`. The pattern
 above proves `step` one move at a time: `Machine.preserves` reduces it to `Move.Preserves` for
 each move, and each move's generated `preserves` lemma reduces that to one obligation per
-handler, stated over its own `apply`. Also generates
-`itemsLeft.reachable : ∀ s, machine.Reachable s → holds s`, and, when `Decidable (holds s)` can
+handler, stated over its own `apply`.
+
+A machine that hears the outside world (`Machine.receive`: the clock, timers, replies,
+subscription events; docs/effects.md) needs a third clause, `receive : ∀ s m, holds s → holds
+(machine.receive s m).1`, so the invariant holds whatever the host sends, in any order with the
+person's actions (Clock's ^409 in `Examples.Clock`). For a machine that ignores the world the
+clause is optional and proved for you. Also generates
+`itemsLeft.reachable : ∀ s, machine.Reachable s → holds s`,
+`itemsLeft.reachableAll : ∀ s, machine.ReachableAll s → holds s` (actions and messages), and, when `Decidable (holds s)` can
 be synthesized (after unfolding `holds` and the definitions at the head of its body),
 `itemsLeft.check : S → Bool := fun s => decide (holds s)`: the invariant as a runnable check,
 for the fuzzer (docs/fuzz.md). Without an instance there is no `check` and the fuzzer reports the
@@ -191,7 +198,8 @@ Proved about dispatch (`Cairn/Claims/Move.lean`, `Machine.lean`, `Deliver.lean`)
 | `dispatch_preserves`, `dispatch_preserves_moves`, `Machine.preserves` | invariants one move at a time |
 | `Invariant.reachable` | an invariant holds in every state reachable from `init` |
 | `deliver_effect`, `deliver_unclaimed` | the same two guarantees for a batch of actions through `Runtime.deliver`, so they compose with `Runtime.step_delivers` |
-| `deliver_run`, `steps_reachable` | delivering a batch runs it (`Machine.run`); the app state of every runtime state reached from `start` by events is `Machine.Reachable`, so every invariant holds on screen |
+| `deliver_run`, `steps_reachable` | delivering a batch runs it (`Machine.run`); for a machine that ignores the world, the app state of every runtime state reached from `start` by events is `Machine.Reachable`, so every invariant holds on screen |
+| `steps_reachableAll`, `Invariant.reachableAll` | for any machine, including one with `receive`, every runtime state reached by any events (input, clock, timers, replies, subscription events) is `Machine.ReachableAll`, so every invariant holds on screen (from `Cairn.Runtime.step_fed`: a step is some updates and messages) |
 
 ## The ledger
 
@@ -248,7 +256,7 @@ ledger, so every app module must be reachable from `Examples.lean`).
 
 `passes` is a flow's path through move ids, and `witness` its steps (`{"trigger": "press", "ref": "^1", "claim": 1, "key": 0}`, plus `op` for edits), for drivers that replay it (docs/map.md); `pos` is where the claim is declared; `machine` is the machine a flow or invariant is
 stated against. Evidence roles: `sound <trigger>` (moves), `live` and `reaches` (flows),
-`init`, `step` and `reachable` (invariants). `proved` is true when the theorem depends on no
+`init`, `step`, `receive`, `reachable` and `reachableAll` (invariants). `proved` is true when the theorem depends on no
 axioms beyond `propext`, `Classical.choice` and `Quot.sound`.
 
 ## Linking: the commands stay out of the host

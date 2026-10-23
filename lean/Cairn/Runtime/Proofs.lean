@@ -352,6 +352,87 @@ theorem act_app {app : App S} (h : Quiet app) (c : Ctx S) (acts : List Action) :
     simp [he, deliver]
   · simp only [hear_app h]
 
+/-! ### Any app: a step is a sequence of updates and messages -/
+
+/-- One input to an app: an action to `update` or a message to `receive`. -/
+def feed (app : App S) (st : S) : Action ⊕ Msg → S
+  | .inl a => (app.update st a).1
+  | .inr m => (app.receive st m).1
+
+/-- `b` is `a` after some actions and messages. -/
+def Fed (app : App S) (a b : S) : Prop := ∃ xs : List (Action ⊕ Msg), b = xs.foldl (feed app) a
+
+theorem Fed.refl (app : App S) (a : S) : Fed app a a := ⟨[], rfl⟩
+
+theorem Fed.trans {app : App S} {a b c : S} (h1 : Fed app a b) (h2 : Fed app b c) : Fed app a c := by
+  obtain ⟨xs, rfl⟩ := h1; obtain ⟨ys, rfl⟩ := h2
+  exact ⟨xs ++ ys, by rw [List.foldl_append]⟩
+
+theorem give_fed (app : App S) (c : Ctx S) (m : Msg) : Fed app c.app (give app c m).app :=
+  ⟨[.inr m], rfl⟩
+
+theorem hear_fed (app : App S) (c : Ctx S) : Fed app c.app (hear app c).app := by
+  unfold hear; split
+  · exact Fed.refl _ _
+  · exact give_fed _ _ _
+
+theorem fire_fed (app : App S) (c : Ctx S) (n : String) : Fed app c.app (fire app c n).app := by
+  unfold fire; split
+  · exact give_fed _ _ _
+  · exact Fed.refl _ _
+
+theorem foldl_fire_fed (app : App S) (ns : List String) :
+    ∀ (c : Ctx S), Fed app c.app (ns.foldl (fire app) c).app := by
+  induction ns with
+  | nil => intro c; exact Fed.refl _ _
+  | cons n ns ih => intro c; exact (fire_fed app c n).trans (ih _)
+
+theorem boot_fed (app : App S) (c : Ctx S) : Fed app c.app (boot app c).app := by
+  unfold boot; split
+  · exact Fed.refl _ _
+  · exact hear_fed app _
+
+theorem admit_fed (app : App S) (s : State S) (e : Event) : Fed app s.app (admit app s e).app := by
+  cases e <;> simp only [admit] <;> (try exact Fed.refl _ _)
+  case clock t =>
+    split
+    · exact boot_fed app _
+    · exact ((boot_fed app _).trans (hear_fed app _)).trans (foldl_fire_fed app _ _)
+  all_goals (try split) <;> (try split) <;> (try exact Fed.refl _ _) <;>
+    first
+    | exact (hear_fed app _).trans (give_fed app _ _)
+    | exact hear_fed app _
+
+theorem deliver_fed (u : S → Action → S × List Effect) (acts : List Action) :
+    ∀ (st : S) (effs : List Effect),
+      (acts.foldl (fun (p : S × List Effect) a => let (st', e) := u p.1 a; (st', p.2 ++ e))
+        (st, effs)).1 = acts.foldl (fun s a => (u s a).1) st := by
+  induction acts with
+  | nil => intro st effs; rfl
+  | cons a as ih => intro st effs; simp only [List.foldl_cons]; exact ih _ _
+
+theorem foldl_feed_inl (app : App S) (acts : List Action) :
+    ∀ (st : S), acts.foldl (fun s a => (app.update s a).1) st = (acts.map .inl).foldl (feed app) st := by
+  induction acts with
+  | nil => intro st; rfl
+  | cons a as ih => intro st; simp only [List.foldl_cons, List.map_cons]; exact ih _
+
+theorem act_fed (app : App S) (c : Ctx S) (acts : List Action) :
+    Fed app c.app (act app c acts).app := by
+  unfold act; split
+  · exact Fed.refl _ _
+  · refine (hear_fed app c).trans ⟨acts.map .inl, ?_⟩
+    show (deliver app.update _ acts).1 = _
+    unfold deliver
+    rw [deliver_fed, foldl_feed_inl]
+
+/-- **Any app.** The app state after a step is the one before after some updates and messages
+(the routed actions, the clock, due timers, a reply or a subscription event). -/
+theorem step_fed (app : App S) (cfg : Config) (s : State S) (e : Event) :
+    Fed app s.app (step app cfg s e).1.app := by
+  rw [step_app]
+  exact (admit_fed app s e).trans (act_fed app _ _)
+
 /-- For an app that ignores the world, the app state after any step is `update` folded over
 exactly the routed actions. -/
 theorem step_delivers_quiet {app : App S} (h : Quiet app) (cfg : Config) (s : State S)

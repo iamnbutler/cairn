@@ -53,9 +53,15 @@ Both return effects, and the runtime treats the effects of either the same way.
 Why two functions and not one `Msg` type wrapping `Action`: the claim language is built on
 "every action names a control" (`Action.control`, `dispatch_unclaimed`, the map). Messages from
 the world name no control. Folding them into `Action` would make every one of those theorems
-carry a side condition. Keeping them apart costs one more field with a default. A claim kind
-for messages ("when a reply arrives, …") is future work: today `receive` is ordinary Lean that
-apps prove things about directly, as P's Yap machine does.
+carry a side condition. Keeping them apart costs one more field with a default.
+
+A claim machine has the same split: `Machine.receive` (default: ignore the world) beside its
+moves, and `toApp` passes it through. An `invariant` must then also be kept by `receive` (its
+`receive` clause), and it holds over any interleaving of actions and messages
+(`Invariant.reachableAll`) and on screen through the runtime, whatever the host sends
+(`steps_reachableAll`, built on `Cairn.Runtime.step_fed`: every step is some updates and
+messages). Clock's ^409 is one. A claim kind for messages themselves ("when a reply arrives,
+…", with a `post` like a move's) is future work.
 
 ## Time
 
@@ -178,16 +184,30 @@ with a fuzz check (below).
 
 ### What Yap needs next, and where it slots in
 
-| Need | Shape | Status |
-|---|---|---|
-| Transcribe | `http` (multipart body built in Lean) | implemented as `http` |
-| Read and write files, config, transcripts | `readFile`, `writeFile` | implemented |
-| Sounds | `playSound` | implemented |
-| Type text into the front app | `request id (.typeText s)`, reply `done` / `failed denied` | designed, not built |
-| Record the microphone | `request id (.record maxMs)` answered when recording stops with `bytes` (the encoded clip) or `failed`; stop with `request id' (.stopRecording)`; levels as a subscription | designed, not built |
-| The global key | `Sub.globalKey key` with `SubEvent.keyDown/keyUp/otherKey` | designed, not built |
-| Microphone levels | `Sub.micLevel ms` with `SubEvent.level n` | designed, not built |
-| `config.json` live reload | `Sub.watchFile path` with `SubEvent.changed` | designed, not built |
+Yap's machine (`lean/Examples/Yap/Model.lean`, PR #40) talks to the host through its own
+`Input` and `Cmd`. Each `Cmd` is one of three shapes, and each shape has its slot here:
+
+| Yap `Cmd` / `Input` | Shape | Slot | Status |
+|---|---|---|---|
+| `transcribe req …`, `transcribeChunk req …` → `reply req` | request by id | `request req (.http …)`, multipart body built in Lean from the clip's bytes | `http` implemented; the clip's bytes come from `record` |
+| `saveConfig req c` → `reply req` | request by id | `request req (.writeFile configPath json)` | implemented |
+| `save req t` (append to today's file) → `reply req` | request by id | `writeFile` of the whole day file (Lean holds it), or a new `appendFile` kind | `writeFile` implemented; `appendFile` would be one more kind |
+| `type req clip pid text ret` → `reply req` | request by id | `request req (.typeText pid text ret)`, reply `done` / `failed denied` | designed, not built |
+| `startRecording clip`, `stopRecording clip`, `Input.audio`, `Input.micFailed` | request by id + subscription | `request clip (.record maxMs)` answered with `bytes` or `failed` when it stops; `request _ (.stopRecording clip)`; levels as `Sub.micLevel ms` | designed, not built |
+| `wakeAt t` → `Input.tick t` | timer | `setTimer name (t - now)`; the clock arrives with it (`Msg.clock`, then `Msg.timer`) | implemented |
+| `readConfig`, `readDictionary` → `Input.config`, `Input.dictionary` | request, then subscription | `readFile` now, `Sub.watchFile path` for changes (`SubEvent.changed`, then read again) | `readFile` implemented; `watchFile` designed |
+| `listen k` → `keyDown`, `keyUp`, `otherKey` | subscription | `Sub.globalKey k` with `SubEvent.keyDown/keyUp/otherKey` | designed, not built |
+| `listDays` → `transcriptDays`, `deleteDays ds`, `loadRecent n` → `recentLoaded` | request by id | `listDir path` (names), `deleteFile path`, `readFile` per day | `readFile` implemented; `listDir` and `deleteFile` would be two more kinds |
+| `play s` | one-way | `request _ (.playSound name)`, reply ignored | implemented |
+| `copy text` | one-way | `setClipboard` | implemented (M1) |
+| `storePrefs p`, `Input.launch p` | one-way, and at launch | `writeFile`/`readFile` of a prefs file (`initEffects`), or a `UserDefaults` kind | implemented as files |
+| `overlay clip o` | one-way | the overlay surface's frame (docs/surfaces.md), not an effect | surfaces' work |
+| `Input.trust` | request | `request _ .accessibilityTrusted`, reply `bytes [0/1]` or a dedicated reply | not designed yet |
+
+So the three shapes need no new mechanism: a new kind is a `Request` constructor, its encoding
+and round-trip case, a `Reply.answers` case and a handler. What Yap's machine would change to
+run on this runtime is its entry point: `Input` splits into the `Msg`s above (to `receive`) and
+the menu's `Action`s (to `update`), and `Cmd` into `Effect`s.
 
 Audio bodies: a 10-minute clip is a few MB. Passing it through Lean costs a copy each way and
 the event decoder runs the list specification (a few hundred ns a byte); if that shows up in
@@ -281,7 +301,9 @@ is a stopwatch: Start/Stop (^401) sets and cancels a 100 ms `tick` timer, Lap (^
 the reading and plays "Tink", Reset (^403), Save (^404) writes the laps to
 `~/Library/Application Support/Cairn/Clock/laps.txt`, Load (^405) reads them back (also once
 at launch, from `initEffects`), and the time of day comes from an `every 1000` subscription.
-`stopped_tick` proves a tick that arrives after Stop changes nothing. Its self test drives the
+`stopped_tick` proves a tick that arrives after Stop changes nothing; the invariant ^409
+(pending requests have ids below the next request's) is kept by its moves and by `receive`,
+and `freshRequests_on_screen` (`Examples/Clock/Proofs.lean`) carries it through the runtime. Its self test drives the
 real host threads: launch read, the reading moving with no input, cancel on Stop (no `wake`,
 reading frozen), save, reset, load, and measures the numbers below.
 

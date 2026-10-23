@@ -44,5 +44,10 @@ for redrawing, not for keeping time (the clock before each tick is the truth).
 
 | App | Stripped |
 |---|---:|
-| CairnCounter | see below |
-| CairnClock | see below |
+| CairnCounter | 2,586,784 B |
+| CairnBasics | 2,637,560 B |
+| CairnTodo | 2,689,208 B |
+| CairnClock | 2,638,408 B |
+
+Clock (timers, an `every` subscription, two file requests, the runtime's effect paths) is
+51,624 B (2.0%) above Counter, about the size of Basics; every app stays under the 5 MB limit.

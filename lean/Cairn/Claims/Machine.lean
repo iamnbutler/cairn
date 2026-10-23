@@ -7,6 +7,11 @@ public import Cairn.App
 moves by `dispatch`, so it inherits every guarantee in `Cairn.Claims.Move`. Flows and invariants
 are stated against a machine.
 
+A machine may also hear the outside world (docs/effects.md): `receive` takes the clock, timers,
+replies and subscription events. An invariant must be kept by `receive` as well as by every
+move, so it holds over any interleaving of a person's actions and the host's messages
+(`Invariant.reachableAll`), and through the runtime (`Cairn.Claims.steps_reachableAll`).
+
 Pure, and linked into the host, like `Cairn.Claims.Move`. -/
 
 @[expose] public section
@@ -17,6 +22,8 @@ namespace Cairn.Claims
 structure Machine (S : Type) where
   init : S
   moves : List (Move S)
+  /-- What the outside world does to the state (`App.receive`); by default nothing. -/
+  receive : S → Msg → S × List Effect := fun s _ => (s, [])
 
 namespace Machine
 variable {S : Type} (M : Machine S)
@@ -35,12 +42,33 @@ def live : S → List Action → Bool
 /-- States reachable from `init`. -/
 def Reachable (s : S) : Prop := ∃ as, s = M.run M.init as
 
+/-- One input: a person's action (`update`) or a message from the world (`receive`). -/
+def feed (s : S) : Action ⊕ Msg → S
+  | .inl a => (M.update s a).1
+  | .inr m => (M.receive s m).1
+
+/-- The state after a sequence of actions and messages. -/
+def runAll (s : S) (xs : List (Action ⊕ Msg)) : S := xs.foldl M.feed s
+
+/-- States reachable from `init` by actions and messages. -/
+def ReachableAll (s : S) : Prop := ∃ xs, s = M.runAll M.init xs
+
+theorem Reachable.all {s : S} (h : M.Reachable s) : M.ReachableAll s := by
+  obtain ⟨as, rfl⟩ := h
+  refine ⟨as.map .inl, ?_⟩
+  unfold run runAll
+  generalize M.init = s0
+  induction as generalizing s0 with
+  | nil => rfl
+  | cons a as ih => exact ih _
+
 /-- An app whose update is this machine's. -/
 def toApp (view : S → UI → Node) (claims : List ClaimInfo)
     (initFocus : Option ControlRef := none) : App S where
   init := M.init
   view := view
   update := M.update
+  receive := M.receive
   claims := claims
   initFocus := initFocus
 
@@ -74,6 +102,15 @@ theorem run_preserves (P : S → Prop) (step : ∀ s a, P s → P (M.update s a)
   | [], _, h => h
   | a :: as, s, h => run_preserves P step as _ (step s a h)
 
+/-- A property true at `s` and kept by every update and every message holds after any sequence
+of both. -/
+theorem runAll_preserves (P : S → Prop) (step : ∀ s a, P s → P (M.update s a).1)
+    (recv : ∀ s m, P s → P (M.receive s m).1) :
+    ∀ (xs : List (Action ⊕ Msg)) (s : S), P s → P (M.runAll s xs)
+  | [], _, h => h
+  | .inl a :: xs, s, h => runAll_preserves P step recv xs _ (step s a h)
+  | .inr m :: xs, s, h => runAll_preserves P step recv xs _ (recv s m h)
+
 end Machine
 
 /-! ### Claims other than moves
@@ -90,18 +127,25 @@ structure Flow {S : Type} (M : Machine S) where
   live : M.live M.init witness = true
   reaches : goal (M.run M.init witness)
 
-/-- A property of every reachable state: true initially and preserved by every update (so by
-every move, see `Machine.update`). -/
+/-- A property of every reachable state: true initially, preserved by every update (so by
+every move, see `Machine.update`) and by every message from the world (`Machine.receive`; for a
+machine that ignores the world this is immediate). -/
 structure Invariant {S : Type} (M : Machine S) where
   info : ClaimInfo
   holds : S → Prop
   init : holds M.init
   step : ∀ s a, holds s → holds (M.update s a).1
+  recv : ∀ s m, holds s → holds (M.receive s m).1
 
 theorem Invariant.reachable {S : Type} {M : Machine S} (i : Invariant M) {s : S}
     (h : M.Reachable s) : i.holds s := by
   obtain ⟨as, rfl⟩ := h
   exact M.run_preserves i.holds i.step as M.init i.init
+
+theorem Invariant.reachableAll {S : Type} {M : Machine S} (i : Invariant M) {s : S}
+    (h : M.ReachableAll s) : i.holds s := by
+  obtain ⟨xs, rfl⟩ := h
+  exact M.runAll_preserves i.holds i.step i.recv xs M.init i.init
 
 /-- Something taken as given about the world. `statement` is recorded, never proved: theorems
 that rely on it take it as a hypothesis, so it never becomes an axiom. -/

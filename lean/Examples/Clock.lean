@@ -26,6 +26,7 @@ of day, and Save and Load buttons that write the laps to a file and read them ba
 | ^405 | move | Load laps |
 | ^406 | place | the window |
 | ^407, ^408 | flow | two laps; start over |
+| ^409 | invariant | pending requests have fresh ids (kept by moves and by `receive`) |
 
 The moves only start things: what comes back (the time, the tick, the file's contents) arrives
 through `receive`. Runtime checks are in `Examples.Clock.Tests`; the v1 exports in
@@ -147,24 +148,6 @@ move ^405 loadMove (s : State) "Load laps" in ^406 where
     post s' := s'.laps = s.laps ∧ s'.loading = some s.nextReq
     sound := by intro s; exact ⟨rfl, rfl⟩
 
-/-- The stopwatch's moves. -/
-def machine : Machine State := { init := {}, moves := moves% }
-
-flow ^407 twoLaps "Two laps" for machine where
-  does "Press Start, then Lap twice."
-  sees "Two laps are listed."
-  goal s := s.laps.length = 2 ∧ s.running = true
-  witness press ^401, press ^402, press ^402
-
-flow ^408 startOver "Start over" for machine where
-  does "Press Start, Lap, Stop, then Reset."
-  sees "The reading is zero and no laps are listed."
-  goal s := s.laps = [] ∧ elapsed s = 0
-  witness press ^401, press ^402, press ^401, press ^403
-
-/-- Every claim the stopwatch makes. -/
-def claimInfos : List ClaimInfo := claims%
-
 /-! ## The outside world -/
 
 def faultText : Fault → String
@@ -201,6 +184,80 @@ def receive (s : State) : Msg → State × List Effect
 theorem stopped_tick (s : State) (h : s.running = false) : receive s (.timer tick) = (s, []) := by
   simp only [receive, h, Bool.and_false, ↓reduceIte, decide_true,
     Bool.false_eq_true]
+
+/-- A reply only clears the pending save or load. -/
+theorem onReply_fields (s : State) (id : Nat) (r : Reply) :
+    (onReply s id r).nextReq = s.nextReq ∧
+      ((onReply s id r).saving = none ∨ (onReply s id r).saving = s.saving) ∧
+      ((onReply s id r).loading = none ∨ (onReply s id r).loading = s.loading) := by
+  unfold onReply
+  split
+  · exact ⟨rfl, Or.inl rfl, Or.inr rfl⟩
+  · split
+    · split
+      · split
+        · exact ⟨rfl, Or.inr rfl, Or.inl rfl⟩
+        · exact ⟨rfl, Or.inr rfl, Or.inl rfl⟩
+      all_goals first
+        | exact ⟨rfl, Or.inr rfl, Or.inl rfl⟩
+        | exact ⟨rfl, Or.inr rfl, Or.inr rfl⟩
+    · exact ⟨rfl, Or.inr rfl, Or.inr rfl⟩
+
+/-- The stopwatch: its moves, and what the world does to it. -/
+def machine : Machine State := { init := {}, moves := moves%, receive }
+
+invariant ^409 freshRequests "Pending requests have fresh ids" for machine where
+  does "The pending save and load, if any, have ids below the next request's, so a reply to a later request is never taken for theirs."
+  holds s := (∀ id, s.saving = some id → id < s.nextReq) ∧ (∀ id, s.loading = some id → id < s.nextReq)
+  init := And.intro (fun _ h => nomatch (h : none = some _))
+    (fun _ h => by cases (Option.some.inj (h : some 0 = some _)); decide)
+  step := machine.preserves <|
+    Move.all_cons (startStopMove.preserves _ fun s h => by
+        unfold startStopMove.press.emit startStop; split <;> exact h)
+      (Move.all_cons (lapMove.preserves _ fun s _ h =>
+        And.intro (fun id hi => Nat.lt_succ_of_lt (h.1 id hi))
+          (fun id hi => Nat.lt_succ_of_lt (h.2 id hi)))
+      (Move.all_cons (resetMove.preserves _ fun _ _ h => h)
+      (Move.all_cons (saveMove.preserves _ fun s _ h =>
+        And.intro (fun id hi => by
+            cases (Option.some.inj (hi : some s.nextReq = some id)); exact Nat.lt_succ_self _)
+          (fun id hi => Nat.lt_succ_of_lt (h.2 id hi)))
+      (Move.all_cons (loadMove.preserves _ fun s h =>
+        And.intro (fun id hi => Nat.lt_succ_of_lt (h.1 id hi))
+          (fun id hi => by
+            cases (Option.some.inj (hi : some s.nextReq = some id)); exact Nat.lt_succ_self _))
+        Move.all_nil))))
+  receive := by
+    intro s m h
+    cases m with
+    | reply id r =>
+      obtain ⟨hn, hs, hl⟩ := onReply_fields s id r
+      show (∀ x, (onReply s id r).saving = some x → x < (onReply s id r).nextReq) ∧
+        (∀ x, (onReply s id r).loading = some x → x < (onReply s id r).nextReq)
+      rw [hn]
+      constructor <;> intro x hx
+      · rcases hs with hs | hs <;> rw [hs] at hx
+        · cases hx
+        · exact h.1 x hx
+      · rcases hl with hl | hl <;> rw [hl] at hx
+        · cases hx
+        · exact h.2 x hx
+    | _ => exact h
+
+flow ^407 twoLaps "Two laps" for machine where
+  does "Press Start, then Lap twice."
+  sees "Two laps are listed."
+  goal s := s.laps.length = 2 ∧ s.running = true
+  witness press ^401, press ^402, press ^402
+
+flow ^408 startOver "Start over" for machine where
+  does "Press Start, Lap, Stop, then Reset."
+  sees "The reading is zero and no laps are listed."
+  goal s := s.laps = [] ∧ elapsed s = 0
+  witness press ^401, press ^402, press ^401, press ^403
+
+/-- Every claim the stopwatch makes. -/
+def claimInfos : List ClaimInfo := claims%
 
 /-! ## View -/
 
@@ -267,10 +324,9 @@ def view (s : State) (ui : UI) : Node :=
 
 def app : App State :=
   { machine.toApp view claimInfos with
-    receive := receive
     subscriptions := fun _ => [.every 1000]
     initEffects := [.request 0 (.readFile lapsPath)] }
 
-example : claimInfos.map (·.id) = [401, 402, 403, 404, 405, 406, 407, 408] := by decide
+example : claimInfos.map (·.id) = [401, 402, 403, 404, 405, 406, 407, 408, 409] := by decide
 
 end Examples.Clock

@@ -81,6 +81,7 @@
 406	place	active	-	Clock window
 407	flow	active	befa900cd07c80b7	Two laps
 408	flow	active	81892d4491fba6ac	Start over
+409	invariant	active	631e025c1afbf429	Pending requests have fresh ids
 901	assume	active	-	The Swift frame decoder agrees with Lean's
 902	assume	active	-	Lean decodes what the Swift event encoder writes
 903	assume	active	-	UTF-16 offsets and scalar indices convert exactly
