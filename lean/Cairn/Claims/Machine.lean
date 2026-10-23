@@ -62,11 +62,11 @@ theorem Reachable.all {s : S} (h : M.Reachable s) : M.ReachableAll s := by
   | nil => rfl
   | cons a as ih => exact ih _
 
-/-- An app whose update is this machine's. -/
-def toApp (view : S → UI → Node) (claims : List ClaimInfo)
+/-- An app whose update is this machine's, showing `surfaces` (M1 apps: one window). -/
+def toApp (surfaces : List (Surface S)) (claims : List ClaimInfo)
     (initFocus : Option ControlRef := none) : App S where
   init := M.init
-  view := view
+  surfaces := surfaces
   update := M.update
   receive := M.receive
   claims := claims

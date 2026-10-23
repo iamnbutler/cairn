@@ -1,11 +1,13 @@
-# Frame and event format: frames v2, events v1
+# Frame and event format: frames v3, events v2
 
 Two byte buffers cross the boundary between Lean and the Swift host, and nothing else does:
 
-- **Frame** (Lean → host): what to paint, the accessibility tree, the focused field's
-  text-input state, the cursor, effects, subscription commands and the wake deadline
-  (docs/effects.md). Lean builds a `Cairn.Frame` with `Frame.ofLaid`
-  and encodes it with `encodeFrame`; the host decodes it with `Frame(bytes:)`.
+- **Frame** (Lean → host): one record per surface (docs/surfaces.md): for the window and each
+  panel what to paint, the accessibility tree, the focused field's text-input state and the
+  cursor; for a status item its button and menu. Then the effects, subscription commands and
+  the wake deadline (docs/effects.md). Lean builds each canvas with `Frame.ofLaid`, each menu
+  with `Frame.ofStatus` (`Cairn/Frame/Menu.lean`), and encodes the frame with `encodeFrame`; the
+  host decodes it with `Frame(bytes:)`.
 - **Events** (host → Lean): a batch of input events. The host encodes them with
   `encodeEvents`; Lean decodes them with `decodeEvents`.
 
@@ -16,6 +18,7 @@ Two byte buffers cross the boundary between Lean and the Swift host, and nothing
 | Frame encoder, decoder, round trip | `lean/Cairn/Frame/Encode.lean` |
 | Event encoder, decoder, round trip | `lean/Cairn/Frame/Events.lean` |
 | `Frame.ofLaid` and its theorems | `lean/Cairn/Frame/Build.lean` |
+| `Frame.ofMenu`, `Frame.ofStatus` and their theorems | `lean/Cairn/Frame/Menu.lean` |
 | The runtime's `Boundary` | `lean/Cairn/Frame/Boundary.lean` |
 | Canonical text dump | `lean/Cairn/Frame/Dump.lean`, `host/Tests/CairnFrameTests/Dump.swift` |
 | Swift frame decoder | `host/Sources/CairnFrame/Decode.swift` |
@@ -72,14 +75,9 @@ Swift's model uses `Int32` and `UInt32` for these fields, so every Swift value f
 ```
 offset  size  field
 0       4     magic "CAFR" (43 41 46 52)
-4       2     u16 version = 2
+4       2     u16 version = 3
 6       2     u16 flags = 0
-8       4     i32 window width
-12      4     i32 window height
-16      4+4   draws: u32 count, u32 byteLength, then the draw records
-.       4+4   ax: u32 count, u32 byteLength, then the ax records
-.       4..   textInput record (always present; its head says whether there is one)
-.       4     cursor: [code, 0, 0, 0]
+8       4+4   surfaces: u32 count, u32 byteLength, then the surface records
 .       4+4   effects: u32 count, u32 byteLength, then the effect records
 .       4+4   subs: u32 count, u32 byteLength, then the subscription commands
 .       12    wake: [hasWake, 0, 0, 0], u64 deadline (monotonic ms; 0 when absent)
@@ -87,12 +85,77 @@ offset  size  field
 
 A decoder rejects any other magic, version or flags. A future incompatible format changes the
 version; flags are reserved for compatible additions and must be zero. Version 1 (M1) ended
-after the effects; version 2 added `subs` and `wake` and the effect records 3–6. docs/surfaces.md
-plans the next version (per-surface frame records).
+after the effects; version 2 added `subs` and `wake` and the effect records 3–6; version 3
+replaced the single window (size, draws, ax, text input, cursor after the header) with the list
+of surface records.
 
-The section lengths are there so the two host threads can each decode only what they use: the
-render thread reads the size and draws and skips the rest by length; the main thread skips the
-draws and reads the accessibility tree and the tail. `FrameSections` in Swift exposes this.
+### Surface records
+
+Every surface of the app, in the app's order (`App.surfaces`), every frame. One record shape
+for every kind: fields a kind doesn't use are at their defaults (empty title, empty canvas,
+empty status), so a decoder never branches on the kind to find the next field.
+
+```
+surface   [kind, shown, anchor, screen]                                12 + fields
+          4  u32 place: the surface's place claim, its identity across frames
+          8  u32 anchor offset (points)
+          12 string: window title
+          .  canvas
+          .  status
+```
+
+- **Kinds**: `0` window, `1` panel, `2` status item.
+- **shown**: `0` for a panel or status item whose view returned `none` this frame (the host
+  hides it; its canvas and status are empty). Windows are always shown.
+- **anchor** `0` bottomCenter: the panel is centred horizontally, `offset` points above the
+  bottom of its screen's visible frame. **screen** `0` pointer (the screen the pointer is on when
+  the panel is shown), `1` main. Both are `0` for other kinds. The host resolves them
+  (docs/trusted.md).
+
+A **canvas** is what one Metal surface shows:
+
+```
+canvas    i32 width, i32 height                                          8 + fields
+          draws: u32 count, u32 byteLength, then the draw records
+          ax: u32 count, u32 byteLength, then the ax records
+          textInput record (always present; its head says whether there is one)
+          cursor: [code, 0, 0, 0]
+```
+
+A window's size is the size Lean laid out at (the last `resize`); a panel's is its `width` and
+its laid content's height. Coordinates in a canvas are relative to that surface's top-left.
+
+A **status** is a status item's button and menu:
+
+```
+status    control ref: the button's control (opening the menu presses it)
+          string symbol (SF Symbol name), string title, string label (VoiceOver)
+          menu: u32 count, u32 byteLength, then the menu records
+```
+
+### Menu records
+
+The menu flattened depth first (`Frame.ofMenu`): a submenu's record comes before its items,
+whose `parent` is its index (`parent_lt_ofMenu`, `MenuParentsOk`).
+
+```
+menuItem  [kind, enabled, checked, hasShortcut]                       32 + string
+          4  hasControl, 5  hasParent, 6  hasPlace, 7  shortcut key code
+          8  control ref           (0,0 and ignored when hasControl = 0)
+          16 u32 parent index      (0 and ignored when hasParent = 0)
+          20 u32 place             (0 and ignored when hasPlace = 0)
+          24 u32 shortcut scalar   (0 unless the key is `char`)
+          28 shortcut mods, 29–31 0
+          32 string: label
+```
+
+- **Kinds**: `0` item (has a control), `1` info (a status line, shown disabled), `2` submenu
+  (a label, maybe a place), `3` separator.
+- `checked` uses the ax codes: `0` not a checkbox, `1` off, `2` on.
+- The shortcut's key code, scalar and mods are the event codes below. Without a shortcut they
+  are written as zero and ignored.
+- The item's `control` is the move a selection presses; the runtime presses it only if it is
+  still an enabled item of the current menu (`menu_select_stale`).
 
 ### Draw records
 
@@ -231,7 +294,7 @@ reaches the deadline. A deadline in the past means at once.
 ```
 offset  size  field
 0       4     magic "CAEV" (43 41 45 56)
-4       2     u16 version = 1
+4       2     u16 version = 2
 6       2     u16 flags = 0
 8       4     u32 count
 12      ..    count event records, back to back (no section length)
@@ -264,6 +327,10 @@ error. `button` is `0` primary, `1` secondary.
 | 18 | clock | 0 | 0 | u64 mono ms, i64 wall ms since 1970, i32 zone (s east of UTC) | 24 |
 | 19 | reply | reply code | fault | u32 id, reply fields | 8 + fields |
 | 20 | subEvent | event code | fault | u32 id, event fields | 8 + fields |
+| 21 | surface | 0 | 0 | u32 place, then one local event record | 8 + event |
+| 22 | menuOpen | 0 | 0 | u32 place | 8 |
+| 23 | menuClose | 0 | 0 | u32 place | 8 |
+| 24 | menuSelect | 0 | 0 | u32 place, control ref | 16 |
 
 - **Keys.** Codes `0` enter, `1` escape, `2` tab, `3` backspace, `4` delete, `5` left,
   `6` right, `7` up, `8` down, `9` home, `10` end, `11` pageUp, `12` pageDown, `13` char.
@@ -284,17 +351,26 @@ error. `button` is `0` primary, `1` secondary.
   u32 peak, u32 count, then each window as u64 sum of squares and u32 peak: 12 bytes);
   `3` keyDown, `4` keyUp, `5` otherKey (u64 monotonic ms); `6` failed (string message; `b` is
   the fault, coded as for replies). For codes other than `6`, `b` is written as 0 and must be 0.
-- **Global events.** `clock`, `reply` and `subEvent` belong to the app, not to a window; a
-  surface id for window events (docs/surfaces.md) can go in a later version without touching
-  them.
+- **Surfaces.** A bare local event (tags 0–17) is the window's, as in version 1. `surface`
+  addresses a local event to the surface with that place: its inner record must be a local
+  event (not `clock`, `reply`, `subEvent`, `surface` or a menu event), else the batch is an
+  error, so `surface` never nests. Panels ignore the mouse, so today the host sends `surface`
+  only from tests; the runtime routes it to the window when the place is the window's and drops
+  it otherwise (`route_surface_other`).
+- **Menus.** `menuOpen` and `menuClose` come from the status item's `NSMenuDelegate`;
+  `menuOpen` is a press on the item's `control`. `menuSelect` names the status item's place and
+  the chosen item's control ref.
+- **Global events.** `clock`, `reply` and `subEvent` belong to the app, not to a surface.
+
+Version 1 had tags 0–20 only.
 
 Lean drops a batch that fails to decode, whole (`Frame.boundary`): the host's encoder is
 checked against Lean's decoder, so a bad batch means a host bug.
 
 ## From layout to frame: `Frame.ofLaid`
 
-`Frame.ofLaid (ui : UI) (l : Laid) : Frame` (`Build.lean`); the runtime then fills in `cursor` and
-`effects`. Focus comes from `ui.focus`, the runtime's one source of truth.
+`Frame.ofLaid (ui : UI) (l : Laid) : Canvas` (`Build.lean`); the runtime then fills in `cursor`
+(`Boundary.frame` in `Runtime/Abi.lean` builds one surface record per `Shown` surface). Focus comes from `ui.focus`, the runtime's one source of truth.
 
 - **Draws**, back to front, depth first. A box paints one `rect` (only if it has a background
   or a border), then its children, wrapped in `pushClip`/`popClip` of its rect when it clips.
@@ -313,7 +389,7 @@ checked against Lean's decoder, so a bad batch means a host bug.
 
 | Theorem | Statement |
 |---|---|
-| `decodeFrame_encodeFrame` | `fitsFrame f → (encodeFrame f).size < 2^32 → decodeFrame (encodeFrame f) = some f`, over every record including requests, subscription commands and wake |
+| `decodeFrame_encodeFrame` | `fitsFrame f → (encodeFrame f).size < 2^32 → decodeFrame (encodeFrame f) = some f`, over every record including surfaces, menus, requests, subscription commands and wake |
 | `decodeEvents_encodeEvents` | `es.all fitsEvent → es.size < 2^32 → decodeEvents (encodeEvents es) = some es` |
 | `encodeFrame_eq_put` | `@[csimp]`: the executable `ByteArray` encoder equals the `List UInt8` specification |
 | `controls_ofLaid` | the ax tree's control refs are exactly the laid tree's controls' refs, in order |
@@ -321,6 +397,8 @@ checked against Lean's decoder, so a bad batch means a host bug.
 | `mem_ax_ofLaid` | a ref has an ax node iff some laid control has that ref |
 | `ax_refs_nodup` | distinct refs in the laid tree give distinct refs in the ax tree |
 | `parent_lt_ofLaid` | every ax parent index points at an earlier node |
+| `controls_ofMenu`, `enabled_ofMenu` | a menu's records carry exactly the description's item refs (`MenuItem.refs`), and the enabled ones exactly its enabled refs, in order |
+| `parent_lt_ofMenu` | every menu record's parent is an earlier submenu record |
 | `balanced_ofLaid` | `pushClip`/`popClip` are balanced and never pop an empty stack |
 | `satU32_eq_host_sat` | the font-field clamp is `Cairn.Text.Host.sat` |
 
@@ -338,7 +416,10 @@ Both sides print frames and event batches in one text format, one item per line,
 compare them line by line (`Dump.lean`, `Dump.swift`):
 
 ```
-frame W H
+frame
+surfaces N
+surface kind=K place=P shown=B anchor=A offset=O screen=S title="…"
+canvas W H
 draws N
 rect X Y W H fill=R,G,B,A|none radius=N border=W:R,G,B,A|none
 text X Y font=FAMILY,SIZE,WEIGHT,ITALIC color=R,G,B,A "STRING"
@@ -349,6 +430,9 @@ node role=CODE control=CLAIM#KEY|none parent=I|none rect=X Y W H focused=B selec
 textInput none
 textInput control=C#K rect=… caret=… selection=A B marked=A B|none origin=X Y text="…"
 cursor CODE
+status control=C#K symbol="…" title="…" label="…"
+menu N
+item kind=K control=C#K|none parent=I|none place=P|none enabled=B checked=B|none shortcut=CODE,SCALAR,MODS|none label="…"
 effects N
 clipboard "…"
 beep
@@ -371,6 +455,7 @@ key CODE SCALAR MODS | insert "…" replace=A B|none | marked "…" START LEN re
 unmark | copy | cut | selectAll | undo | redo | paste "…" | resize W H | scale P | focus B
 clock MONO WALL ZONE | sub ID 0 | sub ID 1 | sub ID 2 FRAMES PEAK N SUMSQ:PEAK…
 sub ID 3 T | sub ID 4 T | sub ID 5 T | sub ID 6 FAULT "…"
+surface P EVENT | menuOpen P | menuClose P | menuSelect P CLAIM#KEY
 reply ID done | reply ID bytes BYTES | reply ID http STATUS HEADERS body=BYTES | reply ID failed FAULT "…"
 reply ID names N "…"… | reply ID app PID "NAME" | reply ID flag B
 ```
@@ -390,7 +475,7 @@ prints as `\u{HEX}`, uppercase hex, no leading zeros. Booleans print as `0`/`1`.
    strings with NUL, combining marks, emoji, CJK and U+10FFFF. It checks each round trip in Lean.
 2. `swift test` (`CorpusTests`): Swift decodes every frame to Lean's dump; Swift re-encodes
    every event batch (parsed from Lean's dump) to Lean's bytes exactly; Swift rejects
-   corrupted and truncated frames and invalid UTF-8; each section decodes alone. It writes 202
+   corrupted and truncated frames and invalid UTF-8. It writes 202
    Swift-encoded batches to `build/corpus/swift-events/`.
 3. `framecorpus verify build/corpus` decodes Swift's batches with Lean's decoder and compares
    them with Swift's dumps.
@@ -400,8 +485,11 @@ prints as `\u{HEX}`, uppercase hex, no leading zeros. Booleans print as `0`/`1`.
 - **Fixed records, strings at the end.** Every fixed field sits at a constant offset from its
   record's start, so the Swift decoder does one bounds check per record and loads fields by
   offset (`loadUnaligned`), with no per-field branching.
-- **Sections.** Draws and the accessibility tree are decoded on different threads; a length
-  per section lets each skip the other without parsing it.
+- **Sections.** Every list carries its byte length, so a reader can skip one without parsing
+  it, and a record that doesn't fill its section is caught where it happens.
+- **One record per surface, every frame.** The host reconciles: a surface whose place it has
+  not seen is created, a record with `shown = 0` hides its surface, and a menu is updated in
+  place (docs/surfaces.md). Records are small next to the draws.
 - **Absent optionals take their space.** An absent fill, border, control, parent or marked
   range is written as zeros with a flag in the head, so record sizes don't depend on them.
 - **Strict decoding.** Unknown codes, booleans other than 0/1, leftover section bytes and

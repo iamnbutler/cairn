@@ -1,4 +1,4 @@
-// Event v1 encoder (docs/frame.md). Trusted: the corpus test checks it byte for byte against
+// Event v2 encoder (docs/frame.md). Trusted: the corpus test checks it byte for byte against
 // Lean's encoder and checks that Lean's decoder reads what it writes.
 
 extension Event {
@@ -64,13 +64,17 @@ extension Event {
             case let .keyDown(t), let .keyUp(t), let .otherKey(t): u64(t)
             case let .failed(_, m): str(m)
             }
+        case let .surface(p, e): head(21); u32(p); e.encode(into: &out)
+        case let .menuOpen(p): head(22); u32(p)
+        case let .menuClose(p): head(23); u32(p)
+        case let .menuSelect(p, r): head(24); u32(p); u32(r.claim); u32(r.key)
         }
     }
 }
 
 /// A batch of events: header, count, records.
 public func encodeEvents(_ events: [Event]) -> [UInt8] {
-    var out: [UInt8] = [0x43, 0x41, 0x45, 0x56, 1, 0, 0, 0]  // "CAEV", version 1, flags 0
+    var out: [UInt8] = [0x43, 0x41, 0x45, 0x56, 2, 0, 0, 0]  // "CAEV", version 2, flags 0
     out.reserveCapacity(12 + 16 * events.count)
     let n = UInt32(events.count)
     out += [UInt8(truncatingIfNeeded: n), UInt8(truncatingIfNeeded: n >> 8),

@@ -13,7 +13,7 @@ private def axA : AxNode :=
 private def axB : AxNode :=
   { control := none, role := .text, rect := ⟨0, 0, 0, 0⟩, label := "x", parent := some 0 }
 
-private def frame : Frame where
+private def canvas : Canvas where
   size := ⟨800, -600⟩
   draws := #[.rect ⟨-5, 0, 10, 10⟩ (some ⟨1, 2, 3, 4⟩) 6 none, .pushClip ⟨0, 0, 1, 1⟩,
     .text ⟨3, 4⟩ { weight := 700, italic := true } ⟨9, 9, 9, 255⟩ "日本 🙂", .popClip,
@@ -22,6 +22,25 @@ private def frame : Frame where
   textInput := some { control := ⟨2, 0⟩, rect := ⟨1, 1, 1, 1⟩, caret := ⟨2, 2, 1, 1⟩,
                       text := "ab", selection := (1, 2), marked := some (0, 1) }
   cursor := .text
+
+private def menu : Array MenuRecord := #[
+  { kind := .info, label := "Idle", enabled := false },
+  { kind := .item, label := "Enabled", control := some ⟨451, 0⟩, checked := some true },
+  { kind := .submenu, label := "Recent", place := some 452 },
+  { kind := .item, label := "One", control := some ⟨453, 1⟩, parent := some 2, enabled := false },
+  { kind := .separator, enabled := false },
+  { kind := .item, label := "Quit", control := some ⟨454, 0⟩,
+    shortcut := some ⟨.char 'q', { command := true }⟩ }]
+
+private def frame : Frame where
+  surfaces := #[
+    { kind := .window, place := 3, title := "Ünïcode", canvas },
+    { kind := .panel, place := 455, anchor := .bottomCenter 56, screen := .main,
+      canvas := { size := ⟨520, 90⟩, draws := #[.popClip], ax := #[axB] } },
+    { kind := .panel, place := 456, shown := false },
+    { kind := .statusItem, place := 450,
+      status := { control := ⟨457, 0⟩, symbol := "waveform", title := "", label := "Tray",
+                  menu } }]
   effects := #[.setClipboard "copied", .beep, .setTimer "t" 30, .cancelTimer "ü",
     .request 7 (.writeFile "~/a" ⟨#[0, 255, 1]⟩), .request 8 (.readFile ""),
     .request 9 (.playSound "Tink"),
@@ -45,6 +64,9 @@ private def frame : Frame where
 #guard (decodeFrame ((encodeFrame frame).push 0)).isNone
 #guard (decodeFrame ((encodeFrame frame).set! 4 1)).isNone
 #guard (decodeFrame (encodeFrame { frame with wake := none })).isSome
+#guard (decodeFrame (encodeFrame { frame with surfaces := #[] })).isSome
+-- The window accessors read the first window.
+#guard frame.size == ⟨800, -600⟩ && frame.ax.size == 2
 
 private def events : Array Event := #[.pointerMove ⟨-1, 2⟩,
   .pointerDown ⟨3, 4⟩ .secondary 2 { shift := true, control := true }, .key (.char 'é') {},
@@ -56,7 +78,15 @@ private def events : Array Event := #[.pointerMove ⟨-1, 2⟩,
   .reply 7 (.names ["a", "日本"]), .reply 8 (.names []), .reply 9 (.app 501 "Terminal"),
   .reply 10 (.flag true), .subEvent 4 (.audio 160 900 [⟨123456789012, 900⟩, ⟨0, 0⟩]),
   .subEvent 4 (.audio 0 0 []), .subEvent 5 (.keyDown 18446744073709551615), .subEvent 5 (.keyUp 0),
-  .subEvent 5 (.otherKey 7), .subEvent 4 (.failed .denied "no microphone")]
+  .subEvent 5 (.otherKey 7), .subEvent 4 (.failed .denied "no microphone"),
+  .surface 3 (.pointerDown ⟨1, 2⟩ .primary 1 {}), .surface 4294967295 .copy,
+  .menuOpen 450, .menuClose 450, .menuSelect 450 ⟨453, 1⟩]
+
+-- A surface record holds exactly one surface-local record: nesting, world and menu events
+-- inside it are rejected.
+#guard !fitsEvent (.surface 3 (.surface 3 .copy))
+#guard (decodeEvents ⟨(Enc.eventsHeader ++ Enc.u32 1 ++ Enc.event (.surface 3 (.menuOpen 1))).toArray⟩).isNone
+#guard (decodeEvents ⟨(Enc.eventsHeader ++ Enc.u32 1 ++ Enc.event (.surface 3 (.surface 3 .copy))).toArray⟩).isNone
 
 #guard events.all fitsEvent
 #guard decodeEvents (encodeEvents events) == some events

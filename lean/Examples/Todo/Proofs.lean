@@ -557,6 +557,6 @@ theorem invariants_on_screen (cfg : Config) (size : Size) (scale : Nat) (es : Li
     let st := (steps app cfg (start app cfg size scale) es).1.app
     st.left = active st.todos ∧ (st.todos.map (·.id)).Nodup ∧
       ∀ ui, (view st ui).controls.filterMap rowKey = (visible st).map (·.id) :=
-  reachable_invariants (steps_reachable machine view claimInfos cfg size scale es (some newRef))
+  reachable_invariants (steps_reachable machine [.window 201 "todos" view] claimInfos cfg size scale es (some newRef))
 
 end Examples.Todo

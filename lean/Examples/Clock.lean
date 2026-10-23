@@ -323,7 +323,7 @@ def view (s : State) (ui : UI) : Node :=
      lapLines s.laps)
 
 def app : App State :=
-  { machine.toApp view claimInfos with
+  { machine.toApp [.window 406 "Clock" view] claimInfos with
     subscriptions := fun _ => [.every 1000]
     initEffects := [.request 0 (.readFile lapsPath)] }
 

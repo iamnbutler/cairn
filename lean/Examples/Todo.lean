@@ -270,7 +270,7 @@ flow ^224 addUnderCompleted "A new todo under the Completed filter" for machine 
 def claimInfos : List ClaimInfo := claims%
 
 /-- At launch, keyboard focus is in the new-todo field (T5). -/
-def app : App State := machine.toApp view claimInfos (some newRef)
+def app : App State := machine.toApp [.window 201 "todos" view] claimInfos (some newRef)
 
 /-- For the fuzzer (docs/fuzz.md): the smallest window the view fits in a state, which is what
 the pressability proofs assume (`Examples.Todo.Proofs`). -/

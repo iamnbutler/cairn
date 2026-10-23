@@ -78,15 +78,15 @@ theorem deliver_run (st : S) (acts : List Action) : (deliver M.update st acts).1
 /-- **Invariants hold on screen.** In an app whose update is a machine's, the app state of every
 runtime state reached from `start` by events is reachable in the machine, so every invariant
 (`Invariant.reachable`) holds in it. -/
-theorem steps_reachable (view : S → UI → Node) (claims : List ClaimInfo) (cfg : Config)
+theorem steps_reachable (surfaces : List (Surface S)) (claims : List ClaimInfo) (cfg : Config)
     (size : Size) (scale : Nat) (es : List Event) (initFocus : Option ControlRef := none)
     (hq : ∀ s m, (M.receive s m).1 = s := by intro _ _; rfl) :
-    M.Reachable (steps (M.toApp view claims initFocus) cfg
-      (start (M.toApp view claims initFocus) cfg size scale) es).1.app := by
+    M.Reachable (steps (M.toApp surfaces claims initFocus) cfg
+      (start (M.toApp surfaces claims initFocus) cfg size scale) es).1.app := by
   unfold steps
   suffices ∀ (es : List Event) (acc : State S × List Effect), M.Reachable acc.1.app →
       M.Reachable (es.foldl (fun (s, effs) e =>
-        let (s', e') := step (M.toApp view claims initFocus) cfg s e; (s', effs ++ e')) acc).1.app from
+        let (s', e') := step (M.toApp surfaces claims initFocus) cfg s e; (s', effs ++ e')) acc).1.app from
     this es _ ⟨[], rfl⟩
   intro es
   induction es with
@@ -95,7 +95,7 @@ theorem steps_reachable (view : S → UI → Node) (claims : List ClaimInfo) (cf
     intro acc h
     apply ih
     obtain ⟨as, has⟩ := h
-    have hd := step_delivers_quiet (app := M.toApp view claims initFocus) hq cfg acc.1 e
+    have hd := step_delivers_quiet (app := M.toApp surfaces claims initFocus) hq cfg acc.1 e
     refine ⟨as ++ (route cfg.metrics acc.1 e).2, ?_⟩
     simp only at hd ⊢
     rw [hd, M.run_append, ← has]

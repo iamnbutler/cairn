@@ -278,7 +278,7 @@ def logReceive (app : App S) (st : S × List Entry) (m : Msg) : (S × List Entry
 reads only the first component. -/
 def logged (app : App S) : App (S × List Entry) where
   init := (app.init, [])
-  view st ui := app.view st.1 ui
+  surfaces := app.surfaces.map (Surface.comap Prod.fst)
   update := logUpdate app
   receive := logReceive app
   subscriptions st := app.subscriptions st.1

@@ -119,7 +119,7 @@ def cfgOf (m : MetricsChoice) : Config := { metrics := m.metrics }
 
 /-- The app, or a stand-in with an empty view for a machine without one. -/
 def Target.runApp : App t.S :=
-  t.app.getD { init := t.machine.init, view := fun _ _ => .box {} none [],
+  t.app.getD { init := t.machine.init, surfaces := [],
                update := t.machine.update, claims := [] }
 
 def Target.move? (id : ClaimId) : Option (Move t.S) := find? t.machine.moves id

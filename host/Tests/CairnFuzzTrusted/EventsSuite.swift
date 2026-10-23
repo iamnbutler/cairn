@@ -89,8 +89,27 @@ final class EventsSuite: Suite {
                        .pageUp, .pageDown])
     }
 
+    static func ref(_ g: inout SplitMix) -> ControlRef { ControlRef(claim: u32(&g), key: u32(&g)) }
+
+    /// A surface-local event (`Event.isLocal`): what `surface` may wrap.
+    static func localEvent(_ g: inout SplitMix) -> Event {
+        event(&g, below: 18)
+    }
+
     static func event(_ g: inout SplitMix) -> Event {
-        switch g.below(21) {
+        switch g.below(25) {
+        case 21: return .surface(place: u32(&g), localEvent(&g))
+        case 22: return .menuOpen(place: u32(&g))
+        case 23: return .menuClose(place: u32(&g))
+        case 24: return .menuSelect(place: u32(&g), ref(&g))
+        case let k: return event(&g, tag: k)
+        }
+    }
+
+    static func event(_ g: inout SplitMix, below n: Int) -> Event { event(&g, tag: g.below(n)) }
+
+    static func event(_ g: inout SplitMix, tag: Int) -> Event {
+        switch tag {
         case 0: return .pointerMove(point(&g))
         case 1: return .pointerDown(point(&g), g.bool() ? .primary : .secondary, clicks: u32(&g), mods(&g))
         case 2: return .pointerUp(point(&g), g.bool() ? .primary : .secondary, mods(&g))

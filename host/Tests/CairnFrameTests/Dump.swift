@@ -37,12 +37,12 @@ enum Dump {
             + "checked=\(opt(n.checked, bit)) label=\(str(n.label)) value=\(str(n.value))"
     }
 
-    static func frame(_ f: Frame) -> String {
-        var out = "frame \(f.size.w) \(f.size.h)\ndraws \(f.draws.count)\n"
-        for d in f.draws { out += draw(d) + "\n" }
-        out += "ax \(f.ax.count)\n"
-        for n in f.ax { out += ax(n) + "\n" }
-        if let t = f.textInput {
+    static func canvas(_ c: Canvas) -> String {
+        var out = "canvas \(c.size.w) \(c.size.h)\ndraws \(c.draws.count)\n"
+        for d in c.draws { out += draw(d) + "\n" }
+        out += "ax \(c.ax.count)\n"
+        for n in c.ax { out += ax(n) + "\n" }
+        if let t = c.textInput {
             out += "textInput control=\(ref(t.control)) rect=\(rect(t.rect)) caret=\(rect(t.caret)) "
                 + "selection=\(t.selection.start) \(t.selection.end) "
                 + "marked=\(opt(t.marked) { "\($0.start) \($0.end)" }) "
@@ -50,7 +50,34 @@ enum Dump {
         } else {
             out += "textInput none\n"
         }
-        out += "cursor \(f.cursor.rawValue)\neffects \(f.effects.count)\n"
+        return out + "cursor \(c.cursor.rawValue)\n"
+    }
+
+    static func shortcut(_ s: Shortcut) -> String { "\(s.key.code),\(s.key.scalar),\(s.mods.code)" }
+
+    static func menuRecord(_ m: MenuRecord) -> String {
+        "item kind=\(m.kind.rawValue) control=\(opt(m.control, ref)) parent=\(opt(m.parent) { "\($0)" }) "
+            + "place=\(opt(m.place) { "\($0)" }) enabled=\(bit(m.enabled)) checked=\(opt(m.checked, bit)) "
+            + "shortcut=\(opt(m.shortcut, shortcut)) label=\(str(m.label))"
+    }
+
+    static func status(_ s: StatusFrame) -> String {
+        var out = "status control=\(ref(s.control)) symbol=\(str(s.symbol)) title=\(str(s.title)) "
+            + "label=\(str(s.label))\nmenu \(s.menu.count)\n"
+        for m in s.menu { out += menuRecord(m) + "\n" }
+        return out
+    }
+
+    static func surface(_ s: Surface) -> String {
+        "surface kind=\(s.kind.rawValue) place=\(s.place) shown=\(bit(s.shown)) "
+            + "anchor=\(s.anchor.code) offset=\(s.anchor.offset) screen=\(s.screen.rawValue) "
+            + "title=\(str(s.title))\n" + canvas(s.canvas) + status(s.status)
+    }
+
+    static func frame(_ f: Frame) -> String {
+        var out = "frame\nsurfaces \(f.surfaces.count)\n"
+        for s in f.surfaces { out += surface(s) }
+        out += "effects \(f.effects.count)\n"
         for e in f.effects {
             switch e {
             case let .setClipboard(s): out += "clipboard \(str(s))\n"
@@ -162,6 +189,10 @@ enum Dump {
         case let .clock(t): return "clock \(t.mono) \(t.wall) \(t.zone)"
         case let .reply(id, r): return "reply \(id) \(reply(r))"
         case let .subEvent(id, e): return "sub \(id) \(subEvent(e))"
+        case let .surface(p, e): return "surface \(p) " + event(e)
+        case let .menuOpen(p): return "menuOpen \(p)"
+        case let .menuClose(p): return "menuClose \(p)"
+        case let .menuSelect(p, r): return "menuSelect \(p) \(ref(r))"
         }
     }
 
@@ -184,6 +215,10 @@ enum DumpParser {
 
     static func event(_ line: String) throws -> Event {
         var t = Tokens(line)
+        return try event(&t, line)
+    }
+
+    static func event(_ t: inout Tokens, _ line: String) throws -> Event {
         let word = t.word()
         func i() throws -> Int32 { guard let v = Int32(t.word()) else { throw Bad(line: line) }; return v }
         func u() throws -> UInt32 { guard let v = UInt32(t.word()) else { throw Bad(line: line) }; return v }
@@ -286,6 +321,16 @@ enum DumpParser {
             case "flag": return .reply(id: id, .flag(try u8() == 1))
             default: throw Bad(line: line)
             }
+        case "surface":
+            let p = try u()
+            return .surface(place: p, try event(&t, line))
+        case "menuOpen": return .menuOpen(place: try u())
+        case "menuClose": return .menuClose(place: try u())
+        case "menuSelect":
+            let p = try u()
+            let parts = t.word().split(separator: "#")
+            guard parts.count == 2, let c = UInt32(parts[0]), let k = UInt32(parts[1]) else { throw Bad(line: line) }
+            return .menuSelect(place: p, ControlRef(claim: c, key: k))
         case "sub":
             let id = try u()
             func u64() throws -> UInt64 { guard let v = UInt64(t.word()) else { throw Bad(line: line) }; return v }

@@ -60,12 +60,38 @@ inductive Event where
   | reply (id : Nat) (r : Reply)
   /-- An event from the subscription the runtime started as `id`. -/
   | subEvent (id : Nat) (e : SubEvent)
+  /-- A surface-local event (pointer, key, text, resize, scale, focus) for the surface whose
+  place claim is `place` (docs/surfaces.md). A bare local event is the window's, as in M1. -/
+  | surface (place : ClaimId) (e : Event)
+  /-- The status item `place`'s menu is opening (`menuWillOpen`). -/
+  | menuOpen (place : ClaimId)
+  /-- The status item `place`'s menu closed (`menuDidClose`). -/
+  | menuClose (place : ClaimId)
+  /-- The person chose the item `ref` in the status item `place`'s menu. -/
+  | menuSelect (place : ClaimId) (ref : ControlRef)
 deriving Repr, BEq, Inhabited
 
 /-- The events from the world (`clock`, `reply`, `subEvent`); every other event is input. -/
 def Event.isWorld : Event → Bool
   | .clock _ | .reply .. | .subEvent .. => true
   | _ => false
+
+/-- The menu events (`menuOpen`, `menuClose`, `menuSelect`): about a status item's menu, not a
+laid tree. -/
+def Event.isMenu : Event → Bool
+  | .menuOpen _ | .menuClose _ | .menuSelect .. => true
+  | _ => false
+
+def Event.isSurface : Event → Bool
+  | .surface .. => true
+  | _ => false
+
+/-- Surface-local events: input a Metal surface receives (pointer, keys, text, editing, size,
+scale, focus). Only these may be addressed to a surface with `Event.surface`. -/
+def Event.isLocal : Event → Bool
+  | .clock _ | .reply .. | .subEvent .. | .surface .. | .menuOpen _ | .menuClose _
+  | .menuSelect .. => false
+  | _ => true
 
 /-- Edits to a text field's model. The runtime turns key and text events into these; the
 semantics are `Cairn.Text.Field.apply`. -/

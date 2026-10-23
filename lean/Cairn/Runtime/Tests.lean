@@ -42,7 +42,7 @@ def update (s : TState) (a : Action) : TState × List Effect :=
   | .edit _ .copy => (s, [.setClipboard s.text])
   | _ => (s, [])
 
-def app : App TState := { init := {}, view, update, claims := [] }
+def app : App TState := { init := {}, surfaces := [.window 0 "Tests" view], update, claims := [] }
 def cfg : Config := { layout := Cairn.Layout.layout }
 def s0 : State TState := start app cfg ⟨800, 600⟩
 

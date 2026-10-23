@@ -169,11 +169,6 @@ def subEvent : Gen SubEvent := do
   | 5 => return .otherKey (← u64)
   | _ => return .failed (← fault) (← str)
 
-def frame : Gen Frame := do
-  return { size := ⟨← int, ← int⟩, draws := ← array 40 draw, ax := ← array 30 axNode,
-           textInput := ← opt textInput, cursor := ← pick #[.arrow, .pointer, .text],
-           effects := ← array 3 effect, subs := ← array 3 subCmd, wake := ← opt u64 }
-
 def mods : Gen Mods := return ⟨← coin, ← coin, ← coin, ← coin⟩
 
 def key : Gen Key := do
@@ -181,8 +176,56 @@ def key : Gen Key := do
   pick #[.enter, .escape, .tab, .backspace, .delete, .left, .right, .up, .down, .home, .finish,
     .pageUp, .pageDown]
 
+def canvas : Gen Canvas := do
+  return { size := ⟨← int, ← int⟩, draws := ← array 40 draw, ax := ← array 30 axNode,
+           textInput := ← opt textInput, cursor := ← pick #[.arrow, .pointer, .text] }
+
+def menuRecord : Gen MenuRecord := do
+  return { kind := ← pick #[.item, .info, .submenu, .separator], label := ← str,
+           control := ← opt ref, place := ← opt nat, parent := ← opt nat, enabled := ← coin,
+           checked := ← opt coin, shortcut := ← opt (return ⟨← key, ← mods⟩) }
+
+def statusFrame : Gen StatusFrame := do
+  return { control := ← ref, symbol := ← str, title := ← str, label := ← str,
+           menu := ← array 12 menuRecord }
+
+def surface : Gen SurfaceFrame := do
+  let kind ← pick #[.window, .panel, .statusItem]
+  return { kind, place := ← nat, shown := ← coin, title := ← str,
+           anchor := .bottomCenter (← nat), screen := ← pick #[.pointer, .main],
+           canvas := ← canvas, status := ← statusFrame }
+
+def frame : Gen Frame := do
+  return { surfaces := ← array 3 surface,
+           effects := ← array 3 effect, subs := ← array 3 subCmd, wake := ← opt u64 }
+
+def localEvent : Gen Event := do
+  match ← below 18 with
+  | 0 => return .pointerMove ⟨← int, ← int⟩
+  | 1 => return .pointerDown ⟨← int, ← int⟩ (← pick #[.primary, .secondary]) (← nat) (← mods)
+  | 2 => return .pointerUp ⟨← int, ← int⟩ (← pick #[.primary, .secondary]) (← mods)
+  | 3 => return .pointerExit
+  | 4 => return .scroll ⟨← int, ← int⟩ (← int) (← int)
+  | 5 => return .key (← key) (← mods)
+  | 6 => return .insertText (← str) (← opt range)
+  | 7 => return .setMarked (← str) (← nat) (← nat) (← opt range)
+  | 8 => return .unmark
+  | 9 => return .copy
+  | 10 => return .cut
+  | 11 => return .selectAll
+  | 12 => return .undo
+  | 13 => return .redo
+  | 14 => return .paste (← str)
+  | 15 => return .resize ⟨← int, ← int⟩
+  | 16 => return .scale (← nat)
+  | _ => return .windowFocus (← coin)
+
 def event : Gen Event := do
-  match ← below 21 with
+  match ← below 25 with
+  | 21 => return .surface (← nat) (← localEvent)
+  | 22 => return .menuOpen (← nat)
+  | 23 => return .menuClose (← nat)
+  | 24 => return .menuSelect (← nat) (← ref)
   | 0 => return .pointerMove ⟨← int, ← int⟩
   | 1 => return .pointerDown ⟨← int, ← int⟩ (← pick #[.primary, .secondary]) (← nat) (← mods)
   | 2 => return .pointerUp ⟨← int, ← int⟩ (← pick #[.primary, .secondary]) (← mods)
@@ -220,7 +263,7 @@ def benchLaid (n : Nat) (w : Int) : Laid :=
 def laidFrame : Frame :=
   let field : Control := { ref := ⟨2, 0⟩, role := .textField, label := "What needs to be done?" }
   let win : Rect := ⟨0, 0, 400, 300⟩
-  Frame.ofLaid { focus := some ⟨2, 0⟩ } <|
+  Frame.single <| Frame.ofLaid { focus := some ⟨2, 0⟩ } <|
     .box win win { clip := true } none [
       .field ⟨10, 10, 300, 24⟩ win { border := some ⟨1, ⟨200, 200, 200, 255⟩⟩ } {} field
         { text := "Buy 🥛 and 日本茶", caret := 4, anchor := 4, marked := some (4, 6) }
@@ -229,7 +272,7 @@ def laidFrame : Frame :=
 
 /-! ## Edge cases -/
 
-def maxFrame : Frame where
+def maxCanvas : Canvas where
   size := ⟨2147483647, -2147483648⟩
   draws := #[.rect ⟨-2147483648, 2147483647, 0, -1⟩ (some ⟨255, 255, 255, 255⟩) 4294967295
       (some ⟨4294967295, ⟨0, 0, 0, 0⟩⟩),
@@ -242,6 +285,24 @@ def maxFrame : Frame where
                       text := "", selection := (4294967295, 0), marked := some (0, 4294967295),
                       textOrigin := ⟨-2147483648, 2147483647⟩ }
   cursor := .pointer
+
+def maxMenu : Array MenuRecord := #[
+  { kind := .submenu, label := "🙂 Recent", place := some 4294967295, parent := some 4294967295,
+    enabled := true },
+  { kind := .item, label := "", control := some ⟨4294967295, 4294967295⟩, parent := some 0,
+    checked := some true, shortcut := some ⟨.char (Char.ofNat 0x10FFFF), ⟨true, true, true, true⟩⟩ },
+  { kind := .item, label := "Off", control := some ⟨0, 0⟩, enabled := false,
+    checked := some false, shortcut := some ⟨.pageDown, {}⟩ },
+  { kind := .info, label := "日本語", enabled := false }, { kind := .separator, enabled := false }]
+
+def maxFrame : Frame where
+  surfaces := #[
+    { kind := .window, place := 4294967295, title := "🙂\x00", canvas := maxCanvas },
+    { kind := .panel, place := 0, shown := false, anchor := .bottomCenter 4294967295,
+      screen := .main },
+    { kind := .statusItem, place := 1,
+      status := { control := ⟨4294967295, 0⟩, symbol := "waveform.circle.fill", title := "Ŷ",
+                  label := "", menu := maxMenu } }]
   effects := #[.setClipboard "", .beep, .setClipboard "📋", .focus ⟨202, 7⟩,
     .setTimer "tick" 4294967295, .cancelTimer "", .quit,
     .request 4294967295 (.writeFile "~/a/🙂.txt" ⟨#[0, 255, 10]⟩),
@@ -260,7 +321,7 @@ def maxFrame : Frame where
     .start 2 (.record 4294967295), .start 3 (.globalKey 63 none), .start 4 (.globalKey 0 (some 4294967295))]
   wake := some 18446744073709551615
 
-def emptyFrame : Frame := { size := ⟨0, 0⟩, draws := #[], ax := #[] }
+def emptyFrame : Frame := { surfaces := #[] }
 
 def edgeEvents : Array Event := #[
   .pointerMove ⟨-2147483648, 2147483647⟩,
@@ -279,7 +340,9 @@ def edgeEvents : Array Event := #[
   .subEvent 1 (.audio 4294967295 32768 [⟨18446744073709551615, 32767⟩, ⟨0, 0⟩]),
   .subEvent 2 (.audio 0 0 []), .subEvent 3 (.keyDown 18446744073709551615), .subEvent 4 (.keyUp 0),
   .subEvent 5 (.otherKey 1), .subEvent 6 (.failed .denied "Accessibility"),
-  .subEvent 7 (.failed .other "")]
+  .subEvent 7 (.failed .other ""),
+  .surface 4294967295 (.key (.char 'q') { command := true }), .surface 0 .pointerExit,
+  .menuOpen 4294967295, .menuClose 0, .menuSelect 450 ⟨4294967295, 4294967295⟩]
 
 /-! ## Commands -/
 
@@ -310,7 +373,7 @@ def gen (root : System.FilePath) (count : Nat) : IO Unit := do
   let edir := root / "events"
   IO.FS.createDirAll fdir
   IO.FS.createDirAll edir
-  let fixed := #[emptyFrame, maxFrame, laidFrame, Frame.ofLaid {} (benchLaid 40 300)]
+  let fixed := #[emptyFrame, maxFrame, laidFrame, Frame.single (Frame.ofLaid {} (benchLaid 40 300))]
   for h : i in [0:fixed.size] do writeFrame fdir i fixed[i]
   let mut g : Rng := ⟨0x5EED⟩
   for i in [fixed.size:count] do
@@ -348,7 +411,7 @@ def bench (root : System.FilePath) (reps : Nat := 50) : IO Unit := do
       -- The width varies so nothing is hoisted out of the loop.
       let l := benchLaid n (400 + i)
       let t0 ← IO.monoNanosNow
-      let f := Frame.ofLaid {} l
+      let f := Frame.single (Frame.ofLaid {} l)
       let t1 ← if f.draws.size > 0 then IO.monoNanosNow else pure 0
       let b := encodeFrame f
       let t2 ← if b.size > 0 then IO.monoNanosNow else pure 0
