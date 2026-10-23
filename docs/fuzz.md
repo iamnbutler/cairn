@@ -25,9 +25,10 @@ Code: `lean/Cairn/Fuzz/` and `lean/FuzzMain.lean`. Output: `build/fuzz/<App>.jso
 
 The fuzzer finds every `Machine` in the `Examples` modules at compile time (`fuzz_targets%` in
 `Cairn/Fuzz/Collect.lean`), with its moves, invariants and the `App` built from it, so a new app
-is fuzzable as soon as `Examples.lean` imports it. An app with a machine and no `App` (Counter,
-still on the spike's frame v0) is fuzzed at the model level only: actions straight into
-`machine.update`, checked against its invariants.
+is fuzzable as soon as `Examples.lean` imports it. An app with a machine and no `App` would be
+fuzzed at the model level only: actions straight into `machine.update`, checked against its
+invariants. Every app has an `App` now (Counter since it moved to v1), so both run through the
+runtime.
 
 **Runnable invariants.** `invariant` now also generates `name.check : S → Bool :=
 fun s => decide (holds s)` when `Decidable` can be synthesized for `holds s` (unfolding the
@@ -191,7 +192,7 @@ Apple M4 Max, 2026-10-23, seed 0 (details in [bench/fuzz.md](../bench/fuzz.md)):
 |---|---|---|---:|---:|---:|---:|
 | Basics | runtime | 1,000 × 50 | 2.0 s | 490 | 24,500 | 0 |
 | Basics | runtime | 2,000 × 200 | 17.0 s | 117 | 23,600 | 0 |
-| Counter | model | 10,000 × 200 | 1.6 s | 6,300 | 1,260,000 | 0 |
+| Counter | runtime | 10,000 × 200 | 46.9 s | 213 | 42,700 | 0 |
 
 Neither app has a bug the fuzzer finds, including 2,000 × 100 more from a random seed. Mutants
 show it would: dropping the delete control for done items is caught as presence ^104 and shrunk
@@ -210,7 +211,6 @@ shrunk from 13 operations to 2.
 - Presence assumes every move has a control while enabled. A move meant to be keyboard-only
   would need an opt-out in `Custom`.
 - Wall-clock budget checks depend on the machine; they report, they don't fail.
-- Counter has no `App` yet (it is on the spike's frame v0), so it is fuzzed at the model level.
 - Printed theorems use mono metrics; a failure found only with random metrics may need a
   different size or text to fail under mono.
 - Shrinking removes operations; it doesn't simplify text or renumber keys, and window size and

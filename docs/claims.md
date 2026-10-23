@@ -97,7 +97,7 @@ enabled move, so the path is real and not a run of no-ops), and
 
 ```lean
 invariant ^6 noPressLeft "Moves never leave a press in progress" for machine where
-  does "No move touches the press the spike is tracking."
+  does "No move touches the press the counter's state records."
   holds s := s.pressed = none
   init := rfl
   step := machine.preserves <|
@@ -119,7 +119,7 @@ invariant as not runnable; give the predicate a `Decidable` instance to fix that
 
 ```lean
 assume ^7 hostClicks "The host reports clicks where they happen" where
-  does "The spike host sends a pointer down and up at the logical point the person clicked."
+  does "The host sends a pointer down and up at the logical point the person clicked."
   statement := ∀ m : TextMetrics, m.Valid   -- optional
 ```
 
@@ -131,7 +131,7 @@ axiom audit stays clean.
 
 ```lean
 place ^3 window "Counter window" where
-  does "The spike's window."
+  does "The counter's window."
 ```
 
 A region of the view where moves appear; `in ^P` on moves, flows and places refers to one.
@@ -253,13 +253,13 @@ module
 
 public import Cairn.Claims.Core     -- Move, Machine, Flow, …: pure, core-only
 meta import Cairn.Claims.Elab       -- the commands, at compile time only
-public import Cairn.Spike.Frame
+public import Cairn.App
 
 @[expose] public section            -- importers' proofs can unfold the app's definitions
 ```
 
 With that, the app's compiled code and its `runtime_initialize_*` never touch `Lean` or the
-commands; the host calls `runtime_initialize_cairn_Examples_Counter` or
+commands; the host calls `runtime_initialize_cairn_Examples_Counter_Abi` or
 `runtime_initialize_cairn_Examples_Basics` (host/Sources/CLean; one library per app). The
 generated declarations are `public` and, in a module, `@[expose]`, so other modules' proofs
 can unfold them. `Cairn.Claims` is an umbrella (`Core` plus `meta import Elab`) for non-module
@@ -274,9 +274,8 @@ the host never calls them. Lake executables that link the real module (`ledger`,
 
 Consequences of the module system for the modules an app imports: every one of them is a
 `module` (a module can only import modules), so `Cairn.Claim`, `Input`, `Geometry`,
-`Text.Metrics`, `UI.Node`, `App`, `Spike.Bytes`, `Spike.Frame` and `Claims.Move`/`Machine`/`Core`
-are modules with `@[expose] public section`, and so (for Basics, the first app on the v1 runtime)
-are `Text.Field`, `Text.Host`, `Layout.Core`, `Layout.Facts`, `Runtime.Hit`, `Runtime.Step`,
+`Text.Metrics`, `UI.Node`, `App` and `Claims.Move`/`Machine`/`Core` are modules with
+`@[expose] public section`, and so (for the apps on the v1 runtime) are `Text.Field`, `Text.Host`, `Layout.Core`, `Layout.Facts`, `Runtime.Hit`, `Runtime.Step`,
 `Runtime.Abi`, `Frame`, `Frame.Bytes`, `Frame.Encode`, `Frame.Events`, `Frame.Build` and
 `Frame.Boundary`. Their `#guard`s moved to sibling `…Tests.lean` files. Non-module files (`Cairn.Runtime`, `Cairn.Layout`,
 …) import them unchanged and see everything. `#guard` does not work in a module without
@@ -297,7 +296,7 @@ which `libInit` is 15 MB); the `CairnCounter` binary contains no symbols from `l
 - **`post` constrains the state, not the effects.** Effects come only from moves (proved), but a
   move's `post` says nothing about which effects it emits.
 - **Presence and pressability are not generated.** They depend on the view and layout; apps
-  prove them per move (`Examples.Counter.reset_present_iff_enabled`).
+  prove them per move (`Examples.Counter.reset_present_iff_enabled`, in `Examples.Counter.Proofs`).
 - **`claims%` is per namespace.** An app spread over several namespaces collects each and
   concatenates.
 - **Unkeyed moves ignore the key.** `^1#7` reaches an unkeyed `^1` as if it were `^1`; the view

@@ -5,7 +5,7 @@ LEAN_PREFIX = $(shell cd lean && lean --print-prefix)
 LIB = build/lib/libcairn_lean.a
 VENDOR = host/Sources/CLean/vendor/lean
 
-.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-frame selftest demo fixture clean record site site-maps map conformance fuzz fuzz-quick
+.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-frame selftest demo fixture clean record site site-maps map conformance fuzz fuzz-quick size
 
 # build/lib/libcairn_lean.a: the framework (`Cairn`) and Lean's runtime, linked by every host
 # target. Each app gets its own library on top (APPS: library → file), and each executable
@@ -71,7 +71,7 @@ corpus: lean
 	cd lean && .lake/build/bin/framecorpus gen ../$(CORPUS)
 
 # Everything a PR must pass.
-check: lint audit ledger kernel test selftest fuzz-quick
+check: lint audit ledger kernel test selftest fuzz-quick size
 
 bench: lean
 	cd lean && lake build bench && .lake/build/bin/bench
@@ -173,3 +173,16 @@ FUZZ_APPS = Counter Basics Todo
 fuzz-quick: lean
 	cd lean && lake build fuzz
 	@for a in $(FUZZ_APPS); do (cd lean && .lake/build/bin/fuzz $$a --iterations 200 --out ../build/fuzz/quick) || exit 1; done
+
+# Binary size (bench/size.md): each app executable built for release with a link map, stripped
+# into build/size/, attributed (Lean runtime, Cairn, the app, Swift host, shaders), and checked
+# against SIZE_LIMIT bytes. No host app links `Lean` (the compiler, about 100 MB), so each is a
+# few MB; crossing the limit almost always means something imported `Lean`.
+SIZE_APPS = CairnCounter CairnBasics
+SIZE_LIMIT = 5000000
+size: lean
+	mkdir -p build/size
+	cd host && for a in $(SIZE_APPS); do \
+		swift build -c release --product $$a -Xlinker -map -Xlinker $(CURDIR)/build/size/$$a.map || exit 1; done
+	bun tools/size/size.ts --bin $$(cd host && swift build -c release --show-bin-path) \
+		--maps build/size --out build/size --limit $(SIZE_LIMIT) $(SIZE_APPS)

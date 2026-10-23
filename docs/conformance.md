@@ -242,6 +242,25 @@ key tab shift
 This is the kind of mismatch the comparison exists to catch. Here the error was in the event we
 built, not in the host.
 
+## Counter
+
+`make conformance APP=Counter N=1000` after Counter moved to the v1 ABI (commit 449e5e4, macOS 27,
+Apple silicon, debug build, 2x display) passed:
+
+| | |
+|---|---|
+| Walks | 1000/1000 passed (12 steps each) |
+| Flow witnesses | 2/2 passed (^4, ^5) |
+| Steps | 12,006 |
+| Actions delivered | 7,004 |
+| Pixel probes | 20,092, all read from the presented drawable |
+| ^1 (Increment) | 4,886 steps |
+| ^2 (Reset) | 2,118 steps |
+| ^6 (invariant) | every step |
+| Time | 178.5 s in all; per step p50 16.5 ms, p90 17.3 ms, max 25.2 ms |
+
+No failures. ^3 (place) and ^7 (assumption) aren't run.
+
 ## What it does not check
 
 - **The window server.** Events are handed to the view, not routed by the window server or
@@ -253,6 +272,6 @@ built, not in the host.
   user's key bindings. A custom `DefaultKeyBinding.dict` could change the results.
 - **Timing.** Every step waits for its frame, so coalescing and input racing ahead of frames are
   not exercised.
-- **Things Basics lacks.** Scrolling, live resize and window focus (`UI.windowFocused`) aren't
+- **Things Basics and Counter lack.** Scrolling, live resize and window focus (`UI.windowFocused`) aren't
   exercised.
 - **The compositor.** Pixels come from the presented drawable, not the screen.
