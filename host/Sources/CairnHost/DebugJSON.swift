@@ -4,7 +4,7 @@ import CairnFrame
 /// The debug socket's JSON (docs/conformance.md). A frame is written in exactly the shape the
 /// conformance generator writes the model's frame (`Conformance.jframe` in
 /// tools/conformance/lean/Conformance/Gen.lean), so the driver compares the two as values.
-enum DebugJSON {
+public enum DebugJSON {
     static func rect(_ r: Rect) -> [Any] { [Int(r.x), Int(r.y), Int(r.w), Int(r.h)] }
     static func point(_ p: Point) -> [Any] { [Int(p.x), Int(p.y)] }
     static func color(_ c: Color) -> [Any] { [Int(c.r), Int(c.g), Int(c.b), Int(c.a)] }
@@ -74,6 +74,10 @@ enum DebugJSON {
         case .quit: ["quit": true]
         }
     }
+
+    /// How the debug socket describes a request (public for the trusted fuzzer, which checks
+    /// that no secret or typed text shows up in it).
+    public static func describe(_ r: Request) -> String { request(r) }
 
     static func request(_ r: Request) -> String {
         switch r {
