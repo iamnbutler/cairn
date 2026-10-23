@@ -47,6 +47,15 @@ theorem toU32_fits (v : Int) : FitsU32 (toU32 v) := by unfold FitsU32 toU32; ome
 theorem ofU32_toU32 {v : Int} (h : FitsI32 v) : ofU32 (toU32 v) = v := by
   unfold FitsI32 at h; unfold ofU32 toU32; split <;> omega
 
+/-- Clamp to the largest `u32` (font fields cross saturating, docs/frame.md). -/
+def satU32 (n : Nat) : Nat := if n < 4294967296 then n else 4294967295
+
+theorem satU32_of_fits {n : Nat} (h : FitsU32 n) : satU32 n = n := by
+  unfold FitsU32 at h; simp [satU32, h]
+
+theorem satU32_fits (n : Nat) : FitsU32 (satU32 n) := by
+  unfold satU32 FitsU32; split <;> omega
+
 def ofBytes (a b c d : UInt8) : Nat :=
   a.toNat + 256 * b.toNat + 65536 * c.toNat + 16777216 * d.toNat
 

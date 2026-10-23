@@ -73,6 +73,8 @@ def fitsRange (p : Nat × Nat) : Bool := fu p.1 && fu p.2
 @[simp] theorem fitsRef_zero : fitsRef ⟨0, 0⟩ = true := by simp [fitsRef]
 @[simp] theorem fitsRange_zero : fitsRange (0, 0) = true := by simp [fitsRange]
 
+/-- Font fields are clamped, not wrapped, so out-of-range fonts still name the font layout
+measured with (`Cairn.Text.Host.sat`); the round trip is exact when they fit. -/
 def fitsDraw : Draw → Bool
   | .rect r _ radius border => fitsRect r && fu radius && (border.all fun b => fu b.width)
   | .text o font _ s =>
@@ -124,7 +126,8 @@ def draw : Draw → List UInt8
       u32 (border.elim 0 (·.width)) ++ color (border.elim noColor (·.color))
   | .text o font c s =>
     [1] ++ bool font.italic ++ pad 2 ++ point o ++
-      u32 font.family ++ u32 font.size ++ u32 font.weight ++ color c ++ str s
+      u32 (satU32 font.family) ++ u32 (satU32 font.size) ++ u32 (satU32 font.weight) ++
+      color c ++ str s
   | .pushClip r => [2] ++ pad 3 ++ rect r
   | .popClip => [3] ++ pad 3
 
@@ -315,7 +318,8 @@ theorem draw_enc {x : Draw} (h : fitsDraw x = true) (r : List UInt8) :
       simp_all [draw, Enc.draw, bool_enc, skip_pad, rect_enc, color_enc, u32_enc]
   | text o font c s =>
     simp only [fitsDraw, Bool.and_eq_true, fu_iff, fi_iff, fs_iff] at h
-    simp [draw, Enc.draw, bool_enc, skip_pad, point_enc, u32_enc, color_enc, str_enc, h]
+    simp [draw, Enc.draw, bool_enc, skip_pad, point_enc, u32_enc, color_enc, str_enc, h,
+      satU32_of_fits]
   | pushClip rc =>
     simp only [fitsDraw] at h
     simp [draw, Enc.draw, skip_pad, rect_enc, h]
@@ -451,7 +455,8 @@ def draw (b : ByteArray) : Draw → ByteArray
       (border.elim 0 (·.width))) (border.elim Enc.noColor (·.color))
   | .text o font c s =>
     let b := point (pad (bool (b.push 1) font.italic) 2) o
-    str (color (u32 (u32 (u32 b font.family) font.size) font.weight) c) s
+    str (color (u32 (u32 (u32 b (satU32 font.family)) (satU32 font.size))
+      (satU32 font.weight)) c) s
   | .pushClip r => rect (pad (b.push 2) 3) r
   | .popClip => pad (b.push 3) 3
 
