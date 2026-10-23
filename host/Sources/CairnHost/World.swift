@@ -59,15 +59,24 @@ public enum Files {
              (NSCocoaErrorDomain, NSFileNoSuchFileError, _): f = .notFound
         case (_, _, EACCES?), (_, _, EPERM?), (NSCocoaErrorDomain, NSFileReadNoPermissionError, _),
              (NSCocoaErrorDomain, NSFileWriteNoPermissionError, _): f = .denied
-        case (_, _, EISDIR?), (_, _, ENOTDIR?), (NSCocoaErrorDomain, NSFileReadInvalidFileNameError, _),
+        // EILSEQ: a name the file system refuses (APFS: unassigned code points, noncharacters).
+        case (_, _, EISDIR?), (_, _, ENOTDIR?), (_, _, EILSEQ?), (_, _, ENAMETOOLONG?), (NSCocoaErrorDomain, NSFileReadInvalidFileNameError, _),
              (NSCocoaErrorDomain, NSFileWriteInvalidFileNameError, _): f = .invalid
         default: f = .other
         }
         return .failed(f, e.localizedDescription)
     }
 
+    /// Why `path` can't name a file, if it can't: empty, or containing NUL (which the file
+    /// system would silently cut the path at).
+    static func invalid(_ path: String) -> Reply? {
+        if path.isEmpty { return .failed(.invalid, "empty path") }
+        if path.utf8.contains(0) { return .failed(.invalid, "NUL in path") }
+        return nil
+    }
+
     public static func read(_ path: String) -> Reply {
-        guard !path.isEmpty else { return .failed(.invalid, "empty path") }
+        if let bad = invalid(path) { return bad }
         do {
             let data = try Data(contentsOf: URL(fileURLWithPath: expand(path)), options: .mappedIfSafe)
             guard data.count <= Int(UInt32.max) else { return .failed(.invalid, "file too large") }
@@ -80,7 +89,7 @@ public enum Files {
     /// Replaces the file atomically (a temporary file in the same directory, then rename), after
     /// creating missing parent directories.
     public static func write(_ path: String, _ bytes: [UInt8]) -> Reply {
-        guard !path.isEmpty else { return .failed(.invalid, "empty path") }
+        if let bad = invalid(path) { return bad }
         let url = URL(fileURLWithPath: expand(path))
         do {
             try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
@@ -95,9 +104,15 @@ public enum Files {
 
 /// Named system sounds for `playSound` (^912).
 public enum Sounds {
+    /// The sound `name` names: a system sound (`/System/Library/Sounds`) or one in the app's
+    /// bundle. Main thread.
+    @MainActor public static func lookup(_ name: String) -> NSSound? {
+        name.isEmpty || name.utf8.contains(0) ? nil : NSSound(named: NSSound.Name(name))
+    }
+
     public static func play(_ name: String, _ reply: @escaping @Sendable (Reply) -> Void) {
         DispatchQueue.main.async {
-            guard let s = NSSound(named: NSSound.Name(name)) else {
+            guard let s = lookup(name) else {
                 reply(.failed(.notFound, "no sound named \(name)"))
                 return
             }
@@ -123,6 +138,18 @@ public enum HTTP {
         guard !method.isEmpty, method.allSatisfy({ $0.isASCII && ($0.isLetter || $0 == "-") }) else {
             reply(.failed(.invalid, "bad method: \(method)"))
             return
+        }
+        // Header names are RFC 9110 tokens; values have no CR, LF or NUL (no header injection).
+        let tchar = Set("!#$%&'*+-.^_`|~".utf8)
+        for h in headers {
+            guard !h.name.isEmpty, h.name.utf8.allSatisfy({ $0 < 0x80 && (tchar.contains($0) || Character(Unicode.Scalar($0)).isLetter || Character(Unicode.Scalar($0)).isNumber) }) else {
+                reply(.failed(.invalid, "bad header name: \(h.name)"))
+                return
+            }
+            guard !h.value.utf8.contains(where: { $0 == 0x0D || $0 == 0x0A || $0 == 0 }) else {
+                reply(.failed(.invalid, "bad header value for \(h.name)"))
+                return
+            }
         }
         var req = URLRequest(url: u)
         req.httpMethod = method
@@ -165,12 +192,12 @@ public final class World: @unchecked Sendable {
     /// Bumped by `reset`: replies and ticks from before it are dropped.
     private var generation = 0
     /// Where replies and ticks go (the engine's `send`).
-    var send: (@Sendable ([Event]) -> Void)?
+    public var send: (@Sendable ([Event]) -> Void)?
 
     public init(handlers: Handlers = .standard) { self.handlers = handlers }
 
     /// The frame's effects and subscription commands, in order. Called on the Lean thread.
-    func run(_ effects: [Effect], _ subs: [SubCmd]) {
+    public func run(_ effects: [Effect], _ subs: [SubCmd]) {
         lock.lock()
         let gen = generation
         lock.unlock()
@@ -185,10 +212,11 @@ public final class World: @unchecked Sendable {
         let once = Once()
         let reply: @Sendable (Reply) -> Void = { [weak self] rep in
             guard once.take(), let self else { return }
+            // Sent with the lock held, so a `reset` that has returned has no reply of before
+            // still on its way (`send` only enqueues; it never calls back in here).
             self.lock.lock()
-            let current = self.generation == gen
-            self.lock.unlock()
-            if current { self.send?([.reply(id: id, rep)]) }
+            defer { self.lock.unlock() }
+            if self.generation == gen { self.send?([.reply(id: id, rep)]) }
         }
         guard let h = handlers.table[r.kindCode] else {
             reply(.failed(.invalid, "no handler for request kind \(r.kindCode)"))
@@ -214,7 +242,7 @@ public final class World: @unchecked Sendable {
 
     /// The app starts over (`Engine.restart`): stop every subscription and drop answers to
     /// requests made before.
-    func reset() {
+    public func reset() {
         lock.lock()
         generation += 1
         lock.unlock()

@@ -33,6 +33,39 @@ final class EventsSuite: Suite {
         ])
     }
 
+    static func u64(_ g: inout SplitMix) -> UInt64 {
+        g.weighted([
+            (1, { $0.elem([0, 1, UInt64.max, UInt64(UInt32.max), UInt64(UInt32.max) + 1, 1 << 63]) }),
+            (4, { UInt64($0.below(1 << 40)) }),
+            (1, { $0.next() }),
+        ])
+    }
+
+    static func i64(_ g: inout SplitMix) -> Int64 { Int64(bitPattern: u64(&g)) &* (g.bool() ? 1 : -1) }
+
+    static func bytes(_ g: inout SplitMix) -> [UInt8] {
+        g.weighted([
+            (2, { _ in [] }),
+            (4, { g in (0..<g.below(12)).map { _ in UInt8(truncatingIfNeeded: g.next()) } }),
+            (1, { g in [UInt8](TextPool.string(&g).utf8) }),
+            (1, { g in (0..<g.range(100, 600)).map { _ in UInt8(truncatingIfNeeded: g.next()) } }),
+        ])
+    }
+
+    static func headers(_ g: inout SplitMix) -> [Header] {
+        (0..<g.below(4)).map { _ in Header(TextPool.string(&g, maxParts: 4), TextPool.string(&g, maxParts: 6)) }
+    }
+
+    static func reply(_ g: inout SplitMix) -> Reply {
+        switch g.below(4) {
+        case 0: return .done
+        case 1: return .bytes(bytes(&g))
+        case 2: return .http(status: u32(&g), headers: headers(&g), body: bytes(&g))
+        default:
+            return .failed(g.elem([.notFound, .denied, .timeout, .network, .invalid, .other]), TextPool.string(&g))
+        }
+    }
+
     static func range(_ g: inout SplitMix) -> ScalarRange? {
         g.bool() ? nil : ScalarRange(start: u32(&g), end: u32(&g))
     }
@@ -54,7 +87,7 @@ final class EventsSuite: Suite {
     }
 
     static func event(_ g: inout SplitMix) -> Event {
-        switch g.below(18) {
+        switch g.below(21) {
         case 0: return .pointerMove(point(&g))
         case 1: return .pointerDown(point(&g), g.bool() ? .primary : .secondary, clicks: u32(&g), mods(&g))
         case 2: return .pointerUp(point(&g), g.bool() ? .primary : .secondary, mods(&g))
@@ -72,7 +105,10 @@ final class EventsSuite: Suite {
         case 14: return .paste(TextPool.string(&g))
         case 15: return .resize(Size(w: i32(&g), h: i32(&g)))
         case 16: return .scale(percent: u32(&g))
-        default: return .windowFocus(g.bool())
+        case 17: return .windowFocus(g.bool())
+        case 18: return .clock(Time(mono: u64(&g), wall: i64(&g), zone: i32(&g)))
+        case 19: return .reply(id: u32(&g), reply(&g))
+        default: return .subEvent(id: u32(&g), .tick)
         }
     }
 

@@ -15,7 +15,8 @@ import Foundation
 
 setvbuf(stdout, nil, _IOLBF, 0)
 
-let allSuites: [Suite] = [FrameSuite(), EventsSuite(), TextIndexSuite(), InputClientSuite(), MetricsSuite()]
+let allSuites: [Suite] = [FrameSuite(), EventsSuite(), TextIndexSuite(), InputClientSuite(), MetricsSuite(),
+                          ClockSuite(), WorldSuite(), FilesSuite(), HTTPSuite(), SoundSuite()]
 
 var args = Array(CommandLine.arguments.dropFirst())
 func take(_ flag: String) -> String? {
