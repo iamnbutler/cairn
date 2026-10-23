@@ -255,6 +255,11 @@ def mkInfo (name : Name) (id : ClaimId) (kind : Name) (title does sees : String)
     (← `({ id := $(lit id), kind := $kindT, title := $(strLit title), does := $(strLit does),
            sees := $(strLit sees), place := $placeT, retired := $retiredT }))
     s!"The human half of claim ^{id}."
+  -- A declaration named after the id: two modules that issue the same id cannot both be
+  -- imported, even when neither imports the other.
+  let issued := mkIdent (`_root_ ++ `Cairn.Claims.Issued ++ Name.mkSimple s!"^{id}")
+  elabCommand (← `(@[reducible] def $issued:ident : Cairn.ClaimInfo :=
+    $(cid ((← getCurrNamespace) ++ name))))
 
 def docOf (doc? : Option Syntax) (fallback : String) : CommandElabM String :=
   match doc? with
