@@ -1,5 +1,6 @@
 import AppKit
 import CLean
+import CairnCapture
 import CairnFrame
 import CairnHost
 import CairnRender
@@ -20,6 +21,9 @@ let basics = LeanApp(
 
 let size = Size(w: 480, h: 600)
 let args = CommandLine.arguments
+
+// `--map-capture <script.json> <out dir>`: headless screenshots with pins for the map (docs/map.md).
+if let code = MapCapture.main(args, size: size, core: { LeanCore(basics) }) { exit(code) }
 
 func fail(_ msg: String) -> Never {
     FileHandle.standardError.write("FAIL: \(msg)\n".data(using: .utf8)!)
