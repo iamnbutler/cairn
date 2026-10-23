@@ -5,7 +5,7 @@ LEAN_PREFIX = $(shell cd lean && lean --print-prefix)
 LIB = build/lib/libcairn_lean.a
 VENDOR = host/Sources/CLean/vendor/lean
 
-.PHONY: lean host build check audit bench spike selftest test clean record site
+.PHONY: lean host build check audit kernel lint bench spike selftest test clean record site
 
 lean:
 	cd lean && lake build
@@ -27,12 +27,23 @@ build: host
 audit: lean
 	cd lean && lake build audit && lake env .lake/build/bin/audit
 
+# Replay every declaration through the kernel. Catches proofs that skipped kernel checking
+# (debug.skipKernelTC), which #print axioms and the audit cannot see. The sandboxed mode needs
+# Linux (bubblewrap); on macOS we run unsandboxed, which is fine for our own code.
+kernel: lean
+	cd lean && lake check --inadvisably-no-sandbox
+
+# Constructs that bypass the kernel or swap in unchecked code. See research/lean/.
+lint:
+	@! grep -rnE 'implemented_by|skipKernelTC|native_decide|bv_decide|^\s*axiom ' lean/Cairn lean/Examples \
+	  || (echo "lint: forbidden construct (see AGENTS.md, Lean rules)"; exit 1)
+
 # Swift tests: renderer goldens, pixel probes, text metrics (offscreen; needs a Metal device).
 test: lean
 	cd host && swift test
 
 # Everything a PR must pass.
-check: audit selftest test
+check: lint audit kernel selftest test
 
 bench: lean
 	cd lean && lake build bench && .lake/build/bin/bench
