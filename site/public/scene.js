@@ -796,16 +796,20 @@ export function mountFrames(root) {
 
 // --- Sprigs beside the headings ----------------------------------------------------------------
 
-// A strip of ground at the far right of each section heading: a thin line of turf that thins out
-// to the left, a few tufts of grass and a flower or two. Drawn once; hidden when the heading's
-// text would reach it.
+// A strip of ground at the far right of each section heading: one to three clumps of grass and
+// flowers at places of their own, with turf that thickens around each clump and thins between
+// them. Drawn once; hidden when the heading's text would reach it.
 function drawSprig(L, seed) {
-  const { w: W, h: H } = L, base = H - 2;
+  const { w: W, h: H } = L, base = H - 2, r = k => hash(seed * 13 + k);
+  const clumps = [{ x: W * (0.62 + r(1) * 0.3), size: 1 }];
+  if (r(2) < 0.75) clumps.push({ x: W * (0.2 + r(3) * 0.3), size: 0.6 + r(4) * 0.3 });
+  if (r(5) < 0.35) clumps.push({ x: clumps[0].x - W * (0.12 + r(6) * 0.06), size: 0.5 });
+  const near = x => Math.max(0.08, ...clumps.map(c => c.size * Math.exp(-(((x - c.x) / (6 + 6 * c.size)) ** 2))));
   for (let x = 0; x < W; x++) {
-    const fade = x / W;
-    if (h2(x, seed) > fade * 1.6) continue;
+    const v = near(x);
+    if (h2(x, seed) > v * 1.4) continue;
     L.set(x, base, h2(x, seed + 1) < 0.5 ? T.meadow[2] : T.meadow[3]);
-    if (fade > 0.45 && h2(x, seed + 2) < fade - 0.2) L.set(x, base + 1, T.meadow[5]);
+    if (v > 0.5 && h2(x, seed + 2) < v - 0.3) L.set(x, base + 1, T.meadow[5]);
   }
   const tuft = (cx, tall) => {
     for (let dx = -2; dx <= 2; dx++) {
@@ -818,16 +822,19 @@ function drawSprig(L, seed) {
       }
     }
   };
-  const spots = [0.5, 0.66, 0.8, 0.93].filter((_, k) => h2(k, seed + 5) < 0.85);
-  spots.forEach((f, k) => tuft(Math.round(W * f), 3 + Math.floor(h2(k, seed + 6) * 4)));
-  const pal = T.flowers[seed % T.flowers.length];
-  for (const [f, tall] of [[0.73, 7], [0.88, 5]].slice(0, 1 + (seed % 2))) {
-    const x = Math.round(W * f) + (seed % 3) - 1;
+  const flower = (x, tall, pal) => {
     for (let j = 1; j < tall; j++) L.set(x, base - j, T.meadow[2]);
     L.set(x, base - tall, pal[0]); L.set(x + 1, base - tall, pal[0]); L.set(x, base - tall - 1, pal[0]);
     L.set(x + 1, base - tall + 1, pal[1]); L.set(x - 1, base - tall, pal[1]);
     L.set(x + 1, base - 3, T.meadow[1]);
-  }
+  };
+  clumps.forEach((c, k) => {
+    const cx = Math.round(Math.min(W - 4, c.x));
+    tuft(cx, 2 + Math.round(c.size * (2 + r(10 + k) * 3)));
+    if (c.size > 0.7 && r(20 + k) < 0.7) tuft(cx + 3 + Math.floor(r(30 + k) * 3), 2 + Math.floor(r(40 + k) * 3));
+    if (k === 0 || r(50 + k) < 0.4)
+      flower(cx + Math.round((r(60 + k) - 0.5) * 6), Math.round(4 + c.size * 3 + r(70 + k) * 2), T.flowers[Math.floor(r(80 + k) * T.flowers.length)]);
+  });
 }
 
 export function mountSprigs(root) {
