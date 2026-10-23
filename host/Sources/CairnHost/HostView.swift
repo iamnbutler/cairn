@@ -226,9 +226,11 @@ public final class HostView: NSView {
             currentKeyEvent = e  // the original event: rebuilt ones break Korean input
             interpretKeyEvents([e])
             currentKeyEvent = nil
-        } else if let ev = KeyMapping.key(keyCode: e.keyCode, charactersIgnoringModifiers: e.charactersIgnoringModifiers,
-                                          mods: KeyMapping.mods(e.modifierFlags)) {
-            sendEditing([ev], time: time(e))
+        } else {
+            // Every character, not just the first: a synthesized event can carry a whole string.
+            let evs = KeyMapping.keys(keyCode: e.keyCode, charactersIgnoringModifiers: e.charactersIgnoringModifiers,
+                                      mods: KeyMapping.mods(e.modifierFlags))
+            if !evs.isEmpty { sendEditing(evs, time: time(e)) }
         }
     }
 
