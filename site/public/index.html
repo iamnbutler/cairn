@@ -3,80 +3,203 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex">
 <title>Cairn</title>
 <meta name="description" content="Research into user interfaces where every action a person can take is a claim with a durable id and machine-checked evidence.">
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #f4f2ee;
-    --fg: #22211f;
-    --muted: #6d6a64;
-    --rule: #dcd8d0;
-    --card: #fbfaf8;
-    --accent: #4f5d4a;
+    --bg: #161937;
+    --fg: #e6e2f6;
+    --muted: #a29fca;
+    --rule: #2d3062;
+    --ink: #0c0e26;
+    --panel: #1d2047;
+    --shadow: #0c0e26;
+    --chip: #2a2d5e;
+    --accent: #9cc8e8;
+    --gold: #f2c46a;
+    --px: 4px;
+    --pixel: "Pixelify Sans", ui-monospace, monospace;
     --mono: ui-monospace, "SF Mono", Menlo, monospace;
-    color-scheme: light dark;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1b1b19;
-      --fg: #e9e6e0;
-      --muted: #9c988f;
-      --rule: #34332f;
-      --card: #222220;
-      --accent: #a9b8a0;
-    }
+    color-scheme: dark;
   }
   * { box-sizing: border-box; }
+  html { background: var(--bg); }
   body {
     margin: 0;
     background: var(--bg);
     color: var(--fg);
-    font: 17px/1.6 ui-serif, "New York", Georgia, serif;
+    font: 17px/1.65 ui-serif, "New York", Georgia, serif;
     -webkit-font-smoothing: antialiased;
   }
-  main { max-width: 760px; margin: 0 auto; padding: 56px 16px 96px; }
-  header h1 { font-size: 44px; line-height: 1.1; margin: 0 0 12px; letter-spacing: -0.01em; font-weight: 600; }
-  header p { margin: 0; color: var(--muted); font-size: 19px; max-width: 34em; }
+  a { color: var(--accent); text-underline-offset: 3px; }
+  code {
+    font: 0.84em var(--mono);
+    background: var(--chip);
+    padding: 1px 5px;
+    border-radius: 2px;
+  }
+
+  /* Stepped corners: the shape every panel, stone and frame on the page shares. */
+  .px {
+    --s: var(--px);
+    clip-path: polygon(
+      0 calc(var(--s) * 2), var(--s) calc(var(--s) * 2), var(--s) var(--s), calc(var(--s) * 2) var(--s), calc(var(--s) * 2) 0,
+      calc(100% - var(--s) * 2) 0, calc(100% - var(--s) * 2) var(--s), calc(100% - var(--s)) var(--s), calc(100% - var(--s)) calc(var(--s) * 2), 100% calc(var(--s) * 2),
+      100% calc(100% - var(--s) * 2), calc(100% - var(--s)) calc(100% - var(--s) * 2), calc(100% - var(--s)) calc(100% - var(--s)), calc(100% - var(--s) * 2) calc(100% - var(--s)), calc(100% - var(--s) * 2) 100%,
+      calc(var(--s) * 2) 100%, calc(var(--s) * 2) calc(100% - var(--s)), var(--s) calc(100% - var(--s)), var(--s) calc(100% - var(--s) * 2), 0 calc(100% - var(--s) * 2)
+    );
+  }
+
+  /* The scene sits behind the top of the page. Under the text column it dissolves into mist
+     where the lede begins; in the margins the meadow runs on down the page. The header's height
+     is where the text starts, and scene.js reads it. */
+  body { overflow-x: clip; }
+  h1, h2, h3, .meta, .note .label, .lede em, .diagram { font-variant-ligatures: none; } /* Pixelify draws "fi" as a broken glyph */
+  .scene { position: relative; height: 420px; }
+  .scene canvas {
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: min(100%, 2400px); height: 900px;
+    image-rendering: pixelated;
+  }
+  .scene .title {
+    position: relative; max-width: 760px; margin: 0 auto; padding: 64px 16px 0;
+  }
+  h1 {
+    font: 700 64px/1 var(--pixel);
+    margin: 0;
+    color: #f3efff;
+    letter-spacing: 0.02em;
+    text-shadow: 3px 3px 0 #2b2d6a;
+  }
+
+
+  main, footer { position: relative; }
+  main { max-width: 760px; margin: 0 auto; padding: 8px 16px 64px; }
+  .lede { font-size: 21px; line-height: 1.5; margin: 0; max-width: 32em; }
+  .lede em { font-style: normal; font: 600 0.95em var(--pixel); color: var(--accent); }
+
   h2 {
-    font: 600 13px/1 -apple-system, system-ui, sans-serif;
-    letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
-    margin: 56px 0 16px; padding-top: 16px; border-top: 1px solid var(--rule);
+    font: 600 22px/1.2 var(--pixel);
+    color: var(--ink);
+    margin: 72px 0 18px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  h2 { color: var(--fg); position: relative; }
+  /* A strip of turf and flowers at the far right of each heading (scene.js). */
+  h2 canvas.sprig { position: absolute; right: 0; bottom: 0; width: 138px; height: 42px; image-rendering: pixelated; pointer-events: none; }
+
+  h2::before {
+    content: ""; width: 20px; height: 20px; flex: none;
+    background: url("/icon.svg") center / contain no-repeat;
+    image-rendering: pixelated;
   }
   p { margin: 0 0 14px; }
-  code { font: 0.88em var(--mono); }
-  video {
-    display: block; width: 100%; height: auto; border-radius: 10px;
-    background: var(--card); border: 1px solid var(--rule);
+
+  /* A framed video: an outline and a stepped panel. scene.js gives the box a margin and draws
+     a thin frame in it, leaving an empty gap around the picture. */
+  .frame { position: relative; margin: 0; }
+  .frame .box { background: var(--ink); padding: var(--px); }
+  .frame video { display: block; width: 100%; height: auto; background: var(--panel); }
+  .frame canvas.stones { position: absolute; pointer-events: none; image-rendering: pixelated; }
+  .frame figcaption { font-size: 15.5px; color: var(--muted); margin-top: 6px; }
+
+  /* A note card: a panel with stepped corners and a gold label, for asides the reader
+     shouldn't miss. */
+  .note { margin: 40px 0; filter: drop-shadow(var(--px) var(--px) 0 var(--shadow)); }
+  .note .card { --s: var(--px); background: var(--panel); padding: 20px 24px 22px; box-shadow: inset 0 0 0 var(--px) var(--chip); }
+  .note .label { font: 600 15px/1 var(--pixel); color: var(--gold); letter-spacing: 0.04em; margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
+  .note .label img { width: 16px; height: 16px; image-rendering: pixelated; }
+  .note p { margin: 0; }
+  .note p + p { margin-top: 10px; }
+  .meta {
+    font: 15px/1.4 var(--pixel); color: var(--muted);
+    display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px;
   }
-  figure { margin: 0; }
-  figcaption { font-size: 15px; color: var(--muted); margin-top: 10px; }
-  .feature { margin-top: 40px; }
-  .meta { font: 12px/1.4 var(--mono); color: var(--muted); }
-  .log { display: grid; gap: 40px; }
-  .log h3 { font-size: 19px; margin: 0 0 4px; font-weight: 600; }
-  ol.goal { padding-left: 1.3em; margin: 0; }
-  ol.goal li { margin-bottom: 8px; }
-  .stack { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 8px; }
-  .stack div { background: var(--card); border: 1px solid var(--rule); border-radius: 8px; padding: 12px 14px; font-size: 15px; }
-  .stack b { display: block; font-size: 16px; }
-  @media (max-width: 560px) {
-    header h1 { font-size: 34px; }
-    .stack { grid-template-columns: 1fr; }
+  .meta .date { color: var(--gold); }
+  /* The featured video sits on the meadow like a plate, a little wider than the text; the
+     scene fades into mist behind its lower part. */
+  .feature { margin: 0 calc((100% - min(960px, 100vw - 32px)) / 2); }
+  .feature .frame { width: min(100%, 720px * var(--ar, 1.6)); margin: 0 auto; } /* portrait takes stand as a narrower plate */
+  .lede { margin-top: 40px; }
+
+  /* Figures: one ink (the text colour), a tint for the proved part, the accent for "proved".
+     Pixel style: stepped corners, crisp 2px lines, open chevrons. */
+  figure.diagram { margin: 32px 0 8px; }
+  figure.diagram svg { display: block; width: 100%; max-width: 640px; height: auto; margin: 0 auto; color: var(--fg); }
+  .diagram svg * { fill: none; stroke: currentColor; stroke-width: 2; shape-rendering: crispEdges; stroke-linejoin: miter; }
+  .diagram svg text { fill: currentColor; stroke: none; font: 15px ui-serif, "New York", Georgia, serif; }
+  .diagram svg .hd { font: 600 13px var(--pixel); letter-spacing: 0.06em; }
+  .diagram svg .it { font-style: italic; font-size: 13.5px; fill: var(--muted); }
+  .diagram svg .sm { font-size: 13px; }
+  .diagram svg .lb { font: 600 14px var(--pixel); }
+  .diagram svg .tint { fill: color-mix(in srgb, currentColor 9%, transparent); }
+  .diagram svg .chip { fill: var(--bg); }
+  .diagram svg .dash { stroke-dasharray: 4 4; }
+  .diagram svg .accent { stroke: var(--accent); }
+  .diagram svg text.accent { fill: var(--accent); stroke: none; }
+  figure.diagram figcaption { font-size: 15.5px; color: var(--muted); margin-top: 12px; text-align: center; }
+
+  /* Trails: the milestone and the progress log. */
+  .trail { list-style: none; margin: 0; padding: 0; position: relative; }
+  .trail::before {
+    content: ""; position: absolute; left: 13px; top: 18px; bottom: 18px; width: 4px;
+    background: repeating-linear-gradient(to bottom, var(--rule) 0 8px, transparent 8px 16px);
   }
-  footer { margin-top: 64px; color: var(--muted); font-size: 14px; }
-  a { color: var(--accent); }
+  .trail > li { position: relative; padding-left: 48px; margin-bottom: 18px; }
+  .trail > li::before {
+    position: absolute; left: 0; top: 0;
+    width: 30px; height: 30px;
+    display: grid; place-items: center;
+    font: 600 15px/1 var(--pixel);
+    background: var(--chip); color: var(--ink);
+  }
+  .trail > li::before { color: var(--fg); }
+
+  ol.trail { counter-reset: step; }
+  ol.trail > li { counter-increment: step; }
+  ol.trail > li::before { content: counter(step); }
+  .log > li { margin-bottom: 56px; }
+  .log > li::before { content: ""; background: var(--gold); width: 18px; height: 18px; left: 6px; top: 6px; }
+  .log h3 { font: 600 20px/1.3 var(--pixel); margin: 0 0 14px; color: var(--ink); }
+  .log h3 { color: var(--fg); }
+
+  /* The trail markers share the stepped corners at a smaller step. */
+  .trail > li::before { clip-path: polygon(0 4px, 4px 4px, 4px 0, calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px), 0 calc(100% - 4px)); }
+
+  footer {
+    max-width: 760px; margin: 0 auto; padding: 24px 16px 56px;
+    font: 15px/1.4 var(--pixel); color: var(--muted);
+    display: flex; align-items: center; gap: 10px;
+  }
+  footer img { width: 32px; height: 32px; image-rendering: pixelated; }
+
+  @media (max-width: 600px) {
+    :root { --px: 3px; }
+    .scene .title { padding-top: 44px; }
+    h1 { font-size: 48px; }
+    .lede { font-size: 19px; }
+    .scene { height: 290px; }
+    h2 canvas.sprig { width: 92px; height: 28px; }
+  }
 </style>
 </head>
 <body>
-<main>
-  <header>
-    <h1>Cairn</h1>
-    <p>Research into user interfaces where everything a person can do is a <em>claim</em> with a
-      durable id, and every claim carries machine-checked evidence.</p>
-  </header>
+<header class="scene">
+  <canvas id="scene" aria-hidden="true"></canvas>
+  <div class="title"><h1>Cairn</h1></div>
+</header>
 
+<main>
   <div id="feature" class="feature"></div>
+
+  <p class="lede">Research into user interfaces where everything a person can do is a <em>claim</em>
+    with a durable id, and every claim carries machine-checked evidence.</p>
 
   <h2>The idea</h2>
   <p>A cairn is a stack of stones that marks a trail: placed by hand, built to last, and trusted by
@@ -87,14 +210,77 @@
   <p>To make those claims mean something, the code they talk about has to be the code that runs.
     So the app's state, view, layout, hit testing, focus and text editing are all pure Lean, and
     the theorems are about exactly those functions.</p>
-  <div class="stack">
-    <div><b>Lean 4</b>State, update, view, layout, hit testing, claims and proofs.</div>
-    <div><b>Swift</b>A thin host: window, input, text input, accessibility, Core Text.</div>
-    <div><b>Metal</b>Paints the frame Lean describes.</div>
-  </div>
+  <figure class="diagram">
+<svg viewBox="0 0 640 396" role="img" aria-labelledby="arch-t">
+<title id="arch-t">How a frame is made: Swift captures events, Lean computes the frame, Metal paints it</title>
+<!-- swift -->
+<polygon points="126,16 454,16 454,19 457,19 457,22 460,22 460,86 457,86 457,89 454,89 454,92 126,92 126,89 123,89 123,86 120,86 120,22 123,22 123,19 126,19"/>
+<text x="136" y="40" class="hd">SWIFT · MAIN THREAD</text>
+<text x="136" y="64" class="nm">the window and its events</text>
+<text x="136" y="82" class="it">no application logic</text>
+<!-- events -->
+<line x1="290" y1="92" x2="290" y2="140"/>
+<polyline points="284,134 290,140 296,134"/>
+<text x="302" y="114" class="it">events, as bytes</text>
+<!-- lean -->
+<polygon class="tint" points="126,148 454,148 454,151 457,151 457,154 460,154 460,258 457,258 457,261 454,261 454,264 126,264 126,261 123,261 123,258 120,258 120,154 123,154 123,151 126,151"/>
+<text x="136" y="172" class="hd">LEAN · OWNS THE STATE</text>
+<polygon class="chip" points="142,186 182,186 182,189 185,189 185,192 188,192 188,208 185,208 185,211 182,211 182,214 142,214 142,211 139,211 139,208 136,208 136,192 139,192 139,189 142,189"/>
+<text x="162" y="205" class="sm" text-anchor="middle">update</text>
+<polyline points="192,196 196,200 192,204"/>
+<polygon class="chip" points="206,186 246,186 246,189 249,189 249,192 252,192 252,208 249,208 249,211 246,211 246,214 206,214 206,211 203,211 203,208 200,208 200,192 203,192 203,189 206,189"/>
+<text x="226" y="205" class="sm" text-anchor="middle">view</text>
+<polyline points="256,196 260,200 256,204"/>
+<polygon class="chip" points="270,186 310,186 310,189 313,189 313,192 316,192 316,208 313,208 313,211 310,211 310,214 270,214 270,211 267,211 267,208 264,208 264,192 267,192 267,189 270,189"/>
+<text x="290" y="205" class="sm" text-anchor="middle">layout</text>
+<polyline points="320,196 324,200 320,204"/>
+<polygon class="chip" points="334,186 374,186 374,189 377,189 377,192 380,192 380,208 377,208 377,211 374,211 374,214 334,214 334,211 331,211 331,208 328,208 328,192 331,192 331,189 334,189"/>
+<text x="354" y="205" class="sm" text-anchor="middle">hit map</text>
+<polyline points="384,196 388,200 384,204"/>
+<polygon class="chip" points="398,186 438,186 438,189 441,189 441,192 444,192 444,208 441,208 441,211 438,211 438,214 398,214 398,211 395,211 395,208 392,208 392,192 395,192 395,189 398,189"/>
+<text x="418" y="205" class="sm" text-anchor="middle">encode</text>
+<text x="136" y="238" class="it">pure, total functions; every</text>
+<text x="136" y="254" class="it">claim is a theorem about them</text>
+<!-- frame -->
+<line x1="290" y1="264" x2="290" y2="312"/>
+<polyline points="284,306 290,312 296,306"/>
+<text x="302" y="286" class="it">the frame, as bytes</text>
+<!-- metal -->
+<polygon points="126,320 454,320 454,323 457,323 457,326 460,326 460,378 457,378 457,381 454,381 454,384 126,384 126,381 123,381 123,378 120,378 120,326 123,326 123,323 126,323"/>
+<text x="136" y="344" class="hd">METAL · RENDER THREAD</text>
+<text x="136" y="368" class="nm">paints the latest frame</text>
+<!-- the frame answers AppKit -->
+<polyline class="dash" points="460,206 494,206 494,54 468,54"/>
+<polyline points="474,48 468,54 474,60"/>
+<text x="504" y="120" class="it">accessibility and</text>
+<text x="504" y="136" class="it">text input answer</text>
+<text x="504" y="152" class="it">from the last frame</text>
+<!-- what is proved and what is trusted -->
+<polyline points="112,18 106,18 106,90 112,90"/>
+<text x="96" y="52" class="lb" text-anchor="end">trusted</text>
+<text x="96" y="69" class="it" text-anchor="end">kept thin</text>
+<polyline class="accent" points="112,150 106,150 106,262 112,262"/>
+<text x="96" y="204" class="lb accent" text-anchor="end">proved</text>
+<text x="96" y="221" class="it" text-anchor="end">in Lean</text>
+<polyline points="112,322 106,322 106,382 112,382"/>
+<text x="96" y="350" class="lb" text-anchor="end">trusted</text>
+<text x="96" y="367" class="it" text-anchor="end">probes, goldens</text>
+</svg>
+    <figcaption>One frame, from a key press to the screen.</figcaption>
+  </figure>
+
+  <aside class="note"><div class="card px">
+    <p class="label"><img src="/icon.svg" alt="">Not a layer on top</p>
+    <p>Cairn isn't verification bolted onto an existing UI framework. It is its own framework: the
+      app, its view, layout, hit testing, focus and text editing are written in Lean, and a thin
+      Swift host hands over events and draws the result with Metal.</p>
+    <p>Owning every layer is what lets a claim reach all the way down. Each one is bound to the code
+      that actually runs, not to a model of someone else's, and the little we do have to trust,
+      the host, is written down in one place.</p>
+  </div></aside>
 
   <h2>First milestone: a proved TodoMVC</h2>
-  <ol class="goal">
+  <ol class="trail">
     <li>The full TodoMVC app on the Mac, including real text fields and input methods.</li>
     <li>Every action is a claim with an id that the build refuses to let drift.</li>
     <li>Proofs: each action does what it says, the counts and filters stay right, and every
@@ -104,38 +290,58 @@
   </ol>
 
   <h2>Progress</h2>
-  <div id="log" class="log"><p class="meta">Loading…</p></div>
-
-  <footer>MIT licensed. Built in the open, slowly.</footer>
+  <ul id="log" class="trail log"><li class="meta">Loading…</li></ul>
 </main>
+
+<footer><img src="/icon.svg" alt="">MIT licensed. Built in the open, slowly.</footer>
+
 <script>
-  function figure(m, heading) {
+  // Video list: media.json, newest first, written by tools/media/put.sh.
+  function figure(m, autoplay) {
     const f = document.createElement("figure");
-    if (heading) {
-      const h = document.createElement("h3");
-      h.textContent = m.title;
-      f.append(h);
-    }
+    f.className = "frame";
+    const box = document.createElement("div");
+    box.className = "box px";
     const v = document.createElement("video");
     Object.assign(v, { src: m.video, poster: m.poster, controls: true, muted: true, loop: true, playsInline: true, preload: "metadata" });
     v.width = m.width; v.height = m.height;
-    if (!heading) v.autoplay = true;
+    f.style.setProperty("--ar", m.width / m.height);
+    v.autoplay = autoplay;
+    box.append(v);
     const c = document.createElement("figcaption");
     c.textContent = m.caption;
     const meta = document.createElement("div");
     meta.className = "meta";
-    meta.textContent = `${m.date} · ${m.commit} · ${m.seconds}s`;
-    f.append(v, c, meta);
+    for (const [cls, text] of [["date", m.date], ["", m.commit], ["", `${m.seconds}s`]]) {
+      const s = document.createElement("span");
+      if (cls) s.className = cls;
+      s.textContent = text;
+      meta.append(s);
+    }
+    f.append(box, c, meta);
     return f;
   }
   fetch("/media.json").then(r => r.json()).then(list => {
     const log = document.getElementById("log");
     log.textContent = "";
     const feature = list.find(m => m.feature) || list[0];
-    if (feature) document.getElementById("feature").append(figure(feature, false));
-    for (const m of list) log.append(figure(m, true));
-    if (!list.length) log.innerHTML = '<p class="meta">No videos yet.</p>';
-  }).catch(() => { document.getElementById("log").innerHTML = '<p class="meta">Could not load the video list.</p>'; });
+    if (feature) document.getElementById("feature").append(figure(feature, true));
+    for (const m of list) {
+      const li = document.createElement("li");
+      const h = document.createElement("h3");
+      h.textContent = m.title;
+      li.append(h, figure(m, false));
+      log.append(li);
+    }
+    if (!list.length) log.innerHTML = '<li class="meta">No videos yet.</li>';
+  }).catch(() => { document.getElementById("log").innerHTML = '<li class="meta">Could not load the video list.</li>'; });
+
+</script>
+<script type="module">
+  import { mountScene, mountFrames, mountSprigs } from "/scene.js";
+  mountFrames(document.querySelector("main"));
+  mountSprigs(document.querySelector("main"));
+  mountScene(document.getElementById("scene"), { feature: document.getElementById("feature") });
 </script>
 </body>
 </html>
