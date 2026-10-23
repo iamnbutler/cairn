@@ -73,6 +73,15 @@
 337	assume	active	-	The host lists day files and today by the local calendar
 340	flow	active	bad8bdb6bf0aa529	Turn Dictate with Key off
 341	flow	active	d43c1efda3e84fcb	Keep Transcripts off and on again
+401	move	active	1b77afe95aa65f24	Start / Stop
+402	move	active	6750765048a4300d	Lap
+403	move	active	b3e0b25d90f70b6f	Reset
+404	move	active	36cac6322fba109e	Save laps
+405	move	active	2585bb4173dd9b28	Load laps
+406	place	active	-	Clock window
+407	flow	active	befa900cd07c80b7	Two laps
+408	flow	active	81892d4491fba6ac	Start over
+409	invariant	active	631e025c1afbf429	Pending requests have fresh ids
 901	assume	active	-	The Swift frame decoder agrees with Lean's
 902	assume	active	-	Lean decodes what the Swift event encoder writes
 903	assume	active	-	UTF-16 offsets and scalar indices convert exactly
@@ -80,3 +89,11 @@
 905	assume	active	-	Input-method geometry agrees with Lean's caret
 906	assume	active	-	The host's text metrics are what layout assumes
 907	assume	active	-	Carets follow the painted glyphs
+908	assume	active	-	The host's clock is monotonic milliseconds
+909	assume	active	-	The host wakes Lean by wake
+910	assume	active	-	readFile replies with the file's bytes, or failed
+911	assume	active	-	writeFile is atomic, and replies done only when the bytes are there
+912	assume	active	-	playSound starts a known sound and refuses an unknown one
+913	assume	active	-	http sends the request as given and returns the response as received
+914	assume	active	-	The host answers every request exactly once, with its id
+915	assume	active	-	every ms ticks while started and never after it is stopped

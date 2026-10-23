@@ -22,7 +22,12 @@ private def frame : Frame where
   textInput := some { control := ⟨2, 0⟩, rect := ⟨1, 1, 1, 1⟩, caret := ⟨2, 2, 1, 1⟩,
                       text := "ab", selection := (1, 2), marked := some (0, 1) }
   cursor := .text
-  effects := #[.setClipboard "copied", .beep]
+  effects := #[.setClipboard "copied", .beep, .setTimer "t" 30, .cancelTimer "ü",
+    .request 7 (.writeFile "~/a" ⟨#[0, 255, 1]⟩), .request 8 (.readFile ""),
+    .request 9 (.playSound "Tink"),
+    .request 4294967295 (.http "POST" "http://x/" [("A", "b"), ("", "")] ⟨#[1]⟩ 1000), .quit]
+  subs := #[.start 1 (.every 50), .stop 0]
+  wake := some 18446744073709551615
 
 #guard fitsFrame frame
 #guard reprStr (decodeFrame (encodeFrame frame)) == reprStr (some frame)
@@ -31,12 +36,16 @@ private def frame : Frame where
 #guard (encodeFrame frame).size == (Enc.frame frame).length
 -- Trailing bytes and a wrong version are rejected.
 #guard (decodeFrame ((encodeFrame frame).push 0)).isNone
-#guard (decodeFrame ((encodeFrame frame).set! 4 2)).isNone
+#guard (decodeFrame ((encodeFrame frame).set! 4 1)).isNone
+#guard (decodeFrame (encodeFrame { frame with wake := none })).isSome
 
 private def events : Array Event := #[.pointerMove ⟨-1, 2⟩,
   .pointerDown ⟨3, 4⟩ .secondary 2 { shift := true, control := true }, .key (.char 'é') {},
   .key .pageDown { command := true }, .insertText "ü" (some (3, 4)), .setMarked "한" 0 1,
-  .windowFocus false, .scale 200, .resize ⟨1, 1⟩, .scroll ⟨0, 0⟩ (-3) 5, .paste ""]
+  .windowFocus false, .scale 200, .resize ⟨1, 1⟩, .scroll ⟨0, 0⟩ (-3) 5, .paste "",
+  .clock ⟨18446744073709551615, -9223372036854775808, -18000⟩, .clock {},
+  .reply 3 .done, .reply 4 (.bytes ⟨#[9, 8]⟩), .reply 5 (.http 404 [("Content-Type", "x")] .empty),
+  .reply 6 (.failed .timeout "slow"), .subEvent 2 .tick]
 
 #guard events.all fitsEvent
 #guard decodeEvents (encodeEvents events) == some events

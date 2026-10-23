@@ -3,6 +3,7 @@ module
 public import Cairn.App
 public import Cairn.Runtime.Hit
 public import Cairn.Layout.Core
+public import Cairn.Runtime.World
 
 /-! The interaction runtime: turns host events into the `Action`s an app's `update` sees.
 
@@ -35,6 +36,10 @@ structure State (S : Type) where
   laid : Laid
   /-- Effects produced by the most recent `stepBytes` batch; the frame carries them. -/
   effects : Array Effect := #[]
+  /-- The clock, timers, pending requests and subscriptions (docs/effects.md). -/
+  world : World := {}
+  /-- Subscription commands of the most recent `stepBytes` batch; the frame carries them. -/
+  subCmds : Array SubCmd := #[]
 
 /-! ## Fields -/
 
@@ -205,6 +210,7 @@ def route (m : TextMetrics) (s : State S) : Event → State S × List Action
   | .windowFocus b =>
     ({ s with ui := { s.ui with windowFocused := b, pressed := if b then s.ui.pressed else none } },
      [])
+  | .clock _ | .reply .. | .subEvent .. => (s, [])
 
 /-! ## Committing -/
 
@@ -261,14 +267,84 @@ def applyFocus (effs : List Effect) (ui : UI) : UI :=
   | some c => { ui with focus := some c }
   | none => ui
 
+/-! ## The outside world (docs/effects.md) -/
+
+/-- An event's progress through the app: its state, the world, the effects that go on the
+frame, and whether anything was delivered. -/
+structure Ctx (S : Type) where
+  app : S
+  world : World
+  effs : List Effect := []
+  delivered : Bool := false
+
+/-- Deliver a message to `receive` and take in its effects. -/
+def give (app : App S) (c : Ctx S) (m : Msg) : Ctx S :=
+  let (st, es) := app.receive c.app m
+  let (w, kept) := c.world.absorb es
+  { app := st, world := w, effs := c.effs ++ kept, delivered := true }
+
+/-- Tell the app the time, if it hasn't heard the current one. -/
+def hear (app : App S) (c : Ctx S) : Ctx S :=
+  if c.world.heard = some c.world.clock then c
+  else give app { c with world := { c.world with heard := some c.world.clock } } (.clock c.world.clock)
+
+/-- Fire `n` if it is still set and due: it leaves the table, then is delivered. -/
+def fire (app : App S) (c : Ctx S) (n : String) : Ctx S :=
+  if c.world.dueNow n then give app { c with world := c.world.cancelTimer n } (.timer n) else c
+
+/-- On the first clock: the app hears the time, then `initEffects` run. -/
+def boot (app : App S) (c : Ctx S) : Ctx S :=
+  if c.world.booted then c else
+  let c := hear app { c with world := { c.world with booted := true } }
+  let (w, kept) := c.world.absorb app.initEffects
+  { c with world := w, effs := c.effs ++ kept, delivered := true }
+
+/-- What the world events deliver: a clock event fires due timers, a reply is delivered if its
+id is pending and it answers that kind, and a subscription event if its id is active. Other
+events deliver nothing here (their actions come from `route`). -/
+def admit (app : App S) (s : State S) : Event → Ctx S
+  | .clock t =>
+    let c := boot app { app := s.app, world := s.world.tick t }
+    let due := c.world.dueNames
+    if due.isEmpty then c else due.foldl (fire app) (hear app c)
+  | .reply id r =>
+    -- The time first, then the reply leaves the pending table: what `receive` makes of the
+    -- clock sees the request still pending.
+    if (s.world.takeReply id r).isSome then
+      let c := hear app { app := s.app, world := s.world }
+      match c.world.takeReply id r with
+      | some w => give app { c with world := w } (.reply id r)
+      | none => c
+    else { app := s.app, world := s.world }
+  | .subEvent id e =>
+    match s.world.subOf id with
+    | some sub => give app (hear app { app := s.app, world := s.world }) (.sub sub e)
+    | none => { app := s.app, world := s.world }
+  | _ => { app := s.app, world := s.world }
+
+/-- Deliver the routed actions to `update` (after the time, if the app hasn't heard it) and take
+in their effects, in order. -/
+def act (app : App S) (c : Ctx S) (acts : List Action) : Ctx S :=
+  if acts.isEmpty then c else
+  let c := hear app c
+  let (st, es) := deliver app.update c.app acts
+  let (w, kept) := c.world.absorb es
+  { app := st, world := w, effs := c.effs ++ kept, delivered := true }
+
 /-- One event. -/
 def step (app : App S) (cfg : Config) (s : State S) (e : Event) : State S × List Effect :=
   let (s1, acts) := route cfg.metrics s e
-  if acts.isEmpty && UI.same s1.ui s.ui then (s1, []) else
-  let (st, effs) := deliver app.update s.app acts
-  let ui1 := applyFocus effs s1.ui
-  let (ui, laid) := settle app cfg st s1.pointer ui1 settleFuel ui1
-  ({ s1 with app := st, ui, laid }, effs)
+  let c0 := admit app s e
+  if acts.isEmpty && !c0.delivered && UI.same s1.ui s.ui then ({ s1 with world := c0.world }, c0.effs)
+  else
+  let c := act app c0 acts
+  let (subs, cmds, next) :=
+    if c.delivered then diffSubs c.world.subs (app.subscriptions c.app) c.world.nextSub
+    else (c.world.subs, [], c.world.nextSub)
+  let ui1 := applyFocus c.effs s1.ui
+  let (ui, laid) := settle app cfg c.app s1.pointer ui1 settleFuel ui1
+  ({ s1 with app := c.app, ui, laid, world := { c.world with subs, nextSub := next },
+             subCmds := s1.subCmds ++ cmds.toArray }, c.effs)
 
 /-- A batch of events, in order. -/
 def steps (app : App S) (cfg : Config) (s : State S) (es : List Event) : State S × List Effect :=

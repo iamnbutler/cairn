@@ -538,7 +538,7 @@ def decidableUnfolds (holds : Name) (SM : Term) : CommandElabM (Option (Array Na
   checkTitle titleStx title
   checkFresh stx[2] id
   checkUnsealed stx[1] false
-  let c ← Clauses.read stx[8] ["does", "holds", "init", "step"] "invariant"
+  let c ← Clauses.read stx[8] ["does", "holds", "init", "step", "receive"] "invariant"
   let does ← needProse c stx[1] "does" "the property, in words"
   let full := (← getCurrNamespace) ++ name
   let SM ← `(Cairn.Claims.StateOf $M)
@@ -561,16 +561,29 @@ def decidableUnfolds (holds : Name) (SM : Term) : CommandElabM (Option (Array Na
     (← `(∀ (s : $SM) (a : Cairn.Action), $holds s →
           $holds (Cairn.Claims.Machine.update $M s a).1)) stepP
     s!"Every update, so every move, preserves ^{id}."
+  -- Messages from the world (`Machine.receive`): a proof is needed only when the machine
+  -- hears the world; for one that doesn't, `receive` leaves the state alone.
+  let recvP ← match ← optDefn c.items "receive" 0 with
+    | some (_, p) => pure p
+    | none => `(fun _ _ h => h)
+  mkThm (name ++ `receive)
+    (← `(∀ (s : $SM) (m : Cairn.Msg), $holds s →
+          $holds (Cairn.Claims.Machine.receive $M s m).1)) recvP
+    s!"Every message from the world preserves ^{id}."
   mkInfo (name ++ `info) id `invariant title does "" none
   let doc ← docOf doc? s!"**^{id} {title}** (invariant)\n\n{does}"
   mkDef name #[] (← `(Cairn.Claims.Invariant $M))
     (← `({ info := $(cid (full ++ `info)), holds := $holds, init := $(cid (full ++ `init)),
-           step := $(cid (full ++ `step)) }))
+           step := $(cid (full ++ `step)), recv := $(cid (full ++ `receive)) }))
     doc
   mkThm (name ++ `reachable)
     (← `(∀ (s : $SM), Cairn.Claims.Machine.Reachable $M s → $holds s))
     (← `(fun _ h => Cairn.Claims.Invariant.reachable $(cid full) h))
     s!"^{id} holds in every reachable state."
+  mkThm (name ++ `reachableAll)
+    (← `(∀ (s : $SM), Cairn.Claims.Machine.ReachableAll $M s → $holds s))
+    (← `(fun _ h => Cairn.Claims.Invariant.reachableAll $(cid full) h))
+    s!"^{id} holds in every state reachable by actions and messages from the world."
   let machine ← liftTermElabM do
     let e ← elabTerm M none
     pure (e.getAppFn.constName?)
@@ -579,7 +592,8 @@ def decidableUnfolds (holds : Name) (SM : Term) : CommandElabM (Option (Array Na
     ns := ← getCurrNamespace, decl := full, infoDecl := full ++ `info, module := ← getMainModule
     statement := #[full ++ `holds]
     evidence := #[("init", full ++ `init), ("step", full ++ `step),
-      ("reachable", full ++ `reachable)]
+      ("receive", full ++ `receive), ("reachable", full ++ `reachable),
+      ("reachableAll", full ++ `reachableAll)]
     machine }
 
 /-! ### `assume` and `place` -/

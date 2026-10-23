@@ -86,20 +86,62 @@ def textInput : Gen TextInput := do
   return { control := ← ref, rect := ← rect, caret := ← rect, text := ← str,
            selection := ← range, marked := ← opt range, textOrigin := ⟨← int, ← int⟩ }
 
-def effect : Gen Effect := do
-  if ← coin then return .setClipboard (← str)
-  else if ← coin then return .focus (← ref) else return .beep
-
 def array {α : Type} (n : Nat) (g : Gen α) : Gen (Array α) := do
   let k ← below (n + 1)
   let mut xs := #[]
   for _ in [0:k] do xs := xs.push (← g)
   return xs
 
+def u64 : Gen Nat := do
+  if ← chance 4 then pick #[0, 1, 4294967295, 4294967296, 18446744073709551615]
+  else return (← below 4294967296) + 4294967296 * (← below 4096)
+
+def i64 : Gen Int := do
+  if ← chance 4 then pick #[0, -1, 9223372036854775807, -9223372036854775808, 1700000000000]
+  else return (← u64 : Nat) / 2 - 2251799813685248
+
+def bytes : Gen ByteArray := do
+  let n ← below 12
+  let mut b := ByteArray.empty
+  for _ in [0:n] do b := b.push (← byte)
+  return b
+
+def headers : Gen (List (String × String)) := do
+  return (← array 3 (return (← str, ← str))).toList
+
+def request : Gen Request := do
+  match ← below 4 with
+  | 0 => return .readFile (← str)
+  | 1 => return .writeFile (← str) (← bytes)
+  | 2 => return .playSound (← str)
+  | _ => return .http (← str) (← str) (← headers) (← bytes) (← nat)
+
+def effect : Gen Effect := do
+  match ← below 7 with
+  | 0 => return .setClipboard (← str)
+  | 1 => return .focus (← ref)
+  | 2 => return .beep
+  | 3 => return .setTimer (← str) (← nat)
+  | 4 => return .cancelTimer (← str)
+  | 5 => return .request (← nat) (← request)
+  | _ => return .quit
+
+def subCmd : Gen SubCmd := do
+  if ← coin then return .start (← nat) (.every (← nat)) else return .stop (← nat)
+
+def fault : Gen Fault := pick #[.notFound, .denied, .timeout, .network, .invalid, .other]
+
+def reply : Gen Reply := do
+  match ← below 4 with
+  | 0 => return .done
+  | 1 => return .bytes (← bytes)
+  | 2 => return .http (← nat) (← headers) (← bytes)
+  | _ => return .failed (← fault) (← str)
+
 def frame : Gen Frame := do
   return { size := ⟨← int, ← int⟩, draws := ← array 40 draw, ax := ← array 30 axNode,
            textInput := ← opt textInput, cursor := ← pick #[.arrow, .pointer, .text],
-           effects := ← array 3 effect }
+           effects := ← array 3 effect, subs := ← array 3 subCmd, wake := ← opt u64 }
 
 def mods : Gen Mods := return ⟨← coin, ← coin, ← coin, ← coin⟩
 
@@ -109,7 +151,7 @@ def key : Gen Key := do
     .pageUp, .pageDown]
 
 def event : Gen Event := do
-  match ← below 18 with
+  match ← below 21 with
   | 0 => return .pointerMove ⟨← int, ← int⟩
   | 1 => return .pointerDown ⟨← int, ← int⟩ (← pick #[.primary, .secondary]) (← nat) (← mods)
   | 2 => return .pointerUp ⟨← int, ← int⟩ (← pick #[.primary, .secondary]) (← mods)
@@ -127,7 +169,10 @@ def event : Gen Event := do
   | 14 => return .paste (← str)
   | 15 => return .resize ⟨← int, ← int⟩
   | 16 => return .scale (← nat)
-  | _ => return .windowFocus (← coin)
+  | 17 => return .windowFocus (← coin)
+  | 18 => return .clock ⟨← u64, ← i64, ← int⟩
+  | 19 => return .reply (← nat) (← reply)
+  | _ => return .subEvent (← nat) .tick
 
 /-! ## Frames from layout -/
 
@@ -166,7 +211,13 @@ def maxFrame : Frame where
                       text := "", selection := (4294967295, 0), marked := some (0, 4294967295),
                       textOrigin := ⟨-2147483648, 2147483647⟩ }
   cursor := .pointer
-  effects := #[.setClipboard "", .beep, .setClipboard "📋", .focus ⟨202, 7⟩]
+  effects := #[.setClipboard "", .beep, .setClipboard "📋", .focus ⟨202, 7⟩,
+    .setTimer "tick" 4294967295, .cancelTimer "", .quit,
+    .request 4294967295 (.writeFile "~/a/🙂.txt" ⟨#[0, 255, 10]⟩),
+    .request 0 (.http "GET" "https://example.com/?q=日本" [("Accept", "*/*"), ("", "")]
+      ByteArray.empty 0)]
+  subs := #[.start 4294967295 (.every 0), .stop 0]
+  wake := some 18446744073709551615
 
 def emptyFrame : Frame := { size := ⟨0, 0⟩, draws := #[], ax := #[] }
 
@@ -176,7 +227,11 @@ def edgeEvents : Array Event := #[
   .key (.char (Char.ofNat 0x10FFFF)) {}, .key (.char (Char.ofNat 0)) { option := true },
   .insertText "" none, .insertText "é" (some (0, 4294967295)),
   .setMarked "にほん" 4294967295 0 (some (2, 2)), .paste "👍🏽", .scale 0,
-  .resize ⟨-1, 2147483647⟩, .windowFocus true]
+  .resize ⟨-1, 2147483647⟩, .windowFocus true,
+  .clock ⟨18446744073709551615, -9223372036854775808, -2147483648⟩, .clock ⟨0, 9223372036854775807, 0⟩,
+  .reply 0 .done, .reply 4294967295 (.bytes ⟨#[0, 255]⟩),
+  .reply 1 (.http 4294967295 [("Content-Type", "text/plain; charset=utf-8")] ⟨#[104, 105]⟩),
+  .reply 2 (.failed .other "é"), .subEvent 4294967295 .tick]
 
 /-! ## Commands -/
 

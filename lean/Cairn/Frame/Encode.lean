@@ -57,6 +57,17 @@ def checkedOfCode : UInt8 → Option (Option Bool)
 @[simp] theorem checkedOfCode_code (c : Option Bool) : checkedOfCode (checkedCode c) = some c := by
   rcases c with _ | _ | _ <;> rfl
 
+def Request.Kind.code : Request.Kind → UInt8
+  | .readFile => 0 | .writeFile => 1 | .playSound => 2 | .http => 3
+
+def Request.Kind.ofCode : UInt8 → Option Request.Kind
+  | 0 => some .readFile | 1 => some .writeFile | 2 => some .playSound | 3 => some .http
+  | _ => none
+
+@[simp] theorem Request.Kind.ofCode_code (k : Request.Kind) :
+    Request.Kind.ofCode (Request.Kind.code k) = some k := by
+  cases k <;> rfl
+
 /-! ## What fits
 
 The round trip holds for frames whose integers fit the wire's 32-bit fields and whose strings
@@ -96,10 +107,41 @@ def fitsTextInput (t : TextInput) : Bool :=
   fitsRef t.control && fitsRect t.rect && fitsRect t.caret && fitsRange t.selection &&
     t.marked.all fitsRange && fi t.textOrigin.x && fi t.textOrigin.y && fs t.text
 
+def fu64 (n : Nat) : Bool := decide (FitsU64 n)
+def fi64 (v : Int) : Bool := decide (FitsI64 v)
+def fb (b : ByteArray) : Bool := decide (FitsBytes b)
+
+@[simp] theorem fu64_iff (n : Nat) : fu64 n = true ↔ FitsU64 n := by
+  simp only [fu64, decide_eq_true_eq]
+@[simp] theorem fi64_iff (v : Int) : fi64 v = true ↔ FitsI64 v := by
+  simp only [fi64, decide_eq_true_eq]
+@[simp] theorem fb_iff (b : ByteArray) : fb b = true ↔ FitsBytes b := by
+  simp only [fb, decide_eq_true_eq]
+
+def fitsHeaders (hs : List (String × String)) : Bool :=
+  fu hs.length && hs.all fun (k, v) => fs k && fs v
+
+def fitsRequest : Request → Bool
+  | .readFile p => fs p
+  | .writeFile p d => fs p && fb d
+  | .playSound n => fs n
+  | .http m u hs b t => fs m && fs u && fitsHeaders hs && fb b && fu t
+
 def fitsEffect : Effect → Bool
   | .setClipboard s => fs s
   | .beep => true
   | .focus c => fitsRef c
+  | .setTimer n ms => fs n && fu ms
+  | .cancelTimer n => fs n
+  | .request id r => fu id && fitsRequest r
+  | .quit => true
+
+def fitsSub : Sub → Bool
+  | .every ms => fu ms
+
+def fitsSubCmd : SubCmd → Bool
+  | .start id sub => fu id && fitsSub sub
+  | .stop id => fu id
 
 /-- Every value fits its field. The other condition of the round trip is that the encoding is
 under 4 GiB (each section's byte length is a `u32`). -/
@@ -108,7 +150,8 @@ def fitsFrame (f : Frame) : Bool :=
     fu f.draws.size && f.draws.all fitsDraw &&
     fu f.ax.size && f.ax.all fitsAx &&
     f.textInput.all fitsTextInput &&
-    fu f.effects.size && f.effects.all fitsEffect
+    fu f.effects.size && f.effects.all fitsEffect &&
+    fu f.subs.size && f.subs.all fitsSubCmd && f.wake.all fu64
 
 /-! ## Encoding (specification) -/
 
@@ -153,19 +196,43 @@ def textInput : Option TextInput → List UInt8
 
 def cursor (c : Cursor) : List UInt8 := [Cursor.code c] ++ pad 3
 
+def header1 (kv : String × String) : List UInt8 := str kv.1 ++ str kv.2
+
+/-- A `u32` count, then each name and value. -/
+def headers (hs : List (String × String)) : List UInt8 := u32 hs.length ++ hs.flatMap header1
+
+/-- A request's fields after its record head and id. -/
+def requestBody : Request → List UInt8
+  | .readFile p => str p
+  | .writeFile p d => str p ++ bytes d
+  | .playSound n => str n
+  | .http m u hs b t => u32 t ++ str m ++ str u ++ headers hs ++ bytes b
+
 def effect : Effect → List UInt8
   | .setClipboard s => [0] ++ pad 3 ++ str s
   | .beep => [1] ++ pad 3
   | .focus c => [2] ++ pad 3 ++ ref c
+  | .setTimer n ms => [3] ++ pad 3 ++ u32 ms ++ str n
+  | .cancelTimer n => [4] ++ pad 3 ++ str n
+  | .request id r => [5, Request.Kind.code r.kind] ++ pad 2 ++ u32 id ++ requestBody r
+  | .quit => [6] ++ pad 3
+
+def subCmd : SubCmd → List UInt8
+  | .start id (.every ms) => [0, 0] ++ pad 2 ++ u32 id ++ u32 ms
+  | .stop id => [1] ++ pad 3 ++ u32 id
+
+/-- `[hasWake, 0, 0, 0]`, then the deadline as a `u64` (0 when there is none). -/
+def wake (w : Option Nat) : List UInt8 := bool w.isSome ++ pad 3 ++ u64 (w.getD 0)
 
 def magic : List UInt8 := [0x43, 0x41, 0x46, 0x52] -- "CAFR"
 
-/-- Magic, version 1, flags 0. -/
-def header : List UInt8 := magic ++ [1, 0, 0, 0]
+/-- Magic, version 2, flags 0. -/
+def header : List UInt8 := magic ++ [2, 0, 0, 0]
 
 def frame (f : Frame) : List UInt8 :=
   header ++ size f.size ++ list draw f.draws.toList ++ list ax f.ax.toList ++
-    textInput f.textInput ++ cursor f.cursor ++ list effect f.effects.toList
+    textInput f.textInput ++ cursor f.cursor ++ list effect f.effects.toList ++
+    list subCmd f.subs.toList ++ wake f.wake
 
 end Enc
 
@@ -258,6 +325,26 @@ def cursor : Dec Cursor := do
   skip 3
   return c
 
+def header1 : Dec (String × String) := do return (← str, ← str)
+
+def headers : Dec (List (String × String)) := do
+  let n ← u32
+  count header1 n
+
+def requestBody : Request.Kind → Dec Request
+  | .readFile => do return .readFile (← str)
+  | .writeFile => do
+    let p ← str
+    return .writeFile p (← bytes)
+  | .playSound => do return .playSound (← str)
+  | .http => do
+    let t ← u32
+    let m ← str
+    let u ← str
+    let hs ← headers
+    let b ← bytes
+    return .http m u hs b t
+
 def effect : Dec Effect := do
   match (← byte) with
   | 0 =>
@@ -269,7 +356,42 @@ def effect : Dec Effect := do
   | 2 =>
     skip 3
     return .focus (← ref)
+  | 3 =>
+    skip 3
+    let ms ← u32
+    return .setTimer (← str) ms
+  | 4 =>
+    skip 3
+    return .cancelTimer (← str)
+  | 5 =>
+    let some k := Request.Kind.ofCode (← byte) | fail
+    skip 2
+    let id ← u32
+    return .request id (← requestBody k)
+  | 6 =>
+    skip 3
+    return .quit
   | _ => fail
+
+def subCmd : Dec SubCmd := do
+  match (← byte) with
+  | 0 =>
+    match (← byte) with
+    | 0 =>
+      skip 2
+      let id ← u32
+      return .start id (.every (← u32))
+    | _ => fail
+  | 1 =>
+    skip 3
+    return .stop (← u32)
+  | _ => fail
+
+def wake : Dec (Option Nat) := do
+  let has ← bool
+  skip 3
+  let w ← u64
+  return if has then some w else none
 
 def frame : Dec Frame := do
   expect Enc.header
@@ -279,8 +401,10 @@ def frame : Dec Frame := do
   let textInput ← textInput
   let cursor ← cursor
   let effects ← list effect
+  let subs ← list subCmd
+  let wake ← wake
   return { size := sz, draws := draws.toArray, ax := ax.toArray, textInput, cursor,
-           effects := effects.toArray }
+           effects := effects.toArray, subs := subs.toArray, wake }
 
 /-! ### Round trips -/
 
@@ -378,6 +502,37 @@ theorem cursor_enc (c : Cursor) (r : List UInt8) : cursor (Enc.cursor c ++ r) = 
   simp only [cursor, Enc.cursor, List.cons_append, List.nil_append, bind_apply, byte_cons,
       Cursor.ofCode_code, skip_pad, pure_apply]
 
+theorem header1_enc {kv : String × String} (h : (fs kv.1 && fs kv.2) = true) (r : List UInt8) :
+    header1 (Enc.header1 kv ++ r) = some (kv, r) := by
+  simp only [Bool.and_eq_true, fs_iff] at h
+  simp only [header1, Enc.header1, List.append_assoc, bind_apply, str_enc h.1, str_enc h.2,
+      pure_apply]
+
+theorem headers_enc {hs : List (String × String)} (h : fitsHeaders hs = true) (r : List UInt8) :
+    headers (Enc.headers hs ++ r) = some (hs, r) := by
+  simp only [fitsHeaders, Bool.and_eq_true, fu_iff, List.all_eq_true] at h
+  simp only [headers, Enc.headers, List.append_assoc, bind_apply, u32_enc h.1]
+  exact count_enc hs (fun kv hkv => header1_enc (by simpa using h.2 kv hkv)) r
+
+theorem requestBody_enc {q : Request} (h : fitsRequest q = true) (r : List UInt8) :
+    requestBody q.kind (Enc.requestBody q ++ r) = some (q, r) := by
+  cases q with
+  | readFile p =>
+    simp only [fitsRequest, fs_iff] at h
+    simp only [Request.kind, requestBody, Enc.requestBody, bind_apply, str_enc h, pure_apply]
+  | writeFile p d =>
+    simp only [fitsRequest, Bool.and_eq_true, fs_iff, fb_iff] at h
+    simp only [Request.kind, requestBody, Enc.requestBody, List.append_assoc, bind_apply,
+        str_enc h.1, bytes_enc h.2, pure_apply]
+  | playSound n =>
+    simp only [fitsRequest, fs_iff] at h
+    simp only [Request.kind, requestBody, Enc.requestBody, bind_apply, str_enc h, pure_apply]
+  | http m u hs b t =>
+    simp only [fitsRequest, Bool.and_eq_true, fs_iff, fb_iff, fu_iff] at h
+    obtain ⟨⟨⟨⟨hm, hu⟩, hh⟩, hb⟩, ht⟩ := h
+    simp only [Request.kind, requestBody, Enc.requestBody, List.append_assoc, bind_apply,
+        u32_enc ht, str_enc hm, str_enc hu, headers_enc hh, bytes_enc hb, pure_apply]
+
 theorem effect_enc {x : Effect} (h : fitsEffect x = true) (r : List UInt8) :
     effect (Enc.effect x ++ r) = some (x, r) := by
   cases x with
@@ -391,15 +546,56 @@ theorem effect_enc {x : Effect} (h : fitsEffect x = true) (r : List UInt8) :
     simp only [fitsEffect] at h
     simp only [effect, Enc.effect, List.cons_append, List.nil_append, List.append_assoc, bind_apply,
         byte_cons, skip_pad, ref_enc h, pure_apply]
+  | setTimer n ms =>
+    simp only [fitsEffect, Bool.and_eq_true, fs_iff, fu_iff] at h
+    simp only [effect, Enc.effect, List.cons_append, List.nil_append, List.append_assoc, bind_apply,
+        byte_cons, skip_pad, u32_enc h.2, str_enc h.1, pure_apply]
+  | cancelTimer n =>
+    simp only [fitsEffect, fs_iff] at h
+    simp only [effect, Enc.effect, List.cons_append, List.nil_append, List.append_assoc, bind_apply,
+        byte_cons, skip_pad, str_enc h, pure_apply]
+  | request id rq =>
+    simp only [fitsEffect, Bool.and_eq_true, fu_iff] at h
+    simp only [effect, Enc.effect, List.cons_append, List.nil_append, List.append_assoc, bind_apply,
+        byte_cons, Request.Kind.ofCode_code, skip_pad, u32_enc h.1]
+    rw [requestBody_enc h.2]; rfl
+  | quit => simp only [effect, Enc.effect, List.cons_append, List.nil_append, bind_apply, byte_cons,
+      skip_pad, pure_apply]
+
+theorem subCmd_enc {x : SubCmd} (h : fitsSubCmd x = true) (r : List UInt8) :
+    subCmd (Enc.subCmd x ++ r) = some (x, r) := by
+  cases x with
+  | start id sub =>
+    cases sub with
+    | every ms =>
+      simp only [fitsSubCmd, fitsSub, Bool.and_eq_true, fu_iff] at h
+      simp only [subCmd, Enc.subCmd, List.cons_append, List.nil_append, List.append_assoc,
+          bind_apply, byte_cons, skip_pad, u32_enc h.1, u32_enc h.2, pure_apply]
+  | stop id =>
+    simp only [fitsSubCmd, fu_iff] at h
+    simp only [subCmd, Enc.subCmd, List.cons_append, List.nil_append, List.append_assoc,
+        bind_apply, byte_cons, skip_pad, u32_enc h, pure_apply]
+
+theorem wake_enc {w : Option Nat} (h : w.all fu64 = true) (r : List UInt8) :
+    wake (Enc.wake w ++ r) = some (w, r) := by
+  cases w with
+  | none =>
+    simp only [wake, Enc.wake, Option.isSome_none, Option.getD_none, List.append_assoc,
+        bind_apply, bool_enc, skip_pad, u64_enc (show FitsU64 0 by decide), pure_apply,
+        Bool.false_eq_true, ↓reduceIte]
+  | some n =>
+    simp only [Option.all_some, fu64_iff] at h
+    simp only [wake, Enc.wake, Option.isSome_some, Option.getD_some, List.append_assoc,
+        bind_apply, bool_enc, skip_pad, u64_enc h, pure_apply, ↓reduceIte]
 
 /-- Sections of a frame whose encoding is under 4 GiB have `u32` byte lengths. -/
 def SizeOk (f : Frame) : Prop := (Enc.frame f).length < 4294967296
 
 theorem frame_enc {f : Frame} (h : fitsFrame f = true) (hs : SizeOk f) (r : List UInt8) :
     frame (Enc.frame f ++ r) = some (f, r) := by
-  obtain ⟨sz, draws, axs, ti, cur, effs⟩ := f
+  obtain ⟨sz, draws, axs, ti, cur, effs, subs, wk⟩ := f
   simp only [fitsFrame, Bool.and_eq_true, fi_iff, fu_iff, Array.all_eq_true'] at h
-  obtain ⟨⟨⟨⟨⟨⟨⟨⟨hw, hh⟩, hdn⟩, hd⟩, han⟩, ha⟩, ht⟩, hen⟩, he⟩ := h
+  obtain ⟨⟨⟨⟨⟨⟨⟨⟨⟨⟨⟨hw, hh⟩, hdn⟩, hd⟩, han⟩, ha⟩, ht⟩, hen⟩, he⟩, hsn⟩, hsc⟩, hwk⟩ := h
   simp only [SizeOk, Enc.frame, Enc.list, Enc.sect, List.length_append, Enc.length_u32] at hs
   simp only [frame, Enc.frame, List.append_assoc, bind_apply, expect_enc]
   rw [size_enc hw hh]; dsimp only
@@ -410,7 +606,10 @@ theorem frame_enc {f : Frame} (h : fitsFrame f = true) (hs : SizeOk f) (r : List
   rw [textInput_enc ht]; dsimp only
   rw [cursor_enc]; dsimp only
   rw [list_enc (e := Enc.effect) _ (fun x hx => effect_enc (he x (by simpa using hx))) (by simpa using hen)
-    (by unfold FitsU32; omega)]
+    (by unfold FitsU32; omega)]; dsimp only
+  rw [list_enc (e := Enc.subCmd) _ (fun x hx => subCmd_enc (hsc x (by simpa using hx)))
+    (by simpa using hsn) (by unfold FitsU32; omega)]; dsimp only
+  rw [wake_enc hwk]
   simp only [Array.toArray_toList, pure_apply]
 
 end Dec
@@ -433,16 +632,41 @@ def draw : Draw → Nat
 
 def ax (n : AxNode) : Nat := 36 + str n.label + str n.value
 
+def bytes (b : ByteArray) : Nat := 4 + b.size
+
+def headers (hs : List (String × String)) : Nat :=
+  4 + hs.foldl (fun n kv => n + (str kv.1 + str kv.2)) 0
+
+def requestBody : Request → Nat
+  | .readFile p => str p
+  | .writeFile p d => str p + bytes d
+  | .playSound n => str n
+  | .http m u hs b _ => 4 + str m + str u + headers hs + bytes b
+
 def effect : Effect → Nat
   | .setClipboard s => 4 + str s
   | .beep => 4
   | .focus _ => 12
+  | .setTimer n _ => 8 + str n
+  | .cancelTimer n => 4 + str n
+  | .request _ r => 8 + requestBody r
+  | .quit => 4
+
+def subCmd : SubCmd → Nat
+  | .start .. => 12
+  | .stop _ => 8
 
 def textInput : Option TextInput → Nat
   | none => 4
   | some t => 68 + str t.text
 
 def list {α : Type} (len : α → Nat) (xs : Array α) : Nat := xs.foldl (fun n x => n + len x) 0
+
+theorem foldl_add {α : Type} (len : α → Nat) (xs : List α) (n : Nat) :
+    xs.foldl (fun n x => n + len x) n = n + (xs.map len).sum := by
+  induction xs generalizing n with
+  | nil => simp only [List.foldl_nil, List.map_nil, List.sum_nil, Nat.add_zero]
+  | cons x xs ih => simp only [List.foldl_cons, ih, List.map_cons, List.sum_cons]; omega
 
 theorem str_eq (s : String) : str s = (Enc.str s).length := by
   simp only [str, String.toUTF8_eq_toByteArray, String.size_toByteArray, Enc.str,
@@ -461,12 +685,28 @@ theorem ax_eq (n : AxNode) : ax n = (Enc.ax n).length := by
       Enc.bool, List.cons_append, List.nil_append, Enc.pad, List.reduceReplicate, Enc.ref,
       List.append_assoc, Enc.rect, List.length_cons, Enc.length_i32]; all_goals omega
 
+theorem bytes_eq (b : ByteArray) : bytes b = (Enc.bytes b).length := by
+  simp only [bytes, Enc.bytes, List.length_append, Enc.length_u32, Array.length_toList,
+      ByteArray.size_data]
+
+theorem headers_eq (hs : List (String × String)) : headers hs = (Enc.headers hs).length := by
+  rw [headers, foldl_add]
+  simp only [Enc.headers, List.length_append, Enc.length_u32, List.length_flatMap, Enc.header1,
+      str_eq, Nat.zero_add]
+
+theorem requestBody_eq (r : Request) : requestBody r = (Enc.requestBody r).length := by
+  cases r <;> simp only [requestBody, Enc.requestBody, List.length_append, str_eq, bytes_eq,
+      headers_eq, Enc.length_u32] <;> try omega
+
 theorem effect_eq (e : Effect) : effect e = (Enc.effect e).length := by
-  cases e <;> simp only [effect, str_eq, Enc.str, String.toUTF8_eq_toByteArray,
+  cases e <;> simp only [effect, requestBody_eq, str_eq, Enc.str, String.toUTF8_eq_toByteArray,
       String.size_toByteArray, List.length_append, Enc.length_u32, Array.length_toList,
       ByteArray.size_data, Enc.effect, Enc.pad, List.reduceReplicate, List.cons_append,
       List.nil_append, List.length_cons, List.length_nil, Nat.zero_add,
       Nat.reduceAdd, Enc.ref] <;> all_goals omega
+
+theorem subCmd_eq (c : SubCmd) : subCmd c = (Enc.subCmd c).length := by
+  rcases c with ⟨_, ⟨_⟩⟩ | _ <;> rfl
 
 theorem textInput_eq (t : Option TextInput) : textInput t = (Enc.textInput t).length := by
   cases t <;> simp only [textInput, Enc.textInput, Enc.pad, List.reduceReplicate, List.cons_append,
@@ -474,12 +714,6 @@ theorem textInput_eq (t : Option TextInput) : textInput t = (Enc.textInput t).le
       Enc.str, String.toUTF8_eq_toByteArray, String.size_toByteArray, List.length_append,
       Enc.length_u32, Array.length_toList, ByteArray.size_data, Enc.bool, Enc.ref, Enc.rect,
       List.append_assoc, Enc.range, Enc.point, Enc.length_i32] <;> all_goals omega
-
-theorem foldl_add {α : Type} (len : α → Nat) (xs : List α) (n : Nat) :
-    xs.foldl (fun n x => n + len x) n = n + (xs.map len).sum := by
-  induction xs generalizing n with
-  | nil => simp only [List.foldl_nil, List.map_nil, List.sum_nil, Nat.add_zero]
-  | cons x xs ih => simp only [List.foldl_cons, ih, List.map_cons, List.sum_cons]; omega
 
 theorem list_eq {α : Type} (len : α → Nat) (e : α → List UInt8) (h : ∀ x, len x = (e x).length)
     (xs : Array α) : list len xs = (xs.toList.flatMap e).length := by
@@ -526,10 +760,31 @@ def textInput (b : ByteArray) : Option TextInput → ByteArray
 
 def cursor (b : ByteArray) (c : Cursor) : ByteArray := pad (b.push (Cursor.code c)) 3
 
+def header1 (b : ByteArray) (kv : String × String) : ByteArray := str (str b kv.1) kv.2
+
+def headers (b : ByteArray) (hs : List (String × String)) : ByteArray :=
+  hs.foldl header1 (u32 b hs.length)
+
+def requestBody (b : ByteArray) : Request → ByteArray
+  | .readFile p => str b p
+  | .writeFile p d => bytes (str b p) d
+  | .playSound n => str b n
+  | .http m u hs body t => bytes (headers (str (str (u32 b t) m) u) hs) body
+
 def effect (b : ByteArray) : Effect → ByteArray
   | .setClipboard s => str (pad (b.push 0) 3) s
   | .beep => pad (b.push 1) 3
   | .focus c => ref (pad (b.push 2) 3) c
+  | .setTimer n ms => str (u32 (pad (b.push 3) 3) ms) n
+  | .cancelTimer n => str (pad (b.push 4) 3) n
+  | .request id r => requestBody (u32 (pad ((b.push 5).push (Request.Kind.code r.kind)) 2) id) r
+  | .quit => pad (b.push 6) 3
+
+def subCmd (b : ByteArray) : SubCmd → ByteArray
+  | .start id (.every ms) => u32 (u32 (pad ((b.push 0).push 0) 2) id) ms
+  | .stop id => u32 (pad (b.push 1) 3) id
+
+def wake (b : ByteArray) (w : Option Nat) : ByteArray := u64 (pad (bool b w.isSome) 3) (w.getD 0)
 
 def list {α : Type} (put : ByteArray → α → ByteArray) (len : α → Nat) (b : ByteArray)
     (xs : Array α) : ByteArray :=
@@ -537,12 +792,13 @@ def list {α : Type} (put : ByteArray → α → ByteArray) (len : α → Nat) (
 
 def frame (f : Frame) : ByteArray :=
   let cap := 40 + Len.list Len.draw f.draws + Len.list Len.ax f.ax +
-    Len.textInput f.textInput + Len.list Len.effect f.effects
+    Len.textInput f.textInput + Len.list Len.effect f.effects + 8 + Len.list Len.subCmd f.subs + 12
   let b := (ByteArray.emptyWithCapacity cap).append ⟨Enc.header.toArray⟩
   let b := list draw Len.draw (i32 (i32 b f.size.w) f.size.h) f.draws
   let b := list ax Len.ax b f.ax
   let b := cursor (textInput b f.textInput) f.cursor
-  list effect Len.effect b f.effects
+  let b := list effect Len.effect b f.effects
+  wake (list subCmd Len.subCmd b f.subs) f.wake
 
 @[simp] theorem rect_data (b : ByteArray) (r : Rect) :
     (rect b r).data.toList = b.data.toList ++ Enc.rect r := by simp only [rect, i32_data,
@@ -583,9 +839,39 @@ def frame (f : Frame) : ByteArray :=
   simp only [cursor, pad_data, ByteArray.data_push, Array.toList_push, List.append_assoc,
       List.cons_append, List.nil_append, Enc.cursor]
 
+@[simp] theorem header1_data (b : ByteArray) (kv : String × String) :
+    (header1 b kv).data.toList = b.data.toList ++ Enc.header1 kv := by
+  simp only [header1, str_data, List.append_assoc, Enc.header1]
+
+theorem foldl_data' {α : Type} (put : ByteArray → α → ByteArray) (e : α → List UInt8)
+    (h : ∀ b x, (put b x).data.toList = b.data.toList ++ e x) (xs : List α) (b : ByteArray) :
+    (xs.foldl put b).data.toList = b.data.toList ++ xs.flatMap e := by
+  induction xs generalizing b with
+  | nil => simp only [List.foldl_nil, List.flatMap_nil, List.append_nil]
+  | cons x xs ih => simp only [List.foldl_cons, ih, h, List.append_assoc, List.flatMap_cons]
+
+@[simp] theorem headers_data (b : ByteArray) (hs : List (String × String)) :
+    (headers b hs).data.toList = b.data.toList ++ Enc.headers hs := by
+  simp only [headers, foldl_data' header1 Enc.header1 header1_data, u32_data, List.append_assoc,
+      Enc.headers]
+
+@[simp] theorem requestBody_data (b : ByteArray) (r : Request) :
+    (requestBody b r).data.toList = b.data.toList ++ Enc.requestBody r := by
+  cases r <;> simp only [requestBody, str_data, bytes_data, headers_data, u32_data,
+      List.append_assoc, Enc.requestBody]
+
+@[simp] theorem subCmd_data (b : ByteArray) (c : SubCmd) :
+    (subCmd b c).data.toList = b.data.toList ++ Enc.subCmd c := by
+  rcases c with ⟨_, ⟨_⟩⟩ | _ <;> simp only [subCmd, u32_data, pad_data, ByteArray.data_push,
+      Array.toList_push, List.append_assoc, List.cons_append, List.nil_append, Enc.subCmd]
+
+@[simp] theorem wake_data (b : ByteArray) (w : Option Nat) :
+    (wake b w).data.toList = b.data.toList ++ Enc.wake w := by
+  simp only [wake, u64_data, pad_data, bool_data, List.append_assoc, Enc.wake]
+
 @[simp] theorem effect_data (b : ByteArray) (e : Effect) :
     (effect b e).data.toList = b.data.toList ++ Enc.effect e := by
-  cases e <;> simp only [effect, str_data, pad_data, ByteArray.data_push, Array.toList_push,
+  cases e <;> simp only [effect, str_data, u32_data, requestBody_data, pad_data, ByteArray.data_push, Array.toList_push,
       List.append_assoc, List.cons_append, List.nil_append, Enc.effect, ref_data]
 
 theorem foldl_data {α : Type} (put : ByteArray → α → ByteArray) (e : α → List UInt8)
@@ -606,7 +892,7 @@ theorem list_data {α : Type} (put : ByteArray → α → ByteArray) (len : α �
 theorem frame_data (f : Frame) : (frame f).data.toList = Enc.frame f := by
   have hempty : (ByteArray.emptyWithCapacity 0).data.toList = [] := rfl
   simp only [frame, Enc.frame]
-  rw [list_data _ _ _ effect_data Len.effect_eq, cursor_data, textInput_data,
+  rw [wake_data, list_data _ _ _ subCmd_data Len.subCmd_eq, list_data _ _ _ effect_data Len.effect_eq, cursor_data, textInput_data,
     list_data _ _ _ ax_data Len.ax_eq, list_data _ _ _ draw_data Len.draw_eq]
   simp only [ByteArray.append_eq, i32_data, ByteArray.data_append, Array.toList_append,
       List.append_assoc, Enc.size, List.append_left_eq_self, Array.toList_eq_nil_iff]

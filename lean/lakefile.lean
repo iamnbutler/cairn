@@ -81,6 +81,13 @@ lean_lib Todo where
   defaultFacets := #[LeanLib.staticFacet]
   moreLinkObjs := #[claims_meta.o]
 
+/-- Clock (workstream Q, docs/effects.md): its exports (`Examples.Clock.Abi`) and the app. -/
+@[default_target]
+lean_lib Clock where
+  roots := #[`Examples.Clock.Abi, `Examples.Clock]
+  defaultFacets := #[LeanLib.staticFacet]
+  moreLinkObjs := #[claims_meta.o]
+
 lean_exe bench where
   root := `Bench
 

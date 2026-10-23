@@ -77,6 +77,7 @@ theorem step_sound (app : App S) (cfg : Config) (s : State S) (e : Event) (h : S
   unfold step
   split
   · rename_i heq
+    dsimp only
     split
     · rename_i hc
       simp only [Bool.and_eq_true] at hc
@@ -224,26 +225,220 @@ theorem route_names (m : TextMetrics) (s : State S) (e : Event) :
   | insertText str rep => exact textActions_names s str rep
   | _ => first | exact names_nil _ | exact onField_names s _
 
-/-- `step` passes `update` exactly the routed actions, in order: the app state after a step
-is `update` folded over `(route cfg.metrics s e).2`, and the effects are theirs. -/
-theorem step_delivers (app : App S) (cfg : Config) (s : State S) (e : Event) :
-    ((step app cfg s e).1.app, (step app cfg s e).2) =
-      deliver app.update s.app (route cfg.metrics s e).2 := by
+/-- Nothing delivered means the app state is the one it started from. -/
+def Untouched (a0 : S) (c : Ctx S) : Prop := c.delivered = false → c.app = a0
+
+theorem give_untouched (app : App S) (a0 : S) (c : Ctx S) (m : Msg) :
+    Untouched a0 (give app c m) := by
+  intro h; simp [give] at h
+
+theorem hear_untouched (app : App S) {a0 : S} {c : Ctx S} (h : Untouched a0 c) :
+    Untouched a0 (hear app c) := by
+  unfold hear; split
+  · exact h
+  · exact give_untouched app a0 _ _
+
+theorem fire_untouched (app : App S) {a0 : S} {c : Ctx S} (n : String) (h : Untouched a0 c) :
+    Untouched a0 (fire app c n) := by
+  unfold fire; split
+  · exact give_untouched app a0 _ _
+  · exact h
+
+theorem foldl_fire_untouched (app : App S) {a0 : S} (ns : List String) :
+    ∀ {c : Ctx S}, Untouched a0 c → Untouched a0 (ns.foldl (fire app) c) := by
+  induction ns with
+  | nil => intro c h; exact h
+  | cons n ns ih => intro c h; exact ih (fire_untouched app n h)
+
+theorem boot_untouched (app : App S) {a0 : S} {c : Ctx S} (h : Untouched a0 c) :
+    Untouched a0 (boot app c) := by
+  unfold boot; split
+  · exact h
+  · intro h'; simp at h'
+
+theorem admit_untouched (app : App S) (s : State S) (e : Event) :
+    Untouched s.app (admit app s e) := by
+  have base : Untouched s.app ({ app := s.app, world := s.world } : Ctx S) := fun _ => rfl
+  cases e <;> simp only [admit] <;> (try exact base)
+  case clock t =>
+    have hb := boot_untouched app (c := { app := s.app, world := s.world.tick t }) (fun _ => rfl)
+    split
+    · exact hb
+    · exact foldl_fire_untouched app _ (hear_untouched app hb)
+  all_goals (split <;> (try split) <;>
+    first | exact base | exact give_untouched app _ _ _ | exact hear_untouched app base)
+
+theorem admit_input (app : App S) (s : State S) {e : Event} (h : e.isWorld = false) :
+    admit app s e = { app := s.app, world := s.world } := by
+  cases e <;> simp_all [Event.isWorld, admit]
+
+/-- `step` passes `update` exactly the routed actions, in order, after telling the app the
+time if it hasn't heard it: the app state after a step is `act` over `(route cfg.metrics s e).2`
+from what the world events delivered. -/
+theorem step_app (app : App S) (cfg : Config) (s : State S) (e : Event) :
+    (step app cfg s e).1.app = (act app (admit app s e) (route cfg.metrics s e).2).app := by
   have hl := (route_laid cfg.metrics s e).2
+  have hu := admit_untouched app s e
   unfold step
-  split
-  rename_i s1 acts heq
-  rw [heq] at hl
-  rw [heq]
+  generalize route cfg.metrics s e = r at hl ⊢
+  obtain ⟨s1, acts⟩ := r
+  dsimp only at hl ⊢
   split
   · rename_i hc
-    simp only [Bool.and_eq_true, List.isEmpty_iff] at hc
-    simp_all [deliver]
-  · generalize deliver app.update s.app acts = d
-    obtain ⟨st, effs⟩ := d
-    generalize settle app cfg st s1.pointer s1.ui settleFuel s1.ui = r
-    obtain ⟨ui, laid⟩ := r
-    rfl
+    simp only [Bool.and_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true, List.isEmpty_iff] at hc
+    obtain ⟨⟨ha, hd⟩, -⟩ := hc
+    subst ha
+    simp only [act, List.isEmpty_nil, ↓reduceIte]
+    rw [hl, hu hd]
+  · rfl
+
+/-- For input events (not from the world), when the app has heard the current time, the app
+state after a step is `update` folded over exactly the routed actions: M1's statement. -/
+theorem step_delivers (app : App S) (cfg : Config) (s : State S) (e : Event)
+    (hw : e.isWorld = false) (hh : s.world.heard = some s.world.clock) :
+    (step app cfg s e).1.app = (deliver app.update s.app (route cfg.metrics s e).2).1 := by
+  rw [step_app, admit_input app s hw]
+  unfold act
+  split
+  · rename_i he
+    simp only [List.isEmpty_iff] at he
+    simp [he, deliver]
+  · simp only [hear, hh, ↓reduceIte]
+
+/-- An app that ignores the world: `receive` never changes its state (the default, and every M1
+app's). -/
+def Quiet (app : App S) : Prop := ∀ st m, (app.receive st m).1 = st
+
+theorem give_app {app : App S} (h : Quiet app) (c : Ctx S) (m : Msg) : (give app c m).app = c.app :=
+  h c.app m
+
+theorem hear_app {app : App S} (h : Quiet app) (c : Ctx S) : (hear app c).app = c.app := by
+  unfold hear; split
+  · rfl
+  · exact give_app h _ _
+
+theorem fire_app {app : App S} (h : Quiet app) (c : Ctx S) (n : String) :
+    (fire app c n).app = c.app := by
+  unfold fire; split
+  · exact give_app h _ _
+  · rfl
+
+theorem foldl_fire_app {app : App S} (h : Quiet app) (ns : List String) :
+    ∀ (c : Ctx S), (ns.foldl (fire app) c).app = c.app := by
+  induction ns with
+  | nil => intro c; rfl
+  | cons n ns ih => intro c; simp only [List.foldl_cons]; rw [ih, fire_app h]
+
+theorem boot_app {app : App S} (h : Quiet app) (c : Ctx S) : (boot app c).app = c.app := by
+  unfold boot; split
+  · rfl
+  · exact hear_app h _
+
+theorem admit_app {app : App S} (h : Quiet app) (s : State S) (e : Event) :
+    (admit app s e).app = s.app := by
+  cases e <;> simp only [admit]
+  case clock t =>
+    split
+    · exact boot_app h _
+    · rw [foldl_fire_app h, hear_app h, boot_app h]
+  all_goals (try split) <;> (try split) <;> (try rfl) <;>
+    first | (rw [give_app h, hear_app h]) | exact hear_app h _
+
+theorem act_app {app : App S} (h : Quiet app) (c : Ctx S) (acts : List Action) :
+    (act app c acts).app = (deliver app.update c.app acts).1 := by
+  unfold act; split
+  · rename_i he
+    simp only [List.isEmpty_iff] at he
+    simp [he, deliver]
+  · simp only [hear_app h]
+
+/-! ### Any app: a step is a sequence of updates and messages -/
+
+/-- One input to an app: an action to `update` or a message to `receive`. -/
+def feed (app : App S) (st : S) : Action ⊕ Msg → S
+  | .inl a => (app.update st a).1
+  | .inr m => (app.receive st m).1
+
+/-- `b` is `a` after some actions and messages. -/
+def Fed (app : App S) (a b : S) : Prop := ∃ xs : List (Action ⊕ Msg), b = xs.foldl (feed app) a
+
+theorem Fed.refl (app : App S) (a : S) : Fed app a a := ⟨[], rfl⟩
+
+theorem Fed.trans {app : App S} {a b c : S} (h1 : Fed app a b) (h2 : Fed app b c) : Fed app a c := by
+  obtain ⟨xs, rfl⟩ := h1; obtain ⟨ys, rfl⟩ := h2
+  exact ⟨xs ++ ys, by rw [List.foldl_append]⟩
+
+theorem give_fed (app : App S) (c : Ctx S) (m : Msg) : Fed app c.app (give app c m).app :=
+  ⟨[.inr m], rfl⟩
+
+theorem hear_fed (app : App S) (c : Ctx S) : Fed app c.app (hear app c).app := by
+  unfold hear; split
+  · exact Fed.refl _ _
+  · exact give_fed _ _ _
+
+theorem fire_fed (app : App S) (c : Ctx S) (n : String) : Fed app c.app (fire app c n).app := by
+  unfold fire; split
+  · exact give_fed _ _ _
+  · exact Fed.refl _ _
+
+theorem foldl_fire_fed (app : App S) (ns : List String) :
+    ∀ (c : Ctx S), Fed app c.app (ns.foldl (fire app) c).app := by
+  induction ns with
+  | nil => intro c; exact Fed.refl _ _
+  | cons n ns ih => intro c; exact (fire_fed app c n).trans (ih _)
+
+theorem boot_fed (app : App S) (c : Ctx S) : Fed app c.app (boot app c).app := by
+  unfold boot; split
+  · exact Fed.refl _ _
+  · exact hear_fed app _
+
+theorem admit_fed (app : App S) (s : State S) (e : Event) : Fed app s.app (admit app s e).app := by
+  cases e <;> simp only [admit] <;> (try exact Fed.refl _ _)
+  case clock t =>
+    split
+    · exact boot_fed app _
+    · exact ((boot_fed app _).trans (hear_fed app _)).trans (foldl_fire_fed app _ _)
+  all_goals (try split) <;> (try split) <;> (try exact Fed.refl _ _) <;>
+    first
+    | exact (hear_fed app _).trans (give_fed app _ _)
+    | exact hear_fed app _
+
+theorem deliver_fed (u : S → Action → S × List Effect) (acts : List Action) :
+    ∀ (st : S) (effs : List Effect),
+      (acts.foldl (fun (p : S × List Effect) a => let (st', e) := u p.1 a; (st', p.2 ++ e))
+        (st, effs)).1 = acts.foldl (fun s a => (u s a).1) st := by
+  induction acts with
+  | nil => intro st effs; rfl
+  | cons a as ih => intro st effs; simp only [List.foldl_cons]; exact ih _ _
+
+theorem foldl_feed_inl (app : App S) (acts : List Action) :
+    ∀ (st : S), acts.foldl (fun s a => (app.update s a).1) st = (acts.map .inl).foldl (feed app) st := by
+  induction acts with
+  | nil => intro st; rfl
+  | cons a as ih => intro st; simp only [List.foldl_cons, List.map_cons]; exact ih _
+
+theorem act_fed (app : App S) (c : Ctx S) (acts : List Action) :
+    Fed app c.app (act app c acts).app := by
+  unfold act; split
+  · exact Fed.refl _ _
+  · refine (hear_fed app c).trans ⟨acts.map .inl, ?_⟩
+    show (deliver app.update _ acts).1 = _
+    unfold deliver
+    rw [deliver_fed, foldl_feed_inl]
+
+/-- **Any app.** The app state after a step is the one before after some updates and messages
+(the routed actions, the clock, due timers, a reply or a subscription event). -/
+theorem step_fed (app : App S) (cfg : Config) (s : State S) (e : Event) :
+    Fed app s.app (step app cfg s e).1.app := by
+  rw [step_app]
+  exact (admit_fed app s e).trans (act_fed app _ _)
+
+/-- For an app that ignores the world, the app state after any step is `update` folded over
+exactly the routed actions. -/
+theorem step_delivers_quiet {app : App S} (h : Quiet app) (cfg : Config) (s : State S)
+    (e : Event) :
+    (step app cfg s e).1.app = (deliver app.update s.app (route cfg.metrics s e).2).1 := by
+  rw [step_app, act_app h, admit_app h]
 
 /-! ## Pressable -/
 
@@ -268,13 +463,13 @@ theorem step_down_pressed (app : App S) (cfg : Config) (s : State S) (t : Target
   split
   rename_i s1 acts heq
   rw [heq] at hr
+  dsimp only
   split
   · intro _; exact hr
   · intro hpres
-    generalize deliver app.update s.app acts = d at hpres ⊢
-    obtain ⟨st, effs⟩ := d
-    obtain ⟨l, hl⟩ := settle_spec app cfg st s1.pointer (applyFocus effs s1.ui) settleFuel
-      (applyFocus effs s1.ui)
+    generalize act app (admit app s _) acts = c at hpres ⊢
+    obtain ⟨l, hl⟩ := settle_spec app cfg c.app s1.pointer (applyFocus c.effs s1.ui) settleFuel
+      (applyFocus c.effs s1.ui)
     simp only [hl] at hpres ⊢
     refine ⟨?_, hr.2⟩
     simp only [fixUI, Option.filter_eq_some_iff, applyFocus_pressed]

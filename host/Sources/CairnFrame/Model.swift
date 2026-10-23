@@ -96,11 +96,87 @@ public struct TextInput: Equatable, Sendable {
 
 public enum Cursor: UInt8, Sendable { case arrow, pointer, text }
 
+// The outside world (lean/Cairn/Effects.lean, docs/effects.md).
+
+/// The host's clock: monotonic ms (`CLOCK_MONOTONIC`), wall ms since the Unix epoch, and the
+/// local zone's offset from UTC in seconds.
+public struct Time: Equatable, Sendable {
+    public var mono: UInt64
+    public var wall: Int64
+    public var zone: Int32
+    public init(mono: UInt64, wall: Int64, zone: Int32) { self.mono = mono; self.wall = wall; self.zone = zone }
+}
+
+/// Why a request failed (`Cairn.Fault`).
+public enum Fault: UInt8, Sendable { case notFound, denied, timeout, network, invalid, other }
+
+public struct Header: Equatable, Sendable {
+    public var name, value: String
+    public init(_ name: String, _ value: String) { self.name = name; self.value = value }
+}
+
+/// Something the host does that answers back (`Cairn.Request`).
+public enum Request: Equatable, Sendable {
+    case readFile(path: String)
+    /// Atomic replace, creating missing parent directories.
+    case writeFile(path: String, data: [UInt8])
+    case playSound(name: String)
+    case http(method: String, url: String, headers: [Header], body: [UInt8], timeoutMs: UInt32)
+
+    /// The kind code on the wire (`Request.Kind.code`).
+    public var kindCode: UInt8 {
+        switch self {
+        case .readFile: 0
+        case .writeFile: 1
+        case .playSound: 2
+        case .http: 3
+        }
+    }
+}
+
+public enum Reply: Equatable, Sendable {
+    case done
+    case bytes([UInt8])
+    case http(status: UInt32, headers: [Header], body: [UInt8])
+    case failed(Fault, String)
+
+    /// `done` 0, `bytes` 1, `http` 2, `failed` 3 (`Reply.code`).
+    public var code: UInt8 {
+        switch self {
+        case .done: 0
+        case .bytes: 1
+        case .http: 2
+        case .failed: 3
+        }
+    }
+}
+
+public enum Sub: Hashable, Sendable {
+    /// A tick every `ms` milliseconds.
+    case every(ms: UInt32)
+}
+
+public enum SubEvent: UInt8, Sendable { case tick }
+
+/// Lean → host: start or stop a subscription under Lean's id for it.
+public enum SubCmd: Equatable, Sendable {
+    case start(id: UInt32, Sub)
+    case stop(id: UInt32)
+}
+
 public enum Effect: Equatable, Sendable {
     case setClipboard(String)
     case beep
     /// Run by Lean's runtime (it moves keyboard focus); the host has nothing to do.
     case focus(ControlRef)
+    /// Timers live in Lean's runtime (the frame's `wake` is the earliest deadline); the host
+    /// has nothing to do with these but show them in the debug log.
+    case setTimer(name: String, ms: UInt32)
+    case cancelTimer(String)
+    /// Run it and answer with `Event.reply(id:)`, once.
+    case request(id: UInt32, Request)
+    /// Quit the app.
+    case quit
 }
 
 public struct Frame: Equatable, Sendable {
@@ -110,10 +186,15 @@ public struct Frame: Equatable, Sendable {
     public var textInput: TextInput?
     public var cursor: Cursor
     public var effects: [Effect]
+    /// Subscriptions to start and stop, in order.
+    public var subs: [SubCmd]
+    /// Send a clock event once the monotonic clock reaches this (ms): the earliest timer.
+    public var wake: UInt64?
     public init(size: Size, draws: [Draw], ax: [AxNode] = [], textInput: TextInput? = nil,
-                cursor: Cursor = .arrow, effects: [Effect] = []) {
+                cursor: Cursor = .arrow, effects: [Effect] = [], subs: [SubCmd] = [],
+                wake: UInt64? = nil) {
         self.size = size; self.draws = draws; self.ax = ax; self.textInput = textInput
-        self.cursor = cursor; self.effects = effects
+        self.cursor = cursor; self.effects = effects; self.subs = subs; self.wake = wake
     }
 }
 
@@ -156,5 +237,9 @@ public enum Event: Equatable, Sendable {
     case resize(Size)
     case scale(percent: UInt32)
     case windowFocus(Bool)
+    /// The time. The host sends one first in every batch (docs/effects.md).
+    case clock(Time)
+    case reply(id: UInt32, Reply)
+    case subEvent(id: UInt32, SubEvent)
 }
 

@@ -30,8 +30,18 @@ final class FrameSuite: Suite {
         let axAt = 24 + drawsLen
         let sections = [16, axAt]
         var lengthFields = sections.flatMap { [$0, $0 + 4] }.filter { $0 + 4 <= b.count }
-        // Every u32 that the tail's effects section header could be: the last 8 bytes' head.
-        if b.count >= 8 { lengthFields.append(b.count - 8) }
+        // The tail ends with the effects and subs sections, then the 12-byte wake record: find
+        // each section header by its byte length reaching the next one.
+        func header(endingAt end: Int) -> Int? {
+            stride(from: end - 8, through: 0, by: -4).first { $0 + 8 + Int(u32($0 + 4)) == end }
+        }
+        if b.count >= 12 {
+            lengthFields.append(b.count - 12)  // the wake's presence byte (and padding)
+            if let subs = header(endingAt: b.count - 12) {
+                lengthFields += [subs, subs + 4]
+                if let effects = header(endingAt: subs) { lengthFields += [effects, effects + 4] }
+            }
+        }
         let kind = g.below(13)
         switch kind {
         case 0, 1:
@@ -88,8 +98,8 @@ final class FrameSuite: Suite {
         }
     }
 
-    /// The empty frame: size 0×0, no draws, no ax, no text input, arrow, no effects.
-    static let emptyFrame: [UInt8] = [0x43, 0x41, 0x46, 0x52, 1, 0, 0, 0] + [UInt8](repeating: 0, count: 40)
+    /// The empty frame: size 0×0, no draws, no ax, no text input, arrow, no effects, no subs, no wake.
+    static let emptyFrame: [UInt8] = [0x43, 0x41, 0x46, 0x52, 2, 0, 0, 0] + [UInt8](repeating: 0, count: 60)
 
     enum Outcome: Equatable { case agree, leanOnly, swiftOnly, differ }
 
@@ -124,7 +134,7 @@ final class FrameSuite: Suite {
     /// Delta debugging over bytes: remove chunks while the same disagreement remains.
     func shrink(_ b0: [UInt8], _ want: Outcome) -> [UInt8] {
         var b = b0
-        // First, the same 8-byte header on the empty frame: header bugs shrink to 44 bytes.
+        // First, the same 8-byte header on the empty frame: header bugs shrink to 68 bytes.
         if b.count >= 8 {
             let c = Array(b.prefix(8)) + Self.emptyFrame.dropFirst(8)
             if compare(c).0 == want { b = c }

@@ -45,11 +45,12 @@ def initState (app : App S) (cfg : Config) (w h scalePercent : UInt32) : State S
 /-- Run a batch of events. The state's `effects` become this batch's effects. -/
 def stepBytes (app : App S) (cfg : Config) (b : Boundary) (s : State S) (events : ByteArray) :
     State S :=
-  let (s', effs) := steps app cfg { s with effects := #[] } (b.decode events)
+  let (s', effs) := steps app cfg { s with effects := #[], subCmds := #[] } (b.decode events)
   { s' with effects := effs.toArray }
 
 def frame (b : Boundary) (s : State S) : Frame :=
-  { b.render s.laid s.ui with cursor := cursor s, effects := s.effects }
+  let f := b.render s.laid s.ui
+  { f with cursor := cursor s, effects := s.effects, subs := s.subCmds, wake := s.world.wake }
 
 def frameBytes (b : Boundary) (s : State S) : ByteArray := b.encode (frame b s)
 

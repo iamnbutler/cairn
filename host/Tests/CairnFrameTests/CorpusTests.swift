@@ -63,7 +63,8 @@ enum Corpus {
     @Test func rejectsMalformedFrames() throws {
         let bin = try Corpus.bytes(try Corpus.files("frames", "bin")[1])
         #expect(throws: FrameDecodeError.badHeader) { try Frame(bytes: [0x43, 0x41, 0x46, 0x51] + bin.dropFirst(4)) }
-        #expect(throws: FrameDecodeError.badHeader) { try Frame(bytes: Array(bin[0..<4]) + [2, 0] + bin.dropFirst(6)) }
+        #expect(throws: FrameDecodeError.badHeader) { try Frame(bytes: Array(bin[0..<4]) + [1, 0] + bin.dropFirst(6)) }
+        #expect(throws: FrameDecodeError.badHeader) { try Frame(bytes: Array(bin[0..<4]) + [3, 0] + bin.dropFirst(6)) }
         #expect(throws: FrameDecodeError.trailingBytes(at: bin.count)) { try Frame(bytes: bin + [0]) }
         for n in [0, 3, 15, 16, 20, bin.count / 2, bin.count - 1] {
             #expect(throws: FrameDecodeError.self) { try Frame(bytes: Array(bin[0..<n])) }
@@ -75,9 +76,9 @@ enum Corpus {
         func u32(_ n: Int) -> [UInt8] { (0..<4).map { UInt8((n >> (8 * $0)) & 0xFF) } }
         let draw: [UInt8] = [1, 0, 0, 0] + u32(0) + u32(0) + u32(0) + u32(12) + u32(400)
             + [0, 0, 0, 255] + u32(text.count) + text
-        return Array("CAFR".utf8) + [1, 0, 0, 0] + u32(10) + u32(10)
+        return Array("CAFR".utf8) + [2, 0, 0, 0] + u32(10) + u32(10)
             + u32(1) + u32(draw.count) + draw + u32(0) + u32(0)
-            + [0, 0, 0, 0] + [0, 0, 0, 0] + u32(0) + u32(0)
+            + [0, 0, 0, 0] + [0, 0, 0, 0] + u32(0) + u32(0) + u32(0) + u32(0) + [UInt8](repeating: 0, count: 12)
     }
 
     @Test func rejectsInvalidUTF8() throws {
@@ -135,8 +136,23 @@ enum SwiftEvents {
         g.coin() ? ScalarRange(start: nat(&g), end: nat(&g)) : nil
     }
 
+    static func bytes(_ g: inout SplitMix) -> [UInt8] {
+        (0..<g.below(10)).map { _ in UInt8(g.below(256)) }
+    }
+    static func headers(_ g: inout SplitMix) -> [Header] {
+        (0..<g.below(3)).map { _ in Header(str(&g), str(&g)) }
+    }
+    static func reply(_ g: inout SplitMix) -> Reply {
+        switch g.below(4) {
+        case 0: return .done
+        case 1: return .bytes(bytes(&g))
+        case 2: return .http(status: nat(&g), headers: headers(&g), body: bytes(&g))
+        default: return .failed(Fault(rawValue: UInt8(g.below(6)))!, str(&g))
+        }
+    }
+
     static func random(_ g: inout SplitMix) -> Event {
-        switch g.below(18) {
+        switch g.below(21) {
         case 0: return .pointerMove(Point(x: int(&g), y: int(&g)))
         case 1: return .pointerDown(Point(x: int(&g), y: int(&g)), g.coin() ? .primary : .secondary,
                                     clicks: nat(&g), mods(&g))
@@ -159,7 +175,13 @@ enum SwiftEvents {
         case 14: return .paste(str(&g))
         case 15: return .resize(Size(w: int(&g), h: int(&g)))
         case 16: return .scale(percent: nat(&g))
-        default: return .windowFocus(g.coin())
+        case 17: return .windowFocus(g.coin())
+        case 18:
+            let mono = g.below(4) == 0 ? UInt64.max : UInt64(g.below(1 << 40))
+            let wall = g.below(4) == 0 ? Int64.min : Int64(g.below(1 << 42)) - (1 << 41)
+            return .clock(Time(mono: mono, wall: wall, zone: int(&g)))
+        case 19: return .reply(id: nat(&g), reply(&g))
+        default: return .subEvent(id: nat(&g), .tick)
         }
     }
 
@@ -170,5 +192,8 @@ enum SwiftEvents {
         .insertText("", replacing: nil), .insertText("é", replacing: ScalarRange(start: 0, end: .max)),
         .setMarked("にほん", selStart: .max, selLen: 0, replacing: ScalarRange(start: 2, end: 2)),
         .paste("🙂👍🏽日本語"), .scale(percent: 0), .resize(Size(w: -1, h: .max)), .windowFocus(true),
+        .clock(Time(mono: .max, wall: .min, zone: .min)), .clock(Time(mono: 0, wall: .max, zone: 0)),
+        .reply(id: .max, .bytes([0, 255])), .reply(id: 0, .failed(.notFound, "")),
+        .reply(id: 1, .http(status: 200, headers: [Header("a", "b")], body: [])), .subEvent(id: .max, .tick),
     ]
 }

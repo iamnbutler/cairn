@@ -16,6 +16,9 @@ extension Event {
             s.withUTF8 { u32(UInt32($0.count)); out.append(contentsOf: $0) }
         }
         func range(_ r: ScalarRange?) { u32(r?.start ?? 0); u32(r?.end ?? 0) }
+        func u64(_ v: UInt64) { u32(UInt32(truncatingIfNeeded: v)); u32(UInt32(truncatingIfNeeded: v >> 32)) }
+        func bytes(_ b: [UInt8]) { u32(UInt32(b.count)); out += b }
+        func headers(_ hs: [Header]) { u32(UInt32(hs.count)); for h in hs { str(h.name); str(h.value) } }
 
         switch self {
         case let .pointerMove(p): head(0); point(p)
@@ -37,6 +40,17 @@ extension Event {
         case let .resize(sz): head(15); i32(sz.w); i32(sz.h)
         case let .scale(p): head(16); u32(p)
         case let .windowFocus(f): head(17, f ? 1 : 0)
+        case let .clock(t): head(18); u64(t.mono); u64(UInt64(bitPattern: t.wall)); i32(t.zone)
+        case let .reply(id, r):
+            if case let .failed(f, _) = r { head(19, r.code, f.rawValue) } else { head(19, r.code) }
+            u32(id)
+            switch r {
+            case .done: break
+            case let .bytes(b): bytes(b)
+            case let .http(st, hs, b): u32(st); headers(hs); bytes(b)
+            case let .failed(_, m): str(m)
+            }
+        case let .subEvent(id, e): head(20, e.rawValue); u32(id)
         }
     }
 }

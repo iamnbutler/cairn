@@ -68,6 +68,19 @@ enum DebugJSON {
         case .setClipboard(let s): ["clipboard": s]
         case .beep: ["beep": true]
         case .focus(let c): ["focus": c.label]
+        case let .setTimer(n, ms): ["setTimer": n, "ms": Int(ms)]
+        case .cancelTimer(let n): ["cancelTimer": n]
+        case let .request(id, r): ["request": Int(id), "kind": request(r)]
+        case .quit: ["quit": true]
+        }
+    }
+
+    static func request(_ r: Request) -> String {
+        switch r {
+        case .readFile(let p): "readFile \(p)"
+        case let .writeFile(p, d): "writeFile \(p) (\(d.count) bytes)"
+        case .playSound(let n): "playSound \(n)"
+        case let .http(m, u, _, _, _): "http \(m) \(u)"
         }
     }
 

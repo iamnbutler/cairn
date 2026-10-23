@@ -40,4 +40,36 @@ assume ^907 textCaretsPainted "Carets follow the painted glyphs" where
   does "On left-to-right text, the caret offset after each grapheme is at or right of every glyph painted for the text before it."
   check "text.metrics.carets"
 
+assume ^908 hostClock "The host's clock is monotonic milliseconds" where
+  does "Every batch the host sends Lean starts with exactly one clock event; its monotonic milliseconds never decrease from batch to batch and are not ahead of the system's monotonic clock, its wall time is the wall clock and its zone the current UTC offset."
+  check "clock.monotonic"
+
+assume ^909 hostWake "The host wakes Lean by wake" where
+  does "When a frame carries a wake deadline, the host sends a clock-only batch whose time is at or past the deadline, soon after it, and sends none for a deadline that a later frame cleared or met."
+  check "clock.wake"
+
+assume ^910 hostReadFile "readFile replies with the file's bytes, or failed" where
+  does "readFile answers with exactly the bytes the file holds, notFound for a missing file, a failure for a directory or an unreadable file, and invalid for a path that can't name a file."
+  check "effects.read-file"
+
+assume ^911 hostWriteFile "writeFile is atomic, and replies done only when the bytes are there" where
+  does "writeFile answers done only when the file then holds exactly the bytes, creating missing directories; a reader alongside sees the old bytes or the new ones, never a mix; a failed write leaves the old file unchanged; a path that can't name a file is invalid."
+  check "effects.write-file"
+
+assume ^912 hostPlaySound "playSound starts a known sound and refuses an unknown one" where
+  does "playSound finds every system sound by its name and answers done once it starts; any other name is answered notFound, once, without playing anything."
+  check "effects.sound"
+
+assume ^913 hostHttp "http sends the request as given and returns the response as received" where
+  does "http sends the method, URL, headers and body as given and answers with the response's status, headers sorted by name and body exactly; a connection failure is network, no answer in time is timeout, and a non-http URL, a bad method or a header that could inject another is invalid and sends nothing."
+  check "effects.http"
+
+assume ^914 hostReplyOnce "The host answers every request exactly once, with its id" where
+  does "Every request the host runs is answered at most once and, when its handler answers, exactly once, under its own id with the handler's first answer; a kind with no handler is answered invalid; after the app starts over no answer to an earlier request is sent."
+  check "effects.reply-once"
+
+assume ^915 hostEvery "every ms ticks while started and never after it is stopped" where
+  does "An every subscription ticks under its id only while it is started and not yet stopped, at most once per period, and the host's running subscriptions are exactly those the frames started and did not stop."
+  check "subs.every"
+
 end Cairn.Fuzz.Trusted.Claims

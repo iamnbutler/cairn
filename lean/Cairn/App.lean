@@ -25,7 +25,16 @@ deriving Repr, DecidableEq, Inhabited
 structure App (S : Type) where
   init : S
   view : S → UI → Node
+  /-- A person's moves: every action names a control on screen. -/
   update : S → Action → S × List Effect
+  /-- The outside world: the clock, timers, replies and subscription events
+  (docs/effects.md). Ignored by default. -/
+  receive : S → Msg → S × List Effect := fun s _ => (s, [])
+  /-- The outside inputs the app wants in this state. The runtime diffs them after every
+  delivery and starts and stops subscriptions to match. -/
+  subscriptions : S → List Sub := fun _ => []
+  /-- Effects to run once, when the first clock arrives (so timers start from a real time). -/
+  initEffects : List Effect := []
   /-- Every claim the app makes, from the claim commands. -/
   claims : List ClaimInfo
   /-- The control that has keyboard focus at launch, if it is focusable there. -/

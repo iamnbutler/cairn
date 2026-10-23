@@ -6,7 +6,7 @@ entries in the section of the workstream that introduces the assumption.
 
 Items marked **Fuzzed** are also checked by the trusted-base fuzzer (`make fuzz-trusted`,
 docs/fuzz.md "Trusted base"), against Lean's proved side or an independent oracle, and are
-declared as `assume` claims ^901–^907 in `lean/Cairn/Fuzz/Trusted/Claims.lean`, each naming its
+declared as `assume` claims ^901–^915 in `lean/Cairn/Fuzz/Trusted/Claims.lean`, each naming its
 check; `build/fuzz/trusted.json` holds the evidence. Items not marked are checked only by the
 tests and reviews they list.
 
@@ -197,7 +197,9 @@ See [host.md](host.md) for how each piece works.
   render loop holds a frame back during a resize, the screen shows an older frame than the
   latest one.
 - **Effects.** `setClipboard` writes a plain string to the general pasteboard. `beep` calls
-  `NSSound.beep()`.
+  `NSSound.beep()`. `quit` calls `NSApp.terminate`. `focus`, `setTimer` and `cancelTimer` are
+  the runtime's and ignored. `request` and the subscription commands go to the `World`
+  ("Effects (workstream Q)" below).
 - **Cursor.** The frame's cursor becomes an NSCursor through cursor rects over the whole view.
 - **Live resize.** While a resize is in flight, the last picture is shown for up to 100 ms. It
   can briefly not match the window's size.
@@ -220,6 +222,56 @@ See [host.md](host.md) for how each piece works.
   - The Lean thread's 64 MB stack is assumed to be enough for the app's recursion depth.
   - Release builds keep Lean's default panic behaviour, where `panic!` returns a default value
     and execution continues. Debug builds abort on panic.
+
+## Effects (workstream Q)
+
+See [effects.md](effects.md). Lean decides everything: which timers are set and when they fire,
+which replies are delivered, which subscriptions run; the runtime's side is proved
+(`steps_book`, `step_reply`, `step_sub_ignored`, `diffSubs_*`, effects.md "Theorems"), whatever
+the host sends. What the host is trusted with is that what it sends is true: the time, the
+deadline, and the outcome of each request. Trusted code: `host/Sources/CairnHost/World.swift`
+(HostClock, Handlers, Files, Sounds, HTTP, World) and the clock and wake parts of
+`Engine.swift`. Each item is an `assume` claim with a fuzz check (docs/fuzz.md, "Trusted base");
+`WorldTests` and the Clock self test (`make selftest`) cover them end to end.
+
+- **Fuzzed** (^908 `clock.monotonic`): every batch starts with exactly one clock; `mono` is
+  `CLOCK_MONOTONIC` in ms (it counts sleep), never decreases between batches, is not ahead of
+  the batch's arrival and at most 40 ms behind it; `wall` is `Date` within 1 s; `zone` is the
+  current UTC offset. The runtime does not rely on monotonicity for safety (it keeps
+  `max old new`, `tick_mono`), only for timers to come due.
+- **Fuzzed** (^909 `clock.wake`): a frame's `wake` brings a clock-only batch at or after the
+  deadline (never early: the strict dispatch timer runs on uptime, which never gets ahead of
+  the monotonic clock), within 40 ms under load (typically under 1 ms, bench/effects.md), and
+  none after a later frame cleared or met it. A wake missed entirely would only delay timers
+  until the next input; a wake early would only cost a step, since Lean fires nothing before
+  it is due.
+- **Fuzzed** (^910 `effects.read-file`, ^911 `effects.write-file`): files round-trip exactly
+  under random Unicode names; replacement is atomic against a concurrent reader; failed writes
+  leave the file alone; missing, unreadable, directory, NUL and file-system-refused paths map
+  to the faults effects.md lists. `~/` is the only path rewriting. This found NUL in a path
+  silently cutting the path (now `invalid`) and APFS's `EILSEQ` for unassigned code points
+  mapped to `other` (now `invalid`).
+- **Fuzzed** (^912 `effects.sound`): every system sound name resolves; any other name is
+  `failed notFound`, answered once. Playing is checked only with `CAIRN_FUZZ_SOUND=1` (it is
+  audible). That the sound is actually heard is not checked.
+- **Fuzzed** (^913 `effects.http`): against a `URLProtocol` stub, the method, URL (as
+  Foundation parses it), headers and body arrive as given; status, headers (sorted) and body
+  come back exactly; connection failures are `network`, a silent server `timeout` after the
+  requested time; bad schemes, methods, header names and CR/LF/NUL in values are `invalid`
+  and send nothing (no header injection). Not covered: real TLS, redirects, proxies, HTTP/2
+  specifics; those are Foundation's.
+- **Fuzzed** (^914 `effects.reply-once`): with handlers that answer zero to three times, from
+  other threads, late, every request is answered at most once and, when its handler answers,
+  exactly once, under its own id with the first answer; a kind with no handler is answered
+  `invalid`; after `reset` returns no earlier answer is sent (replies are sent under the
+  world's lock, which `reset` takes). The runtime drops duplicates anyway (`Book.reply_once`).
+- **Fuzzed** (^915 `subs.every`): ticks only for started, not stopped ids (all commands and
+  ticks are on one serial queue), at most one per period, at least one over many periods, and
+  `running` equals the model after every frame. The runtime ignores ticks of stopped ids anyway
+  (`step_sub_ignored`); the engine coalesces a run of identical ticks.
+- **Also assumed.** The handler table's code runs on global queues and must not call Lean.
+  `NSSound` is used on the main thread. `writeFile`'s atomicity is Foundation's
+  `Data.write(options: .atomic)` on one volume.
 
 ## Conformance (workstream J)
 

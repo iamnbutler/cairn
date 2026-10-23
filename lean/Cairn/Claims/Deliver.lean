@@ -1,11 +1,11 @@
 import Cairn.Claims.Machine
 import Cairn.Runtime.Step
-import Cairn.Runtime.Proofs
+import Cairn.Runtime.WorldProofs
 
 /-! The claim guarantees, carried through the runtime.
 
-`Cairn.Runtime.step_delivers` says a runtime step passes `App.update` exactly the routed
-actions, via `Runtime.deliver`. For an app whose update is a machine's, the lemmas here say what
+`Cairn.Runtime.step_delivers_quiet` says a runtime step passes `App.update` exactly the routed
+actions, via `Runtime.deliver`, for an app that ignores the world (every machine's `toApp`). For an app whose update is a machine's, the lemmas here say what
 that means for a whole batch of actions: every effect came from an enabled move handler answering
 one of the actions, and a batch that names no move's claim changes nothing. -/
 
@@ -79,7 +79,8 @@ theorem deliver_run (st : S) (acts : List Action) : (deliver M.update st acts).1
 runtime state reached from `start` by events is reachable in the machine, so every invariant
 (`Invariant.reachable`) holds in it. -/
 theorem steps_reachable (view : S → UI → Node) (claims : List ClaimInfo) (cfg : Config)
-    (size : Size) (scale : Nat) (es : List Event) (initFocus : Option ControlRef := none) :
+    (size : Size) (scale : Nat) (es : List Event) (initFocus : Option ControlRef := none)
+    (hq : ∀ s m, (M.receive s m).1 = s := by intro _ _; rfl) :
     M.Reachable (steps (M.toApp view claims initFocus) cfg
       (start (M.toApp view claims initFocus) cfg size scale) es).1.app := by
   unfold steps
@@ -94,10 +95,30 @@ theorem steps_reachable (view : S → UI → Node) (claims : List ClaimInfo) (cf
     intro acc h
     apply ih
     obtain ⟨as, has⟩ := h
-    have hd := congrArg Prod.fst (step_delivers (M.toApp view claims initFocus) cfg acc.1 e)
+    have hd := step_delivers_quiet (app := M.toApp view claims initFocus) hq cfg acc.1 e
     refine ⟨as ++ (route cfg.metrics acc.1 e).2, ?_⟩
     simp only at hd ⊢
     rw [hd, M.run_append, ← has]
     exact deliver_run M _ _
+
+/-- **Invariants hold on screen, with the world.** In any app whose start, update and receive
+are a machine's (`M.toApp`, possibly with subscriptions and init effects added), the app state of
+every runtime state reached from `start` by any events (input, the clock, timers, replies,
+subscription events) is reachable in the machine by actions and messages, so every invariant
+(`Invariant.reachableAll`) holds in it. -/
+theorem steps_reachableAll (app : App S) (hi : app.init = M.init) (hu : app.update = M.update)
+    (hr : app.receive = M.receive) (cfg : Config) (size : Size) (scale : Nat) (es : List Event) :
+    M.ReachableAll (steps app cfg (start app cfg size scale) es).1.app := by
+  have := steps_go app cfg (fun s' => Fed app app.init s'.app)
+    (fun s' e h => h.trans (step_fed _ cfg s' e)) es (start app cfg size scale) [] (Fed.refl _ _)
+  obtain ⟨xs, h⟩ := this
+  refine ⟨xs, h.trans ?_⟩
+  rw [hi]
+  unfold Machine.runAll
+  congr 1
+  funext st x
+  cases x
+  · show (app.update st _).1 = _; rw [hu]; rfl
+  · show (app.receive st _).1 = _; rw [hr]; rfl
 
 end Cairn.Claims

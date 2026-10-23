@@ -74,6 +74,41 @@ def Mods.ofCode (b : UInt8) : Option Mods :=
   obtain ⟨s, c, o, t⟩ := m
   cases s <;> cases c <;> cases o <;> cases t <;> rfl
 
+def Fault.code : Fault → UInt8
+  | .notFound => 0 | .denied => 1 | .timeout => 2 | .network => 3 | .invalid => 4 | .other => 5
+
+def Fault.ofCode : UInt8 → Option Fault
+  | 0 => some .notFound | 1 => some .denied | 2 => some .timeout | 3 => some .network
+  | 4 => some .invalid | 5 => some .other | _ => none
+
+@[simp] theorem Fault.ofCode_code (f : Fault) : Fault.ofCode (Fault.code f) = some f := by
+  cases f <;> rfl
+
+/-- `done` 0, `bytes` 1, `http` 2, `failed` 3. -/
+def Reply.code : Reply → UInt8
+  | .done => 0 | .bytes _ => 1 | .http .. => 2 | .failed .. => 3
+
+def Reply.faultCode : Reply → UInt8
+  | .failed f _ => Fault.code f
+  | _ => 0
+
+def SubEvent.code : SubEvent → UInt8
+  | .tick => 0
+
+def SubEvent.ofCode : UInt8 → Option SubEvent
+  | 0 => some .tick | _ => none
+
+@[simp] theorem SubEvent.ofCode_code (e : SubEvent) : SubEvent.ofCode (SubEvent.code e) = some e := by
+  cases e; rfl
+
+def fitsTime (t : Time) : Bool := fu64 t.mono && fi64 t.wall && fi t.zone
+
+def fitsReply : Reply → Bool
+  | .done => true
+  | .bytes d => fb d
+  | .http st hs b => fu st && fitsHeaders hs && fb b
+  | .failed _ m => fs m
+
 def fitsEvent : Event → Bool
   | .pointerMove p => fi p.x && fi p.y
   | .pointerDown p _ clicks _ => fi p.x && fi p.y && fu clicks
@@ -84,12 +119,22 @@ def fitsEvent : Event → Bool
   | .paste s => fs s
   | .resize sz => fi sz.w && fi sz.h
   | .scale p => fu p
+  | .clock t => fitsTime t
+  | .reply id r => fu id && fitsReply r
+  | .subEvent id _ => fu id
   | _ => true
 
 namespace Enc
 
 /-- The record head: tag, two small fields, a reserved zero. -/
 def head (tag a b : UInt8) : List UInt8 := [tag, a, b, 0]
+
+/-- A reply's fields after its record head and id. -/
+def replyBody : Reply → List UInt8
+  | .done => []
+  | .bytes d => bytes d
+  | .http st hs b => u32 st ++ headers hs ++ bytes b
+  | .failed _ m => str m
 
 def event : Event → List UInt8
   | .pointerMove p => head 0 0 0 ++ point p
@@ -112,6 +157,9 @@ def event : Event → List UInt8
   | .resize sz => head 15 0 0 ++ size sz
   | .scale p => head 16 0 0 ++ u32 p
   | .windowFocus b => head 17 (if b then 1 else 0) 0
+  | .clock t => head 18 0 0 ++ u64 t.mono ++ i64 t.wall ++ i32 t.zone
+  | .reply id r => head 19 (Reply.code r) (Reply.faultCode r) ++ u32 id ++ replyBody r
+  | .subEvent id e => head 20 (SubEvent.code e) 0 ++ u32 id
 
 def eventsMagic : List UInt8 := [0x43, 0x41, 0x45, 0x56] -- "CAEV"
 
@@ -128,6 +176,20 @@ def opt {α : Type} (present : UInt8) (a : α) : Dec (Option α) :=
   match present with
   | 0 => pure none
   | 1 => pure (some a)
+  | _ => fail
+
+def replyBody (code fault : UInt8) : Dec Reply :=
+  match code with
+  | 0 => if fault = 0 then pure .done else fail
+  | 1 => if fault = 0 then do return .bytes (← bytes) else fail
+  | 2 => if fault = 0 then do
+      let st ← u32
+      let hs ← headers
+      return .http st hs (← bytes)
+    else fail
+  | 3 => match Fault.ofCode fault with
+    | some f => do return .failed f (← str)
+    | none => fail
   | _ => fail
 
 def event : Dec Event := do
@@ -182,6 +244,17 @@ def event : Dec Event := do
     | 0 => return .windowFocus false
     | 1 => return .windowFocus true
     | _ => fail
+  | 18 =>
+    let mono ← u64
+    let wall ← i64
+    let zone ← i32
+    return .clock ⟨mono, wall, zone⟩
+  | 19 =>
+    let id ← u32
+    return .reply id (← replyBody a b)
+  | 20 =>
+    let some e := SubEvent.ofCode a | fail
+    return .subEvent (← u32) e
   | _ => fail
 
 def events : Dec (List Event) := do
@@ -192,6 +265,24 @@ def events : Dec (List Event) := do
 theorem opt_isSome {α : Type} (o : Option α) (d : α) (r : List UInt8) :
     opt (if o.isSome then 1 else 0) (o.getD d) r = some (o, r) := by
   cases o <;> rfl
+
+theorem replyBody_enc {rp : Reply} (h : fitsReply rp = true) (r : List UInt8) :
+    replyBody (Reply.code rp) (Reply.faultCode rp) (Enc.replyBody rp ++ r) = some (rp, r) := by
+  cases rp with
+  | done => rfl
+  | bytes d =>
+    simp only [fitsReply, fb_iff] at h
+    simp only [replyBody, Reply.code, Reply.faultCode, Enc.replyBody, ↓reduceIte, bind_apply,
+        bytes_enc h, pure_apply]
+  | http st hs b =>
+    simp only [fitsReply, Bool.and_eq_true, fu_iff, fb_iff] at h
+    simp only [replyBody, Reply.code, Reply.faultCode, Enc.replyBody, ↓reduceIte,
+        List.append_assoc, bind_apply, u32_enc h.1.1, headers_enc h.1.2, bytes_enc h.2,
+        pure_apply]
+  | failed f m =>
+    simp only [fitsReply, fs_iff] at h
+    simp only [replyBody, Reply.code, Reply.faultCode, Enc.replyBody, Fault.ofCode_code,
+        bind_apply, str_enc h, pure_apply]
 
 theorem event_enc {e : Event} (h : fitsEvent e = true) (r : List UInt8) :
     event (Enc.event e ++ r) = some (e, r) := by
@@ -247,6 +338,19 @@ theorem event_enc {e : Event} (h : fitsEvent e = true) (r : List UInt8) :
     simp only [event, Enc.event, Enc.head, List.cons_append, List.nil_append, bind_apply, byte_cons,
         hz, u32_enc h, pure_apply]
   | windowFocus b => cases b <;> rfl
+  | clock t =>
+    simp only [fitsEvent, fitsTime, Bool.and_eq_true, fu64_iff, fi64_iff, fi_iff] at h
+    simp only [event, Enc.event, Enc.head, List.cons_append, List.nil_append, List.append_assoc,
+        bind_apply, byte_cons, hz, u64_enc h.1.1, i64_enc h.1.2, i32_enc h.2, pure_apply]
+  | reply id rp =>
+    simp only [fitsEvent, Bool.and_eq_true, fu_iff] at h
+    simp only [event, Enc.event, Enc.head, List.cons_append, List.nil_append, List.append_assoc,
+        bind_apply, byte_cons, hz, u32_enc h.1]
+    rw [replyBody_enc h.2]; rfl
+  | subEvent id e =>
+    simp only [fitsEvent, fu_iff] at h
+    simp only [event, Enc.event, Enc.head, List.cons_append, List.nil_append,
+        bind_apply, byte_cons, hz, SubEvent.ofCode_code, u32_enc h, pure_apply]
   | pointerExit | unmark | copy | cut | selectAll | undo | redo => rfl
 
 theorem events_enc {es : List Event} (h : ∀ e ∈ es, fitsEvent e = true)
