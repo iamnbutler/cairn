@@ -23,16 +23,33 @@ def FitsU32 (n : Nat) : Prop := n < 4294967296
 def FitsI32 (v : Int) : Prop := -2147483648 ≤ v ∧ v < 2147483648
 /-- A string whose UTF-8 encoding has a `u32` length. -/
 def FitsStr (s : String) : Prop := s.toUTF8.size < 4294967296
+def FitsU64 (n : Nat) : Prop := n < 18446744073709551616
+def FitsI64 (v : Int) : Prop := -9223372036854775808 ≤ v ∧ v < 9223372036854775808
+/-- A byte payload with a `u32` length. -/
+def FitsBytes (b : ByteArray) : Prop := b.size < 4294967296
 
 instance (n : Nat) : Decidable (FitsU32 n) := inferInstanceAs (Decidable (_ < _))
 instance (v : Int) : Decidable (FitsI32 v) := inferInstanceAs (Decidable (_ ∧ _))
 instance (s : String) : Decidable (FitsStr s) := inferInstanceAs (Decidable (_ < _))
+instance (n : Nat) : Decidable (FitsU64 n) := inferInstanceAs (Decidable (_ < _))
+instance (v : Int) : Decidable (FitsI64 v) := inferInstanceAs (Decidable (_ ∧ _))
+instance (b : ByteArray) : Decidable (FitsBytes b) := inferInstanceAs (Decidable (_ < _))
 
 /-- Two's complement, as an unsigned 32-bit value. -/
 def toU32 (v : Int) : Nat := (v % 4294967296).toNat
 def ofU32 (n : Nat) : Int := if n < 2147483648 then n else (n : Int) - 4294967296
 
 @[simp] theorem fitsU32_zero : FitsU32 0 := by decide
+
+/-- Two's complement, as an unsigned 64-bit value. -/
+def toU64 (v : Int) : Nat := (v % 18446744073709551616).toNat
+def ofU64 (n : Nat) : Int :=
+  if n < 9223372036854775808 then n else (n : Int) - 18446744073709551616
+
+theorem toU64_fits (v : Int) : FitsU64 (toU64 v) := by unfold FitsU64 toU64; omega
+
+theorem ofU64_toU64 {v : Int} (h : FitsI64 v) : ofU64 (toU64 v) = v := by
+  unfold FitsI64 at h; unfold ofU64 toU64; split <;> omega
 
 /-- The two's-complement word of `v`, without big-integer arithmetic: 2³² is not a small number
 to Lean's runtime, so `v % 4294967296` (and even the literal) goes through GMP. -/
@@ -79,6 +96,14 @@ def i32 (v : Int) : List UInt8 := u32 (toU32 v)
 
 def bool (b : Bool) : List UInt8 := [if b then 1 else 0]
 
+/-- Low word, then high word. -/
+def u64 (n : Nat) : List UInt8 := u32 (n % 4294967296) ++ u32 (n / 4294967296)
+
+def i64 (v : Int) : List UInt8 := u64 (toU64 v)
+
+/-- `u32` byte length, then the bytes. -/
+def bytes (b : ByteArray) : List UInt8 := u32 b.size ++ b.data.toList
+
 /-- `u32` byte length, then the UTF-8 bytes. -/
 def str (s : String) : List UInt8 := u32 s.toUTF8.size ++ s.toUTF8.data.toList
 
@@ -90,6 +115,8 @@ def sect (body : List UInt8) : List UInt8 := u32 body.length ++ body
 
 @[simp] theorem length_u32 (n : Nat) : (u32 n).length = 4 := rfl
 @[simp] theorem length_i32 (v : Int) : (i32 v).length = 4 := rfl
+@[simp] theorem length_u64 (n : Nat) : (u64 n).length = 8 := rfl
+@[simp] theorem length_i64 (v : Int) : (i64 v).length = 8 := rfl
 
 end Enc
 
@@ -143,6 +170,13 @@ def bool : Dec Bool := do
   | 1 => return true
   | _ => fail
 
+def u64 : Dec Nat := do
+  let lo ← u32
+  let hi ← u32
+  return lo + 4294967296 * hi
+
+def i64 : Dec Int := do return ofU64 (← u64)
+
 def take (n : Nat) : Dec (List UInt8) := fun l =>
   if n ≤ l.length then some (l.take n, l.drop n) else none
 
@@ -155,6 +189,11 @@ def str : Dec String := do
   match String.fromUTF8? ⟨bs.toArray⟩ with
   | some s => return s
   | none => fail
+
+def bytes : Dec ByteArray := do
+  let n ← u32
+  let bs ← take n
+  return ⟨bs.toArray⟩
 
 /-- `n` values, one after another. -/
 def count (d : Dec α) : Nat → Dec (List α)
@@ -195,6 +234,18 @@ theorem i32_enc {v : Int} (h : FitsI32 v) (r : List UInt8) :
     i32 (Enc.i32 v ++ r) = some (v, r) := by
   simp only [i32, Enc.i32, bind_apply, u32_enc (toU32_fits v), ofU32_toU32 h, pure_apply]
 
+theorem u64_enc {n : Nat} (h : FitsU64 n) (r : List UInt8) :
+    u64 (Enc.u64 n ++ r) = some (n, r) := by
+  unfold FitsU64 at h
+  have h1 : FitsU32 (n % 4294967296) := by unfold FitsU32; omega
+  have h2 : FitsU32 (n / 4294967296) := by unfold FitsU32; omega
+  simp only [u64, Enc.u64, List.append_assoc, bind_apply, u32_enc h1, u32_enc h2, pure_apply]
+  congr 2; omega
+
+theorem i64_enc {v : Int} (h : FitsI64 v) (r : List UInt8) :
+    i64 (Enc.i64 v ++ r) = some (v, r) := by
+  simp only [i64, Enc.i64, bind_apply, u64_enc (toU64_fits v), ofU64_toU64 h, pure_apply]
+
 theorem bool_enc (b : Bool) (r : List UInt8) : bool (Enc.bool b ++ r) = some (b, r) := by
   cases b <;> rfl
 
@@ -220,6 +271,13 @@ theorem str_enc {s : String} (h : FitsStr s) (r : List UInt8) :
   dsimp only
   rw [fromUTF8?_toUTF8]
   rfl
+
+theorem bytes_enc {b : ByteArray} (h : FitsBytes b) (r : List UInt8) :
+    bytes (Enc.bytes b ++ r) = some (b, r) := by
+  have hl : b.data.toList.length = b.size := by simp only [Array.length_toList, ByteArray.size_data]
+  simp only [bytes, Enc.bytes, List.append_assoc, bind_apply, u32_enc h]
+  rw [← hl, take_enc]
+  simp only [Array.toArray_toList, pure_apply]
 
 theorem count_enc {d : Dec α} {e : α → List UInt8} (xs : List α)
     (h : ∀ x ∈ xs, ∀ r, d (e x ++ r) = some (x, r)) (r : List UInt8) :
@@ -261,6 +319,13 @@ namespace Put
 @[inline] def bool (b : ByteArray) (v : Bool) : ByteArray := b.push (if v then 1 else 0)
 
 @[inline] def str (b : ByteArray) (s : String) : ByteArray := u32 b s.toUTF8.size ++ s.toUTF8
+
+@[inline] def u64 (b : ByteArray) (n : Nat) : ByteArray :=
+  u32 (u32 b (n % 4294967296)) (n / 4294967296)
+
+@[inline] def i64 (b : ByteArray) (v : Int) : ByteArray := u64 b (toU64 v)
+
+@[inline] def bytes (b : ByteArray) (x : ByteArray) : ByteArray := u32 b x.size ++ x
 
 @[inline] def pad (b : ByteArray) : Nat → ByteArray
   | 0 => b
@@ -312,6 +377,19 @@ theorem shift24 (n : Nat) : ((UInt32.ofNat n) >>> 24).toUInt8 = UInt8.ofNat (n /
     (str b s).data.toList = b.data.toList ++ Enc.str s := by
   simp only [str, String.toUTF8_eq_toByteArray, String.size_toByteArray, ByteArray.data_append,
       Array.toList_append, u32_data, List.append_assoc, Enc.str]
+
+@[simp] theorem u64_data (b : ByteArray) (n : Nat) :
+    (u64 b n).data.toList = b.data.toList ++ Enc.u64 n := by
+  simp only [u64, u32_data, List.append_assoc, Enc.u64]
+
+@[simp] theorem i64_data (b : ByteArray) (v : Int) :
+    (i64 b v).data.toList = b.data.toList ++ Enc.i64 v := by
+  simp only [i64, u64_data, Enc.i64]
+
+@[simp] theorem bytes_data (b x : ByteArray) :
+    (bytes b x).data.toList = b.data.toList ++ Enc.bytes x := by
+  simp only [bytes, ByteArray.data_append, Array.toList_append, u32_data, List.append_assoc,
+      Enc.bytes]
 
 @[simp] theorem pad_data (b : ByteArray) (n : Nat) :
     (pad b n).data.toList = b.data.toList ++ Enc.pad n := by

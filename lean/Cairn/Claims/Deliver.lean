@@ -4,8 +4,8 @@ import Cairn.Runtime.Proofs
 
 /-! The claim guarantees, carried through the runtime.
 
-`Cairn.Runtime.step_delivers` says a runtime step passes `App.update` exactly the routed
-actions, via `Runtime.deliver`. For an app whose update is a machine's, the lemmas here say what
+`Cairn.Runtime.step_delivers_quiet` says a runtime step passes `App.update` exactly the routed
+actions, via `Runtime.deliver`, for an app that ignores the world (every machine's `toApp`). For an app whose update is a machine's, the lemmas here say what
 that means for a whole batch of actions: every effect came from an enabled move handler answering
 one of the actions, and a batch that names no move's claim changes nothing. -/
 
@@ -94,7 +94,7 @@ theorem steps_reachable (view : S → UI → Node) (claims : List ClaimInfo) (cf
     intro acc h
     apply ih
     obtain ⟨as, has⟩ := h
-    have hd := congrArg Prod.fst (step_delivers (M.toApp view claims initFocus) cfg acc.1 e)
+    have hd := step_delivers_quiet (app := M.toApp view claims initFocus) (fun _ _ => rfl) cfg acc.1 e
     refine ⟨as ++ (route cfg.metrics acc.1 e).2, ?_⟩
     simp only at hd ⊢
     rw [hd, M.run_append, ← has]

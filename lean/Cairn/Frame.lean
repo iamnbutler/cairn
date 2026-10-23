@@ -51,6 +51,11 @@ structure Frame where
   textInput : Option TextInput := none
   cursor : Cursor := .arrow
   effects : Array Effect := #[]
+  /-- Subscriptions to start and stop, in order (docs/effects.md). -/
+  subs : Array SubCmd := #[]
+  /-- The earliest timer deadline, in the host's monotonic milliseconds: the host sends a
+  `clock` event no later than this. -/
+  wake : Option Nat := none
 deriving Repr, Inhabited
 
 end Cairn

@@ -50,10 +50,37 @@ def textInput : Option TextInput → String
       s!"selection={range t.selection} marked={opt range t.marked} " ++
       s!"origin={t.textOrigin.x} {t.textOrigin.y} text={str t.text}"
 
+/-- Bytes as `x` and two lowercase hex digits each. -/
+def bytes (b : ByteArray) : String :=
+  b.foldl (fun acc x => acc ++ (if x < 16 then "0" else "") ++ hexDigits x.toNat) "x"
+
+def headers (hs : List (String × String)) : String :=
+  s!"headers={hs.length}" ++ hs.foldl (fun acc (k, v) => acc ++ s!" {str k} {str v}") ""
+
+def request : Request → String
+  | .readFile p => s!"readFile {str p}"
+  | .writeFile p d => s!"writeFile {str p} {bytes d}"
+  | .playSound n => s!"sound {str n}"
+  | .http m u hs b t => s!"http {str m} {str u} timeout={t} {headers hs} body={bytes b}"
+
 def effect : Effect → String
   | .setClipboard s => s!"clipboard {str s}"
   | .beep => "beep"
   | .focus c => s!"focus {ref c}"
+  | .setTimer n ms => s!"timer {str n} {ms}"
+  | .cancelTimer n => s!"cancelTimer {str n}"
+  | .request id r => s!"request {id} {request r}"
+  | .quit => "quit"
+
+def subCmd : SubCmd → String
+  | .start id (.every ms) => s!"start {id} every {ms}"
+  | .stop id => s!"stop {id}"
+
+def reply : Reply → String
+  | .done => "done"
+  | .bytes d => s!"bytes {bytes d}"
+  | .http st hs b => s!"http {st} {headers hs} body={bytes b}"
+  | .failed f m => s!"failed {Fault.code f} {str m}"
 
 /-- One line per item, each ending in a newline. -/
 def frame (f : Frame) : String := Id.run do
@@ -64,6 +91,9 @@ def frame (f : Frame) : String := Id.run do
   out := out ++ textInput f.textInput ++ "\n"
   out := out ++ s!"cursor {Cursor.code f.cursor}\neffects {f.effects.size}\n"
   for e in f.effects do out := out ++ effect e ++ "\n"
+  out := out ++ s!"subs {f.subs.size}\n"
+  for c in f.subs do out := out ++ subCmd c ++ "\n"
+  out := out ++ s!"wake {opt toString f.wake}\n"
   return out
 
 def event : Event → String
@@ -85,6 +115,9 @@ def event : Event → String
   | .resize sz => s!"resize {sz.w} {sz.h}"
   | .scale p => s!"scale {p}"
   | .windowFocus b => s!"focus {bit b}"
+  | .clock t => s!"clock {t.mono} {t.wall} {t.zone}"
+  | .reply id r => s!"reply {id} {reply r}"
+  | .subEvent id e => s!"sub {id} {SubEvent.code e}"
 
 def events (es : Array Event) : String := Id.run do
   let mut out := s!"events {es.size}\n"

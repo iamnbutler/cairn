@@ -112,6 +112,10 @@ def jeffect : Effect → String
   | .setClipboard s => jobj [("clipboard", jstr s)]
   | .beep => jobj [("beep", "true")]
   | .focus c => jobj [("focus", jstr (refLabel c))]
+  | .setTimer n ms => jobj [("setTimer", jstr n), ("ms", toString ms)]
+  | .cancelTimer n => jobj [("cancelTimer", jstr n)]
+  | .request id _ => jobj [("request", toString id)]
+  | .quit => jobj [("quit", "true")]
 
 def opName : TextOp → String
   | .insert s => s!"insert {repr s}" | .deleteBackward => "deleteBackward"
@@ -154,6 +158,9 @@ def eventName : Event → String
   | .undo => "undo" | .redo => "redo" | .paste s => s!"paste {repr s}"
   | .resize s => s!"resize {s.w} {s.h}" | .scale p => s!"scale {p}"
   | .windowFocus b => s!"windowFocus {b}"
+  | .clock t => s!"clock {t.mono}"
+  | .reply id _ => s!"reply {id}"
+  | .subEvent id _ => s!"subEvent {id}"
 
 /-! ## Gestures
 

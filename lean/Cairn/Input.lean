@@ -2,6 +2,7 @@ module
 
 public import Cairn.Geometry
 public import Cairn.Claim
+public import Cairn.Effects
 
 /-! What the host sends Lean (`Event`), what the runtime gives an app (`Action`), and what an
 app asks the host to do (`Effect`). -/
@@ -52,7 +53,19 @@ inductive Event where
   /-- Backing scale × 100 (200 on a Retina display). -/
   | scale (percent : Nat)
   | windowFocus (focused : Bool)
+  /-- The host's time. The host sends one first in every batch, and before any later event
+  that arrived a millisecond or more later (docs/effects.md). -/
+  | clock (t : Time)
+  /-- The host's answer to request `id`. -/
+  | reply (id : Nat) (r : Reply)
+  /-- An event from the subscription the runtime started as `id`. -/
+  | subEvent (id : Nat) (e : SubEvent)
 deriving Repr, BEq, Inhabited
+
+/-- The events from the world (`clock`, `reply`, `subEvent`); every other event is input. -/
+def Event.isWorld : Event → Bool
+  | .clock _ | .reply .. | .subEvent .. => true
+  | _ => false
 
 /-- Edits to a text field's model. The runtime turns key and text events into these; the
 semantics are `Cairn.Text.Field.apply`. -/
@@ -97,6 +110,15 @@ inductive Effect where
   of the new tree (docs/runtime.md). No `blur` is delivered for a field it takes focus from.
   The host decodes it and does nothing. -/
   | focus (c : ControlRef)
+  /-- Start (or restart) the timer `name`, due `ms` milliseconds from now. The runtime keeps
+  timers; the host only wakes it (docs/effects.md). -/
+  | setTimer (name : String) (ms : Nat)
+  /-- Forget the timer `name`; nothing if it isn't set. -/
+  | cancelTimer (name : String)
+  /-- Ask the host to do `r`; it answers with `Msg.reply id _`, exactly once. -/
+  | request (id : Nat) (r : Request)
+  /-- End the app. The host terminates after running the frame's other effects. -/
+  | quit
 deriving Repr, BEq, Inhabited
 
 end Cairn
