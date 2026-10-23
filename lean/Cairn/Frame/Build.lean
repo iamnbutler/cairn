@@ -105,8 +105,8 @@ def textInputAll (focus : Option ControlRef) : List Laid → Option TextInput
   | l :: ls => (textInputOf focus l).orElse fun _ => textInputAll focus ls
 end
 
-/-- The frame for a laid tree. The runtime fills in `cursor` and `effects`. -/
-def ofLaid (ui : UI) (l : Laid) : Frame where
+/-- The canvas for a laid tree. The runtime fills in `cursor`. -/
+def ofLaid (ui : UI) (l : Laid) : Canvas where
   size := ui.size
   draws := (paint ui.focus l).toArray
   ax := axOf ui.focus none #[] l

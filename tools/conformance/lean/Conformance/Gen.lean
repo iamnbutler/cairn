@@ -161,6 +161,9 @@ def eventName : Event → String
   | .clock t => s!"clock {t.mono}"
   | .reply id _ => s!"reply {id}"
   | .subEvent id _ => s!"subEvent {id}"
+  | .surface p e => s!"surface {p} " ++ eventName e
+  | .menuOpen p => s!"menuOpen {p}" | .menuClose p => s!"menuClose {p}"
+  | .menuSelect p r => s!"menuSelect {p} {refLabel r}"
 
 /-! ## Gestures
 

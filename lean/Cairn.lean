@@ -14,6 +14,7 @@ import Cairn.Frame.Bytes
 import Cairn.Frame.Encode
 import Cairn.Frame.Events
 import Cairn.Frame.Build
+import Cairn.Frame.Menu
 import Cairn.Frame.Dump
 import Cairn.Frame.Boundary
 import Cairn.Frame.Layout

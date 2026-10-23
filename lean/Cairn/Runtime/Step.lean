@@ -21,6 +21,37 @@ parameter so the runtime and its theorems don't depend on one implementation. -/
 structure Config where
   metrics : TextMetrics := TextMetrics.mono
   layout : TextMetrics → Size → Node → Laid := Cairn.Layout.layout
+  /-- A panel's height for its content at a width: the content's own (hug) height. -/
+  panelHeight : TextMetrics → Int → Node → Int := fun m _ n => (Cairn.Layout.measure m n).size.h
+
+/-- What one surface shows now (docs/surfaces.md). The window's content is the state's `ui` and
+`laid`; a panel's is laid out here at its width and its own height; a status item's is its
+description, which `menuSelect` is checked against. -/
+inductive Shown where
+  | window (place : ClaimId) (title : String)
+  /-- A shown panel: its view, its size (its width, its content's height) and its layout. -/
+  | panel (place : ClaimId) (shown : Option (PanelView × Size × Laid))
+  | status (place : ClaimId) (item : Option StatusItem)
+deriving Inhabited
+
+namespace Shown
+
+def place : Shown → ClaimId
+  | .window p _ | .panel p _ | .status p _ => p
+
+/-- The first window's place: where bare local events go. -/
+def windowPlace : List Shown → Option ClaimId
+  | [] => none
+  | .window p _ :: _ => some p
+  | _ :: xs => windowPlace xs
+
+/-- What status item `p` shows, if it is shown. -/
+def statusOf (p : ClaimId) : List Shown → Option StatusItem
+  | [] => none
+  | .status q it :: xs => if q = p then it else statusOf p xs
+  | _ :: xs => statusOf p xs
+
+end Shown
 
 structure State (S : Type) where
   app : S
@@ -40,6 +71,8 @@ structure State (S : Type) where
   world : World := {}
   /-- Subscription commands of the most recent `stepBytes` batch; the frame carries them. -/
   subCmds : Array SubCmd := #[]
+  /-- What each of the app's surfaces shows, in the app's order. -/
+  surfaces : List Shown := []
 
 /-! ## Fields -/
 
@@ -211,6 +244,17 @@ def route (m : TextMetrics) (s : State S) : Event → State S × List Action
     ({ s with ui := { s.ui with windowFocused := b, pressed := if b then s.ui.pressed else none } },
      [])
   | .clock _ | .reply .. | .subEvent .. => (s, [])
+  | .surface p e =>
+    if Shown.windowPlace s.surfaces = some p && e.isLocal then route m s e else (s, [])
+  | .menuOpen p =>
+    (s, match Shown.statusOf p s.surfaces with
+        | some it => [.press it.control]
+        | none => [])
+  | .menuClose _ => (s, [])
+  | .menuSelect p r =>
+    (s, match Shown.statusOf p s.surfaces with
+        | some it => if r ∈ MenuItem.enabledRefs it.menu then [.press r] else []
+        | none => [])
 
 /-! ## Committing -/
 
@@ -250,6 +294,26 @@ def settle (app : App S) (cfg : Config) (st : S) (pointer : Option Point) (ui0 :
 
 /-- How many times `settle` may re-run the view after the first layout. -/
 def settleFuel : Nat := 2
+
+/-- A shown panel's size: its width and its content's height at that width. -/
+def panelSize (cfg : Config) (v : PanelView) : Size :=
+  let w : Int := v.width
+  ⟨w, max 0 (cfg.panelHeight cfg.metrics w v.content)⟩
+
+/-- Lay out a shown panel at its size. -/
+def layPanel (cfg : Config) (v : PanelView) : Size × Laid :=
+  let sz := panelSize cfg v
+  (sz, cfg.layout cfg.metrics sz v.content)
+
+/-- What one surface shows in app state `st`. -/
+def Surface.show (cfg : Config) (st : S) : Surface S → Shown
+  | .window p t _ => .window p t
+  | .panel p v => .panel p ((v st).map fun pv => (pv, layPanel cfg pv))
+  | .statusItem p v => .status p (v st)
+
+/-- What every surface shows in app state `st`. -/
+def shows (app : App S) (cfg : Config) (st : S) : List Shown :=
+  app.surfaces.map (Surface.show cfg st)
 
 /-- Run `update` over the actions in order, collecting effects. -/
 def deliver (update : S → Action → S × List Effect) (st : S) (acts : List Action) :
@@ -343,8 +407,9 @@ def step (app : App S) (cfg : Config) (s : State S) (e : Event) : State S × Lis
     else (c.world.subs, [], c.world.nextSub)
   let ui1 := applyFocus c.effs s1.ui
   let (ui, laid) := settle app cfg c.app s1.pointer ui1 settleFuel ui1
+  let surfaces := if c.delivered then shows app cfg c.app else s1.surfaces
   ({ s1 with app := c.app, ui, laid, world := { c.world with subs, nextSub := next },
-             subCmds := s1.subCmds ++ cmds.toArray }, c.effs)
+             subCmds := s1.subCmds ++ cmds.toArray, surfaces }, c.effs)
 
 /-- A batch of events, in order. -/
 def steps (app : App S) (cfg : Config) (s : State S) (es : List Event) : State S × List Effect :=
@@ -355,7 +420,7 @@ if that control is focusable. -/
 def start (app : App S) (cfg : Config) (size : Size) (scale : Nat := 100) : State S :=
   let ui0 : UI := { size, focus := app.initFocus }
   let (ui, laid) := settle app cfg app.init none ui0 settleFuel ui0
-  { app := app.init, ui, laid, scale }
+  { app := app.init, ui, laid, scale, surfaces := shows app cfg app.init }
 
 /-- The cursor the host shows: text over fields, a pointing hand over other controls. -/
 def cursor (s : State S) : Cursor :=

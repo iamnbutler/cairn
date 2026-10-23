@@ -156,11 +156,39 @@ def subCmd : Gen SubCmd := do
   | 3 => return .start (← u32) (.globalKey (← u32) (← opt u32))
   | _ => return .stop (← u32)
 
-def frame : Gen Frame := do
-  let big ← Gen.chance 1 10
+def canvas (big : Bool) : Gen Canvas := do
   return { size := ⟨← i32, ← i32⟩, draws := ← array (if big then 200 else 12) draw,
            ax := ← array (if big then 150 else 10) axNode,
-           textInput := ← opt textInput, cursor := ← Gen.elem [.arrow, .pointer, .text],
+           textInput := ← opt textInput, cursor := ← Gen.elem [.arrow, .pointer, .text] }
+
+def key : Gen Key := do
+  match ← Gen.below 14 with
+  | 0 => return .enter | 1 => return .escape | 2 => return .tab | 3 => return .backspace
+  | 4 => return .delete | 5 => return .left | 6 => return .right | 7 => return .up
+  | 8 => return .down | 9 => return .home | 10 => return .finish | 11 => return .pageUp
+  | 12 => return .pageDown
+  | _ => return .char (← scalar)
+
+def mods : Gen Mods := do return ⟨← Gen.bool, ← Gen.bool, ← Gen.bool, ← Gen.bool⟩
+
+def menuRecord : Gen MenuRecord := do
+  return { kind := ← Gen.elem [.item, .info, .submenu, .separator], label := ← str,
+           control := ← opt ref, place := ← opt u32, parent := ← opt u32,
+           enabled := ← Gen.bool, checked := ← opt Gen.bool,
+           shortcut := ← opt (do return ⟨← key, ← mods⟩) }
+
+def status (big : Bool) : Gen StatusFrame := do
+  return { control := ← ref, symbol := ← str, title := ← str, label := ← str,
+           menu := ← array (if big then 60 else 8) menuRecord }
+
+def surface (big : Bool) : Gen SurfaceFrame := do
+  return { kind := ← Gen.elem [.window, .panel, .statusItem], place := ← u32, shown := ← Gen.bool,
+           title := ← str, anchor := .bottomCenter (← u32),
+           screen := ← Gen.elem [.pointer, .main], canvas := ← canvas big, status := ← status big }
+
+def frame : Gen Frame := do
+  let big ← Gen.chance 1 10
+  return { surfaces := ← array 3 (surface big),
            effects := ← array 3 effect, subs := ← array 3 subCmd, wake := ← opt u64 }
 
 /-- The frame for a seed. -/

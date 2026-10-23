@@ -2,6 +2,7 @@ module
 
 public import Cairn.Runtime.Step
 public import Cairn.Frame
+public import Cairn.Frame.Menu
 
 /-! The Lean side of the app ABI. The host (workstream G) loads one app per binary and calls
 three exported functions; each app file defines them by applying these generic functions to
@@ -32,9 +33,9 @@ structure Boundary where
   /-- Host event bytes → events, in order. -/
   decode : ByteArray → List Event
   /-- The draws, accessibility nodes and text input of a laid tree. It reads the `UI` for the
-  window size and focus (the caret, `AxNode.focused`, `textInput`). The runtime fills in the
-  cursor and effects. -/
-  render : Laid → UI → Frame
+  surface's size and focus (the caret, `AxNode.focused`, `textInput`). The runtime fills in the
+  cursor, the other surfaces and the effects. -/
+  render : Laid → UI → Canvas
   encode : Frame → ByteArray
 
 variable {S : Type}
@@ -48,9 +49,23 @@ def stepBytes (app : App S) (cfg : Config) (b : Boundary) (s : State S) (events 
   let (s', effs) := steps app cfg { s with effects := #[], subCmds := #[] } (b.decode events)
   { s' with effects := effs.toArray }
 
+/-- A panel's `UI`: its size, and nothing focused, hovered or pressed (it takes no input). -/
+def panelUI (size : Size) : UI := { size, windowFocused := false }
+
+/-- One surface's record. The window shows the state's laid tree; a panel its own. -/
+def surfaceFrame (b : Boundary) (s : State S) : Shown → SurfaceFrame
+  | .window p t => { kind := .window, place := p, title := t,
+                     canvas := { b.render s.laid s.ui with cursor := cursor s } }
+  | .panel p none => { kind := .panel, place := p, shown := false }
+  | .panel p (some (v, sz, l)) =>
+    { kind := .panel, place := p, anchor := v.anchor, screen := v.screen,
+      canvas := b.render l (panelUI sz) }
+  | .status p none => { kind := .statusItem, place := p, shown := false }
+  | .status p (some it) => { kind := .statusItem, place := p, status := Frame.ofStatus it }
+
 def frame (b : Boundary) (s : State S) : Frame :=
-  let f := b.render s.laid s.ui
-  { f with cursor := cursor s, effects := s.effects, subs := s.subCmds, wake := s.world.wake }
+  { surfaces := (s.surfaces.map (surfaceFrame b s)).toArray, effects := s.effects,
+    subs := s.subCmds, wake := s.world.wake }
 
 def frameBytes (b : Boundary) (s : State S) : ByteArray := b.encode (frame b s)
 

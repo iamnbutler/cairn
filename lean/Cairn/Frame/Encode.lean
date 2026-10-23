@@ -86,6 +86,97 @@ def Permission.ofCode : UInt8 → Option Permission
 def Sub.code : Sub → UInt8
   | .every _ => 0 | .watchFile _ => 1 | .record _ => 2 | .globalKey .. => 3
 
+/-- `char` is 13 and carries its scalar in the record's `u32` field. -/
+def Key.code : Key → UInt8
+  | .enter => 0 | .escape => 1 | .tab => 2 | .backspace => 3 | .delete => 4
+  | .left => 5 | .right => 6 | .up => 7 | .down => 8 | .home => 9 | .finish => 10
+  | .pageUp => 11 | .pageDown => 12 | .char _ => 13
+
+def Key.scalar : Key → Nat
+  | .char c => c.toNat
+  | _ => 0
+
+def Key.ofCode (code : UInt8) (scalar : Nat) : Option Key :=
+  match code with
+  | 0 => some .enter | 1 => some .escape | 2 => some .tab | 3 => some .backspace
+  | 4 => some .delete | 5 => some .left | 6 => some .right | 7 => some .up | 8 => some .down
+  | 9 => some .home | 10 => some .finish | 11 => some .pageUp | 12 => some .pageDown
+  | 13 => if scalar.isValidChar then some (.char (Char.ofNat scalar)) else none
+  | _ => none
+
+@[simp] theorem Key.ofCode_code (k : Key) : Key.ofCode (Key.code k) (Key.scalar k) = some k := by
+  cases k with
+  | char c =>
+    have : c.toNat.isValidChar := c.valid
+    simp only [ofCode, code, scalar, this, ↓reduceIte, Char.ofNat_toNat]
+  | _ => rfl
+
+theorem Key.scalar_fits (k : Key) : FitsU32 (Key.scalar k) := by
+  cases k with
+  | char c =>
+    have h : c.toNat.isValidChar := c.valid
+    simp only [scalar, FitsU32]; unfold Nat.isValidChar at h; omega
+  | _ => decide
+
+/-- Bit 0 shift, 1 command, 2 option, 3 control. -/
+def Mods.code (m : Mods) : UInt8 :=
+  UInt8.ofNat ((if m.shift then 1 else 0) + (if m.command then 2 else 0) +
+    (if m.option then 4 else 0) + (if m.control then 8 else 0))
+
+def Mods.ofCode (b : UInt8) : Option Mods :=
+  let n := b.toNat
+  if n < 16 then
+    some ⟨n % 2 == 1, n / 2 % 2 == 1, n / 4 % 2 == 1, n / 8 % 2 == 1⟩
+  else none
+
+@[simp] theorem Mods.ofCode_code (m : Mods) : Mods.ofCode (Mods.code m) = some m := by
+  obtain ⟨s, c, o, t⟩ := m
+  cases s <;> cases c <;> cases o <;> cases t <;> rfl
+
+def SurfaceKind.code : SurfaceKind → UInt8
+  | .window => 0 | .panel => 1 | .statusItem => 2
+
+def SurfaceKind.ofCode : UInt8 → Option SurfaceKind
+  | 0 => some .window | 1 => some .panel | 2 => some .statusItem | _ => none
+
+@[simp] theorem SurfaceKind.ofCode_code (k : SurfaceKind) :
+    SurfaceKind.ofCode (SurfaceKind.code k) = some k := by
+  cases k <;> rfl
+
+def MenuKind.code : MenuKind → UInt8
+  | .item => 0 | .info => 1 | .submenu => 2 | .separator => 3
+
+def MenuKind.ofCode : UInt8 → Option MenuKind
+  | 0 => some .item | 1 => some .info | 2 => some .submenu | 3 => some .separator | _ => none
+
+@[simp] theorem MenuKind.ofCode_code (k : MenuKind) : MenuKind.ofCode (MenuKind.code k) = some k := by
+  cases k <;> rfl
+
+def ScreenChoice.code : ScreenChoice → UInt8
+  | .pointer => 0 | .main => 1
+
+def ScreenChoice.ofCode : UInt8 → Option ScreenChoice
+  | 0 => some .pointer | 1 => some .main | _ => none
+
+@[simp] theorem ScreenChoice.ofCode_code (c : ScreenChoice) :
+    ScreenChoice.ofCode (ScreenChoice.code c) = some c := by
+  cases c <;> rfl
+
+/-- `bottomCenter` is 0; its offset goes in the record's `u32` field. -/
+def Anchor.code : Anchor → UInt8
+  | .bottomCenter _ => 0
+
+def Anchor.ofCode (code : UInt8) (offset : Nat) : Option Anchor :=
+  match code with
+  | 0 => some (.bottomCenter offset)
+  | _ => none
+
+@[simp] theorem Anchor.ofCode_code (a : Anchor) : Anchor.ofCode (Anchor.code a) (Anchor.offset a) = some a := by
+  cases a; rfl
+
+/-- The shortcut fields of a menu record without one. -/
+def noShortcut : Shortcut := ⟨.enter, {}⟩
+
 /-! ## What fits
 
 The round trip holds for frames whose integers fit the wire's 32-bit fields and whose strings
@@ -180,11 +271,24 @@ def fitsSubCmd : SubCmd → Bool
 
 /-- Every value fits its field. The other condition of the round trip is that the encoding is
 under 4 GiB (each section's byte length is a `u32`). -/
+def fitsCanvas (c : Canvas) : Bool :=
+  fi c.size.w && fi c.size.h &&
+    fu c.draws.size && c.draws.all fitsDraw &&
+    fu c.ax.size && c.ax.all fitsAx &&
+    c.textInput.all fitsTextInput
+
+def fitsMenuRecord (m : MenuRecord) : Bool :=
+  m.control.all fitsRef && m.parent.all fu && m.place.all fu && fs m.label
+
+def fitsStatus (s : StatusFrame) : Bool :=
+  fitsRef s.control && fs s.symbol && fs s.title && fs s.label &&
+    fu s.menu.size && s.menu.all fitsMenuRecord
+
+def fitsSurface (s : SurfaceFrame) : Bool :=
+  fu s.place && fu s.anchor.offset && fs s.title && fitsCanvas s.canvas && fitsStatus s.status
+
 def fitsFrame (f : Frame) : Bool :=
-  fi f.size.w && fi f.size.h &&
-    fu f.draws.size && f.draws.all fitsDraw &&
-    fu f.ax.size && f.ax.all fitsAx &&
-    f.textInput.all fitsTextInput &&
+  fu f.surfaces.size && f.surfaces.all fitsSurface &&
     fu f.effects.size && f.effects.all fitsEffect &&
     fu f.subs.size && f.subs.all fitsSubCmd && f.wake.all fu64
 
@@ -291,12 +395,32 @@ def wake (w : Option Nat) : List UInt8 := bool w.isSome ++ pad 3 ++ u64 (w.getD 
 
 def magic : List UInt8 := [0x43, 0x41, 0x46, 0x52] -- "CAFR"
 
-/-- Magic, version 2, flags 0. -/
-def header : List UInt8 := magic ++ [2, 0, 0, 0]
+/-- A Metal surface's content: size, draws, accessibility nodes, text input, cursor. -/
+def canvas (c : Canvas) : List UInt8 :=
+  size c.size ++ list draw c.draws.toList ++ list ax c.ax.toList ++ textInput c.textInput ++
+    cursor c.cursor
+
+/-- 32 bytes, then the label. A field the record doesn't have is written as zero. -/
+def menuRecord (m : MenuRecord) : List UInt8 :=
+  let sc := m.shortcut.getD noShortcut
+  [MenuKind.code m.kind] ++ bool m.enabled ++ [checkedCode m.checked] ++ bool m.shortcut.isSome ++
+    bool m.control.isSome ++ bool m.parent.isSome ++ bool m.place.isSome ++ [Key.code sc.key] ++
+    ref (m.control.getD ⟨0, 0⟩) ++ u32 (m.parent.getD 0) ++ u32 (m.place.getD 0) ++
+    u32 (Key.scalar sc.key) ++ [Mods.code sc.mods] ++ pad 3 ++ str m.label
+
+def status (s : StatusFrame) : List UInt8 :=
+  ref s.control ++ str s.symbol ++ str s.title ++ str s.label ++ list menuRecord s.menu.toList
+
+/-- `[kind, shown, anchor, screen]`, place, anchor offset, title, canvas, status. -/
+def surface (s : SurfaceFrame) : List UInt8 :=
+  [SurfaceKind.code s.kind] ++ bool s.shown ++ [Anchor.code s.anchor, ScreenChoice.code s.screen] ++
+    u32 s.place ++ u32 s.anchor.offset ++ str s.title ++ canvas s.canvas ++ status s.status
+
+/-- Magic, version 3, flags 0. -/
+def header : List UInt8 := magic ++ [3, 0, 0, 0]
 
 def frame (f : Frame) : List UInt8 :=
-  header ++ size f.size ++ list draw f.draws.toList ++ list ax f.ax.toList ++
-    textInput f.textInput ++ cursor f.cursor ++ list effect f.effects.toList ++
+  header ++ list surface f.surfaces.toList ++ list effect f.effects.toList ++
     list subCmd f.subs.toList ++ wake f.wake
 
 end Enc
@@ -523,18 +647,70 @@ def wake : Dec (Option Nat) := do
   let w ← u64
   return if has then some w else none
 
-def frame : Dec Frame := do
-  expect Enc.header
+def canvas : Dec Canvas := do
   let sz ← size
   let draws ← list draw
   let ax ← list ax
   let textInput ← textInput
   let cursor ← cursor
+  return { size := sz, draws := draws.toArray, ax := ax.toArray, textInput, cursor }
+
+def shortcut (has : Bool) (key : UInt8) (scalar : Nat) (mods : UInt8) : Dec (Option Shortcut) :=
+  if has then
+    match Key.ofCode key scalar, Mods.ofCode mods with
+    | some k, some m => pure (some ⟨k, m⟩)
+    | _, _ => fail
+  else pure none
+
+def menuRecord : Dec MenuRecord := do
+  let some kind := MenuKind.ofCode (← byte) | fail
+  let enabled ← bool
+  let some checked := checkedOfCode (← byte) | fail
+  let hasShortcut ← bool
+  let hasControl ← bool
+  let hasParent ← bool
+  let hasPlace ← bool
+  let key ← byte
+  let c ← ref
+  let parent ← u32
+  let place ← u32
+  let scalar ← u32
+  let mods ← byte
+  skip 3
+  let label ← str
+  let sc ← shortcut hasShortcut key scalar mods
+  return { kind, label, control := if hasControl then some c else none,
+           place := if hasPlace then some place else none,
+           parent := if hasParent then some parent else none, enabled, checked, shortcut := sc }
+
+def status : Dec StatusFrame := do
+  let control ← ref
+  let symbol ← str
+  let title ← str
+  let label ← str
+  let menu ← list menuRecord
+  return { control, symbol, title, label, menu := menu.toArray }
+
+def surface : Dec SurfaceFrame := do
+  let some kind := SurfaceKind.ofCode (← byte) | fail
+  let shown ← bool
+  let anchorCode ← byte
+  let some screen := ScreenChoice.ofCode (← byte) | fail
+  let place ← u32
+  let offset ← u32
+  let some anchor := Anchor.ofCode anchorCode offset | fail
+  let title ← str
+  let canvas ← canvas
+  let status ← status
+  return { kind, place, shown, title, anchor, screen, canvas, status }
+
+def frame : Dec Frame := do
+  expect Enc.header
+  let surfaces ← list surface
   let effects ← list effect
   let subs ← list subCmd
   let wake ← wake
-  return { size := sz, draws := draws.toArray, ax := ax.toArray, textInput, cursor,
-           effects := effects.toArray, subs := subs.toArray, wake }
+  return { surfaces := surfaces.toArray, effects := effects.toArray, subs := subs.toArray, wake }
 
 /-! ### Round trips -/
 
@@ -804,27 +980,92 @@ theorem wake_enc {w : Option Nat} (h : w.all fu64 = true) (r : List UInt8) :
     simp only [wake, Enc.wake, Option.isSome_some, Option.getD_some, List.append_assoc,
         bind_apply, bool_enc, skip_pad, u64_enc h, pure_apply, ↓reduceIte]
 
-/-- Sections of a frame whose encoding is under 4 GiB have `u32` byte lengths. -/
-def SizeOk (f : Frame) : Prop := (Enc.frame f).length < 4294967296
+theorem length_le_flatMap {α : Type} (e : α → List UInt8) {xs : List α} {x : α} (h : x ∈ xs) :
+    (e x).length ≤ (xs.flatMap e).length := by
+  induction xs with
+  | nil => simp only [List.not_mem_nil] at h
+  | cons y ys ih =>
+    simp only [List.flatMap_cons, List.length_append]
+    rcases List.mem_cons.mp h with rfl | h
+    · omega
+    · have := ih h; omega
 
-theorem frame_enc {f : Frame} (h : fitsFrame f = true) (hs : SizeOk f) (r : List UInt8) :
-    frame (Enc.frame f ++ r) = some (f, r) := by
-  obtain ⟨sz, draws, axs, ti, cur, effs, subs, wk⟩ := f
-  simp only [fitsFrame, Bool.and_eq_true, fi_iff, fu_iff, Array.all_eq_true'] at h
-  obtain ⟨⟨⟨⟨⟨⟨⟨⟨⟨⟨⟨hw, hh⟩, hdn⟩, hd⟩, han⟩, ha⟩, ht⟩, hen⟩, he⟩, hsn⟩, hsc⟩, hwk⟩ := h
-  simp only [SizeOk, Enc.frame, Enc.list, Enc.sect, List.length_append, Enc.length_u32] at hs
-  simp only [frame, Enc.frame, List.append_assoc, bind_apply, expect_enc]
+theorem canvas_enc {c : Canvas} (h : fitsCanvas c = true) (hs : (Enc.canvas c).length < 4294967296)
+    (r : List UInt8) : canvas (Enc.canvas c ++ r) = some (c, r) := by
+  obtain ⟨sz, draws, axs, ti, cur⟩ := c
+  simp only [fitsCanvas, Bool.and_eq_true, fi_iff, fu_iff, Array.all_eq_true'] at h
+  obtain ⟨⟨⟨⟨⟨⟨hw, hh⟩, hdn⟩, hd⟩, han⟩, ha⟩, ht⟩ := h
+  simp only [Enc.canvas, Enc.list, Enc.sect, Enc.size, Enc.textInput, Enc.cursor,
+    List.length_append, Enc.length_u32, Enc.length_i32] at hs
+  simp only [canvas, Enc.canvas, List.append_assoc, bind_apply]
   rw [size_enc hw hh]; dsimp only
   rw [list_enc (e := Enc.draw) _ (fun x hx => draw_enc (hd x (by simpa using hx))) (by simpa using hdn)
     (by unfold FitsU32; omega)]; dsimp only
   rw [list_enc (e := Enc.ax) _ (fun x hx => ax_enc (ha x (by simpa using hx))) (by simpa using han)
     (by unfold FitsU32; omega)]; dsimp only
   rw [textInput_enc ht]; dsimp only
-  rw [cursor_enc]; dsimp only
+  rw [cursor_enc]
+  simp only [Array.toArray_toList, pure_apply]
+
+theorem menuRecord_enc {m : MenuRecord} (h : fitsMenuRecord m = true) (r : List UInt8) :
+    menuRecord (Enc.menuRecord m ++ r) = some (m, r) := by
+  obtain ⟨kind, label, control, place, parent, enabled, checked, sc⟩ := m
+  simp only [fitsMenuRecord, Bool.and_eq_true, fs_iff] at h
+  obtain ⟨⟨⟨hc, hp⟩, hpl⟩, hl⟩ := h
+  have hk : ∀ k : Key, FitsU32 (Key.scalar k) := Key.scalar_fits
+  cases control <;> cases parent <;> cases place <;> cases sc <;>
+    simp_all only [Option.all_none, Option.all_some, fu_iff, menuRecord, Enc.menuRecord,
+        List.cons_append, List.nil_append, List.append_assoc, Option.isSome_none,
+        Option.isSome_some, Option.getD_none, Option.getD_some, bind_apply, byte_cons,
+        MenuKind.ofCode_code, bool_enc, checkedOfCode_code, Bool.false_eq_true, ↓reduceIte,
+        skip_pad, fitsRef_zero, ref_enc, fitsU32_zero, u32_enc, str_enc, pure_apply, shortcut,
+        Key.ofCode_code, Mods.ofCode_code]
+
+theorem status_enc {s : StatusFrame} (h : fitsStatus s = true)
+    (hs : (Enc.status s).length < 4294967296) (r : List UInt8) :
+    status (Enc.status s ++ r) = some (s, r) := by
+  obtain ⟨c, sym, title, label, menu⟩ := s
+  simp only [fitsStatus, Bool.and_eq_true, fs_iff, fu_iff, Array.all_eq_true'] at h
+  obtain ⟨⟨⟨⟨⟨hc, hsy⟩, ht⟩, hl⟩, hmn⟩, hm⟩ := h
+  simp only [Enc.status, Enc.list, Enc.sect, List.length_append, Enc.length_u32] at hs
+  simp only [status, Enc.status, List.append_assoc, bind_apply, ref_enc hc, str_enc hsy,
+    str_enc ht, str_enc hl]
+  rw [list_enc (e := Enc.menuRecord) _ (fun x hx => menuRecord_enc (hm x (by simpa using hx)))
+    (by simpa using hmn) (by unfold FitsU32; omega)]
+  simp only [Array.toArray_toList, pure_apply]
+
+theorem surface_enc {s : SurfaceFrame} (h : fitsSurface s = true)
+    (hs : (Enc.surface s).length < 4294967296) (r : List UInt8) :
+    surface (Enc.surface s ++ r) = some (s, r) := by
+  obtain ⟨kind, place, shown, title, anchor, screen, c, st⟩ := s
+  simp only [fitsSurface, Bool.and_eq_true, fu_iff, fs_iff] at h
+  obtain ⟨⟨⟨⟨hp, ho⟩, ht⟩, hc⟩, hst⟩ := h
+  simp only [Enc.surface, List.length_append, List.length_cons, List.length_nil,
+    Enc.length_u32, Enc.bool] at hs
+  simp only [surface, Enc.surface, List.cons_append, List.nil_append, List.append_assoc,
+    bind_apply, byte_cons, SurfaceKind.ofCode_code, bool_enc, ScreenChoice.ofCode_code,
+    u32_enc hp, u32_enc ho, Anchor.ofCode_code, str_enc ht]
+  rw [canvas_enc hc (by omega)]; dsimp only
+  rw [status_enc hst (by omega)]
+  simp only [pure_apply]
+
+/-- Sections of a frame whose encoding is under 4 GiB have `u32` byte lengths. -/
+def SizeOk (f : Frame) : Prop := (Enc.frame f).length < 4294967296
+
+theorem frame_enc {f : Frame} (h : fitsFrame f = true) (hs : SizeOk f) (r : List UInt8) :
+    frame (Enc.frame f ++ r) = some (f, r) := by
+  obtain ⟨surfs, effs, subs, wk⟩ := f
+  simp only [fitsFrame, Bool.and_eq_true, fu_iff, Array.all_eq_true'] at h
+  obtain ⟨⟨⟨⟨⟨⟨hsn, hsf⟩, hen⟩, he⟩, hcn⟩, hsc⟩, hwk⟩ := h
+  simp only [SizeOk, Enc.frame, Enc.list, Enc.sect, List.length_append, Enc.length_u32] at hs
+  simp only [frame, Enc.frame, List.append_assoc, bind_apply, expect_enc]
+  rw [list_enc (e := Enc.surface) _ (fun x hx => surface_enc (hsf x (by simpa using hx))
+    (by have := length_le_flatMap Enc.surface hx; omega)) (by simpa using hsn)
+    (by unfold FitsU32; omega)]; dsimp only
   rw [list_enc (e := Enc.effect) _ (fun x hx => effect_enc (he x (by simpa using hx))) (by simpa using hen)
     (by unfold FitsU32; omega)]; dsimp only
   rw [list_enc (e := Enc.subCmd) _ (fun x hx => subCmd_enc (hsc x (by simpa using hx)))
-    (by simpa using hsn) (by unfold FitsU32; omega)]; dsimp only
+    (by simpa using hcn) (by unfold FitsU32; omega)]; dsimp only
   rw [wake_enc hwk]
   simp only [Array.toArray_toList, pure_apply]
 
@@ -903,6 +1144,16 @@ def textInput : Option TextInput → Nat
 
 def list {α : Type} (len : α → Nat) (xs : Array α) : Nat := xs.foldl (fun n x => n + len x) 0
 
+def canvas (c : Canvas) : Nat :=
+  8 + (8 + list draw c.draws) + (8 + list ax c.ax) + textInput c.textInput + 4
+
+def menuRecord (m : MenuRecord) : Nat := 32 + str m.label
+
+def status (s : StatusFrame) : Nat :=
+  8 + str s.symbol + str s.title + str s.label + (8 + list menuRecord s.menu)
+
+def surface (s : SurfaceFrame) : Nat := 12 + str s.title + canvas s.canvas + status s.status
+
 theorem foldl_add {α : Type} (len : α → Nat) (xs : List α) (n : Nat) :
     xs.foldl (fun n x => n + len x) n = n + (xs.map len).sum := by
   induction xs generalizing n with
@@ -980,6 +1231,30 @@ theorem list_eq {α : Type} (len : α → Nat) (e : α → List UInt8) (h : ∀ 
   | nil => simp only [List.map_nil, List.sum_nil, Nat.add_zero, List.flatMap_nil, List.length_nil]
   | cons x xs ih => simp_all only [Nat.zero_add, List.length_flatMap, List.map_cons, List.sum_cons,
       List.flatMap_cons, List.length_append]
+
+theorem canvas_eq (c : Canvas) : canvas c = (Enc.canvas c).length := by
+  simp only [canvas, Enc.canvas, list_eq draw Enc.draw draw_eq, list_eq ax Enc.ax ax_eq,
+    textInput_eq, List.length_append, Enc.size, Enc.length_i32, Enc.list, Enc.sect,
+    Enc.length_u32, Enc.cursor, Enc.pad, List.reduceReplicate, List.cons_append, List.nil_append,
+    List.length_cons, List.length_nil]
+  omega
+
+theorem menuRecord_eq (m : MenuRecord) : menuRecord m = (Enc.menuRecord m).length := by
+  simp only [menuRecord, Enc.menuRecord, str_eq, List.length_append, List.length_cons,
+    List.length_nil, Enc.bool, Enc.ref, Enc.length_u32, Enc.pad, List.length_replicate,
+    List.cons_append, List.nil_append, List.append_assoc]
+  omega
+
+theorem status_eq (s : StatusFrame) : status s = (Enc.status s).length := by
+  simp only [status, Enc.status, str_eq, list_eq menuRecord Enc.menuRecord menuRecord_eq,
+    List.length_append, Enc.ref, Enc.length_u32, Enc.list, Enc.sect]
+  omega
+
+theorem surface_eq (s : SurfaceFrame) : surface s = (Enc.surface s).length := by
+  simp only [surface, Enc.surface, str_eq, canvas_eq, status_eq, List.length_append,
+    List.length_cons, List.length_nil, Enc.bool, Enc.length_u32, List.cons_append,
+    List.nil_append]
+  omega
 
 end Len
 
@@ -1074,13 +1349,34 @@ def list {α : Type} (put : ByteArray → α → ByteArray) (len : α → Nat) (
     (xs : Array α) : ByteArray :=
   xs.foldl put (u32 (u32 b xs.size) (Len.list len xs))
 
+def canvas (b : ByteArray) (c : Canvas) : ByteArray :=
+  let b := list draw Len.draw (i32 (i32 b c.size.w) c.size.h) c.draws
+  let b := list ax Len.ax b c.ax
+  cursor (textInput b c.textInput) c.cursor
+
+def menuRecord (b : ByteArray) (m : MenuRecord) : ByteArray :=
+  let sc := m.shortcut.getD noShortcut
+  let b := bool (b.push (MenuKind.code m.kind)) m.enabled
+  let b := bool (b.push (checkedCode m.checked)) m.shortcut.isSome
+  let b := bool (bool (bool b m.control.isSome) m.parent.isSome) m.place.isSome
+  let b := ref (b.push (Key.code sc.key)) (m.control.getD ⟨0, 0⟩)
+  let b := u32 (u32 (u32 b (m.parent.getD 0)) (m.place.getD 0)) (Key.scalar sc.key)
+  str (pad (b.push (Mods.code sc.mods)) 3) m.label
+
+def status (b : ByteArray) (s : StatusFrame) : ByteArray :=
+  list menuRecord Len.menuRecord (str (str (str (ref b s.control) s.symbol) s.title) s.label) s.menu
+
+def surface (b : ByteArray) (s : SurfaceFrame) : ByteArray :=
+  let b := ((bool (b.push (SurfaceKind.code s.kind)) s.shown).push (Anchor.code s.anchor)).push
+    (ScreenChoice.code s.screen)
+  let b := str (u32 (u32 b s.place) s.anchor.offset) s.title
+  status (canvas b s.canvas) s.status
+
 def frame (f : Frame) : ByteArray :=
-  let cap := 40 + Len.list Len.draw f.draws + Len.list Len.ax f.ax +
-    Len.textInput f.textInput + Len.list Len.effect f.effects + 8 + Len.list Len.subCmd f.subs + 12
+  let cap := 8 + (8 + Len.list Len.surface f.surfaces) + (8 + Len.list Len.effect f.effects) +
+    (8 + Len.list Len.subCmd f.subs) + 12
   let b := (ByteArray.emptyWithCapacity cap).append ⟨Enc.header.toArray⟩
-  let b := list draw Len.draw (i32 (i32 b f.size.w) f.size.h) f.draws
-  let b := list ax Len.ax b f.ax
-  let b := cursor (textInput b f.textInput) f.cursor
+  let b := list surface Len.surface b f.surfaces
   let b := list effect Len.effect b f.effects
   wake (list subCmd Len.subCmd b f.subs) f.wake
 
@@ -1194,13 +1490,34 @@ theorem list_data {α : Type} (put : ByteArray → α → ByteArray) (len : α �
   simp only [Len.list_eq len e hl, List.length_flatMap, u32_data, List.append_assoc, Enc.list,
       Array.length_toList, Enc.sect]
 
+@[simp] theorem canvas_data (b : ByteArray) (c : Canvas) :
+    (canvas b c).data.toList = b.data.toList ++ Enc.canvas c := by
+  simp only [canvas, cursor_data, textInput_data, list_data _ _ _ ax_data Len.ax_eq,
+    list_data _ _ _ draw_data Len.draw_eq, i32_data, List.append_assoc, Enc.canvas, Enc.size]
+
+@[simp] theorem menuRecord_data (b : ByteArray) (m : MenuRecord) :
+    (menuRecord b m).data.toList = b.data.toList ++ Enc.menuRecord m := by
+  simp only [menuRecord, str_data, pad_data, u32_data, ref_data, bool_data, ByteArray.data_push,
+    Array.toList_push, List.append_assoc, List.cons_append, List.nil_append, Enc.menuRecord]
+
+@[simp] theorem status_data (b : ByteArray) (s : StatusFrame) :
+    (status b s).data.toList = b.data.toList ++ Enc.status s := by
+  simp only [status, list_data _ _ _ menuRecord_data Len.menuRecord_eq, str_data, ref_data,
+    List.append_assoc, Enc.status]
+
+@[simp] theorem surface_data (b : ByteArray) (s : SurfaceFrame) :
+    (surface b s).data.toList = b.data.toList ++ Enc.surface s := by
+  simp only [surface, status_data, canvas_data, str_data, u32_data, bool_data,
+    ByteArray.data_push, Array.toList_push, List.append_assoc, List.cons_append, List.nil_append,
+    Enc.surface]
+
 theorem frame_data (f : Frame) : (frame f).data.toList = Enc.frame f := by
   have hempty : (ByteArray.emptyWithCapacity 0).data.toList = [] := rfl
   simp only [frame, Enc.frame]
-  rw [wake_data, list_data _ _ _ subCmd_data Len.subCmd_eq, list_data _ _ _ effect_data Len.effect_eq, cursor_data, textInput_data,
-    list_data _ _ _ ax_data Len.ax_eq, list_data _ _ _ draw_data Len.draw_eq]
-  simp only [ByteArray.append_eq, i32_data, ByteArray.data_append, Array.toList_append,
-      List.append_assoc, Enc.size, List.append_left_eq_self, Array.toList_eq_nil_iff]
+  rw [wake_data, list_data _ _ _ subCmd_data Len.subCmd_eq,
+    list_data _ _ _ effect_data Len.effect_eq, list_data _ _ _ surface_data Len.surface_eq]
+  simp only [ByteArray.append_eq, ByteArray.data_append, Array.toList_append,
+      List.append_assoc, List.append_left_eq_self, Array.toList_eq_nil_iff]
   rfl
 
 end Put

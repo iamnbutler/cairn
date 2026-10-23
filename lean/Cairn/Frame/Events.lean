@@ -3,13 +3,16 @@ module
 public import Cairn.Input
 public import Cairn.Frame.Encode
 
-/-! Event byte format v1 (host → Lean, docs/frame.md): specification encoder
+/-! Event byte format v2 (host → Lean, docs/frame.md): specification encoder
 `Wire.Enc.events`, decoder `Wire.Dec.events`, and the round trip `decodeEvents_encodeEvents`.
 
 ```
-header  "CAEV" u16 version=1 u16 flags=0 u32 count                          12 bytes
+header  "CAEV" u16 version=2 u16 flags=0 u32 count                          12 bytes
 events  count records, each [tag, a, b, 0] then fixed fields, then at most one string
 ```
+
+A `surface` record (tag 21) is its head and a `u32` place followed by one whole surface-local
+record (tags 0–17), so every record still stands alone.
 
 Lean only decodes events at run time (the host encodes them), and a frame's events are a
 handful of records, so the decoder runs the list specification directly on the buffer's bytes. -/
@@ -26,53 +29,6 @@ def Button.ofCode : UInt8 → Option Button
 
 @[simp] theorem Button.ofCode_code (b : Button) : Button.ofCode (Button.code b) = some b := by
   cases b <;> rfl
-
-/-- `char` is 13 and carries its scalar in the record's `u32` field. -/
-def Key.code : Key → UInt8
-  | .enter => 0 | .escape => 1 | .tab => 2 | .backspace => 3 | .delete => 4
-  | .left => 5 | .right => 6 | .up => 7 | .down => 8 | .home => 9 | .finish => 10
-  | .pageUp => 11 | .pageDown => 12 | .char _ => 13
-
-def Key.scalar : Key → Nat
-  | .char c => c.toNat
-  | _ => 0
-
-def Key.ofCode (code : UInt8) (scalar : Nat) : Option Key :=
-  match code with
-  | 0 => some .enter | 1 => some .escape | 2 => some .tab | 3 => some .backspace
-  | 4 => some .delete | 5 => some .left | 6 => some .right | 7 => some .up | 8 => some .down
-  | 9 => some .home | 10 => some .finish | 11 => some .pageUp | 12 => some .pageDown
-  | 13 => if scalar.isValidChar then some (.char (Char.ofNat scalar)) else none
-  | _ => none
-
-@[simp] theorem Key.ofCode_code (k : Key) : Key.ofCode (Key.code k) (Key.scalar k) = some k := by
-  cases k with
-  | char c =>
-    have : c.toNat.isValidChar := c.valid
-    simp only [ofCode, code, scalar, this, ↓reduceIte, Char.ofNat_toNat]
-  | _ => rfl
-
-theorem Key.scalar_fits (k : Key) : FitsU32 (Key.scalar k) := by
-  cases k with
-  | char c =>
-    have h : c.toNat.isValidChar := c.valid
-    simp only [scalar, FitsU32]; unfold Nat.isValidChar at h; omega
-  | _ => decide
-
-/-- Bit 0 shift, 1 command, 2 option, 3 control. -/
-def Mods.code (m : Mods) : UInt8 :=
-  UInt8.ofNat ((if m.shift then 1 else 0) + (if m.command then 2 else 0) +
-    (if m.option then 4 else 0) + (if m.control then 8 else 0))
-
-def Mods.ofCode (b : UInt8) : Option Mods :=
-  let n := b.toNat
-  if n < 16 then
-    some ⟨n % 2 == 1, n / 2 % 2 == 1, n / 4 % 2 == 1, n / 8 % 2 == 1⟩
-  else none
-
-@[simp] theorem Mods.ofCode_code (m : Mods) : Mods.ofCode (Mods.code m) = some m := by
-  obtain ⟨s, c, o, t⟩ := m
-  cases s <;> cases c <;> cases o <;> cases t <;> rfl
 
 def Fault.code : Fault → UInt8
   | .notFound => 0 | .denied => 1 | .timeout => 2 | .network => 3 | .invalid => 4 | .other => 5
@@ -134,6 +90,9 @@ def fitsEvent : Event → Bool
   | .clock t => fitsTime t
   | .reply id r => fu id && fitsReply r
   | .subEvent id e => fu id && fitsSubEvent e
+  | .surface p e => fu p && e.isLocal && fitsEvent e
+  | .menuOpen p | .menuClose p => fu p
+  | .menuSelect p r => fu p && fitsRef r
   | _ => true
 
 namespace Enc
@@ -184,10 +143,14 @@ def event : Event → List UInt8
   | .clock t => head 18 0 0 ++ u64 t.mono ++ i64 t.wall ++ i32 t.zone
   | .reply id r => head 19 (Reply.code r) (Reply.faultCode r) ++ u32 id ++ replyBody r
   | .subEvent id e => head 20 (SubEvent.code e) (SubEvent.faultCode e) ++ u32 id ++ subEventBody e
+  | .surface p e => head 21 0 0 ++ u32 p ++ event e
+  | .menuOpen p => head 22 0 0 ++ u32 p
+  | .menuClose p => head 23 0 0 ++ u32 p
+  | .menuSelect p r => head 24 0 0 ++ u32 p ++ ref r
 
 def eventsMagic : List UInt8 := [0x43, 0x41, 0x45, 0x56] -- "CAEV"
 
-def eventsHeader : List UInt8 := eventsMagic ++ [1, 0, 0, 0]
+def eventsHeader : List UInt8 := eventsMagic ++ [2, 0, 0, 0]
 
 def events (es : List Event) : List UInt8 :=
   eventsHeader ++ u32 es.length ++ es.flatMap event
@@ -252,11 +215,16 @@ def subEventBody (code fault : UInt8) : Dec SubEvent :=
     return .failed f (← str)
   | _ => fail
 
-def event : Dec Event := do
+/-- Read a record head, then the rest of the record by its tag. -/
+def headed (k : UInt8 → UInt8 → UInt8 → Dec Event) : Dec Event := do
   let tag ← byte
   let a ← byte
   let b ← byte
   skip 1
+  k tag a b
+
+/-- Every record but `surface`, after its head. -/
+def body (tag a b : UInt8) : Dec Event := do
   match tag with
   | 0 => return .pointerMove (← point)
   | 1 =>
@@ -315,7 +283,25 @@ def event : Dec Event := do
   | 20 =>
     let id ← u32
     return .subEvent id (← subEventBody a b)
+  | 22 => return .menuOpen (← u32)
+  | 23 => return .menuClose (← u32)
+  | 24 =>
+    let p ← u32
+    return .menuSelect p (← ref)
   | _ => fail
+
+/-- A record other than `surface`. -/
+def plain : Dec Event := headed body
+
+/-- One record. A `surface` record holds exactly one surface-local record. -/
+def event : Dec Event := headed fun tag a b =>
+  if tag = 21 then
+    if a = 0 ∧ b = 0 then do
+      let p ← u32
+      let e ← plain
+      if e.isLocal then pure (.surface p e) else fail
+    else fail
+  else body tag a b
 
 def events : Dec (List Event) := do
   expect Enc.eventsHeader
@@ -381,29 +367,29 @@ theorem subEventBody_enc {e : SubEvent} (h : fitsSubEvent e = true) (r : List UI
     simp only [subEventBody, SubEvent.code, SubEvent.faultCode, Enc.subEventBody,
         Fault.ofCode_code, bind_apply, str_enc h, pure_apply]
 
-theorem event_enc {e : Event} (h : fitsEvent e = true) (r : List UInt8) :
-    event (Enc.event e ++ r) = some (e, r) := by
+theorem plain_enc {e : Event} (h : fitsEvent e = true) (hs : e.isSurface = false) (r : List UInt8) :
+    plain (Enc.event e ++ r) = some (e, r) := by
   have hz : ∀ r', skip 1 ((0 : UInt8) :: r') = some ((), r') := fun r' => skip_pad 1 r'
   cases e with
   | pointerMove p =>
     simp only [fitsEvent, Bool.and_eq_true, fi_iff] at h
-    simp only [event, Enc.event, Enc.head, List.cons_append, List.nil_append, bind_apply, byte_cons,
+    simp only [plain, headed, body, Enc.event, Enc.head, List.cons_append, List.nil_append, bind_apply, byte_cons,
         hz, h, point_enc, pure_apply]
   | pointerDown p btn clicks m =>
     simp only [fitsEvent, Bool.and_eq_true, fi_iff, fu_iff] at h
-    simp only [event, Enc.event, Enc.head, List.cons_append, List.nil_append, List.append_assoc,
+    simp only [plain, headed, body, Enc.event, Enc.head, List.cons_append, List.nil_append, List.append_assoc,
         bind_apply, byte_cons, Button.ofCode_code, Mods.ofCode_code, hz, h, point_enc, u32_enc,
         pure_apply]
   | pointerUp p btn m =>
     simp only [fitsEvent, Bool.and_eq_true, fi_iff] at h
-    simp only [event, Enc.event, Enc.head, List.cons_append, List.nil_append, bind_apply, byte_cons,
+    simp only [plain, headed, body, Enc.event, Enc.head, List.cons_append, List.nil_append, bind_apply, byte_cons,
         Button.ofCode_code, Mods.ofCode_code, hz, h, point_enc, pure_apply]
   | scroll p dx dy =>
     simp only [fitsEvent, Bool.and_eq_true, fi_iff] at h
-    simp only [event, Enc.event, Enc.head, List.cons_append, List.nil_append, List.append_assoc,
+    simp only [plain, headed, body, Enc.event, Enc.head, List.cons_append, List.nil_append, List.append_assoc,
         bind_apply, byte_cons, hz, h, point_enc, i32_enc, pure_apply]
   | key k m =>
-    simp only [event, Enc.event, Enc.head, List.cons_append, List.nil_append, bind_apply, byte_cons,
+    simp only [plain, headed, body, Enc.event, Enc.head, List.cons_append, List.nil_append, bind_apply, byte_cons,
         Mods.ofCode_code, hz, (Key.scalar_fits k), u32_enc, Key.ofCode_code, pure_apply]
   | insertText s rep =>
     simp only [fitsEvent, Bool.and_eq_true, fs_iff] at h
@@ -411,7 +397,7 @@ theorem event_enc {e : Event} (h : fitsEvent e = true) (r : List UInt8) :
     have hr' : fitsRange (rep.getD (0,
         0)) = true := by cases rep <;> simp_all only [Option.all_none, Option.getD_none,
         fitsRange_zero, Option.all_some, Option.getD_some]
-    simp only [event, Enc.event, Enc.head, List.cons_append, List.nil_append, List.append_assoc,
+    simp only [plain, headed, body, Enc.event, Enc.head, List.cons_append, List.nil_append, List.append_assoc,
         bind_apply, byte_cons, hz, range_enc hr', opt_isSome, str_enc hs, pure_apply]
   | setMarked s a l rep =>
     simp only [fitsEvent, Bool.and_eq_true, fs_iff, fu_iff] at h
@@ -419,37 +405,75 @@ theorem event_enc {e : Event} (h : fitsEvent e = true) (r : List UInt8) :
     have hr' : fitsRange (rep.getD (0,
         0)) = true := by cases rep <;> simp_all only [Option.all_none, Option.getD_none,
         fitsRange_zero, Option.all_some, Option.getD_some]
-    simp only [event, Enc.event, Enc.head, List.cons_append, List.nil_append, List.append_assoc,
+    simp only [plain, headed, body, Enc.event, Enc.head, List.cons_append, List.nil_append, List.append_assoc,
         bind_apply, byte_cons, hz, range_enc hr', opt_isSome, ha, u32_enc, hl, str_enc hs,
         pure_apply]
   | paste s =>
     simp only [fitsEvent, fs_iff] at h
-    simp only [event, Enc.event, Enc.head, List.cons_append, List.nil_append, bind_apply, byte_cons,
+    simp only [plain, headed, body, Enc.event, Enc.head, List.cons_append, List.nil_append, bind_apply, byte_cons,
         hz, str_enc h, pure_apply]
   | resize sz =>
     simp only [fitsEvent, Bool.and_eq_true, fi_iff] at h
-    simp only [event, Enc.event, Enc.head, List.cons_append, List.nil_append, bind_apply, byte_cons,
+    simp only [plain, headed, body, Enc.event, Enc.head, List.cons_append, List.nil_append, bind_apply, byte_cons,
         hz, size_enc h.1 h.2, pure_apply]
   | scale p =>
     simp only [fitsEvent, fu_iff] at h
-    simp only [event, Enc.event, Enc.head, List.cons_append, List.nil_append, bind_apply, byte_cons,
+    simp only [plain, headed, body, Enc.event, Enc.head, List.cons_append, List.nil_append, bind_apply, byte_cons,
         hz, u32_enc h, pure_apply]
   | windowFocus b => cases b <;> rfl
+  | surface _ _ => simp only [Event.isSurface, Bool.true_eq_false] at hs
   | clock t =>
     simp only [fitsEvent, fitsTime, Bool.and_eq_true, fu64_iff, fi64_iff, fi_iff] at h
-    simp only [event, Enc.event, Enc.head, List.cons_append, List.nil_append, List.append_assoc,
+    simp only [plain, headed, body, Enc.event, Enc.head, List.cons_append, List.nil_append, List.append_assoc,
         bind_apply, byte_cons, hz, u64_enc h.1.1, i64_enc h.1.2, i32_enc h.2, pure_apply]
   | reply id rp =>
     simp only [fitsEvent, Bool.and_eq_true, fu_iff] at h
-    simp only [event, Enc.event, Enc.head, List.cons_append, List.nil_append, List.append_assoc,
+    simp only [plain, headed, body, Enc.event, Enc.head, List.cons_append, List.nil_append, List.append_assoc,
         bind_apply, byte_cons, hz, u32_enc h.1]
     rw [replyBody_enc h.2]; rfl
   | subEvent id e =>
     simp only [fitsEvent, Bool.and_eq_true, fu_iff] at h
-    simp only [event, Enc.event, Enc.head, List.cons_append, List.nil_append, List.append_assoc,
+    simp only [plain, headed, body, Enc.event, Enc.head, List.cons_append, List.nil_append, List.append_assoc,
         bind_apply, byte_cons, hz, u32_enc h.1]
     rw [subEventBody_enc h.2]; rfl
+  | menuOpen p | menuClose p =>
+    simp only [fitsEvent, fu_iff] at h
+    simp only [plain, headed, body, Enc.event, Enc.head, List.cons_append, List.nil_append,
+        bind_apply, byte_cons, hz, u32_enc h, pure_apply]
+  | menuSelect p c =>
+    simp only [fitsEvent, Bool.and_eq_true, fu_iff] at h
+    simp only [plain, headed, body, Enc.event, Enc.head, List.cons_append, List.nil_append,
+        List.append_assoc, bind_apply, byte_cons, hz, u32_enc h.1, ref_enc h.2, pure_apply]
   | pointerExit | unmark | copy | cut | selectAll | undo | redo => rfl
+
+/-- On a record whose tag isn't `surface`'s, `event` is `plain`. -/
+theorem event_eq_plain (t : UInt8) (l : List UInt8) (ht : t ≠ 21) :
+    event (t :: l) = plain (t :: l) := by
+  simp only [event, plain, headed, bind_apply, byte_cons, ht, if_false]
+
+theorem event_enc {e : Event} (h : fitsEvent e = true) (r : List UInt8) :
+    event (Enc.event e ++ r) = some (e, r) := by
+  have hz : ∀ r', skip 1 ((0 : UInt8) :: r') = some ((), r') := fun r' => skip_pad 1 r'
+  cases hs : e.isSurface with
+  | false =>
+    have : ∃ t l, Enc.event e ++ r = t :: l ∧ t ≠ 21 := by
+      cases e <;> first
+        | exact ⟨_, _, rfl, by decide⟩
+        | simp only [Event.isSurface, Bool.true_eq_false] at hs
+    obtain ⟨t, l, he, ht⟩ := this
+    rw [he, event_eq_plain t l ht, ← he]
+    exact plain_enc h hs r
+  | true =>
+    cases e with
+    | surface p e =>
+      simp only [fitsEvent, Bool.and_eq_true, fu_iff] at h
+      obtain ⟨⟨hp, hl⟩, he⟩ := h
+      have hs' : e.isSurface = false := by
+        cases e <;> simp_all only [Event.isLocal, Event.isSurface, Bool.false_eq_true]
+      simp only [event, headed, Enc.event, Enc.head, List.cons_append, List.nil_append,
+          List.append_assoc, bind_apply, byte_cons, hz, if_true, and_self, u32_enc hp,
+          plain_enc he hs', hl, pure_apply]
+    | _ => simp only [Event.isSurface, Bool.false_eq_true] at hs
 
 theorem events_enc {es : List Event} (h : ∀ e ∈ es, fitsEvent e = true)
     (hn : FitsU32 es.length) (r : List UInt8) :

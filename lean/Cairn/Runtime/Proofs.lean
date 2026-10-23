@@ -15,8 +15,11 @@ theorem tab_fst (s : State S) (back : Bool) :
 
 theorem route_laid (m : TextMetrics) (s : State S) (e : Event) :
     (route m s e).1.laid = s.laid ∧ (route m s e).1.app = s.app := by
-  cases e <;> simp only [route, withPointer] <;> (try split) <;> (try split) <;>
-    (try split) <;> simp [tab_fst]
+  induction e with
+  | surface p e ih => simp only [route]; split; exact ih; exact ⟨rfl, rfl⟩
+  | _ =>
+    rw [route.eq_def] <;> (try simp only [withPointer]) <;> (try split) <;> (try split) <;>
+      (try split) <;> (try split) <;> first | contradiction | simp [tab_fst]
 
 /-! ## Interaction state is sound -/
 
@@ -185,11 +188,21 @@ theorem tab_names (s : State S) (back : Bool) : Names s.laid (tab s back).2 := b
       (names_of (tabTarget_mem s back ht) (by split <;> simp [Action.control]))
 
 /-- **No action without a control.** Every action the runtime passes to `update` names a
-control of the laid tree on screen when the event arrived. (`step` delivers exactly
+control of the laid tree on screen when the event arrived, unless the event is a menu event
+(those name the menu's items: `menu_route_names`). (`step` delivers exactly
 `(route cfg.metrics s e).2`.) -/
-theorem route_names (m : TextMetrics) (s : State S) (e : Event) :
+theorem route_names (m : TextMetrics) (s : State S) (e : Event) (hm : e.isMenu = false) :
     Names s.laid (route m s e).2 := by
-  cases e with
+  induction e with
+  | surface p e ih =>
+    simp only [route]; split
+    · rename_i h
+      simp only [Bool.and_eq_true, decide_eq_true_eq] at h
+      refine ih ?_
+      cases e <;> simp_all [Event.isLocal, Event.isMenu]
+    · exact names_nil _
+  | menuOpen _ => simp [Event.isMenu] at hm
+  | menuSelect _ _ => simp [Event.isMenu] at hm
   | pointerMove p =>
     simp only [route]; split
     · rename_i t ht
@@ -512,5 +525,85 @@ theorem click_center_presses (app : App S) (cfg : Config) (s : State S) (t : Tar
     (route cfg.metrics (step app cfg s (.pointerDown t.visible.center .primary 1 mods)).1
       (.pointerUp t.visible.center .primary mods')).2 = [.press t.ref] :=
   click_presses app cfg s t _ mods mods' h0.reaches hf h1
+
+/-! ## Menus (docs/surfaces.md, section 1)
+
+The menu is a description, not a laid tree, so these are about `Shown.statusOf`: the status
+item the runtime holds for a place, which `step` refreshes whenever something is delivered. -/
+
+/-- **Menu actions name menu items.** Opening a status item's menu presses only its control;
+a selection presses only an enabled item of the menu the runtime holds for it now; closing
+presses nothing. -/
+theorem menu_route_names (m : TextMetrics) (s : State S) :
+    (∀ p, ∀ a ∈ (route m s (.menuOpen p)).2,
+      ∃ it, Shown.statusOf p s.surfaces = some it ∧ a = .press it.control) ∧
+    (∀ p r, ∀ a ∈ (route m s (.menuSelect p r)).2,
+      ∃ it, Shown.statusOf p s.surfaces = some it ∧ r ∈ MenuItem.enabledRefs it.menu ∧
+        a = .press r) ∧
+    (∀ p, (route m s (.menuClose p)).2 = []) := by
+  refine ⟨fun p a ha => ?_, fun p r a ha => ?_, fun p => rfl⟩
+  · simp only [route] at ha
+    split at ha
+    · rename_i it hit
+      simp only [List.mem_singleton] at ha
+      exact ⟨it, hit, ha⟩
+    · simp only [List.not_mem_nil] at ha
+  · simp only [route] at ha
+    split at ha
+    · rename_i it hit
+      split at ha
+      · rename_i hr
+        simp only [List.mem_singleton] at ha
+        exact ⟨it, hit, hr, ha⟩
+      · simp only [List.not_mem_nil] at ha
+    · simp only [List.not_mem_nil] at ha
+
+/-- **A menu selection presses its item.** If `r` is an enabled item of the status item's
+current menu, choosing it delivers exactly `press r` (the menu's `click_presses`, with no
+layout in between). -/
+theorem menu_select_presses (m : TextMetrics) (s : State S) {p : ClaimId} {it : StatusItem}
+    {r : ControlRef} (h : Shown.statusOf p s.surfaces = some it)
+    (hr : r ∈ MenuItem.enabledRefs it.menu) :
+    route m s (.menuSelect p r) = (s, [.press r]) := by
+  simp only [route, h, hr, if_true]
+
+/-- Opening a shown status item's menu presses its control. -/
+theorem menu_open_presses (m : TextMetrics) (s : State S) {p : ClaimId} {it : StatusItem}
+    (h : Shown.statusOf p s.surfaces = some it) :
+    route m s (.menuOpen p) = (s, [.press it.control]) := by
+  simp only [route, h]
+
+theorem UI.same_self (a : UI) : UI.same a a = true := by
+  simp only [UI.same, decide_true, Bool.and_self]
+
+/-- **A stale menu selection is ignored.** If the chosen ref is not an enabled item of the
+menu the runtime holds now (the menu changed while it was open, the item was disabled, or the
+status item is gone), the step changes nothing at all: same app state, same runtime state, no
+effects. -/
+theorem menu_select_stale (app : App S) (cfg : Config) (s : State S) {p : ClaimId}
+    {r : ControlRef}
+    (h : ∀ it, Shown.statusOf p s.surfaces = some it → r ∉ MenuItem.enabledRefs it.menu) :
+    step app cfg s (.menuSelect p r) = (s, []) := by
+  have hroute : route cfg.metrics s (.menuSelect p r) = (s, []) := by
+    simp only [route]
+    split
+    · rename_i it hit
+      simp only [h it hit, if_false]
+    · rfl
+  simp only [step, hroute, admit, List.isEmpty_nil, Bool.not_false, UI.same_self,
+    Bool.and_self, if_true]
+
+/-- A selection addressed to an item not in the menu is ignored (a special case of
+`menu_select_stale`): nothing outside the description can be pressed through the menu. -/
+theorem menu_select_absent (app : App S) (cfg : Config) (s : State S) {p : ClaimId}
+    {r : ControlRef}
+    (h : ∀ it, Shown.statusOf p s.surfaces = some it → r ∉ MenuItem.refs it.menu) :
+    step app cfg s (.menuSelect p r) = (s, []) :=
+  menu_select_stale app cfg s fun it hit hr => h it hit (MenuItem.mem_refs_of_enabled hr)
+
+/-- Events addressed to a surface other than the window (a panel, a status item) do nothing. -/
+theorem route_surface_other (m : TextMetrics) (s : State S) {p : ClaimId} (e : Event)
+    (h : Shown.windowPlace s.surfaces ≠ some p) : route m s (.surface p e) = (s, []) := by
+  simp only [route, h, decide_false, Bool.false_and, Bool.false_eq_true, if_false]
 
 end Cairn.Runtime

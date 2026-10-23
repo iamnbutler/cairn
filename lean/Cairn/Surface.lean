@@ -148,6 +148,10 @@ inductive Anchor where
   | bottomCenter (offset : Nat)
 deriving Repr, DecidableEq, Inhabited
 
+/-- The anchor's distance in points. -/
+def Anchor.offset : Anchor → Nat
+  | .bottomCenter o => o
+
 /-- Which screen a panel is shown on. -/
 inductive ScreenChoice where
   /-- The screen the pointer is on when the panel is shown; it stays there until hidden. -/

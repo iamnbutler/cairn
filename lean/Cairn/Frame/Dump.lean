@@ -104,14 +104,38 @@ def reply : Reply → String
   | .app pid n => s!"app {pid} {str n}"
   | .flag b => s!"flag {bit b}"
 
+def canvas (c : Canvas) : String := Id.run do
+  let mut out := s!"canvas {c.size.w} {c.size.h}\ndraws {c.draws.size}\n"
+  for d in c.draws do out := out ++ draw d ++ "\n"
+  out := out ++ s!"ax {c.ax.size}\n"
+  for n in c.ax do out := out ++ ax n ++ "\n"
+  out := out ++ textInput c.textInput ++ "\n"
+  out := out ++ s!"cursor {Cursor.code c.cursor}\n"
+  return out
+
+def shortcut (s : Shortcut) : String := s!"{Key.code s.key},{Key.scalar s.key},{Mods.code s.mods}"
+
+def menuRecord (m : MenuRecord) : String :=
+  s!"item kind={MenuKind.code m.kind} control={opt ref m.control} parent={opt toString m.parent} " ++
+    s!"place={opt toString m.place} enabled={bit m.enabled} checked={opt bit m.checked} " ++
+    s!"shortcut={opt shortcut m.shortcut} label={str m.label}"
+
+def status (s : StatusFrame) : String := Id.run do
+  let mut out := s!"status control={ref s.control} symbol={str s.symbol} title={str s.title} " ++
+    s!"label={str s.label}\nmenu {s.menu.size}\n"
+  for m in s.menu do out := out ++ menuRecord m ++ "\n"
+  return out
+
+def surface (s : SurfaceFrame) : String :=
+  s!"surface kind={SurfaceKind.code s.kind} place={s.place} shown={bit s.shown} " ++
+    s!"anchor={Anchor.code s.anchor} offset={s.anchor.offset} screen={ScreenChoice.code s.screen} " ++
+    s!"title={str s.title}\n" ++ canvas s.canvas ++ status s.status
+
 /-- One line per item, each ending in a newline. -/
 def frame (f : Frame) : String := Id.run do
-  let mut out := s!"frame {f.size.w} {f.size.h}\ndraws {f.draws.size}\n"
-  for d in f.draws do out := out ++ draw d ++ "\n"
-  out := out ++ s!"ax {f.ax.size}\n"
-  for n in f.ax do out := out ++ ax n ++ "\n"
-  out := out ++ textInput f.textInput ++ "\n"
-  out := out ++ s!"cursor {Cursor.code f.cursor}\neffects {f.effects.size}\n"
+  let mut out := s!"frame\nsurfaces {f.surfaces.size}\n"
+  for x in f.surfaces do out := out ++ surface x
+  out := out ++ s!"effects {f.effects.size}\n"
   for e in f.effects do out := out ++ effect e ++ "\n"
   out := out ++ s!"subs {f.subs.size}\n"
   for c in f.subs do out := out ++ subCmd c ++ "\n"
@@ -129,6 +153,10 @@ def subEvent : SubEvent → String
   | .failed f m => s!"6 {Fault.code f} {str m}"
 
 def event : Event → String
+  | .surface p e => s!"surface {p} " ++ event e
+  | .menuOpen p => s!"menuOpen {p}"
+  | .menuClose p => s!"menuClose {p}"
+  | .menuSelect p r => s!"menuSelect {p} {ref r}"
   | .pointerMove p => s!"move {p.x} {p.y}"
   | .pointerDown p b clicks m => s!"down {p.x} {p.y} {Button.code b} {clicks} {Mods.code m}"
   | .pointerUp p b m => s!"up {p.x} {p.y} {Button.code b} {Mods.code m}"
