@@ -36,11 +36,13 @@ def live : S → List Action → Bool
 def Reachable (s : S) : Prop := ∃ as, s = M.run M.init as
 
 /-- An app whose update is this machine's. -/
-def toApp (view : S → UI → Node) (claims : List ClaimInfo) : App S where
+def toApp (view : S → UI → Node) (claims : List ClaimInfo)
+    (initFocus : Option ControlRef := none) : App S where
   init := M.init
   view := view
   update := M.update
   claims := claims
+  initFocus := initFocus
 
 @[simp] theorem run_nil (s : S) : M.run s [] = s := rfl
 
