@@ -37,6 +37,43 @@ final class Inbox: @unchecked Sendable {
         #expect(Files.expand("/tmp/~/x") == "/tmp/~/x")
     }
 
+    @Test func dayFiles() {
+        let dir = Self.scratch()
+        defer { try? FileManager.default.removeItem(atPath: dir) }
+        let day = dir + "/transcripts/2026-10-23.jsonl"
+        #expect(Files.append(day, Array("a\n".utf8)) == .done)  // creates transcripts/
+        #expect(Files.append(day, Array("b\n".utf8)) == .done)
+        #expect(Files.read(day) == .bytes(Array("a\nb\n".utf8)))
+        #expect(Files.append(dir + "/transcripts/2026-10-22.jsonl", []) == .done)
+        #expect(Files.list(dir + "/transcripts") == .names(["2026-10-22.jsonl", "2026-10-23.jsonl"]))
+        #expect(Files.delete(dir + "/transcripts/2026-10-22.jsonl") == .done)
+        #expect(Files.list(dir + "/transcripts") == .names(["2026-10-23.jsonl"]))
+        if case .failed(.notFound, _) = Files.delete(dir + "/transcripts/2026-10-22.jsonl") {} else { Issue.record("delete twice") }
+        if case .failed(.invalid, _) = Files.delete(dir + "/transcripts") {} else { Issue.record("delete a directory") }
+        if case .failed(.notFound, _) = Files.list(dir + "/nothing") {} else { Issue.record("list missing") }
+    }
+
+    @Test func watchFileSeesChanges() {
+        let dir = Self.scratch()
+        defer { try? FileManager.default.removeItem(atPath: dir) }
+        let path = dir + "/config.json"
+        let inbox = Inbox()
+        let world = World()
+        world.watchPeriodMs = 5
+        world.send = { inbox.add($0) }
+        world.run([], [.start(id: 4, .watchFile(path: path))])
+        usleep(30_000)
+        #expect(inbox.all.isEmpty)
+        _ = Files.write(path, Array("{}".utf8))
+        #expect(inbox.wait(for: 1) == [.subEvent(id: 4, .changed)])
+        world.run([], [.stop(id: 4)])
+        let n = inbox.all.count
+        _ = Files.write(path, Array("{ }".utf8))
+        usleep(30_000)
+        #expect(inbox.all.count == n)
+        #expect(world.running.isEmpty)
+    }
+
     @Test func requestsAnswerOnceUnderTheirIds() {
         let inbox = Inbox()
         // A handler that tries to answer twice: only the first answer is sent.

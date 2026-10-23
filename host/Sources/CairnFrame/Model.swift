@@ -115,6 +115,9 @@ public struct Header: Equatable, Sendable {
     public init(_ name: String, _ value: String) { self.name = name; self.value = value }
 }
 
+/// A TCC permission (`Cairn.Permission`).
+public enum Permission: UInt8, Sendable { case accessibility, microphone }
+
 /// Something the host does that answers back (`Cairn.Request`).
 public enum Request: Equatable, Sendable {
     case readFile(path: String)
@@ -122,6 +125,16 @@ public enum Request: Equatable, Sendable {
     case writeFile(path: String, data: [UInt8])
     case playSound(name: String)
     case http(method: String, url: String, headers: [Header], body: [UInt8], timeoutMs: UInt32)
+    /// Append, creating the file (mode 600) and missing parent directories.
+    case appendFile(path: String, data: [UInt8])
+    /// The names in a directory, sorted by their UTF-8 bytes.
+    case listDir(path: String)
+    /// Remove a file or symbolic link, never a directory.
+    case deleteFile(path: String)
+    /// The app in front: pid and name.
+    case frontmostApp
+    /// Whether the app holds a permission; `prompt` asks the person if not.
+    case permission(Permission, prompt: Bool)
 
     /// The kind code on the wire (`Request.Kind.code`).
     public var kindCode: UInt8 {
@@ -130,6 +143,11 @@ public enum Request: Equatable, Sendable {
         case .writeFile: 1
         case .playSound: 2
         case .http: 3
+        case .appendFile: 4
+        case .listDir: 5
+        case .deleteFile: 6
+        case .frontmostApp: 7
+        case .permission: 8
         }
     }
 }
@@ -139,14 +157,23 @@ public enum Reply: Equatable, Sendable {
     case bytes([UInt8])
     case http(status: UInt32, headers: [Header], body: [UInt8])
     case failed(Fault, String)
+    /// `listDir`'s names.
+    case names([String])
+    /// `frontmostApp`'s pid and name ("" when it has none).
+    case app(pid: UInt32, name: String)
+    /// `permission`'s answer.
+    case flag(Bool)
 
-    /// `done` 0, `bytes` 1, `http` 2, `failed` 3 (`Reply.code`).
+    /// `done` 0, `bytes` 1, `http` 2, `failed` 3, `names` 4, `app` 5, `flag` 6 (`Reply.code`).
     public var code: UInt8 {
         switch self {
         case .done: 0
         case .bytes: 1
         case .http: 2
         case .failed: 3
+        case .names: 4
+        case .app: 5
+        case .flag: 6
         }
     }
 }
@@ -154,9 +181,11 @@ public enum Reply: Equatable, Sendable {
 public enum Sub: Hashable, Sendable {
     /// A tick every `ms` milliseconds.
     case every(ms: UInt32)
+    /// `changed` whenever the file changes.
+    case watchFile(path: String)
 }
 
-public enum SubEvent: UInt8, Sendable { case tick }
+public enum SubEvent: UInt8, Sendable { case tick, changed }
 
 /// Lean → host: start or stop a subscription under Lean's id for it.
 public enum SubCmd: Equatable, Sendable {

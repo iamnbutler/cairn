@@ -6,7 +6,7 @@ entries in the section of the workstream that introduces the assumption.
 
 Items marked **Fuzzed** are also checked by the trusted-base fuzzer (`make fuzz-trusted`,
 docs/fuzz.md "Trusted base"), against Lean's proved side or an independent oracle, and are
-declared as `assume` claims ^901–^915 in `lean/Cairn/Fuzz/Trusted/Claims.lean`, each naming its
+declared as `assume` claims ^901–^915 and ^960– in `lean/Cairn/Fuzz/Trusted/Claims.lean`, each naming its
 check; `build/fuzz/trusted.json` holds the evidence. Items not marked are checked only by the
 tests and reviews they list.
 
@@ -272,6 +272,53 @@ deadline, and the outcome of each request. Trusted code: `host/Sources/CairnHost
 - **Also assumed.** The handler table's code runs on global queues and must not call Lean.
   `NSSound` is used on the main thread. `writeFile`'s atomicity is Foundation's
   `Data.write(options: .atomic)` on one volume.
+
+## Yap's host effects (workstream T)
+
+See [effects.md](effects.md), "Yap's host effects". As for workstream Q's effects, Lean decides
+what to do with every answer and the runtime's handling is proved whatever the host sends;
+the host is trusted to report the world truly and to do what was asked. Trusted code:
+`host/Sources/CairnHost/FileEffects.swift` (Files.append, list, delete; FileSignature),
+`SystemEffects.swift` (Apps, PermissionSystem, Permissions), the `watchFile` part of
+`World.swift`, and under them POSIX, `NSWorkspace` and TCC. Each item is an `assume` claim
+with a fuzz check (docs/fuzz.md, "Trusted base"; suites `fileops` and `system`), which runs
+in a scratch directory and never prompts.
+
+- **Fuzzed** (^960 `effects.append-file`): after `done` the file is its old bytes followed by
+  exactly the new ones; a new file is mode 600 under created directories; appenders on 2–4
+  threads each land whole and in their own order; a directory, a path under a file, a
+  read-only file, NUL and refused names fail and leave the file as it was. **Also assumed:**
+  an append that fails part way (a full disk, an I/O error) can leave a prefix of its bytes;
+  this is not fuzzed (it needs a full disk). Lean's reader of a JSON-lines file must treat a
+  bad line as one lost entry.
+- **Fuzzed** (^961 `effects.list-dir`): exactly the names made (files, directories, links,
+  random Unicode), sorted by UTF-8 bytes, byte for byte what `FileManager` lists; missing is
+  `notFound`, a file `invalid`, unreadable `denied`. **Also assumed:** a name that is not
+  valid UTF-8 is left out (APFS has none; other file systems might).
+- **Fuzzed** (^962 `effects.delete-file`): a file or a link (never its target) is gone after
+  `done`; a second delete is `notFound`; a directory is `invalid` and stays; a read-only
+  parent is `denied` and the file stays.
+- **Fuzzed** (^963 `subs.watch-file`): with polls of 5–20 ms, every write in place, atomic
+  replacement, append, deletion, creation, `touch` and `chmod` is followed by one or two
+  `changed` (a write in place can be seen half done) within a few polls, an untouched file or
+  a changed sibling brings none, and after the stop is handled none comes. **Also assumed:** a
+  change that restores every one of device, inode, size, modification and change time (to
+  the nanosecond) inside one poll is not seen; the file system's clock makes that impossible
+  in practice. The runtime ignores events of a stopped id anyway (`step_sub_ignored`).
+- **Fuzzed** (^964 `effects.frontmost-app`): the stub's pid and name come back exactly (no
+  name is `""`, no app `notFound`, pid 0 or negative `failed`); the live answer is a running
+  process with the name `NSRunningApplication` gives it. **Also assumed:** `NSWorkspace`'s
+  answer is the app that gets the keyboard; it is updated by notifications on the main run
+  loop, which a running app has. Read on a global queue, as `NSWorkspace` allows.
+- **Fuzzed** (^965 `effects.permission`): against a stubbed TCC, each combination of
+  permission, status, `prompt` and the person's choice gives the documented answer, the
+  system is asked to prompt only when `prompt` is set (the microphone only while undecided),
+  and each request is answered once; live, without prompting, the answers equal
+  `AXIsProcessTrusted()` and the microphone's `authorizationStatus`. **Not checked:** the
+  prompts themselves (they need a person), and that TCC's answer is right.
+- **Permissions.** None of these needs one. Accessibility and Microphone are what
+  `permission` reports; they are granted to the app's code signature, so an unsigned or
+  re-signed build is a new app to TCC (docs/effects.md).
 
 ## Conformance (workstream J)
 

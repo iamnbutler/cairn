@@ -57,10 +57,13 @@ final class EventsSuite: Suite {
     }
 
     static func reply(_ g: inout SplitMix) -> Reply {
-        switch g.below(4) {
+        switch g.below(7) {
         case 0: return .done
         case 1: return .bytes(bytes(&g))
         case 2: return .http(status: u32(&g), headers: headers(&g), body: bytes(&g))
+        case 3: return .names((0..<g.below(5)).map { _ in TextPool.string(&g) })
+        case 4: return .app(pid: u32(&g), name: TextPool.string(&g))
+        case 5: return .flag(g.bool())
         default:
             return .failed(g.elem([.notFound, .denied, .timeout, .network, .invalid, .other]), TextPool.string(&g))
         }
@@ -108,7 +111,7 @@ final class EventsSuite: Suite {
         case 17: return .windowFocus(g.bool())
         case 18: return .clock(Time(mono: u64(&g), wall: i64(&g), zone: i32(&g)))
         case 19: return .reply(id: u32(&g), reply(&g))
-        default: return .subEvent(id: u32(&g), .tick)
+        default: return .subEvent(id: u32(&g), g.bool() ? .tick : .changed)
         }
     }
 

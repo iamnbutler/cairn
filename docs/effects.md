@@ -20,7 +20,8 @@ event Lean decodes with a proved decoder. No `IO` below the app boundary.
 | Wire format | [frame.md](frame.md) (frame v2, new event tags), `lean/Cairn/Frame/{Encode,Events}.lean` |
 | Host: clock, wake, the handler table, subscriptions | `host/Sources/CairnHost/World.swift`, `Engine.swift` |
 | Example | `lean/Examples/Clock.lean`, `host/Sources/CairnClock` |
-| Trusted claims ^908–^915 | `lean/Cairn/Fuzz/Trusted/Claims.lean`, [trusted.md](trusted.md) |
+| Trusted claims ^908–^915, ^960– | `lean/Cairn/Fuzz/Trusted/Claims.lean`, [trusted.md](trusted.md) |
+| Yap's host effects (files, watch, frontmost app, permissions) | `host/Sources/CairnHost/FileEffects.swift`, `SystemEffects.swift`; "Yap's host effects" below |
 
 ## The app's side
 
@@ -128,12 +129,20 @@ inductive Request where
   | playSound (name : String)
   | http (method url : String) (headers : List (String × String)) (body : ByteArray)
       (timeoutMs : Nat)
+  | appendFile (path : String) (data : ByteArray)    -- Yap's host effects, below
+  | listDir (path : String)
+  | deleteFile (path : String)
+  | frontmostApp
+  | permission (p : Permission) (prompt : Bool)
 
 inductive Reply where
-  | done                                              -- writeFile, playSound
+  | done                                              -- writeFile, appendFile, deleteFile, playSound
   | bytes (data : ByteArray)                          -- readFile
   | http (status : Nat) (headers : List (String × String)) (body : ByteArray)
   | failed (fault : Fault) (message : String)          -- any request
+  | names (names : List String)                       -- listDir
+  | app (pid : Nat) (name : String)                   -- frontmostApp
+  | flag (granted : Bool)                             -- permission
 
 inductive Fault where
   | notFound | denied | timeout | network | invalid | other
@@ -191,18 +200,19 @@ Yap's machine (`lean/Examples/Yap/Model.lean`, PR #40) talks to the host through
 |---|---|---|---|
 | `transcribe req …`, `transcribeChunk req …` → `reply req` | request by id | `request req (.http …)`, multipart body built in Lean from the clip's bytes | `http` implemented; the clip's bytes come from `record` |
 | `saveConfig req c` → `reply req` | request by id | `request req (.writeFile configPath json)` | implemented |
-| `save req t` (append to today's file) → `reply req` | request by id | `writeFile` of the whole day file (Lean holds it), or a new `appendFile` kind | `writeFile` implemented; `appendFile` would be one more kind |
+| `save req t` (append to today's file) → `reply req` | request by id | `request req (.appendFile dayPath line)` | implemented |
 | `type req clip pid text ret` → `reply req` | request by id | `request req (.typeText pid text ret)`, reply `done` / `failed denied` | designed, not built |
 | `startRecording clip`, `stopRecording clip`, `Input.audio`, `Input.micFailed` | request by id + subscription | `request clip (.record maxMs)` answered with `bytes` or `failed` when it stops; `request _ (.stopRecording clip)`; levels as `Sub.micLevel ms` | designed, not built |
 | `wakeAt t` → `Input.tick t` | timer | `setTimer name (t - now)`; the clock arrives with it (`Msg.clock`, then `Msg.timer`) | implemented |
-| `readConfig`, `readDictionary` → `Input.config`, `Input.dictionary` | request, then subscription | `readFile` now, `Sub.watchFile path` for changes (`SubEvent.changed`, then read again) | `readFile` implemented; `watchFile` designed |
+| `readConfig`, `readDictionary` → `Input.config`, `Input.dictionary` | request, then subscription | `readFile` now, `Sub.watchFile path` for changes (`SubEvent.changed`, then read again) | implemented |
 | `listen k` → `keyDown`, `keyUp`, `otherKey` | subscription | `Sub.globalKey k` with `SubEvent.keyDown/keyUp/otherKey` | designed, not built |
-| `listDays` → `transcriptDays`, `deleteDays ds`, `loadRecent n` → `recentLoaded` | request by id | `listDir path` (names), `deleteFile path`, `readFile` per day | `readFile` implemented; `listDir` and `deleteFile` would be two more kinds |
+| `listDays` → `transcriptDays`, `deleteDays ds`, `loadRecent n` → `recentLoaded` | request by id | `listDir path` (names), `deleteFile path`, `readFile` per day | implemented |
 | `play s` | one-way | `request _ (.playSound name)`, reply ignored | implemented |
 | `copy text` | one-way | `setClipboard` | implemented (M1) |
 | `storePrefs p`, `Input.launch p` | one-way, and at launch | `writeFile`/`readFile` of a prefs file (`initEffects`), or a `UserDefaults` kind | implemented as files |
 | `overlay clip o` | one-way | the overlay surface's frame (docs/surfaces.md), not an effect | surfaces' work |
-| `Input.trust` | request | `request _ .accessibilityTrusted`, reply `bytes [0/1]` or a dedicated reply | not designed yet |
+| `Input.trust` | request | `request _ (.permission .accessibility prompt)`, reply `flag granted` | implemented |
+| `keyDown t front` (the app in front) | request | `request _ .frontmostApp`, reply `app pid name` | implemented |
 
 So the three shapes need no new mechanism: a new kind is a `Request` constructor, its encoding
 and round-trip case, a `Reply.answers` case and a handler. What Yap's machine would change to
@@ -221,8 +231,9 @@ subscriptions : S → List Sub
 
 inductive Sub where
   | every (ms : Nat)        -- a tick every `ms` milliseconds (at least 1)
+  | watchFile (path : String)  -- `changed` when the file changes (below)
 inductive SubEvent where
-  | tick
+  | tick | changed
 ```
 
 Subscriptions are data derived from state, as in Elm. After every step that delivered
@@ -242,6 +253,53 @@ handled no tick of it is sent). It proves the mechanism end to end through the h
 how an app should keep exact time: ticks can be late, and the engine coalesces consecutive
 ticks of one subscription that Lean has not caught up with into one; the clock that precedes
 each tick is the truth.
+
+## Yap's host effects
+
+What Yap needs beyond the effects above (GOAL.md "Done means" 1 and 2), as more kinds of the
+same three shapes. Each is a constructor, its encoding and round-trip case (frame.md), a
+`Reply.answers` case, a host handler, and an `assume` claim (^960–^989) with a trusted fuzz
+check that touches nothing outside a scratch directory and prompts no one.
+
+| Effect | Answer | Host | Claim, check |
+|---|---|---|---|
+| `appendFile path data` | `done` | `open(O_APPEND\|O_CREAT, 0600)` after creating parent directories, then `write` until every byte is out | ^960 `effects.append-file` |
+| `listDir path` | `names` | `readdir`, without `.`, `..` and names that aren't UTF-8, sorted by UTF-8 bytes | ^961 `effects.list-dir` |
+| `deleteFile path` | `done` | `lstat`, then `unlink`; a directory is `failed invalid` and stays | ^962 `effects.delete-file` |
+| `Sub.watchFile path` | `changed` events | polls `stat` every 250 ms on the world's queue | ^963 `subs.watch-file` |
+| `frontmostApp` | `app pid name` | `NSWorkspace.frontmostApplication` | ^964 `effects.frontmost-app` |
+| `permission p prompt` | `flag granted` | `AXIsProcessTrustedWithOptions`; `AVCaptureDevice.authorizationStatus`/`requestAccess` | ^965 `effects.permission` |
+
+Decisions, and why:
+
+- **`appendFile`, not `writeFile` of the whole day.** Yap's day file is JSON lines so that a
+  save is an append and a half-written line costs one entry; rewriting the day would put every
+  earlier transcript at risk on each save and make Lean hold the whole day. New files are
+  mode 600, as Yap's are: transcripts are private. An append is not atomic: a failure part way
+  (a full disk) can leave a prefix, which the JSON-lines reader skips as one bad line.
+  Appends from several requests at once each land whole (one `write` per chunk with
+  `O_APPEND`; fuzzed up to 70 KB a chunk).
+- **`listDir` sorts.** Byte order of UTF-8 is what Lean's `String` comparison is, so Lean gets
+  the same answer for the same directory whatever order `readdir` gives. Hidden files are
+  included; Lean filters (Yap: names like `2026-10-23.jsonl`).
+- **`deleteFile` never removes a directory**, so a wrong path can cost at most one file.
+- **`watchFile` polls.** A kqueue watch on the file is lost when an editor saves by renaming a
+  new file over it, and one on the directory misses in-place writes; Yap itself polls
+  `config.json`'s date every 2 s for that reason. The host compares `stat`'s device, inode,
+  size, modification and change times (nanoseconds) every 250 ms (`World.watchPeriodMs`), so
+  a write, a replacement, an append, a creation, a removal, a `touch` and a `chmod` all count.
+  Two changes inside one poll are one `changed`; Lean reads the file again, so nothing is lost.
+  The first poll's state is taken when the subscription starts, with no event: an app reads
+  the file once (`readFile`) when it subscribes. A change between that read and the start is
+  missed until the next one (a window of one step). A symbolic link is followed.
+- **`frontmostApp` is a request**, made when the key goes down: the pid is where the
+  transcript will be typed. `name` is `""` when the app has none.
+- **`permission` covers Accessibility and the microphone**, the two Yap's menu reports.
+  `prompt = false` only reads; `prompt = true` shows the system's Accessibility prompt (it
+  opens System Settings; the answer is the state now, so ask again after the person comes
+  back, as Yap re-checks when its menu opens) or asks for the microphone while it is
+  undecided, answering with the person's choice. A refused permission is never asked again
+  by the system; the person changes it in System Settings.
 
 ## Wire format
 
@@ -337,7 +395,13 @@ Each kind of host effect is an `assume` claim naming a check of the trusted-base
 | ^913 | `http` sends the request as given and returns the response as received | `effects.http` |
 | ^914 | the host answers every request exactly once, with its id | `effects.reply-once` |
 | ^915 | `every ms` ticks while started and never after it is stopped | `subs.every` |
+| ^960 | `appendFile` adds exactly the bytes at the end, or fails and adds nothing | `effects.append-file` |
+| ^961 | `listDir` lists exactly the directory's names, sorted | `effects.list-dir` |
+| ^962 | `deleteFile` removes a file or a link, never a directory | `effects.delete-file` |
+| ^963 | `watchFile` reports every change to its file, and nothing after its stop | `subs.watch-file` |
+| ^964 | `frontmostApp` answers the app in front | `effects.frontmost-app` |
+| ^965 | `permission` answers whether the app holds it, and prompts only when asked | `effects.permission` |
 
 The new records are also covered by ^901 and ^902 (the Swift codecs against Lean's), whose
-generators now produce them. The suites (`clock`, `world`, `files`, `http`, `sound` in
+generators now produce them. The suites (`clock`, `world`, `files`, `http`, `sound`, `fileops`, `system` in
 `host/Tests/CairnFuzzTrusted`) are described in docs/fuzz.md.

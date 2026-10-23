@@ -66,6 +66,7 @@ enum Dump {
         for c in f.subs {
             switch c {
             case let .start(id, .every(ms)): out += "start \(id) every \(ms)\n"
+            case let .start(id, .watchFile(p)): out += "start \(id) watchFile \(str(p))\n"
             case let .stop(id): out += "stop \(id)\n"
             }
         }
@@ -89,6 +90,11 @@ enum Dump {
         case let .playSound(n): return "sound \(str(n))"
         case let .http(m, u, hs, b, t):
             return "http \(str(m)) \(str(u)) timeout=\(t) \(headers(hs)) body=\(bytes(b))"
+        case let .appendFile(p, d): return "appendFile \(str(p)) \(bytes(d))"
+        case let .listDir(p): return "listDir \(str(p))"
+        case let .deleteFile(p): return "deleteFile \(str(p))"
+        case .frontmostApp: return "frontmostApp"
+        case let .permission(p, prompt): return "permission \(p.rawValue) \(bit(prompt))"
         }
     }
 
@@ -98,6 +104,9 @@ enum Dump {
         case let .bytes(d): return "bytes \(bytes(d))"
         case let .http(st, hs, b): return "http \(st) \(headers(hs)) body=\(bytes(b))"
         case let .failed(f, m): return "failed \(f.rawValue) \(str(m))"
+        case let .names(ns): return "names \(ns.count)" + ns.map { " " + str($0) }.joined()
+        case let .app(pid, n): return "app \(pid) \(str(n))"
+        case let .flag(b): return "flag \(bit(b))"
         }
     }
 
@@ -241,6 +250,13 @@ enum DumpParser {
             case "failed":
                 guard let f = Fault(rawValue: try u8()) else { throw Bad(line: line) }
                 return .reply(id: id, .failed(f, try t.string()))
+            case "names":
+                guard let n = Int(t.word()) else { throw Bad(line: line) }
+                return .reply(id: id, .names(try (0..<n).map { _ in try t.string() }))
+            case "app":
+                let pid = try u()
+                return .reply(id: id, .app(pid: pid, name: try t.string()))
+            case "flag": return .reply(id: id, .flag(try u8() == 1))
             default: throw Bad(line: line)
             }
         case "sub":

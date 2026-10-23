@@ -81,6 +81,11 @@ enum DebugJSON {
         case let .writeFile(p, d): "writeFile \(p) (\(d.count) bytes)"
         case .playSound(let n): "playSound \(n)"
         case let .http(m, u, _, _, _): "http \(m) \(u)"
+        case let .appendFile(p, d): "appendFile \(p) (\(d.count) bytes)"
+        case .listDir(let p): "listDir \(p)"
+        case .deleteFile(let p): "deleteFile \(p)"
+        case .frontmostApp: "frontmostApp"
+        case let .permission(p, prompt): "permission \(p)\(prompt ? " prompt" : "")"
         }
     }
 

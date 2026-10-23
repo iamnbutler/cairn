@@ -84,22 +84,23 @@ def Fault.ofCode : UInt8 → Option Fault
 @[simp] theorem Fault.ofCode_code (f : Fault) : Fault.ofCode (Fault.code f) = some f := by
   cases f <;> rfl
 
-/-- `done` 0, `bytes` 1, `http` 2, `failed` 3. -/
+/-- `done` 0, `bytes` 1, `http` 2, `failed` 3, `names` 4, `app` 5, `flag` 6. -/
 def Reply.code : Reply → UInt8
   | .done => 0 | .bytes _ => 1 | .http .. => 2 | .failed .. => 3
+  | .names _ => 4 | .app .. => 5 | .flag _ => 6
 
 def Reply.faultCode : Reply → UInt8
   | .failed f _ => Fault.code f
   | _ => 0
 
 def SubEvent.code : SubEvent → UInt8
-  | .tick => 0
+  | .tick => 0 | .changed => 1
 
 def SubEvent.ofCode : UInt8 → Option SubEvent
-  | 0 => some .tick | _ => none
+  | 0 => some .tick | 1 => some .changed | _ => none
 
 @[simp] theorem SubEvent.ofCode_code (e : SubEvent) : SubEvent.ofCode (SubEvent.code e) = some e := by
-  cases e; rfl
+  cases e <;> rfl
 
 def fitsTime (t : Time) : Bool := fu64 t.mono && fi64 t.wall && fi t.zone
 
@@ -108,6 +109,9 @@ def fitsReply : Reply → Bool
   | .bytes d => fb d
   | .http st hs b => fu st && fitsHeaders hs && fb b
   | .failed _ m => fs m
+  | .names ns => fu ns.length && ns.all fs
+  | .app pid n => fu pid && fs n
+  | .flag _ => true
 
 def fitsEvent : Event → Bool
   | .pointerMove p => fi p.x && fi p.y
@@ -135,6 +139,9 @@ def replyBody : Reply → List UInt8
   | .bytes d => bytes d
   | .http st hs b => u32 st ++ headers hs ++ bytes b
   | .failed _ m => str m
+  | .names ns => u32 ns.length ++ ns.flatMap str
+  | .app pid n => u32 pid ++ str n
+  | .flag b => bool b ++ pad 3
 
 def event : Event → List UInt8
   | .pointerMove p => head 0 0 0 ++ point p
@@ -190,6 +197,19 @@ def replyBody (code fault : UInt8) : Dec Reply :=
   | 3 => match Fault.ofCode fault with
     | some f => do return .failed f (← str)
     | none => fail
+  | 4 => if fault = 0 then do
+      let n ← u32
+      return .names (← count str n)
+    else fail
+  | 5 => if fault = 0 then do
+      let pid ← u32
+      return .app pid (← str)
+    else fail
+  | 6 => if fault = 0 then do
+      let b ← bool
+      skip 3
+      return .flag b
+    else fail
   | _ => fail
 
 def event : Dec Event := do
@@ -283,6 +303,18 @@ theorem replyBody_enc {rp : Reply} (h : fitsReply rp = true) (r : List UInt8) :
     simp only [fitsReply, fs_iff] at h
     simp only [replyBody, Reply.code, Reply.faultCode, Enc.replyBody, Fault.ofCode_code,
         bind_apply, str_enc h, pure_apply]
+  | names ns =>
+    simp only [fitsReply, Bool.and_eq_true, fu_iff, List.all_eq_true, fs_iff] at h
+    simp only [replyBody, Reply.code, Reply.faultCode, Enc.replyBody, ↓reduceIte,
+        List.append_assoc, bind_apply, u32_enc h.1]
+    rw [count_enc ns (fun s hs => str_enc (h.2 s hs)) r]; rfl
+  | app pid n =>
+    simp only [fitsReply, Bool.and_eq_true, fu_iff, fs_iff] at h
+    simp only [replyBody, Reply.code, Reply.faultCode, Enc.replyBody, ↓reduceIte,
+        List.append_assoc, bind_apply, u32_enc h.1, str_enc h.2, pure_apply]
+  | flag b =>
+    simp only [replyBody, Reply.code, Reply.faultCode, Enc.replyBody, ↓reduceIte,
+        List.append_assoc, bind_apply, bool_enc, skip_pad, pure_apply]
 
 theorem event_enc {e : Event} (h : fitsEvent e = true) (r : List UInt8) :
     event (Enc.event e ++ r) = some (e, r) := by

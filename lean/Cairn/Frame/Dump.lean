@@ -62,6 +62,11 @@ def request : Request → String
   | .writeFile p d => s!"writeFile {str p} {bytes d}"
   | .playSound n => s!"sound {str n}"
   | .http m u hs b t => s!"http {str m} {str u} timeout={t} {headers hs} body={bytes b}"
+  | .appendFile p d => s!"appendFile {str p} {bytes d}"
+  | .listDir p => s!"listDir {str p}"
+  | .deleteFile p => s!"deleteFile {str p}"
+  | .frontmostApp => "frontmostApp"
+  | .permission p prompt => s!"permission {Permission.code p} {bit prompt}"
 
 def effect : Effect → String
   | .setClipboard s => s!"clipboard {str s}"
@@ -74,6 +79,7 @@ def effect : Effect → String
 
 def subCmd : SubCmd → String
   | .start id (.every ms) => s!"start {id} every {ms}"
+  | .start id (.watchFile p) => s!"start {id} watchFile {str p}"
   | .stop id => s!"stop {id}"
 
 def reply : Reply → String
@@ -81,6 +87,9 @@ def reply : Reply → String
   | .bytes d => s!"bytes {bytes d}"
   | .http st hs b => s!"http {st} {headers hs} body={bytes b}"
   | .failed f m => s!"failed {Fault.code f} {str m}"
+  | .names ns => s!"names {ns.length}" ++ ns.foldl (fun acc n => acc ++ s!" {str n}") ""
+  | .app pid n => s!"app {pid} {str n}"
+  | .flag b => s!"flag {bit b}"
 
 /-- One line per item, each ending in a newline. -/
 def frame (f : Frame) : String := Id.run do

@@ -223,7 +223,7 @@ shrunk from 13 operations to 2.
 The claim fuzzer above checks the Lean side. `make fuzz-trusted` checks the parts Lean's proofs
 take on trust (docs/trusted.md): the Swift half of each boundary, run against Lean's proved half
 in one process. One check per trusted item; each `assume` claim in
-`Cairn.Fuzz.Trusted.Claims` (^901–^915) names its check with `check "…"` (docs/claims.md), so
+`Cairn.Fuzz.Trusted.Claims` (^901–^915, ^960–^965) names its check with `check "…"` (docs/claims.md), so
 the report is the claim's evidence.
 
 ```sh
@@ -257,6 +257,12 @@ on after it.
 | `effects.http` | ^913 | `HTTP.run` | a `URLProtocol` stub: what it received and what it answered | methods, paths with URL-illegal characters, token headers with pool values, bodies to a few hundred bytes, statuses 100–599; refused URLs, methods and headers (CR/LF/NUL); connection failures; a server that never answers with 50–200 ms timeouts |
 | `effects.reply-once` | ^914 | `World` (requests) | the requests run and what each handler answered first; `reset`'s return | 1–24 requests a case with distinct random ids; handlers that answer 0–3 times, in order or racing on other threads, after 0–3 ms; a kind with no handler; a `reset` at a random moment |
 | `subs.every` | ^915 | `World` (subscriptions) | the started/stopped model of the commands; the monotonic clock | 1–8 frames of 0–4 start/stop commands over 5 ids (restarts with a new period, stops of ids not running), periods 1–40 ms, 0–60 ms between frames, then `reset` |
+| `effects.append-file` | ^960 | `Files.append` | the concatenation of the bytes appended; mode 600 on a new file; FileManager reads | 1–4 appends of 0 bytes to 2 MB under 1–3 random components; 2–4 threads appending 1 B–70 KB chunks at once (each chunk must land whole, in its thread's order); a directory, under a file, a read-only file, NUL and refused names |
+| `effects.list-dir` | ^961 | `Files.list` | the names the case made; `FileManager.contentsOfDirectory`, byte for byte | 0–300 files, directories and dangling links with names from the text pool; missing, a file, unreadable, NUL, empty |
+| `effects.delete-file` | ^962 | `Files.delete` | `lstat` before and after; the link's target | a file, a link (the target stays), a dangling link, a directory (refused, stays), a read-only parent (refused, stays), again (`notFound`) |
+| `subs.watch-file` | ^963 | `World` (`watchFile`), `FileSignature` | the changes the case made | polls of 5–20 ms; 2–5 operations a case: write in place, atomic replace, append, delete, create, `touch`, `chmod`, nothing, a sibling written; then the stop and a write after it |
+| `effects.frontmost-app` | ^964 | `Apps.frontmost` | a stubbed source; for the live answer `NSRunningApplication` and `kill(pid, 0)` | pids 1 to `Int32.max`, 0 and −1; names from the text pool and none; no app |
+| `effects.permission` | ^965 | `Permissions.check` | a stubbed TCC: statuses and the calls made | both permissions × trusted or not × the four microphone statuses × prompt × granted or not; the live system without prompting |
 
 Text comes from one pool in both languages: ASCII, edge scalars (NUL, controls, U+0085,
 U+2028/9, BOM, U+FFFD, U+FFFE/F, U+10FFFF, surrogate-adjacent, private use), ZWJ families,

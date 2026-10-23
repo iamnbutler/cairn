@@ -143,10 +143,13 @@ enum SwiftEvents {
         (0..<g.below(3)).map { _ in Header(str(&g), str(&g)) }
     }
     static func reply(_ g: inout SplitMix) -> Reply {
-        switch g.below(4) {
+        switch g.below(7) {
         case 0: return .done
         case 1: return .bytes(bytes(&g))
         case 2: return .http(status: nat(&g), headers: headers(&g), body: bytes(&g))
+        case 3: return .names((0..<g.below(4)).map { _ in str(&g) })
+        case 4: return .app(pid: nat(&g), name: str(&g))
+        case 5: return .flag(g.coin())
         default: return .failed(Fault(rawValue: UInt8(g.below(6)))!, str(&g))
         }
     }
@@ -181,7 +184,7 @@ enum SwiftEvents {
             let wall = g.below(4) == 0 ? Int64.min : Int64(g.below(1 << 42)) - (1 << 41)
             return .clock(Time(mono: mono, wall: wall, zone: int(&g)))
         case 19: return .reply(id: nat(&g), reply(&g))
-        default: return .subEvent(id: nat(&g), .tick)
+        default: return .subEvent(id: nat(&g), g.coin() ? .tick : .changed)
         }
     }
 
@@ -195,5 +198,7 @@ enum SwiftEvents {
         .clock(Time(mono: .max, wall: .min, zone: .min)), .clock(Time(mono: 0, wall: .max, zone: 0)),
         .reply(id: .max, .bytes([0, 255])), .reply(id: 0, .failed(.notFound, "")),
         .reply(id: 1, .http(status: 200, headers: [Header("a", "b")], body: [])), .subEvent(id: .max, .tick),
+        .reply(id: 2, .names([])), .reply(id: 3, .names(["", "2026-10-23.jsonl", "🙂"])),
+        .reply(id: 4, .app(pid: .max, name: "")), .reply(id: 5, .flag(true)), .subEvent(id: 0, .changed),
     ]
 }

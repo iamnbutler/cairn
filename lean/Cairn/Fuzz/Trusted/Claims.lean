@@ -72,4 +72,30 @@ assume ^915 hostEvery "every ms ticks while started and never after it is stoppe
   does "An every subscription ticks under its id only while it is started and not yet stopped, at most once per period, and the host's running subscriptions are exactly those the frames started and did not stop."
   check "subs.every"
 
+/-! Yap's host effects (workstream T, docs/effects.md "What Yap needs"), ids 960–989. -/
+
+assume ^960 hostAppendFile "appendFile adds exactly the bytes at the end, or fails and adds nothing" where
+  does "appendFile answers done only when the file then holds its old bytes followed by exactly the new ones, creating the file with mode 600 and missing directories; appends from several threads each land whole; a directory, a path under a file, a read-only file and a path that can't name a file fail and leave the file unchanged."
+  check "effects.append-file"
+
+assume ^961 hostListDir "listDir lists exactly the directory's names, sorted" where
+  does "listDir answers with exactly the names in the directory, without . and .., sorted by their UTF-8 bytes; a missing directory is notFound, a file invalid, an unreadable directory denied."
+  check "effects.list-dir"
+
+assume ^962 hostDeleteFile "deleteFile removes a file or a link, never a directory" where
+  does "deleteFile answers done only when the file or link (not its target) is gone, notFound when there is none, invalid for a directory, which stays, and denied when its directory is read-only, leaving the file."
+  check "effects.delete-file"
+
+assume ^963 hostWatchFile "watchFile reports every change to its file, and nothing after its stop" where
+  does "While a watchFile subscription runs, every write, replacement, append, creation, removal, touch or mode change of its file is followed by a changed event within a few polls, an untouched file brings none, and after its stop has been handled none is sent."
+  check "subs.watch-file"
+
+assume ^964 hostFrontmostApp "frontmostApp answers the app in front" where
+  does "frontmostApp answers with the process id and name of the app the system reports in front, notFound when there is none; the pid names a running process."
+  check "effects.frontmost-app"
+
+assume ^965 hostPermission "permission answers whether the app holds it, and prompts only when asked" where
+  does "permission answers flag true exactly when the app holds Accessibility (AXIsProcessTrusted) or the microphone (authorized); the system is asked to prompt only when prompt is set, the microphone only while undecided, answering with the person's choice; each request is answered once."
+  check "effects.permission"
+
 end Cairn.Fuzz.Trusted.Claims
