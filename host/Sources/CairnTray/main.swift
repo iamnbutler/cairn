@@ -132,29 +132,28 @@ enum SelfTest {
         }
         if p.isVisible { fail("a detached panel is on screen") }
 
-        // The waveform: an `every 20` subscription moves it. How fast, and what each tick costs.
-        func tick() -> Int? {
-            engine.latest?.frame.surface(452)?.canvas.draws.lazy.compactMap { d -> Int? in
-                guard case let .text(_, _, _, s) = d, let r = s.range(of: "tick ") else { return nil }
-                return Int(s[r.upperBound...])
-            }.first
+        // The waveform: an `every 20` subscription moves it. How fast, and what each tick costs,
+        // timed where each frame is published (on the Lean thread), so a stall of this polling
+        // thread can't show up as one of the pipeline's.
+        let published = Published452()
+        let forward = engine.onPublish
+        engine.onPublish = { p in
+            if let t = overlayTick(p.frame) { published.add(t, hostNow()) }
+            forward?(p)
         }
         engine.stats.reset()
-        let t0 = hostNow()
-        guard let first = tick() else { fail("no tick in the overlay") }
-        var times: [Double] = []
-        var last = first
-        while hostNow() - t0 < 2 {
-            if let t = tick(), t != last { last = t; times.append(hostNow()) }
-            usleep(200)
-        }
-        let rate = Double(last - first) / (hostNow() - t0)
+        usleep(2_000_000)
+        engine.onPublish = forward
+        let (ticks, times) = published.take()
+        guard let first = ticks.first, let last = ticks.last, let tf = times.first, let tl = times.last, tl > tf
+        else { fail("no ticks published in the overlay") }
+        let rate = Double(last - first) / (tl - tf)
         let lean = engine.stats.summary(.lean)
         let gaps = zip(times.dropFirst(), times).map { ($0 - $1) * 1000 }.sorted()
         if rate < 30 { fail(String(format: "the overlay ticks at %.1f Hz", rate)) }
         // The caption has grown past two lines; the paragraph keeps the last two, with the tick.
         let lines: [String] = frame.surface(452)?.canvas.draws.compactMap { d -> String? in if case let .text(_, _, _, s) = d { s } else { nil } } ?? []
-        if lines.count != 2 || !(lines.last ?? "").contains("tick ") { fail("caption lines \(lines)") }
+        if lines.count != 2 || overlayTick(frame) == nil { fail("caption lines \(lines)") }
 
         // Hide it: the panel goes, and the subscription stops.
         choose("^454")
@@ -170,10 +169,33 @@ enum SelfTest {
         engine.stop()
         func q(_ p: Double) -> String { gaps.isEmpty ? "-" : String(format: "%.2f", gaps[min(gaps.count - 1, Int(Double(gaps.count) * p))]) }
         print("selftest: PASS (Tray: accessory, menu tree, open, add/pick, in-place update, stale choice ignored, overlay panel, quit)")
-        print(String(format: "  overlay ticks: %.1f Hz over 2 s (every 20 ms asked)", rate))
-        print("  tick → tick, ms: p50 \(q(0.5)) p90 \(q(0.9)) max \(q(1))")
+        print(String(format: "  overlay ticks published: %.1f Hz over 2 s (every 20 ms asked)", rate))
+        print("  tick → tick at publish, ms: p50 \(q(0.5)) p90 \(q(0.9)) max \(q(1))")
         print("  Lean step+frame+decode per batch while shown, ms: \(lean)")
     }
+}
+
+/// The tick number in the overlay's caption. The caption wraps, and a break can fall between
+/// "tick" and its number, so the lines are joined first.
+nonisolated func overlayTick(_ f: Frame?) -> Int? {
+    let lines = f?.surface(452)?.canvas.draws.compactMap { d -> String? in
+        if case let .text(_, _, _, s) = d { s } else { nil }
+    } ?? []
+    let text = lines.joined(separator: " ")
+    guard let r = text.range(of: "tick ", options: .backwards) else { return nil }
+    return Int(text[r.upperBound...])
+}
+
+/// The overlay's tick values and when each was published, from the Lean thread.
+final class Published452: @unchecked Sendable {
+    private let lock = NSLock()
+    private var ticks: [Int] = []
+    private var times: [Double] = []
+    func add(_ t: Int, _ at: Double) {
+        lock.lock(); defer { lock.unlock() }
+        if ticks.last != t { ticks.append(t); times.append(at) }
+    }
+    func take() -> ([Int], [Double]) { lock.lock(); defer { lock.unlock() }; return (ticks, times) }
 }
 
 /// Draws nothing; for the headless self test.
