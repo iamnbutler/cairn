@@ -47,7 +47,7 @@ list and in this table.
 | C | Interaction runtime | `lean/Cairn/Runtime/` | hit testing, hover, press tracking, focus and keyboard routing, `Event` → `Action`, the pressable theorem (stated over layout facts B proves) |
 | D | Text editing | `lean/Cairn/Text/Field.lean`, `lean/Cairn/Text/` (not Metrics) | `Field` model: text, caret, anchor, marked range, undo history; `Field.apply : TextOp → Field → Field × List Effect`; theorems: indices stay in bounds, undo after edit restores, insert then delete-backward restores |
 | E | Frame and encoding | `lean/Cairn/Frame/`, `host/Sources/CairnFrame/` (not Model.swift), `docs/frame.md` | `Frame.ofLaid` (draws, accessibility tree, text input); byte encoding v1 for frames and events with `decode (encode x) = x` proved; Swift decoder and event encoder; a corpus test that Swift decodes what Lean encodes |
-| F | Renderer and text | `host/Sources/CairnRender/` | Metal: rects with fill, border and radius, clipping, glyph runs from a Core Text–rasterised atlas at the backing scale; Core Text metrics exported to Lean (`cairn_text_offsets`) with a cache |
+| F | Renderer and text | `host/Sources/CairnRender/` | Metal: rects with fill, border and radius, clipping, glyph runs from a Core Text–rasterised atlas at the backing scale; Core Text metrics exported to Lean (`cairn_text_metrics`, docs/render.md) with a cache |
 | G | Host | `host/Sources/CairnHost/`, `host/Sources/CLean/` | window, threads (main, Lean, render), AppKit events → `Event`, `NSTextInputClient`, accessibility mirror with `^N` identifiers, effects (clipboard), cursor; a generic app runner any Lean app plugs into |
 | H | Research | `research/` | sourced notes per source; see `research/README.md` |
 | I | TodoMVC | `lean/Examples/Todo/` | the app, its claims and its proofs (after A–E) |
@@ -65,7 +65,7 @@ A, B, C, D, E, F, G and H start now. I, J and K start as their inputs land.
   using `TextMetrics.offsets`.
 - **E and F/G** meet at `Model.swift` and `docs/frame.md`. Until E lands its decoder, F and G
   build against `Model.swift` with hand-made frames.
-- **F and B** meet at `TextMetrics`: F implements `cairn_text_offsets` in Swift; the Lean side
+- **F and B** meet at `TextMetrics`: F implements `cairn_text_metrics` in Swift; the Lean side
   declares it `@[extern]` in `lean/Cairn/Text/Host.lean` (F owns that file). Lean executables
   that don't link the host (bench, audit, tests) use the mono metrics.
 - **G** owns the Swift package layout (`Package.swift`) and the `Makefile`; others add their
