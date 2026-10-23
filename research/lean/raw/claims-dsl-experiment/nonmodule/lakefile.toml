@@ -1,0 +1,8 @@
+name = "cl"
+defaultTargets = ["Cl"]
+[[lean_lib]]
+name = "Cl"
+
+[[lean_exe]]
+name = "app"
+root = "Main"
