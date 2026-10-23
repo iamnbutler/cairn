@@ -104,3 +104,11 @@ Answers to questions raised in workstream PRs. Newest last.
 - **Layout pressability** needs `Layout.Pressable` (root inside the window, children fit, only a
   stack's top child has controls, controls have no controls below them). Apps prove it for their
   views at sizes at or above their minimum.
+- **Apps are Lean modules.** Every file an app imports is a `module`; apps `meta import` the
+  claim commands and never `import Lean`. The host starts a library with
+  `runtime_initialize_<lib>`.
+- **One app per binary.** Each app that exports `cairn_app_*` gets its own `lean_lib` and static
+  archive, so the exports never clash.
+- **Move posts constrain the state only.** Effects are covered by provenance (every effect comes
+  from an enabled move); richer effect posts can come when an app needs them.
+- **Keyed presence** (one control per item, `^N#k`) is generalised as part of TodoMVC (I).
