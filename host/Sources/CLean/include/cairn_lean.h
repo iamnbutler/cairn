@@ -27,18 +27,32 @@ cairn_obj *cairn_bytes_new(const uint8_t *data, size_t size);
 const uint8_t *cairn_bytes_data(cairn_obj *b);
 size_t cairn_bytes_size(cairn_obj *b);
 
-// Module initializers of the Lake libraries linked into libcairn_lean.a.
-// `Cairn` must be initialized before Lean measures text (`TextMetrics.host`, docs/render.md).
+// The framework's module initializer, in libcairn_lean.a. `Cairn` must be initialized before
+// Lean measures text (`TextMetrics.host`, docs/render.md).
 cairn_obj *initialize_cairn_Cairn(uint8_t builtin);
-// `Examples` is a Lean `module` whose apps `meta import` the claim commands (which use the Lean
-// compiler). Its `runtime_` initializer runs only what the app needs at run time; the full
-// `initialize_cairn_Examples` would also initialize the commands, and so all of `Lean`, which the
-// host does not link (docs/claims.md, "Linking").
-cairn_obj *runtime_initialize_cairn_Examples(uint8_t builtin);
 
-// Exported from Examples/Counter.lean (frame v0, docs/spike-boundary.md). Every argument is
-// owned (consumed). The v1 app ABI is `<app>_init(w, h, scalePercent)`, `<app>_step(state,
-// events)`, `<app>_frame(state)`; see docs/host.md.
+// Everything below is defined by an app library (build/lib/libcairn_app_<name>.a), and each
+// executable links exactly one of them (Makefile, Package.swift). Declaring them all here is
+// fine; referencing one from a binary that doesn't link its library is a link error.
+
+// The v1 app ABI (docs/runtime.md), exported by every v1 app. Every argument is owned
+// (consumed): `step` consumes the state and the event bytes and returns the new state; `frame`
+// consumes the state (lean_inc it first to keep it) and returns the frame bytes (docs/frame.md).
+cairn_obj *cairn_app_init(uint32_t w, uint32_t h, uint32_t scale_percent);
+cairn_obj *cairn_app_step(cairn_obj *state, cairn_obj *events);
+cairn_obj *cairn_app_frame(cairn_obj *state);
+
+// App libraries are Lean `module`s whose apps may `meta import` the claim commands (which use the
+// Lean compiler). Their `runtime_` initializers run only what the app needs at run time; the full
+// `initialize_*` would also initialize the commands, and so all of `Lean`, which the host does
+// not link (docs/claims.md, "Linking").
+
+// libcairn_app_basics.a: lean/Examples/Basics.lean, v1.
+cairn_obj *runtime_initialize_cairn_Examples_Basics(uint8_t builtin);
+
+// libcairn_app_counter.a: lean/Examples/Counter.lean, the spike's v0 exports
+// (docs/spike-boundary.md). Remove these and SpikeV0Codec when Counter moves to v1.
+cairn_obj *runtime_initialize_cairn_Examples_Counter(uint8_t builtin);
 cairn_obj *cairn_counter_new(uint32_t w, uint32_t h);
 cairn_obj *cairn_counter_step(cairn_obj *state, cairn_obj *events);
 cairn_obj *cairn_counter_frame(cairn_obj *state);

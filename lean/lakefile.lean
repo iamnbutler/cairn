@@ -23,10 +23,10 @@ target claims_meta.o pkg : System.FilePath := do
   let args := #["-I", (← getLeanIncludeDir).toString]
   buildO (pkg.buildDir / "c" / "claims_meta.o") src args #["-O2", "-fPIC"] "cc"
 
+/-- Every example app and its proofs (`Examples.lean`): what the ledger, the axiom audit and the
+kernel replay read. The host links the per-app libraries below, never this one. -/
 @[default_target]
-lean_lib Examples where
-  defaultFacets := #[LeanLib.staticFacet]
-  moreLinkObjs := #[claims_meta.o]
+lean_lib Examples
 
 /-- Tests for the claim commands. Not imported by `Cairn` or `Examples`, so their ids stay out of
 the ledger. -/
@@ -43,6 +43,25 @@ lean_exe ledger where
 lean_exe claims where
   root := `Cairn.Claims.Export
   supportInterpreter := true
+
+/-! One static library per app, and each host executable links exactly one (`make lean`,
+host/Package.swift): v1 apps all export `cairn_app_init/step/frame`, so two in one binary would
+clash. Each needs `claims_meta.o` (docs/claims.md, "Linking"). The host calls the app module's
+`runtime_initialize_*`. -/
+
+/-- The spike's Counter (`Examples.Counter`, `cairn_counter_*`, frame v0). -/
+@[default_target]
+lean_lib Counter where
+  roots := #[`Examples.Counter]
+  defaultFacets := #[LeanLib.staticFacet]
+  moreLinkObjs := #[claims_meta.o]
+
+/-- Basics (`Examples.Basics`), the first app on the v1 ABI. -/
+@[default_target]
+lean_lib Basics where
+  roots := #[`Examples.Basics]
+  defaultFacets := #[LeanLib.staticFacet]
+  moreLinkObjs := #[claims_meta.o]
 
 lean_exe bench where
   root := `Bench

@@ -169,6 +169,7 @@ Proved about dispatch (`Cairn/Claims/Move.lean`, `Machine.lean`, `Deliver.lean`)
 | `dispatch_preserves`, `dispatch_preserves_moves`, `Machine.preserves` | invariants one move at a time |
 | `Invariant.reachable` | an invariant holds in every state reachable from `init` |
 | `deliver_effect`, `deliver_unclaimed` | the same two guarantees for a batch of actions through `Runtime.deliver`, so they compose with `Runtime.step_delivers` |
+| `deliver_run`, `steps_reachable` | delivering a batch runs it (`Machine.run`); the app state of every runtime state reached from `start` by events is `Machine.Reachable`, so every invariant holds on screen |
 
 ## The ledger
 
@@ -250,14 +251,15 @@ public import Cairn.Spike.Frame
 ```
 
 With that, the app's compiled code and its `runtime_initialize_*` never touch `Lean` or the
-commands; the host calls `runtime_initialize_cairn_Examples` (host/Sources/CLean). The
+commands; the host calls `runtime_initialize_cairn_Examples_Counter` or
+`runtime_initialize_cairn_Examples_Basics` (host/Sources/CLean; one library per app). The
 generated declarations are `public` and, in a module, `@[expose]`, so other modules' proofs
 can unfold them. `Cairn.Claims` is an umbrella (`Core` plus `meta import Elab`) for non-module
 files such as the tests.
 
 One wrinkle remains. Each app object file also contains its full `initialize_*` and
 `meta_initialize_*`, which call the commands' initializers, and the linker resolves every
-symbol in an object it links. `lean/c/claims_meta.c` (in the `Examples` library's
+symbol in an object it links. `lean/c/claims_meta.c` (in each app library's
 `moreLinkObjs`) defines those two initializers **weakly**; they return an error if called, and
 the host never calls them. Lake executables that link the real module (`ledger`, `claims`,
 `bench`) get its strong definitions. A new app library needs the same `moreLinkObjs`.
@@ -265,11 +267,14 @@ the host never calls them. Lake executables that link the real module (`ledger`,
 Consequences of the module system for the modules an app imports: every one of them is a
 `module` (a module can only import modules), so `Cairn.Claim`, `Input`, `Geometry`,
 `Text.Metrics`, `UI.Node`, `App`, `Spike.Bytes`, `Spike.Frame` and `Claims.Move`/`Machine`/`Core`
-are modules with `@[expose] public section`. Non-module files (`Cairn.Runtime`, `Cairn.Layout`,
+are modules with `@[expose] public section`, and so (for Basics, the first app on the v1 runtime)
+are `Text.Field`, `Text.Host`, `Layout.Core`, `Layout.Facts`, `Runtime.Hit`, `Runtime.Step`,
+`Runtime.Abi`, `Frame`, `Frame.Bytes`, `Frame.Encode`, `Frame.Events`, `Frame.Build` and
+`Frame.Boundary`. Their `#guard`s moved to sibling `…Tests.lean` files. Non-module files (`Cairn.Runtime`, `Cairn.Layout`,
 …) import them unchanged and see everything. `#guard` does not work in a module without
 `meta`-importing what it evaluates, so checks there are `example … := by decide`.
 
-Measured (`make check`, Debug): `libcairn_Examples.a` 48 KB, `libcairn_lean.a` 18.5 MB (of
+Measured (`make check`, Debug; before the per-app split): `libcairn_Examples.a` 48 KB, `libcairn_lean.a` 18.5 MB (of
 which `libInit` is 15 MB); the `CairnCounter` binary contains no symbols from `libLean`.
 
 ## What is not enforced, and why

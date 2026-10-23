@@ -182,8 +182,8 @@ See [host.md](host.md) for how each piece works.
 ### Boundary
 
 - **Decoder.** The Swift decoder is trusted to turn the frame's bytes into exactly the
-  `Frame` Lean encoded: `SpikeV0Codec` for the Counter now, the v1 decoder in `CairnFrame` once
-  an app speaks v1. See "Frame encoding (workstream E)" for v1's evidence.
+  `Frame` Lean encoded: `SpikeV0Codec` for the Counter, the v1 decoder in `CairnFrame`
+  (`FrameV1Codec`) for Basics. See "Frame encoding (workstream E)" for v1's evidence.
 - **Lean runtime.** The runtime is initialized once, on the Lean thread, and the `Cairn`
   module is initialized before the app's module. Every other thread that calls Lean registers
   with `lean_initialize_thread` (`cairn_lean_thread_begin`). The main and render threads never

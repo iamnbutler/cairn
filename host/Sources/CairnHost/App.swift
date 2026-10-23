@@ -3,11 +3,19 @@ import CairnFrame
 import Foundation
 
 /// The bytes that cross the boundary: events in, frames out. v1 is specified in docs/frame.md
-/// and implemented by CairnFrame's decoder and encoder (workstream E); `SpikeV0Codec` speaks the
-/// boundary spike's format until the apps move to v1.
+/// and implemented by CairnFrame's decoder and encoder (`FrameV1Codec`); `SpikeV0Codec` speaks
+/// the boundary spike's format for Counter until it moves to v1.
 public protocol BoundaryCodec: Sendable {
     func encode(_ events: [Event]) -> [UInt8]
     func decodeFrame(_ bytes: UnsafeRawBufferPointer) throws -> Frame
+}
+
+/// The v1 boundary (docs/frame.md): events go out with `encodeEvents`, frames come back with
+/// `Frame(decoding:)`. Every app on the `cairn_app_*` ABI uses it.
+public struct FrameV1Codec: BoundaryCodec {
+    public init() {}
+    public func encode(_ events: [Event]) -> [UInt8] { encodeEvents(events) }
+    public func decodeFrame(_ bytes: UnsafeRawBufferPointer) throws -> Frame { try Frame(decoding: bytes) }
 }
 
 /// What the host runs. Every call happens on the Lean thread, in order: `start` once, then any
@@ -21,6 +29,10 @@ public protocol AppCore: AnyObject {
 
 /// A Lean app: its module initializer and its three exports. Every Lean argument is owned
 /// (consumed); see docs/host.md for the ABI.
+///
+/// A v1 app passes `cairn_app_init`, `cairn_app_step`, `cairn_app_frame` and `FrameV1Codec()`.
+/// The closures live in the app's executable, not here: each executable links exactly one app
+/// library, so CairnHost must not reference the app symbols itself.
 public struct LeanApp: Sendable {
     public var module: cairn_module_init
     public var initialize: @Sendable (_ w: UInt32, _ h: UInt32, _ scalePercent: UInt32) -> OpaquePointer

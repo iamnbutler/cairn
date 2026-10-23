@@ -1,4 +1,6 @@
-import Cairn.Text.Metrics
+module
+
+public import Cairn.Text.Metrics
 
 /-! Core Text metrics from the host, as a `TextMetrics`.
 
@@ -16,6 +18,8 @@ there (returning "no host"), so `bench`, `audit` and Lean tests link without the
 get `TextMetrics.mono` numbers; the Swift host's strong definition wins when it is linked.
 `hostLinked ()` says which one is in use. Never evaluate these at elaboration time (`#eval`,
 `#guard`): the interpreter has no native implementation to call. -/
+
+@[expose] public section
 
 namespace Cairn.Text.Host
 

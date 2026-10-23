@@ -21,16 +21,29 @@ Every app accepts these flags:
 
 `CAIRN_LOG_EVENTS=1` logs every event batch sent to the app.
 
-One executable per app. An app describes itself as a `LeanApp` and calls `CairnApp.main`:
+One executable per app, linking one app library. An app describes itself as a `LeanApp` and
+calls `CairnApp.main`. Basics (`host/Sources/CairnBasics`) is on the v1 ABI:
 
 ```swift
-let counter = LeanApp(module: runtime_initialize_cairn_Examples,
-                      initialize: { w, h, _ in cairn_counter_new(w, h) },
-                      step: { cairn_counter_step($0, $1) },
-                      frame: { cairn_counter_frame($0) },
-                      codec: SpikeV0Codec())
-CairnApp.main(CairnApp.Config(title: "Counter", size: Size(w: 480, h: 320)) { LeanCore(counter) })
+let basics = LeanApp(module: runtime_initialize_cairn_Examples_Basics,
+                     initialize: { w, h, scale in cairn_app_init(w, h, scale) },
+                     step: { cairn_app_step($0, $1) },
+                     frame: { cairn_app_frame($0) },
+                     codec: FrameV1Codec())
+CairnApp.main(CairnApp.Config(title: "Basics", size: Size(w: 480, h: 600)) { LeanCore(basics) })
 ```
+
+Every v1 app exports the same three symbols (`cairn_app_init/step/frame`), so each app is its
+own `lean_lib` with its own static archive (`lean/lakefile.lean`; `make lean` copies
+`libcairn_<Lib>.a` to `build/lib/libcairn_app_<name>.a`), and its executable target links only
+that archive (`-lcairn_app_basics`). The shared `libcairn_lean.a` holds `Cairn`, `Init` and the
+runtime and no app; `make lean` checks with `nm` that it defines no `cairn_app_*` and that each
+app archive defines `cairn_app_init` once. The module initializer is the module system's
+`runtime_initialize_cairn_Examples_<App>`, which never calls into the claim commands.
+
+`make demo` opens Basics (`DEMO=CairnCounter make demo` for the counter). `CairnBasics
+--selftest` drives the real engine and view headlessly (AX focus, `insertText`, Enter, AXPress,
+Tab, a pixel probe) and is part of `make check`; `--bench` is `bench/basics.md`.
 
 `AppCore` is the seam: `start(size:scalePercent:)`, `step([Event])`, `frame() -> Frame`.
 `LeanCore` implements it over a `LeanApp`. `CairnFixture` implements it in Swift, as a test
@@ -99,21 +112,23 @@ All Lean `@[export]` arguments are **owned** (consumed). The host calls `cairn_l
 anything it keeps: `LeanCore.frame` incs the state before passing it, because the frame
 function consumes it.
 
-- v0 (now). The Counter uses the spike's exports and frame format
-  ([spike-boundary.md](spike-boundary.md)). `SpikeV0Codec` adapts that format to
-  `CairnFrame.Frame` and encodes pointer down/up and resize only.
-- v1 (workstreams C and E). The exports are `<app>_init(w, h, scalePercent)`,
-  `<app>_step(state, events : ByteArray)` and `<app>_frame(state) : ByteArray`, with the
-  [frame.md](frame.md) codec. Moving an app to v1 means swapping the closures and the `codec`
-  in its `LeanApp`. Nothing else in the host changes.
+- v1 (Basics). The exports are `cairn_app_init(w, h, scalePercent)`,
+  `cairn_app_step(state, events : ByteArray)` and `cairn_app_frame(state) : ByteArray`
+  ([runtime.md](runtime.md)), with the [frame.md](frame.md) codec: `FrameV1Codec` is
+  `encodeEvents` and `Frame(decoding:)` from CairnFrame.
+- v0 (Counter only). The Counter still uses the spike's exports and frame format
+  ([spike-boundary.md](spike-boundary.md)); `SpikeV0Codec` adapts it and encodes pointer
+  down/up and resize only. **Remove** `SpikeV0Codec`, the `cairn_counter_*` declarations in
+  `CLean/include/cairn_lean.h` and this bullet when the Counter moves to v1 (swap its closures
+  and codec as Basics does; nothing else in the host changes).
 
 ### Seams waiting on other workstreams
 
 | Seam | Now | When it lands |
 |---|---|---|
-| `BoundaryCodec` (E) | `SpikeV0Codec` | E's v1 decoder/encoder in CairnFrame |
+| `BoundaryCodec` (E) | landed: `FrameV1Codec` (Basics); `SpikeV0Codec` until Counter moves | |
 | `FrameRenderer` (F) | `MetalRenderer`, over `CairnRender.Renderer` (landed). The layer is `bgra8Unorm` with an sRGB colour space | |
-| `LeanApp` (C) | `cairn_counter_*` | `cairn_app_init/step/frame` |
+| `LeanApp` (C) | landed: `cairn_app_init/step/frame` (Basics); `cairn_counter_*` until Counter moves | |
 | Text metrics (F) | landed. `firstRect` and `characterIndex` use `TextSystem.shared.shape`, the same line Lean measures with `cairn_text_metrics` | |
 
 ## Input

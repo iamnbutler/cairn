@@ -1,8 +1,12 @@
-import Cairn.UI.Node
-import Cairn.Input
+module
+
+public import Cairn.UI.Node
+public import Cairn.Input
 
 /-! What crosses the boundary each frame, before encoding. `Cairn.Frame.Encode` turns it into
 bytes (see docs/frame.md). -/
+
+@[expose] public section
 
 namespace Cairn
 

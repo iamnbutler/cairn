@@ -1,5 +1,6 @@
 import Cairn.Claims.Machine
 import Cairn.Runtime.Step
+import Cairn.Runtime.Proofs
 
 /-! The claim guarantees, carried through the runtime.
 
@@ -61,5 +62,41 @@ names a move's claim leaves the app state alone and runs no effects. -/
 theorem deliver_unclaimed {st : S} {acts : List Action}
     (h : ∀ a ∈ acts, ∀ m ∈ M.moves, m.id ≠ a.claim) : deliver M.update st acts = (st, []) :=
   deliver_go_unclaimed M acts h st []
+
+private theorem deliver_go_run (acts : List Action) :
+    ∀ (st : S) (effs : List Effect),
+      (acts.foldl (fun (p : S × List Effect) a =>
+        let (st', e) := M.update p.1 a; (st', p.2 ++ e)) (st, effs)).1 = M.run st acts := by
+  induction acts with
+  | nil => intro st effs; rfl
+  | cons a as ih => intro st effs; simp only [List.foldl_cons]; exact ih _ _
+
+/-- Delivering a batch of actions to a machine runs them in order. -/
+theorem deliver_run (st : S) (acts : List Action) : (deliver M.update st acts).1 = M.run st acts :=
+  deliver_go_run M acts st []
+
+/-- **Invariants hold on screen.** In an app whose update is a machine's, the app state of every
+runtime state reached from `start` by events is reachable in the machine, so every invariant
+(`Invariant.reachable`) holds in it. -/
+theorem steps_reachable (view : S → UI → Node) (claims : List ClaimInfo) (cfg : Config)
+    (size : Size) (scale : Nat) (es : List Event) :
+    M.Reachable (steps (M.toApp view claims) cfg (start (M.toApp view claims) cfg size scale) es).1.app := by
+  unfold steps
+  suffices ∀ (es : List Event) (acc : State S × List Effect), M.Reachable acc.1.app →
+      M.Reachable (es.foldl (fun (s, effs) e =>
+        let (s', e') := step (M.toApp view claims) cfg s e; (s', effs ++ e')) acc).1.app from
+    this es _ ⟨[], rfl⟩
+  intro es
+  induction es with
+  | nil => intro acc h; exact h
+  | cons e es ih =>
+    intro acc h
+    apply ih
+    obtain ⟨as, has⟩ := h
+    have hd := congrArg Prod.fst (step_delivers (M.toApp view claims) cfg acc.1 e)
+    refine ⟨as ++ (route cfg.metrics acc.1 e).2, ?_⟩
+    simp only at hd ⊢
+    rw [hd, M.run_append, ← has]
+    exact deliver_run M _ _
 
 end Cairn.Claims

@@ -1,6 +1,8 @@
-import Cairn.Frame
-import Cairn.App
-import Cairn.Layout.Proofs
+module
+
+public import Cairn.Frame
+public import Cairn.App
+public import Cairn.Layout.Facts
 
 /-! `Frame.ofLaid`: a laid-out tree becomes what crosses the boundary: draw commands in paint
 order, the accessibility tree, and the focused field's text-input state.
@@ -18,11 +20,14 @@ order, the accessibility tree, and the focused field's text-input state.
 
 Focus comes from the runtime (`UI.focus`), the one source of truth; `FieldView.focused` is for the
 view's own styling and is not read here. `Laid.text`'s `baseline` is absolute (window y). `Laid.controls` is layout's (`Layout/Facts.lean`).
+`controls_ofLaid_layout`, which composes `controls_ofLaid` with layout, is in `Frame/Layout.lean`.
 
 Theorems: `controls_ofLaid` (the accessibility tree's controls are exactly the laid tree's, in
 order, which is how presence reaches the accessibility mirror), `mem_ax_ofLaid`,
 `ax_refs_nodup` (distinct refs in the tree give distinct refs in the mirror), `parent_lt_ofLaid`
 (every parent index points at an earlier node) and `balanced_ofLaid` (clips are balanced). -/
+
+@[expose] public section
 
 namespace Cairn
 
@@ -147,12 +152,6 @@ exactly the controls of the laid tree, in order. -/
 theorem controls_ofLaid (ui : UI) (l : Laid) :
     (ofLaid ui l).ax.toList.filterMap AxNode.control = l.controls.map Control.ref := by
   simp only [ofLaid, axOf_controls, List.filterMap_nil, List.nil_append]
-
-/-- Composed with layout: the accessibility tree has exactly the view's controls, in order. -/
-theorem controls_ofLaid_layout (ui : UI) (m : TextMetrics) (w : Size) (n : Node) :
-    (ofLaid ui (Layout.layout m w n)).ax.toList.filterMap AxNode.control =
-      n.controls.map Control.ref := by
-  rw [controls_ofLaid, Layout.layout_controls]
 
 /-- A claim's control is in the accessibility tree iff it is in the laid tree. -/
 theorem mem_ax_ofLaid (ui : UI) (l : Laid) (c : ControlRef) :
@@ -325,37 +324,4 @@ theorem balanced_ofLaid (ui : UI) (l : Laid) : Balanced (ofLaid ui l).draws.toLi
 
 end Frame
 
-/-! ## Examples -/
-
-namespace Frame.Examples
-
-private def button : Control := { ref := ⟨1, 0⟩, label := "Add" }
-private def field : Control := { ref := ⟨2, 0⟩, role := .textField, label := "New todo" }
-private def win : Rect := ⟨0, 0, 400, 300⟩
-
-/-- A clipping column holding a button with a label and a focused field. -/
-private def sample : Laid :=
-  .box win win { clip := true, background := some ⟨255, 255, 255, 255⟩ } none [
-    .box ⟨10, 10, 80, 24⟩ win { background := some ⟨0, 0, 255, 255⟩ } (some button) [
-      .text ⟨20, 14, 30, 16⟩ win 27 {} "Add"],
-    .field ⟨10, 40, 200, 24⟩ win {} {} field { text := "héllo", caret := 5, anchor := 2 }
-      ⟨14, 57⟩ ⟨44, 44, 1, 16⟩ [⟨24, 44, 20, 16⟩]]
-
-private def f := ofLaid { focus := some ⟨2, 0⟩ } sample
-
-#guard f.draws.size == 9
-#guard f.draws[0]! == .rect win (some ⟨255, 255, 255, 255⟩) 0 none
-#guard f.draws[1]! == .pushClip win
-#guard f.draws[3]! == .text ⟨20, 27⟩ {} ⟨0, 0, 0, 255⟩ "Add"
-#guard f.draws.back! == .popClip
-#guard f.ax.map (·.role) == #[.button, .text, .textField]
-#guard f.ax.map (·.parent) == #[none, some 0, none]
-#guard f.ax[2]!.value == "héllo" && f.ax[2]!.focused
-#guard (f.textInput.map (·.selection)) == some (2, 5)
--- No caret while there is a selection; a caret once it collapses.
-#guard !(f.draws.contains (.rect ⟨44, 44, 1, 16⟩ (some ⟨0, 0, 0, 255⟩) 0 none))
-#guard (ofLaid { focus := none } sample).textInput.isNone
-#guard (f.textInput.map (·.textOrigin)) == some ⟨14, 57⟩
-
-end Frame.Examples
 end Cairn
