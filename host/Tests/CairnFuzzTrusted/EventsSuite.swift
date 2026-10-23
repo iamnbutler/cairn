@@ -111,7 +111,21 @@ final class EventsSuite: Suite {
         case 17: return .windowFocus(g.bool())
         case 18: return .clock(Time(mono: u64(&g), wall: i64(&g), zone: i32(&g)))
         case 19: return .reply(id: u32(&g), reply(&g))
-        default: return .subEvent(id: u32(&g), g.bool() ? .tick : .changed)
+        default: return .subEvent(id: u32(&g), subEvent(&g))
+        }
+    }
+
+    static func subEvent(_ g: inout SplitMix) -> SubEvent {
+        switch g.below(7) {
+        case 0: return .tick
+        case 1: return .changed
+        case 2:
+            return .audio(frames: u32(&g), peak: u32(&g), windows: (0..<g.weighted([(4, { $0.below(4) }), (1, { $0.below(60) })])).map { _ in
+                Level(sumSq: u64(&g), peak: u32(&g)) })
+        case 3: return .keyDown(u64(&g))
+        case 4: return .keyUp(u64(&g))
+        case 5: return .otherKey(u64(&g))
+        default: return .failed(Fault(rawValue: UInt8(g.below(6)))!, TextPool.string(&g))
         }
     }
 

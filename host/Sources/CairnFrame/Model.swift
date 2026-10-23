@@ -115,6 +115,23 @@ public struct Header: Equatable, Sendable {
     public init(_ name: String, _ value: String) { self.name = name; self.value = value }
 }
 
+/// A piece of an `upload` body (`Cairn.Part`).
+public enum Part: Equatable, Sendable {
+    case bytes([UInt8])
+    /// Clip `clip`'s samples from 20 ms window `start` to window `stop` (the end when nil), as a
+    /// 16 kHz mono 16-bit WAV file.
+    case wav(clip: UInt32, start: UInt32, stop: UInt32?)
+}
+
+/// A header whose value the host reads from a secret (`Cairn.Secret`): `header: scheme value`,
+/// where `value` is the environment variable `name` or else `name`'s line in the file `file`.
+public struct Secret: Equatable, Sendable {
+    public var header, scheme, file, name: String
+    public init(header: String, scheme: String, file: String, name: String) {
+        self.header = header; self.scheme = scheme; self.file = file; self.name = name
+    }
+}
+
 /// A TCC permission (`Cairn.Permission`).
 public enum Permission: UInt8, Sendable { case accessibility, microphone }
 
@@ -135,6 +152,12 @@ public enum Request: Equatable, Sendable {
     case frontmostApp
     /// Whether the app holds a permission; `prompt` asks the person if not.
     case permission(Permission, prompt: Bool)
+    /// Type `text` into app `pid`, activating it first, then press Return if asked.
+    case typeText(pid: UInt32, text: String, pressReturn: Bool)
+    /// An HTTP request whose body is assembled from parts and which may carry a secret header.
+    case upload(method: String, url: String, headers: [Header], secret: Secret?, body: [Part], timeoutMs: UInt32)
+    /// Drop a recorded clip's samples.
+    case forgetClip(clip: UInt32)
 
     /// The kind code on the wire (`Request.Kind.code`).
     public var kindCode: UInt8 {
@@ -148,6 +171,9 @@ public enum Request: Equatable, Sendable {
         case .deleteFile: 6
         case .frontmostApp: 7
         case .permission: 8
+        case .typeText: 9
+        case .upload: 10
+        case .forgetClip: 11
         }
     }
 }
@@ -183,9 +209,43 @@ public enum Sub: Hashable, Sendable {
     case every(ms: UInt32)
     /// `changed` whenever the file changes.
     case watchFile(path: String)
+    /// Record the microphone into clip `clip`, streaming levels.
+    case record(clip: UInt32)
+    /// The hotkey: a key code, or a modifier key (its code and its modifier flag bit).
+    case globalKey(code: UInt32, modifier: UInt32?)
 }
 
-public enum SubEvent: UInt8, Sendable { case tick, changed }
+/// One 20 ms window of a recording (`Cairn.Level`).
+public struct Level: Equatable, Sendable {
+    public var sumSq: UInt64
+    public var peak: UInt32
+    public init(sumSq: UInt64, peak: UInt32) { self.sumSq = sumSq; self.peak = peak }
+}
+
+/// What an active subscription reports (`Cairn.SubEvent`).
+public enum SubEvent: Equatable, Sendable {
+    case tick, changed
+    case audio(frames: UInt32, peak: UInt32, windows: [Level])
+    /// Monotonic milliseconds.
+    case keyDown(UInt64), keyUp(UInt64), otherKey(UInt64)
+    case failed(Fault, String)
+
+    /// `tick` 0, `changed` 1, `audio` 2, `keyDown` 3, `keyUp` 4, `otherKey` 5, `failed` 6.
+    public var code: UInt8 {
+        switch self {
+        case .tick: 0
+        case .changed: 1
+        case .audio: 2
+        case .keyDown: 3
+        case .keyUp: 4
+        case .otherKey: 5
+        case .failed: 6
+        }
+    }
+
+    /// Carries nothing but that it happened, so repeats can be merged.
+    public var isSignal: Bool { self == .tick || self == .changed }
+}
 
 /// Lean → host: start or stop a subscription under Lean's id for it.
 public enum SubCmd: Equatable, Sendable {

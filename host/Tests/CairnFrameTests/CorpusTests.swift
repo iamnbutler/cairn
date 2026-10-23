@@ -184,7 +184,22 @@ enum SwiftEvents {
             let wall = g.below(4) == 0 ? Int64.min : Int64(g.below(1 << 42)) - (1 << 41)
             return .clock(Time(mono: mono, wall: wall, zone: int(&g)))
         case 19: return .reply(id: nat(&g), reply(&g))
-        default: return .subEvent(id: nat(&g), g.coin() ? .tick : .changed)
+        default: return .subEvent(id: nat(&g), subEvent(&g))
+        }
+    }
+
+    static func subEvent(_ g: inout SplitMix) -> SubEvent {
+        let t = g.below(4) == 0 ? UInt64.max : UInt64(g.below(1 << 40))
+        switch g.below(7) {
+        case 0: return .tick
+        case 1: return .changed
+        case 2:
+            return .audio(frames: nat(&g), peak: nat(&g), windows: (0..<g.below(5)).map { _ in
+                Level(sumSq: g.below(4) == 0 ? UInt64.max : UInt64(g.below(1 << 38)), peak: nat(&g)) })
+        case 3: return .keyDown(t)
+        case 4: return .keyUp(t)
+        case 5: return .otherKey(t)
+        default: return .failed(Fault(rawValue: UInt8(g.below(6)))!, str(&g))
         }
     }
 
@@ -200,5 +215,8 @@ enum SwiftEvents {
         .reply(id: 1, .http(status: 200, headers: [Header("a", "b")], body: [])), .subEvent(id: .max, .tick),
         .reply(id: 2, .names([])), .reply(id: 3, .names(["", "2026-10-23.jsonl", "🙂"])),
         .reply(id: 4, .app(pid: .max, name: "")), .reply(id: 5, .flag(true)), .subEvent(id: 0, .changed),
+        .subEvent(id: 1, .audio(frames: .max, peak: 32768, windows: [Level(sumSq: .max, peak: 32767), Level(sumSq: 0, peak: 0)])),
+        .subEvent(id: 2, .audio(frames: 0, peak: 0, windows: [])), .subEvent(id: 3, .keyDown(.max)),
+        .subEvent(id: 4, .keyUp(0)), .subEvent(id: 5, .otherKey(1)), .subEvent(id: 6, .failed(.denied, "Accessibility")),
     ]
 }

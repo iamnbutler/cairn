@@ -86,6 +86,11 @@ enum DebugJSON {
         case .deleteFile(let p): "deleteFile \(p)"
         case .frontmostApp: "frontmostApp"
         case let .permission(p, prompt): "permission \(p)\(prompt ? " prompt" : "")"
+        // The typed text is what the person dictated: its length only.
+        case let .typeText(pid, t, ret): "typeText \(pid) (\(t.utf8.count) bytes)\(ret ? " return" : "")"
+        // Never the secret's value (the host reads it only when sending) nor the body.
+        case let .upload(m, u, _, s, body, _): "upload \(m) \(u) (\(body.count) parts)\(s.map { " secret \($0.header)" } ?? "")"
+        case .forgetClip(let c): "forgetClip \(c)"
         }
     }
 

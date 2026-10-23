@@ -75,7 +75,7 @@ final class WorldSuite: Suite {
 
         let byId = plans
         let done = DispatchGroup()
-        let world = World(handlers: Handlers(table: [:]))
+        let world = World(handlers: Handlers(table: [:]), devices: .inert)
         let mail = Mailbox()
         let resetDone = Locked(false)
         world.send = { es in
@@ -167,7 +167,7 @@ final class WorldSuite: Suite {
 
     func every(_ g: inout SplitMix, _ r: Recorder) {
         let check = "subs.every"
-        let world = World()
+        let world = World(devices: .inert)
         let mail = Mailbox()
         // The model: id → (period, started at), and the ids in the frame being run.
         let state = Locked<(active: [UInt32: (ms: UInt32, since: UInt64)], inRun: Set<UInt32>)>(([:], []))
@@ -210,7 +210,7 @@ final class WorldSuite: Suite {
                         s.active[id] = (ms, now)
                     case let .stop(id):
                         if let old = s.active.removeValue(forKey: id) { periods[id, default: []].append((old.ms, old.since, now)) }
-                    case .start(_, .watchFile): break  // not generated here (FileOpsSuite)
+                    case .start(_, .watchFile), .start(_, .record), .start(_, .globalKey): break  // not generated here
                     }
                 }
                 s.inRun = []

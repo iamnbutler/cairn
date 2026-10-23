@@ -217,6 +217,26 @@ extension Frame {
                     let prompt = try er.flag(1)
                     er.i += 4
                     req = .permission(p, prompt: prompt)
+                case 9:
+                    try er.need(8)
+                    let pid = er.u32(0)
+                    let ret = try er.flag(4)
+                    er.i += 8
+                    req = .typeText(pid: pid, text: try er.string(), pressReturn: ret)
+                case 10:
+                    try er.need(4)
+                    let timeout = er.u32(0)
+                    er.i += 4
+                    let method = try er.string()
+                    let url = try er.string()
+                    let headers = try er.headers()
+                    let secret = try er.secret()
+                    req = .upload(method: method, url: url, headers: headers, secret: secret,
+                                  body: try er.parts(), timeoutMs: timeout)
+                case 11:
+                    try er.need(4)
+                    req = .forgetClip(clip: er.u32(0))
+                    er.i += 4
                 default: throw FrameDecodeError.badCode(kind, at: at)
                 }
                 effects.append(.request(id: id, req))
@@ -245,6 +265,15 @@ extension Frame {
                 case 1:
                     sr.i += 8
                     subs.append(.start(id: id, .watchFile(path: try sr.string())))
+                case 2:
+                    try sr.need(12)
+                    subs.append(.start(id: id, .record(clip: sr.u32(8))))
+                    sr.i += 12
+                case 3:
+                    try sr.need(20)
+                    let has = try sr.flag(12)
+                    subs.append(.start(id: id, .globalKey(code: sr.u32(8), modifier: has ? sr.u32(16) : nil)))
+                    sr.i += 20
                 default: throw FrameDecodeError.badCode(kind, at: sr.i + 1)
                 }
             case 1:
@@ -343,6 +372,44 @@ struct ByteReader {
         for _ in 0..<n {
             let name = try string()
             out.append(Header(name, try string()))
+        }
+        return out
+    }
+
+    /// `[0, 0, 0, 0]`, or `[1, 0, 0, 0]` and four strings (`Dec.optSecret`; padding unchecked).
+    mutating func secret() throws -> Secret? {
+        try need(4)
+        switch u8(0) {
+        case 0:
+            i += 4
+            return nil
+        case 1:
+            i += 4
+            let h = try string(), s = try string(), f = try string()
+            return Secret(header: h, scheme: s, file: f, name: try string())
+        case let c: throw FrameDecodeError.badCode(c, at: i)
+        }
+    }
+
+    /// `u32` count, then each part (`Dec.parts`).
+    mutating func parts() throws -> [Part] {
+        try need(4)
+        let n = Int(u32(0))
+        i += 4
+        var out: [Part] = []
+        for _ in 0..<n {
+            try need(4)
+            switch u8(0) {
+            case 0:
+                i += 4
+                out.append(.bytes(try bytes()))
+            case 1:
+                try need(16)
+                let has = try flag(1)
+                out.append(.wav(clip: u32(4), start: u32(8), stop: has ? u32(12) : nil))
+                i += 16
+            case let c: throw FrameDecodeError.badCode(c, at: i)
+            }
         }
         return out
     }

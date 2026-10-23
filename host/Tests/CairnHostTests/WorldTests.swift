@@ -58,7 +58,7 @@ final class Inbox: @unchecked Sendable {
         defer { try? FileManager.default.removeItem(atPath: dir) }
         let path = dir + "/config.json"
         let inbox = Inbox()
-        let world = World()
+        let world = World(devices: .inert)
         world.watchPeriodMs = 5
         world.send = { inbox.add($0) }
         world.run([], [.start(id: 4, .watchFile(path: path))])
@@ -77,7 +77,7 @@ final class Inbox: @unchecked Sendable {
     @Test func requestsAnswerOnceUnderTheirIds() {
         let inbox = Inbox()
         // A handler that tries to answer twice: only the first answer is sent.
-        let world = World(handlers: Handlers(table: [0: { _, reply in reply(.bytes([1])); reply(.done) }]))
+        let world = World(handlers: Handlers(table: [0: { _, reply in reply(.bytes([1])); reply(.done) }]), devices: .inert)
         world.send = { inbox.add($0) }
         world.run([.request(id: 7, .readFile(path: "x")), .beep, .request(id: 9, .playSound(name: "y"))], [])
         let got = inbox.wait(for: 2)
@@ -90,7 +90,7 @@ final class Inbox: @unchecked Sendable {
 
     @Test func subscriptionsTickUntilStopped() {
         let inbox = Inbox()
-        let world = World()
+        let world = World(devices: .inert)
         world.send = { inbox.add($0) }
         world.run([], [.start(id: 3, .every(ms: 10))])
         #expect(world.running == [3])
@@ -106,7 +106,7 @@ final class Inbox: @unchecked Sendable {
     @Test func resetStopsEverythingAndDropsLateReplies() {
         let inbox = Inbox()
         let gate = DispatchSemaphore(value: 0)
-        let world = World(handlers: Handlers(table: [0: { _, reply in gate.wait(); reply(.done) }]))
+        let world = World(handlers: Handlers(table: [0: { _, reply in gate.wait(); reply(.done) }]), devices: .inert)
         world.send = { inbox.add($0) }
         world.run([.request(id: 1, .readFile(path: "x"))], [.start(id: 1, .every(ms: 1000))])
         world.reset()
