@@ -93,3 +93,14 @@ Answers to questions raised in workstream PRs. Newest last.
 - **Double-click word selection** in fields is deferred; it needs a word-select `TextOp`.
 - **The pressed-relayout hypothesis** in `click_presses` stays. Apps whose controls don't move
   when pressed discharge it with the same layout fact.
+- **Focus has one source:** `Frame.ofLaid` reads `ui.focus`; `FieldView.focused` is advisory for
+  the view only.
+- **Fields are always `textField`** in the accessibility tree, whatever role the control declares.
+- **The caret is hidden while text is selected**, as in AppKit.
+- **`Key.char` is one scalar.** Text arrives through `insertText`, so a multi-scalar key
+  character (an emoji with a skin tone) only matters for shortcuts; the encoder sends the first.
+- **Both sides of the frame codec:** Lean's is proved; Swift's is trusted and checked by the
+  corpus (`make corpus`). See `docs/trusted.md`.
+- **Layout pressability** needs `Layout.Pressable` (root inside the window, children fit, only a
+  stack's top child has controls, controls have no controls below them). Apps prove it for their
+  views at sizes at or above their minimum.
