@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Cairn</title>
+<meta name="description" content="Research into user interfaces where every action a person can take is a claim with a durable id and machine-checked evidence.">
+<style>
+  :root {
+    --bg: #f4f2ee;
+    --fg: #22211f;
+    --muted: #6d6a64;
+    --rule: #dcd8d0;
+    --card: #fbfaf8;
+    --accent: #4f5d4a;
+    --mono: ui-monospace, "SF Mono", Menlo, monospace;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1b1b19;
+      --fg: #e9e6e0;
+      --muted: #9c988f;
+      --rule: #34332f;
+      --card: #222220;
+      --accent: #a9b8a0;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 17px/1.6 ui-serif, "New York", Georgia, serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { max-width: 760px; margin: 0 auto; padding: 56px 16px 96px; }
+  header h1 { font-size: 44px; line-height: 1.1; margin: 0 0 12px; letter-spacing: -0.01em; font-weight: 600; }
+  header p { margin: 0; color: var(--muted); font-size: 19px; max-width: 34em; }
+  h2 {
+    font: 600 13px/1 -apple-system, system-ui, sans-serif;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+    margin: 56px 0 16px; padding-top: 16px; border-top: 1px solid var(--rule);
+  }
+  p { margin: 0 0 14px; }
+  code { font: 0.88em var(--mono); }
+  video {
+    display: block; width: 100%; height: auto; border-radius: 10px;
+    background: var(--card); border: 1px solid var(--rule);
+  }
+  figure { margin: 0; }
+  figcaption { font-size: 15px; color: var(--muted); margin-top: 10px; }
+  .feature { margin-top: 40px; }
+  .meta { font: 12px/1.4 var(--mono); color: var(--muted); }
+  .log { display: grid; gap: 40px; }
+  .log h3 { font-size: 19px; margin: 0 0 4px; font-weight: 600; }
+  ol.goal { padding-left: 1.3em; margin: 0; }
+  ol.goal li { margin-bottom: 8px; }
+  .stack { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 8px; }
+  .stack div { background: var(--card); border: 1px solid var(--rule); border-radius: 8px; padding: 12px 14px; font-size: 15px; }
+  .stack b { display: block; font-size: 16px; }
+  @media (max-width: 560px) {
+    header h1 { font-size: 34px; }
+    .stack { grid-template-columns: 1fr; }
+  }
+  footer { margin-top: 64px; color: var(--muted); font-size: 14px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Cairn</h1>
+    <p>Research into user interfaces where everything a person can do is a <em>claim</em> with a
+      durable id, and every claim carries machine-checked evidence.</p>
+  </header>
+
+  <div id="feature" class="feature"></div>
+
+  <h2>The idea</h2>
+  <p>A cairn is a stack of stones that marks a trail: placed by hand, built to last, and trusted by
+    whoever comes next. Here the trails are a product's flows, and the stones are claims about them:
+    “pressing <code>^12</code> clears the completed items”, “<code>^12</code>'s button is visible
+    and on top whenever there's something to clear”. Each claim is backed by a Lean proof, a model
+    check or a conformance run against the real app.</p>
+  <p>To make those claims mean something, the code they talk about has to be the code that runs.
+    So the app's state, view, layout, hit testing, focus and text editing are all pure Lean, and
+    the theorems are about exactly those functions.</p>
+  <div class="stack">
+    <div><b>Lean 4</b>State, update, view, layout, hit testing, claims and proofs.</div>
+    <div><b>Swift</b>A thin host: window, input, text input, accessibility, Core Text.</div>
+    <div><b>Metal</b>Paints the frame Lean describes.</div>
+  </div>
+
+  <h2>First milestone: a proved TodoMVC</h2>
+  <ol class="goal">
+    <li>The full TodoMVC app on the Mac, including real text fields and input methods.</li>
+    <li>Every action is a claim with an id that the build refuses to let drift.</li>
+    <li>Proofs: each action does what it says, the counts and filters stay right, and every
+      control is present exactly when it should be and can actually be pressed.</li>
+    <li>The real app is driven through a thousand generated sequences and must agree with the model.</li>
+    <li>A map of the app, generated from the claims, showing the evidence behind each one.</li>
+  </ol>
+
+  <h2>Progress</h2>
+  <div id="log" class="log"><p class="meta">Loading…</p></div>
+
+  <footer>MIT licensed. Built in the open, slowly.</footer>
+</main>
+<script>
+  function figure(m, heading) {
+    const f = document.createElement("figure");
+    if (heading) {
+      const h = document.createElement("h3");
+      h.textContent = m.title;
+      f.append(h);
+    }
+    const v = document.createElement("video");
+    Object.assign(v, { src: m.video, poster: m.poster, controls: true, muted: true, loop: true, playsInline: true, preload: "metadata" });
+    v.width = m.width; v.height = m.height;
+    if (!heading) v.autoplay = true;
+    const c = document.createElement("figcaption");
+    c.textContent = m.caption;
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.textContent = `${m.date} · ${m.commit} · ${m.seconds}s`;
+    f.append(v, c, meta);
+    return f;
+  }
+  fetch("/media.json").then(r => r.json()).then(list => {
+    const log = document.getElementById("log");
+    log.textContent = "";
+    const feature = list.find(m => m.feature) || list[0];
+    if (feature) document.getElementById("feature").append(figure(feature, false));
+    for (const m of list) log.append(figure(m, true));
+    if (!list.length) log.innerHTML = '<p class="meta">No videos yet.</p>';
+  }).catch(() => { document.getElementById("log").innerHTML = '<p class="meta">Could not load the video list.</p>'; });
+</script>
+</body>
+</html>

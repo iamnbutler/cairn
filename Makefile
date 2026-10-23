@@ -5,7 +5,7 @@ LEAN_PREFIX = $(shell cd lean && lean --print-prefix)
 LIB = build/lib/libcairn_lean.a
 VENDOR = host/Sources/CLean/vendor/lean
 
-.PHONY: lean host build check audit bench spike selftest clean
+.PHONY: lean host build check audit bench spike selftest clean record site
 
 lean:
 	cd lean && lake build
@@ -39,6 +39,16 @@ selftest: host
 
 spike: host
 	cd host && swift run CairnSpike
+
+# Window-only screen recorder for demo videos (see docs/media.md).
+record: build/bin/record
+build/bin/record: tools/record/main.swift
+	mkdir -p build/bin
+	swiftc -O $< -o $@
+
+# Deploy the microsite (site/) to Cloudflare.
+site:
+	cd site && npx -y wrangler@4 deploy
 
 clean:
 	rm -rf build lean/.lake host/.build $(VENDOR)

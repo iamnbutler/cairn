@@ -1,0 +1,14 @@
+[
+  {
+    "video": "/m/videos/4dff72519883d7d3.mp4",
+    "poster": "/m/videos/4dff72519883d7d3.jpg",
+    "title": "Boundary spike",
+    "caption": "The first thing on screen. Lean owns the state, the layout and the hit test; Swift forwards clicks and paints Lean's rectangles with Metal. The bar is the count (no text rendering yet). Reset (red) exists only while the count is above zero, which is proved in Lean, and here it's pressed through the accessibility tree.",
+    "date": "2026-10-23",
+    "commit": "a6b45bc",
+    "width": 960,
+    "height": 704,
+    "seconds": 9,
+    "feature": true
+  }
+]
