@@ -48,12 +48,16 @@ export function render(ctx: Context): Record<string, string> {
 		return { file: `${file}.html`, title: p.claim.title, place: p, claims: [p, ...rows.filter((r) => (r.claim.kind === "move" || r.claim.kind === "flow") && placeOf(r.claim) === p.claim.id)] };
 	});
 	const placed = new Set(pages.flatMap((p) => p.claims.map((r) => r.claim.id)));
-	const elsewhere = rows.filter((r) => (r.claim.kind === "move" || r.claim.kind === "flow") && !placed.has(r.claim.id));
+	const unplaced = rows.filter((r) => (r.claim.kind === "move" || r.claim.kind === "flow") && !placed.has(r.claim.id));
+	// A retired move or flow usually names no place any more; it is listed on the index instead.
+	const elsewhere = unplaced.filter((r) => !r.claim.retired);
+	const retiredHere = unplaced.filter((r) => r.claim.retired);
 	if (elsewhere.length) pages.push({ file: "elsewhere.html", title: "Not in a place", claims: elsewhere });
 	const guarantees = rows.filter((r) => r.claim.kind === "invariant" || r.claim.kind === "assume");
 	if (guarantees.length) pages.push({ file: "guarantees.html", title: "Invariants and assumptions", claims: guarantees });
 	const pageOf = new Map<number, string>();
 	for (const p of pages) for (const r of p.claims) pageOf.set(r.claim.id, p.file);
+	for (const r of retiredHere) pageOf.set(r.claim.id, "index.html");
 	const href = (id: number, from?: string) => `${pageOf.get(id) === from ? "" : (pageOf.get(id) ?? "evidence.html")}#${id}`;
 	const ref = (s: { ref: string; claim: number }, from?: string) => `<a class="id" href="${href(s.claim, from)}">${esc(s.ref)}</a>`;
 
@@ -162,7 +166,7 @@ ${p.place.shots.frames[0] ? `<div class="hero">${img(p.place.shots.frames[0], `$
 		`<tr${r.claim.retired ? ' class="retired"' : ""}><td class="id"><a class="id" href="${href(r.claim.id)}">${esc(r.claim.ref)}</a></td><td>${esc(r.claim.title)}</td><td class="kind">${r.claim.kind}</td><td>${headline(r.headline)}</td>${slots(r)}</tr>`;
 	const claimTable = `<div class="wrap"><table class="claims"><thead><tr><th>Id</th><th>Claim</th><th>Kind</th><th>Reads as</th>${KINDS.map((k) => `<th>${k}</th>`).join("")}</tr></thead><tbody>${pages
 		.map((p) => `<tr class="group"><td colspan="${4 + KINDS.length}"><a href="${p.file}">${esc(p.title)}</a></td></tr>${p.claims.map(claimRow).join("")}`)
-		.join("")}</tbody></table></div>`;
+		.join("")}${retiredHere.length ? `<tr class="group"><td colspan="${4 + KINDS.length}"><a href="#retired">Retired</a></td></tr>${retiredHere.map(claimRow).join("")}` : ""}</tbody></table></div>`;
 	out["index.html"] = shell(
 		"index.html",
 		`${app} map`,
@@ -178,7 +182,8 @@ ${p.place.shots.frames[0] ? `<div class="hero">${img(p.place.shots.frames[0], `$
 <p class="prose muted">Evidence a claim could have and doesn't, failures first.</p>
 ${gapRows}
 <h2>Claims <span class="n">${rows.length}</span></h2>
-${claimTable}`,
+${claimTable}
+${retiredHere.length ? `<h2 id="retired">Retired <span class="n">${retiredHere.length}</span></h2>\n<p class="prose muted">Retired claims that name no place. Their ids stay issued and are never reused.</p>\n${retiredHere.map((r) => claim(r, "index.html")).join("\n")}` : ""}`,
 	);
 
 	// ---- The Evidence page ------------------------------------------------------------------------
