@@ -1,12 +1,12 @@
 # AGENTS
 
-Warrant is research into UIs where every action is a claim with a durable id and machine-checked
+Cairn is research into UIs where every action is a claim with a durable id and machine-checked
 evidence. Read [GOAL.md](GOAL.md) for what we are building now and
 [docs/architecture.md](docs/architecture.md) for how it fits together.
 
 ## Layout
 
-- `lean/`: the Lake package. `Warrant/` is the framework (claims, UI core, text, frame encoding),
+- `lean/`: the Lake package. `Cairn/` is the framework (claims, UI core, text, frame encoding),
   `Examples/` holds apps built on it, and proofs live next to the code they are about.
 - `host/`: the Swift package. The AppKit host, the Metal renderer, text, the accessibility mirror
   and the debug socket. No application logic.
