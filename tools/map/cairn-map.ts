@@ -138,7 +138,7 @@ function build() {
 	};
 
 	// Where each move was seen: a step that pressed it (before and after), else any frame showing it.
-	const seenMove = new Map<number, { shots: string[]; inert?: { rect: number[]; crop: number[] } }>();
+	const seenMove = new Map<number, { shots: string[]; changed?: boolean }>();
 	const flowSeen = new Map<number, StepResult[]>();
 	for (const seq of capture?.sequences || []) {
 		const flowId = seq.name.startsWith("flow-") ? Number(seq.name.slice(5)) : null;
@@ -146,12 +146,10 @@ function build() {
 		seq.steps.forEach((r, k) => {
 			if (r.outcome === "absent" || r.outcome === "unsupported") return;
 			const before = seq.shots[k]!;
-			const ctl = before.controls.find((c) => c.ref === r.ref)!;
-			if (!seenMove.has(r.step.claim) || seenMove.get(r.step.claim)!.shots.length < 2)
-				seenMove.set(r.step.claim, {
-					shots: [img(before.pinned), img(seq.shots[k + 1]!.pinned)],
-					inert: r.outcome === "inert" ? { rect: ctl.rect, crop: capture!.crop } : undefined,
-				});
+			// Prefer a step that changed the frame: its before and after say the most.
+			const have = seenMove.get(r.step.claim);
+			if (!have || have.shots.length < 2 || (!have.changed && r.outcome === "ok"))
+				seenMove.set(r.step.claim, { shots: [img(before.pinned), img(seq.shots[k + 1]!.pinned)], changed: r.outcome === "ok" });
 		});
 		for (const shot of seq.shots)
 			for (const c of shot.controls) if (!seenMove.has(c.claim)) seenMove.set(c.claim, { shots: [img(shot.pinned)] });
@@ -181,23 +179,18 @@ function build() {
 			const s = seenMove.get(c.id);
 			seen = s ? "yes" : "no";
 			shots = s?.shots || [];
-			if (s?.inert) {
-				const [x, y, w, h] = s.inert.rect;
-				const [cx, cy, W, H] = s.inert.crop;
-				const pct = (v: number, of: number) => Math.round((v / of) * 1000) / 10;
-				findings.push({ text: `Pressing ${c.ref} at its centre changed nothing in the frame.`, at: [pct(x! - cx!, W!), pct(y! - cy!, H!), pct(w!, W!), pct(h!, H!)] });
-			}
 		} else if (c.kind === "flow") {
 			const steps = flowSeen.get(c.id);
 			if (!witnessOf(c).length) seen = "no";
 			else if (!steps) seen = "no";
 			else {
-				const bad = steps.find((s) => s.outcome !== "ok");
+				// `inert` counts as performed: a live step can leave the frame as it was (submitting blank text).
+				const bad = steps.find((s) => s.outcome === "absent" || s.outcome === "unsupported");
 				const complete = steps.length === witnessOf(c).length && !bad;
 				seen = complete ? "yes" : "no";
-				if (bad?.outcome === "absent" || bad?.outcome === "inert")
+				if (bad?.outcome === "absent")
 					// The witness is proved live in the model; the running app disagreeing is a real finding.
-					findings.push({ text: `The app ${bad.outcome === "absent" ? `has no control ${bad.ref} at` : `did not change on`} witness step ${steps.indexOf(bad) + 1} (${bad.step.trigger} ${bad.ref}), though the model's witness is live.` });
+					findings.push({ text: `The app has no control ${bad.ref} at witness step ${steps.indexOf(bad) + 1} (${bad.step.trigger} ${bad.ref}), though the model's witness is live.` });
 				shots = capture!.sequences.find((q) => q.name === `flow-${c.id}`)!.shots.map((s) => img(s.pinned));
 			}
 		} else if (c.kind === "place") {
@@ -218,7 +211,7 @@ function build() {
 		}
 
 		// Status, from the evidence only (docs/map.md has the table).
-		const broken = proved === "fails" || proved === "missing" || conformanceCell === "fail" || findings.some((f) => /the model's witness is live|changed nothing/.test(f.text));
+		const broken = proved === "fails" || proved === "missing" || conformanceCell === "fail" || findings.some((f) => /the model's witness is live/.test(f.text));
 		let status: string;
 		if (c.retired) status = "closed";
 		else if (broken) status = "broken";
@@ -263,7 +256,7 @@ function build() {
 	const figuresOf = (c: Claim) => {
 		const seq = capture?.sequences.find((q) => q.name === `flow-${c.id}`);
 		if (!seq) return undefined;
-		const done = seq.steps.length === witnessOf(c).length && seq.steps.every((s) => s.outcome === "ok");
+		const done = seq.steps.length === witnessOf(c).length && seq.steps.every((s) => s.outcome === "ok" || s.outcome === "inert");
 		return {
 			src: `img/${img(seq.strip)}`,
 			caption: `The witness, ${witnessOf(c).map((s) => `${s.trigger} ${s.ref}`).join(", ")}, replayed on the app as clicks at each control's centre. Pins come from the frame's layout; blue marks the control the next step acts on.${done ? "" : " The replay stopped early."}`,
@@ -379,6 +372,6 @@ ${lockOnly.length ? `<h2>Retired elsewhere</h2><p>Retired ids in <code>claims.lo
 <p><b>Proved.</b> Every theorem the claim names (each move handler's <code>sound</code>; a flow's <code>live</code> and <code>reaches</code>; an invariant's <code>init</code>, <code>step</code> and <code>reachable</code>) is in <code>lake exe audit --json</code> and depends only on <code>propext</code>, <code>Classical.choice</code> and <code>Quot.sound</code>. <code>make check</code> also replays every declaration through the kernel.</p>
 <p><b>Assumed.</b> The claim is an <code>assume</code>: recorded, never proved. Theorems that rely on it take it as a hypothesis.</p>
 <p><b>Conformance.</b> ${conformance ? `From <code>build/conformance/${esc(app)}.json</code>${conformance.runs ? `, ${conformance.runs} sequences` : ""}.` : "Not run: workstream J's driver will write <code>build/conformance/&lt;App&gt;.json</code>. Until then this column is a placeholder."}</p>
-<p><b>Seen.</b> ${captured ? "A headless capture (the app's own <code>step</code> and <code>frame</code>, rendered offscreen by CairnRender) shows the control, pinned from its accessibility rect; for a flow, every witness step was performed as a click at the control's centre and changed the frame." : "No capture ran."}</p></section>
+<p><b>Seen.</b> ${captured ? "A headless capture (the app's own <code>step</code> and <code>frame</code>, rendered offscreen by CairnRender) shows the control, pinned from its accessibility rect; for a flow, every witness step was performed on its control (a click at its centre; text and keys to the focused field)." : "No capture ran."}</p></section>
 </main></body></html>`;
 }

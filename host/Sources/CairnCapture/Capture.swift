@@ -33,6 +33,12 @@ public enum MapCapture {
         var trigger: String
         var claim: UInt32
         var key: UInt32
+        /// An edit's text operation: `{"kind": "insert", "text": "milk"}`.
+        var op: Op?
+    }
+    struct Op: Codable {
+        var kind: String
+        var text: String?
     }
 
     struct Control: Encodable {
@@ -110,10 +116,21 @@ public enum MapCapture {
                     let click: (UInt32) -> [Event] = { n in
                         [.pointerDown(c, .primary, clicks: n, Mods()), .pointerUp(c, .primary, Mods())]
                     }
-                    let events: [Event]? = switch step.trigger {
-                    case "press": [.pointerMove(c)] + click(1)
-                    case "doublePress": [.pointerMove(c)] + click(1) + click(2)
-                    default: nil  // edit, submit, cancel, blur: need focus and keys; not yet
+                    // Text steps go to the focused field: click it first unless it has focus.
+                    let focus = current.textInput?.control == ref ? [] : [.pointerMove(c)] + click(1)
+                    let events: [Event]? = switch (step.trigger, step.op?.kind) {
+                    case ("press", _): [.pointerMove(c)] + click(1)
+                    case ("doublePress", _): [.pointerMove(c)] + click(1) + click(2)
+                    case ("edit", "insert"): focus + [.insertText(step.op?.text ?? "")]
+                    case ("edit", "paste"): focus + [.paste(step.op?.text ?? "")]
+                    case ("edit", "deleteBackward"): focus + [.key(.backspace, Mods())]
+                    case ("edit", "deleteForward"): focus + [.key(.delete, Mods())]
+                    case ("edit", "selectAll"): focus + [.selectAll]
+                    case ("edit", "undo"): focus + [.undo]
+                    case ("edit", "redo"): focus + [.redo]
+                    case ("submit", _): focus + [.key(.enter, Mods())]
+                    case ("cancel", _): focus + [.key(.escape, Mods())]
+                    default: nil  // blur and the remaining text operations: not yet
                     }
                     guard let events else {
                         steps.append(StepResult(step: step, ref: ref.label, outcome: "unsupported", at: [c.x, c.y]))
@@ -186,37 +203,42 @@ public enum MapCapture {
     }
 
 
-    /// A sequence's pinned frames side by side, each labelled with the step that led to it, so a
+    /// A sequence's pinned frames in reading order, each labelled with the step that led to it, so a
     /// flow reads left to right in one image.
     static func strip(_ frames: [CGImage], labels: [String], scale s: CGFloat) -> CGImage {
-        let gap = Int(28 * s), labelH = Int(26 * s)
-        let w = frames.reduce(0) { $0 + $1.width } + gap * (frames.count - 1)
-        let h = (frames.map(\.height).max() ?? 0) + labelH
+        // Every frame has the same size (one crop). Up to four in a row; longer runs wrap at three.
+        let fw = frames.map(\.width).max() ?? 1, fh = frames.map(\.height).max() ?? 1
+        let cols = frames.count <= 4 ? max(1, frames.count) : 3
+        let rows = (frames.count + cols - 1) / cols
+        let gap = Int(28 * s), labelH = Int(26 * s), rowGap = Int(12 * s)
+        let w = cols * fw + (cols - 1) * gap
+        let h = rows * (fh + labelH) + (rows - 1) * rowGap
         let ctx = context(w, h)
         ctx.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
         ctx.fill(CGRect(x: 0, y: 0, width: w, height: h))
         let font = CTFontCreateUIFontForLanguage(.system, 12 * s, nil)!
         let grey = CGColor(red: 0.35, green: 0.35, blue: 0.38, alpha: 1)
-        var x = 0
         for (k, img) in frames.enumerated() {
-            ctx.draw(img, in: CGRect(x: x, y: h - img.height, width: img.width, height: img.height))
+            let x = (k % cols) * (fw + gap)
+            let top = (k / cols) * (fh + labelH + rowGap)          // from the top, y down
+            let frameRect = CGRect(x: x, y: h - top - img.height, width: img.width, height: img.height)
+            ctx.draw(img, in: frameRect)
             ctx.setStrokeColor(CGColor(red: 0.85, green: 0.85, blue: 0.87, alpha: 1))
             ctx.setLineWidth(s)
-            ctx.stroke(CGRect(x: x, y: h - img.height, width: img.width, height: img.height).insetBy(dx: s / 2, dy: s / 2))
+            ctx.stroke(frameRect.insetBy(dx: s / 2, dy: s / 2))
             let text = NSAttributedString(string: labels[k], attributes: [
                 .init(kCTFontAttributeName as String): font, .init(kCTForegroundColorAttributeName as String): grey])
-            ctx.textPosition = CGPoint(x: CGFloat(x) + 4 * s, y: 8 * s)
+            ctx.textPosition = CGPoint(x: CGFloat(x) + 4 * s, y: frameRect.minY - CGFloat(labelH) + 8 * s)
             CTLineDraw(CTLineCreateWithAttributedString(text), ctx)
-            if k + 1 < frames.count {
-                // An arrow in the gap, at the frames' middle.
-                let y = CGFloat(h) - CGFloat(img.height) / 2, x0 = CGFloat(x + img.width) + 7 * s, x1 = CGFloat(x + img.width + gap) - 7 * s
+            if k + 1 < frames.count && (k + 1) % cols != 0 {
+                // An arrow in the gap to the next frame in the row.
+                let y = frameRect.midY, x0 = frameRect.maxX + 7 * s, x1 = frameRect.maxX + CGFloat(gap) - 7 * s
                 ctx.setStrokeColor(grey)
                 ctx.setLineWidth(1.5 * s)
                 ctx.move(to: CGPoint(x: x0, y: y)); ctx.addLine(to: CGPoint(x: x1, y: y))
                 ctx.move(to: CGPoint(x: x1 - 5 * s, y: y + 4 * s)); ctx.addLine(to: CGPoint(x: x1, y: y)); ctx.addLine(to: CGPoint(x: x1 - 5 * s, y: y - 4 * s))
                 ctx.strokePath()
             }
-            x += img.width + gap
         }
         return ctx.makeImage()!
     }

@@ -20,11 +20,16 @@ def evidenceJson (env : Environment) (role : String) (thm : Name) : IO Json := d
 def actionJson : Cairn.Action → Json
   | .press c => step "press" c
   | .doublePress c => step "doublePress" c
-  | .edit c op => (step "edit" c).setObjVal! "op" (toString (repr op))
+  | .edit c op => (step "edit" c).setObjVal! "op" (opJson op)
   | .submit c => step "submit" c
   | .cancel c => step "cancel" c
   | .blur c => step "blur" c
 where
+  /-- `{"kind": "insert", "text": "milk"}`; operations without text are just their kind. -/
+  opJson : Cairn.TextOp → Json
+    | .insert s => Json.mkObj [("kind", "insert"), ("text", s)]
+    | .paste s => Json.mkObj [("kind", "paste"), ("text", s)]
+    | op => Json.mkObj [("kind", ((toString (repr op)).splitOn " ").head!.replace "Cairn.TextOp." "")]
   step (trigger : String) (c : Cairn.ControlRef) : Json :=
     Json.mkObj [("trigger", trigger), ("ref", c.label), ("claim", c.claim), ("key", c.key)]
 

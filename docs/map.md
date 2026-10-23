@@ -29,10 +29,13 @@ the map skill's own `map.ts build` (found at `$MAP_TS`, `~/.claude/skills/map/ma
 `host/Sources/CairnCapture` (`MapCapture`) runs the app's real `step` and `frame` exports on a
 Lean thread, with no window: no AppKit, no screen capture. For each step of a sequence it finds
 the control with that ref in the current frame's accessibility nodes, sends pointer events at its
-centre (a `press` is move, down, up; a `doublePress` adds a second click with `clicks: 2`), and
-takes the next frame. Every frame is rendered offscreen with CairnRender's
-`Renderer.image(frame, scale:)`. All images are cropped to one rect (whatever was painted, and
-the pins, padded), so they line up.
+centre (a `press` is move, down, up; a `doublePress` adds a second click with `clicks: 2`), or,
+for text steps, clicks the field unless it has focus and sends the text or key (`edit` with
+`insert`, `paste`, `deleteBackward`, `deleteForward`, `selectAll`, `undo`, `redo`; `submit` is
+Enter, `cancel` is Escape), and takes the next frame. A step that leaves the frame unchanged is
+recorded as `inert` and still counts as performed: submitting blank text is meant to do nothing.
+Every frame is rendered offscreen with CairnRender's `Renderer.image(frame, scale:)`. All images
+are cropped to one rect (whatever was painted, and the pins, padded), so they line up.
 
 **Pins** are drawn from each accessibility node's rect (the visible rect: the node's rect
 intersected with its clip, as `Frame.ofLaid` computes it), labelled with its `ControlRef` (`^N`,
@@ -47,7 +50,7 @@ if let code = MapCapture.main(args, size: Size(w: 480, h: 320), core: { LeanCore
 ```
 
 `make map APP=<App>` then works for any app whose module is `Examples.<App>` and whose executable
-is `Cairn<App>`.
+is `Cairn<App>`: today `Counter` (frame v0) and `Basics` (v1).
 
 ## How claims become map pages
 
@@ -76,7 +79,7 @@ The skill's renderer is used unchanged. The one adapter is its documented styles
 | **proved** | every theorem the claim names (a move's `sound` per handler; a flow's `live` and `reaches`; an invariant's `init`, `step`, `reachable`) is in `audit.json` and depends only on `propext`, `Classical.choice`, `Quot.sound` | yes, fails, missing, n/a (places, assumptions) |
 | **assumed** | the claim is an `assume` | yes, no |
 | **conformance** | `build/conformance/<App>.json` (workstream J) | pass, fail, not run, n/a |
-| **seen** | the capture: a move's control is in a captured frame; a flow's whole witness was replayed and every step changed the frame; a place's window was rendered | yes, no, n/a (invariants, assumptions) |
+| **seen** | the capture: a move's control is in a captured frame; a flow's whole witness was replayed, each step on the control it names; a place's window was rendered | yes, no, n/a (invariants, assumptions) |
 
 They are on the Evidence page (`notes/evidence.html`, linked from the rail) and in
 `evidence.json`, one row per claim, with each theorem's audit result and the claim's ledger state.
@@ -89,7 +92,7 @@ order:
 | Status | When |
 |---|---|
 | `closed` | the claim is retired |
-| `broken` | a named theorem is missing or uses another axiom; conformance failed; or the capture contradicts the model: a flow's witness step names a control the app doesn't show, or a press changed nothing, although the witness is proved live |
+| `broken` | a named theorem is missing or uses another axiom; conformance failed; or the capture contradicts the model: a flow's witness step names a control the app doesn't show, although the witness is proved live (every step answered by an enabled move) |
 | `untested` | an assumption (stated, never checked) |
 | `tested` | proved, conformance passed, and seen where seeing applies (an automated study on the real app, the skill's meaning) |
 | `visual` | proved and seen: the app's own code produced frames showing it, rendered by the real renderer |
@@ -119,8 +122,8 @@ A claim missing from the file is "not run".
   no window, no accessibility mirror, no AppKit event path. The capture clicks through the app's
   hit testing, so a control that is covered or mis-laid fails to act, but the host's event
   mapping and threads are J's to check.
-- **Only `press` and `doublePress`** are replayed. Witness steps that `edit`, `submit`, `cancel`
-  or `blur` need focus and key events; the capture stops there and the flow is not seen.
+- **`blur` and the rarer text operations** (word and caret movement, marked text, cut, copy)
+  are not replayed yet; a witness that uses one stops there and the flow is not seen.
 - **Presence and pressability** theorems are per app and not linked to claims in the export, so
   they are not columns yet (`Counter.reset_present_iff_enabled` exists, but only the audit sees
   it).
