@@ -1,13 +1,13 @@
 # Binary size
 
 Release, stripped size of each app executable, and where the bytes come from. Apple M4 Max,
-macOS 27, Swift 6 (Xcode), Lean 4.35.0, 2026-10-23, Counter and Basics on the v1 ABI.
+macOS 27, Swift 6 (Xcode), Lean 4.35.0, 2026-10-23, every app on the v1 ABI.
 
 | App | Stripped | Before strip |
 |---|---:|---:|
 | CairnCounter | 2,439,264 B (2.44 MB) | 3,822,288 B |
 | CairnBasics | 2,490,072 B (2.49 MB) | 3,885,464 B |
-| CairnTodo | not yet (add it to `SIZE_APPS` when it lands) | |
+| CairnTodo | 2,524,904 B (2.52 MB) | 3,936,824 B |
 
 MB here is 10⁶ bytes. Before the move to v1, the v0 Counter measured the same way on
 `324ef0a` was 2,405,280 B: the v1 runtime, layout and frame codec cost Counter about 34 KB. (The
@@ -18,15 +18,15 @@ earlier figure, 2.25 MB, was taken on an older tree; 2,405,280 B is 2.29 MiB.)
 Bytes the linker kept, attributed from the link map (`-Xlinker -map`), by where each live
 symbol came from. Release links dead-strip, so only what is reachable counts.
 
-| | CairnCounter | | CairnBasics | |
-|---|---:|---:|---:|---:|
-| Lean runtime: Init and Std (compiled Lean) | 1,153,665 | 47.3% | 1,153,853 | 46.3% |
-| Lean runtime: leanrt, libuv, libgmp (C/C++) | 432,811 | 17.7% | 433,939 | 17.4% |
-| Cairn framework (Lean: runtime, layout, frame, text) | 223,205 | 9.2% | 246,437 | 9.9% |
-| The app's library (`libcairn_app_<app>.a`) | 9,100 | 0.4% | 21,632 | 0.9% |
-| Swift host | 450,111 | 18.5% | 463,807 | 18.6% |
-| Metal shader source | 3,753 | 0.2% | 3,753 | 0.2% |
-| Linker, other | 166,619 | 6.8% | 166,651 | 6.7% |
+| | CairnCounter | | CairnBasics | | CairnTodo | |
+|---|---:|---:|---:|---:|---:|---:|
+| Lean runtime: Init and Std (compiled Lean) | 1,153,665 | 47.3% | 1,153,853 | 46.3% | 1,154,049 | 45.7% |
+| Lean runtime: leanrt, libuv, libgmp (C/C++) | 432,811 | 17.7% | 433,939 | 17.4% | 433,915 | 17.2% |
+| Cairn framework (Lean: runtime, layout, frame, text) | 223,205 | 9.2% | 246,437 | 9.9% | 246,705 | 9.8% |
+| The app's library (`libcairn_app_<app>.a`) | 9,100 | 0.4% | 21,632 | 0.9% | 53,751 | 2.1% |
+| Swift host | 450,111 | 18.5% | 463,807 | 18.6% | 465,781 | 18.4% |
+| Metal shader source | 3,753 | 0.2% | 3,753 | 0.2% | 3,753 | 0.1% |
+| Linker, other | 166,619 | 6.8% | 166,651 | 6.7% | 166,950 | 6.6% |
 
 Swift host by target (CairnCounter): CairnHost 230,466; CairnRender 77,877 (without the shader
 string); CairnCapture 71,081; CairnFrame 46,262; the app's `main.swift` 23,841; CLean 584.
@@ -34,7 +34,7 @@ string); CairnCapture 71,081; CairnFrame 46,262; the app's `main.swift` 23,841; 
 - **Lean runtime** is about two thirds of every app and the same in each: `Init`/`Std` code the
   framework reaches, plus the C++ runtime, libuv and GMP. It doesn't grow with the app.
 - **Cairn** is the framework's compiled Lean; Basics reaches more of it (text fields).
-- **The app** itself is small: Counter's model, view and exports are 9 KB.
+- **The app** itself is small: Counter's model, view and exports are 9 KB, TodoMVC's 54 KB.
 - **Metal shaders** ship as source and are compiled at launch (`device.makeLibrary(source:)`), so
   they are one string in CairnRender, 3.7 KB. There is no `.metallib` and no resource bundle; the
   executable is the whole app.
@@ -54,7 +54,7 @@ cd host
 swift build -c release --product CairnCounter -Xlinker -map -Xlinker $PWD/../build/size/CairnCounter.map
 cd ..
 bun tools/size/size.ts --bin $(cd host && swift build -c release --show-bin-path) \
-    --maps build/size --out build/size --limit 5000000 CairnCounter CairnBasics
+    --maps build/size --out build/size --limit 5000000 CairnCounter CairnBasics CairnTodo
 ```
 
 `tools/size/size.ts` strips a copy of each binary (`strip -o build/size/<App> <bin>/<App>`,

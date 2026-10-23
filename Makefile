@@ -178,7 +178,7 @@ fuzz-quick: lean
 # into build/size/, attributed (Lean runtime, Cairn, the app, Swift host, shaders), and checked
 # against SIZE_LIMIT bytes. No host app links `Lean` (the compiler, about 100 MB), so each is a
 # few MB; crossing the limit almost always means something imported `Lean`.
-SIZE_APPS = CairnCounter CairnBasics
+SIZE_APPS = CairnCounter CairnBasics CairnTodo
 SIZE_LIMIT = 5000000
 size: lean
 	mkdir -p build/size
