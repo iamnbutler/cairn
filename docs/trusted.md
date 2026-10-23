@@ -64,6 +64,35 @@ painted where: grayscale antialiasing with font smoothing off, gamma-space blend
 **Also assumed.** Frames have balanced `pushClip`/`popClip`; an extra `popClip` is ignored and
 counted (`RenderStats.unbalancedPops`) rather than trusted.
 
+## Frame encoding (workstream E)
+
+See [frame.md](frame.md) for the format. Lean's side is proved (`decodeFrame_encodeFrame`,
+`decodeEvents_encodeEvents`, `encodeFrame_eq_put`); the Swift side is not.
+
+### The Swift codec matches Lean's (`assume`)
+
+**Statement.** For every byte buffer Lean's `encodeFrame` produces, `Frame(bytes:)` returns the
+Swift mirror of the encoded `Frame`, and it throws on every buffer Lean's `decodeFrame` rejects.
+For every `[Event]`, `encodeEvents` produces bytes that Lean's `decodeEvents` decodes to the
+Lean mirror of those events.
+
+**Trusted code.** `host/Sources/CairnFrame/Decode.swift`, `Encode.swift`, and the hand-written
+correspondence between `Model.swift` and `Cairn/Frame.lean` / `Cairn/Input.lean`.
+
+**Evidence.** The corpus (`make test`, frame.md "Canonical dump and the corpus"): 300 frames
+and 300 event batches from Lean, compared through a canonical text dump and byte for byte; 202
+Swift-encoded batches decoded by Lean; truncated, corrupted and invalid-UTF-8 frames rejected.
+The comparison itself goes through two dump printers, one per language, which could share a
+bug; the dump is deliberately simple (one line per item, every field printed).
+
+**Also assumed.**
+- **Key characters.** `Key.char` in Swift holds a `Character`, Lean's a single scalar. The
+  encoder sends the `Character`'s first scalar; a multi-scalar character (an emoji with a skin
+  tone) arrives as its base. Shortcuts are single scalars, and text arrives as `insertText`.
+- **Font saturation.** Font fields above `2^32 − 1` are clamped in the encoder exactly as
+  `Cairn.Text.Host.sat` clamps them for measurement (proved: `satU32_eq_host_sat`), so Swift
+  paints at the size Lean measured.
+
 ## Host (Swift, AppKit): `host/Sources/CairnHost`
 
 See [host.md](host.md) for how each piece works.
@@ -153,8 +182,8 @@ See [host.md](host.md) for how each piece works.
 ### Boundary
 
 - **Decoder.** The Swift decoder is trusted to turn the frame's bytes into exactly the
-  `Frame` Lean encoded: `SpikeV0Codec` now, workstream E's v1 decoder later. E's round-trip
-  tests are the evidence.
+  `Frame` Lean encoded: `SpikeV0Codec` for the Counter now, the v1 decoder in `CairnFrame` once
+  an app speaks v1. See "Frame encoding (workstream E)" for v1's evidence.
 - **Lean runtime.** The runtime is initialized once, on the Lean thread, and the `Cairn`
   module is initialized before the app's module. Every other thread that calls Lean registers
   with `lean_initialize_thread` (`cairn_lean_thread_begin`). The main and render threads never
