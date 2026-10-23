@@ -1,3 +1,4 @@
+# Prints the architecture figure for index.html: python3 site/figures/architecture.py
 # Builds the architecture figure as inline SVG. Pixel style: stepped corners, crisp 2px ink,
 # chevron heads; one ink (currentColor), a tint for the proved part, the accent for "proved".
 S = 3  # corner step
@@ -75,5 +76,5 @@ svg = f'''<svg viewBox="0 0 640 396" role="img" aria-labelledby="arch-t">
 <title id="arch-t">How a frame is made: Swift captures events, Lean computes the frame, Metal paints it</title>
 {chr(10).join(out)}
 </svg>'''
-open("/tmp/cairn-preview/arch.svg", "w").write(svg)
-print(len(svg))
+print(svg)
+
