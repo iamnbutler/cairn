@@ -66,6 +66,8 @@ T48 persist todos and filter only; T49 delete always present, glyph on hover or 
 returns to the new-todo field after Enter or Escape in an edit.
 
 Known gaps: persistence (T44, T47); editing has no keyboard or VoiceOver path (the title is not
-focusable, and double-click is pointer-only); a click whose target moves because the save
-deleted a row above it is dropped, as in a browser (`Tests.lean`; the fuzzer finds it too, e.g.
-`lake exe fuzz Todo` with 1,000 sequences reports one "performed" failure of this kind).
+focusable, and double-click is pointer-only). A click that ends an edit can be dropped: the blur
+saves first (T33), and if that save deletes the todo, the row or button that was clicked can move
+or vanish (the last todo goes, so toggle all goes too) before the release, as in a browser. Tests
+show it (`Tests.lean`); `make fuzz APP=Todo N=1000` finds one such sequence (seed 260, ^208) and
+`make conformance APP=Todo N=1000` one (walk-1-823, ^203). Everything else passed.
