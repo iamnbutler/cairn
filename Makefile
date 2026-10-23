@@ -138,13 +138,18 @@ build/bin/record: tools/record/main.swift
 	mkdir -p build/bin
 	swiftc -O $< -o $@
 
-# Copy the Counter and Basics maps into the microsite (site/public/map/<app>/), building them first.
+# Copy the Counter and Basics maps into the microsite (site/public/map/<app>/), building them
+# first with fresh evidence: fuzzing for each, and conformance for each app with a generator
+# (it shows the app's window while it runs; CONFORMANCE=0 skips it and keeps any earlier run).
+MAP_APPS = Counter Basics
 site-maps:
-	$(MAKE) map APP=Counter
-	$(MAKE) map APP=Basics
+	@for a in $(MAP_APPS); do \
+		$(MAKE) fuzz APP=$$a N=1000 || exit 1; \
+		if [ "$(CONFORMANCE)" != 0 ] && [ -f tools/conformance/lean/Conformance/Apps/$$a.lean ]; then $(MAKE) conformance APP=$$a || exit 1; fi; \
+		$(MAKE) map APP=$$a || exit 1; \
+	done
 	rm -rf site/public/map && mkdir -p site/public/map
-	cp -R build/map/Counter/dist site/public/map/counter
-	cp -R build/map/Basics/dist site/public/map/basics
+	@for a in $(MAP_APPS); do cp -R build/map/$$a/dist site/public/map/$$(echo $$a | tr A-Z a-z); done
 
 # Deploy the microsite (site/) to Cloudflare.
 site:
@@ -153,8 +158,9 @@ site:
 clean:
 	rm -rf build lean/.lake host/.build $(VENDOR)
 
-# The map (docs/map.md): claims + evidence → build/map/$(APP)/ in the map skill's format, with
-# headless screenshots pinned from the frame's accessibility rects. `make map APP=Counter`.
+# The map (docs/map.md): claims + evidence → build/map/$(APP)/dist/, Cairn's own pages, with
+# headless screenshots pinned from the frame's accessibility rects. `make map APP=Counter`. It
+# reads build/fuzz/ and build/conformance/ if `make fuzz` or `make conformance` ran first.
 APP ?= Counter
 MAPDIR = build/map/$(APP)
 map: host

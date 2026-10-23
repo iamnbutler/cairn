@@ -1,14 +1,18 @@
 # The map
 
-[M1](goals/m1.md) item 7: the map is a build output. The claims in an app's code compile to a map in the
-map skill's format (`~/.claude/skills/map`): one page per place, a stable `^N` on every flow and
-step, screenshots, and a status per step. Here nothing in the map is written by hand: titles and
-prose come from the claims, every status comes from evidence, and pins on the screenshots come
-from layout.
+[M1](goals/m1.md) item 7: the map is a build output. The claims in an app's code compile to a set of pages:
+one per place, every claim on one of them under its id (`page.html#12` cites `^12`), real
+screenshots with pins placed from layout, and for every claim the evidence the build has for it.
+Nothing on the map is written by hand: titles and prose come from the claims, and every status
+comes from evidence.
 
 ```sh
-make map APP=Counter        # writes build/map/Counter/, open build/map/Counter/dist/index.html
+make map APP=Counter        # writes build/map/Counter/dist/; open build/map/Counter/dist/index.html
+make site-maps              # fuzz, conformance and map for Counter and Basics → site/public/map/
 ```
+
+`make map` reads whatever evidence is already in `build/`: run `make fuzz APP=<App>` and
+`make conformance APP=<App>` first, or use `make site-maps`, which does both.
 
 ## How it is generated
 
@@ -17,12 +21,20 @@ make map APP=Counter        # writes build/map/Counter/, open build/map/Counter/
 | Claims | `lake exe claims Examples.<App>` | `claims.json`: id, kind, title, does, sees, place, retired, source position, evidence theorems, a flow's witness |
 | Proofs | `lake exe audit --json` | `audit.json`: every theorem in `Cairn` and `Examples`, with any axioms beyond the standard three |
 | Script | `bun tools/map/cairn-map.ts script` | `script.json`: the initial state, each flow's witness, and each move no witness presses |
-| Capture | `swift run Cairn<App> --map-capture` | `capture/`: every frame of every sequence as PNG, plain and pinned, a filmstrip per sequence, `capture.json` |
-| Map | `bun tools/map/cairn-map.ts build` | `map.yaml`, `areas/*.yaml`, `img/`, `notes/evidence.html`, `evidence.json`, `ids.txt`, then `dist/` |
+| Capture | `swift run Cairn<App> --map-capture` | `capture/`: every frame of every sequence as PNG, plain and pinned, and `capture.json` |
+| Map | `bun tools/map/cairn-map.ts build` | `evidence.json`, and the pages in `dist/` |
 
-The last step also reads `claims.lock` and, if present, `build/conformance/<App>.json`, and runs
-the map skill's own `map.ts build` (found at `$MAP_TS`, `~/.claude/skills/map/map.ts` or
-`~/code/prompts/skills/map/map.ts`). Without the skill it still writes the sources and evidence.
+The last step also reads `claims.lock` and, when present, `build/fuzz/<App>.json`,
+`build/fuzz/trusted.json` and `build/conformance/<App>.json`.
+
+The code is three files in `tools/map/`, with no dependencies beyond bun (and `cwebp`, if
+installed, for smaller images):
+
+- `evidence.ts` turns the inputs into one row per claim: its evidence, its reading, its findings
+  and its screenshots. Every status is decided here and nowhere else.
+- `render.ts` turns the rows into pages.
+- `cairn-map.ts` is the command line: it reads the files, converts the images, and writes
+  `dist/` and `evidence.json`.
 
 ### The capture
 
@@ -40,8 +52,7 @@ are cropped to one rect (whatever was painted, and the pins, padded), so they li
 **Pins** are drawn from each accessibility node's rect (the visible rect: the node's rect
 intersected with its clip, as `Frame.ofLaid` computes it), labelled with its `ControlRef` (`^N`,
 or `^N#k` for keyed controls). Dashed orange is a control; solid blue is the control the next
-step acts on. They are burned into the image, because the skill's pins (`gaps[].at`) are for
-findings, not for every control.
+step acts on. They are burned into the image.
 
 Each app executable opts in with one line, since each links exactly one app library:
 
@@ -50,102 +61,130 @@ if let code = MapCapture.main(args, size: Size(w: 480, h: 320), core: { LeanCore
 ```
 
 `make map APP=<App>` then works for any app whose module is `Examples.<App>` and whose executable
-is `Cairn<App>`: today `Counter` and `Basics`, both on v1.
+is `Cairn<App>`: today `Counter`, `Basics` and `Todo`, all on v1.
 
-## How claims become map pages
+## Evidence
 
-The map skill's shape is areas, flows and steps, each id unique. Claims fit it like this:
+Each claim carries a list of evidence, one entry per kind it can have. Each entry is a **pass**,
+a **fail**, or a **gap**: evidence the claim could have and doesn't (the input wasn't run, or ran
+and never reached the claim).
 
-| Claim | On the map |
-|---|---|
-| place `^P` | an area (a page), and its first flow, whose steps are the moves `in ^P` |
-| move | a step: `does`, `sees`, the place and evidence in `where`, two shots (before and after a press, from a witness that presses it) |
-| flow | a flow in its place's area (or the place of its first witness step), with a filmstrip of its witness and `see:` links to the moves it passes through |
-| invariant, assume | a flow in the "Invariants and assumptions" area |
-| retired claim | `closed: retired: <reason>` |
+The kinds, strongest first. This order is the ladder:
 
-A flow's witness can't be its steps: the same move appears in several flows (and twice in one),
-and the skill requires each id once. So flows link to their moves and show the witness as a
-filmstrip. `ids.txt` lists every id the app has issued, so the skill's build fails if one goes
-missing from the pages.
-
-The skill's renderer is used unchanged. The one adapter is its documented stylesheet hook:
-`site/style.css` is the skill's stylesheet plus one rule so the filmstrips fit the column.
-
-## Evidence columns
-
-| Column | Computed from | Values |
+| Kind | Computed from | Passes when |
 |---|---|---|
-| **proved** | every theorem the claim names (a move's `sound` per handler; a flow's `live` and `reaches`; an invariant's `init`, `step`, `reachable`) is in `audit.json` and depends only on `propext`, `Classical.choice`, `Quot.sound` | yes, fails, missing, n/a (places, assumptions) |
-| **fuzzed** | `build/fuzz/<App>.json` from `make fuzz APP=<App>` ([fuzz.md](fuzz.md)): the claim's checks held in every randomized sequence of the model and runtime | pass, fail, not run, not runnable (an invariant without a `check`), n/a (flows, places, assumptions) |
-| **assumed** | the claim is an `assume` | yes, no |
-| **conformance** | `build/conformance/<App>.json` (workstream J) | pass, fail, not run, n/a |
-| **seen** | the capture: a move's control is in a captured frame; a flow's whole witness was replayed, each step on the control it names; a place's window was rendered | yes, no, n/a (invariants, assumptions) |
+| **proved** | `audit.json` | every theorem the claim names (each move handler's `sound`; a flow's `live` and `reaches`; an invariant's `init`, `step`, `reachable`) is in the audit and depends only on `propext`, `Classical.choice`, `Quot.sound` |
+| **fuzzed** | `build/fuzz/<App>.json` ([fuzz.md](fuzz.md)); for an assumption, `build/fuzz/trusted.json` | the claim's checks held in every random sequence that exercised it; shown as `fuzzed N`, N sequences |
+| **tested** | `build/conformance/<App>.json` ([conformance.md](conformance.md)) | the running app matched the model at every step that exercised it; `tested N`, N steps, for a move |
+| **seen** | the capture | a move's control is in a captured frame; a flow's whole witness was replayed, each step on the control it names; a place's window was rendered |
+| **assumed** | the claim is an `assume` | always: it is stated, never proved |
 
-They are on the Evidence page (`notes/evidence.html`, linked from the rail) and in
-`evidence.json`, one row per claim, with each theorem's audit result and the claim's ledger state.
+Which kinds each claim can have; any it lacks is a gap:
 
-## Status
+| Claim | proved | fuzzed | tested | seen | assumed |
+|---|---|---|---|---|---|
+| move | ✓ | ✓ | ✓ | ✓ | |
+| flow | ✓ | | ✓ | ✓ | |
+| invariant | ✓ | ✓ | ✓ | | |
+| assume | | ✓ (trusted base) | | | ✓ |
+| place | | | | ✓ | |
 
-The map skill's ladder is about who saw a step work. Status is derived from the columns, in this
-order:
+Flows aren't fuzzed: their witnesses are proved live. Invariants aren't seen: a screenshot can't
+show that something holds in every state.
 
-| Status | When |
+A **fail** is: a named theorem missing from the audit or using another axiom; a fuzz failure (with
+its replay command); a conformance failure; or a flow whose witness step names a control the
+captured app doesn't show, although the witness is proved live.
+
+### How a claim reads
+
+Every claim shows all its evidence. It also *reads as* one word, so the map can be scanned:
+
+| Reads as | When |
 |---|---|
-| `closed` | the claim is retired |
-| `broken` | a named theorem is missing or uses another axiom; conformance failed; fuzzing failed; or the capture contradicts the model: a flow's witness step names a control the app doesn't show, although the witness is proved live (every step answered by an enabled move) |
-| `untested` | an assumption (stated, never checked) |
-| `tested` | proved, conformance passed, and seen where seeing applies (an automated study on the real app, the skill's meaning) |
-| `visual` | proved and seen: the app's own code produced frames showing it, rendered by the real renderer |
-| `untested` | proved, but nothing has run it on the app: invariants today, and any move no capture reached |
+| `retired` | the claim is retired |
+| `broken` | any of its evidence failed |
+| `assumed` | an assumption (even when the trusted-base fuzzer checked it: that shows as a `fuzzed N` chip beside it) |
+| the strongest kind it passes | `proved`, else `fuzzed`, `tested`, `seen` |
+| `untested` | a live claim with no evidence at all |
 
-A proved invariant shows `untested` unless a conformance run covers it (an invariant passes
-there when every state the app reached was the model's); its proof is on the Evidence page.
-**Fuzzing has no rung:** the skill's ladder (planned, untested, visual, tested, partial, broken,
-missing) is fixed and measures the real app, while the fuzzer runs the Lean model and runtime.
-So a fuzz pass never moves a status up; it shows in the fuzzed column, in `evidence.json` and in
-each step's evidence line, between proved and seen. A fuzz failure does move it down, to
-`broken`. Findings become the step's
-`gaps` (so they reach the skill's Gaps page): a failing theorem, a capture that contradicts the
-model, a conformance failure, a fuzz failure (with its replay command), a claim missing from `claims.lock`, or a statement hash that
-differs from the lock (meaning changed and not accepted).
+So a proved invariant reads as proved, and a move that is only seen reads as seen. Proved and
+fuzzed are about the Lean model; tested and seen are about the app. A proof says more, but only
+conformance reaches through the host, which is why a claim keeps every chip and not just the top
+one: a move is fully covered when it is proved, fuzzed, tested and seen.
 
-## For workstream J: the conformance file
+Findings that aren't a kind of evidence go with the claim and into the gaps: a claim missing from
+`claims.lock`, or a statement hash that differs from the lock (its meaning changed and the change
+wasn't accepted).
 
-The shape of `build/conformance/<App>.json`, as `make conformance` writes it (docs/conformance.md,
-which also says how moves, flows and invariants are counted); the map reads only `claims`:
+## Pages
+
+`dist/` is a static folder with relative links:
+
+| Page | Shows |
+|---|---|
+| `index.html` | the **summary**: per kind of evidence, how many claims have it of those that can, and how many failed; how the claims read, as a bar; what the build had (audit, fuzz, conformance, capture). Then the **gaps**, failures first, one row per cause with every claim it touches; then every claim, grouped by page, with one column per kind of evidence |
+| `<place>.html` | one per place: the window as the app starts, pinned; each move with its does and sees, its evidence and what each rests on, its theorems, its source, and before and after screenshots from a step that performed it; each flow that starts there, with its witness (linking to the moves) and a filmstrip of the replay |
+| `guarantees.html` | invariants and assumptions |
+| `elsewhere.html` | moves and flows that name no place, if any |
+| `evidence.html` | one row per claim with every kind of evidence, its theorems and its ledger state; retired ids no module declares; the ladder |
+| `evidence.json` | the same rows, the counts and the gaps, for anything that wants its own view |
+
+A flow lives on the page of its place, or of the place of its first witness step. A move can recur
+in many flows (and twice in one), so a flow's witness links to its moves rather than repeating
+them.
+
+The build fails if a claim's id is on no page.
+
+**Look.** The pages use the site's palette and type (`site/public/index.html`): the night colours,
+Pixelify Sans for headings and labels, a serif for prose, stepped corners on panels and frames,
+and the site's `icon.svg`, which the build copies into `dist/`. Each kind of evidence has one
+colour everywhere it appears (a filled chip when it passes, a dashed empty chip for a gap, red
+for a failure). Served from the site, the headings get the meadow's sprigs from `/scene.js`;
+opened from disk they don't, and nothing else changes.
+
+## Inputs from other workstreams
+
+**Conformance** (`build/conformance/<App>.json`, docs/conformance.md). The map reads only
+`claims`:
 
 ```json
 {"runs": 1000, "commit": "abc1234",
  "claims": {"^1": {"pass": true, "runs": 812}, "^2": {"pass": false, "note": "Reset stayed visible"}}}
 ```
 
-A claim missing from the file is "not run".
+**Fuzz** (`build/fuzz/<App>.json`, docs/fuzz.md): `mode`, `seed`, `iterations`, and per claim
+`pass` (`true`, `false`, or `null` with a `note`), `sequences`, `steps` and `failure`.
+
+**Trusted base** (`build/fuzz/trusted.json`, workstream M, optional). Read per assumption's ref,
+like the fuzz file: `{"claims": {"^7": {"pass": true, "sequences": 1000, "check": "…"}}}`, or an
+`assumptions` array of the same objects with `ref` (or `claim`, the number). `pass: null` is a
+gap; `sequences`, `runs` or `iterations` gives N in `fuzzed N`. Without the file, every
+assumption's fuzzed entry is a gap: nothing checks it.
 
 ## What is not yet evidenced
 
-- **Conformance** is read only when `build/conformance/<App>.json` exists: run
-  `make conformance APP=<App>` before `make map`.
 - **Seen is the Lean model's own frames,** rendered by the real renderer, not the running host:
   no window, no accessibility mirror, no AppKit event path. The capture clicks through the app's
-  hit testing, so a control that is covered or mis-laid fails to act, but the host's event
-  mapping and threads are J's to check.
+  hit testing, so a control that is covered or mis-laid fails to act. Conformance covers the
+  host.
 - **`blur` and the rarer text operations** (word and caret movement, marked text, cut, copy)
-  are not replayed yet; a witness that uses one stops there and the flow is not seen.
+  are not replayed by the capture yet; a witness that uses one stops there and the flow is only
+  partly seen (a gap).
 - **Presence and pressability** theorems are per app and not linked to claims in the export, so
-  they are not columns yet (`Counter.reset_present_iff_enabled` exists, but only the audit sees
-  it).
-- **Model-checked** (M1 item 7) has no source yet.
+  they aren't part of a claim's `proved` (`Counter.reset_present_iff_enabled` exists, but only the
+  audit sees it). The fuzzer checks both for every move.
+- **Model-checked** (M1 item 7) has no source; fuzzing is the nearest.
 - **Prose isn't checked:** `does` and `sees` are shown as written; nothing proves `sees` matches
   `post` (docs/claims.md).
 - **Kernel replay** is whole-build (`make kernel` in `make check`), not per theorem.
+- **Counter has no conformance generator** (`tools/conformance/lean/Conformance/Apps/`), so its
+  moves, flows and invariant have a `tested` gap.
 - **Retired ids no module declares** are listed on the Evidence page from `claims.lock`; they
   can't be attributed to an app.
 
 ## Publishing
 
-`build/map/<App>/dist/` is a static folder with relative links. It is not committed. To put it on
-the microsite, the site's owner copies it under `site/public/map/<app>/` in a lane from main
-(or a site build step runs `make map` first), links it from the page, and deploys from main
-(docs/media.md). The map skill's `hosting.md` lists other hosts; `evidence.json` is there for a
-site that wants to render its own summary.
+`build/map/<App>/dist/` is not committed. `make site-maps` copies each app's into
+`site/public/map/<app>/`, where the site links to them; the lead deploys from main
+(docs/media.md).

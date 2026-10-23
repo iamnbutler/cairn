@@ -178,11 +178,10 @@ retarget by ref.
 
 ## Evidence on the map
 
-`tools/map` reads `build/fuzz/<App>.json` and adds a **fuzzed** column between proved and seen:
-pass, fail, not run, or n/a (places, assumptions, flows). A failure is a finding: the step is
-`broken` with the failure as a gap. The map skill's status ladder (`planned` → `untested` →
-`visual` → `tested`) has no rung for "a model run checked it", so fuzzing doesn't move a status
-up; it shows on the Evidence page, in `evidence.json` and in each step's evidence line.
+`tools/map` reads `build/fuzz/<App>.json`: a move or invariant that held in every sequence gets
+a `fuzzed N` chip (N sequences), between proved and tested on the map's ladder (docs/map.md,
+"Evidence"). A failure makes the claim `broken`, with the failure and its replay command as a
+gap. A claim the fuzzer didn't reach, or can't run, is a gap.
 
 ## Results
 

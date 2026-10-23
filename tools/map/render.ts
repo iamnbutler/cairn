@@ -119,11 +119,11 @@ import("/scene.js").then((m) => m.mountSprigs(document.querySelector("main"))).c
 					.map((f, k) => (k ? `<span class="arrow">→</span>` : "") + img(f, `${c.title}, ${k ? `after step ${k}` : "start"}`, k ? `${k}. ${esc(steps[k - 1]!.trigger)} ${esc(steps[k - 1]!.ref)}` : "start"))
 					.join("")}</div>${r.shots.complete ? "" : `<p class="finding soft">The replay stopped early.</p>`}`;
 		}
-		const wide = c.kind === "flow" || c.kind === "invariant" || c.kind === "assume" || !pictures;
+		const wide = c.kind !== "move" || !pictures || !!r.shots.after;
 		return `<section class="claim px" id="${c.id}">
 <div class="head"><a class="id" href="#${c.id}">${esc(c.ref)}</a><h3>${esc(c.title)}</h3><span class="pix muted">${c.kind}</span>${headline(r.headline)}</div>
-<div class="body${wide ? " wide" : ""}"><div class="said">${c.retired ? `<p class="retired-why">Retired: ${md(c.retired)}</p>` : said}${witness}${ev}${findings}${thms}${src}</div>${c.kind === "flow" ? "" : pictures ? `<div>${pictures}</div>` : ""}</div>
-${c.kind === "flow" ? pictures : ""}
+<div class="body${wide ? " wide" : ""}"><div class="said">${c.retired ? `<p class="retired-why">Retired: ${md(c.retired)}</p>` : said}${witness}${ev}${findings}${thms}${src}</div>${wide ? "" : `<div>${pictures}</div>`}</div>
+${wide ? pictures : ""}
 </section>`;
 	};
 
@@ -147,12 +147,14 @@ ${p.place.shots.frames[0] ? `<div class="hero">${img(p.place.shots.frames[0], `$
 	const n = counts(rows);
 	const g = gaps(rows).sort((a, b) => Number(b.broken) - Number(a.broken));
 	const tile = (k: (typeof n.kinds)[number]) =>
-		`<div class="tile ${k.kind}"><div class="k">${k.kind}</div><div class="v">${k.have}<small> / ${k.of}</small>${k.fail ? ` <span class="bad">${k.fail} failed</span>` : ""}</div><div class="d">${ABOUT[k.kind]}</div></div>`;
+		`<div class="tile ${k.kind}"><div class="k">${k.kind}</div><div class="v">${k.of ? `${k.have}<small> / ${k.of}</small>` : `<small>none</small>`}${k.fail ? ` <span class="bad">${k.fail} failed</span>` : ""}</div><div class="d">${ABOUT[k.kind]}</div></div>`;
 	const spread = HEADLINES.filter((h) => n.headlines.get(h)).map((h) => `<i class="${h}" style="--n:${n.headlines.get(h)};--c:var(--${h})" title="${n.headlines.get(h)} ${h}"></i>`).join("");
 	const legend = HEADLINES.filter((h) => n.headlines.get(h)).map((h) => `<span>${headline(h)} <b>${n.headlines.get(h)}</b></span>`).join("");
-	const gapRows = g.length
-		? `<div class="wrap"><table class="gaps"><thead><tr><th>Claim</th><th></th><th>Missing or failed</th><th>Why</th></tr></thead><tbody>${g
-				.map((x) => `<tr class="${x.broken ? "broken" : ""}"><td class="id"><a class="id" href="${href(x.row.claim.id)}">${esc(x.row.claim.ref)}</a></td><td>${esc(x.row.claim.title)}</td><td class="what"><span class="m gap">${esc(x.what)}</span></td><td>${md(x.detail)}</td></tr>`)
+	// Gaps that share a cause (no fuzz file, say) are one row naming every claim they touch.
+	const grouped = [...Map.groupBy(g, (x) => `${x.what}\u0000${x.detail}`).values()];
+	const gapRows = grouped.length
+		? `<div class="wrap"><table class="gaps"><thead><tr><th>Missing or failed</th><th>Claims</th><th>Why</th></tr></thead><tbody>${grouped
+				.map((xs) => `<tr class="${xs[0]!.broken ? "broken" : ""}"><td class="what"><span class="m gap">${esc(xs[0]!.what)}</span></td><td>${xs.map((x) => `<a class="id" href="${href(x.row.claim.id)}" title="${esc(x.row.claim.title)}">${esc(x.row.claim.ref)}</a>${xs.length === 1 ? ` ${esc(x.row.claim.title)}` : ""}`).join(", ")}</td><td>${md(xs[0]!.detail)}</td></tr>`)
 				.join("")}</tbody></table></div>`
 		: `<p class="none">None: every claim has every kind of evidence it can have.</p>`;
 	const slots = (r: Row) => KINDS.map((k) => `<td class="slot">${r.marks.find((m) => m.kind === k) ? chip(r.marks.find((m) => m.kind === k)!) : ""}</td>`).join("");
