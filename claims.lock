@@ -7,3 +7,12 @@
 5	flow	active	a3b193af912012c1	Start over
 6	invariant	active	2450dcc1d0d8c984	Moves never leave a press in progress
 7	assume	active	-	The host reports clicks where they happen
+101	move	active	5f27d0063f678333	Type a new item
+102	move	active	e2ed8588311ec433	Add
+103	move	active	c4c2223fb9657a1e	Toggle an item
+104	move	active	754e2e0767b91a5b	Delete an item
+105	invariant	active	50c2cabcfdfc64a9	Items left
+106	place	active	-	Basics window
+107	flow	active	ed3fc7beee378157	Add two items and finish one
+108	flow	active	6e9cfd8339810b4c	Blank text adds nothing
+109	flow	active	1ee050c6a434a9a5	Add an item, then delete it

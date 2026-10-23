@@ -52,7 +52,7 @@ cairn_obj *runtime_initialize_cairn_Examples_Basics(uint8_t builtin);
 
 // libcairn_app_counter.a: lean/Examples/Counter.lean, the spike's v0 exports
 // (docs/spike-boundary.md). Remove these and SpikeV0Codec when Counter moves to v1.
-cairn_obj *runtime_initialize_cairn_Examples(uint8_t builtin);
+cairn_obj *runtime_initialize_cairn_Examples_Counter(uint8_t builtin);
 cairn_obj *cairn_counter_new(uint32_t w, uint32_t h);
 cairn_obj *cairn_counter_step(cairn_obj *state, cairn_obj *events);
 cairn_obj *cairn_counter_frame(cairn_obj *state);

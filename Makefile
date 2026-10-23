@@ -12,7 +12,7 @@ VENDOR = host/Sources/CLean/vendor/lean
 # links exactly one: v1 apps all export `cairn_app_init/step/frame` (docs/runtime.md), so two
 # in one binary would clash. The check below keeps the shared library free of app exports and
 # each app library to one set.
-APPS = Examples:counter Basics:basics
+APPS = Counter:counter Basics:basics
 
 lean:
 	cd lean && lake build

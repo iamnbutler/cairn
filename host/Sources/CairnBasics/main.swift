@@ -12,7 +12,7 @@ import QuartzCore
 //   CairnBasics --bench       input → frame and frame size with 10 and 1,000 items
 
 let basics = LeanApp(
-    module: initialize_cairn_Examples_Basics,
+    module: runtime_initialize_cairn_Examples_Basics,
     initialize: { w, h, scale in cairn_app_init(w, h, scale) },
     step: { cairn_app_step($0, $1) },
     frame: { cairn_app_frame($0) },

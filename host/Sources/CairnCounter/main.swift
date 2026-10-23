@@ -13,7 +13,7 @@ import QuartzCore
 // Counter still speaks the spike's v0 boundary; it moves to the v1 ABI
 // (`cairn_app_init(w, h, scalePercent)`, v1 codec) when workstreams C and E land.
 let counter = LeanApp(
-    module: runtime_initialize_cairn_Examples,
+    module: runtime_initialize_cairn_Examples_Counter,
     initialize: { w, h, _ in cairn_counter_new(w, h) },
     step: { cairn_counter_step($0, $1) },
     frame: { cairn_counter_frame($0) },
@@ -33,7 +33,7 @@ if args.contains("--selftest") {
 
 if args.contains("--bench") {
     let codec = SpikeV0Codec()
-    LeanRuntime.enter(module: runtime_initialize_cairn_Examples)
+    LeanRuntime.enter(module: runtime_initialize_cairn_Examples_Counter)
     for n: UInt32 in [100, 1000, 10000] {
         var lean = 0.0, decode = 0.0
         let reps = 50

@@ -16,7 +16,7 @@ def ours (env : Environment) (n : Name) : Bool :=
   | none => false
 
 def main (args : List String) : IO UInt32 := do
-  let roots := if args.isEmpty then [`Cairn, `Examples, `Examples.Basics.Proofs] else args.map String.toName
+  let roots := if args.isEmpty then [`Cairn, `Examples] else args.map String.toName
   initSearchPath (← findSysroot)
   let env ← importModules (roots.map ({ module := · })).toArray {} (trustLevel := 1024)
   let mut checked := 0
