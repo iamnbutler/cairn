@@ -6,24 +6,22 @@ import CairnHost
 import Metal
 import QuartzCore
 
-// The Counter example (lean/Examples/Counter.lean) in the Cairn host.
+// Counter (lean/Examples/Counter.lean) on the v1 ABI.
 //   CairnCounter               open the window (add --stats for latency, --latency N to measure)
 //   CairnCounter --selftest    drive the host headlessly through its real threads and check it
-//   CairnCounter --bench       time Lean frames across the FFI at 100, 1k and 10k nodes
 
-// Counter still speaks the spike's v0 boundary; it moves to the v1 ABI
-// (`cairn_app_init(w, h, scalePercent)`, v1 codec) when workstreams C and E land.
 let counter = LeanApp(
-    module: runtime_initialize_cairn_Examples_Counter,
-    initialize: { w, h, _ in cairn_counter_new(w, h) },
-    step: { cairn_counter_step($0, $1) },
-    frame: { cairn_counter_frame($0) },
-    codec: SpikeV0Codec())
+    module: runtime_initialize_cairn_Examples_Counter_Abi,
+    initialize: { w, h, scale in cairn_app_init(w, h, scale) },
+    step: { cairn_app_step($0, $1) },
+    frame: { cairn_app_frame($0) },
+    codec: FrameV1Codec())
 
+let size = Size(w: 480, h: 320)
 let args = CommandLine.arguments
 
 // `--map-capture <script.json> <out dir>`: headless screenshots with pins for the map (docs/map.md).
-if let code = MapCapture.main(args, size: Size(w: 480, h: 320), core: { LeanCore(counter) }) { exit(code) }
+if let code = MapCapture.main(args, size: size, core: { LeanCore(counter) }) { exit(code) }
 
 func fail(_ msg: String) -> Never {
     FileHandle.standardError.write("FAIL: \(msg)\n".data(using: .utf8)!)
@@ -35,38 +33,14 @@ if args.contains("--selftest") {
     exit(0)
 }
 
-if args.contains("--bench") {
-    let codec = SpikeV0Codec()
-    LeanRuntime.enter(module: runtime_initialize_cairn_Examples_Counter)
-    for n: UInt32 in [100, 1000, 10000] {
-        var lean = 0.0, decode = 0.0
-        let reps = 50
-        for i in 0..<(reps + 5) {
-            let t0 = hostNow()
-            let o = cairn_bench_frame(n)!
-            let t1 = hostNow()
-            let f = try! LeanRuntime.withBytes(o) { try codec.decodeFrame($0) }
-            let t2 = hostNow()
-            precondition(f.ax.count == Int(n))
-            if i >= 5 {
-                lean += (t1 - t0) * 1000
-                decode += (t2 - t1) * 1000
-            }
-        }
-        print(String(format: "%5d nodes: Lean %.3f ms, Swift decode %.3f ms per frame",
-                     n, lean / Double(reps), decode / Double(reps)))
-    }
-    exit(0)
-}
-
-
-/// The headless check `make check` runs: the real engine (Lean thread), the real view (input
-/// mapping, accessibility mirror), no window.
+/// The headless check `make check` runs: the real engine (Lean thread, v1 codec), the real view
+/// (input mapping, accessibility mirror), no window.
 @MainActor
 enum SelfTest {
     static func run() {
-        let engine = Engine(size: Size(w: 480, h: 320), scalePercent: 200) { LeanCore(counter) }
-        let view = HostView(engine: engine, renderer: NullRenderer(), size: NSSize(width: 480, height: 320))
+        let engine = Engine(size: size, scalePercent: 200) { LeanCore(counter) }
+        let view = HostView(engine: engine, renderer: NullRenderer(),
+                            size: NSSize(width: CGFloat(size.w), height: CGFloat(size.h)))
         engine.start()
         guard engine.wait(through: 0) != nil else { fail("no first frame") }
 
@@ -76,14 +50,23 @@ enum SelfTest {
             return p.frame
         }
         func elements() -> [NSAccessibilityElement] {
-            (view.accessibilityChildren() ?? []).compactMap { $0 as? NSAccessibilityElement }
+            var out: [NSAccessibilityElement] = []
+            func walk(_ xs: [Any]?) {
+                for case let e as NSAccessibilityElement in xs ?? [] { out.append(e); walk(e.accessibilityChildren()) }
+            }
+            walk(view.accessibilityChildren())
+            return out
         }
         func element(_ id: String) -> NSAccessibilityElement? {
             elements().first { $0.accessibilityIdentifier() == id }
         }
         func count() -> Int {
-            guard let label = elements().first(where: { $0.accessibilityRole() == .staticText })?.accessibilityLabel(),
-                  let n = Int(label.split(separator: " ").last ?? "") else { fail("no count label") }
+            guard let label = elements().compactMap({ e -> String? in
+                      guard e.accessibilityRole() == .staticText, let l = e.accessibilityLabel(),
+                            l.hasPrefix("Count: ") else { return nil }
+                      return l
+                  }).first,
+                  let n = Int(label.dropFirst("Count: ".count)) else { fail("no count label") }
             return n
         }
         func click(_ id: String) {
@@ -129,7 +112,7 @@ enum SelfTest {
         }
         _ = settle(engine.lastSeq)
         engine.stop()
-        print("selftest: PASS")
+        print("selftest: PASS (Counter, v1: clicks, presence of ^2, AXPress, slide-off)")
         print("  \(LatencyStats.Metric.lean.rawValue): \(engine.stats.summary(.lean))")
         print("  \(LatencyStats.Metric.inputToFrame.rawValue): \(engine.stats.summary(.inputToFrame))")
     }
@@ -143,5 +126,5 @@ final class NullRenderer: FrameRenderer {
 }
 
 MainActor.assumeIsolated {
-    CairnApp.main(CairnApp.Config(title: "Counter", size: Size(w: 480, h: 320)) { LeanCore(counter) })
+    CairnApp.main(CairnApp.Config(title: "Counter", size: size) { LeanCore(counter) })
 }

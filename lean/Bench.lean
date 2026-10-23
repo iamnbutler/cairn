@@ -1,24 +1,9 @@
-import Examples.Counter
 import Cairn.Layout
 
-/-! `lake exe bench`: times the Lean half of a frame.
-
-1. The spike's column of `n` boxes, laid out and encoded (`Cairn.Spike`).
-2. `Cairn.Layout.layout` on two shapes of `n`-node trees (see `bench/layout.md`). -/
+/-! `lake exe bench`: times `Cairn.Layout.layout` on three shapes of `n`-node trees (see
+`bench/layout.md`). Frame encoding and decoding are `make bench-frame` (`bench/frame.md`). -/
 
 open Cairn
-
-def timeIt (n reps : Nat) : IO Float := do
-  let mut total := 0
-  let mut size := 0
-  for _ in [0:reps] do
-    let t0 ← IO.monoNanosNow
-    let bytes := Examples.Counter.benchFrame n.toUInt32
-    size := size + bytes.size
-    let t1 ← IO.monoNanosNow
-    total := total + (t1 - t0)
-  if size == 0 then IO.println "empty"
-  return total.toFloat / reps.toFloat / 1000000.0
 
 /-- A column of `n` fixed-size buttons: the spike's shape. -/
 def flatColumn (n : Nat) : Node :=
@@ -88,10 +73,6 @@ def main (args : List String) : IO Unit := do
     taskDepth n.toNat!
     return
   let sizes : IO (List Nat) := pure (sizesOf args)
-  for n in [100, 1000, 10000] do
-    let _ ← timeIt n 5
-    let ms ← timeIt n 50
-    IO.println s!"{n} boxes: {ms} ms per frame (spike layout + encode)"
   for (name, mk) in [("flat column", flatColumn), ("todo rows", todoRows), ("nested", nested)] do
     for n in (← sizes) do
       let tree := mk n

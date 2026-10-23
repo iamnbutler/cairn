@@ -11,14 +11,18 @@ above the minimum, a hit test per enabled pointer control and `checkPressable`.
 | Basics | runtime | 1,000 × 50 | 2.04 s | 490 | 24,546 | 0.95 ms | 5,869 of 50,000 | 0 |
 | Basics | runtime | 2,000 × 200 | 16.95 s | 117 | 23,598 | 0.17 ms | 53,115 of 400,000 | 0 |
 | Basics | runtime, random seed | 2,000 × 100 | | | 23,627 | | | 0 |
-| Counter | model | 1,000 × 50 | 0.041 s | 24,578 | 1,228,931 | 0.00 ms | n/a | 0 |
-| Counter | model | 10,000 × 200 | 1.58 s | 6,322 | 1,264,550 | 0.00 ms | n/a | 0 |
+| Counter | runtime | 1,000 × 50 | 1.25 s | 798 | 39,907 | 0.04 ms | 4,277 of 50,000 | 0 |
+| Counter | runtime | 10,000 × 200 | 46.9 s | 213 | 42,669 | 0.92 ms | 162,838 of 2,000,000 | 0 |
+
+Counter's rows were re-run when it moved to the v1 ABI and got an `App`; before that it was
+fuzzed at the model level only (1,000 × 50 in 0.041 s, 1.23 million steps/s).
 
 Reading:
 
 - **About 24,000 steps a second through the runtime**, flat in sequence length: longer
   sequences grow the list (more rows to lay out and probe), but Basics stays small.
-- The model alone is about 50 times faster; the view, layout and the per-step checks dominate.
+- The model alone was about 30–50 times faster (Counter's old model-only rows); the view, layout
+  and the per-step checks dominate.
 - The slowest step varies between runs (0.1–3 ms) with machine load; nothing came near the 8 ms
   budget.
 - About one step in eight runs below the view's minimum window (resizes go below it one time in

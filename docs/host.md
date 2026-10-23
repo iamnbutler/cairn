@@ -8,10 +8,11 @@ on Lean. Everything it assumes is listed in [trusted.md](trusted.md).
 ## Running
 
 ```
-make demo                      # Counter (lean/Examples/Counter.lean) in a window
+make demo                      # Basics (lean/Examples/Basics.lean) in a window
+make demo DEMO=CairnCounter    # Counter (lean/Examples/Counter.lean)
 make demo DEMO=CairnFixture    # the Swift fixture app: a text field, a checkbox, a list
 make test                      # host unit tests (swift test)
-make selftest                  # Counter driven headlessly through the real threads and AX mirror
+make selftest                  # each app driven headlessly through the real threads and AX mirror
 ```
 
 Every app accepts these flags:
@@ -28,7 +29,7 @@ effects (clipboard writes go to a private pasteboard) and draws through `DebugRe
 [conformance.md](conformance.md).
 
 One executable per app, linking one app library. An app describes itself as a `LeanApp` and
-calls `CairnApp.main`. Basics (`host/Sources/CairnBasics`) is on the v1 ABI:
+calls `CairnApp.main`. Every app is on the v1 ABI; Basics (`host/Sources/CairnBasics`):
 
 ```swift
 let basics = LeanApp(module: runtime_initialize_cairn_Examples_Basics,
@@ -45,11 +46,15 @@ own `lean_lib` with its own static archive (`lean/lakefile.lean`; `make lean` co
 that archive (`-lcairn_app_basics`). The shared `libcairn_lean.a` holds `Cairn`, `Init` and the
 runtime and no app; `make lean` checks with `nm` that it defines no `cairn_app_*` and that each
 app archive defines `cairn_app_init` once. The module initializer is the module system's
-`runtime_initialize_cairn_Examples_<App>`, which never calls into the claim commands.
+`runtime_initialize_cairn_Examples_<App>`, which never calls into the claim commands. Apps
+that keep their exports in their own module (`Examples.Counter.Abi`, so that executables linking
+every example, like the fuzzer, don't see two `cairn_app_init`s) start that module instead:
+`runtime_initialize_cairn_Examples_Counter_Abi`.
 
-`make demo` opens Basics (`DEMO=CairnCounter make demo` for the counter). `CairnBasics
---selftest` drives the real engine and view headlessly (AX focus, `insertText`, Enter, AXPress,
-Tab, a pixel probe) and is part of `make check`; `--bench` is `bench/basics.md`.
+`CairnBasics --selftest` drives the real engine and view headlessly (AX focus, `insertText`,
+Enter, AXPress, Tab, a pixel probe), and `CairnCounter --selftest` does clicks, the presence of
+^2, AXPress and a press that slides off; both are part of `make check`. `CairnBasics --bench` is
+`bench/basics.md`. Binary sizes are `bench/size.md` (`make size`).
 
 `AppCore` is the seam: `start(size:scalePercent:)`, `step([Event])`, `frame() -> Frame`.
 `LeanCore` implements it over a `LeanApp`. `CairnFixture` implements it in Swift, as a test
@@ -118,23 +123,19 @@ All Lean `@[export]` arguments are **owned** (consumed). The host calls `cairn_l
 anything it keeps: `LeanCore.frame` incs the state before passing it, because the frame
 function consumes it.
 
-- v1 (Basics). The exports are `cairn_app_init(w, h, scalePercent)`,
-  `cairn_app_step(state, events : ByteArray)` and `cairn_app_frame(state) : ByteArray`
-  ([runtime.md](runtime.md)), with the [frame.md](frame.md) codec: `FrameV1Codec` is
-  `encodeEvents` and `Frame(decoding:)` from CairnFrame.
-- v0 (Counter only). The Counter still uses the spike's exports and frame format
-  ([spike-boundary.md](spike-boundary.md)); `SpikeV0Codec` adapts it and encodes pointer
-  down/up and resize only. **Remove** `SpikeV0Codec`, the `cairn_counter_*` declarations in
-  `CLean/include/cairn_lean.h` and this bullet when the Counter moves to v1 (swap its closures
-  and codec as Basics does; nothing else in the host changes).
+Every app exports `cairn_app_init(w, h, scalePercent)`, `cairn_app_step(state, events :
+ByteArray)` and `cairn_app_frame(state) : ByteArray` ([runtime.md](runtime.md)), with the
+[frame.md](frame.md) codec: `FrameV1Codec` is `encodeEvents` and `Frame(decoding:)` from
+CairnFrame. (The boundary spike's v0 exports and frame format, and `SpikeV0Codec`, are gone:
+Counter moved to v1.)
 
 ### Seams waiting on other workstreams
 
 | Seam | Now | When it lands |
 |---|---|---|
-| `BoundaryCodec` (E) | landed: `FrameV1Codec` (Basics); `SpikeV0Codec` until Counter moves | |
+| `BoundaryCodec` (E) | landed: `FrameV1Codec`, every app | |
 | `FrameRenderer` (F) | `MetalRenderer`, over `CairnRender.Renderer` (landed). The layer is `bgra8Unorm` with an sRGB colour space | |
-| `LeanApp` (C) | landed: `cairn_app_init/step/frame` (Basics); `cairn_counter_*` until Counter moves | |
+| `LeanApp` (C) | landed: `cairn_app_init/step/frame`, every app | |
 | Text metrics (F) | landed. `firstRect` and `characterIndex` use `TextSystem.shared.shape`, the same line Lean measures with `cairn_text_metrics` | |
 
 ## Input
@@ -286,8 +287,9 @@ in scalar indices. Chromium's browser process does the same.
 ## Latency
 
 These were measured on this machine (macOS 27, Apple silicon) on 2026-10-23. The run used the
-release build, `CairnCounter --latency 600`, and F's Metal renderer. Events go through the
-view's input handlers; a display-link tick comes every 16.7 ms.
+release build, `CairnCounter --latency 600` (the Counter was still on the spike's v0 boundary
+then), and F's Metal renderer. Events go through the view's input handlers; a display-link tick
+comes every 16.7 ms.
 
 | | p50 | p95 | p99 | max |
 |---|---|---|---|---|
@@ -300,14 +302,9 @@ Input → present is dominated by waiting for the next display-link tick, not by
   windows, measured p50 25.6 ms. The compositor added a frame there.
 - Present time is the presented handler's time (see open question 4).
 
-`CairnCounter --bench` (release) measures one frame across the FFI as Lean frame time plus
-Swift decode time:
-
-| Nodes | Lean | Swift decode |
-|---|---|---|
-| 100 | 0.039 ms | 0.001 ms |
-| 1,000 | 0.385 ms | 0.013 ms |
-| 10,000 | 4.085 ms | 0.110 ms |
+Frame encode and decode times for 1,000- and 10,000-node v1 frames are in
+[bench/frame.md](../bench/frame.md) (`make bench-frame`). (`CairnCounter --bench` timed the
+spike's v0 frames; it went with them.)
 
 ## Open questions
 

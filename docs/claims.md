@@ -96,22 +96,24 @@ enabled move, so the path is real and not a run of no-ops), and
 ### `invariant`
 
 ```lean
-invariant ^6 noPressLeft "Moves never leave a press in progress" for machine where
-  does "No move touches the press the spike is tracking."
-  holds s := s.pressed = none
-  init := rfl
+invariant ^105 itemsLeft "Items left" for machine where   -- Examples.Basics
+  does "The footer's count equals the number of items not done, …"
+  holds s := Inv s
+  init := ⟨rfl, trivial, fun _ h => by simp only [machine, List.not_mem_nil] at h, Nat.one_pos⟩
   step := machine.preserves <|
-    Move.all_cons (increment.preserves _ fun _ h => h)
-      (Move.all_cons (reset.preserves _ fun _ _ h => h) Move.all_nil)
+    Move.all_cons (typeItem.preserves _ (fun _ _ h => h) fun _ h => add_inv h)
+      (Move.all_cons (addItem.preserves _ fun _ h => add_inv h)
+      (Move.all_cons (toggleItem.preserves _ fun _ k _ h => toggle_inv k h)
+      (Move.all_cons (deleteItem.preserves _ fun _ k _ h => delete_inv k h) Move.all_nil)))
 ```
 
 `init : holds machine.init`, `step : ∀ s a, holds s → holds (machine.update s a).1`. The pattern
 above proves `step` one move at a time: `Machine.preserves` reduces it to `Move.Preserves` for
 each move, and each move's generated `preserves` lemma reduces that to one obligation per
 handler, stated over its own `apply`. Also generates
-`noPressLeft.reachable : ∀ s, machine.Reachable s → holds s`, and, when `Decidable (holds s)` can
+`itemsLeft.reachable : ∀ s, machine.Reachable s → holds s`, and, when `Decidable (holds s)` can
 be synthesized (after unfolding `holds` and the definitions at the head of its body),
-`noPressLeft.check : S → Bool := fun s => decide (holds s)`: the invariant as a runnable check,
+`itemsLeft.check : S → Bool := fun s => decide (holds s)`: the invariant as a runnable check,
 for the fuzzer (docs/fuzz.md). Without an instance there is no `check` and the fuzzer reports the
 invariant as not runnable; give the predicate a `Decidable` instance to fix that.
 
@@ -119,7 +121,7 @@ invariant as not runnable; give the predicate a `Decidable` instance to fix that
 
 ```lean
 assume ^7 hostClicks "The host reports clicks where they happen" where
-  does "The spike host sends a pointer down and up at the logical point the person clicked."
+  does "The host sends a pointer down and up at the logical point the person clicked."
   statement := ∀ m : TextMetrics, m.Valid   -- optional
 ```
 
@@ -131,7 +133,7 @@ axiom audit stays clean.
 
 ```lean
 place ^3 window "Counter window" where
-  does "The spike's window."
+  does "The counter's window."
 ```
 
 A region of the view where moves appear; `in ^P` on moves, flows and places refers to one.
@@ -140,6 +142,12 @@ A region of the view where moves appear; `in ^P` on moves, flows and places refe
 
 ```lean
 retire ^9 move "Toggle all (old)" because "Split into ^14 and ^15."
+```
+
+Counter retired ^6, an invariant over a `pressed` field that the v1 runtime made pointless:
+
+```lean
+retire ^6 invariant "Moves never leave a press in progress" because "The runtime owns press tracking; Counter's state no longer has a pressed field, so the invariant was vacuous."
 ```
 
 The claim is gone; its id stays issued. A tombstone needs the kind, the old title and a reason.
@@ -253,13 +261,13 @@ module
 
 public import Cairn.Claims.Core     -- Move, Machine, Flow, …: pure, core-only
 meta import Cairn.Claims.Elab       -- the commands, at compile time only
-public import Cairn.Spike.Frame
+public import Cairn.App
 
 @[expose] public section            -- importers' proofs can unfold the app's definitions
 ```
 
 With that, the app's compiled code and its `runtime_initialize_*` never touch `Lean` or the
-commands; the host calls `runtime_initialize_cairn_Examples_Counter` or
+commands; the host calls `runtime_initialize_cairn_Examples_Counter_Abi` or
 `runtime_initialize_cairn_Examples_Basics` (host/Sources/CLean; one library per app). The
 generated declarations are `public` and, in a module, `@[expose]`, so other modules' proofs
 can unfold them. `Cairn.Claims` is an umbrella (`Core` plus `meta import Elab`) for non-module
@@ -274,9 +282,8 @@ the host never calls them. Lake executables that link the real module (`ledger`,
 
 Consequences of the module system for the modules an app imports: every one of them is a
 `module` (a module can only import modules), so `Cairn.Claim`, `Input`, `Geometry`,
-`Text.Metrics`, `UI.Node`, `App`, `Spike.Bytes`, `Spike.Frame` and `Claims.Move`/`Machine`/`Core`
-are modules with `@[expose] public section`, and so (for Basics, the first app on the v1 runtime)
-are `Text.Field`, `Text.Host`, `Layout.Core`, `Layout.Facts`, `Runtime.Hit`, `Runtime.Step`,
+`Text.Metrics`, `UI.Node`, `App` and `Claims.Move`/`Machine`/`Core` are modules with
+`@[expose] public section`, and so (for the apps on the v1 runtime) are `Text.Field`, `Text.Host`, `Layout.Core`, `Layout.Facts`, `Runtime.Hit`, `Runtime.Step`,
 `Runtime.Abi`, `Frame`, `Frame.Bytes`, `Frame.Encode`, `Frame.Events`, `Frame.Build` and
 `Frame.Boundary`. Their `#guard`s moved to sibling `…Tests.lean` files. Non-module files (`Cairn.Runtime`, `Cairn.Layout`,
 …) import them unchanged and see everything. `#guard` does not work in a module without
@@ -297,7 +304,7 @@ which `libInit` is 15 MB); the `CairnCounter` binary contains no symbols from `l
 - **`post` constrains the state, not the effects.** Effects come only from moves (proved), but a
   move's `post` says nothing about which effects it emits.
 - **Presence and pressability are not generated.** They depend on the view and layout; apps
-  prove them per move (`Examples.Counter.reset_present_iff_enabled`).
+  prove them per move (`Examples.Counter.reset_present_iff_enabled`, in `Examples.Counter.Proofs`).
 - **`claims%` is per namespace.** An app spread over several namespaces collects each and
   concatenates.
 - **Unkeyed moves ignore the key.** `^1#7` reaches an unkeyed `^1` as if it were `^1`; the view

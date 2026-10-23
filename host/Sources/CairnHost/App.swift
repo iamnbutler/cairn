@@ -3,8 +3,7 @@ import CairnFrame
 import Foundation
 
 /// The bytes that cross the boundary: events in, frames out. v1 is specified in docs/frame.md
-/// and implemented by CairnFrame's decoder and encoder (`FrameV1Codec`); `SpikeV0Codec` speaks
-/// the boundary spike's format for Counter until it moves to v1.
+/// and implemented by CairnFrame's decoder and encoder (`FrameV1Codec`), the only codec.
 public protocol BoundaryCodec: Sendable {
     func encode(_ events: [Event]) -> [UInt8]
     func decodeFrame(_ bytes: UnsafeRawBufferPointer) throws -> Frame
@@ -118,4 +117,4 @@ public final class LeanCore: AppCore {
     deinit { if let s = state { cairn_lean_dec(s) } }
 }
 
-public enum CodecError: Error { case badMagic, truncated, noState }
+public enum CodecError: Error { case noState }

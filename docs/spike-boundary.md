@@ -1,5 +1,10 @@
 # Boundary spike (2026-10-23)
 
+A record of the spike, kept for what it learned. Its code is gone: the v0 frame format
+(`Cairn.Spike`), `SpikeV0Codec` and the `cairn_counter_*` exports were removed when the Counter
+moved to the v1 ABI ([runtime.md](runtime.md), [frame.md](frame.md)). Names below are as they
+were then.
+
 Question: can a Lean static library own an app's state, view, layout and hit testing inside a
 Swift and Metal app, with the main thread never waiting on Lean, and is it fast enough?
 

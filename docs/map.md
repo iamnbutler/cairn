@@ -50,7 +50,7 @@ if let code = MapCapture.main(args, size: Size(w: 480, h: 320), core: { LeanCore
 ```
 
 `make map APP=<App>` then works for any app whose module is `Examples.<App>` and whose executable
-is `Cairn<App>`: today `Counter` (frame v0) and `Basics` (v1).
+is `Cairn<App>`: today `Counter` and `Basics`, both on v1.
 
 ## How claims become map pages
 
@@ -139,8 +139,6 @@ A claim missing from the file is "not run".
 - **Prose isn't checked:** `does` and `sees` are shown as written; nothing proves `sees` matches
   `post` (docs/claims.md).
 - **Kernel replay** is whole-build (`make kernel` in `make check`), not per theorem.
-- **Counter speaks frame v0.** Its frames come through `SpikeV0Codec`, which paints labels the
-  v0 format doesn't carry. Apps on the v1 ABI (Basics) give exact frames.
 - **Retired ids no module declares** are listed on the Evidence page from `claims.lock`; they
   can't be attributed to an app.
 
