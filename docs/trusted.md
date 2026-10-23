@@ -63,3 +63,101 @@ painted where: grayscale antialiasing with font smoothing off, gamma-space blend
 
 **Also assumed.** Frames have balanced `pushClip`/`popClip`; an extra `popClip` is ignored and
 counted (`RenderStats.unbalancedPops`) rather than trusted.
+
+## Host (Swift, AppKit): `host/Sources/CairnHost`
+
+See [host.md](host.md) for how each piece works.
+
+### Input
+
+- **AppKit event delivery.** We trust AppKit to deliver mouse, key and scroll events to the
+  view in the order the user produced them. Its `clickCount` is used as is: the double-click
+  interval and distance are the user's system settings, not Lean's.
+- **Pointer positions.** View coordinates are rounded down to integer logical points (y down,
+  from the top-left). Lean never sees sub-point positions.
+- **Coalescing.** Consecutive pointer moves become the last move, and consecutive scrolls
+  become one scroll with summed deltas. The host assumes no app needs the intermediate
+  positions.
+- **Scroll.** Positive `dy` means toward the end of the content. A line is 16 points for
+  line-based devices. Fractions are carried, so Lean's total scroll is within one point of
+  AppKit's.
+- **Key mapping.**
+  - With a text field focused, AppKit's key bindings (`interpretKeyEvents`) decide which
+    command a key is, and `KeyMapping`'s selector table turns the command into a Lean event.
+    The table is reviewed by hand, not derived.
+  - Outside a text field, keys map by virtual key code and `charactersIgnoringModifiers`.
+  - The host sends no key-up events. AppKit sends none for keys pressed with Cmd.
+- **Menu shortcuts.** A keyDown whose shortcut belongs to a main-menu item is dropped, so a
+  shortcut reaches Lean once, through the menu action.
+- **Edit menu.** For M1, Undo, Redo, Cut, Copy, Paste and Select All are always enabled. The
+  frame doesn't say what applies, so Lean ignores commands that don't apply.
+- **Paste.** The string read from `NSPasteboard.general` (plain text type) is passed to Lean
+  as is.
+- **Accessibility actions.** AXPress, a checkbox toggle and focusing a text field all become a
+  real click at the centre of the node's rect: move, down, up, then the real pointer position
+  again. This assumes the node's AX rect is inside its hit region and not covered by another
+  control. The assumption holds when Lean's AX rect and hit rect agree (workstream C).
+
+### Text input
+
+- **Index conversion.** `TextIndex` converts UTF-16 offsets to scalar indices. Unit tests
+  cover it, and nothing proves it. Out-of-range offsets are clamped. A range that splits a
+  surrogate pair is widened to whole scalars.
+- **IME behaviour.** We trust the system input methods (Japanese, Chinese, Korean, dictation,
+  dead keys) to drive `NSTextInputClient` as documented. Their behaviour is not modelled,
+  only reflected.
+- **Shadow prediction.** Between an input-method call and the frame that reflects it, the host
+  answers from its own copy of the field. It updates that copy with rules it assumes match
+  Lean's:
+  - the target is the replacement range, else the marked text, else the selection;
+  - `setMarked` marks its string and selects within it;
+  - `insert` unmarks and leaves the caret after the text;
+  - `unmark` keeps the text.
+
+  Lean's frame always replaces the copy. Any prediction that disagrees is recorded in
+  `HostView.shadowDivergences` for the conformance driver.
+- **Text geometry for the IME.** `firstRect` and `characterIndex(for:)` use
+  `TextSystem.shared.shape`, the renderer's shaping, to get caret offsets. The offsets are
+  measured from the origin of the frame's text draw inside the field's rect, which is assumed
+  to be the field's text.
+
+### Accessibility
+
+- **AX mirror.** The `NSAccessibilityElement` tree is a translation of the frame's AX nodes:
+  roles, labels, values, focus and frames. The table in host.md lists the role mapping. It is
+  reviewed by hand.
+- **ControlRef uniqueness.** The mirror assumes a ControlRef labels at most one node per
+  frame. On duplicates, lookups find the first node.
+- **Screen frames.** AX frames come from the view's rect through `convert(to: nil)` and
+  `window.convertToScreen`.
+
+### Output
+
+- **Rendering.** `MetalRenderer` hands each frame to F's `Renderer` (see the section above).
+  The host sets the layer to `bgra8Unorm` with an sRGB colour space, as F requires. While the
+  render loop holds a frame back during a resize, the screen shows an older frame than the
+  latest one.
+- **Effects.** `setClipboard` writes a plain string to the general pasteboard. `beep` calls
+  `NSSound.beep()`.
+- **Cursor.** The frame's cursor becomes an NSCursor through cursor rects over the whole view.
+- **Live resize.** While a resize is in flight, the last picture is shown for up to 100 ms. It
+  can briefly not match the window's size.
+
+### Measurement
+
+- **Present time.** `CAMetalDrawable.presentedTime` reads 0 for this windowed layer on
+  macOS 27. Input → present then uses the time the presented handler runs, which comes just
+  after the present.
+
+### Boundary
+
+- **Decoder.** The Swift decoder is trusted to turn the frame's bytes into exactly the
+  `Frame` Lean encoded: `SpikeV0Codec` now, workstream E's v1 decoder later. E's round-trip
+  tests are the evidence.
+- **Lean runtime.** The runtime is initialized once, on the Lean thread, and the `Cairn`
+  module is initialized before the app's module. Every other thread that calls Lean registers
+  with `lean_initialize_thread` (`cairn_lean_thread_begin`). The main and render threads never
+  call Lean.
+  - The Lean thread's 64 MB stack is assumed to be enough for the app's recursion depth.
+  - Release builds keep Lean's default panic behaviour, where `panic!` returns a default value
+    and execution continues. Debug builds abort on panic.

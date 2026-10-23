@@ -1,6 +1,7 @@
 // The Swift mirror of lean/Cairn/Frame.lean and lean/Cairn/Input.lean. The decoder and event
 // encoder (Decode.swift, Encode.swift) are generated against docs/frame.md; these types are
-// the contract the renderer and host code against.
+// the contract the renderer and host code against. Initializers are public so other modules
+// (host, renderer, tests) can build values.
 
 public struct Point: Equatable, Sendable {
     public var x, y: Int32
@@ -47,6 +48,7 @@ public enum Role: UInt8, Sendable {
 public struct ControlRef: Hashable, Sendable {
     public var claim: UInt32
     public var key: UInt32
+    public init(claim: UInt32, key: UInt32 = 0) { self.claim = claim; self.key = key }
     /// `^5`, or `^5#12` for one instance of a repeated control.
     public var label: String { key == 0 ? "^\(claim)" : "^\(claim)#\(key)" }
 }
@@ -61,6 +63,11 @@ public struct AxNode: Equatable, Sendable {
     public var focused: Bool
     public var selected: Bool
     public var checked: Bool?
+    public init(control: ControlRef?, role: Role, rect: Rect, label: String, value: String = "",
+                parent: Int? = nil, focused: Bool = false, selected: Bool = false, checked: Bool? = nil) {
+        self.control = control; self.role = role; self.rect = rect; self.label = label; self.value = value
+        self.parent = parent; self.focused = focused; self.selected = selected; self.checked = checked
+    }
 }
 
 public struct TextInput: Equatable, Sendable {
@@ -70,6 +77,11 @@ public struct TextInput: Equatable, Sendable {
     public var text: String
     public var selection: (start: UInt32, end: UInt32)
     public var marked: (start: UInt32, end: UInt32)?
+    public init(control: ControlRef, rect: Rect, caret: Rect, text: String,
+                selection: (start: UInt32, end: UInt32), marked: (start: UInt32, end: UInt32)?) {
+        self.control = control; self.rect = rect; self.caret = caret; self.text = text
+        self.selection = selection; self.marked = marked
+    }
 
     public static func == (a: TextInput, b: TextInput) -> Bool {
         a.control == b.control && a.rect == b.rect && a.caret == b.caret && a.text == b.text
@@ -106,6 +118,12 @@ public struct Mods: Equatable, Sendable {
     }
 }
 
+/// `[start, end)` in Unicode scalar indices into a field's text (Lean's `Nat × Nat`).
+public struct ScalarRange: Equatable, Hashable, Sendable {
+    public var start, end: UInt32
+    public init(start: UInt32, end: UInt32) { self.start = start; self.end = end }
+}
+
 public enum Button: UInt8, Sendable { case primary, secondary }
 
 public enum Key: Equatable, Sendable {
@@ -121,8 +139,11 @@ public enum Event: Equatable, Sendable {
     case pointerExit
     case scroll(Point, dx: Int32, dy: Int32)
     case key(Key, Mods)
-    case insertText(String)
-    case setMarked(String, selStart: UInt32, selLen: UInt32)
+    /// Committed text. Replaces `replacing` when given, else the marked text, else the selection.
+    case insertText(String, replacing: ScalarRange? = nil)
+    /// Composition: marked text with a selection inside it (scalar offsets into `s`), replacing
+    /// `replacing`, else the marked text, else the selection. Empty `s` ends the composition.
+    case setMarked(String, selStart: UInt32, selLen: UInt32, replacing: ScalarRange? = nil)
     case unmark
     case copy, cut, selectAll, undo, redo
     case paste(String)
@@ -130,3 +151,4 @@ public enum Event: Equatable, Sendable {
     case scale(percent: UInt32)
     case windowFocus(Bool)
 }
+

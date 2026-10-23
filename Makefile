@@ -5,7 +5,7 @@ LEAN_PREFIX = $(shell cd lean && lean --print-prefix)
 LIB = build/lib/libcairn_lean.a
 VENDOR = host/Sources/CLean/vendor/lean
 
-.PHONY: lean host build check audit kernel lint bench spike selftest test clean record site
+.PHONY: lean host build check audit kernel lint test bench selftest demo fixture clean record site
 
 lean:
 	cd lean && lake build
@@ -38,23 +38,31 @@ lint:
 	@! grep -rnE 'implemented_by|skipKernelTC|native_decide|bv_decide|^\s*axiom ' lean/Cairn lean/Examples \
 	  || (echo "lint: forbidden construct (see AGENTS.md, Lean rules)"; exit 1)
 
-# Swift tests: renderer goldens, pixel probes, text metrics (offscreen; needs a Metal device).
+# Swift tests: renderer goldens, pixel probes, text metrics (offscreen; needs a Metal device),
+# and the host's unit tests (index conversion, text-input shadow, input mapping, NSTextInputClient).
 test: lean
 	cd host && swift test
 
 # Everything a PR must pass.
-check: lint audit kernel selftest test
+check: lint audit kernel test selftest
 
 bench: lean
 	cd lean && lake build bench && .lake/build/bin/bench
-	cd host && swift run -c release CairnSpike --bench
+	cd host && swift run -c release CairnCounter --bench
 	cd host && CAIRN_BENCH=1 swift test -c release -Xswiftc -enable-testing --filter RenderBench
 
+# Drives the Counter app headlessly through the host's real threads and accessibility mirror.
 selftest: host
-	cd host && swift run CairnSpike --selftest
+	cd host && swift run CairnCounter --selftest
 
-spike: host
-	cd host && swift run CairnSpike
+# Opens an app in a window: `make demo`, or `make demo DEMO=CairnFixture`.
+DEMO ?= CairnCounter
+demo: host
+	cd host && swift run $(DEMO)
+
+# The Swift stand-in app with a text field, for checking IME and accessibility by hand.
+fixture: host
+	cd host && swift run CairnFixture
 
 # Window-only screen recorder for demo videos (see docs/media.md).
 record: build/bin/record
