@@ -21,8 +21,8 @@ parameter so the runtime and its theorems don't depend on one implementation. -/
 structure Config where
   metrics : TextMetrics := TextMetrics.mono
   layout : TextMetrics → Size → Node → Laid := Cairn.Layout.layout
-  /-- A panel's height for its content at a width: the content's own (hug) height. -/
-  panelHeight : TextMetrics → Int → Node → Int := fun m _ n => (Cairn.Layout.measure m n).size.h
+  /-- A panel's height for its content at a width: the content's own (hug) height, measured with that width offered (so paragraphs wrap to it). -/
+  panelHeight : TextMetrics → Int → Node → Int := fun m w n => (Cairn.Layout.measure m w n).size.h
 
 /-- What one surface shows now (docs/surfaces.md). The window's content is the state's `ui` and
 `laid`; a panel's is laid out here at its width and its own height; a status item's is its
