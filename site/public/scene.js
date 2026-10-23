@@ -737,7 +737,8 @@ export function mountFrames(root) {
 
   function build(f) {
     const s = innerWidth < 600 ? 2 : 3, m = FRAME.m;
-    f.box.style.margin = `${m * s}px`;
+    // A little extra room on top, so the moss doesn't brush the title above.
+    f.box.style.margin = `${(m + 4) * s}px ${m * s}px ${m * s}px`;
     const bw = Math.round(f.box.offsetWidth / s), bh = Math.round(f.box.offsetHeight / s);
     const key = `${s}:${bw}x${bh}`;
     if (!bw || !bh || key === f.key) return;

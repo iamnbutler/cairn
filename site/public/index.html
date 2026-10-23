@@ -60,7 +60,7 @@
      where the lede begins; in the margins the meadow runs on down the page. The header's height
      is where the text starts, and scene.js reads it. */
   body { overflow-x: clip; }
-  h1, h2, h3, .meta, .note .label, .lede em, .diagram { font-variant-ligatures: none; } /* Pixelify draws "fi" as a broken glyph */
+  h1, h2, h3, .meta, .note .label, .lede em, .diagram, .kinds, .ladder b, .soon { font-variant-ligatures: none; } /* Pixelify draws "fi" as a broken glyph */
   .scene { position: relative; height: 420px; }
   .scene canvas {
     position: absolute; top: 0; left: 50%; transform: translateX(-50%);
@@ -145,6 +145,35 @@
   .diagram svg text.accent { fill: var(--accent); stroke: none; }
   figure.diagram figcaption { font-size: 15.5px; color: var(--muted); margin-top: 12px; text-align: center; }
 
+  /* Claims: an annotated claim, the kinds, and the evidence ladder. */
+  h3.sub { font: 600 18px/1.3 var(--pixel); margin: 36px 0 10px; }
+  .claim { margin: 22px 0 18px; }
+  .claim pre { --s: var(--px); margin: 0; background: var(--panel); padding: 16px 18px; overflow-x: auto;
+    font: 14px/1.7 var(--mono); box-shadow: inset 0 0 0 var(--px) var(--chip); }
+  .claim pre code { background: none; padding: 0; font: inherit; }
+  .claim .kw { color: #c9a8f0; }
+  .claim .id { color: var(--gold); }
+  .claim .str { color: #9fd3b4; }
+  .claim .mk, .callouts li::before {
+    display: inline-grid; place-items: center; width: 18px; height: 18px; margin-left: 10px;
+    font: 600 12px/1 var(--pixel); background: var(--gold); color: var(--ink); vertical-align: 1px;
+  }
+  .callouts { list-style: none; counter-reset: c; margin: 14px 0 0; padding: 0; font-size: 16px; }
+  .callouts li { counter-increment: c; position: relative; padding-left: 30px; margin-bottom: 6px; }
+  .callouts li::before { content: counter(c); position: absolute; left: 0; top: 4px; margin: 0; }
+  table.kinds { width: 100%; border-collapse: collapse; font-size: 16px; margin: 8px 0 4px; }
+  .kinds th { font: 600 13px var(--pixel); color: var(--muted); text-align: left; letter-spacing: 0.04em; padding: 0 12px 6px 0; }
+  .kinds td { padding: 9px 12px 9px 0; border-top: 2px solid var(--rule); vertical-align: top; }
+  .kinds td:first-child { font: 600 15px var(--pixel); color: var(--accent); white-space: nowrap; }
+  .kinds td:last-child { color: var(--muted); }
+  .ladder > li::before { content: ""; width: 18px; height: 18px; left: 6px; top: 5px; }
+  .ladder > li:nth-child(1)::before { background: var(--accent); }
+  .ladder > li:nth-child(2)::before { background: #6f8fc0; }
+  .ladder > li:nth-child(3)::before { background: #5a5a96; }
+  .ladder > li:nth-child(4)::before { background: var(--chip); }
+  .ladder b { font: 600 16px var(--pixel); }
+  .soon { font: 13px var(--pixel); color: var(--gold); margin-left: 6px; }
+
   /* Trails: the milestone and the progress log. */
   .trail { list-style: none; margin: 0; padding: 0; position: relative; }
   .trail::before {
@@ -186,6 +215,10 @@
     .lede { font-size: 19px; }
     .scene { height: 290px; }
     h2 canvas.sprig { width: 92px; height: 28px; }
+    .claim pre { font-size: 12.5px; padding: 14px; }
+    .kinds thead { display: none; }
+    .kinds tr { display: block; border-top: 2px solid var(--rule); padding: 8px 0; }
+    .kinds td { display: block; border: 0; padding: 2px 0; }
   }
 </style>
 </head>
@@ -278,6 +311,72 @@
       that actually runs, not to a model of someone else's, and the little we do have to trust,
       the host, is written down in one place.</p>
   </div></aside>
+
+  <h2>What a claim is</h2>
+  <p>A claim is one statement about the app, in two halves, and both live in the app's source under
+    one id. The human half says what a person does and what follows. The formal half is a Lean
+    statement about the code that runs, and the proof that it holds. Here is the whole of the
+    counter's Reset button:</p>
+
+  <figure class="claim">
+<pre class="px"><code><span class="kw">move</span> <span class="id">^2</span> reset (s : State) <span class="str">"Reset"</span> in <span class="id">^3</span> <span class="kw">where</span><i class="mk">1</i>
+  <span class="kw">does</span> <span class="str">"Press Reset."</span><i class="mk">2</i>
+  <span class="kw">sees</span> <span class="str">"The count is zero, and Reset disappears."</span>
+  <span class="kw">enabled</span> := resetEnabled s<i class="mk">3</i>
+  <span class="kw">on</span> press
+    <span class="kw">apply</span> := { s with count := 0 }<i class="mk">4</i>
+    <span class="kw">post</span> s' := s'.count = 0 ∧ resetEnabled s' = false<i class="mk">5</i>
+    <span class="kw">sound</span> := by intro s _; exact ⟨rfl, rfl⟩<i class="mk">6</i></code></pre>
+    <ol class="callouts">
+      <li>The id, <code>^2</code>, then a Lean name, a title and the place the control appears in:
+        <code>^3</code>, the counter's window.</li>
+      <li>The human half: what the person does and what they see. Reviewers read it, and the map is
+        built from it.</li>
+      <li>When the move is available. Lean proves Reset's button is on screen exactly when this holds.</li>
+      <li>What pressing it does. The app's update is assembled from its moves and nothing else.</li>
+      <li>The claim, formally: afterwards the count is zero and Reset is gone.</li>
+      <li>The evidence. Without a proof that the handler meets the claim, the app doesn't compile.</li>
+    </ol>
+  </figure>
+
+  <p>Because the update is built only from moves, two things hold for every app, proved once in
+    the framework: an action that no claim owns changes nothing and asks nothing of the host
+    (<code>update_unclaimed</code>), and every effect the app does ask for comes from a move
+    (<code>update_effect</code>).</p>
+
+  <h3 class="sub">Ids are the contract</h3>
+  <p><code>^2</code> means Reset for as long as the counter exists. Ids are never renumbered or
+    reused: a claim that goes away is retired with a reason, and its id stays issued.
+    <code>claims.lock</code> records every id ever issued with a hash of its formal statement. The
+    build fails when an id vanishes without being retired, comes back after it, or changes kind,
+    and it warns when a statement's meaning changes, because a new meaning needs a new id. A control
+    that repeats once per item carries a key: <code>^5#12</code> is <code>^5</code> for item 12.</p>
+
+  <h3 class="sub">Six kinds</h3>
+  <table class="kinds">
+    <thead><tr><th>Kind</th><th>What it says</th><th>In the counter</th></tr></thead>
+    <tbody>
+      <tr><td>move</td><td>Something a person can do, what follows, and the proof.</td><td>^1 Increment, ^2 Reset</td></tr>
+      <tr><td>flow</td><td>A goal and a path of moves that reaches it. Lean checks every step is really answered.</td><td>^4 Count to three, ^5 Start over</td></tr>
+      <tr><td>invariant</td><td>A property every move keeps, so it holds in every state the app can reach.</td><td>^6 No press left in progress</td></tr>
+      <tr><td>assume</td><td>Something the proofs rely on but can't prove. Recorded, and visible in every theorem that uses it.</td><td>^7 The host reports clicks where they happen</td></tr>
+      <tr><td>place</td><td>A region of the view where moves appear.</td><td>^3 Counter window</td></tr>
+      <tr><td>retire</td><td>A tombstone: the claim is gone, the id stays issued.</td><td>None yet</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="sub">How sure we are</h3>
+  <p>Every claim carries its evidence, and the map shows which kind. Strongest first:</p>
+  <ul class="trail ladder">
+    <li><b>Proved.</b> Lean's kernel checked the proof, using only the three standard axioms;
+      <code>make check</code> audits every theorem.</li>
+    <li><b>Conformance-checked.</b><span class="soon">coming</span> The real app, driven through
+      generated sequences of moves, agrees with the model after every step.</li>
+    <li><b>Assumed.</b> Recorded, never proved. Theorems that rely on it take it as a hypothesis,
+      so every use shows.</li>
+    <li><b>Seen.</b> A screenshot of the real app with the claim's control pinned on it.</li>
+  </ul>
+<!--MAPLINK-->
 
   <h2>First milestone: a proved TodoMVC</h2>
   <ol class="trail">
