@@ -1,5 +1,8 @@
-import Cairn.Claims
-import Cairn.Spike.Frame
+module
+
+public import Cairn.Claims.Core
+meta import Cairn.Claims.Elab
+public import Cairn.Spike.Frame
 
 /-! The boundary spike's app: a counter with two moves, declared with the claim commands.
 
@@ -9,6 +12,8 @@ import Cairn.Spike.Frame
 `update` is derived from the moves (`machine.update`), so a click on anything that is not a
 control of ^1 or ^2 changes nothing. The spike's own event handling (`handle`) hit-tests and
 turns a click into `press ^N`. -/
+
+@[expose] public section
 
 namespace Examples.Counter
 open Cairn.Claims Cairn.Spike
@@ -74,11 +79,11 @@ def claimInfos : List Cairn.ClaimInfo := claims%
 /-- What a press on control `^n` does: whatever the move that owns ^n does, if any. -/
 def apply (s : State) (n : Nat) : State := (machine.update s (.press { claim := n })).1
 
-#guard (apply {} 1).count == 1
-#guard (apply { count := 5 } 2).count == 0
-#guard apply {} 2 == {}
-#guard apply { count := 2 } 9 == { count := 2 }
-#guard claimInfos.map (·.id) == [1, 2, 3, 4, 5, 6, 7]
+example : (apply {} 1).count = 1 := by decide
+example : (apply { count := 5 } 2).count = 0 := by decide
+example : apply {} 2 = {} := by decide
+example : apply { count := 2 } 9 = { count := 2 } := by decide
+example : claimInfos.map (·.id) = [1, 2, 3, 4, 5, 6, 7] := by decide
 
 /-- The spike's control ids are exactly the counter's moves. -/
 theorem apply_unclaimed (s : State) (n : Nat) (h : n ≠ 1 ∧ n ≠ 2) : apply s n = s := by

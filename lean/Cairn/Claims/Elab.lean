@@ -1,6 +1,8 @@
-import Lean
-import Cairn.Claims.Core
-import Cairn.Claims.Registry
+module
+
+public meta import Lean
+public meta import Cairn.Claims.Core
+public meta import Cairn.Claims.Registry
 
 /-! The claim commands: `move`, `flow`, `invariant`, `assume`, `place` and `retire`, and the
 `moves%` and `claims%` terms. See `docs/claims.md` for the syntax and what each check
@@ -18,6 +20,8 @@ theorems for the evidence, a `ClaimInfo` and a value of the claim's structure) a
 - a flow's witness names moves that exist, and its `live` and `reaches` proofs check;
 - a retired id says why;
 - no move is declared after `moves%` collected its namespace, and no claim after `claims%`. -/
+
+public meta section
 
 namespace Cairn.Claims
 open Lean Elab Command Term Meta
@@ -226,15 +230,19 @@ def mkDef (name : Name) (bs : Array (Syntax × Term)) (type body : Term) (doc : 
     (reducible := false) : CommandElabM Unit := do
   let binders ← bs.mapM fun (x, t) => binder x t
   let id := mkIdent name
-  if reducible then
-    elabCommand (← `(@[reducible] def $id:ident $binders* : $type := $body))
-  else
-    elabCommand (← `(def $id:ident $binders* : $type := $body))
+  -- In a `module`, generated declarations are public with their bodies exposed, so the
+  -- importing modules' proofs (and `decide`) can unfold them.
+  let inModule := (← getEnv).header.isModule
+  match reducible, inModule with
+  | true, true => elabCommand (← `(@[reducible, expose] public def $id:ident $binders* : $type := $body))
+  | true, false => elabCommand (← `(@[reducible] public def $id:ident $binders* : $type := $body))
+  | false, true => elabCommand (← `(@[expose] public def $id:ident $binders* : $type := $body))
+  | false, false => elabCommand (← `(public def $id:ident $binders* : $type := $body))
   unless doc.isEmpty do addDocStringCore ((← getCurrNamespace) ++ name) doc
 
 def mkThm (name : Name) (type : Term) (proof : Term) (doc : String := "") :
     CommandElabM Unit := do
-  elabCommand (← `(theorem $(mkIdent name):ident : $type := $proof))
+  elabCommand (← `(public theorem $(mkIdent name):ident : $type := $proof))
   unless doc.isEmpty do addDocStringCore ((← getCurrNamespace) ++ name) doc
 
 def foralls (bs : Array (Ident × Term)) (body : Term) : CommandElabM Term :=
@@ -258,8 +266,11 @@ def mkInfo (name : Name) (id : ClaimId) (kind : Name) (title does sees : String)
   -- A declaration named after the id: two modules that issue the same id cannot both be
   -- imported, even when neither imports the other.
   let issued := mkIdent (`_root_ ++ `Cairn.Claims.Issued ++ Name.mkSimple s!"^{id}")
-  elabCommand (← `(@[reducible] def $issued:ident : Cairn.ClaimInfo :=
-    $(cid ((← getCurrNamespace) ++ name))))
+  let target := cid ((← getCurrNamespace) ++ name)
+  if (← getEnv).header.isModule then
+    elabCommand (← `(@[reducible, expose] public def $issued:ident : Cairn.ClaimInfo := $target))
+  else
+    elabCommand (← `(@[reducible] public def $issued:ident : Cairn.ClaimInfo := $target))
 
 def docOf (doc? : Option Syntax) (fallback : String) : CommandElabM String :=
   match doc? with

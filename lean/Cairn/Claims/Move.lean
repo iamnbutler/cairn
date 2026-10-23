@@ -1,5 +1,7 @@
-import Cairn.Input
-import Cairn.Claim
+module
+
+public import Cairn.Input
+public import Cairn.Claim
 
 /-! Moves and the update they induce.
 
@@ -14,6 +16,9 @@ except through a move. The theorems at the end say so formally.
 
 This module is pure and imports nothing from `Lean`: it is linked into the host. The commands
 that build moves live in `Cairn.Claims` (compile time only). -/
+
+@[expose] public section
+
 
 namespace Cairn
 

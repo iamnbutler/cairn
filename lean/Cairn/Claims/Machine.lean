@@ -1,11 +1,16 @@
-import Cairn.Claims.Move
-import Cairn.App
+module
+
+public import Cairn.Claims.Move
+public import Cairn.App
 
 /-! A machine is an initial state and the moves that act on it. Its `update` is derived from the
 moves by `dispatch`, so it inherits every guarantee in `Cairn.Claims.Move`. Flows and invariants
 are stated against a machine.
 
 Pure, and linked into the host, like `Cairn.Claims.Move`. -/
+
+@[expose] public section
+
 
 namespace Cairn.Claims
 
@@ -118,11 +123,12 @@ private def tick : Move Nat where
 
 private def m : Machine Nat := { init := 0, moves := [tick] }
 
-#guard (m.update 4 (.press { claim := 1 })).1 == 5
-#guard (m.update 4 (.press { claim := 2 })).1 == 4
-#guard (m.update 4 (.doublePress { claim := 1 })).1 == 4
-#guard m.run 0 [.press { claim := 1 }, .press { claim := 1 }] == 2
-#guard m.live 0 [.press { claim := 1 }] && !m.live 0 [.press { claim := 2 }]
+example : (m.update 4 (.press { claim := 1 })).1 = 5 := by decide
+example : (m.update 4 (.press { claim := 2 })).1 = 4 := by decide
+example : (m.update 4 (.doublePress { claim := 1 })).1 = 4 := by decide
+example : m.run 0 [.press { claim := 1 }, .press { claim := 1 }] = 2 := by decide
+example : (m.live 0 [.press { claim := 1 }] && !m.live 0 [.press { claim := 2 }]) = true := by
+  decide
 
 example : (m.update 4 (.submit { claim := 9 })) = (4, []) :=
   m.update_unclaimed (by simp [m, tick, Move.id, Action.claim, Action.control])

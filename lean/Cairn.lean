@@ -15,7 +15,7 @@ import Cairn.Frame.Dump
 import Cairn.Frame.Boundary
 import Cairn.App
 -- The runtime half of the claim language only: `Cairn.Claims` imports `Lean` and must stay out
--- of the host's library (see Cairn/Claims/host_init.c).
+-- of the host's library (see "Linking" in docs/claims.md).
 import Cairn.Claims.Core
 import Cairn.Runtime
 import Cairn.Claims.Deliver

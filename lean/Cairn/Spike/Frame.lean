@@ -1,7 +1,12 @@
-import Cairn.Spike.Bytes
+module
+
+public import Cairn.Spike.Bytes
 
 /-! The spike's UI core: leaf boxes in a column, a frame of quads and accessibility nodes,
 hit testing and encoding. The real UI core replaces this. -/
+
+@[expose] public section
+
 
 namespace Cairn.Spike
 

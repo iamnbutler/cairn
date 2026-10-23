@@ -1,5 +1,7 @@
-import Lean
-import Cairn.Claim
+module
+
+public meta import Lean
+public meta import Cairn.Claim
 
 /-! The claim registry: an environment extension holding one entry per claim declared by the
 claim commands, in this module and every module it imports. The commands consult it for the
@@ -7,6 +9,8 @@ compile-time checks; `lake exe ledger` and `lake exe claims` read it from the im
 environment.
 
 Compile time only (imports `Lean`); see `Cairn.Claims` for why that matters. -/
+
+public meta section
 
 namespace Cairn.Claims
 open Lean

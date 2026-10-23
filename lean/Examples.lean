@@ -1,1 +1,3 @@
-import Examples.Counter
+module
+
+public import Examples.Counter

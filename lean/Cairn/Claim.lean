@@ -1,7 +1,12 @@
+module
+
 /-! Claims: statements about the product with durable ids.
 
 The vocabulary is fixed here; the `move`, `flow`, `invariant`, `assume` and `place` commands
 that create claims, and the ledger that guards their ids, live in `Cairn.Claims`. -/
+
+@[expose] public section
+
 
 namespace Cairn
 

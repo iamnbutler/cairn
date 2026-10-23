@@ -1,8 +1,13 @@
-import Cairn.Geometry
-import Cairn.Claim
+module
+
+public import Cairn.Geometry
+public import Cairn.Claim
 
 /-! What the host sends Lean (`Event`), what the runtime gives an app (`Action`), and what an
 app asks the host to do (`Effect`). -/
+
+@[expose] public section
+
 
 namespace Cairn
 

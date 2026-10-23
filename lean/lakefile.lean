@@ -11,22 +11,22 @@ target text_host.o pkg : System.FilePath := do
   let weakArgs := #["-I", (← getLeanIncludeDir).toString]
   buildO (pkg.buildDir / "c" / "text_host.o") src weakArgs #["-O2", "-fPIC"] "cc"
 
-/-- A weak stand-in for `Cairn.Claims`' initializer, so the host links apps that use the claim
-commands without libLean (see lean/Cairn/Claims/host_init.c). -/
-target claims_host_init.o pkg : System.FilePath := do
-  let src ← inputTextFile <| pkg.dir / "Cairn" / "Claims" / "host_init.c"
-  let args := #["-I", (← getLeanIncludeDir).toString]
-  buildO (pkg.buildDir / "c" / "claims_host_init.o") src args #["-O2", "-fPIC"] "cc"
-
 @[default_target]
 lean_lib Cairn where
   defaultFacets := #[LeanLib.staticFacet]
   moreLinkObjs := #[text_host.o]
 
+/-- A weak stand-in for the claim commands' full initializer, so the host links apps that
+`meta import` them without libLean (see lean/c/claims_meta.c). -/
+target claims_meta.o pkg : System.FilePath := do
+  let src ← inputTextFile <| pkg.dir / "c" / "claims_meta.c"
+  let args := #["-I", (← getLeanIncludeDir).toString]
+  buildO (pkg.buildDir / "c" / "claims_meta.o") src args #["-O2", "-fPIC"] "cc"
+
 @[default_target]
 lean_lib Examples where
   defaultFacets := #[LeanLib.staticFacet]
-  moreLinkObjs := #[claims_host_init.o]
+  moreLinkObjs := #[claims_meta.o]
 
 /-- Tests for the claim commands. Not imported by `Cairn` or `Examples`, so their ids stay out of
 the ledger. -/

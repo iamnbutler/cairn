@@ -2,8 +2,8 @@
 
 Every thing a person can do in a Cairn app is a **move**: a claim with a durable id (`^N`) and
 a proof that what happens meets what the claim says. Flows, invariants, assumptions and places
-are claims too. Claims are a language feature: `import Cairn.Claims` and declare them with the
-commands below. An app's `update` is built from its moves and nothing else, so "every behaviour
+are claims too. Claims are a language feature: an app module imports the runtime vocabulary and
+`meta import`s the commands (see "Linking"), then declares claims with the commands below. An app's `update` is built from its moves and nothing else, so "every behaviour
 is a claim" holds by construction, and theorems say so.
 
 Code: `lean/Cairn/Claims/`. Example: `lean/Examples/Counter.lean`. Tests, including one failing
@@ -227,25 +227,50 @@ stated against. Evidence roles: `sound <trigger>` (moves), `live` and `reaches` 
 `init`, `step` and `reachable` (invariants). `proved` is true when the theorem depends on no
 axioms beyond `propext`, `Classical.choice` and `Quot.sound`.
 
-## Linking: why apps can import a module that imports `Lean`
+## Linking: the commands stay out of the host
 
-The commands are elaborators, so `Cairn.Claims` imports `Lean`. Linking `Lean` into the host
-would make it about 100 MB (research/lean/05). Everything the commands generate refers only to
-`Cairn.Claims.Core` (pure, core-only, and in the `Cairn` library) and the app's own module, so
-nothing from `Lean` is needed at run time. The one thing that would pull it in is the compiled
-initializer of `Cairn.Claims`, which every importing module's initializer calls. The `Examples`
-library links `lean/Cairn/Claims/host_init.c` (`moreLinkObjs`), a **weak**
-`initialize_cairn_Cairn_Claims` that initializes `Cairn.Claims.Core` and nothing else. Lake
-executables that link the real module (`ledger`, `claims`, `bench`) get its strong definition
-instead.
+The commands are elaborators, so `Cairn.Claims.Elab` (and `Registry`) import `Lean`. Linking
+`Lean` into the host would make it about 100 MB (research/lean/05), and with the host's link
+recipe (`libInit` and `libleanrt`, no `libLean`) it doesn't link at all. A plain `import` of the
+commands also leaks in subtler ways: the importing module's initializer calls `lean_initialize`,
+and the compiler reuses specializations compiled inside `Lean` (Counter's `Option` `==` became
+a call into `Lean.Meta.Sym.Simp`).
 
-This holds while `Cairn.Claims` itself adds no run-time code beyond `Core` (keep runtime
-definitions in `Core` or modules it imports), `Cairn.lean` never imports `Cairn.Claims`, and
-libraries whose modules use the commands carry the stub (today only `Examples`; a new app
-library needs `moreLinkObjs := #[claims_host_init.o]`). The module system (`module` files and
-`meta import Cairn.Claims`, research/lean/05) is the principled fix and would make the stub
-unnecessary, but it requires every module an app imports to be a `module`, which is a
-repository-wide change for its own PR.
+So apps use the module system. An app file is a `module` that imports the runtime vocabulary
+and only `meta`-imports the commands:
+
+```lean
+module
+
+public import Cairn.Claims.Core     -- Move, Machine, Flow, …: pure, core-only
+meta import Cairn.Claims.Elab       -- the commands, at compile time only
+public import Cairn.Spike.Frame
+
+@[expose] public section            -- importers' proofs can unfold the app's definitions
+```
+
+With that, the app's compiled code and its `runtime_initialize_*` never touch `Lean` or the
+commands; the host calls `runtime_initialize_cairn_Examples` (host/Sources/CLean). The
+generated declarations are `public` and, in a module, `@[expose]`, so other modules' proofs
+can unfold them. `Cairn.Claims` is an umbrella (`Core` plus `meta import Elab`) for non-module
+files such as the tests.
+
+One wrinkle remains. Each app object file also contains its full `initialize_*` and
+`meta_initialize_*`, which call the commands' initializers, and the linker resolves every
+symbol in an object it links. `lean/c/claims_meta.c` (in the `Examples` library's
+`moreLinkObjs`) defines those two initializers **weakly**; they return an error if called, and
+the host never calls them. Lake executables that link the real module (`ledger`, `claims`,
+`bench`) get its strong definitions. A new app library needs the same `moreLinkObjs`.
+
+Consequences of the module system for the modules an app imports: every one of them is a
+`module` (a module can only import modules), so `Cairn.Claim`, `Input`, `Geometry`,
+`Text.Metrics`, `UI.Node`, `App`, `Spike.Bytes`, `Spike.Frame` and `Claims.Move`/`Machine`/`Core`
+are modules with `@[expose] public section`. Non-module files (`Cairn.Runtime`, `Cairn.Layout`,
+…) import them unchanged and see everything. `#guard` does not work in a module without
+`meta`-importing what it evaluates, so checks there are `example … := by decide`.
+
+Measured (`make check`, Debug): `libcairn_Examples.a` 48 KB, `libcairn_lean.a` 18.5 MB (of
+which `libInit` is 15 MB); the `CairnCounter` binary contains no symbols from `libLean`.
 
 ## What is not enforced, and why
 

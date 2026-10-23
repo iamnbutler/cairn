@@ -1,10 +1,15 @@
-import Cairn.UI.Node
-import Cairn.Input
-import Cairn.Claim
+module
+
+public import Cairn.UI.Node
+public import Cairn.Input
+public import Cairn.Claim
 
 /-! An app is its state, its view, and its moves. The runtime (`Cairn.Runtime`) owns
 interaction state (hover, press, focus, window size), turns events into actions by hit testing
 the laid-out frame, and calls `update`. -/
+
+@[expose] public section
+
 
 namespace Cairn
 
