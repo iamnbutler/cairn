@@ -58,7 +58,7 @@ final class Recorder: NSObject, SCStreamDelegate, SCRecordingOutputDelegate {
         config.width = Int(window.frame.width * scale)
         config.height = Int(window.frame.height * scale)
         config.minimumFrameInterval = CMTime(value: 1, timescale: 60)
-        config.showsCursor = true
+        config.showsCursor = false  // the real pointer sits wherever the person left it; it is never part of the demo
         config.capturesAudio = false
 
         let recording = SCRecordingOutputConfiguration()
