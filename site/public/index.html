@@ -103,6 +103,8 @@
   .frame { position: relative; margin: 0; }
   .frame .box { background: var(--ink); padding: var(--px); filter: drop-shadow(var(--px) var(--px) 0 var(--shadow)) drop-shadow(var(--px) var(--px) 0 var(--shadow)); }
   .frame video { display: block; width: 100%; height: auto; background: var(--panel); }
+  .frame canvas.stones { position: absolute; pointer-events: none; image-rendering: pixelated; }
+  .frame figcaption { margin-top: 48px !important; }
   .frame figcaption { font-size: 15.5px; color: var(--muted); margin-top: 16px; }
 
   /* A note card: a panel with stepped corners and a gold label, for asides the reader
@@ -333,7 +335,8 @@
 
 </script>
 <script type="module">
-  import { mountScene } from "/scene.js";
+  import { mountScene, mountFrames } from "/scene.js";
+  mountFrames(document.querySelector("main"));
   mountScene(document.getElementById("scene"), { feature: document.getElementById("feature") });
 </script>
 </body>

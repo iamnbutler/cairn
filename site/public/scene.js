@@ -347,49 +347,121 @@ function drawBoulders(L, g) {
   }
 }
 
-// The cairn: flat stones with uneven outlines, lit from the moon side, selectively outlined
-// (dark only away from the light), with contact shadows where stones rest on each other.
-function drawCairn(L, g) {
-  const kx = g.cairnX, ground = Math.round(g.meadowAt(kx)) + 6;
-  const specs = [[46, 14, 0, 0.04], [37, 12, 2, -0.05], [30, 11, -1, 0.06], [23, 10, 1, -0.04], [16, 8, 0, 0.05], [10, 6, 1, 0]];
-  const pal = [0, 3, 2, 1, 3, 0];
-  for (let y = -2; y <= 2; y++) for (let x = -38; x <= 20; x++) {
-    if ((x + 9) ** 2 / 29 ** 2 + y * y / 5 <= 1 && streak(kx + x, ground + y, 0.85)) L.set(kx + x, ground + y, T.meadow[7]);
-  }
-  let bottom = ground, prev = null;
-  specs.forEach(([w, h, off, tilt], k) => {
-    const ramp = T.stones[pal[k]], a = w / 2, b = h / 2, sx = kx + off, sy = bottom - b;
-    const inside = (x, y) => {
-      const dx = x + 0.5 - sx, dy = y + 0.5 - sy - dx * tilt;
-      const ang = Math.atan2(dy / b, dx / a), wob = 1 + (noise(ang * 2.2 + 3, k * 13 + 1) - 0.5) * 0.16;
-      return Math.abs(dx / (a * wob)) ** 2.6 + Math.abs(dy / (b * wob)) ** 2 <= 1;
-    };
-    for (let y = Math.floor(sy - b) - 2; y <= sy + b + 2; y++) for (let x = Math.floor(sx - a) - 2; x <= sx + a + 2; x++) {
-      if (!inside(x, y)) continue;
-      const nx = clamp((x + 0.5 - sx) / a, -1, 1), ny = clamp((y + 0.5 - sy - (x - sx) * tilt) / b, -1, 1);
-      const nz = Math.sqrt(Math.max(0, 1 - nx * nx * 0.8 - ny * ny * 0.8));
-      const lum = nx * LIGHT.x + ny * LIGHT.y * 1.25 + nz * LIGHT.z;
-      let i = Math.round(clamp((lum + 0.15) / 1.2) * 3) + 1;
-      if (h2(x * 5 + k, y * 3) < 0.08) i -= 1;
-      else if (h2(x * 7 + k, y * 11) < 0.04) i += 1;
-      const edge = !inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1);
-      if (edge) i = lum > 0.35 ? Math.min(i, 3) : 0;
-      if (prev && y < sy && y >= prev.sy + prev.b - 2 && Math.abs(x + 0.5 - prev.sx) < prev.a * 0.95) i = Math.min(i, 1);
-      L.set(x, y, ramp[clamp(i, 0, 4)]);
-      if (edge && nx > 0.45 && ny < 0.3) L.set(x, y, T.rim);
+// --- Stones ---------------------------------------------------------------------------------
+
+// Six-step ramps: outline, dark, mid, light, top face, highlight.
+const RAMPS = {
+  slate: ["#151838", "#262a58", "#3b4079", "#575e9c", "#8088c4", "#b4b9e8"],
+  violet: ["#1d1736", "#30264f", "#4a3b74", "#665596", "#8c7cbd", "#bfb2e6"],
+  teal: ["#0f2430", "#1a3a46", "#2a5660", "#3f7a7c", "#64a39e", "#9fd2c4"],
+  rose: ["#2a1832", "#432a4c", "#634069", "#87598a", "#b07fae", "#dcb2d4"],
+};
+const MOSS = ["#2c5f58", "#3f7a68", "#5a9a80", "#82b896"];
+
+function blend(L, x, y, c, a) {
+  if (x < 0 || y < 0 || x >= L.w || y >= L.h) return;
+  const o = L.get(x, y), v = typeof c === "string" ? rgb(c) : c;
+  L.set(x, y, [o[0] + (v[0] - o[0]) * a, o[1] + (v[1] - o[1]) * a, o[2] + (v[2] - o[2]) * a]);
+}
+
+// One stone. Shading is in flat planes rather than a smooth gradient: a lit top face, a front in
+// two or three tones split by which way it faces, a dark underside and a selective outline.
+function stone(L, own, ramps, o) {
+  const { x: x0, by, w, h, tilt = 0, ramp, shape = "slab", seed = 1, speck = 0.04, moss = 0, rim = 1, p = 2.6 } = o;
+  const id = ramps.push(ramp) - 1;
+  const a = w / 2, b = h / 2, sy = by - b;
+  const inside = (x, y) => {
+    const dx = x + 0.5 - x0, dy = y + 0.5 - sy - dx * tilt;
+    const ang = Math.atan2(dy / b, dx / a), wob = 1 + (noise(ang * 2.2 + 3, seed) - 0.5) * 0.14;
+    return Math.abs(dx / (a * wob)) ** p + Math.abs(dy / (b * wob)) ** 2 <= 1;
+  };
+  const px = [];
+  for (let y = Math.floor(sy - b) - 2; y <= sy + b + 2; y++) for (let x = Math.floor(x0 - a) - 2; x <= x0 + a + 2; x++) {
+    if (!inside(x, y)) continue;
+    const nx = clamp((x + 0.5 - x0) / a, -1, 1), ny = clamp((y + 0.5 - sy - (x - x0) * tilt) / b, -1, 1);
+    const edge = !inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1);
+    let i, top = false;
+    if (shape === "slab") {
+      top = ny < -0.3 + 0.1 * Math.sin(nx * 3 + seed);
+      i = top ? (nx > -0.35 ? 4 : 3) : nx > 0.35 ? 3 : nx > -0.45 ? 2 : 1;
+      if (!top && ny > 0.55) i = Math.max(1, i - 1);
+    } else if (shape === "round") {
+      const lum = nx * 0.55 - ny * 0.7 + 0.2 + (h2(x, y * 3) - 0.5) * 0.12;
+      i = lum > 0.75 ? 4 : lum > 0.3 ? 3 : lum > -0.2 ? 2 : 1;
+      top = ny < -0.4;
+    } else { // facets: the outline split into wedges, each lit by which way it faces
+      const n = 7, ang = Math.atan2(ny, nx * 0.85) + Math.PI + (seed % 7) * 0.3;
+      const fc = (Math.floor(ang / (2 * Math.PI / n)) + 0.5) * (2 * Math.PI / n) - Math.PI - (seed % 7) * 0.3;
+      const d = Math.cos(fc) * 0.62 - Math.sin(fc) * 0.78;
+      i = nx * nx + ny * ny < 0.22 ? 3 : d > 0.5 ? 4 : d > 0.05 ? 3 : d > -0.45 ? 2 : 1;
+      top = ny < -0.35;
     }
-    prev = { sx, sy, a, b };
-    bottom = Math.round(sy - b + 2);
+    if (!edge && speck) {
+      if (h2(x * 5 + seed, y * 3) < speck) i = Math.max(1, i - 1);
+      else if (h2(x * 7 + seed, y * 11) < speck * 0.4) i = Math.min(5, i + 1);
+    }
+    let c = ramp[i];
+    if (moss && top && noise(x / 2.5, seed * 3 + y) + h2(x, y) * 0.35 > 0.62) c = MOSS[clamp(Math.round(1 + nx * 1.5 + (ny < -0.6 ? 1 : 0)), 0, 3)];
+    if (edge) c = nx > 0.15 && ny < 0.2 && rim ? (rim > 1 || i >= 3 ? ramp[5] : ramp[3]) : ramp[0];
+    L.set(x, y, c);
+    px.push(x, y);
+  }
+  // Contact shadow: where this stone rests on one below, darken the lower stone's top under it.
+  for (let k = 0; k < px.length; k += 2) {
+    const x = px[k], y = px[k + 1];
+    if (inside(x, y + 1)) continue;
+    for (let d = 1; d <= 2; d++) {
+      const j = (y + d) * L.w + x, other = own[j];
+      if (other >= 0 && other !== id) L.set(x, y + d, ramps[other][d === 1 ? 0 : 1]);
+    }
+  }
+  for (let k = 0; k < px.length; k += 2) own[px[k + 1] * L.w + px[k]] = id;
+  return Math.round(sy - b);
+}
+
+function stack(L, own, ramps, x, ground, specs, opt = {}) {
+  let bottom = ground, top = ground;
+  specs.forEach(([w, h, off, tilt, ramp, shape], k) => {
+    top = stone(L, own, ramps, { ...opt, x: x + off, by: bottom, w, h, tilt, ramp: RAMPS[ramp] || ramp, shape: shape || opt.shape, seed: k * 13 + (opt.seed || 1) });
+    bottom = top + 2;
   });
-  for (let x = kx - 26; x <= kx + 27; x++) {
-    if (h2(x, 77) < 0.5) continue;
-    const len = 1 + Math.floor(h2(x, 78) * 3);
-    for (let j = 0; j < len; j++) L.set(x, ground + 1 - j, j === len - 1 ? T.meadow[1] : T.meadow[4]);
+  return top;
+}
+
+function groundShadow(L, x, y, w, len = 0) {
+  for (let dy = -2; dy <= 3; dy++) for (let dx = -w * 0.7 - len; dx <= w * 0.5; dx++) {
+    const t = ((dx + len * 0.5 + w * 0.1) / (w * 0.6 + len * 0.5)) ** 2 + (dy / 3) ** 2;
+    if (t <= 1 && streak(x + dx, y + dy, 0.9 - t * 0.4)) blend(L, Math.round(x + dx), y + dy, "#0b1a26", 0.55);
   }
-  for (const [dx, w] of [[-31, 3], [-25, 2], [29, 2]]) {
-    L.set(kx + dx, ground, T.stones[0][2]); if (w > 2) L.set(kx + dx + 1, ground, T.stones[0][3]);
-    if (w > 1) L.set(kx + dx + (w > 2 ? 2 : 1), ground, T.stones[0][1]);
+}
+
+function tufts(L, x, y, w, seed) {
+  for (let k = 0; k < w; k++) {
+    if (h2(k, seed) < 0.45) continue;
+    const len = 1 + Math.floor(h2(k, seed + 1) * 4);
+    for (let j = 0; j < len; j++) L.set(x - (w >> 1) + k, y + 1 - j, j === len - 1 ? T.tips[h2(k, seed + 2) < 0.5 ? 0 : 1] : T.meadow[3]);
   }
+}
+
+// The cairn: slabs in the slate ramps with moss on their tops, ferns and flowers at its foot,
+// lit from the moon like everything else, with its shadow falling to the left.
+function drawCairn(L, g) {
+  const own = new Int16Array(L.w * L.h).fill(-1), ramps = [];
+  const kx = g.cairnX, ground = Math.round(g.meadowAt(kx)) + 6;
+  groundShadow(L, kx - 6, ground, 48);
+  stack(L, own, ramps, kx, ground, [[46, 12, 0, 0.03, "slate"], [38, 11, 2, -0.04, "teal"], [31, 10, -2, 0.05, "slate"], [24, 9, 1, -0.03, "violet"], [17, 7, 0, 0.04, "slate"], [11, 6, 1, 0, "teal"]], { shape: "slab", moss: 1 });
+  for (const [fx, dir, len] of [[-24, -1, 9], [-19, -1, 7], [22, 1, 8], [26, 1, 6], [-27, 1, 5]]) {
+    for (let s = 0; s < len; s++) {
+      const x = kx + fx + dir * Math.round(s * 0.6), y = ground - s;
+      L.set(x, y, MOSS[s < 2 ? 0 : 1]);
+      if (s > 1 && s % 2 === 0) { L.set(x + 1, y, MOSS[2]); L.set(x - 1, y + 1, MOSS[1]); } // lit from the right, like everything
+    }
+  }
+  for (const [fx, fy, c] of [[-30, 1, 0], [-21, 2, 4], [18, 1, 0], [29, 2, 4], [-12, 3, 1]]) {
+    const pal = T.flowers[c];
+    L.set(kx + fx, ground + fy, pal[0]); L.set(kx + fx + 1, ground + fy, pal[1]); L.set(kx + fx, ground + fy - 1, pal[0]);
+  }
+  tufts(L, kx, ground, 54, 9);
 }
 
 // --- Where the scene gives way to the page ---------------------------------------------------
@@ -560,4 +632,137 @@ export function mountScene(canvas, layout = {}) {
   document.addEventListener("visibilitychange", restart);
   new IntersectionObserver(([e]) => { visible = e.isIntersecting; restart(); }).observe(canvas);
   build(true);
+}
+
+// --- Frames for the videos -------------------------------------------------------------------
+
+// Each video sits in a frame of stacked stones: flat slabs along the edges, bigger stones at the
+// corners, moss on the top, a vine hanging down one side, grass and flowers at the foot, and a
+// few fireflies that wander around it. The stones are drawn once; only the fireflies move.
+function drawFrame(L, m, seed) {
+  const { w: W, h: H } = L, own = new Int16Array(W * H).fill(-1), ramps = [];
+  const pickRamp = k => RAMPS[["slate", "slate", "slate", "slate", "violet", "violet", "teal"][Math.floor(hash(seed * 31 + k) * 7)]];
+  const put = (k, o) => stone(L, own, ramps, { shape: "slab", speck: 0.03, seed: seed * 101 + k, ramp: pickRamp(k), ...o });
+  let k = 0;
+  // The sides, top to bottom, then the top edge, then the corners; the bottom edge last, in front.
+  for (const side of [-1, 1]) {
+    const x = side < 0 ? m - 2 : W - m + 1;
+    for (let y = m + 4; y < H - m - 4;) {
+      const h = 11 + Math.floor(hash(seed * 7 + k) * 9);
+      put(k++, { x: x + Math.round((hash(seed * 9 + k) - 0.5) * 3), by: y + h, w: 10 + Math.floor(hash(seed * 5 + k) * 4), h, tilt: (hash(k) - 0.5) * 0.1, shape: hash(k * 7) < 0.4 ? "round" : "slab", p: 2.3 });
+      y += h - 1;
+    }
+  }
+  const row = (y, moss) => {
+    for (let x = m + 2; x < W - m - 2;) {
+      const w = 14 + Math.floor(hash(seed * 11 + k) * 12), h = 9 + Math.floor(hash(seed * 13 + k) * 4);
+      put(k++, { x: x + w / 2, by: y + h / 2 + Math.round((hash(seed * 17 + k) - 0.5) * 2), w, h, tilt: (hash(k * 3) - 0.5) * 0.12, moss: moss && hash(k * 5) < 0.85 });
+      x += w - 2;
+    }
+  };
+  row(m - 2, true);
+  for (const [cx, cy] of [[m - 2, m - 1], [W - m + 1, m - 1]]) put(k++, { x: cx, by: cy + 9, w: 21, h: 17, shape: "round", p: 2.2, moss: 1 });
+  row(H - m + 2, false);
+  for (const [cx, cy] of [[m - 2, H - m + 2], [W - m + 1, H - m + 2]]) put(k++, { x: cx, by: cy + 9, w: 22, h: 17, shape: "round", p: 2.2 });
+  // A vine hanging from the top left corner, and one from the top right on taller frames.
+  const vine = (x0, len, dir, s) => {
+    for (let i = 0; i < len; i++) {
+      const x = Math.round(x0 + Math.sin(i / 4 + s) * 1.5), y = m + 6 + i;
+      L.set(x, y, MOSS[0]);
+      if (i % 3 === 1) { L.set(x + dir, y, MOSS[2]); L.set(x + dir * 2, y - 1, MOSS[3]); }
+      if (i % 3 === 2) L.set(x - dir, y, MOSS[1]);
+    }
+    L.set(Math.round(x0 + Math.sin((len - 1) / 4 + s) * 1.5), m + 4 + len, T.flowers[0][0]);
+  };
+  vine(m - 1, Math.min(H * 0.4, 40 + hash(seed) * 20), 1, seed);
+  if (H > 160) vine(W - m, Math.min(H * 0.18, 22), -1, seed + 2);
+  // Grass and flowers along the foot.
+  for (let x = 2; x < W - 2; x++) {
+    if (h2(x, seed) < 0.35) continue;
+    const y = H - m + 7 + Math.round(h2(x, seed + 1) * 2), len = 1 + Math.floor(h2(x, seed + 2) * 4);
+    for (let j = 0; j < len; j++) L.set(x, y - j, j === len - 1 ? T.tips[h2(x, seed + 3) < 0.5 ? 0 : 1] : T.meadow[2]);
+    if (h2(x, seed + 4) < 0.08) {
+      const pal = T.flowers[Math.floor(h2(x, seed + 5) * T.flowers.length)];
+      L.set(x, y - len, pal[0]); L.set(x + 1, y - len, pal[1]); L.set(x, y - len - 1, pal[0]);
+    }
+  }
+}
+
+export function mountFrames(root) {
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)");
+  const live = new Set();
+  let raf = 0;
+
+  function mount(fig) {
+    const box = fig.querySelector(".box");
+    if (!box || fig.querySelector("canvas.stones")) return;
+    const canvas = document.createElement("canvas");
+    canvas.className = "stones";
+    canvas.setAttribute("aria-hidden", "true");
+    fig.append(canvas);
+    const f = { fig, box, canvas, key: "", visible: false, flies: [] };
+    new ResizeObserver(() => build(f)).observe(box);
+    new IntersectionObserver(([e]) => { f.visible = e.isIntersecting; tick(); }).observe(canvas);
+    live.add(f);
+    build(f);
+  }
+
+  function build(f) {
+    const s = innerWidth < 600 ? 2 : 3, m = 14;
+    const bw = Math.round(f.box.offsetWidth / s), bh = Math.round(f.box.offsetHeight / s);
+    const key = `${s}:${bw}x${bh}`;
+    if (!bw || !bh || key === f.key) return;
+    f.key = key;
+    const W = bw + 2 * m, H = bh + 2 * m;
+    Object.assign(f.canvas.style, { left: `${f.box.offsetLeft - m * s}px`, top: `${f.box.offsetTop - m * s}px`, width: `${W * s}px`, height: `${H * s}px` });
+    f.canvas.width = W; f.canvas.height = H;
+    f.L = new Layer(W, H);
+    drawFrame(f.L, m, (bw * 7 + bh) % 97 + 1);
+    f.L.done();
+    f.flies = Array.from({ length: Math.max(3, Math.round((W + H) / 70)) }, (_, k) => ({ u: Math.random(), v: 0.6 + Math.random() * 0.8, off: 3 + Math.random() * 6, ph: Math.random() * 6.28, tw: 1 + Math.random() * 2 }));
+    f.m = m;
+    draw(f, performance.now());
+  }
+
+  // A firefly's place: a slow walk round the frame, a few pixels outside the stones.
+  function at(f, fl, t) {
+    const { width: W, height: H } = f.canvas, m = f.m;
+    const P = 2 * (W + H), d = ((fl.u + t * fl.v * 0.004) % 1) * P, o = fl.off + Math.sin(t * 0.8 + fl.ph) * 2;
+    if (d < W) return [d, m - 8 - o * 0.4];
+    if (d < W + H) return [W - m + 8 + o * 0.4 - 6, d - W];
+    if (d < 2 * W + H) return [W - (d - W - H), H - m + 4 - o * 0.5];
+    return [m - 8 + 6 - o * 0.4, H - (d - 2 * W - H)];
+  }
+
+  function draw(f, now) {
+    if (!f.L) return;
+    const ctx = f.canvas.getContext("2d"), t = now / 1000;
+    ctx.clearRect(0, 0, f.canvas.width, f.canvas.height);
+    ctx.drawImage(f.L.canvas, 0, 0);
+    for (const fl of f.flies) {
+      const [x, y] = at(f, fl, t).map(Math.round), tw = (Math.sin(t * fl.tw + fl.ph) + 1) / 2;
+      if (tw < 0.15) continue;
+      if (tw > 0.55) {
+        ctx.fillStyle = T.fly.halo;
+        ctx.fillRect(x - 1, y, 1, 1); ctx.fillRect(x + 1, y, 1, 1); ctx.fillRect(x, y - 1, 1, 1); ctx.fillRect(x, y + 1, 1, 1);
+        ctx.fillStyle = T.fly.core;
+      } else ctx.fillStyle = T.fly.dim;
+      ctx.fillRect(x, y, 1, 1);
+    }
+  }
+
+  function tick() {
+    cancelAnimationFrame(raf);
+    const loop = now => {
+      let any = false;
+      for (const f of live) if (f.visible) { draw(f, now); any = true; }
+      if (any && !reduce.matches && !document.hidden) raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+  }
+
+  root.querySelectorAll(".frame").forEach(mount);
+  new MutationObserver(() => root.querySelectorAll(".frame").forEach(mount)).observe(root, { childList: true, subtree: true });
+  document.addEventListener("visibilitychange", tick);
+  addEventListener("resize", () => { for (const f of live) build(f); });
 }
