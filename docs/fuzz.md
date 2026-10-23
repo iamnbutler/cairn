@@ -6,8 +6,9 @@ app's claims after every step, with failing seeds replayed and shrunk. It needs 
 beyond the claims the app already makes.
 
 ```sh
-make fuzz APP=Basics N=1000          # = cd lean && lake exe fuzz Basics --iterations 1000
+make fuzz APP=Basics N=1000          # = cd lean && lake exe fuzz Basics --iterations 1000 --out ../build/fuzz
 lake exe fuzz Basics --seed 1234 --iterations 1 --steps 80 -v   # replay one seed, step by step
+lake exe fuzz --list                  # every fuzzable app
 ```
 
 Code: `lean/Cairn/Fuzz/` and `lean/FuzzMain.lean`. Output: `build/fuzz/<App>.json`.
@@ -111,29 +112,49 @@ final pass removing single operations. Operations are self-contained (an `act` n
 control and text op; a resize names its size), so a subsequence replays without the seed; an
 `act` whose control isn't on screen is skipped. The window size and metrics stay fixed.
 
-The shrunk sequence is printed three ways:
+The first failure of each kind (check and claim; up to `--shrink`, default 5) is shrunk and
+printed three ways:
 
 - as a **ready-to-paste `flow`** with the next free id from `claims.lock`, whose `witness` is the
   actions the runtime delivered during the shrunk replay, minus those no move accepts (no-ops in
-  the model), so `live` holds. The `goal` is a template: `check s = true` for an invariant; for
-  presence and pressability, a statement over `layout` of the app's view, which the fix should
-  make true. The flow gives the regression a durable id;
+  the model), so `live` holds and the flow compiles in the app as it is. A flow's goal can only
+  talk about the state, because claims are declared before the view, so:
+  - for an invariant failure the goal is `inv.check s = true`, which fails until the fix;
+  - for presence and pressability failures the flow pins the state the failure needs (its goal
+    is the move's enabledness there, true as found), and a **theorem** follows for the app's
+    Proofs file, over `layout TextMetrics.mono` of the app's view in the flow's final state at
+    the failing window size: `present … = en`, a hit at the control's centre, or
+    `checkPressable && controlsNonempty`, closed by `decide +kernel`. It fails until the bug is
+    fixed, then stays as the regression test. If the failure was found with random metrics, the
+    printout says so: the theorem uses mono metrics, so check that it fails before the fix.
+
+  If no move reaches the failing state (only window or pointer events do), there is no witness,
+  and the printout says to state it as a theorem about `init`;
 - as **sequence JSON** in `build/fuzz/<App>.json` (below);
-- step by step with `-v`.
+- step by step with `-v` (each operation, then the actions it delivered).
+
+A pressability failure names the claim to blame: the control nearest the first node that fails
+`fitsB`, `stackTopB` or `controlLeafB`, else an empty control rect.
 
 ## Output: `build/fuzz/<App>.json`
 
 ```json
-{"app": "Basics", "module": "Examples.Basics", "seed": 0, "iterations": 1000, "steps": 50,
- "sequences": 1000, "stepsRun": 50000, "seconds": 3.2, "budgetMs": 8,
- "claims": {"^101": {"kind": "move", "pass": true, "steps": 9120, "sequences": 1000,
-                     "checks": {"performed": 9120, "presence": 50000, "pressable": 0}},
+{"app": "Basics", "module": "Examples.Basics", "mode": "runtime", "seed": 0, "iterations": 1000,
+ "steps": 50, "sequences": 1000, "stepsRun": 50000, "seconds": 2.04,
+ "sequencesPerSecond": 490, "stepsPerSecond": 24546, "pressableSkipped": 5869,
+ "failingSequences": 0, "budgetMs": 8, "budget": {"maxMs": 0.95, "over": []},
+ "claims": {"^101": {"kind": "move", "pass": true, "steps": 9120, "sequences": 1000, "seed": 0,
+                     "checks": {"performed": 1793, "presence": 50000, "pressable": 4489}},
             "^105": {"kind": "invariant", "pass": true, "steps": 50000, "sequences": 1000},
-            "^107": {"kind": "flow", "pass": null}},
- "failures": [{"check": "presence", "claim": 104, "seed": 17, "step": 31,
-               "message": "…", "sequence": {…}, "flow": "flow ^110 …"}],
- "budget": {"maxMs": 0.4, "over": []}}
+            "^107": {"kind": "flow", "pass": null, "note": "n/a"}},
+ "failures": [{"check": "presence", "claim": 104, "key": 3, "seed": 17, "step": 31,
+               "shrunkFrom": 28, "message": "…", "sequence": {…}, "flow": "flow ^110 …"}]}
 ```
+
+`mode` is `runtime` (through `Runtime.step` and the view) or `model` (no `App`: actions into
+`machine.update`). `pass` is `true`, `false`, or `null` with a `note`: `not run` (no step
+exercised it), `not runnable: no Decidable instance`, `n/a` (flows, places, assumptions), or
+`retired`. The run exits 1 if any sequence failed.
 
 **Sequence JSON** is meant for J's conformance driver to replay a fuzz sequence on the real app:
 
@@ -162,6 +183,25 @@ pass, fail, not run, or n/a (places, assumptions, flows). A failure is a finding
 `visual` → `tested`) has no rung for "a model run checked it", so fuzzing doesn't move a status
 up; it shows on the Evidence page, in `evidence.json` and in each step's evidence line.
 
+## Results
+
+Apple M4 Max, 2026-10-23, seed 0 (details in [bench/fuzz.md](../bench/fuzz.md)):
+
+| App | Mode | Sequences × steps | Time | Sequences/s | Steps/s | Failures |
+|---|---|---|---:|---:|---:|---:|
+| Basics | runtime | 1,000 × 50 | 2.0 s | 490 | 24,500 | 0 |
+| Basics | runtime | 2,000 × 200 | 17.0 s | 117 | 23,600 | 0 |
+| Counter | model | 10,000 × 200 | 1.6 s | 6,300 | 1,260,000 | 0 |
+
+Neither app has a bug the fuzzer finds, including 2,000 × 100 more from a random seed. Mutants
+show it would: dropping the delete control for done items is caught as presence ^104 and shrunk
+from 28 operations to 5 (the printed flow compiles in the app; its theorem fails on the mutant
+and holds on the real app); a 10 px row height is caught as pressable-check, blamed on ^103#1 and
+shrunk from 13 operations to 2.
+
+`make check` runs `make fuzz-quick`: Counter and Basics, 200 sequences of 50 steps each, about
+1 s plus linking the exe.
+
 ## Limits
 
 - It fuzzes the Lean model and runtime, not the host: no AppKit, Core Text or Metal. J's
@@ -170,3 +210,9 @@ up; it shows on the Evidence page, in `evidence.json` and in each step's evidenc
 - Presence assumes every move has a control while enabled. A move meant to be keyboard-only
   would need an opt-out in `Custom`.
 - Wall-clock budget checks depend on the machine; they report, they don't fail.
+- Counter has no `App` yet (it is on the spike's frame v0), so it is fuzzed at the model level.
+- Printed theorems use mono metrics; a failure found only with random metrics may need a
+  different size or text to fail under mono.
+- Shrinking removes operations; it doesn't simplify text or renumber keys, and window size and
+  metrics stay those of the seed.
+- The fuzz exe links `Lean` (for `fuzz_targets%`), about 100 MB; apps and the host don't.
