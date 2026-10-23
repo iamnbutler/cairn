@@ -325,7 +325,7 @@ theorem draw_enc {x : Draw} (h : fitsDraw x = true) (r : List UInt8) :
 theorem ax_enc {x : AxNode} (h : fitsAx x = true) (r : List UInt8) :
     ax (Enc.ax x ++ r) = some (x, r) := by
   obtain ⟨control, role, rc, label, value, parent, focused, selected, checked⟩ := x
-  simp only [fitsAx, Bool.and_eq_true, fu_iff, fs_iff] at h
+  simp only [fitsAx, Bool.and_eq_true, fs_iff] at h
   obtain ⟨⟨⟨⟨hc, hp⟩, hr⟩, hl⟩, hv⟩ := h
   cases control <;> cases parent <;>
     simp_all [ax, Enc.ax, bool_enc, skip_pad, ref_enc, u32_enc, rect_enc, str_enc]
