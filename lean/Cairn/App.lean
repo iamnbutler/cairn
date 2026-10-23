@@ -28,6 +28,8 @@ structure App (S : Type) where
   update : S → Action → S × List Effect
   /-- Every claim the app makes, from the claim commands. -/
   claims : List ClaimInfo
+  /-- The control that has keyboard focus at launch, if it is focusable there. -/
+  initFocus : Option ControlRef := none
 
 end Cairn
 

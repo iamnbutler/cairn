@@ -55,6 +55,7 @@ enum Dump {
             switch e {
             case let .setClipboard(s): out += "clipboard \(str(s))\n"
             case .beep: out += "beep\n"
+            case let .focus(c): out += "focus \(ref(c))\n"
             }
         }
         return out

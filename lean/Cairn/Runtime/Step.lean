@@ -250,21 +250,34 @@ def deliver (update : S → Action → S × List Effect) (st : S) (acts : List A
     S × List Effect :=
   acts.foldl (fun (st, effs) a => let (st', e) := update st a; (st', effs ++ e)) (st, [])
 
+/-- The focus the effects ask for: the last `Effect.focus`, if any. -/
+def requestedFocus (effs : List Effect) : Option ControlRef :=
+  effs.foldl (fun acc e => match e with | .focus c => some c | _ => acc) none
+
+/-- Run the focus requests in `effs` on a `UI`. `settle` then keeps the focus only if its
+control is focusable in the new tree. -/
+def applyFocus (effs : List Effect) (ui : UI) : UI :=
+  match requestedFocus effs with
+  | some c => { ui with focus := some c }
+  | none => ui
+
 /-- One event. -/
 def step (app : App S) (cfg : Config) (s : State S) (e : Event) : State S × List Effect :=
   let (s1, acts) := route cfg.metrics s e
   if acts.isEmpty && UI.same s1.ui s.ui then (s1, []) else
   let (st, effs) := deliver app.update s.app acts
-  let (ui, laid) := settle app cfg st s1.pointer s1.ui settleFuel s1.ui
+  let ui1 := applyFocus effs s1.ui
+  let (ui, laid) := settle app cfg st s1.pointer ui1 settleFuel ui1
   ({ s1 with app := st, ui, laid }, effs)
 
 /-- A batch of events, in order. -/
 def steps (app : App S) (cfg : Config) (s : State S) (es : List Event) : State S × List Effect :=
   es.foldl (fun (s, effs) e => let (s', e') := step app cfg s e; (s', effs ++ e')) (s, [])
 
-/-- The first state: the app's `init` at a window size, laid out. -/
+/-- The first state: the app's `init` at a window size, laid out, with the app's `initFocus`
+if that control is focusable. -/
 def start (app : App S) (cfg : Config) (size : Size) (scale : Nat := 100) : State S :=
-  let ui0 : UI := { size }
+  let ui0 : UI := { size, focus := app.initFocus }
   let (ui, laid) := settle app cfg app.init none ui0 settleFuel ui0
   { app := app.init, ui, laid, scale }
 

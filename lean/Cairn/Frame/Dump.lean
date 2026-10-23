@@ -53,6 +53,7 @@ def textInput : Option TextInput → String
 def effect : Effect → String
   | .setClipboard s => s!"clipboard {str s}"
   | .beep => "beep"
+  | .focus c => s!"focus {ref c}"
 
 /-- One line per item, each ending in a newline. -/
 def frame (f : Frame) : String := Id.run do

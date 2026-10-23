@@ -302,6 +302,8 @@ public final class HostView: NSView {
             pasteboard.setString(s, forType: .string)
         case .beep:
             NSSound.beep()
+        case .focus:
+            break  // Lean's runtime already moved the focus (docs/runtime.md)
         }
     }
 

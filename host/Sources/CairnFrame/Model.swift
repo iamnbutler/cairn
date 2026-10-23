@@ -99,6 +99,8 @@ public enum Cursor: UInt8, Sendable { case arrow, pointer, text }
 public enum Effect: Equatable, Sendable {
     case setClipboard(String)
     case beep
+    /// Run by Lean's runtime (it moves keyboard focus); the host has nothing to do.
+    case focus(ControlRef)
 }
 
 public struct Frame: Equatable, Sendable {
