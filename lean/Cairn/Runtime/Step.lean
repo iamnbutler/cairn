@@ -307,9 +307,14 @@ def admit (app : App S) (s : State S) : Event → Ctx S
     let due := c.world.dueNames
     if due.isEmpty then c else due.foldl (fire app) (hear app c)
   | .reply id r =>
-    match s.world.takeReply id r with
-    | some w => give app (hear app { app := s.app, world := w }) (.reply id r)
-    | none => { app := s.app, world := s.world }
+    -- The time first, then the reply leaves the pending table: what `receive` makes of the
+    -- clock sees the request still pending.
+    if (s.world.takeReply id r).isSome then
+      let c := hear app { app := s.app, world := s.world }
+      match c.world.takeReply id r with
+      | some w => give app { c with world := w } (.reply id r)
+      | none => c
+    else { app := s.app, world := s.world }
   | .subEvent id e =>
     match s.world.subOf id with
     | some sub => give app (hear app { app := s.app, world := s.world }) (.sub sub e)

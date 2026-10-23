@@ -265,7 +265,8 @@ theorem admit_untouched (app : App S) (s : State S) (e : Event) :
     split
     · exact hb
     · exact foldl_fire_untouched app _ (hear_untouched app hb)
-  all_goals (split <;> first | exact base | exact give_untouched app _ _ _)
+  all_goals (split <;> (try split) <;>
+    first | exact base | exact give_untouched app _ _ _ | exact hear_untouched app base)
 
 theorem admit_input (app : App S) (s : State S) {e : Event} (h : e.isWorld = false) :
     admit app s e = { app := s.app, world := s.world } := by
@@ -338,7 +339,8 @@ theorem admit_app {app : App S} (h : Quiet app) (s : State S) (e : Event) :
     split
     · exact boot_app _ _
     · rw [foldl_fire_app h, hear_app h, boot_app]
-  all_goals (try split) <;> (try rfl) <;> (rw [give_app h, hear_app h])
+  all_goals (try split) <;> (try split) <;> (try rfl) <;>
+    first | (rw [give_app h, hear_app h]) | exact hear_app h _
 
 theorem act_app {app : App S} (h : Quiet app) (c : Ctx S) (acts : List Action) :
     (act app c acts).app = (deliver app.update c.app acts).1 := by
