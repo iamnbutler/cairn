@@ -72,3 +72,12 @@ lean_exe audit where
 
 lean_exe framecorpus where
   root := `FrameCorpus
+
+/-- The conformance generator (tools/conformance, docs/conformance.md): walks an app's model and
+writes move sequences with the frames the app must show. One module per app under
+`Conformance.Apps`; `make conformance` links one with that app's library and the host's Core
+Text metrics. Never linked into the host. -/
+@[default_target]
+lean_lib Conformance where
+  srcDir := "../tools/conformance/lean"
+  globs := #[.submodules `Conformance]

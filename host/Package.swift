@@ -10,6 +10,11 @@ let leanLib = Context.packageDirectory + "/../build/lib"
 let package = Package(
     name: "CairnHost",
     platforms: [.macOS("27.0")],
+    products: [
+        // Core Text metrics as a static library, for Lean executables that must lay out exactly
+        // as the running app does (the conformance generator, tools/conformance).
+        .library(name: "CairnMetrics", type: .static, targets: ["CairnRender"]),
+    ],
     targets: [
         // The C shim over lean.h, and the link line for the Lean library.
         .target(
