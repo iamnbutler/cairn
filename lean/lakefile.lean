@@ -63,6 +63,13 @@ lean_lib Basics where
   defaultFacets := #[LeanLib.staticFacet]
   moreLinkObjs := #[claims_meta.o]
 
+/-- TodoMVC (`Examples.Todo` and the model and view it imports), workstream I. -/
+@[default_target]
+lean_lib Todo where
+  roots := #[`Examples.Todo, `Examples.Todo.Model, `Examples.Todo.View]
+  defaultFacets := #[LeanLib.staticFacet]
+  moreLinkObjs := #[claims_meta.o]
+
 lean_exe bench where
   root := `Bench
 

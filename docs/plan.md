@@ -112,3 +112,16 @@ Answers to questions raised in workstream PRs. Newest last.
 - **Move posts constrain the state only.** Effects are covered by provenance (every effect comes
   from an enabled move); richer effect posts can come when an app needs them.
 - **Keyed presence** (one control per item, `^N#k`) is generalised as part of TodoMVC (I).
+- **TodoMVC T8 (2026-10-23):** Enter with blank text changes nothing and the whitespace stays in
+  the field, because Quickstrom accepts "nothing changes" and it never loses typing.
+- **TodoMVC T29:** blur is a click elsewhere in the window or Tab, not the window resigning key,
+  because an AppKit field keeps its edit when the window deactivates.
+- **TodoMVC T33:** a click elsewhere while editing saves first (the runtime's blur), then does its
+  own action, as on the web; if the save moved what was clicked, the click is dropped.
+- **TodoMVC T48:** when persistence lands it stores the todos and the filter only (not pending
+  text, edit mode, hover or focus), because those are what the spec names.
+- **TodoMVC T49:** the delete button is always in the tree and the Tab order, its glyph drawn only
+  while the row is hovered or the button has focus, so keyboard and VoiceOver users can delete.
+- **TodoMVC T50:** after Enter or Escape in an edit, focus returns to the new-todo field (via
+  `Effect.focus`); after a blur it goes where the click or Tab sent it, so the next todo can be
+  typed at once.
