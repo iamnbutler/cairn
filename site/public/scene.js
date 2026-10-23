@@ -636,14 +636,13 @@ export function mountScene(canvas, layout = {}) {
 
 // --- Frames for the videos -------------------------------------------------------------------
 
-// Each video sits in a thin frame with an empty margin between it and the picture. The frame lives
-// inside a margin the box reserves, so it never covers the text around it. Lit from the upper
-// right like the scene: edges facing up or right catch the moon, the others fall into shade.
+// Each video sits in a thin wooden frame with moss along the top, tufts of grass at the foot and
+// two fireflies, with an empty margin between it and the picture. The frame lives inside a
+// margin the box reserves, so it never covers the text around it. Lit from the upper right like
+// the scene: edges facing up or right catch the moon, the others fall into shade.
 const WOOD = { line: "#1d1a36", dark: "#352a4a", mid: "#4a3956", grain: "#40324f", light: "#66506a", lit: "#8a6f84" };
-const BARK = ["#1d1a36", "#5a4462", "#7a5f7c", "#a08398"];
 const LEAF = { dark: "#3f7a68", mid: "#5a9a80", lit: "#82b896", tip: "#a8d8b0" };
 const FRAME = { gap: 4, wood: 3, m: 10 };
-const frameStyle = () => new URLSearchParams(location.search).get("frame") || "A";
 
 // Where a canvas pixel sits relative to the box: its distance out (1 = touching) and the side.
 function rim(x, y, W, H, m) {
@@ -653,21 +652,24 @@ function rim(x, y, W, H, m) {
   return { d, side, corner: dx === dy && d > 0 };
 }
 
-// A plank frame: outer and inner edges shaded by which way they face, grain along the face.
+// A mitred frame of four planks. Each plank has its own tone by which way it faces the moon,
+// so the joins read; a dark seam runs down each diagonal. Rows go outer edge, face, inner lip.
+const PLANK = {
+  t: [WOOD.lit, WOOD.light, WOOD.dark],
+  r: [WOOD.lit, WOOD.mid, WOOD.dark],
+  b: [WOOD.line, WOOD.grain, WOOD.light],
+  l: [WOOD.line, WOOD.mid, WOOD.light],
+};
 function drawWood(L, m, seed) {
   const { w: W, h: H } = L, g = FRAME.gap, n = FRAME.wood;
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const { d, side, corner } = rim(x, y, W, H, m), r = d - g - 1;
     if (r < 0 || r >= n) continue;
-    const along = side === "t" || side === "b" ? x : y;
-    const out = r === n - 1, inn = r === 0;
-    // The outer edge faces away from the box, the inner edge towards it.
-    const faces = out ? side : inn ? { t: "b", b: "t", l: "r", r: "l" }[side] : "";
-    let c = WOOD.mid;
-    if (faces === "t" || faces === "r") c = out ? WOOD.lit : WOOD.light;
-    else if (faces) c = out ? WOOD.line : WOOD.dark;
-    else if (h2(Math.floor(along / (3 + h2(r, seed) * 4)), r + seed) < 0.35) c = WOOD.grain;
-    if (corner && !out && !inn) c = WOOD.dark;
+    if (corner) { L.set(x, y, r === n - 1 && (side === "t" || side === "r") && x > W / 2 && y < H / 2 ? WOOD.light : WOOD.line); continue; }
+    const row = n - 1 - r, along = side === "t" || side === "b" ? x : y;
+    let c = PLANK[side][row];
+    // Grain: short darker runs along the face.
+    if (row === 1 && h2(Math.floor(along / (3 + h2(r, seed) * 4)), seed + side.charCodeAt(0)) < 0.3) c = side === "t" ? WOOD.mid : WOOD.grain === c ? WOOD.dark : WOOD.grain;
     L.set(x, y, c);
   }
 }
@@ -680,49 +682,6 @@ function around(W, H, m, d) {
   for (let x = x1; x > x0; x--) pts.push([x, y1, 0, 1]);
   for (let y = y1; y > y0; y--) pts.push([x0, y, -1, 0]);
   return pts;
-}
-
-// A vine winding along the frame between two perimeter fractions, with small paired leaves and,
-// now and then, a flower. Leaves on the upper and right sides take the light.
-function drawVine(L, m, seed, from, to, opt = {}) {
-  const { w: W, h: H } = L, d = opt.d || FRAME.gap + 1, pts = around(W, H, m, d), P = pts.length;
-  const span = Math.round(((to - from + 1) % 1 || 1) * P), start = Math.round(from * P);
-  for (let i = 0; i < span; i++) {
-    const [px, py, nx, ny] = pts[(start + i) % P];
-    if (opt.gaps && noise(i / 9, seed) < opt.gaps) continue;
-    const o = Math.round(Math.sin(i / 5 + seed) * 0.8), x = px + nx * o, y = py + ny * o;
-    const lit = ny < 0 || nx > 0;
-    L.set(x, y, LEAF.dark);
-    const k = i % 6;
-    if (k === 2 || k === 5) {
-      const s = -1, lx = x + nx * s, ly = y + ny * s, tx = -ny, ty = nx;
-      L.set(lx, ly, lit ? LEAF.lit : LEAF.mid);
-      L.set(lx + nx * s + tx, ly + ny * s + ty, lit ? LEAF.tip : LEAF.mid);
-      L.set(lx + tx, ly + ty, LEAF.mid);
-    }
-    if (opt.flowers && h2(i, seed + 3) < opt.flowers && k === 4) {
-      const pal = T.flowers[Math.floor(h2(i, seed + 4) * 3)];
-      L.set(x + nx, y + ny, pal[0]); L.set(x + nx * 2 - ny, y + ny * 2 + nx, pal[1]);
-    }
-  }
-}
-
-// Twigs lashed at the corners: one thin, knotty branch per side, running a little past each end.
-function drawTwigs(L, m, seed) {
-  const { w: W, h: H } = L, d = FRAME.gap + 2, x0 = m - d, y0 = m - d, x1 = W - m - 1 + d, y1 = H - m - 1 + d, ext = 3;
-  const twig = (horiz, at, a, b, k) => {
-    for (let t = a - ext; t <= b + ext; t++) {
-      const w = Math.round((noise(t / 23, seed + k) - 0.5) * 2);
-      const x = horiz ? t : at + w, y = horiz ? at + w : t;
-      const lit = horiz ? at === y0 : at === x1;
-      L.set(x, y, lit ? BARK[2] : BARK[1]);
-      L.set(horiz ? x : x + 1, horiz ? y - 1 : y, lit ? BARK[3] : BARK[2]);
-      if (h2(t, seed + k) < 0.04) L.set(horiz ? x : x - 1, horiz ? y + 1 : y, BARK[0]);
-    }
-  };
-  twig(true, y0, x0, x1, 1); twig(true, y1, x0, x1, 2); twig(false, x0, y0, y1, 3); twig(false, x1, y0, y1, 4);
-  for (const [cx, cy] of [[x0, y0], [x1, y0], [x0, y1], [x1, y1]])
-    for (const [dx, dy] of [[-1, -1], [1, 1], [1, -1], [-1, 1]]) L.set(cx + dx, cy + dy, LEAF.mid);
 }
 
 // Moss along the top edge and a tuft or two of grass on the bottom one.
@@ -751,14 +710,10 @@ function drawMat(L, m, upto) {
   }
 }
 
-function drawFrame(L, m, seed, style) {
-  drawMat(L, m, style === "D" ? FRAME.gap + 1 : style === "E" ? FRAME.gap + 3 : FRAME.gap);
-  if (style !== "D" && style !== "E") drawWood(L, m, seed);
-  if (style === "B") { drawVine(L, m, seed, 0.86, 0.12); drawVine(L, m, seed + 5, 0.46, 0.56); }
-  if (style === "C") drawVine(L, m, seed, 0, 1, { gaps: 0.42, flowers: 0.5 });
-  if (style === "D") { drawTwigs(L, m, seed); drawVine(L, m, seed, 0.9, 0.06); }
-  if (style === "E") drawVine(L, m, seed, 0, 1, { flowers: 0.3, d: FRAME.gap + 3 });
-  if (style === "F") drawMoss(L, m, seed);
+function drawFrame(L, m, seed) {
+  drawMat(L, m, FRAME.gap);
+  drawWood(L, m, seed);
+  drawMoss(L, m, seed);
 }
 
 export function mountFrames(root) {
@@ -773,7 +728,7 @@ export function mountFrames(root) {
     canvas.className = "stones";
     canvas.setAttribute("aria-hidden", "true");
     fig.append(canvas);
-    const f = { fig, box, canvas, key: "", visible: false, flies: [], style: frameStyle() };
+    const f = { fig, box, canvas, key: "", visible: false, flies: [] };
     new ResizeObserver(() => build(f)).observe(box);
     new IntersectionObserver(([e]) => { f.visible = e.isIntersecting; tick(); }).observe(canvas);
     live.add(f);
@@ -791,10 +746,10 @@ export function mountFrames(root) {
     Object.assign(f.canvas.style, { left: `${f.box.offsetLeft - m * s}px`, top: `${f.box.offsetTop - m * s}px`, width: `${W * s}px`, height: `${H * s}px` });
     f.canvas.width = W; f.canvas.height = H;
     f.L = new Layer(W, H);
-    drawFrame(f.L, m, (bw * 7 + bh) % 97 + 1, f.style);
+    drawFrame(f.L, m, (bw * 7 + bh) % 97 + 1);
     f.L.done();
     f.ring = around(W, H, m, m - 2);
-    f.flies = Array.from({ length: f.style === "F" ? 2 : 0 }, (_, k) => ({ u: Math.random(), v: 0.6 + Math.random() * 0.8, off: 3 + Math.random() * 6, ph: Math.random() * 6.28, tw: 1 + Math.random() * 2 }));
+    f.flies = Array.from({ length: 2 }, (_, k) => ({ u: Math.random(), v: 0.6 + Math.random() * 0.8, off: 3 + Math.random() * 6, ph: Math.random() * 6.28, tw: 1 + Math.random() * 2 }));
     f.m = m;
     draw(f, performance.now());
   }
