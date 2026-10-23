@@ -47,7 +47,7 @@ menu machine's.
 | ^330–^337 | assumptions about the host (keys, ticks, request ids, audio, typing, files, days) | stated | | |
 | ^340, ^341 | flows through the menu | `decide` | | |
 
-All of it is closed with no `sorry`, `native_decide` or axioms beyond the standard three.
+All of it is closed without `sorry` or compiler-trusting tactics, on the standard three axioms (`make audit`).
 
 **Fuzzing.** `lake exe yapfuzz` plays a random host: key presses with random timings (taps,
 holds, repeats, a release that never comes), shortcuts, ticks early, late and jumping (ten
