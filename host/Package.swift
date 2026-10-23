@@ -14,6 +14,7 @@ let package = Package(
             cSettings: [.headerSearchPath("vendor"), .unsafeFlags(["-Wno-shorten-64-to-32"])],
             linkerSettings: [.unsafeFlags(["-L" + leanLib, "-lcairn_lean", "-lc++"])]
         ),
+        .target(name: "CairnFrame"),
         .executableTarget(
             name: "CairnSpike",
             dependencies: ["CLean"],
