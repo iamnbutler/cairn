@@ -6,7 +6,7 @@ import Foundation
 // for and the subscriptions it starts and stops. Lean decides everything (timers, which reply
 // is delivered, which subscription is active); the host only reads the clock, runs requests
 // with a small handler table and runs timers for subscriptions. Every assumption here is a
-// claim in docs/trusted.md (^908–^915).
+// claim in docs/trusted.md (^908–^915, ^960–).
 
 /// The clock Lean sees (^908).
 public enum HostClock {
@@ -38,6 +38,11 @@ public struct Handlers: Sendable {
                 HTTP.run(method: m, url: u, headers: hs, body: b, timeoutMs: t, session: HTTP.session, reply)
             }
         },
+        4: { r, reply in if case let .appendFile(p, d) = r { reply(Files.append(p, d)) } },
+        5: { r, reply in if case let .listDir(p) = r { reply(Files.list(p)) } },
+        6: { r, reply in if case let .deleteFile(p) = r { reply(Files.delete(p)) } },
+        7: { _, reply in reply(Apps.frontmost()) },
+        8: { r, reply in if case let .permission(p, prompt) = r { Permissions.check(p, prompt: prompt, .live, reply) } },
     ])
 }
 
@@ -184,13 +189,18 @@ public enum HTTP {
 }
 
 /// Runs the requests and subscriptions of each published frame. Requests run concurrently and
-/// answer through `send`, each exactly once (^914); `every` subscriptions are dispatch timers
-/// on one serial queue, so after a `stop` is handled no tick of it is sent (^915).
+/// answer through `send`, each exactly once (^914). Subscriptions start and stop on one serial
+/// queue, and every event they send is sent from it, so after a `stop` is handled none of its
+/// events is sent (^915, ^963): `every` is a dispatch timer, `watchFile` a dispatch timer that
+/// polls the file.
 public final class World: @unchecked Sendable {
     public var handlers: Handlers
     private let queue = DispatchQueue(label: "cairn.world")
     private let lock = NSLock()
-    private var timers: [UInt32: DispatchSourceTimer] = [:]
+    /// Running subscriptions: how to stop each.
+    private var running_: [UInt32: () -> Void] = [:]
+    /// How often `watchFile` looks at its file.
+    public var watchPeriodMs = 250
     /// Bumped by `reset`: replies and ticks from before it are dropped.
     private var generation = 0
     /// Where replies and ticks go (the engine's `send`).
@@ -229,16 +239,37 @@ public final class World: @unchecked Sendable {
 
     private func apply(_ c: SubCmd, _ gen: Int) {
         switch c {
-        case let .start(id, .every(ms)):
-            timers.removeValue(forKey: id)?.cancel()
+        case let .start(id, sub):
+            running_.removeValue(forKey: id)?()
+            running_[id] = start(id, sub)
+        case let .stop(id):
+            running_.removeValue(forKey: id)?()
+        }
+    }
+
+    /// Starts `sub` on the queue; returns how to stop it.
+    private func start(_ id: UInt32, _ sub: Sub) -> () -> Void {
+        switch sub {
+        case let .every(ms):
             let t = DispatchSource.makeTimerSource(queue: queue)
             let period = DispatchTimeInterval.milliseconds(Int(max(1, ms)))
             t.schedule(deadline: .now() + period, repeating: period, leeway: .milliseconds(1))
             t.setEventHandler { [weak self] in self?.send?([.subEvent(id: id, .tick)]) }
-            timers[id] = t
             t.resume()
-        case let .stop(id):
-            timers.removeValue(forKey: id)?.cancel()
+            return { t.cancel() }
+        case let .watchFile(path):
+            var last = FileSignature.of(path)
+            let t = DispatchSource.makeTimerSource(queue: queue)
+            let period = DispatchTimeInterval.milliseconds(max(1, watchPeriodMs))
+            t.schedule(deadline: .now() + period, repeating: period, leeway: .milliseconds(5))
+            t.setEventHandler { [weak self] in
+                let now = FileSignature.of(path)
+                guard now != last else { return }
+                last = now
+                self?.send?([.subEvent(id: id, .changed)])
+            }
+            t.resume()
+            return { t.cancel() }
         }
     }
 
@@ -249,13 +280,13 @@ public final class World: @unchecked Sendable {
         generation += 1
         lock.unlock()
         queue.sync {
-            for t in timers.values { t.cancel() }
-            timers.removeAll()
+            for stop in running_.values { stop() }
+            running_.removeAll()
         }
     }
 
     /// The ids of running subscriptions (tests).
-    public var running: Set<UInt32> { queue.sync { Set(timers.keys) } }
+    public var running: Set<UInt32> { queue.sync { Set(running_.keys) } }
 }
 
 /// True the first time only.

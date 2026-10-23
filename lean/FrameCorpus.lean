@@ -110,10 +110,15 @@ def headers : Gen (List (String × String)) := do
   return (← array 3 (return (← str, ← str))).toList
 
 def request : Gen Request := do
-  match ← below 4 with
+  match ← below 9 with
   | 0 => return .readFile (← str)
   | 1 => return .writeFile (← str) (← bytes)
   | 2 => return .playSound (← str)
+  | 3 => return .appendFile (← str) (← bytes)
+  | 4 => return .listDir (← str)
+  | 5 => return .deleteFile (← str)
+  | 6 => return .frontmostApp
+  | 7 => return .permission (← pick #[.accessibility, .microphone]) (← coin)
   | _ => return .http (← str) (← str) (← headers) (← bytes) (← nat)
 
 def effect : Gen Effect := do
@@ -127,15 +132,21 @@ def effect : Gen Effect := do
   | _ => return .quit
 
 def subCmd : Gen SubCmd := do
-  if ← coin then return .start (← nat) (.every (← nat)) else return .stop (← nat)
+  match ← below 3 with
+  | 0 => return .start (← nat) (.every (← nat))
+  | 1 => return .start (← nat) (.watchFile (← str))
+  | _ => return .stop (← nat)
 
 def fault : Gen Fault := pick #[.notFound, .denied, .timeout, .network, .invalid, .other]
 
 def reply : Gen Reply := do
-  match ← below 4 with
+  match ← below 7 with
   | 0 => return .done
   | 1 => return .bytes (← bytes)
   | 2 => return .http (← nat) (← headers) (← bytes)
+  | 3 => return .names (← array 4 str).toList
+  | 4 => return .app (← nat) (← str)
+  | 5 => return .flag (← coin)
   | _ => return .failed (← fault) (← str)
 
 def frame : Gen Frame := do
@@ -172,7 +183,7 @@ def event : Gen Event := do
   | 17 => return .windowFocus (← coin)
   | 18 => return .clock ⟨← u64, ← i64, ← int⟩
   | 19 => return .reply (← nat) (← reply)
-  | _ => return .subEvent (← nat) .tick
+  | _ => return .subEvent (← nat) (← pick #[.tick, .changed])
 
 /-! ## Frames from layout -/
 
@@ -215,8 +226,11 @@ def maxFrame : Frame where
     .setTimer "tick" 4294967295, .cancelTimer "", .quit,
     .request 4294967295 (.writeFile "~/a/🙂.txt" ⟨#[0, 255, 10]⟩),
     .request 0 (.http "GET" "https://example.com/?q=日本" [("Accept", "*/*"), ("", "")]
-      ByteArray.empty 0)]
-  subs := #[.start 4294967295 (.every 0), .stop 0]
+      ByteArray.empty 0),
+    .request 1 (.appendFile "" ByteArray.empty), .request 2 (.listDir "~/日本"),
+    .request 3 (.deleteFile "\x00"), .request 4 .frontmostApp,
+    .request 5 (.permission .microphone true)]
+  subs := #[.start 4294967295 (.every 0), .stop 0, .start 1 (.watchFile "~/a 🙂.json")]
   wake := some 18446744073709551615
 
 def emptyFrame : Frame := { size := ⟨0, 0⟩, draws := #[], ax := #[] }
@@ -231,7 +245,10 @@ def edgeEvents : Array Event := #[
   .clock ⟨18446744073709551615, -9223372036854775808, -2147483648⟩, .clock ⟨0, 9223372036854775807, 0⟩,
   .reply 0 .done, .reply 4294967295 (.bytes ⟨#[0, 255]⟩),
   .reply 1 (.http 4294967295 [("Content-Type", "text/plain; charset=utf-8")] ⟨#[104, 105]⟩),
-  .reply 2 (.failed .other "é"), .subEvent 4294967295 .tick]
+  .reply 2 (.failed .other "é"), .subEvent 4294967295 .tick,
+  .reply 3 (.names []), .reply 4 (.names ["", "2026-10-23.jsonl", "🙂"]),
+  .reply 5 (.app 4294967295 "Terminal"), .reply 6 (.app 0 ""), .reply 7 (.flag true),
+  .reply 8 (.flag false), .subEvent 0 .changed]
 
 /-! ## Commands -/
 

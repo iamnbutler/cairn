@@ -48,7 +48,9 @@ final class WorldSuite: Suite {
     enum Plan { case none, answer([Reply], async: Bool, delayUs: Int) }
 
     static let kinds: [Request] = [.readFile(path: "a"), .writeFile(path: "b", data: [1]), .playSound(name: "c"),
-                                   .http(method: "GET", url: "http://x", headers: [], body: [], timeoutMs: 0)]
+                                   .http(method: "GET", url: "http://x", headers: [], body: [], timeoutMs: 0),
+                                   .appendFile(path: "d", data: [2]), .listDir(path: "e"), .deleteFile(path: "f"),
+                                   .frontmostApp, .permission(.microphone, prompt: false)]
 
     func replyOnce(_ g: inout SplitMix, _ r: Recorder) {
         let check = "effects.reply-once"
@@ -208,6 +210,7 @@ final class WorldSuite: Suite {
                         s.active[id] = (ms, now)
                     case let .stop(id):
                         if let old = s.active.removeValue(forKey: id) { periods[id, default: []].append((old.ms, old.since, now)) }
+                    case .start(_, .watchFile): break  // not generated here (FileOpsSuite)
                     }
                 }
                 s.inRun = []

@@ -97,3 +97,9 @@
 913	assume	active	-	http sends the request as given and returns the response as received
 914	assume	active	-	The host answers every request exactly once, with its id
 915	assume	active	-	every ms ticks while started and never after it is stopped
+960	assume	active	-	appendFile adds exactly the bytes at the end, or fails and adds nothing
+961	assume	active	-	listDir lists exactly the directory's names, sorted
+962	assume	active	-	deleteFile removes a file or a link, never a directory
+963	assume	active	-	watchFile reports every change to its file, and nothing after its stop
+964	assume	active	-	frontmostApp answers the app in front
+965	assume	active	-	permission answers whether the app holds it, and prompts only when asked

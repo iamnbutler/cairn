@@ -203,6 +203,20 @@ extension Frame {
                     let headers = try er.headers()
                     req = .http(method: method, url: url, headers: headers, body: try er.bytes(),
                                 timeoutMs: timeout)
+                case 4:
+                    let path = try er.string()
+                    req = .appendFile(path: path, data: try er.bytes())
+                case 5: req = .listDir(path: try er.string())
+                case 6: req = .deleteFile(path: try er.string())
+                case 7: req = .frontmostApp
+                case 8:
+                    try er.need(4)
+                    guard let p = Permission(rawValue: er.u8(0)) else {
+                        throw FrameDecodeError.badCode(er.u8(0), at: er.i)
+                    }
+                    let prompt = try er.flag(1)
+                    er.i += 4
+                    req = .permission(p, prompt: prompt)
                 default: throw FrameDecodeError.badCode(kind, at: at)
                 }
                 effects.append(.request(id: id, req))
@@ -221,10 +235,18 @@ extension Frame {
             try sr.need(4)
             switch sr.u8(0) {
             case 0:
-                guard sr.u8(1) == 0 else { throw FrameDecodeError.badCode(sr.u8(1), at: sr.i + 1) }
-                try sr.need(12)
-                subs.append(.start(id: sr.u32(4), .every(ms: sr.u32(8))))
-                sr.i += 12
+                try sr.need(8)
+                let kind = sr.u8(1), id = sr.u32(4)
+                switch kind {
+                case 0:
+                    try sr.need(12)
+                    subs.append(.start(id: id, .every(ms: sr.u32(8))))
+                    sr.i += 12
+                case 1:
+                    sr.i += 8
+                    subs.append(.start(id: id, .watchFile(path: try sr.string())))
+                default: throw FrameDecodeError.badCode(kind, at: sr.i + 1)
+                }
             case 1:
                 try sr.need(8)
                 subs.append(.stop(id: sr.u32(4)))

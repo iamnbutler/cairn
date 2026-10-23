@@ -177,6 +177,11 @@ Request kinds and their fields:
 | 1 | writeFile | string path, bytes data |
 | 2 | playSound | string name |
 | 3 | http | u32 timeoutMs, string method, string url, headers, bytes body |
+| 4 | appendFile | string path, bytes data |
+| 5 | listDir | string path |
+| 6 | deleteFile | string path |
+| 7 | frontmostApp | (none) |
+| 8 | permission | `[permission, prompt, 0, 0]`: permission `0` accessibility, `1` microphone; prompt a bool |
 
 Effects run once, in order, after the frame that carries them. `focus`, `setTimer` and
 `cancelTimer` are the runtime's (focus has moved and the timer table has changed when the
@@ -186,9 +191,14 @@ is run by the host's handler table and answered by a `reply` event; `quit` ends 
 ### Subscription commands and wake
 
 ```
-start  [0, sub, 0, 0]  4 u32 id  8 u32 ms (sub 0: every)               12 bytes
+start  [0, sub, 0, 0]  4 u32 id  8 subscription fields                8 + fields
 stop   [1, 0, 0, 0]    4 u32 id                                          8 bytes
 ```
+
+| Sub | Subscription | Fields |
+|---:|---|---|
+| 0 | every | u32 ms |
+| 1 | watchFile | string path |
 
 Commands run in order after the frame's effects. `wake`, when present, asks the host to send a
 batch (whose `clock` is all it holds, if nothing else is waiting) once the monotonic clock
@@ -256,7 +266,9 @@ error. `button` is `0` primary, `1` secondary.
 - **Replies.** Codes `0` done (no fields), `1` bytes (bytes data), `2` http (u32 status,
   headers, bytes body), `3` failed (string message; `b` is the fault: `0` notFound, `1` denied,
   `2` timeout, `3` network, `4` invalid, `5` other). For codes other than `3`, `b` is written as
-  0 and must be 0. Subscription event code `0` is tick.
+  0 and must be 0. Code `4` names (u32 count, then each name as a string), `5` app (u32 pid,
+  string name), `6` flag (`[granted, 0, 0, 0]`, granted a bool). Subscription event codes:
+  `0` tick, `1` changed.
 - **Global events.** `clock`, `reply` and `subEvent` belong to the app, not to a window; a
   surface id for window events (docs/surfaces.md) can go in a later version without touching
   them.
@@ -329,8 +341,10 @@ focus CLAIM#KEY
 timer "NAME" MS | cancelTimer "NAME" | quit
 request ID readFile "PATH" | request ID writeFile "PATH" BYTES | request ID sound "NAME"
 request ID http "METHOD" "URL" timeout=MS HEADERS body=BYTES
+request ID appendFile "PATH" BYTES | request ID listDir "PATH" | request ID deleteFile "PATH"
+request ID frontmostApp | request ID permission CODE PROMPT
 subs N
-start ID every MS | stop ID
+start ID every MS | start ID watchFile "PATH" | stop ID
 wake MS|none
 
 events N
@@ -339,6 +353,7 @@ key CODE SCALAR MODS | insert "…" replace=A B|none | marked "…" START LEN re
 unmark | copy | cut | selectAll | undo | redo | paste "…" | resize W H | scale P | focus B
 clock MONO WALL ZONE | sub ID CODE
 reply ID done | reply ID bytes BYTES | reply ID http STATUS HEADERS body=BYTES | reply ID failed FAULT "…"
+reply ID names N "…"… | reply ID app PID "NAME" | reply ID flag B
 ```
 
 `BYTES` is `x` followed by two lowercase hex digits per byte (`x` alone when empty);

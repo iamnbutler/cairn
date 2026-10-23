@@ -49,6 +49,9 @@ extension Event {
             case let .bytes(b): bytes(b)
             case let .http(st, hs, b): u32(st); headers(hs); bytes(b)
             case let .failed(_, m): str(m)
+            case let .names(ns): u32(UInt32(ns.count)); for n in ns { str(n) }
+            case let .app(pid, name): u32(pid); str(name)
+            case let .flag(b): out += [b ? 1 : 0, 0, 0, 0]
             }
         case let .subEvent(id, e): head(20, e.rawValue); u32(id)
         }

@@ -25,8 +25,11 @@ private def frame : Frame where
   effects := #[.setClipboard "copied", .beep, .setTimer "t" 30, .cancelTimer "ü",
     .request 7 (.writeFile "~/a" ⟨#[0, 255, 1]⟩), .request 8 (.readFile ""),
     .request 9 (.playSound "Tink"),
-    .request 4294967295 (.http "POST" "http://x/" [("A", "b"), ("", "")] ⟨#[1]⟩ 1000), .quit]
-  subs := #[.start 1 (.every 50), .stop 0]
+    .request 4294967295 (.http "POST" "http://x/" [("A", "b"), ("", "")] ⟨#[1]⟩ 1000), .quit,
+    .request 10 (.appendFile "~/t/2026-10-23.jsonl" ⟨#[123, 10]⟩), .request 11 (.listDir "~/t"),
+    .request 12 (.deleteFile "~/t/old"), .request 13 .frontmostApp,
+    .request 14 (.permission .accessibility true)]
+  subs := #[.start 1 (.every 50), .stop 0, .start 2 (.watchFile "~/c.json")]
   wake := some 18446744073709551615
 
 #guard fitsFrame frame
@@ -45,7 +48,9 @@ private def events : Array Event := #[.pointerMove ⟨-1, 2⟩,
   .windowFocus false, .scale 200, .resize ⟨1, 1⟩, .scroll ⟨0, 0⟩ (-3) 5, .paste "",
   .clock ⟨18446744073709551615, -9223372036854775808, -18000⟩, .clock {},
   .reply 3 .done, .reply 4 (.bytes ⟨#[9, 8]⟩), .reply 5 (.http 404 [("Content-Type", "x")] .empty),
-  .reply 6 (.failed .timeout "slow"), .subEvent 2 .tick]
+  .reply 6 (.failed .timeout "slow"), .subEvent 2 .tick, .subEvent 3 .changed,
+  .reply 7 (.names ["a", "日本"]), .reply 8 (.names []), .reply 9 (.app 501 "Terminal"),
+  .reply 10 (.flag true)]
 
 #guard events.all fitsEvent
 #guard decodeEvents (encodeEvents events) == some events

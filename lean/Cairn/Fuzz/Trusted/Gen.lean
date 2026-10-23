@@ -118,10 +118,15 @@ def bytes : Gen ByteArray := do
 def headers : Gen (List (String × String)) := do return (← array 3 (do return (← str, ← str))).toList
 
 def request : Gen Request := do
-  match ← Gen.below 4 with
+  match ← Gen.below 9 with
   | 0 => return .readFile (← str)
   | 1 => return .writeFile (← str) (← bytes)
   | 2 => return .playSound (← str)
+  | 3 => return .appendFile (← str) (← bytes)
+  | 4 => return .listDir (← str)
+  | 5 => return .deleteFile (← str)
+  | 6 => return .frontmostApp
+  | 7 => return .permission (← Gen.elem [.accessibility, .microphone]) (← Gen.chance 1 2)
   | _ => return .http (← str) (← str) (← headers) (← bytes) (← u32)
 
 def effect : Gen Effect := do
@@ -135,7 +140,10 @@ def effect : Gen Effect := do
   | _ => return .quit
 
 def subCmd : Gen SubCmd := do
-  if ← Gen.chance 1 2 then return .start (← u32) (.every (← u32)) else return .stop (← u32)
+  match ← Gen.below 3 with
+  | 0 => return .start (← u32) (.every (← u32))
+  | 1 => return .start (← u32) (.watchFile (← str))
+  | _ => return .stop (← u32)
 
 def frame : Gen Frame := do
   let big ← Gen.chance 1 10
