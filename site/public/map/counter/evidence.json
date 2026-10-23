@@ -1,12 +1,12 @@
 {
   "app": "Counter",
-  "generated": "2026-10-23T17:22:06.165Z",
+  "generated": "2026-10-23T17:31:26.230Z",
   "inputs": {
     "fuzz": "/Users/natebutler/code/cairn/.lane/trees/map-own/build/fuzz/Counter.json",
     "trusted": null,
     "conformance": null,
     "capture": true,
-    "theoremsAudited": 1481
+    "theoremsAudited": 1613
   },
   "counts": {
     "kinds": [
@@ -409,5 +409,13 @@
       "broken": false
     }
   ],
-  "retiredElsewhere": []
+  "retiredElsewhere": [
+    {
+      "id": 215,
+      "kind": "move",
+      "status": "retired",
+      "statement": "-",
+      "title": "Back through filters"
+    }
+  ]
 }

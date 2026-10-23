@@ -1,12 +1,12 @@
 {
   "app": "Basics",
-  "generated": "2026-10-23T17:22:07.135Z",
+  "generated": "2026-10-23T17:31:27.283Z",
   "inputs": {
     "fuzz": "/Users/natebutler/code/cairn/.lane/trees/map-own/build/fuzz/Basics.json",
     "trusted": null,
     "conformance": "/Users/natebutler/code/cairn/.lane/trees/map-own/build/conformance/Basics.json",
     "capture": true,
-    "theoremsAudited": 1481
+    "theoremsAudited": 1613
   },
   "counts": {
     "kinds": [
@@ -495,5 +495,13 @@
     }
   ],
   "gaps": [],
-  "retiredElsewhere": []
+  "retiredElsewhere": [
+    {
+      "id": 215,
+      "kind": "move",
+      "status": "retired",
+      "statement": "-",
+      "title": "Back through filters"
+    }
+  ]
 }
