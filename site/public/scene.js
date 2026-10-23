@@ -1,36 +1,42 @@
-// The header scene: a pixel landscape at night with a cairn on the meadow. It's drawn at a few CSS pixels per pixel into four layers: the sky,
-// cloud sprites that drift, the land (which dissolves into the page colour as mist), and
-// motes that rise and twinkle. Positions are measured from the centre, so a resize
-// reveals more land instead of reshuffling it.
+// The header scene: a pixel landscape at night with a cairn on the meadow. It sits behind the
+// top of the page: under the text column it dissolves into mist, and in the margins the meadow
+// runs on down the page in uneven tongues, framed by foliage. Everything is drawn once at a few
+// CSS pixels per pixel; only the sparkles and fireflies move. Positions are measured from the
+// centre, so a resize reveals more land instead of reshuffling it.
 
 const LIGHT = { x: 0.62, y: -0.62, z: 0.48 }; // from the upper right, where the moon is
 
-const THEMES = {
-  night: {
-    sky: ["#0b0e2a", "#0f1334", "#13183e", "#181d48", "#1e2353", "#25295d", "#2d2f67", "#363470", "#403878", "#4a3d7e"],
-    glow: ["#5a3f80", "#764c8a"],
-    wisp: ["#4a3f82", "#33347a"],
-    cloud: ["#aaa6e0", "#8180c4", "#6462a6", "#58508f", "#5a4482", "#45346f"],
-    ridges: [
-      ["#4b4f92", "#30336f", "#262a5e"], ["#3e4386", "#282c63", "#1f2355"], ["#33397a", "#22275a", "#1a1e4c"],
-    ],
-    hills: [["#24366a", "#1b2a58"], ["#1f4258", "#17334a"]],
-    meadow: ["#2a5452", "#1f4544", "#183838", "#122c2e"],
-    pines: ["#163238", "#10262d", "#0b1c22"],
-    flowers: [["#7d6cc0", "#5b4d98"], ["#d9b064", "#a88545"], ["#7d9bd0", "#5a74a6"], ["#c47aa8", "#94588a"], ["#b9bce6", "#8b8fc0"]],
-    stones: [
-      ["#1c1e45", "#2c2f62", "#424784", "#5e64a6", "#8a90cc"],
-      ["#221b45", "#352b62", "#4e4384", "#6c60a6", "#978cce"],
-      ["#122c34", "#1e434c", "#2f5f66", "#477f83", "#6fa8a6"],
-      ["#2a1f3c", "#3f2f56", "#5a4774", "#786595", "#a08fbc"],
-    ],
-    rim: "#d9dcff",
-    moon: { at: [0.36, 0.07], r: 6, tones: ["#fff7de", "#efe2bd", "#d9c99c"], halo: ["#262c66", "#20265c"] },
-    sun: { at: [-0.18, 0.5] }, // the last of the sunset, low behind the ranges
-    stars: 1,
-    motes: { count: 34, core: "#ffe9a3", halo: "rgba(242, 196, 106, 0.42)", dim: "rgba(242, 196, 106, 0.3)" },
-    sparkle: "#f2c46a",
-  },
+const T = {
+  sky: ["#0a0d28", "#0d1130", "#111638", "#151b42", "#1a1f4c", "#202456", "#272a60", "#2f2f69", "#383471", "#433878", "#4f3c7d", "#5c3f80"],
+  skyStreaks: ["#2d3070", "#3a3a7a", "#4a3f80", "#5a4486", "#6a4a8a", "#7a5290"],
+  glow: ["#6a4a8a", "#7d5592", "#93619a"],
+  cloud: ["#ddd6f6", "#c6bdec", "#ada3de", "#968bcf", "#a585c4", "#8676bc", "#7465ac", "#61559c", "#52488e", "#443d80", "#383472"],
+  cloudPink: ["#e3c6e6", "#c9a2d2", "#b088c2", "#9673b0"],
+  ranges: [
+    { peak: "#a7a2df", lit: ["#8f8acd", "#7e79c0"], shade: ["#5f5ba6", "#514e96"] },
+    { peak: "#8a85c8", lit: ["#736fb6", "#6561a8"], shade: ["#4b4890", "#3f3d80"] },
+    { peak: "#6f6bb2", lit: ["#5b58a0", "#4f4c92"], shade: ["#3a3878", "#30306a"] },
+  ],
+  haze: ["#5d4c8e", "#53488a", "#674f90", "#47437f"],
+  hills: [["#34507e", "#2b4570", "#243b63"], ["#2b5c6a", "#244f5e", "#1e4352"]],
+  lake: ["#20245e", "#272b68", "#2f3172", "#38377a", "#443d80", "#524386", "#5f4a8a"],
+  glint: ["#9c97d8", "#d9d3f6", "#fff4d6"],
+  meadow: ["#4a8a72", "#3f7a68", "#356c60", "#2c5f58", "#25534f", "#1f4746", "#193b3d", "#143034"],
+  tips: ["#6aa688", "#82b896"],
+  pines: ["#1f4a52", "#163a44", "#0f2c36"],
+  flowers: [["#e29bc8", "#b06e9e"], ["#a892ec", "#7462c0"], ["#f4c870", "#c99645"], ["#9cbcf0", "#6c88c6"], ["#eceafd", "#bdbbe0"]],
+  foliage: ["#173842", "#1f4a4c", "#2a5c58", "#3f7a68", "#5a9a80"],
+  stones: [
+    ["#1c1e45", "#2c2f62", "#424784", "#5e64a6", "#8a90cc"],
+    ["#221b45", "#352b62", "#4e4384", "#6c60a6", "#978cce"],
+    ["#122c34", "#1e434c", "#2f5f66", "#477f83", "#6fa8a6"],
+    ["#2c1d3e", "#45305a", "#634a7c", "#85699e", "#b08fc2"],
+  ],
+  rim: "#dcdcff",
+  moon: ["#fff7de", "#efe2bd", "#d9c99c"],
+  halo: ["#2b3070", "#252a64", "#20255a"],
+  sparkle: "#f2c46a",
+  fly: { core: "#ffe9a3", halo: "rgba(242, 196, 106, 0.42)", dim: "rgba(242, 196, 106, 0.3)" },
 };
 
 // Deterministic noise, so the scene is the same on every visit.
@@ -46,11 +52,11 @@ function noise(x, seed) {
 const fbm = (x, seed) => noise(x, seed) * 0.62 + noise(x * 2.03, seed + 7) * 0.26 + noise(x * 4.1, seed + 13) * 0.12;
 const rgb = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
-// Most of a band stays clean; only its seam breaks up.
 const seam = (t, w = 0.3) => clamp((t - 0.5) / w + 0.5);
+const pick = (arr, i) => arr[clamp(Math.round(i), 0, arr.length - 1)];
 
-// Streak dithering: transitions break into short horizontal runs, the way painted pixel
-// skies and water do, instead of a checkerboard.
+// Streak dithering: transitions break into short horizontal runs, the way painted pixel skies
+// and water do, instead of a checkerboard.
 function streak(x, y, t, min = 3, spread = 7) {
   const len = min + Math.floor(h2(y, 911) * spread);
   return h2(Math.floor((x + h2(y, 17) * 64) / len), y * 7 + 3) < t;
@@ -64,222 +70,321 @@ class Layer {
     this.ctx = this.canvas.getContext("2d");
     this.img = this.ctx.createImageData(w, h);
     this.d = this.img.data;
+    this.cache = new Map();
   }
-  set(x, y, c, a = 255) {
+  set(x, y, c) {
     x |= 0; y |= 0;
     if (x < 0 || y < 0 || x >= this.w || y >= this.h) return;
-    const [r, g, b] = typeof c === "string" ? rgb(c) : c, i = (y * this.w + x) * 4;
-    this.d[i] = r; this.d[i + 1] = g; this.d[i + 2] = b; this.d[i + 3] = a;
+    let v = typeof c === "string" ? this.cache.get(c) : c;
+    if (!v) { v = rgb(c); this.cache.set(c, v); }
+    const i = (y * this.w + x) * 4;
+    this.d[i] = v[0]; this.d[i + 1] = v[1]; this.d[i + 2] = v[2]; this.d[i + 3] = 255;
   }
-  alpha(x, y) { return x < 0 || y < 0 || x >= this.w || y >= this.h ? 0 : this.d[(y * this.w + x) * 4 + 3]; }
-  clear(x, y) { if (x >= 0 && y >= 0 && x < this.w && y < this.h) this.d[(y * this.w + x) * 4 + 3] = 0; }
+  get(x, y) { const i = (y * this.w + x) * 4; return [this.d[i], this.d[i + 1], this.d[i + 2]]; }
   done() { this.ctx.putImageData(this.img, 0, 0); return this; }
 }
 
-function drawSky(L, T, horizon, cx) {
-  const n = T.sky.length;
-  const sun = T.sun && [cx + Math.round(L.w * T.sun.at[0]), Math.round(L.h * T.sun.at[1])];
-  for (let y = 0; y < L.h; y++) {
+// --- Sky -------------------------------------------------------------------------------------
+
+function drawSky(L, g) {
+  const { cx, horizon } = g, n = T.sky.length;
+  for (let y = 0; y < Math.min(L.h, g.lakeTop + 2); y++) {
     const f = clamp(y / horizon) * (n - 1), i = Math.min(Math.floor(f), n - 2), t = f - i;
     for (let x = 0; x < L.w; x++) {
-      let c = streak(x, y, seam(t, 0.35), 4, 10) ? T.sky[i + 1] : T.sky[i];
-      if (sun) {
-        // The sun has set behind the ridge; its glow warms the sky above it.
-        const d = Math.hypot((x - sun[0]) / 2.4, y - sun[1]) / (L.h * 0.3);
-        if (d < 1) c = streak(x, y, seam(1 - d, 0.5), 4, 10) ? (streak(x + 5, y, seam(1 - d / 0.5, 0.5), 4, 10) ? T.glow[1] : T.glow[0]) : c;
+      let c = streak(x, y, seam(t, 0.4), 4, 10) ? T.sky[i + 1] : T.sky[i];
+      // The last of the sunset, low behind the ranges on the left.
+      const d = Math.hypot((x - g.glowX) / 2.6, y - horizon) / (horizon * 0.62);
+      if (d < 1) {
+        const k = Math.floor((1 - d) * 3.2);
+        if (k > 0 && streak(x, y, seam((1 - d) * 3.2 - k + 0.5, 0.5), 4, 12)) c = T.glow[Math.min(k, 3) - 1];
       }
       L.set(x, y, c);
     }
   }
-  // Long thin wisps near the horizon.
-  for (let k = 0; k < 9; k++) {
-    const y = Math.round(horizon * (0.5 + hash(k * 3 + 1) * 0.45));
-    const x0 = cx + Math.round((hash(k * 5 + 2) - 0.5) * L.w * 1.2), len = 30 + Math.round(hash(k * 7 + 3) * 70);
-    for (let x = x0; x < x0 + len; x++) {
+  // Stratus streaks: thin runs of a neighbouring hue, thicker and warmer near the horizon.
+  for (let k = 0; k < 70; k++) {
+    const v = hash(k * 3 + 1) ** 0.6, y = Math.round(horizon * (0.16 + v * 0.8));
+    const x0 = cx + Math.round((hash(k * 5 + 2) - 0.5) * L.w * 1.2), len = 14 + Math.round(hash(k * 7 + 3) * 60);
+    const c = pick(T.skyStreaks, v * (T.skyStreaks.length - 1) + (hash(k * 11) - 0.5) * 1.5);
+    const rows = v > 0.7 ? 2 : 1;
+    for (let r = 0; r < rows; r++) for (let x = x0 + r * 3; x < x0 + len - r * 4; x++) {
       const t = Math.sin(Math.PI * (x - x0) / len);
-      if (streak(x, y, t * 0.9)) L.set(x, y, T.wisp[k % 2]);
-      if (t > 0.6 && streak(x, y + 1, (t - 0.6) * 1.5)) L.set(x, y + 1, T.wisp[(k + 1) % 2]);
+      if (streak(x, y + r, t * 1.2, 4, 9)) L.set(x, y + r, c);
     }
   }
-  if (T.stars) {
-    for (let y = 0; y < horizon; y++) for (let x = 0; x < L.w; x++) {
-      const h = h2(x - cx + 4096, y);
-      if (h > 0.9955 - (1 - y / horizon) * 0.002) L.set(x, y, h > 0.9991 ? "#fff6dc" : h > 0.998 ? "#c9cff5" : "#7d84c6");
-    }
+  // Stars, denser toward the top.
+  for (let y = 0; y < horizon; y++) for (let x = 0; x < L.w; x++) {
+    const h = h2(x - cx + 4096, y);
+    if (h > 0.9955 - (1 - y / horizon) * 0.002) L.set(x, y, h > 0.9991 ? "#fff6dc" : h > 0.998 ? "#c9cff5" : "#7d84c6");
   }
-  // The moon, with a dithered halo at night.
-  const [mx, my] = [cx + Math.round(Math.min(L.w * T.moon.at[0], 230)), Math.round(L.h * T.moon.at[1])];
-  const r = T.moon.r;
-  if (T.moon.halo) {
-    for (let y = -r * 4; y <= r * 4; y++) for (let x = -r * 4; x <= r * 4; x++) {
-      const d = Math.hypot(x, y) / r;
-      if (d > 1 && d < 4 && streak(mx + x, my + y, (4 - d) / 3 * 0.8)) L.set(mx + x, my + y, d < 2.2 ? T.moon.halo[0] : T.moon.halo[1]);
+  // The moon, with a stepped halo.
+  const [mx, my, r] = [g.moonX, g.moonY, 6];
+  for (let y = -r * 5; y <= r * 5; y++) for (let x = -r * 5; x <= r * 5; x++) {
+    const d = Math.hypot(x, y) / r;
+    if (d > 1.1 && d < 5) {
+      const k = d < 2 ? 0 : d < 3.2 ? 1 : 2;
+      if (streak(mx + x, my + y, seam((5 - d) / 4 + 0.15, 0.5), 3, 6)) L.set(mx + x, my + y, T.halo[k]);
     }
   }
   for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) {
     const d = x * x + y * y;
     if (d > r * r + r * 0.6) continue;
     const lit = (x * LIGHT.x + y * LIGHT.y) / r;
-    const crater = r > 4 && ((x + 2) ** 2 + (y - 1) ** 2 < 2 || (x - 2) ** 2 + (y + 2) ** 2 < 1.5);
-    L.set(mx + x, my + y, crater ? T.moon.tones[1] : lit > 0.25 || d < (r - 1.5) ** 2 ? T.moon.tones[0] : lit > -0.4 ? T.moon.tones[1] : T.moon.tones[2]);
+    const crater = (x + 2) ** 2 + (y - 1) ** 2 < 2 || (x - 2) ** 2 + (y + 2) ** 2 < 1.5 || (x + 1) ** 2 + (y + 3) ** 2 < 1;
+    L.set(mx + x, my + y, crater ? T.moon[1] : lit > -0.35 || d < (r - 1.5) ** 2 ? T.moon[0] : T.moon[2]);
   }
-  return [mx, my];
 }
 
-// A cumulus sprite: lobes of a mound, each lit as its own sphere, with the base fading into
-// the sky in streaks.
-function makeCloud(T, w, seed) {
-  const hgt = Math.round(w * 0.75), L = new Layer(Math.round(w * 1.5), hgt + 6);
-  const base = hgt + 1, mid = L.w / 2, puffs = [];
-  const r = k => hash(seed * 131 + k);
-  const count = 7 + Math.floor(w / 9);
+// Cumulus, built the way the references build them: dozens of small round heads, each a step
+// lighter on the moon side and a step darker on its lower rim, their base tone set by height
+// with a little jitter, so the cloud reads as a mosaic of lit and shadowed lumps. A streaky
+// flat base runs out past the heads on both sides. `warm` tints the side away from the moon
+// with the sunset's pinks.
+function drawCloud(L, x0, base, w, hgt, seed, warm = 0) {
+  const r = k => hash(seed * 7919 + k * 31);
+  const skew = (r(0) - 0.5) * 0.5;
+  const profile = u => {
+    // A dome with big billows on top: rounded, never a peak.
+    const a = Math.abs(u - skew * 0.4);
+    return hgt * Math.sqrt(Math.max(0, 1 - a ** 2.4)) * (0.6 + 0.4 * noise(u * 4.5 + 5, seed));
+  };
+  const heads = [];
+  const count = Math.round(w * hgt / 22);
   for (let k = 0; k < count; k++) {
-    const u = (r(k) * 2 - 1) * 0.9, mound = Math.cos(u * Math.PI / 2);
-    const rad = w * (0.09 + 0.17 * mound) * (0.75 + r(k + 50) * 0.5);
-    puffs.push([mid + u * w * 0.42, base - rad * 0.55 - mound * hgt * 0.42 * r(k + 90), rad]);
+    const u = r(k) * 2 - 1, top = profile(u);
+    if (top < 3) continue;
+    const v = r(k + 4000) ** 0.8, rad = 4 + r(k + 8000) * 4 + (1 - v) * 3;
+    heads.push({ x: x0 + u * w / 2, y: base - v * (top - rad * 0.5), r: rad });
   }
-  puffs.sort((a, b) => a[1] - b[1]); // lower lobes sit in front
-  for (let y = 0; y < L.h; y++) for (let x = 0; x < L.w; x++) {
-    let p = null;
-    for (const q of puffs) if ((x - q[0]) ** 2 + (y - q[1]) ** 2 <= q[2] * q[2]) p = q;
-    if (!p || y > base) continue;
-    const nx = (x - p[0]) / p[2], ny = (y - p[1]) / p[2], nz = Math.sqrt(Math.max(0, 1 - nx * nx - ny * ny));
-    const lobe = nx * LIGHT.x + ny * LIGHT.y + nz * LIGHT.z;
-    const lum = 0.6 * (1 - y / base) * 1.6 + 0.4 * lobe - 0.1;
-    const f = clamp(lum) * (T.cloud.length - 2);
-    let i = T.cloud.length - 2 - Math.floor(f);
-    if (i > 0 && streak(x, y, seam(f - Math.floor(f)), 2, 4)) i--;
-    const under = (base - y) / 6;
-    if (under < 1) { i = Math.max(i, T.cloud.length - 2); if (!streak(x, y, under + 0.15)) continue; }
-    L.set(x, y, T.cloud[Math.min(i, T.cloud.length - 1)]);
+  // Heads along the outline make the silhouette bumpy.
+  const rim = Math.round(w / 2.2);
+  for (let k = 0; k < rim; k++) {
+    const u = (k / rim) * 2 - 1 + (r(k + 9000) - 0.5) * 0.05, top = profile(u);
+    if (top < 2) continue;
+    const rad = 3.5 + r(k + 9500) * 4.5;
+    heads.push({ x: x0 + u * w / 2, y: base - top + rad * 0.85, r: rad });
   }
-  return L.done();
+  heads.sort((a, b) => a.y - b.y); // lower heads sit in front
+  const tones = T.cloud.length;
+  for (const h of heads) {
+    const t = 1 - (h.y - (base - hgt)) / hgt; // 1 at the top
+    const tone = (1 - clamp(t)) * (tones - 4) + (r(Math.round(h.x * 13 + h.y)) - 0.5) * 1.6;
+    const warmSide = warm && h.x < x0 + skew * w * 0.2 && r(Math.round(h.x * 7 + h.y * 3)) < 0.8;
+    for (let y = Math.floor(h.y - h.r); y <= h.y + h.r; y++) for (let x = Math.floor(h.x - h.r); x <= h.x + h.r; x++) {
+      const nx = (x + 0.5 - h.x) / h.r, ny = (y + 0.5 - h.y) / h.r, d = nx * nx + ny * ny;
+      if (d > 1 || y > base) continue;
+      const lit = nx * LIGHT.x + ny * LIGHT.y;
+      const i = tone + (lit > 0.3 ? -1.4 : lit < -0.35 ? 1.2 : 0) + (d > 0.7 && ny > 0.1 ? 1 : 0);
+      let c = pick(T.cloud, i);
+      if (warmSide && i > 2.5 && i < 8) c = pick(T.cloudPink, (i - 3) * 0.75);
+      L.set(x, y, c);
+    }
+  }
+  // The flat base: streaks in the darker tones, running wide.
+  for (let y = base - 3; y <= base + 2; y++) {
+    const spread = w * (0.62 + (y - base + 3) * 0.06);
+    for (let x = Math.floor(x0 - spread); x <= x0 + spread; x++) {
+      const t = 1 - Math.abs(x - x0) / spread;
+      if (streak(x, y, seam(t * 1.6, 0.6), 5, 14)) L.set(x, y, pick(T.cloud, tones - 4 + (y - base + 3) * 0.6));
+    }
+  }
 }
 
-// A ridge line made of peaks, so far ranges read as mountains, not noise.
+// --- Land ------------------------------------------------------------------------------------
+
 function peaks(x, seed, amp, spacing) {
-  let h = 0;
+  let best = { h: 0, px: x, top: 0 };
   for (let k = Math.floor(x / spacing) - 2; k <= Math.floor(x / spacing) + 2; k++) {
     const px = (k + 0.2 + hash(k * 92821 + seed) * 0.6) * spacing, ph = (0.4 + hash(k * 7919 + seed) * 0.6) * amp;
-    h = Math.max(h, ph - Math.abs(x - px) * (0.42 + hash(k * 31 + seed) * 0.3));
+    const h = ph - Math.abs(x - px) * (0.42 + hash(k * 31 + seed) * 0.3);
+    if (h > best.h) best = { h, px, top: ph };
   }
-  return h + (fbm(x / 6, seed) - 0.5) * amp * 0.08;
+  best.h += (fbm(x / 6, seed) - 0.5) * amp * 0.08;
+  return best;
 }
 
-function drawLand(L, T, horizon, cx, bg) {
-  const W = L.w, H = L.h;
-  // Far ranges: a few broad peaks, lit on the faces turned to the sunset, with snow-light
-  // along the ridges and a softer middle tone where a face turns away.
-  T.ridges.forEach((pal, k) => {
-    const base = horizon + 4 + k * 6, amp = H * (0.24 - k * 0.055), spacing = 110 - k * 22, seed = 11 + k * 17;
-    const hAt = x => base - peaks(x - cx + 2000, seed, amp, spacing);
+function drawRanges(L, g) {
+  const { cx, horizon, W } = g;
+  T.ranges.forEach((pal, k) => {
+    const base = horizon + 4 + k * 6, amp = g.unit * (0.17 - k * 0.04), spacing = 110 - k * 22, seed = 11 + k * 17;
     for (let x = 0; x < W; x++) {
-      const h = Math.round(hAt(x)), slope = hAt(x + 2) - hAt(x - 2);
-      for (let y = h; y < H; y++) {
-        const depth = y - h;
-        // A spur: the face's lighting wanders a little with depth, so faces aren't flat wedges.
-        const wander = (fbm((x - cx) / 7 + depth / 9, seed + 3) - 0.5) * 1.6;
-        const s2 = slope + wander;
-        let c = s2 > 0.5 ? pal[0] : s2 < -0.4 ? pal[2] : pal[1];
-        if (depth < 2) c = slope > -0.4 ? pal[0] : pal[1];
-        if (c === pal[0] && depth > 10 && streak(x, y, seam((depth - 10) / 16), 3, 6)) c = pal[1];
+      const p = peaks(x - cx + 2000, seed, amp, spacing), h = Math.round(base - p.h);
+      const side = (x - cx + 2000) - p.px; // > 0 on the moon side
+      for (let y = h; y < g.lakeTop; y++) {
+        const dy = y - (base - p.top), depth = y - h;
+        // Rock facets: noise stretched along each face's slope, so the planes run diagonally.
+        const f = noise((side * 0.9 + dy * (side > 0 ? -0.55 : 0.55)) / 6 + k * 40, seed + 5);
+        let c;
+        if (side > 0) c = depth < 2 || (dy < 10 && f > 0.55) ? pal.peak : f > 0.42 ? pal.lit[0] : pal.lit[1];
+        else c = depth < 1 ? pal.lit[1] : f > 0.5 ? pal.shade[0] : pal.shade[1];
         L.set(x, y, c);
       }
     }
+    // Haze along the foot of each range.
+    for (let y = base - 8; y < base + 6; y++) for (let x = 0; x < W; x++) {
+      const t = 1 - Math.abs(y - base + 1) / 7;
+      if (t > 0 && streak(x, y, t * 0.6, 5, 14)) L.set(x, y, T.haze[(k + (y & 1)) % T.haze.length]);
+    }
   });
-  // Haze between the ranges and the hills.
-  for (let y = horizon - 2; y < horizon + 14; y++) for (let x = 0; x < W; x++) {
-    const t = 1 - Math.abs(y - horizon - 6) / 8;
-    if (t > 0 && streak(x, y, t * 0.55)) L.set(x, y, T.wisp[1]);
-  }
-  // Rolling hills.
+}
+
+function drawHills(L, g) {
+  const { cx, horizon, W } = g;
   const hill = (pal, base, amp, scale, seed) => {
     const hAt = x => base - fbm((x - cx) / scale + 50, seed) * amp;
     for (let x = 0; x < W; x++) {
       const h = Math.round(hAt(x)), lit = hAt(x + 2) - hAt(x - 2) > -0.2;
-      for (let y = h; y < H; y++) {
+      for (let y = h; y < g.lakeTop + 1; y++) {
         const d = y - h;
-        L.set(x, y, d < 2 || (lit && streak(x, y, 1 - d / 10)) ? pal[0] : pal[1]);
+        L.set(x, y, d < 2 || (lit && streak(x, y, 1 - d / 8, 3, 6)) ? pal[0] : d > 6 && streak(x, y, 0.5, 4, 8) ? pal[2] : pal[1]);
       }
     }
     return hAt;
   };
-  // Pines in a few clusters, lit on their right. Each hill's pines are drawn before the
-  // next hill, so the nearer hill hides their feet.
   const pine = (x0, ground, ht) => {
     for (let y = 0; y < ht; y++) {
       const t = y / ht, tier = (y % 4) / 4, half = Math.max(0, Math.round((t * 0.42 + tier * 0.12) * ht * 0.45));
       for (let x = -half; x <= half; x++) L.set(x0 + x, ground - ht + y, x > half * 0.3 ? T.pines[0] : x < -half * 0.4 ? T.pines[2] : T.pines[1]);
     }
     L.set(x0, ground - ht - 1, T.pines[1]);
-    L.set(x0, ground, T.pines[2]); L.set(x0, ground + 1, T.pines[2]);
+    L.set(x0, ground, T.pines[2]);
   };
   const pines = (hAt, onFar) => {
-    for (let k = 0; k < 14; k++) {
+    for (let k = 0; k < 30; k++) {
       if ((hash(k * 43) > 0.5) !== onFar) continue;
-      const x = cx + Math.round((hash(k * 41 + 5) - 0.5) * Math.min(W, 520));
-      if (Math.abs(x - (cx + Math.min(W * 0.22, 120))) < 30) continue; // keep the cairn's skyline clear
+      const x = cx + Math.round((hash(k * 41 + 5) - 0.5) * Math.min(W, 900));
+      if (Math.abs(x - g.cairnX) < 32) continue; // keep the cairn's skyline clear
       const n = 1 + Math.floor(hash(k * 47) * 4);
       for (let j = 0; j < n; j++) {
         const px = x + j * 3 + Math.round(hash(k * 53 + j) * 2);
-        pine(px, Math.round(hAt(px)) + 3, Math.round((onFar ? 7 : 10) + hash(k * 59 + j) * (onFar ? 5 : 8)));
+        pine(px, Math.min(g.lakeTop - 1, Math.round(hAt(px)) + 3), Math.round((onFar ? 7 : 10) + hash(k * 59 + j) * (onFar ? 5 : 8)));
       }
     }
   };
-  pines(hill(T.hills[0], horizon + 12, H * 0.1, 40, 21), true);
-  pines(hill(T.hills[1], horizon + 22, H * 0.09, 30, 29), false);
-  // The meadow, with grass strokes and flowers that grow larger toward the viewer.
-  const meadowAt = x => horizon + 32 + (fbm((x - cx) / 34 + 9, 41) - 0.5) * H * 0.08;
+  pines(hill(T.hills[0], horizon + 12, g.unit * 0.1, 40, 21), true);
+  pines(hill(T.hills[1], horizon + 19, g.unit * 0.07, 30, 29), false);
+}
+
+// A still lake between the hills and the meadow, holding the sky's colours in streaks and the
+// moon's path as broken glints.
+function drawLake(L, g) {
+  const { W, lakeTop } = g, depth = 26;
+  for (let y = lakeTop; y < lakeTop + depth; y++) {
+    const t = (y - lakeTop) / depth;
+    for (let x = 0; x < W; x++) {
+      let c = pick(T.lake, (1 - t) * 2.5 + h2(Math.floor((x + h2(y, 3) * 40) / (6 + h2(y, 5) * 14)), y) * 3.2);
+      const dm = Math.abs(x - g.moonX);
+      if (dm < 4 + t * 16 && streak(x, y, 0.55 - dm / (10 + t * 30), 2, 5)) c = T.glint[dm < 3 ? (y % 3 ? 1 : 2) : 0];
+      const dg = Math.abs(x - g.glowX) / 2.4;
+      if (dg < 30 && t < 0.5 && streak(x + 7, y, (1 - dg / 30) * 0.6, 4, 10)) c = T.glow[h2(x >> 3, y) < 0.5 ? 0 : 1];
+      L.set(x, y, c);
+    }
+  }
+  // The far shore: a dark line where the hills meet the water.
+  for (let x = 0; x < W; x++) if (h2(x, 1) < 0.85) L.set(x, lakeTop, T.hills[1][2]);
+}
+
+function drawMeadow(L, g) {
+  const { W, H } = g;
   for (let x = 0; x < W; x++) {
-    const h = Math.round(meadowAt(x));
+    const h = Math.round(g.meadowAt(x));
     for (let y = h; y < H; y++) {
       const d = y - h;
-      let i = d < 2 ? 0 : d < 10 ? (streak(x, y, (d - 2) / 8) ? 2 : 1) : 2;
-      if (h2(x * 3, y) < 0.07) i = Math.max(0, i - 1);
-      L.set(x, y, T.meadow[i]);
+      // Bands of green that darken toward the viewer, broken into streaks, with moonlit tips.
+      // Further down, slow swells of light and shade keep the long tongues from going flat.
+      const swell = d > 30 ? (fbm(x / 23 + y / 41, 83) - 0.5) * 4 : 0;
+      let i = d < 2 ? 0 : 1 + Math.min(d / 9, 4.5) + swell;
+      i += (h2(Math.floor((x + h2(y, 9) * 30) / (3 + h2(y, 4) * 6)), y) - 0.5) * 1.6;
+      let c = pick(T.meadow, i);
+      if (d > 1 && h2(x * 3, y) < 0.015) c = T.tips[h2(x, y * 5) < 0.5 ? 0 : 1];
+      L.set(x, y, c);
     }
   }
-  for (let k = 0; k < W * 0.9; k++) {
-    const x = Math.floor(h2(k, 1) * W), h = Math.round(meadowAt(x)), y = h + 3 + Math.floor(h2(k, 2) ** 0.7 * (H - h));
-    const near = (y - h) / (H - h), pal = T.flowers[Math.floor(h2(k, 3) * T.flowers.length)];
-    if (pal === T.flowers[0] && near > 0.35) { // lupine spikes in front
-      const len = 3 + Math.round(near * 4);
-      for (let j = 0; j < len; j++) L.set(x, y - j, j % 2 ? pal[1] : pal[0]);
-      L.set(x, y + 1, T.meadow[3]);
-    } else {
-      L.set(x, y, pal[0]);
-      if (near > 0.45) { L.set(x + 1, y, pal[1]); L.set(x, y + 1, pal[1]); }
-    }
+  // Grass blades: short vertical strokes, longer toward the viewer.
+  for (let k = 0; k < W * H * 0.03; k++) {
+    const x = Math.floor(h2(k, 21) * W), top = g.meadowAt(x), y = Math.floor(top + 3 + h2(k, 22) * (H - top));
+    const near = clamp((y - top) / 120), len = 1 + Math.floor(near * 5 * h2(k, 23));
+    const c = h2(k, 24) < 0.5 ? T.meadow[Math.min(7, 3 + Math.floor(near * 4))] : T.tips[0];
+    for (let j = 0; j < len; j++) L.set(x, y - j, c);
   }
-  drawCairn(L, T, cx + Math.round(Math.min(W * 0.22, 120)), meadowAt);
-
-  // Mist: the meadow fades into the page colour in long streaks, so the scene flows into
-  // the page. A veil tone (half meadow, half page) comes first.
-  const mistTop = horizon + 58, mistEnd = H - 34;
-  for (let y = mistTop; y < H; y++) {
-    const t = (y - mistTop) / (mistEnd - mistTop);
-    for (let x = 0; x < W; x++) {
-      if (t >= 1 || streak(x, y, t ** 1.2, 6, 18)) L.set(x, y, bg);
-      else if (streak(x + 31, y, clamp(t * 2.2), 6, 18)) {
-        const i = (y * W + x) * 4, a = 0.5;
-        L.set(x, y, [L.d[i] * (1 - a) + bg[0] * a, L.d[i + 1] * (1 - a) + bg[1] * a, L.d[i + 2] * (1 - a) + bg[2] * a]);
+  // Flowers in drifts: clusters of one colour, bigger toward the viewer.
+  for (let k = 0; k < W * 1.2 + H * 1.4; k++) {
+    const x = Math.floor(h2(k, 1) * W), top = g.meadowAt(x), y = Math.floor(top + 4 + h2(k, 2) ** 0.8 * (H - top - 4));
+    if (fbm(x / 26 + 3, 91) + fbm(y / 19 + 5, 93) < 1.05) continue; // drifts, with bare grass between
+    const near = clamp((y - top) / 140), pal = T.flowers[Math.floor(fbm(x / 40 + y / 60, 97) * T.flowers.length * 1.6) % T.flowers.length];
+    const n = 2 + Math.floor(h2(k, 4) * 5);
+    for (let j = 0; j < n; j++) {
+      const fx = x + Math.round((h2(k, 10 + j) - 0.5) * (6 + near * 16)), fy = y + Math.round((h2(k, 20 + j) - 0.5) * (3 + near * 6));
+      if (pal === T.flowers[1] && near > 0.3) { // lupine spikes
+        const len = 3 + Math.round(near * 6);
+        for (let s = 0; s < len; s++) L.set(fx, fy - s, s % 2 ? pal[1] : pal[0]);
+        L.set(fx, fy + 1, T.meadow[6]);
+      } else {
+        L.set(fx, fy, pal[0]);
+        if (near > 0.35) { L.set(fx + 1, fy, pal[1]); L.set(fx, fy + 1, pal[1]); }
+        if (near > 0.7) { L.set(fx - 1, fy, pal[0]); L.set(fx, fy - 1, pal[0]); L.set(fx + 1, fy + 1, T.meadow[7]); }
       }
     }
   }
 }
 
-// The cairn: flat stones with uneven outlines, lit from the sunset side, selectively outlined
+// Leaves in the foreground: pointed blades with a dark side, a lit side and a midrib.
+function leaf(L, x0, y0, ang, len, wid, tones) {
+  const dx = Math.cos(ang), dy = Math.sin(ang);
+  for (let s = 0; s <= len; s += 0.5) {
+    const half = wid * Math.sin(Math.PI * s / len) ** 0.8, px = x0 + dx * s, py = y0 + dy * s;
+    for (let w = -half; w <= half; w += 0.5) {
+      const x = Math.round(px - dy * w), y = Math.round(py + dx * w);
+      L.set(x, y, Math.abs(w) < 0.6 ? tones[2] : w > half - 1 ? tones[3] : w > 0 ? tones[1] : tones[0]);
+    }
+  }
+}
+
+// Clumps of leaves along the land's inner edge, so it ends in foliage rather than a line.
+function drawFoliage(L, g, side, seed) {
+  const edge = side < 0 ? g.edgeL : g.edgeR, n = Math.round((g.landEnd - g.clearTop) / 2.5);
+  for (let k = 0; k < n; k++) {
+    const y = Math.round(g.clearTop + hash(seed * 100 + k) * (g.landEnd - g.clearTop)), e = edge(y);
+    if (e > g.cx - 6) continue;
+    const x = g.cx + side * Math.round(e + 1 + hash(seed * 200 + k) ** 2 * 14);
+    const ang = -Math.PI / 2 - side * (0.2 + hash(seed * 300 + k) * 0.9);
+    const len = 8 + hash(seed * 400 + k) * 14, wid = 2 + hash(seed * 500 + k) * 2.5;
+    const f = T.foliage, tones = hash(seed * 600 + k) < 0.5 ? f.slice(0, 4) : f.slice(1, 5);
+    leaf(L, x, y, ang, len, wid, tones);
+  }
+}
+
+// A few lone stones resting on the land below the clearing, echoing the cairn.
+function drawBoulders(L, g, side, seed) {
+  const edge = side < 0 ? g.edgeL : g.edgeR;
+  for (let k = 0; k < 4; k++) {
+    const y = Math.round(g.clearTop + (0.1 + hash(seed * 80 + k) * 0.7) * (g.landEnd - g.clearTop));
+    const e = edge(y), room = g.cx - e;
+    if (room < 36) continue;
+    const x = g.cx + side * Math.round(e + 14 + hash(seed * 70 + k) * (room - 28));
+    const a = 4 + hash(seed * 90 + k) * 5, b = a * 0.6, ramp = T.stones[k % T.stones.length];
+    for (let yy = -b - 1; yy <= b + 1; yy++) for (let xx = -a - 1; xx <= a + 1; xx++) {
+      const d = (xx / a) ** 2 + (yy / b) ** 2;
+      if (d > 1) {
+        if (yy > 0 && yy < b + 2 && Math.abs(xx) < a * 1.1 && streak(x + xx, y + yy, 0.6)) L.set(x + xx, y + yy, T.meadow[7]);
+        continue;
+      }
+      const lum = (xx / a) * LIGHT.x + (yy / b) * LIGHT.y + Math.sqrt(1 - d) * LIGHT.z;
+      L.set(x + xx, y + yy, ramp[clamp(Math.round((lum + 0.2) * 3), 0, 4)]);
+    }
+  }
+}
+
+// The cairn: flat stones with uneven outlines, lit from the moon side, selectively outlined
 // (dark only away from the light), with contact shadows where stones rest on each other.
-function drawCairn(L, T, kx, groundAt) {
-  const ground = Math.round(groundAt(kx)) + 4;
+function drawCairn(L, g) {
+  const kx = g.cairnX, ground = Math.round(g.meadowAt(kx)) + 6;
   const specs = [[46, 14, 0, 0.04], [37, 12, 2, -0.05], [30, 11, -1, 0.06], [23, 10, 1, -0.04], [16, 8, 0, 0.05], [10, 6, 1, 0]];
   const pal = [0, 3, 2, 1, 3, 0];
-  // Cast shadow on the grass, away from the light.
   for (let y = -2; y <= 2; y++) for (let x = -38; x <= 20; x++) {
-    if ((x + 9) ** 2 / 29 ** 2 + y * y / 5 <= 1 && streak(kx + x, ground + y, 0.85)) L.set(kx + x, ground + y, T.meadow[3]);
+    if ((x + 9) ** 2 / 29 ** 2 + y * y / 5 <= 1 && streak(kx + x, ground + y, 0.85)) L.set(kx + x, ground + y, T.meadow[7]);
   }
   let bottom = ground, prev = null;
-  const placed = [];
   specs.forEach(([w, h, off, tilt], k) => {
     const ramp = T.stones[pal[k]], a = w / 2, b = h / 2, sx = kx + off, sy = bottom - b;
     const inside = (x, y) => {
@@ -287,30 +392,27 @@ function drawCairn(L, T, kx, groundAt) {
       const ang = Math.atan2(dy / b, dx / a), wob = 1 + (noise(ang * 2.2 + 3, k * 13 + 1) - 0.5) * 0.16;
       return Math.abs(dx / (a * wob)) ** 2.6 + Math.abs(dy / (b * wob)) ** 2 <= 1;
     };
-    placed.push({ sx, sy, a, b, inside });
     for (let y = Math.floor(sy - b) - 2; y <= sy + b + 2; y++) for (let x = Math.floor(sx - a) - 2; x <= sx + a + 2; x++) {
       if (!inside(x, y)) continue;
       const nx = clamp((x + 0.5 - sx) / a, -1, 1), ny = clamp((y + 0.5 - sy - (x - sx) * tilt) / b, -1, 1);
       const nz = Math.sqrt(Math.max(0, 1 - nx * nx * 0.8 - ny * ny * 0.8));
       const lum = nx * LIGHT.x + ny * LIGHT.y * 1.25 + nz * LIGHT.z;
       let i = Math.round(clamp((lum + 0.15) / 1.2) * 3) + 1;
-      if (h2(x * 5 + k, y * 3) < 0.08) i -= 1;            // pits and grain
+      if (h2(x * 5 + k, y * 3) < 0.08) i -= 1;
       else if (h2(x * 7 + k, y * 11) < 0.04) i += 1;
       const edge = !inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1);
-      if (edge) i = lum > 0.35 ? Math.min(i, 3) : 0;      // sel-out: no dark line on the lit rim
-      // Contact shadow: the stone above sits in a dip of this one.
+      if (edge) i = lum > 0.35 ? Math.min(i, 3) : 0;
       if (prev && y < sy && y >= prev.sy + prev.b - 2 && Math.abs(x + 0.5 - prev.sx) < prev.a * 0.95) i = Math.min(i, 1);
       L.set(x, y, ramp[clamp(i, 0, 4)]);
-      if (T.rim && edge && nx > 0.45 && ny < 0.3) L.set(x, y, T.rim);
+      if (edge && nx > 0.45 && ny < 0.3) L.set(x, y, T.rim);
     }
-    prev = placed[placed.length - 1];
+    prev = { sx, sy, a, b };
     bottom = Math.round(sy - b + 2);
   });
-  // Grass and pebbles at the foot, in front of the base stone.
   for (let x = kx - 26; x <= kx + 27; x++) {
     if (h2(x, 77) < 0.5) continue;
     const len = 1 + Math.floor(h2(x, 78) * 3);
-    for (let j = 0; j < len; j++) L.set(x, ground + 1 - j, j === len - 1 ? T.meadow[1] : T.meadow[2]);
+    for (let j = 0; j < len; j++) L.set(x, ground + 1 - j, j === len - 1 ? T.meadow[1] : T.meadow[4]);
   }
   for (const [dx, w] of [[-31, 3], [-25, 2], [29, 2]]) {
     L.set(kx + dx, ground, T.stones[0][2]); if (w > 2) L.set(kx + dx + 1, ground, T.stones[0][3]);
@@ -318,74 +420,197 @@ function drawCairn(L, T, kx, groundAt) {
   }
 }
 
-export function mountScene(canvas) {
-  const reduce = matchMedia("(prefers-reduced-motion: reduce)");
-  let state = null, raf = 0, visible = true;
+// --- Where the scene gives way to the page ---------------------------------------------------
 
-  function build() {
-    const T = THEMES.night;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+
+// The land and the page are laid out like an image and text in a spread. The featured video
+// sits on the meadow; beside it the land comes down to just clear of its frame. Below it, the
+// left side swells into the text column in one long curve, which the text wraps around, then
+// draws back and ends in a round foot; the right side swells a little by the lede and is gone
+// sooner. `edgeL` and `edgeR` give, per row, how far from the centre the land's inner edge is.
+function makeEdges(g, k) {
+  const none = () => Infinity;
+  if (!k.wide) return { edgeL: none, edgeR: none, landEnd: g.clearTop };
+  const base = y => k.capB == null ? k.col : k.vid + (k.col - k.vid) * smooth(k.capB - 20, k.capB + 25, y);
+  const make = (amp, at, spread, endFrom, endAt, seed) => y => {
+    const r = smooth(endFrom, endAt, y);
+    let e = base(y) - amp * Math.exp(-(((y - at) / spread) ** 2)) + (fbm(y / 26, seed) - 0.5) * 16 * (1 - r);
+    if (k.capB != null && y < k.capB) e = Math.max(e, k.vid);
+    return e + r ** 1.4 * Math.max(0, g.cx + 12 - e);
+  };
+  const yb = k.spreadTop + 90;
+  return {
+    edgeL: make(48, yb, 46, yb + 40, yb + 170, 61),
+    edgeR: make(20, k.spreadTop + 16, 30, k.spreadTop + 30, k.spreadTop + 110, 67),
+    landEnd: yb + 170,
+  };
+}
+
+// The mist's own outline is a smooth union of "below the clearing's top" and "outside the
+// land's edge", so where they meet the land turns the corner in a wide round arc, not a notch.
+function smin(a, b, r) {
+  const h = Math.max(r - Math.abs(a - b), 0) / r;
+  return Math.min(a, b) - h * h * r / 4;
+}
+
+function dissolve(L, g, bg) {
+  const { cx, W, H, clearTop } = g;
+  for (let y = clearTop - 24; y < H; y++) {
+    const eL = g.edgeL(y), eR = g.edgeR(y);
+    for (let x = 0; x < W; x++) {
+      // How far into the mist this pixel is, in pixels; negative means on the land.
+      const side = (x < cx ? eL : eR) - Math.abs(x - cx);
+      const top = (y - clearTop) + (fbm(x / 40, 79) - 0.5) * 10;
+      const out = smin(top, side, 36);
+      if (out > 7) { L.set(x, y, bg); continue; }
+      if (out > -7) {
+        const t = (out + 7) / 14;
+        if (streak(x, y, t, 4, 12)) L.set(x, y, bg);
+        else if (streak(x + 31, y, clamp(t * 1.8), 4, 12)) {
+          const c = L.get(x, y);
+          L.set(x, y, [(c[0] + bg[0]) >> 1, (c[1] + bg[1]) >> 1, (c[2] + bg[2]) >> 1]);
+        }
+      }
+    }
+  }
+  // Past the width cap, the canvas's own edges dissolve too.
+  if (!g.capped) return;
+  for (let y = 0; y < H; y++) for (let x = 0; x < 24; x++) {
+    const t = 1 - x / 24;
+    for (const xx of [x, W - 1 - x]) if (streak(xx, y * 3 + 1, t, 3, 5)) L.set(xx, y, bg);
+  }
+}
+
+// Shape the spread's two floats to the land's edge, so the text runs alongside it. The land can
+// show up to 7 pixels inside its edge (the dissolve), so the text keeps clear of that too.
+function shapeText(layout, g, k, s) {
+  const gap = 14;
+  for (const [el, edge, side] of [[layout.left, g.edgeL, -1], [layout.right, g.edgeR, 1]]) {
+    if (!el) continue;
+    const pts = [];
+    let w = 0, h = 0;
+    for (let yc = 0; yc < 2400; yc += 6) {
+      const y = k.spreadTop + yc / s, e = edge(y);
+      if (y > g.landEnd) break;
+      const intr = Math.round(k.colCss - (e - 7) * s + gap);
+      pts.push([Math.max(0, intr), yc]);
+      if (intr > 0) { w = Math.max(w, intr); h = yc + 6; }
+    }
+    if (!w) { el.style.cssText = ""; continue; }
+    const p = pts.filter(([, y]) => y <= h).map(([x, y]) => `${side < 0 ? x : w - x}px ${y}px`);
+    const edgeX = side < 0 ? 0 : w;
+    el.style.cssText = `width:${w}px;height:${h}px;shape-outside:polygon(${edgeX}px 0, ${p.join(", ")}, ${edgeX}px ${h}px)`;
+  }
+}
+
+// --- Assembly --------------------------------------------------------------------------------
+
+export function mountScene(canvas, layout = {}) {
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)");
+  const header = canvas.parentElement;
+  const floats = layout.spread ? { left: layout.spread.querySelector(".wrap.left"), right: layout.spread.querySelector(".wrap.right") } : {};
+  let state = null, raf = 0, visible = true, lastKey = "";
+
+  // Where the page's pieces are, in canvas pixels from the canvas's top and centre.
+  function measure(s) {
+    const top = canvas.getBoundingClientRect().top, px = v => (v - top) / s;
+    const box = layout.feature?.querySelector(".box"), fig = layout.feature?.firstElementChild;
+    const sp = layout.spread?.getBoundingClientRect();
+    const colCss = sp ? sp.width / 2 - 16 : 364;
+    const k = {
+      header: header.clientHeight / s,
+      vidTop: box ? px(box.getBoundingClientRect().top) : null,
+      vid: box ? box.getBoundingClientRect().width / 2 / s + 9 : 0,
+      capB: fig ? px(fig.getBoundingClientRect().bottom) + 4 : null,
+      spreadTop: sp ? px(sp.top) : header.clientHeight / s + 20,
+      colCss, col: colCss / s + 9,
+      wide: Math.min(innerWidth, 1600) >= 900,
+    };
+    for (const n of ["vidTop", "capB", "spreadTop", "vid", "col"]) if (k[n] != null) k[n] = Math.round(k[n]);
+    return k;
+  }
+
+  function build(force) {
     const s = innerWidth < 600 ? 2 : 3;
-    const W = Math.ceil(canvas.clientWidth / s), H = Math.ceil(canvas.clientHeight / s);
+    const k = measure(s);
+    const key = JSON.stringify([innerWidth, k]);
+    if (!force && key === lastKey) return;
+    lastKey = key;
+    const W = Math.ceil(canvas.clientWidth / s), cx = W >> 1;
+    const clearTop = (k.vidTop ?? k.header) + 20;
+    const pre = { cx, clearTop };
+    const edges = makeEdges(pre, k);
+    const H = Math.max(Math.ceil(k.header) + 120, Math.ceil(edges.landEnd) + 24);
+    canvas.style.height = `${H * s}px`;
     canvas.width = W; canvas.height = H;
     const bg = getComputedStyle(document.body).backgroundColor.match(/\d+/g).slice(0, 3).map(Number);
-    const cx = W >> 1, horizon = Math.round(H * 0.42);
-    const sky = new Layer(W, H);
-    const moon = drawSky(sky, T, horizon, cx);
-    sky.done();
-    const land = new Layer(W, H);
-    drawLand(land, T, horizon, cx, bg);
-    land.done();
-    const clouds = [[-0.42, 0.1, 74], [-0.08, 0.2, 96], [0.24, 0.06, 56], [0.45, 0.22, 82], [-0.7, 0.24, 64], [0.75, 0.12, 70]]
-      .map(([fx, fy, w], k) => {
-        const sprite = makeCloud(T, Math.round(w * (W < 260 ? 0.7 : 1)), k + 1);
-        return { sprite, x: cx + fx * Math.max(W, 420) - sprite.w / 2, y: Math.round(H * fy), speed: 0.6 + (1 - fy * 3) * 0.5 };
-      });
-    const sparkles = [[-0.3, 0.06], [-0.14, 0.2], [0.06, 0.05], [0.17, 0.24], [-0.44, 0.27], [0.4, 0.31], [-0.6, 0.12], [0.58, 0.2]]
-      .map(([fx, fy], k) => ({ x: cx + Math.round(fx * Math.min(W, 640)), y: Math.round(H * fy), phase: k * 1.7 }));
-    const motes = Array.from({ length: Math.round(T.motes.count * Math.min(1, W / 420)) }, (_, k) => spawn(k, W, H, horizon, true));
-    // Past the width cap, the scene's sides dissolve into the page the same way its foot does.
-    let edges = null;
-    if (canvas.clientWidth < document.documentElement.clientWidth - 4) {
-      edges = new Layer(W, H);
-      const span = Math.min(48, W * 0.1);
-      const bayer = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
-      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-        const t = 1 - Math.min(x, W - 1 - x) / span;
-        if (t > 0 && Math.floor(t * 5) / 5 * 16 > bayer[(y & 3) * 4 + (x & 3)]) edges.set(x, y, bg);
-      }
-      edges.done();
+    const unit = 200, horizon = 84;
+    const g = {
+      W, H, cx, unit, horizon, clearTop, ...edges,
+      lakeTop: horizon + 24,
+      moonX: cx + Math.round(Math.min(W * 0.32, 200)), moonY: Math.round(horizon * 0.22),
+      glowX: cx - Math.round(Math.min(W * 0.2, 110)),
+      cairnX: cx + Math.round(Math.min(W * 0.22, 120)),
+      capped: canvas.clientWidth < innerWidth - 2,
+    };
+    g.meadowAt = x => g.lakeTop + 24 + (fbm((x - cx) / 34 + 9, 41) - 0.5) * 8;
+    shapeText(floats, g, k, s);
+
+    const L = new Layer(W, H);
+    const off = f => Math.round(Math.min(W * f, 1600 / s * f));
+    drawSky(L, g);
+    drawCloud(L, cx - off(0.27), horizon - 18, 104, 46, 3, 1);
+    drawCloud(L, cx + off(0.08), horizon - 34, 54, 22, 7, 1);
+    drawCloud(L, cx + off(0.33), horizon - 14, 90, 40, 11, 0);
+    drawCloud(L, cx - off(0.48), horizon - 34, 60, 24, 17, 1);
+    drawCloud(L, cx + off(0.5), horizon - 40, 48, 18, 19, 0);
+    drawRanges(L, g);
+    drawHills(L, g);
+    drawLake(L, g);
+    drawMeadow(L, g);
+    drawCairn(L, g);
+    drawBoulders(L, g, -1, 3);
+    drawBoulders(L, g, 1, 5);
+    drawFoliage(L, g, -1, 3);
+    drawFoliage(L, g, 1, 5);
+    dissolve(L, g, bg);
+    L.done();
+
+    // Fireflies start on kept meadow pixels, so they never rise out of the mist.
+    const spots = [];
+    for (let k = 0; spots.length < 800 && k < 30000; k++) {
+      const x = Math.floor(Math.random() * W), y = Math.floor(g.lakeTop + 20 + Math.random() * (H - g.lakeTop - 20));
+      const c = L.get(x, y);
+      if (Math.abs(c[0] - bg[0]) + Math.abs(c[1] - bg[1]) + Math.abs(c[2] - bg[2]) > 6) spots.push([x, y]);
     }
-    state = { T, W, H, horizon, sky, land, clouds, sparkles, motes, moon, edges, t0: performance.now() };
+    const sparkles = [[-0.3, 0.06], [-0.14, 0.2], [0.06, 0.05], [0.17, 0.24], [-0.44, 0.27], [0.4, 0.31], [-0.6, 0.12], [0.58, 0.2], [-0.8, 0.18], [0.82, 0.08]]
+      .map(([fx, fy], k) => ({ x: cx + Math.round(fx * Math.min(W, 760)), y: Math.round(horizon * 2 * fy), phase: k * 1.7 }));
+    const count = Math.round(Math.min(70, spots.length / 8));
+    state = { W, H, L, spots, sparkles, motes: [], t0: performance.now() };
+    for (let k = 0; k < count; k++) state.motes.push(spawn(true));
+    last = 0;
     frame(performance.now());
   }
 
-  function spawn(k, W, H, horizon, anywhere) {
-    const r = Math.random;
-    return {
-      x: r() * W, y: anywhere ? horizon + 10 + r() * (H - horizon - 20) : H * (0.7 + r() * 0.2),
-      vy: 1.2 + r() * 2.2, sway: 0.6 + r() * 1.2, phase: r() * 6.28, life: 0, max: 7 + r() * 9, tw: 1.5 + r() * 2,
-    };
+  function spawn(fresh) {
+    const [x, y] = state.spots[Math.floor(Math.random() * state.spots.length)] || [0, 0];
+    return { x, y, vy: 0.8 + Math.random() * 1.8, sway: 0.6 + Math.random() * 1.2, phase: Math.random() * 6.28,
+      life: fresh ? Math.random() * 6 : 0, max: 7 + Math.random() * 9, tw: 1.2 + Math.random() * 2 };
   }
 
   let last = 0;
   function frame(now) {
     if (!state) return;
-    const { T, W, H, horizon, sky, land, clouds, sparkles, motes } = state;
+    const { W, H, L, sparkles, motes } = state;
     const dt = Math.min(0.1, last ? (now - last) / 1000 : 0);
     last = now;
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, W, H);
-    ctx.drawImage(sky.canvas, 0, 0);
+    ctx.drawImage(L.canvas, 0, 0);
     const t = (now - state.t0) / 1000;
-    for (const c of clouds) {
-      c.x += c.speed * dt;
-      if (c.x > W + 10) c.x = -c.sprite.w - 10;
-      ctx.drawImage(c.sprite.canvas, Math.round(c.x), c.y);
-    }
-    ctx.drawImage(land.canvas, 0, 0);
-    // Sparkles in the sky: four-point stars that breathe.
     for (const s of sparkles) {
-      const p = (Math.sin(t * 1.3 + s.phase) + 1) / 2, arm = p > 0.66 ? 2 : p > 0.2 ? 1 : 0;
+      const p = (Math.sin(t * 1.1 + s.phase) + 1) / 2, arm = p > 0.66 ? 2 : p > 0.2 ? 1 : 0;
       ctx.fillStyle = "#fffaf0"; ctx.fillRect(s.x, s.y, 1, 1);
       ctx.fillStyle = T.sparkle;
       for (let d = 1; d <= arm; d++) { ctx.fillRect(s.x + d, s.y, 1, 1); ctx.fillRect(s.x - d, s.y, 1, 1); ctx.fillRect(s.x, s.y + d, 1, 1); ctx.fillRect(s.x, s.y - d, 1, 1); }
@@ -394,26 +619,37 @@ export function mountScene(canvas) {
     for (let k = 0; k < motes.length; k++) {
       const m = motes[k];
       m.life += dt; m.y -= m.vy * dt; m.x += Math.sin(t * 0.7 + m.phase) * m.sway * dt;
-      if (m.life > m.max || m.y < horizon - 30) { motes[k] = spawn(k, W, H, horizon, false); continue; }
+      if (m.life > m.max) { motes[k] = spawn(false); continue; }
       const fade = Math.min(1, m.life / 1.5, (m.max - m.life) / 1.5);
       const tw = (Math.sin(t * m.tw + m.phase) + 1) / 2 * fade;
       const x = Math.round(m.x), y = Math.round(m.y);
       if (tw > 0.55) {
-        ctx.fillStyle = T.motes.halo;
+        ctx.fillStyle = T.fly.halo;
         ctx.fillRect(x - 1, y, 1, 1); ctx.fillRect(x + 1, y, 1, 1); ctx.fillRect(x, y - 1, 1, 1); ctx.fillRect(x, y + 1, 1, 1);
-        ctx.fillStyle = T.motes.core;
-      } else ctx.fillStyle = tw > 0.15 ? T.motes.dim : "rgba(0,0,0,0)";
+        ctx.fillStyle = T.fly.core;
+      } else if (tw > 0.15) ctx.fillStyle = T.fly.dim;
+      else continue;
       ctx.fillRect(x, y, 1, 1);
     }
-    if (state.edges) ctx.drawImage(state.edges.canvas, 0, 0);
     if (!reduce.matches && visible && !document.hidden) raf = requestAnimationFrame(frame);
   }
 
   function restart() { cancelAnimationFrame(raf); last = 0; if (state) raf = requestAnimationFrame(frame); }
-  let resizeTimer = 0;
-  addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { cancelAnimationFrame(raf); build(); }, 120); });
+  let resizeTimer = 0, lastW = innerWidth;
+  addEventListener("resize", () => {
+    if (innerWidth === lastW) return; // phones fire resize on scroll as the toolbar moves
+    lastW = innerWidth;
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => { cancelAnimationFrame(raf); build(true); }, 120);
+  });
+  // The video arriving, or fonts loading, moves the text; redraw when the layout really changes.
+  let layoutTimer = 0;
+  if (layout.spread) new ResizeObserver(() => {
+    clearTimeout(layoutTimer);
+    layoutTimer = setTimeout(() => { cancelAnimationFrame(raf); build(false); }, 80);
+  }).observe(layout.spread.parentElement);
   reduce.addEventListener("change", restart);
   document.addEventListener("visibilitychange", restart);
   new IntersectionObserver(([e]) => { visible = e.isIntersecting; restart(); }).observe(canvas);
-  build();
+  build(true);
 }

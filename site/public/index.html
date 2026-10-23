@@ -56,11 +56,14 @@
     );
   }
 
-  /* The scene: tall, with its lower part dissolving into the page as mist. The lede sits
-     on the mist. */
-  .scene { position: relative; max-width: 1240px; margin: 0 auto -96px; height: 600px; }
+  /* The scene sits behind the top of the page. Under the text column it dissolves into mist
+     where the lede begins; in the margins the meadow runs on down the page. The header's height
+     is where the text starts, and scene.js reads it. */
+  body { overflow-x: clip; }
+  .scene { position: relative; height: 420px; }
   .scene canvas {
-    position: absolute; inset: 0; width: 100%; height: 100%;
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: min(100%, 2400px); height: 1400px;
     image-rendering: pixelated;
   }
   .scene .title {
@@ -75,8 +78,9 @@
   }
 
 
-  main { position: relative; max-width: 760px; margin: 0 auto; padding: 8px 16px 64px; }
-  .lede { font-size: 21px; line-height: 1.5; margin: 24px 0 0; max-width: 32em; }
+  main, footer { position: relative; }
+  main { max-width: 760px; margin: 0 auto; padding: 8px 16px 64px; }
+  .lede { font-size: 21px; line-height: 1.5; margin: 0; max-width: 32em; }
   .lede em { font-style: normal; font: 600 0.95em var(--pixel); color: var(--accent); }
 
   h2 {
@@ -99,12 +103,29 @@
   .frame .box { background: var(--ink); padding: var(--px); filter: drop-shadow(var(--px) var(--px) 0 var(--shadow)) drop-shadow(var(--px) var(--px) 0 var(--shadow)); }
   .frame video { display: block; width: 100%; height: auto; background: var(--panel); }
   .frame figcaption { font-size: 15.5px; color: var(--muted); margin-top: 16px; }
+
+  /* A note card: a panel with stepped corners and a gold label, for asides the reader
+     shouldn't miss. */
+  .note { margin: 40px 0; filter: drop-shadow(var(--px) var(--px) 0 var(--shadow)); }
+  .note .card { --s: var(--px); background: var(--panel); padding: 20px 24px 22px; box-shadow: inset 0 0 0 var(--px) var(--chip); }
+  .note .label { font: 600 15px/1 var(--pixel); color: var(--gold); letter-spacing: 0.04em; margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
+  .note .label img { width: 16px; height: 16px; image-rendering: pixelated; }
+  .note p { margin: 0; }
+  .note p + p { margin-top: 10px; }
   .meta {
     font: 15px/1.4 var(--pixel); color: var(--muted);
     display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px;
   }
   .meta .date { color: var(--gold); }
-  .feature { margin-top: 40px; }
+  /* The featured video sits on the meadow like a plate in a spread, a little wider than the
+     text. Below it, the land comes in from the sides and the text wraps around it: scene.js
+     shapes the two .wrap floats to the land's edge. */
+  .feature { margin: 0 calc((100% - min(960px, 100vw - 32px)) / 2); }
+  .spread { margin-top: 40px; }
+  .wrap { width: 0; height: 0; }
+  .wrap.left { float: left; }
+  .wrap.right { float: right; }
+  .spread figure, .spread .trail { display: flow-root; }
 
   /* Figures: one ink (the text colour), a tint for the proved part, the accent for "proved".
      Pixel style: stepped corners, crisp 2px lines, open chevrons. */
@@ -162,7 +183,7 @@
     .scene .title { padding-top: 44px; }
     h1 { font-size: 48px; }
     .lede { font-size: 19px; }
-    .scene { height: 500px; margin-bottom: -84px; }
+    .scene { height: 290px; }
   }
 </style>
 </head>
@@ -173,10 +194,12 @@
 </header>
 
 <main>
+  <div id="feature" class="feature"></div>
+
+  <div id="spread" class="spread">
+  <div class="wrap left" aria-hidden="true"></div><div class="wrap right" aria-hidden="true"></div>
   <p class="lede">Research into user interfaces where everything a person can do is a <em>claim</em>
     with a durable id, and every claim carries machine-checked evidence.</p>
-
-  <div id="feature" class="feature"></div>
 
   <h2>The idea</h2>
   <p>A cairn is a stack of stones that marks a trail: placed by hand, built to last, and trusted by
@@ -245,6 +268,17 @@
 </svg>
     <figcaption>One frame, from a key press to the screen.</figcaption>
   </figure>
+  </div>
+
+  <aside class="note"><div class="card px">
+    <p class="label"><img src="/icon.svg" alt="">Not a layer on top</p>
+    <p>Cairn isn't verification bolted onto an existing UI framework. It is its own framework: the
+      app, its view, layout, hit testing, focus and text editing are written in Lean, and a thin
+      Swift host hands over events and draws the result with Metal.</p>
+    <p>Owning every layer is what lets a claim reach all the way down. Each one is bound to the code
+      that actually runs, not to a model of someone else's, and the little we do have to trust,
+      the host, is written down in one place.</p>
+  </div></aside>
 
   <h2>First milestone: a proved TodoMVC</h2>
   <ol class="trail">
@@ -305,7 +339,7 @@
 </script>
 <script type="module">
   import { mountScene } from "/scene.js";
-  mountScene(document.getElementById("scene"));
+  mountScene(document.getElementById("scene"), { feature: document.getElementById("feature"), spread: document.getElementById("spread") });
 </script>
 </body>
 </html>
