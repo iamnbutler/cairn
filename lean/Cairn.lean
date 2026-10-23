@@ -7,6 +7,8 @@ import Cairn.Text.Host
 import Cairn.UI.Node
 import Cairn.Input
 import Cairn.Frame
+import Cairn.Frame.Bytes
+import Cairn.Frame.Encode
 import Cairn.App
 import Cairn.Runtime
 import Cairn.Spike.Bytes
