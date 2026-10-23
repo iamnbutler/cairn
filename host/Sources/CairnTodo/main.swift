@@ -19,7 +19,7 @@ let todo = LeanApp(
     frame: { cairn_app_frame($0) },
     codec: FrameV1Codec())
 
-/// Fits twelve todos (Examples.Todo.View.height); the proofs cover any window at least
+/// Fits eleven todos (Examples.Todo.View.height: 204 + 44 per row); the proofs cover any window at least
 /// `minWidth` wide and `height s` tall.
 let size = Size(w: 560, h: 720)
 let args = CommandLine.arguments

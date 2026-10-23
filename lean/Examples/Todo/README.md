@@ -5,7 +5,31 @@ claim or code that covers it. Claim ids are durable (`claims.lock`); T-numbers a
 labels only. Each claim's `does` names the T-numbers it covers, so the map shows them too.
 
 Files: `../Todo.lean` (claims, machine, ABI), `Model.lean` (state and moves), `View.lean` (view),
-`Tests.lean` (runtime checks with mono metrics), `host/Sources/CairnTodo` (host and self test).
+`Tests.lean` (runtime checks with mono metrics), `Proofs.lean` (presence, pressable, the
+invariants on screen), `host/Sources/CairnTodo` (host and self test).
+
+## What is proved
+
+- Every move's `post`, for every state where it is enabled (the `machine`'s sound goals).
+- `reachable_invariants`, `invariants_on_screen`: in every reachable state, and in every state
+  the running app reaches whatever events arrive, the counter equals the active todos, ids are
+  distinct, and the rows are `visible s` (the filter applied to the todos), in order.
+- `presence`, `presence_in_frame`, `presence_on_screen`: for every move `mv` of the machine and
+  key `k`, the control `⟨mv.id, k⟩` is in the view, in the frame's accessibility tree and on
+  screen exactly when `mv.enabled s k` holds and either `mv` is a row move (^204–^207) or
+  `k = 0`. Unkeyed moves draw their one control with key 0. The row cases come from
+  `mem_flatMap_keyed`, which works for any list that draws one group of controls per item, all
+  keyed by the item's id.
+- `view_fitsIn`, `view_pressable`, `enabled_pressable`: in **any** window at least `minWidth`
+  (389) wide and `height s` tall, with **any** text metrics, hit testing at the centre of every
+  control (and so of every enabled move's control) returns that control. This needs the window
+  to be that size: there is no scrolling (not in M1), so with more todos than fit, the rows below
+  the window are off screen and the theorem says nothing about them. The host's window is
+  560×720, which fits 11 todos under one filter.
+
+Not proved: that a click at a control's centre *performs* the move. `Cairn.Runtime.click_presses`
+needs the control to still be under the pointer after the pointer down. That fails exactly in
+the dropped-click case below.
 
 | T | Covered by | How |
 |---|---|---|
