@@ -1,0 +1,430 @@
+\section{Semantics}
+\label{sec:semantics}
+
+Our Skia semantics consists of three strata.
+The bottom-most stratum is an abstract model of
+  images, shapes, blends, and filters defined in terms
+  of abstract types \Point and \Color,
+  which can be instantiated to model
+  as much of the actual Skia API as necessary.
+The middle stratum is functional operations
+  \DrawShape and \BlendLayer
+  parameterized by a \Paint object,
+  all of which denote to our abstract model.
+The top stratum is an imperative language, \muskia,
+  whose operational semantics provides a model of Skia.
+
+\subsection{Abstract Model}
+\label{subsec:abstractmodel}
+
+\begin{figure}
+  \centering
+  \begin{tabular}{L L L}
+    Image  & : \; Point $\to$ Color & \textrm{\textit{e.g.}}\; {\sffamily
+                                      Solid($c : \text{Color}$), LinearGradient($\ldots$),
+                                      $\ldots$} \\[4pt]
+    Shape  & : \; Point $\to$ Bool & \textrm{\textit{e.g.}}\; {\sffamily
+                                     Rect($\ldots$), RRect($\ldots$),
+                                     Path($\ldots$), Text($\ldots$)} \\[4pt]
+    Blend  & : \; Color $\times$ Color $\to$ Color & \textrm{\textit{e.g.}}\;
+                                                     {\sffamily SrcOut, DstIn,
+                                                     $\ldots$} \\[4pt]
+    Filter & : \; Color $\to$ Color & \textrm{\textit{e.g.}}\; {\sffamily Id,
+                                      Luma, $\ldots$}
+  \end{tabular}
+  \caption{%
+    Our abstract model of \Image{}s
+      and \Shape{}s is built from
+      abstract types \Point{}s and \Color{}s.
+    We also include the various instantiations of the types of the abstract model we use in
+      our formalization.
+  }
+  \Description{Abstract model of Images and Shapes, along with instantiations of the same}
+\label{fig:model}
+\end{figure}
+
+In traditional programming language semantics,
+  the abstract model---%
+  pairs, functions, integers, and the like---%
+  is implicit and well understood.
+In the graphics domain, the core types
+  are not so well established,
+  so the abstract model must be explicitly defined.
+The abstract model for \muskia
+  is based around two core abstract types,
+  \Point and \Color.
+The \Point and \Color types
+  are then used to define additional types,
+  as shown in \Cref{fig:model}.
+A special \Transparent color is also assumed.
+An \Image is defined
+  as a \Color for every \Point
+  and \Shape{}s are defined
+  as predicates on \Point{}s.
+Equivalence of two \Image{}s is defined extensionally:
+  the same \Color for each \Point.
+Additionally, since a major focus of this semantics
+  is reasoning about color blending and filtration,
+  \Blend{}s and \Filter{}s are defined
+  as binary and unary operators on colors.
+
+An instantiation of the abstract model
+  would then define specific \Image{}s
+  (solid color fills, gradients, image files),
+  \Shape{}s (rectangles, paths, text outlines),
+  \Blend{}s (roughly two dozen),
+  and \Filter{}s (a few built-in, but extensible with shaders),
+  along with equivalences between them.
+\Cref{fig:model} shows some of the objects of each type.
+This provides extensibility for \muskia:
+  an instantiation of the abstract model
+  can define more or fewer of these objects,
+  and provide more or fewer theorems about them,
+  allowing a trade-off between the accuracy and complexity
+  of our formalism.
+Our Lean mechanization, for example,
+  treats most shapes as entirely symbolic,
+  with only minimal support for reasoning about
+  subset relations between them,
+  sufficient for the rewrites of \Cref{sec:rewrites}
+  and the optimizer of \Cref{sec:compiler}.
+Future work may expand the abstract model
+  or more carefully model its objects
+  so as to provide more theorems about them.
+
+The abstract model also provides some flexibility
+  for choosing either simpler or more accurate
+  models of \Point and \Color.
+The actual Skia implementation
+  defines \Point to be a pair of 32-bit floats
+  and \Color to be a 32-bit unsigned integer
+  interpreted as ARGB pre-multiplied byte-sized color,%
+\footnote{
+``ARGB'' gives the in-memory byte order
+  of the alpha, red, green, and blue components of a color.
+The interpretation of these bytes as an unsigned 32-bit integer
+  will depend on the endianness of the platform itself.
+The colors are premultiplied, meaning
+  that a color with an alpha value of $\alpha$
+  will have its red, green, and blue components
+  range from $0$ to $\alpha$;
+  this form makes blending computations somewhat more efficient.
+}
+  and operations on points and colors
+  thus reflect effects from anti-aliasing and rounding.
+The exact anti-aliasing and rounding behavior
+  is not guaranteed by Skia
+  and is also exceptionally complex,
+  including hardware dependence in some back-ends.
+Our Lean formalization instead uses an abstract model
+  where points and colors are represented by real numbers,
+  which in practice means it is accurate
+  \emph{up to} anti-aliasing and rounding.
+
+\subsection{Skia as Layers}
+\label{subsec:sem-layers}
+
+\begin{figure}
+  \begin{minipage}{0.51\linewidth}
+    \centering
+    \begin{tabular}{L}
+      Layer ::= \\
+      | Empty() \\
+      | DrawShape($\ell: \Layer$, $s: \Shape$, $p: \Paint$) \\
+      | BlendLayer($\ell_{\textsf{bot}}: \Layer$, $\ell_{\textsf{top}}: \Layer$, $p: \Paint$) \\[4pt]
+
+      Paint ::= \\
+      | Paint(\textit{fill} : Image, \textit{filter} : Filter, \textit{blend} : Blend)
+    \end{tabular}
+    \caption{
+      \Layer objects store images and are modified
+        by drawing and blending operations.
+      Each drawing or blending operation
+        is parameterized by a \Paint object.
+      \Layer terms denote to the abstract model
+        of \Cref{subsec:abstractmodel}.
+      }
+    \label{fig:layerlang}
+  \end{minipage}%
+  \hfill%
+  \begin{minipage}[T]{0.45\linewidth}
+    \centering
+    \begin{tabular}{L}
+      Command ::= \\
+      | Draw($g: \Shape$, $p : \Paint$) \\
+      | Clip($m : \Shape$) \\
+      | Save(); $c$; Restore() \\
+      | SaveLayer($p: \Paint$); $c$; Restore() \\
+      | $c$; $c$
+    \end{tabular}
+    \caption{The \muskia command language.
+      Note that \Save/\Restore and \SaveLayer/\Restore pairs
+        are defined as structured terms
+        wrapping a subsequence of commands.
+      }
+    \label{fig:muskia}
+  \end{minipage}
+  \Description{Definitions of the Layer and muSkia language}
+\end{figure}
+
+The execution model of Skia centers around layers,
+  which store images
+  and are modified by drawing and blending.
+\Cref{fig:layerlang} thus introduces \Layer objects
+  with \DrawShape and \BlendLayer operations.
+\DrawShape draws a single shape $s$ on a \Layer $\ell$
+  yielding the new state of $\ell$,
+  while \BlendLayer blends the layer $\ell_\textsf{top}$
+  into $\ell_\textsf{bot}$, yielding the new state of $\ell_\textsf{bot}$.
+Each operation is parameterized by a \Paint object,
+  which defines a blend mode, fill type, and color filter.
+The \Paint object configures the various phases
+  of the Skia drawing pipeline.
+Because \Layer has only these two constructors
+  (plus the special \Empty layer),
+  it is particularly easy to induct on in proofs.
+
+\begin{figure}
+  \begin{align*}
+    \denote{\Empty()}(\textsf{pt})
+    &= \Transparent\\[2pt]
+    \denote{\BlendLayer(\ell_\textsf{bot}, \ell_\textsf{top}, p)}(\mathsf{pt})
+    &= \mathsf{blend}_p\left(\denote{\mathsf{\ell_{bot}}}(\mathsf{pt}),\;
+        \textsf{filter}_p\left(\denote{\mathsf{\ell_{top}}}(\mathsf{pt})\right)
+      \right) \\[2pt]
+    \denote{\DrawShape(\ell, s, p)}(\mathsf{pt})
+    &= \mathsf{blend}_p\left(\denote{\ell}(\mathsf{pt}),\;
+      \textsf{filter}_p\left(
+       \left\{
+       \begin{array}{ll}
+         \mathsf{fill}_p(\mathsf{pt}) & s(\mathsf{pt}) \\
+         \Transparent & \textrm{else}
+       \end{array}
+       \right\}
+       \right)\right)\\
+  \end{align*}
+  \caption{Denotational semantics for \Layer terms.}
+  \label{fig:denote}
+  \Description{Denotational semantics for Layer terms}
+\end{figure}
+
+The \layer constructors denote to the abstract model,
+  as shown in \Cref{fig:denote}.
+\Empty has a straightforward denotation
+  to an all-\Transparent image.
+\BlendLayer is likewise straightforward,
+  first applying an image filter to the top layer
+  and then blending it with the bottom layer,
+  both pointwise and with
+  the filter and blend mode determined by the \Paint object.
+\DrawShape is the most complex.
+Conceptually, it first computes which points
+  are within the shape $s$;
+  then computes the fill color for each one;
+  and finally blends the layer's current color
+  and computed color for each point.
+The blend is performed even for points outside $s$;
+  this is critical for, for example, \textsf{DstIn} blending.
+
+\Layer{}s are equivalent up to denotation,
+  and permit substitution.
+That is, if $\denote{\ell} = \denote{\ell'}$,
+  then $\denote{m} = \denote{m[\ell/\ell']}$.
+This fact means that equivalences over \Layer terms
+  can be used as rewrite rules,
+  which we leverage in \Cref{sec:rewrites}
+  to prove Skia optimizations correct.
+
+\subsection{\texorpdfstring{\muskia}{muSkia}}
+\label{subsec:muskia}
+
+\muskia is a simplified version of the Skia API itself.
+A \muskia program consists
+  of a sequence of commands
+  (see \Cref{fig:muskia}).
+These commands include
+  all the features described in \Cref{sec:skia},
+  including the \Draw command for drawing,
+  the \Clip command for manipulating the clip state,
+  and the \Save, \SaveLayer, and \Restore
+  stack manipulation commands.
+\muskia diverges from the Skia API
+  in two main ways.
+First, the syntax definition is more regular
+  to eliminate unimportant special cases:
+  \Save, \SaveLayer, and \Restore
+  must be properly bracketed,
+  while the \Draw and \Clip commands
+  take arbitrary \Shape{}s,
+Second, only a small fraction of the API is modeled.
+Our Lean formalization extends the grammar in \Cref{fig:muskia}
+  with several additional features,
+  including opacity, styles, and transforms,
+  and we expect adding even more features to be straightforward.
+
+\muskia programs manipulate a state $\Sigma$:
+\[
+\Sigma:\List[\Layer] \times \List[\Shape]
+\]
+The first list in $\Sigma$ is the stack of layers
+  manipulated by \SaveLayer,
+  while the second list is the stack of canvas states
+  manipulated by \Save.
+In the minimal \muskia language of \Cref{fig:muskia},
+  the canvas state is a single \Shape
+  because the only canvas state operation is \Clip;
+  our Lean formalization adds additional fields.
+The initial state is
+  $\langle [ \texttt{Empty()} ], [ \mathcal{U} ] \rangle$,
+  an \Empty layer and the full clip state,
+  each as single-element stacks;
+  we treat the head of the list
+  as the top of the stack.
+
+A \muskia program then performs
+  a sequence of steps  $c, \Sigma \longmapsto \Sigma'$.
+The simplest is the \textsf{Draw} command,
+  which modifies the top \textsf{Layer}:
+\begin{mathpar}
+  \inferrule
+  { }
+  {
+    \Draw(g, p),
+    \langle \ell :: L, m :: C \rangle
+    \;\longmapsto\;
+    \langle \DrawShape(\ell, g \cap m, p) :: L, m :: C \rangle
+  }
+\end{mathpar}
+\noindent
+Note that the \DrawShape operation
+  is passed the intersection of the shape $g$ being drawn
+  and the current clip mask $m$.
+
+The \textsf{Clip} command modifies the canvas state,
+  intersecting it with the new clip geometry:
+\begin{mathpar}
+  \inferrule
+  { }
+  {
+    \Clip(m'),
+    \langle L, m :: C\rangle
+    \;\longmapsto\;
+    \langle L, (m \cap m') :: C \rangle
+  }
+\end{mathpar}
+\noindent
+Note that the actual Skia \texttt{clipRect} command
+  has an optional \texttt{SkClipOp} parameter
+  that allows taking the difference instead of intersecting
+  the new mask with the clip state;
+  this paper does not show that (straightforward) extension
+  but our Lean formalization does include it.
+
+The \textsf{Save} command
+  duplicates the top canvas state,
+  runs the bracketed commands,
+  and then discards the new canvas state
+  when its matching \textsf{Restore} is reached:
+\begin{mathpar}
+  \inferrule
+  {
+    c,
+    \langle L, m :: m :: C \rangle
+    \;\longmapsto\;
+    \langle L', m' :: m :: C \rangle
+  }
+  {
+    (\Save(); c; \Restore()),
+    \langle L, m :: C\rangle
+    \;\longmapsto\;
+    \langle L', m :: C \rangle
+  }
+\end{mathpar}
+\noindent
+Note that \Restore does not make
+  any changes to the layer state.
+
+The \textsf{SaveLayer} command, meanwhile,
+  allocates a new, \Empty layer
+  to push onto the layer stack and,
+  when the \textsf{Restore} command is reached,
+  blends that new layer with the one below:
+\begin{mathpar}
+  \inferrule
+  {
+    c,
+    \langle \Empty() :: \ell :: L, m :: m :: C \rangle
+    \;\longmapsto\;
+    \langle \ell' :: \ell :: L, m' :: m :: C \rangle
+  }
+  {
+    (\SaveLayer(p); c; \Restore()),
+    \langle \ell :: L, m :: C\rangle
+    \;\longmapsto\;
+    \langle \BlendLayer(\ell, \ell', p) :: L, m :: C \rangle
+  }
+\end{mathpar}
+\noindent
+The inference rule for sequential composition is straightforward
+  and, along with various extensions to \muskia,
+  is given in our Lean formalization.
+
+The \muskia semantics is deterministic,
+  and programs never get stuck.%
+\footnote{
+Proving this requires proving that Skia programs only ever
+  modify the top of the layer and canvas stack,
+  and do not change the stack size.
+This is proven by induction.
+}
+The final state consists of a single layer,
+  whose denotation is the program's output.
+
+\subsection{Lean Formalization}
+\label{subsec:lean}
+
+We have mechanized all three strata of this formalization---%
+  the abstract model, \Layer terms, and \muskia commands,
+  and their respective denotational / operational semantics,
+  in the Lean~4 interactive theorem prover~\cite{lean4}.
+Our mechanization, which we submitted as an artifact,
+  is under a thousand lines of code.
+We also provide an instantiation of the \Color abstract type
+  as a 4-tuple of real numbers
+  representing premultiplied ARGB colors.
+This means that the alpha channel $\alpha$ is bounded between $0$ and $1$,
+  while the three color channels are bounded between $0$ and $\alpha$.
+By formalizing \Color with reals,
+  equivalences in this abstract model are only up to rounding.
+We have discussed these choices with the Skia engineering team,
+  who confirmed that rounding behavior,
+  while important, is acceptable to change during optimization.
+
+Our formalization also includes a number of extensions
+  not discussed in this section.
+We formalize ``style'', like fill versus stroke,
+  as a unary function on \Shape{}s,
+  and handle opacity accurately during blending,
+  which requires care with certain blend modes.
+We also extend the canvas state with an affine transform,
+  manipulated by translate, rotate, scale, and perspective operations,
+  and add \texttt{SkClipOp}-style clip operations.
+All these extensions involve new \muskia commands,
+  or new parameters to existing \muskia commands,
+  but do not affect the \Layer terms.
+This makes it easy to write proofs that remain valid
+  as the semantics are extended.
+More speculatively, we also expect that
+  \Layer terms will be useful for formalizing
+  rasterization libraries besides Skia,
+  since most existing rasterization libraries
+  share a similar drawing pipeline
+  due to a shared heritage from PostScript.
+
+There are still some parts of Skia's API
+  that our Lean mechanization does not cover,
+  like mask filters, blurs, and image filters,
+  as well as even more obscure portions of the API
+  like the SkSL shading language or support for bitmap images.
+These have little effect on the rewrite rules of \Cref{sec:rewrites},
+  but we do expect that they could be added to \muskia if a need arose.

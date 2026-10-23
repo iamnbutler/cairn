@@ -1,0 +1,42 @@
+\begin{abstract}
+Rasterization is the process of determining
+  the color of every pixel drawn by an application.
+Powerful rasterization libraries
+  like Skia, CoreGraphics, and Direct2D
+  put exceptional effort into drawing, blending, and rendering efficiently.
+Yet applications are still hindered
+  by the inefficient sequences of instructions
+  that they ask these libraries to perform.
+Even Google Chrome, a highly optimized web browser
+  co-developed with the Skia rasterization library,
+  still produces inefficient instruction sequences
+  even on the top 100 most visited websites.
+The underlying reason for this inefficiency
+  is that rasterization libraries have complex semantics
+  and opaque and non-obvious execution models.
+
+To address this issue, we introduce \muskia,
+  a formal semantics for the Skia 2D graphics library,
+  and mechanize this semantics in Lean.
+\muskia covers language and graphics features
+  like canvas state, the layer stack, blending, and color filters,
+  and the semantics itself is split into three strata
+  to separate concerns and enable extensibility.
+We then identify four patterns
+  of sub-optimal Skia code produced by Google Chrome
+  and write replacements for each pattern.
+\muskia allows us to verify that the replacements are correct,
+  including identifying numerous tricky side conditions.
+We then develop a high-performance Skia optimizer
+  that applies these patterns to speed up rasterization.
+On \graphiteAppleNumBench Skia programs
+  gathered from the top 100 websites,
+  this optimizer yields a speedup of \graphiteAppleGeoSpeedup
+  over Skia's most modern GPU backend,
+  while taking just \graphiteAppleMaxOptTime for optimization.
+The speedups persist across a variety of
+  websites, Skia backends, and GPUs.
+To provide true, end-to-end verification,
+  optimization traces produced by the optimizer
+  are loaded back into the \muskia semantics and translation-validated in Lean.
+\end{abstract}
