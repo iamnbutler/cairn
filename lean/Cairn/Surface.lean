@@ -122,6 +122,17 @@ theorem enabledRefs_sub (ms : List MenuItem) : ∀ r ∈ enabledRefs ms, r ∈ r
     · exact .inr (enabledRefs_sub ms r h)
 end
 
+theorem refs_append (xs ys : List MenuItem) : refs (xs ++ ys) = refs xs ++ refs ys := by
+  induction xs with
+  | nil => rfl
+  | cons x xs ih => simp only [List.cons_append, refs, ih, List.append_assoc]
+
+theorem enabledRefs_append (xs ys : List MenuItem) :
+    enabledRefs (xs ++ ys) = enabledRefs xs ++ enabledRefs ys := by
+  induction xs with
+  | nil => rfl
+  | cons x xs ih => simp only [List.cons_append, enabledRefs, ih, List.append_assoc]
+
 /-- An enabled item is an item. -/
 theorem mem_refs_of_enabled {ms : List MenuItem} {r : ControlRef} (h : r ∈ enabledRefs ms) :
     r ∈ refs ms := enabledRefs_sub ms r h

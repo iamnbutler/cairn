@@ -449,7 +449,7 @@ theorem plain_enc {e : Event} (h : fitsEvent e = true) (hs : e.isSurface = false
 /-- On a record whose tag isn't `surface`'s, `event` is `plain`. -/
 theorem event_eq_plain (t : UInt8) (l : List UInt8) (ht : t ≠ 21) :
     event (t :: l) = plain (t :: l) := by
-  simp only [event, plain, headed, bind_apply, byte_cons, ht, if_false]
+  simp only [event, plain, headed, bind_apply, byte_cons, ht, ite_false]
 
 theorem event_enc {e : Event} (h : fitsEvent e = true) (r : List UInt8) :
     event (Enc.event e ++ r) = some (e, r) := by
@@ -471,7 +471,7 @@ theorem event_enc {e : Event} (h : fitsEvent e = true) (r : List UInt8) :
       have hs' : e.isSurface = false := by
         cases e <;> simp_all only [Event.isLocal, Event.isSurface, Bool.false_eq_true]
       simp only [event, headed, Enc.event, Enc.head, List.cons_append, List.nil_append,
-          List.append_assoc, bind_apply, byte_cons, hz, if_true, and_self, u32_enc hp,
+          List.append_assoc, bind_apply, byte_cons, hz, ite_true, and_self, u32_enc hp,
           plain_enc he hs', hl, pure_apply]
     | _ => simp only [Event.isSurface, Bool.false_eq_true] at hs
 

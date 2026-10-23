@@ -6,7 +6,7 @@ entries in the section of the workstream that introduces the assumption.
 
 Items marked **Fuzzed** are also checked by the trusted-base fuzzer (`make fuzz-trusted`,
 docs/fuzz.md "Trusted base"), against Lean's proved side or an independent oracle, and are
-declared as `assume` claims ^901–^915 and ^960–^971 in `lean/Cairn/Fuzz/Trusted/Claims.lean`, each naming its
+declared as `assume` claims ^901–^915, ^940–^944 and ^960–^971 in `lean/Cairn/Fuzz/Trusted/Claims.lean`, each naming its
 check; `build/fuzz/trusted.json` holds the evidence. Items not marked are checked only by the
 tests and reviews they list.
 
@@ -409,6 +409,97 @@ installs no monitor, types into no app and reads no real secret.
   microphone, an `NSMicrophoneUsageDescription` in the bundle's Info.plist and the
   `com.apple.security.device.audio-input` entitlement under the hardened runtime. Each fails
   with an ordinary `failed denied` without its permission, and none of them prompts.
+
+## Surfaces: menus and overlay panels (workstream S)
+
+See [surfaces.md](surfaces.md). Presence, enablement and checkmarks are proved on the menu
+*description* (`Frame.controls_ofMenu`, `Frame.enabled_ofMenu`, Tray's theorems), and a stale or
+unknown selection is proved to change nothing (`Runtime.menu_select_stale`). What AppKit does
+with the description is assumed. The host code is `host/Sources/CairnHost/Surfaces.swift`
+(`SurfaceHost`, `MenuHost`, `StatusHost`, `PanelHost`).
+
+Every check below runs `SurfaceHost` in `.detached` mode: the menus and panels are real AppKit
+objects, but no status item is added to the menu bar and no panel is ordered onto the screen.
+The fuzz suite is `SurfacesSuite` (`host/Tests/CairnFuzzTrusted/SurfacesSuite.swift`); random
+menu records (nested submenus, some disabled, separators, status lines, checkmarks, shortcuts
+over the whole `Key` table) and random panel frames, several updates per case so items are
+updated in place and rebuilt.
+
+### The native menu shows the frame's records (`assume`, ^940)
+
+**Statement.** As the claim says: after each frame the `NSMenu` tree is the records, in order,
+whether `MenuHost.update` changed items in place or rebuilt a menu.
+
+**Finding.** AppKit reports an item inside a *disabled submenu* as `isEnabled == false`
+whatever its own flag. Lean's menus never disable a submenu (`MenuItem.submenu` has no
+`enabled`), so this never shows in an app; the oracle and the conformance model both use the
+effective flag (the item's and every enclosing submenu's).
+
+**Evidence.**
+- **Fuzzed** (`menu.render`): after every update the tree is compared with an independent
+  reading of the records (titles, kind, effective enablement, state, identifier, key equivalent
+  and modifier mask through the suite's own key table, submenu nesting). Counters: records,
+  rebuilds.
+- Conformance (`make conformance APP=Tray`): the socket's `menu` against the model's menu after
+  every step.
+- `CairnTray --selftest`: the tree, ⌘O on Show Overlay, the checkmark, a submenu rebuilt when its
+  shape changes and the same `NSMenuItem` updated in place when it doesn't.
+
+### Choosing an item reports its ref (`assume`, ^941)
+
+**Statement.** As the claim says. The host does *not* filter disabled items: a choice that
+reaches `choose(_:)` is sent, and Lean decides. That is what makes a choice that raced a menu
+update harmless (`menu_select_stale`).
+
+**Evidence.**
+- **Fuzzed** (`menu.select`): in a third of the updates, one random enabled item is chosen
+  through `NSMenu.performActionForItem(at:)` (AppKit's dispatch, about 60 ms per call, which is
+  why it is sampled) and exactly one `menuSelect(place, ref)` must arrive; for a disabled item,
+  `performActionForItem` must send nothing (`disabledNotSent`).
+- Conformance: every enabled item is chosen through `performActionForItem`, and greyed-out
+  items are chosen directly, with the model expecting no change.
+
+### Opening and closing are reported once each (`assume`, ^942)
+
+**Statement.** As the claim says. The host takes `menuWillOpen`/`menuDidClose` on the root menu
+only.
+
+**Evidence.** **Fuzzed** (`menu.open-close`): the delegate methods on the root and on every
+submenu; one event per root call, none for submenus. Not covered: that the window server calls
+the delegate when a person clicks the status item (manual checklist,
+[surfaces-checklist.md](surfaces-checklist.md)).
+
+### The panel never takes focus or clicks (`assume`, ^943)
+
+**Statement.** As the claim says. What is checked is the panel's *properties*
+(`[.borderless, .nonactivatingPanel]`, `canBecomeKey`/`canBecomeMain` false,
+`ignoresMouseEvents`, `.statusBar` level, `[.canJoinAllSpaces, .fullScreenAuxiliary,
+.stationary, .ignoresCycle]`, `hidesOnDeactivate` false, not opaque). That the window server
+honours them (no focus change, clicks pass through, shown over full-screen apps and on every
+Space) is window-server behaviour with no API to assert from inside the app: manual checklist.
+
+**Evidence.** **Fuzzed** (`panel.inert`): the properties after every random frame, shown or
+hidden. `CairnTray --selftest` and the socket's `surfaces` read the same properties.
+
+### The panel is where its anchor says (`assume`, ^944)
+
+**Statement.** As the claim says. The hide fade (0.18 s, then `orderOut`) is look only
+(decision 6).
+
+**Evidence.** **Fuzzed** (`panel.place`): `PanelHost.placement` against the suite's own
+arithmetic on random visible frames, sizes and offsets; the screen is chosen at show and kept
+through size changes until hidden.
+
+### Also trusted, not fuzzed
+
+- **Status item image.** The SF Symbol name exists on the running macOS; a missing one is logged
+  once and the button shows only its title.
+- **Accessory policy.** `.accessory` (chosen when the first frame has no window) gives no Dock
+  icon and no app-switcher entry. Manual checklist.
+- **Run-loop modes.** Frames are applied, and the menu updated, while the menu is tracking.
+  Manual checklist (the detached checks don't track).
+- **Under the debug socket** the `quit` effect is recorded and not run, as a beep is; the
+  driver ends the app with the socket's `quit`.
 
 ## Conformance (workstream J)
 

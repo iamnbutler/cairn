@@ -590,6 +590,44 @@ effects), `menu_select_absent`, and `route_surface_other` (a surface event for a
 the window's is dropped). `route_names` and `route_laid` now hold for every event, including
 wrapped ones, by induction.
 
+### The host
+
+`host/Sources/CairnHost/Surfaces.swift`. `SurfaceHost.apply` reconciles each frame's surfaces:
+
+- **Status items** (`StatusHost`, `MenuHost`). One `NSMenu` per status item, `autoenablesItems`
+  off. `MenuHost.update` syncs each menu level in place when its shape (separator, submenu or
+  item at each position) is unchanged and rebuilds that level otherwise; an item's title,
+  enabled flag, state, key equivalent and `^N#K` identifier are set from its record. A chosen item
+  sends `menuSelect(place, ref)` whether or not it is enabled: Lean decides (`menu_select_stale`).
+  `menuWillOpen`/`menuDidClose` on the root menu send `menuOpen`/`menuClose`. The status item's
+  button shows a template SF Symbol and title.
+- **Panels** (`PanelHost`, `OverlayPanel`). Section 2's properties; placed by
+  `PanelHost.placement` against the chosen screen's `visibleFrame`, the screen chosen at show and
+  kept until hidden. Each panel has its own `RenderLoop` that selects its canvas from the published
+  frame, drawn by `MetalRenderer` on a clear, non-opaque layer. Hiding fades over 0.18 s.
+- **Modes.** `.live` puts status items in the menu bar and panels on screen. `.detached` builds the
+  same AppKit objects without either; the debug socket, Tray's self test and the trusted fuzzer
+  use it, so none of them touches the menu bar or the screen.
+- **Launch.** `CairnApp` waits for the first frame: with a window it is `.regular`, with M1's
+  main menu and window; without one it is `.accessory`, with no main menu, and closing windows
+  doesn't quit it.
+- **Bundles.** `make bundle APP=<App>` writes `build/apps/<App>.app`, taking `Info.plist` and
+  `entitlements.plist` from `host/Bundles/<App>/` when present (Tray's sets `LSUIElement`).
+  Signing is ad hoc unless `SIGN=` names an identity. This is the hook Yap's bundle needs
+  (microphone usage string, audio-input entitlement, hardened runtime, stable signature).
+
+The example is Tray (`lean/Examples/Tray.lean`, claims ^450–^462): a status item whose menu has
+a status line, a ⌘O item, a checkbox item, an item enabled only while the checkbox is on, a
+Recent Items submenu with keyed items and Quit, and an overlay panel with 24 moving bars and a
+wrapped caption. Its theorems (`lean/Examples/Tray/Proofs.lean`): `menu_refs` (presence in every
+state), `menu_enabledRefs`, `add_enabled_iff`, `keep_checked`, `quit_enabled`, and
+`add_ignored_when_off`, which says that in every state the running app reaches, choosing Add Item
+while it is greyed out changes nothing.
+
+Evidence: docs/trusted.md "Surfaces" (^940–^944, fuzzed by `SurfacesSuite`), conformance with
+menus (docs/conformance.md "Tray: menus"), bench/surfaces.md (50 Hz), and the manual checklist
+docs/surfaces-checklist.md.
+
 ## Decisions
 
 The open questions as first written are kept below; each was settled as follows. Every answer is

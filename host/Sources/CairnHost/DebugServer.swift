@@ -25,6 +25,11 @@ import Darwin
 /// | `{"cmd":"key","key":"enter","mods":["shift"],"char":" "}` | `seq` |
 /// | `{"cmd":"text","op":"insert"\|"marked"\|"unmark","text":"…","sel":[start,len]}` | `seq` |
 /// | `{"cmd":"menu","name":"copy"\|"cut"\|"paste"\|"selectAll"\|"undo"\|"redo"}` | `seq` |
+/// | `{"cmd":"menu","place":450}` (no `name`) | a status item's native menu as AppKit holds it: each item's title, enabled, state, id, key equivalent, submenu |
+/// | `{"cmd":"menuOpen","place":450}`, `{"cmd":"menuClose",…}` | `seq`: the menu's delegate was told it opened (closed) |
+/// | `{"cmd":"menuSelect","place":450,"id":"^457#0"}` | `seq`: the item was chosen through `NSMenu.performActionForItem(at:)`; a disabled item's action is sent directly (`"direct":true`), as when the menu changed while open |
+/// | `{"cmd":"menuSelect","place":450,"ref":[456,0]}` | `seq`: a `menuSelect` event with any ref, in or out of the menu |
+/// | `{"cmd":"surfaces"}` | the activation policy, key window and main menu; each surface's record and its AppKit object (status item, panel: level, key, mouse, Spaces, frame) |
 /// | `{"cmd":"wait","seq":N,"timeout":5}` | the frame's `seq` and `version`, effects run since the last wait, new text-shadow divergences |
 /// | `{"cmd":"frame"}` | the last applied frame, decoded, with its `seq` and `version` |
 /// | `{"cmd":"ax"}` | the accessibility tree, as `NSAccessibility` answers it |
@@ -36,6 +41,7 @@ public final class DebugServer: @unchecked Sendable {
     public let path: String
     let renderer = DebugRenderer()
     private weak var view: HostView?
+    private weak var surfaces: SurfaceHost?
     private var engine: Engine?
     private let lock = NSLock()
     private var effects: [Effect] = []
@@ -65,8 +71,9 @@ public final class DebugServer: @unchecked Sendable {
     }
 
     @MainActor
-    func attach(view: HostView, window: NSWindow) {
+    func attach(view: HostView, window: NSWindow?, surfaces: SurfaceHost? = nil) {
         self.view = view
+        self.surfaces = surfaces
         engine = view.engine
         pasteboard.clearContents()
         view.pasteboard = pasteboard
@@ -75,11 +82,12 @@ public final class DebugServer: @unchecked Sendable {
             effects.append(e)
             lock.unlock()
             if case .beep = e { return true }  // recorded, not sounded
+            if case .quit = e { return true }  // recorded, not run: the driver ends the app with `quit`
             return false  // setClipboard runs, into the private pasteboard
         }
         NSApp.setActivationPolicy(.accessory)  // no Dock icon, no menu bar takeover
-        window.ignoresMouseEvents = true       // the real mouse passes through to what's below
-        window.orderFrontRegardless()          // on screen (so it renders), not key, not active
+        window?.ignoresMouseEvents = true      // the real mouse passes through to what's below
+        window?.orderFrontRegardless()         // on screen (so it renders), not key, not active
         NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: nil) { [path, name = pasteboard.name] _ in
             unlink(path)
             NSPasteboard(name: name).releaseGlobally()
@@ -174,6 +182,14 @@ public final class DebugServer: @unchecked Sendable {
         try DispatchQueue.main.sync { try MainActor.assumeIsolated(body) }
     }
 
+    @MainActor
+    private func menuHost(_ place: UInt32?) throws -> MenuHost {
+        guard let m = surfaces?.menu(place) else {
+            throw DebugError(place.map { "no status item at ^\($0)" } ?? "no status item")
+        }
+        return m
+    }
+
     private func liveView() throws -> HostView {
         guard let v = view else { throw DebugError("no view") }
         return v
@@ -231,6 +247,49 @@ public final class DebugServer: @unchecked Sendable {
                 }
             }
             return ["seq": Int(engine.lastSeq)]
+
+        case "menu" where req["name"] == nil:
+            let place = (req["place"] as? NSNumber)?.uint32Value
+            let data = try onMain { () throws -> Data in
+                let m = try menuHost(place)
+                return try JSONSerialization.data(withJSONObject: ["place": Int(m.place), "items": DebugJSON.menu(m.root)])
+            }
+            return try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
+
+        case "menuOpen", "menuClose":
+            let place = (req["place"] as? NSNumber)?.uint32Value
+            try onMain {
+                let m = try menuHost(place)
+                if cmd == "menuOpen" { m.menuWillOpen(m.root) } else { m.menuDidClose(m.root) }
+            }
+            return ["seq": Int(engine.lastSeq)]
+
+        case "menuSelect":
+            let place = (req["place"] as? NSNumber)?.uint32Value
+            if let raw = req["ref"] as? [NSNumber], raw.count == 2 {
+                let ref = ControlRef(claim: raw[0].uint32Value, key: raw[1].uint32Value)
+                let p = try onMain { try menuHost(place).place }
+                return ["seq": Int(engine.send([.menuSelect(place: p, ref)]))]
+            }
+            guard let id = req["id"] as? String else { throw DebugError("menuSelect needs id or ref") }
+            let direct = try onMain { () throws -> Bool in
+                let m = try menuHost(place)
+                guard let (menu, i) = m.find(id), let item = menu.item(at: i), item.action != nil
+                else { throw DebugError("no actionable item \(id) in the menu") }
+                if item.isEnabled {
+                    menu.performActionForItem(at: i)
+                    return false
+                }
+                m.choose(item)
+                return true
+            }
+            return ["seq": Int(engine.lastSeq), "direct": direct]
+
+        case "surfaces":
+            let data = try onMain { () throws -> Data in
+                try JSONSerialization.data(withJSONObject: DebugJSON.surfaces(surfaces, view: try liveView()))
+            }
+            return try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
 
         case "menu":
             let name = req["name"] as? String ?? ""

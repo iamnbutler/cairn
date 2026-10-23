@@ -1,7 +1,10 @@
 import AppKit
 import CairnFrame
 
-/// Runs one app in one window. An executable describes its app and calls `CairnApp.main`:
+/// Runs one app: its window, if it has one, and its other surfaces (status items, panels; see
+/// `SurfaceHost`). An app whose first frame has no window runs as an accessory: no Dock icon and
+/// no main menu (docs/surfaces.md, decision 4). An executable describes its app and calls
+/// `CairnApp.main`:
 ///
 /// ```swift
 /// CairnApp.main(CairnApp.Config(title: "Counter", size: Size(w: 480, h: 320)) { LeanCore(counter) })
@@ -32,8 +35,6 @@ public enum CairnApp {
         let app = NSApplication.shared
         let delegate = Delegate(config: config)
         app.delegate = delegate
-        app.setActivationPolicy(.regular)
-        app.mainMenu = menu(title: config.title)
         withExtendedLifetime(delegate) { app.run() }
         exit(0)
     }
@@ -73,8 +74,10 @@ public enum CairnApp {
 
     final class Delegate: NSObject, NSApplicationDelegate {
         let config: Config
-        var window: NSWindow!
+        var window: NSWindow?
         var view: HostView!
+        var surfaces: SurfaceHost!
+        var hasWindow = true
         var statsTimer: Timer?
         var debug: DebugServer?
 
@@ -87,20 +90,36 @@ public enum CairnApp {
             // Off unless CAIRN_DEBUG_SOCKET or --debug-socket asks for it (docs/conformance.md).
             debug = DebugServer.requested(title: config.title)
             view = HostView(engine: engine, renderer: debug?.renderer ?? config.makeRenderer(), size: size)
-            window = NSWindow(contentRect: NSRect(origin: .zero, size: size),
-                              styleMask: [.titled, .closable, .resizable, .miniaturizable],
-                              backing: .buffered, defer: false)
-            window.title = config.title
-            window.contentView = view
-            window.makeFirstResponder(view)
-            window.center()
-            window.setFrameAutosaveName("cairn.\(config.title)")
+            surfaces = SurfaceHost(engine: engine, mode: debug == nil ? .live : .detached) {
+                MetalRenderer(clearColor: Color(r: 0, g: 0, b: 0, a: 0))
+            }
+            view.onApply = { [surfaces] frame in surfaces?.apply(frame) }
             engine.start()
+            // Whether there is a window is the app's first frame's to say.
+            let first = engine.wait(through: 0)
+            hasWindow = first.map { $0.frame.windowIndex != nil } ?? true
+            if hasWindow {
+                NSApp.setActivationPolicy(.regular)
+                NSApp.mainMenu = CairnApp.menu(title: config.title)
+                let title = first?.frame.windowIndex.map { first!.frame.surfaces[$0].title } ?? ""
+                let window = NSWindow(contentRect: NSRect(origin: .zero, size: size),
+                                      styleMask: [.titled, .closable, .resizable, .miniaturizable],
+                                      backing: .buffered, defer: false)
+                window.title = title.isEmpty ? config.title : title
+                window.contentView = view
+                window.makeFirstResponder(view)
+                window.center()
+                window.setFrameAutosaveName("cairn.\(config.title)")
+                self.window = window
+            } else {
+                NSApp.setActivationPolicy(.accessory)  // no Dock icon, no main menu
+            }
+            view.applyLatestFrame()
             if let debug {
                 // Driven only through the socket: shown without taking focus from the person at the
                 // keyboard, and deaf to the real mouse.
-                debug.attach(view: view, window: window)
-            } else {
+                debug.attach(view: view, window: window, surfaces: surfaces)
+            } else if let window {
                 window.makeKeyAndOrderFront(nil)
                 NSApp.activate()
             }
@@ -123,7 +142,7 @@ public enum CairnApp {
             }
         }
 
-        func applicationShouldTerminateAfterLastWindowClosed(_ app: NSApplication) -> Bool { true }
+        func applicationShouldTerminateAfterLastWindowClosed(_ app: NSApplication) -> Bool { hasWindow }
     }
 }
 

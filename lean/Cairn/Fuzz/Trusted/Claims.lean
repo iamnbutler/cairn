@@ -132,4 +132,26 @@ assume ^991 wrapCoreText "Lean breaks lines where Core Text would" where
   does "On left-to-right letters, digits and spaces, Lean's lines are Core Text's (CTTypesetterSuggestLineBreak, trailing spaces trimmed) except where a line is within one point of the width or a word is cut, where the cut is within two scalars of Core Text's."
   check "text.wrap.coretext"
 
+/-! Surfaces (workstream S, docs/surfaces.md): menus and overlay panels, ids 940–959. -/
+
+assume ^940 hostMenuRender "The native menu shows exactly the frame's menu records" where
+  does "After each frame, a status item's NSMenu tree holds the frame's menu records in order: each item's title, enabled state, checkmark, key equivalent and ref, separators where they are, each submenu under its item with its own records, and status lines shown but not actionable; updating it in place or rebuilding it gives the same tree."
+  check "menu.render"
+
+assume ^941 hostMenuSelect "Choosing a menu item reports that item's ref" where
+  does "When AppKit performs a menu item's action, the host sends exactly one menuSelect with the status item's place and that item's ref, and nothing for a status line, separator or submenu; Lean checks the ref against the menu it is showing (menu_select_stale)."
+  check "menu.select"
+
+assume ^942 hostMenuOpenClose "Opening and closing the menu are reported once each" where
+  does "When the status item's menu opens the host sends one menuOpen with its place, and one menuClose when it closes; submenus opening and closing send nothing."
+  check "menu.open-close"
+
+assume ^943 hostPanelInert "An overlay panel never takes focus or clicks" where
+  does "Every overlay panel is a non-activating panel that cannot become key or main, ignores the mouse, sits at status-bar level on every Space and over full-screen apps, is not hidden when the app deactivates and is transparent, whatever frames it is given."
+  check "panel.inert"
+
+assume ^944 hostPanelPlace "An overlay panel is where its anchor says" where
+  does "A shown panel's frame has its canvas's size, horizontally centred in the chosen screen's visible frame and the anchor's offset above its bottom, on whole points; the screen is chosen when it appears and kept until it is hidden."
+  check "panel.place"
+
 end Cairn.Fuzz.Trusted.Claims

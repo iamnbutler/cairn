@@ -101,12 +101,82 @@ def jtextInput (t : TextInput) : String :=
         ("text", jstr t.text), ("selection", jrange t.selection), ("marked", jopt jrange t.marked),
         ("origin", jpoint t.textOrigin)]
 
+/-! A status item's menu, in the shape the debug socket's `menu` command reads it back from
+AppKit (`DebugJSON.menu`): the host's own key-equivalent table, and an item inside a disabled
+submenu reported disabled, as AppKit reports it (docs/trusted.md, ^940). -/
+
+def kindName : SurfaceKind → String
+  | .window => "window" | .panel => "panel" | .statusItem => "statusItem"
+
+/-- `MenuHost.keyEquivalent`: AppKit's key equivalent for a shortcut. -/
+def keyEquivalent : Key → String
+  | .enter => "\r" | .escape => "\x1b" | .tab => "\t" | .backspace => "\x08"
+  | .delete => String.singleton (Char.ofNat 0xF728) | .left => String.singleton (Char.ofNat 0xF702)
+  | .right => String.singleton (Char.ofNat 0xF703) | .up => String.singleton (Char.ofNat 0xF700)
+  | .down => String.singleton (Char.ofNat 0xF701) | .home => String.singleton (Char.ofNat 0xF729)
+  | .finish => String.singleton (Char.ofNat 0xF72B) | .pageUp => String.singleton (Char.ofNat 0xF72C)
+  | .pageDown => String.singleton (Char.ofNat 0xF72D) | .char c => String.singleton c.toLower
+
+/-- Modifier names in `DebugJSON.modNames` order. -/
+def menuMods (m : Mods) : List String :=
+  (if m.command then ["command"] else []) ++ (if m.shift then ["shift"] else []) ++
+  (if m.option then ["option"] else []) ++ (if m.control then ["control"] else [])
+
+/-- Whether record `i` and every submenu around it are enabled. -/
+def effectiveEnabled (recs : Array MenuRecord) (i : Nat) : Bool := Id.run do
+  let mut j := some i
+  for _ in [0:recs.size + 1] do
+    match j with
+    | none => return true
+    | some k =>
+      let some r := recs[k]? | return true
+      unless r.enabled do return false
+      j := r.parent
+  return true
+
+/-- The items whose parent is `parent`, nested. `fuel` bounds the depth. -/
+def jmenuItems (recs : Array MenuRecord) (parent : Option Nat) : Nat → String
+  | 0 => "[]"
+  | fuel + 1 => jarr <| (List.range recs.size).filterMap fun i => do
+    let r ← recs[i]?
+    guard (r.parent == parent)
+    let en := effectiveEnabled recs i
+    let plain (kind : String) (enabled : Bool) (id : String) : List (String × String) :=
+      [("kind", jstr kind), ("title", jstr r.label), ("enabled", jbool enabled), ("state", jstr "off"),
+       ("id", id), ("key", jstr ""), ("mods", "[]")]
+    match r.kind, r.control with
+    | .separator, _ => some (jobj [("kind", jstr "separator")])
+    | .submenu, _ =>
+      some (jobj (plain "submenu" en (jopt (fun p => jstr s!"^{p}") r.place) ++
+        [("items", jmenuItems recs (some i) fuel)]))
+    | .item, some c =>
+      let (key, mods) := match r.shortcut with
+        | some sc => (keyEquivalent sc.key, menuMods sc.mods)
+        | none => ("", [])
+      some (jobj [("kind", jstr "item"), ("title", jstr r.label), ("enabled", jbool en),
+        ("state", jstr (if r.checked == some true then "on" else "off")), ("id", jstr (refLabel c)),
+        ("key", jstr key), ("mods", jarr (mods.map jstr))])
+    | _, _ => some (jobj (plain "info" false "null"))
+
+def jmenus (f : Frame) : String :=
+  jarr <| f.surfaces.toList.filterMap fun s =>
+    if s.kind == .statusItem then
+      some (jobj [("place", jnat s.place), ("items", jmenuItems s.status.menu none (s.status.menu.size + 1))])
+    else none
+
+def jsurfaces (f : Frame) : String :=
+  jarr <| f.surfaces.toList.map fun s =>
+    jobj [("kind", jstr (kindName s.kind)), ("place", jnat s.place), ("shown", jbool s.shown)]
+
+/-- The window's canvas (empty when the app has none), then what the debug socket's `menu` and
+`surfaces` commands must answer: `menus` and `surfaces`, which the driver compares on their own. -/
 def jframe (f : Frame) : String :=
   jobj [("size", jarr [jint f.size.w, jint f.size.h]),
         ("draws", jarr (f.draws.toList.map jdraw)),
         ("ax", jarr (f.ax.toList.map jax)),
         ("textInput", jopt jtextInput f.textInput),
-        ("cursor", jstr (cursorName f.cursor))]
+        ("cursor", jstr (cursorName f.cursor)),
+        ("menus", jmenus f), ("surfaces", jsurfaces f)]
 
 def jeffect : Effect → String
   | .setClipboard s => jobj [("clipboard", jstr s)]
@@ -189,6 +259,12 @@ inductive Gesture where
   | unmark
   /-- An Edit-menu command: copy, cut, paste, selectAll, undo or redo. -/
   | menu (name : String)
+  /-- A status item's menu opens (closes): its delegate's `menuWillOpen` (`menuDidClose`). -/
+  | menuOpen (place : ClaimId)
+  | menuClose (place : ClaimId)
+  /-- An item of a status item's menu is chosen: `performActionForItem(at:)` when it is
+  enabled, its action sent directly when it isn't (the menu changed while it was open). -/
+  | menuSelect (place : ClaimId) (r : ControlRef)
 deriving Inhabited
 
 def Gesture.events (clipboard : String) : Gesture → List Event
@@ -207,6 +283,9 @@ def Gesture.events (clipboard : String) : Gesture → List Event
   | .menu "undo" => [.undo]
   | .menu "redo" => [.redo]
   | .menu _ => []
+  | .menuOpen p => [.menuOpen p]
+  | .menuClose p => [.menuClose p]
+  | .menuSelect p r => [.menuSelect p r]
 
 def Gesture.json : Gesture → String
   | .move p => jobj [("g", jstr "move"), ("at", jpoint p)]
@@ -222,6 +301,10 @@ def Gesture.json : Gesture → String
   | .marked s a l => jobj [("g", jstr "marked"), ("text", jstr s), ("sel", jarr [jnat a, jnat l])]
   | .unmark => jobj [("g", jstr "unmark")]
   | .menu n => jobj [("g", jstr "menu"), ("name", jstr n)]
+  | .menuOpen p => jobj [("g", jstr "menuOpen"), ("place", jnat p)]
+  | .menuClose p => jobj [("g", jstr "menuClose"), ("place", jnat p)]
+  | .menuSelect p r => jobj [("g", jstr "menuSelect"), ("place", jnat p), ("id", jstr (refLabel r)),
+                              ("ref", jarr [jnat r.claim, jnat r.key])]
 
 def click (p : Point) : List Gesture := [.move p, .down p 1, .up p]
 def doubleClick (p : Point) : List Gesture := [.move p, .down p 1, .up p, .down p 2, .up p]
@@ -352,15 +435,40 @@ def choices (M : Machine S) (s : Runtime.State S) (f : Frame) (r : Rng) : Array 
                           gestures := [.key .enter {}] }
         out := out.push { label := s!"Space on {refLabel c}", move := some (c, "press"),
                           gestures := [.key (.char ' ') {}] }
-  -- Plain UI: focus traversal, hover, leaving the window, clicking nothing.
-  out := out.push { label := "Tab", gestures := [.key .tab {}] }
-  out := out.push { label := "Shift-Tab", gestures := [.key .tab { shift := true }] }
-  out := out.push { label := "pointer leaves the window", gestures := [.exit] }
-  let (x, r') := r.below (Int.toNat f.size.w)
-  let (y, r'') := r'.below (Int.toNat f.size.h)
-  r := r''
-  out := out.push { label := s!"hover at {x},{y}", gestures := [.move ⟨x, y⟩] }
-  out := out.push { label := "click empty space", gestures := click ⟨2, f.size.h - 2⟩ }
+  -- Status items: open the menu (a press on the item's control), choose an item. A greyed-out
+  -- item is chosen too, as when the menu changed while it was open: nothing may happen.
+  for sf in f.surfaces do
+    unless sf.kind == .statusItem && sf.shown do continue
+    let p := sf.place
+    let sc := sf.status.control
+    if let some m := find? M.moves sc.claim then
+      if m.enabled s.app sc.key then
+        out := out.push { label := s!"open the menu of ^{p}", move := some (sc, "press"),
+                          gestures := [.menuOpen p, .menuClose p] }
+    let recs := sf.status.menu
+    for i in [0:recs.size] do
+      let some rec := recs[i]? | continue
+      let some c := rec.control | continue
+      unless rec.kind == .item do continue
+      let live := effectiveEnabled recs i &&
+        (find? M.moves c.claim).any (fun m => m.enabled s.app c.key)
+      if live then
+        for _ in [0:2] do
+          out := out.push { label := s!"choose {refLabel c} in ^{p}", move := some (c, "press"),
+                            gestures := [.menuSelect p c] }
+      else
+        out := out.push { label := s!"choose greyed-out {refLabel c} in ^{p}",
+                          gestures := [.menuSelect p c] }
+  -- Plain UI: focus traversal, hover, leaving the window, clicking nothing. Only with a window.
+  if f.surfaces.any (·.kind == .window) then
+    out := out.push { label := "Tab", gestures := [.key .tab {}] }
+    out := out.push { label := "Shift-Tab", gestures := [.key .tab { shift := true }] }
+    out := out.push { label := "pointer leaves the window", gestures := [.exit] }
+    let (x, r') := r.below (Int.toNat f.size.w)
+    let (y, r'') := r'.below (Int.toNat f.size.h)
+    r := r''
+    out := out.push { label := s!"hover at {x},{y}", gestures := [.move ⟨x, y⟩] }
+    out := out.push { label := "click empty space", gestures := click ⟨2, f.size.h - 2⟩ }
   (out, r)
 
 /-! ## Running the model -/
@@ -481,6 +589,14 @@ def findings (M : Machine S) (s : Runtime.State S) (f : Frame) (ch : Choice)
       | some m =>
         unless m.enabled s.app c.key do
           out := out ++ [s!"{refLabel c} is on screen but its move is not enabled"]
+  for sf in f.surfaces do
+    for rec in sf.status.menu do
+      if let some c := rec.control then
+        match find? M.moves c.claim with
+        | none => out := out ++ [s!"{refLabel c} is in the menu of ^{sf.place} but no move owns ^{c.claim}"]
+        | some m =>
+          if rec.enabled && !m.enabled s.app c.key then
+            out := out ++ [s!"{refLabel c} is enabled in the menu of ^{sf.place} but its move is not"]
   if let some (c, t) := ch.move then
     let main := acts.filter fun a => match a with | .blur _ => false | _ => true
     match t with
@@ -579,10 +695,19 @@ def witnessChoice (f : Frame) (step : String) : Option Choice := do
   let parts := step.splitOn " "
   let trigger ← parts[0]?
   let c : ControlRef := ⟨parseNat (parts[1]?.getD "0"), parseNat (parts[2]?.getD "0")⟩
+  let label := s!"{trigger} {refLabel c}"
+  -- A press on a status item's control opens its menu; on one of its items, chooses it.
+  let statuses := f.surfaces.toList.filter (·.kind == .statusItem)
+  let inMenu := statuses.find? fun sf => sf.status.menu.any (·.control == some c)
+  match trigger, statuses.find? (·.status.control == c), inMenu with
+  | "press", some sf, _ =>
+    return { label, move := some (c, "press"), gestures := [.menuOpen sf.place, .menuClose sf.place] }
+  | "press", none, some sf =>
+    return { label, move := some (c, "press"), gestures := [.menuSelect sf.place c] }
+  | _, _, _ => pure ()
   let node ← f.ax.toList.find? (·.control == some c)
   let focused := f.textInput.map (·.control) == some c
   let focus := if focused then [] else click node.rect.center
-  let label := s!"{trigger} {refLabel c}"
   let rest := " ".intercalate (parts.drop 4)
   match trigger, parts[3]? with
   | "press", _ => some { label, move := some (c, "press"), gestures := click node.rect.center }
@@ -630,7 +755,8 @@ def replay (M : Machine S) (app : App S) (cfg : Config) (o : Options) (line : St
 `--gestures FILE` replays raw gesture lists, which the driver uses to shrink a failing sequence:
 one sequence per line, gestures separated by tabs, each one of `move X Y`, `down X Y CLICKS`,
 `up X Y`, `exit`, `key NAME MODS [CHAR]` (MODS comma-separated, or `-`), `text TEXT`,
-`marked START LEN TEXT`, `unmark` or `menu NAME`. Text runs to the end of the gesture. -/
+`marked START LEN TEXT`, `unmark`, `menu NAME`, `menuOpen PLACE`, `menuClose PLACE` or
+`menuSelect PLACE CLAIM KEY`. Text runs to the end of the gesture. -/
 
 def parseInt (s : String) : Int := s.toInt?.getD 0
 
@@ -662,6 +788,10 @@ def parseGesture (g : String) : Option Gesture :=
   | "marked" => some (.marked (rest 3) (parseNat (ps[1]?.getD "0")) (parseNat (ps[2]?.getD "0")))
   | "unmark" => some .unmark
   | "menu" => some (.menu (ps[1]?.getD ""))
+  | "menuOpen" => some (.menuOpen (parseNat (ps[1]?.getD "0")))
+  | "menuClose" => some (.menuClose (parseNat (ps[1]?.getD "0")))
+  | "menuSelect" => some (.menuSelect (parseNat (ps[1]?.getD "0"))
+      ⟨parseNat (ps[2]?.getD "0"), parseNat (ps[3]?.getD "0")⟩)
   | _ => none
 
 /-- One sequence of steps, each step its gestures separated by `\x1f` (unit separator). -/

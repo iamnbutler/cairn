@@ -565,7 +565,7 @@ theorem menu_select_presses (m : TextMetrics) (s : State S) {p : ClaimId} {it : 
     {r : ControlRef} (h : Shown.statusOf p s.surfaces = some it)
     (hr : r ∈ MenuItem.enabledRefs it.menu) :
     route m s (.menuSelect p r) = (s, [.press r]) := by
-  simp only [route, h, hr, if_true]
+  simp only [route, h, hr, ite_true]
 
 /-- Opening a shown status item's menu presses its control. -/
 theorem menu_open_presses (m : TextMetrics) (s : State S) {p : ClaimId} {it : StatusItem}
@@ -588,10 +588,10 @@ theorem menu_select_stale (app : App S) (cfg : Config) (s : State S) {p : ClaimI
     simp only [route]
     split
     · rename_i it hit
-      simp only [h it hit, if_false]
+      simp only [h it hit, ite_false]
     · rfl
   simp only [step, hroute, admit, List.isEmpty_nil, Bool.not_false, UI.same_self,
-    Bool.and_self, if_true]
+    Bool.and_self, ite_true]
 
 /-- A selection addressed to an item not in the menu is ignored (a special case of
 `menu_select_stale`): nothing outside the description can be pressed through the menu. -/
@@ -604,6 +604,116 @@ theorem menu_select_absent (app : App S) (cfg : Config) (s : State S) {p : Claim
 /-- Events addressed to a surface other than the window (a panel, a status item) do nothing. -/
 theorem route_surface_other (m : TextMetrics) (s : State S) {p : ClaimId} (e : Event)
     (h : Shown.windowPlace s.surfaces ≠ some p) : route m s (.surface p e) = (s, []) := by
-  simp only [route, h, decide_false, Bool.false_and, Bool.false_eq_true, if_false]
+  simp only [route, h, decide_false, Bool.false_and, Bool.false_eq_true, ite_false]
+
+/-! ## What the surfaces show follows the app state -/
+
+theorem tab_surfaces (s : State S) (back : Bool) : (tab s back).1.surfaces = s.surfaces := by
+  unfold tab; split <;> rfl
+
+theorem route_surfaces (m : TextMetrics) (s : State S) (e : Event) :
+    (route m s e).1.surfaces = s.surfaces := by
+  induction e with
+  | surface p e ih => simp only [route]; split; exact ih; rfl
+  | _ =>
+    rw [route.eq_def] <;> (try simp only [withPointer]) <;> (try split) <;> (try split) <;>
+      (try split) <;> (try split) <;> first | contradiction | simp [tab_surfaces]
+
+/-- A context that delivered nothing still holds the app state `a`. -/
+def Kept (a : S) (c : Ctx S) : Prop := c.delivered = false → c.app = a
+
+theorem give_kept (app : App S) (a : S) (c : Ctx S) (m : Msg) : Kept a (give app c m) :=
+  fun h => nomatch h
+
+theorem hear_kept (app : App S) (a : S) (c : Ctx S) (h : Kept a c) : Kept a (hear app c) := by
+  unfold hear; split
+  · exact h
+  · exact give_kept app a _ _
+
+theorem fire_kept (app : App S) (a : S) (c : Ctx S) (n : String) (h : Kept a c) :
+    Kept a (fire app c n) := by
+  unfold fire; split
+  · exact give_kept app a _ _
+  · exact h
+
+theorem boot_kept (app : App S) (a : S) (c : Ctx S) (h : Kept a c) : Kept a (boot app c) := by
+  unfold boot; split
+  · exact h
+  · intro hd; nomatch hd
+
+theorem foldl_fire_kept (app : App S) (a : S) (ns : List String) :
+    ∀ (c : Ctx S), Kept a c → Kept a (ns.foldl (fire app) c) := by
+  induction ns with
+  | nil => intro c h; exact h
+  | cons n ns ih => intro c h; exact ih _ (fire_kept app a c n h)
+
+/-- `admit` changes the app state only by delivering something. -/
+theorem admit_kept (app : App S) (s : State S) (e : Event) : Kept s.app (admit app s e) := by
+  unfold admit
+  split
+  · simp only
+    split
+    · exact boot_kept app _ _ (fun _ => rfl)
+    · exact foldl_fire_kept app _ _ _ (hear_kept app _ _ (boot_kept app _ _ (fun _ => rfl)))
+  · split
+    · dsimp only
+      split
+      · exact give_kept app _ _ _
+      · exact hear_kept app _ _ (fun _ => rfl)
+    · exact fun _ => rfl
+  · split
+    · exact give_kept app _ _ _
+    · exact fun _ => rfl
+  · exact fun _ => rfl
+
+/-- Each step keeps the runtime's surfaces equal to what the app's surfaces show for its state:
+the menu `menuSelect` is checked against is the menu of the current app state. -/
+theorem step_surfaces (app : App S) (cfg : Config) (s : State S) (e : Event)
+    (h : s.surfaces = shows app cfg s.app) :
+    (step app cfg s e).1.surfaces = shows app cfg (step app cfg s e).1.app := by
+  have hr := route_surfaces cfg.metrics s e
+  have ha := (route_laid cfg.metrics s e).2
+  have hk := admit_kept app s e
+  unfold step
+  rcases hrt : route cfg.metrics s e with ⟨s1, acts⟩
+  rw [hrt] at hr ha
+  generalize admit app s e = c0 at hk
+  dsimp only
+  split
+  · rename_i hc
+    simp only [Bool.and_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true] at hc
+    dsimp only
+    rw [hr, ha, h]
+  · generalize hca : act app c0 acts = c
+    by_cases hd : c.delivered = true
+    · simp only [hd, ↓reduceIte]
+    · have hd' : c.delivered = false := by simpa only [Bool.not_eq_true] using hd
+      simp only [hd', Bool.false_eq_true, ↓reduceIte]
+      subst hca
+      unfold act at hd' ⊢
+      split at hd'
+      · rename_i he
+        simp only [he, ↓reduceIte]
+        rw [show s1.surfaces = s.surfaces from hr, h, hk hd']
+      · nomatch hd'
+
+theorem start_surfaces (app : App S) (cfg : Config) (size : Size) (scale : Nat) :
+    (start app cfg size scale).surfaces = shows app cfg (start app cfg size scale).app := rfl
+
+/-- In every state the running app reaches, the surfaces show the current app state. -/
+theorem steps_surfaces (app : App S) (cfg : Config) (es : List Event) :
+    ∀ (s : State S), s.surfaces = shows app cfg s.app →
+      (steps app cfg s es).1.surfaces = shows app cfg (steps app cfg s es).1.app := by
+  unfold steps
+  suffices ∀ (es : List Event) (acc : State S × List Effect), acc.1.surfaces = shows app cfg acc.1.app →
+      (es.foldl (fun (s, effs) e => let (s', e') := step app cfg s e; (s', effs ++ e')) acc).1.surfaces =
+        shows app cfg (es.foldl (fun (s, effs) e => let (s', e') := step app cfg s e; (s', effs ++ e')) acc).1.app
+    from fun s h => this es (s, []) h
+  intro es
+  induction es with
+  | nil => intro acc h; exact h
+  | cons e es ih =>
+    intro ⟨s, effs⟩ h
+    exact ih _ (step_surfaces app cfg s e h)
 
 end Cairn.Runtime
