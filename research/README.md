@@ -18,6 +18,15 @@ they break. For workstreams F (renderer/text) and G (host).
 | [macos/metal-ui-rendering.md](macos/metal-ui-rendering.md): SDF rects, clipping, batching, frame pacing, colour space, latency | F | 5 |
 | [macos/appkit-events.md](macos/appkit-events.md): tracking areas, cursors, scroll phases, key equivalents, Edit-menu routing | G | 5 |
 
+## Surfaces (`surfaces/`)
+
+Status-item menus as data and non-activating overlay panels on macOS, for M2's surfaces
+([docs/surfaces.md](../docs/surfaces.md)).
+
+| Note | For | Relevance |
+|---|---|---|
+| [surfaces/README.md](surfaces/README.md): NSStatusItem, NSMenu reconciliation and run-loop modes, NSMenuItem accessibility ids, nonactivating NSPanel, levels and collection behaviour, accessory policy; menus as data in GPUI, Tauri/muda, Electron, Flutter, SwiftUI, iced | R, host | 5 |
+
 ## Formal UI, verified layout and the TodoMVC spec
 
 What has been specified, proved or tested about UIs before, and the exact spec M1's TodoMVC must
