@@ -58,7 +58,7 @@ structure Pressable (w : Size) (l : Laid) : Prop where
 
 theorem Rect.contains_iff (r : Rect) (p : Point) :
     r.contains p = true ↔ r.x ≤ p.x ∧ p.x < r.x + r.w ∧ r.y ≤ p.y ∧ p.y < r.y + r.h := by
-  simp [Rect.contains]
+  simp only [Rect.contains, Bool.decide_and, Bool.and_eq_true, decide_eq_true_eq]
 
 theorem Rect.inter_contains_left {a b : Rect} {p : Point} (h : (a.inter b).contains p = true) :
     a.contains p = true := by
@@ -96,12 +96,12 @@ theorem Rect.disjoint_contains {a b : Rect} {p : Point} (hd : a.disjoint b)
 theorem hitsList_append (o : Option Target) (a b : List Laid) :
     hitsList o (a ++ b) = hitsList o a ++ hitsList o b := by
   induction a with
-  | nil => simp [hitsList]
-  | cons x xs ih => simp [hitsList, ih, List.append_assoc]
+  | nil => simp only [List.nil_append, hitsList]
+  | cons x xs ih => simp only [List.cons_append, hitsList, ih, List.append_assoc]
 
 theorem mem_hitsList {o : Option Target} {h : Hit} :
     ∀ {ls : List Laid}, h ∈ hitsList o ls → ∃ k ∈ ls, h ∈ hitsOf o k
-  | [], hh => by simp [hitsList] at hh
+  | [], hh => by simp only [hitsList, List.not_mem_nil] at hh
   | l :: ls, hh => by
     simp only [hitsList, List.mem_append] at hh
     rcases hh with hh | hh
@@ -111,7 +111,7 @@ theorem mem_hitsList {o : Option Target} {h : Hit} :
 
 theorem mem_targetsList_split {t : Target} :
     ∀ {ls : List Laid}, t ∈ targetsList ls → ∃ pre k post, ls = pre ++ k :: post ∧ t ∈ targetsOf k
-  | [], ht => by simp [targetsList] at ht
+  | [], ht => by simp only [targetsList, List.not_mem_nil] at ht
   | l :: ls, ht => by
     simp only [targetsList, List.mem_append] at ht
     rcases ht with ht | ht
@@ -122,13 +122,16 @@ theorem mem_targetsList_split {t : Target} :
 mutual
 theorem targetsOf_controls : ∀ l : Laid, (targetsOf l).map (·.control) = l.controls
   | .box r c st ctl kids => by
-    cases ctl <;> simp [targetsOf, Laid.controls, targetsList_controls kids]
-  | .text .. => by simp [targetsOf, Laid.controls]
-  | .field .. => by simp [targetsOf, Laid.controls]
-theorem targetsList_controls : ∀ ls : List Laid, (targetsList ls).map (·.control) = Laid.controlsList ls
-  | [] => by simp [targetsList, Laid.controlsList]
+    cases ctl <;> simp only [targetsOf, List.nil_append, targetsList_controls kids, Laid.controls,
+        Option.toList_none, List.cons_append, List.map_cons, Option.toList_some]
+  | .text .. => by simp only [targetsOf, List.map_nil, Laid.controls]
+  | .field .. => by simp only [targetsOf, List.map_cons, List.map_nil, Laid.controls]
+theorem targetsList_controls : ∀ ls : List Laid,
+    (targetsList ls).map (·.control) = Laid.controlsList ls
+  | [] => by simp only [targetsList, List.map_nil, Laid.controlsList]
   | l :: ls => by
-    simp [targetsList, Laid.controlsList, targetsOf_controls l, targetsList_controls ls]
+    simp only [targetsList, List.map_append, targetsOf_controls l, targetsList_controls ls,
+        Laid.controlsList]
 end
 
 theorem targetsOf_eq_nil {l : Laid} (h : l.controls = []) : targetsOf l = [] := by
@@ -165,8 +168,9 @@ theorem _root_.Cairn.Laid.Everywhere.target {P : Laid → Prop} {l : Laid} (hE :
       rcases mem_targetsOf_box ht with ⟨k, _, rfl⟩ | ht
       · exact hP
       · obtain ⟨pre, k, post, rfl, hk⟩ := mem_targetsList_split ht
-        exact ih k (by simp [Laid.children]) t hk
-    | text => simp [targetsOf] at ht
+        exact ih k (by simp only [Laid.children, List.mem_append, List.mem_cons, true_or,
+            or_true]) t hk
+    | text => simp only [targetsOf, List.not_mem_nil] at ht
     | field =>
       simp only [targetsOf, List.mem_singleton] at ht
       subst ht; exact hP
@@ -201,9 +205,9 @@ theorem hits_inside {l : Laid} (hE : l.Everywhere Good) :
         · simp only [List.mem_singleton] at hh
           subst hh
           exact Rect.inter_contains_left hc
-        · simp at hh
+        · simp only [List.not_mem_nil] at hh
       · obtain ⟨k, hk, hh⟩ := mem_hitsList hh
-        have hkp := ih k (by simp [Laid.children, hk]) _ h p hh hc
+        have hkp := ih k (by simp only [Laid.children, hk]) _ h p hh hc
         exact Rect.contains_of_inside (hG.child_inside hk) hkp
     | text =>
       simp only [hitsOf, List.mem_singleton] at hh
@@ -220,8 +224,10 @@ def ReachesIn (hs : List Hit) (t : Target) (p : Point) : Prop :=
 theorem mem_dropLast {α : Type} {pre post : List α} {k k' : α} (h : k' ∈ post) :
     k ∈ (pre ++ k :: post).dropLast := by
   cases post with
-  | nil => simp at h
-  | cons x xs => simp [List.dropLast_cons_cons]
+  | nil => simp only [List.not_mem_nil] at h
+  | cons x xs => simp only [ne_eq, reduceCtorEq, not_false_eq_true,
+      List.dropLast_append_of_ne_nil, List.dropLast_cons_cons,
+    List.mem_append, List.mem_cons, true_or, or_true]
 
 /-- In a tree where every node is `Good`, a pointer anywhere in a control's visible rect reaches
 that control. -/
@@ -232,39 +238,46 @@ theorem reachesIn_of_good {l : Laid} (hE : l.Everywhere Good) :
   | @intro l hG hK ih =>
     intro o t p ht hc
     cases l with
-    | text => simp [targetsOf] at ht
+    | text => simp only [targetsOf, List.not_mem_nil] at ht
     | field =>
       simp only [targetsOf, List.mem_singleton] at ht
       subst ht
-      exact ⟨[], [], by simp [hitsOf, Target.visible], hc, by simp⟩
+      exact ⟨[], [], by simp only [hitsOf, Target.visible, List.nil_append], hc,
+          by simp only [List.not_mem_nil, false_implies, implies_true]⟩
     | box r c st ctl kids =>
       rcases mem_targetsOf_box ht with ⟨k, rfl, rfl⟩ | hkids
       · -- The control itself: nothing below it is a control, so everything after it is its own.
         have hleaf : targetsList kids = [] := targetsList_eq_nil hG.2.2.1
         refine ⟨[], hitsList (some ⟨.box r c st (some k) kids, k⟩) kids, ?_, hc, ?_⟩
-        · simp [hitsOf, paints, Target.visible]
+        · simp only [hitsOf, paints, Option.isSome_some, Bool.or_true, ↓reduceIte,
+            List.cons_append, List.nil_append,
+    Target.visible]
         · intro h hh _
           rcases hitsList_owner _ kids h hh with e | ⟨t', ht', _⟩
           · exact e
-          · simp [hleaf] at ht'
+          · simp only [hleaf, List.not_mem_nil] at ht'
       · -- A box with a control has no controls below it, so this one has none.
         cases ctl with
-        | some kc => rw [targetsList_eq_nil hG.2.2.1] at hkids; simp at hkids
+        | some kc => rw [targetsList_eq_nil hG.2.2.1] at hkids; simp only [List.not_mem_nil] at hkids
         | none =>
         obtain ⟨pre, k, post, rfl, htk⟩ := mem_targetsList_split hkids
-        have hkE := hK k (by simp [Laid.children])
+        have hkE := hK k (by simp only [Laid.children, List.mem_append, List.mem_cons, true_or,
+            or_true])
         obtain ⟨preK, postK, hEq, _, hpostK⟩ :=
-          ih k (by simp [Laid.children]) o t p htk hc
+          ih k (by simp only [Laid.children, List.mem_append, List.mem_cons, true_or,
+              or_true]) o t p htk hc
         have hkp : k.rect.contains p = true :=
-          hits_inside hkE o ⟨t.visible, some t⟩ p (by rw [hEq]; simp) hc
+          hits_inside hkE o ⟨t.visible, some t⟩ p (by rw [hEq]; simp only [List.mem_append,
+              List.mem_cons, true_or, or_true]) hc
         -- Nothing painted in a later sibling contains `p`.
         have hlater : ∀ h ∈ hitsList o post, h.visible.contains p = true → False := by
           intro h hh hcp
           obtain ⟨k', hk', hh⟩ := mem_hitsList hh
-          have hk'p := hits_inside (hK k' (by simp [Laid.children, hk'])) o h p hh hcp
+          have hk'p := hits_inside (hK k' (by simp only [Laid.children, List.mem_append,
+              List.mem_cons, hk', or_true])) o h p hh hcp
           by_cases hax : st.axis = .stack
           · have hnil := hG.2.1 hax k (mem_dropLast hk')
-            simp [targetsOf_eq_nil hnil] at htk
+            simp only [targetsOf_eq_nil hnil, List.not_mem_nil] at htk
           · have hpw := hG.2.2.2.1 hax
             rw [List.pairwise_append] at hpw
             have hd := (List.pairwise_cons.1 hpw.2.1).1 k' hk'
@@ -272,7 +285,7 @@ theorem reachesIn_of_good {l : Laid} (hE : l.Everywhere Good) :
         refine ⟨(if paints st none then [⟨(Laid.box r c st none (pre ++ k :: post)).visible, o⟩]
             else []) ++ hitsList o pre ++ preK, postK ++ hitsList o post, ?_, hc, ?_⟩
         · simp only [hitsOf, hitsList_append, hitsList, hEq]
-          simp [List.append_assoc]
+          simp only [List.append_assoc, List.cons_append]
         · intro h hh hcp
           rcases List.mem_append.1 hh with hh | hh
           · exact hpostK h hh hcp
@@ -286,7 +299,7 @@ theorem rect_inside_clip {l : Laid} (hE : l.Everywhere Good) :
   | @intro l hG hK ih =>
     intro hrc t ht
     cases l with
-    | text => simp [targetsOf] at ht
+    | text => simp only [targetsOf, List.not_mem_nil] at ht
     | field =>
       simp only [targetsOf, List.mem_singleton] at ht
       subst ht; exact hrc
@@ -294,11 +307,14 @@ theorem rect_inside_clip {l : Laid} (hE : l.Everywhere Good) :
       rcases mem_targetsOf_box ht with ⟨k, _, rfl⟩ | ht
       · exact hrc
       · obtain ⟨pre, k, post, rfl, htk⟩ := mem_targetsList_split ht
-        have hkmem : k ∈ pre ++ k :: post := by simp
-        have hkE := hK k (by simp [Laid.children])
+        have hkmem : k ∈ pre ++ k :: post := by simp only [List.mem_append, List.mem_cons,
+            true_or, or_true]
+        have hkE := hK k (by simp only [Laid.children, List.mem_append, List.mem_cons, true_or,
+            or_true])
         have hki : k.rect.inside r := hG.child_inside hkmem
         have hclip : k.clip = innerClip st c r := hG.2.2.2.2.2.2 k hkmem
-        refine ih k (by simp [Laid.children]) ?_ t htk
+        refine ih k (by simp only [Laid.children, List.mem_append, List.mem_cons, true_or,
+            or_true]) ?_ t htk
         rw [hclip]
         simp only [Laid.rect] at hrc
         unfold innerClip; split
