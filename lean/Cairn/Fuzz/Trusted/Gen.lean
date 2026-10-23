@@ -96,24 +96,53 @@ def textInput : Gen TextInput := do
   return { control := ← ref, rect := ← rect, caret := ← rect, text := ← str,
            selection := ← range, marked := ← opt range, textOrigin := ⟨← i32, ← i32⟩ }
 
-def effect : Gen Effect := do
-  match ← Gen.below 3 with
-  | 0 => return .setClipboard (← str)
-  | 1 => return .focus (← ref)
-  | _ => return .beep
-
 def array {α : Type} (n : Nat) (g : Gen α) : Gen (Array α) := do
   let k ← Gen.below (n + 1)
   let mut xs := #[]
   for _ in [0:k] do xs := xs.push (← g)
   return xs
 
+/-- A `u64`, edges first: around 2³² (where the two words split) and the top. -/
+def u64 : Gen Nat :=
+  Gen.weighted [
+    (1, Gen.elem [0, 1, 4294967295, 4294967296, 4294967297, 18446744073709551615,
+      9223372036854775807, 9223372036854775808]),
+    (3, do return (← Gen.below 4294967296) + 4294967296 * (← Gen.below 4294967296))]
+
+def bytes : Gen ByteArray := do
+  let n ← Gen.weighted [(4, Gen.below 8), (1, Gen.below 300)]
+  let mut b := ByteArray.empty
+  for _ in [0:n] do b := b.push (← byte)
+  return b
+
+def headers : Gen (List (String × String)) := do return (← array 3 (do return (← str, ← str))).toList
+
+def request : Gen Request := do
+  match ← Gen.below 4 with
+  | 0 => return .readFile (← str)
+  | 1 => return .writeFile (← str) (← bytes)
+  | 2 => return .playSound (← str)
+  | _ => return .http (← str) (← str) (← headers) (← bytes) (← u32)
+
+def effect : Gen Effect := do
+  match ← Gen.below 7 with
+  | 0 => return .setClipboard (← str)
+  | 1 => return .focus (← ref)
+  | 2 => return .beep
+  | 3 => return .setTimer (← str) (← u32)
+  | 4 => return .cancelTimer (← str)
+  | 5 => return .request (← u32) (← request)
+  | _ => return .quit
+
+def subCmd : Gen SubCmd := do
+  if ← Gen.chance 1 2 then return .start (← u32) (.every (← u32)) else return .stop (← u32)
+
 def frame : Gen Frame := do
   let big ← Gen.chance 1 10
   return { size := ⟨← i32, ← i32⟩, draws := ← array (if big then 200 else 12) draw,
            ax := ← array (if big then 150 else 10) axNode,
            textInput := ← opt textInput, cursor := ← Gen.elem [.arrow, .pointer, .text],
-           effects := ← array 3 effect }
+           effects := ← array 3 effect, subs := ← array 3 subCmd, wake := ← opt u64 }
 
 /-- The frame for a seed. -/
 def frameOf (seed : UInt64) : Frame := (frame.run (Rng.ofSeed seed.toNat)).1
