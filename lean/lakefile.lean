@@ -102,3 +102,13 @@ lean_lib Fuzz where
 /-- `lake exe fuzz <App> [--seed S] [--iterations N] [--steps K]` (docs/fuzz.md). -/
 lean_exe fuzz where
   root := `FuzzMain
+
+/-- Lean's side of the trusted-base fuzzer (docs/fuzz.md, "Trusted base"): generators, the
+proved decoders' verdicts and a one-field app, exported over C for the Swift executable
+`cairn-fuzz-trusted`, which links this next to `libcairn_lean.a`. No `import Lean`. It carries
+its own copy of `Cairn.Fuzz.Rng`, which `libcairn_lean.a` doesn't contain. -/
+@[default_target]
+lean_lib TrustedFuzz where
+  roots := #[`Cairn.Fuzz.Trusted.Export]
+  globs := #[.one `Cairn.Fuzz.Trusted.Export, .one `Cairn.Fuzz.Trusted.Gen, .one `Cairn.Fuzz.Rng]
+  defaultFacets := #[LeanLib.staticFacet]

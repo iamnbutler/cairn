@@ -26,6 +26,7 @@ lean:
 		$(LEAN_PREFIX)/lib/libgmp.a 2>&1 | grep -v "has no symbols" || true
 	@for a in $(APPS); do \
 		cp lean/.lake/build/lib/libcairn_$${a%%:*}.a build/lib/libcairn_app_$${a##*:}.a; done
+	cp lean/.lake/build/lib/libcairn_TrustedFuzz.a build/lib/libcairn_trusted_fuzz.a
 	@! nm -gU $(LIB) 2>/dev/null | grep -E ' _cairn_app_' \
 	  || (echo "lean: app exports in the shared library $(LIB)"; exit 1)
 	@for a in $(APPS); do n=$$(nm -gU build/lib/libcairn_app_$${a##*:}.a 2>/dev/null | grep -c ' _cairn_app_init$$'); \
