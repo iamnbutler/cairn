@@ -145,4 +145,110 @@ public enum DebugJSON {
         walk(view.accessibilityChildren(), parent: nil)
         return out
     }
+
+    // MARK: Surfaces
+
+    /// A native menu as AppKit holds it.
+    @MainActor
+    static func menu(_ m: NSMenu) -> [[String: Any]] {
+        m.items.map { item in
+            if item.isSeparatorItem { return ["kind": "separator"] }
+            var o: [String: Any] = [
+                "kind": item.submenu != nil ? "submenu" : item.action != nil ? "item" : "info",
+                "title": item.title, "enabled": item.isEnabled,
+                "state": item.state == .on ? "on" : item.state == .mixed ? "mixed" : "off",
+                "id": item.identifier?.rawValue ?? NSNull(),
+                "key": item.keyEquivalent, "mods": modNames(item.keyEquivalentModifierMask),
+            ]
+            if let sub = item.submenu { o["items"] = menu(sub) }
+            return o
+        }
+    }
+
+    static func modNames(_ f: NSEvent.ModifierFlags) -> [String] {
+        var out: [String] = []
+        if f.contains(.command) { out.append("command") }
+        if f.contains(.shift) { out.append("shift") }
+        if f.contains(.option) { out.append("option") }
+        if f.contains(.control) { out.append("control") }
+        return out
+    }
+
+    static func kindName(_ k: SurfaceKind) -> String {
+        switch k {
+        case .window: "window"
+        case .panel: "panel"
+        case .statusItem: "statusItem"
+        }
+    }
+
+    static func cg(_ r: CGRect) -> [Any] { [Double(r.minX), Double(r.minY), Double(r.width), Double(r.height)] }
+
+    /// The app's surfaces: what the frame says and what AppKit has.
+    @MainActor
+    static func surfaces(_ host: SurfaceHost?, view: HostView) -> [String: Any] {
+        let policy: String = switch NSApp.activationPolicy() {
+        case .regular: "regular"
+        case .accessory: "accessory"
+        case .prohibited: "prohibited"
+        @unknown default: "unknown"
+        }
+        let frame = view.shown?.frame
+        var list: [[String: Any]] = []
+        for s in frame?.surfaces ?? [] {
+            var o: [String: Any] = ["kind": kindName(s.kind), "place": Int(s.place), "shown": s.shown, "title": s.title]
+            switch s.kind {
+            case .window:
+                o["size"] = [Int(s.canvas.size.w), Int(s.canvas.size.h)]
+                if let w = view.window {
+                    o["window"] = ["number": w.windowNumber, "key": w.isKeyWindow, "visible": w.isVisible]
+                }
+            case .statusItem:
+                o["symbol"] = s.status.symbol
+                o["statusTitle"] = s.status.title
+                o["label"] = s.status.label
+                o["control"] = s.status.control.label
+                if let h = host?.statuses[s.place] {
+                    o["inMenuBar"] = h.item != nil
+                    o["rebuilds"] = h.menu.rebuilds
+                }
+            case .panel:
+                o["size"] = [Int(s.canvas.size.w), Int(s.canvas.size.h)]
+                o["anchor"] = ["bottomCenter": Int(s.anchor.offset)]
+                o["screen"] = s.screen == .pointer ? "pointer" : "main"
+                o["draws"] = s.canvas.draws.count
+                o["texts"] = s.canvas.draws.compactMap { if case let .text(_, _, _, t) = $0 { t } else { nil } }
+                if let h = host?.panels[s.place] { o["panel"] = panel(h) }
+            }
+            list.append(o)
+        }
+        return [
+            "policy": policy, "active": NSApp.isActive,
+            "keyWindow": NSApp.keyWindow?.windowNumber ?? NSNull(),
+            "mainMenu": NSApp.mainMenu != nil,
+            "detached": host?.mode == .detached,
+            "surfaces": list,
+        ]
+    }
+
+    @MainActor
+    static func panel(_ h: PanelHost) -> [String: Any] {
+        let p = h.panel
+        let b = p.collectionBehavior
+        var behavior: [String] = []
+        if b.contains(.canJoinAllSpaces) { behavior.append("canJoinAllSpaces") }
+        if b.contains(.fullScreenAuxiliary) { behavior.append("fullScreenAuxiliary") }
+        if b.contains(.stationary) { behavior.append("stationary") }
+        if b.contains(.ignoresCycle) { behavior.append("ignoresCycle") }
+        if b.contains(.moveToActiveSpace) { behavior.append("moveToActiveSpace") }
+        return [
+            "visible": h.visible, "onScreen": p.isVisible,
+            "canBecomeKey": p.canBecomeKey, "canBecomeMain": p.canBecomeMain, "key": p.isKeyWindow,
+            "nonactivating": p.styleMask.contains(.nonactivatingPanel),
+            "ignoresMouse": p.ignoresMouseEvents, "hidesOnDeactivate": p.hidesOnDeactivate,
+            "level": p.level.rawValue, "statusBarLevel": NSWindow.Level.statusBar.rawValue,
+            "behavior": behavior, "opaque": p.isOpaque,
+            "frame": cg(p.frame), "screenFrame": h.screenFrame.map(cg) ?? NSNull(),
+        ]
+    }
 }

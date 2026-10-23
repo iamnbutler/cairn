@@ -25,6 +25,8 @@ public final class HostView: NSView {
     /// The pasteboard `setClipboard` writes and Paste reads: the general one, or a private one
     /// under the debug socket.
     public var pasteboard: NSPasteboard = .general
+    /// Runs after each applied frame, with it: the app's other surfaces follow it (`SurfaceHost`).
+    public var onApply: ((Frame) -> Void)?
     private var scroll = ScrollAccumulator()
     private var cursor: Cursor = .arrow
     private var tracking: NSTrackingArea?
@@ -292,6 +294,7 @@ public final class HostView: NSView {
         setCursor(p.frame.cursor)
         textInputDidChange(p, previousFrame: previous?.frame.textInput)
         mirror.update(p.frame, host: self)
+        onApply?(p.frame)
     }
 
     private func run(_ effect: Effect) {

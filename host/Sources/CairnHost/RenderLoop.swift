@@ -40,12 +40,20 @@ final class RenderLoop: NSObject, @unchecked Sendable {
     private var drawn = -1
     private var link: CADisplayLink?
     private var thread: Thread?
+    /// What this loop paints of a published frame: the whole frame (the window), or one
+    /// surface's canvas as a frame of its own (a panel); nil paints nothing.
+    private let select: @Sendable (Published) -> Frame?
+    /// Whether presents count toward the engine's input → present latency (the window's do).
+    private let reportsPresented: Bool
 
-    init(engine: Engine, renderer: FrameRenderer, layer: CAMetalLayer, viewport: Viewport) {
+    init(engine: Engine, renderer: FrameRenderer, layer: CAMetalLayer, viewport: Viewport,
+         reportsPresented: Bool = true, select: @escaping @Sendable (Published) -> Frame? = { $0.frame }) {
         self.engine = engine
         self.renderer = renderer
         self.layer = layer
         self.viewport = viewport
+        self.reportsPresented = reportsPresented
+        self.select = select
     }
 
     /// The viewport can be set before the thread starts; the first tick uses the latest value.
@@ -75,7 +83,7 @@ final class RenderLoop: NSObject, @unchecked Sendable {
 
     /// Display link callback, on the render thread.
     @objc func tick(_ link: CADisplayLink) {
-        guard let p = engine.latest else { return }
+        guard let p = engine.latest, let frame = select(p) else { return }
         lock.lock()
         let vp = viewport
         let changed = viewportChanged
@@ -99,13 +107,13 @@ final class RenderLoop: NSObject, @unchecked Sendable {
         }
         let version = p.version
         let engine = self.engine
-        drawable.addPresentedHandler { d in
+        if reportsPresented { drawable.addPresentedHandler { d in
             // presentedTime is 0 when Core Animation doesn't report it (seen on macOS 27 with a
             // windowed, composited layer); the handler itself runs just after the present, so
             // its time is the fallback.
             engine.presented(version: version, at: d.presentedTime > 0 ? d.presentedTime : hostNow())
-        }
+        } }
         drawn = version
-        renderer.draw(p.frame, to: drawable, viewport: vp)
+        renderer.draw(frame, to: drawable, viewport: vp)
     }
 }
