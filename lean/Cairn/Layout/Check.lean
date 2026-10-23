@@ -25,12 +25,13 @@ def insideB (r o : Rect) : Bool :=
 def fitsB : Laid → Bool
   | .box r _ st _ kids =>
     let content := r.inset st.padding
-    (decide (0 ≤ st.padding.top) && decide (0 ≤ st.padding.right) &&
+    (st.clip && kids.all (·.isText)) ||
+    ((decide (0 ≤ st.padding.top) && decide (0 ≤ st.padding.right) &&
       decide (0 ≤ st.padding.bottom) && decide (0 ≤ st.padding.left)) &&
     kids.all (fun k => decide (k.rect.w ≤ content.w) && decide (k.rect.h ≤ content.h)) &&
     (decide (st.axis = .stack) ||
       decide ((kids.map fun k => mainOf (Axis.horiz st.axis) k.rect).sum + gaps st.gap kids.length
-        ≤ mainOf (Axis.horiz st.axis) content))
+        ≤ mainOf (Axis.horiz st.axis) content)))
   | _ => true
 
 def stackTopB : Laid → Bool
@@ -87,8 +88,9 @@ end
 theorem fits_of_fitsB : ∀ l, fitsB l = true → Fits l
   | .box r c st ctl kids, h => by
     simp only [fitsB, Bool.and_eq_true, Bool.or_eq_true, decide_eq_true_eq, List.all_eq_true] at h
-    obtain ⟨⟨hpad, hk⟩, hm⟩ := h
-    refine ⟨by omega, fun k hk' => hk k hk', fun hs => ?_⟩
+    rcases h with ⟨hc, ht⟩ | ⟨⟨hpad, hk⟩, hm⟩
+    · exact .inl ⟨hc, ht⟩
+    refine .inr ⟨by omega, fun k hk' => hk k hk', fun hs => ?_⟩
     rcases hm with hm | hm
     · exact absurd hm hs
     · exact hm

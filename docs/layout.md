@@ -154,7 +154,7 @@ conditions an app can check of its laid-out view, packaged as `Pressable w l`:
 | Field | Condition |
 |---|---|
 | `rootInside` | the root's rect is inside the window rect (the window is at least the view's size) |
-| `fits` | everywhere, padding is non-negative, each child is no larger than its parent's content box, and in a row or column the children plus gaps fit along the main axis (`Fits`) |
+| `fits` | everywhere, either the box clips and holds only text (a label: the text may overflow, the clip holds it), or padding is non-negative, each child is no larger than its parent's content box, and in a row or column the children plus gaps fit along the main axis (`Fits`) |
 | `stackTop` | in a stack, only the last child may contain controls (`StackTop`) |
 | `controlLeaf` | a box with a control has no controls below it (`ControlLeaf`), so a label inside a button routes to the button |
 
@@ -167,8 +167,29 @@ Theorems:
 - `hitTest_center_of_pressable`: so `hitTest` at the control's centre returns it.
 
 The conditions are stated on the laid-out tree, not on the `Node`, because "fits" depends on
-the window and the metrics. For a concrete view and window they can be checked by evaluating
-the layout; there is no decidable checker yet.
+the window and the metrics. For a concrete view, window and metrics, `Check.lean` decides them
+(`checkPressable`, closed with `decide +kernel`).
+
+### Rigid views: every state, every metrics (`Rigid.lean`)
+
+A view whose size depends on its state (a list of any length) and on text widths can't be
+checked one layout at a time. `FitsIn n w h` is a condition on the `Node` alone: in a *rigid*
+view every box and field is `fixed` or `fill` on both axes, so no rect depends on a string's
+width, and text sits only in boxes that clip and hold nothing but text. Node by node it asks
+that fixed lengths and gaps fit the content box, that each child fits at the size it will get
+(a `fill` child at every length from `⌊leftover / fills⌋` up, `fillShare_ge`), and that
+controls have positive size. Rows and columns only; stacks aren't covered.
+
+- `fitsIn_arrange`: if `FitsIn n w h`, then `n` laid out in any `w × h` rect, with any clip and
+  any `TextMetrics`, meets `Fits`, `StackTop` and `ControlLeaf` everywhere, and every control's
+  rect is nonempty.
+- `hitTest_center_of_fitsIn`: for a `fill × fill` root that fits the window, hit testing at
+  the centre of every control returns that control.
+- `exampleList_pressable`: a column of any number of 44-point buttons with any labels is
+  pressable whenever the window is wider than zero and at least `44 · k` tall.
+
+The honest limit: a list fits only while it fits the window (there is no scrolling yet), and
+labels are clipped rather than wrapped.
 
 The runtime uses this layout: `Cairn.Runtime.Config.layout` defaults to
 `Cairn.Layout.layout`, and the stub layout in `Runtime/Stub.lean` is gone.

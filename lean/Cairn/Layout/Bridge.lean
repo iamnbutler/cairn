@@ -10,7 +10,9 @@ four conditions an app can check about its view (`Pressable`):
 
 1. **It fits.** In every container, padding is non-negative, each child is no larger than the
    content box, and in a row or column the children plus gaps fit along the main axis
-   (`Fits`). This is where the minimum window size comes in.
+   (`Fits`). This is where the minimum window size comes in. A box that clips and holds only
+   text is exempt: its text may overflow (a long title, a label under unusual metrics), but
+   the clip keeps everything it paints inside its rect, and text has no controls.
 2. **The root is inside the window.**
 3. **Stacks keep controls on top.** In a stack, only the last child may contain controls
    (`StackTop`): earlier children are backgrounds that later ones paint over.
@@ -26,9 +28,15 @@ open Cairn.Runtime
 
 /-! ## The conditions -/
 
-/-- The children of this container fit in its content box, and its padding is non-negative. -/
+def _root_.Cairn.Laid.isText : Laid → Bool
+  | .text .. => true
+  | _ => false
+
+/-- The children of this container fit in its content box, and its padding is non-negative;
+or it clips and its children are text, which may overflow it. -/
 def Fits : Laid → Prop
   | .box r _ st _ kids =>
+    (st.clip = true ∧ ∀ k ∈ kids, k.isText = true) ∨
     let content := r.inset st.padding
     (0 ≤ st.padding.top ∧ 0 ≤ st.padding.right ∧ 0 ≤ st.padding.bottom ∧ 0 ≤ st.padding.left) ∧
     (∀ k ∈ kids, k.rect.w ≤ content.w ∧ k.rect.h ≤ content.h) ∧
@@ -62,6 +70,11 @@ theorem Rect.contains_iff (r : Rect) (p : Point) :
 
 theorem Rect.inter_contains_left {a b : Rect} {p : Point} (h : (a.inter b).contains p = true) :
     a.contains p = true := by
+  rw [Rect.contains_iff] at h ⊢
+  unfold Rect.inter at h; simp only at h; omega
+
+theorem Rect.inter_contains_right {a b : Rect} {p : Point} (h : (a.inter b).contains p = true) :
+    b.contains p = true := by
   rw [Rect.contains_iff] at h ⊢
   unfold Rect.inter at h; simp only at h; omega
 
@@ -182,13 +195,40 @@ def Good (l : Laid) : Prop :=
   Fits l ∧ StackTop l ∧ ControlLeaf l ∧ SiblingsDisjoint l ∧ ChildrenInside l ∧ RectNonneg l ∧
     ChildClips l
 
-/-- In a container that fits, each child's rect is inside the container's rect. -/
+/-- In a container that fits (and isn't a clipped box of text), each child's rect is inside the
+container's rect. -/
 theorem Good.child_inside {r c : Rect} {st : Style} {ctl : Option Control} {kids : List Laid}
     (hG : Good (.box r c st ctl kids)) {k : Laid}
-    (hk : k ∈ kids) : k.rect.inside r := by
-  obtain ⟨⟨⟨p1, p2, p3, p4⟩, hsz, hmain⟩, -, -, -, hin, -, -⟩ := hG
+    (hk : k ∈ kids) (hnt : k.isText = false) : k.rect.inside r := by
+  obtain ⟨hF, -, -, -, hin, -, -⟩ := hG
+  rcases hF with ⟨-, htext⟩ | ⟨⟨p1, p2, p3, p4⟩, hsz, hmain⟩
+  · rw [htext k hk] at hnt; exact absurd hnt (by decide)
   have hki : k.rect.inside (r.inset st.padding) := hin hsz hmain k hk
   exact Rect.inside_trans hki (Rect.inset_inside r p1 p2 p3 p4)
+
+/-- A text child's hits are inside its parent's rect when the parent fits or clips. -/
+theorem Good.text_hit {r c : Rect} {st : Style} {ctl : Option Control} {kids : List Laid}
+    (hG : Good (.box r c st ctl kids)) {k : Laid} (hk : k ∈ kids) (ht : k.isText = true)
+    {o : Option Target} {h : Hit} {p : Point} (hh : h ∈ hitsOf o k)
+    (hc : h.visible.contains p = true) : r.contains p = true := by
+  cases k with
+  | box => simp only [Laid.isText, Bool.false_eq_true] at ht
+  | field => simp only [Laid.isText, Bool.false_eq_true] at ht
+  | text kr kc b ts str =>
+    simp only [hitsOf, List.mem_singleton] at hh
+    subst hh
+    have hkr : (Laid.text kr kc b ts str).rect.contains p = true := Rect.inter_contains_left hc
+    obtain ⟨hF, -, -, -, hin, -, hcl⟩ := hG
+    rcases hF with ⟨hclip, -⟩ | ⟨⟨p1, p2, p3, p4⟩, hsz, hmain⟩
+    · have hkc : kc = c.inter r := by
+        have := hcl _ hk
+        simp only [Laid.clip, Laid.innerClip, innerClip, hclip, ↓reduceIte] at this
+        exact this
+      have : kc.contains p = true := Rect.inter_contains_right hc
+      rw [hkc] at this
+      exact Rect.inter_contains_right this
+    · have hki : kr.inside (r.inset st.padding) := hin hsz hmain _ hk
+      exact Rect.contains_of_inside (Rect.inside_trans hki (Rect.inset_inside r p1 p2 p3 p4)) hkr
 
 /-- Every hit entry in a subtree that contains `p` lies inside the subtree's root rect. -/
 theorem hits_inside {l : Laid} (hE : l.Everywhere Good) :
@@ -207,8 +247,10 @@ theorem hits_inside {l : Laid} (hE : l.Everywhere Good) :
           exact Rect.inter_contains_left hc
         · simp only [List.not_mem_nil] at hh
       · obtain ⟨k, hk, hh⟩ := mem_hitsList hh
-        have hkp := ih k (by simp only [Laid.children, hk]) _ h p hh hc
-        exact Rect.contains_of_inside (hG.child_inside hk) hkp
+        cases hkt : k.isText
+        · have hkp := ih k (by simp only [Laid.children, hk]) _ h p hh hc
+          exact Rect.contains_of_inside (hG.child_inside hk hkt) hkp
+        · exact hG.text_hit hk hkt hh hc
     | text =>
       simp only [hitsOf, List.mem_singleton] at hh
       subst hh; exact Rect.inter_contains_left hc
@@ -311,7 +353,11 @@ theorem rect_inside_clip {l : Laid} (hE : l.Everywhere Good) :
             true_or, or_true]
         have hkE := hK k (by simp only [Laid.children, List.mem_append, List.mem_cons, true_or,
             or_true])
-        have hki : k.rect.inside r := hG.child_inside hkmem
+        have hnt : k.isText = false := by
+          cases k with
+          | text => simp only [targetsOf, List.not_mem_nil] at htk
+          | _ => rfl
+        have hki : k.rect.inside r := hG.child_inside hkmem hnt
         have hclip : k.clip = innerClip st c r := hG.2.2.2.2.2.2 k hkmem
         refine ih k (by simp only [Laid.children, List.mem_append, List.mem_cons, true_or,
             or_true]) ?_ t htk
