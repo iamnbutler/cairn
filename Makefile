@@ -5,7 +5,7 @@ LEAN_PREFIX = $(shell cd lean && lean --print-prefix)
 LIB = build/lib/libcairn_lean.a
 VENDOR = host/Sources/CLean/vendor/lean
 
-.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-frame selftest demo fixture clean record site
+.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-frame selftest demo fixture clean record site map
 
 # build/lib/libcairn_lean.a: the framework (`Cairn`) and Lean's runtime, linked by every host
 # target. Each app gets its own library on top (APPS: library → file), and each executable
@@ -110,3 +110,17 @@ site:
 
 clean:
 	rm -rf build lean/.lake host/.build $(VENDOR)
+
+# The map (docs/map.md): claims + evidence → build/map/$(APP)/ in the map skill's format, with
+# headless screenshots pinned from the frame's accessibility rects. `make map APP=Counter`.
+APP ?= Counter
+MAPDIR = build/map/$(APP)
+map: host
+	mkdir -p $(MAPDIR)
+	cd lean && lake build claims audit
+	cd lean && lake exe claims Examples.$(APP) > ../$(MAPDIR)/claims.json
+	cd lean && lake env .lake/build/bin/audit --json ../$(MAPDIR)/audit.json > /dev/null
+	bun tools/map/cairn-map.ts script --claims $(MAPDIR)/claims.json > $(MAPDIR)/script.json
+	rm -rf $(MAPDIR)/capture
+	cd host && swift run Cairn$(APP) --map-capture ../$(MAPDIR)/script.json ../$(MAPDIR)/capture
+	bun tools/map/cairn-map.ts build --app $(APP) --dir $(MAPDIR)

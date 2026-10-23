@@ -59,9 +59,13 @@ public enum MapCapture {
         var name: String
         var shots: [Shot]
         var steps: [StepResult]
+        /// The pinned frames side by side.
+        var strip: String
     }
     struct Output: Encodable {
         var size: [Int32], scale: Float
+        /// The logical rect of the window every image shows (x, y, w, h).
+        var crop: [Int32]
         var sequences: [SequenceResult]
     }
 
@@ -88,7 +92,7 @@ public enum MapCapture {
         try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
         // Each sequence starts from a fresh app. Lean runs on its own thread with a large stack,
         // as in the host (AGENTS.md); frames come back here to be rendered.
-        var results: [SequenceResult] = []
+        var runs: [(seq: Sequence, frames: [Frame], steps: [StepResult])] = []
         for seq in script.sequences {
             let frames = try onLeanThread { () throws -> ([Frame], [StepResult]) in
                 let app = core()
@@ -122,30 +126,115 @@ public enum MapCapture {
                 }
                 return (frames, steps)
             }
-            var shots: [Shot] = []
-            for (k, frame) in frames.0.enumerated() {
-                let base = "\(seq.name)-\(k)"
+            runs.append((seq, frames.0, frames.1))
+        }
+
+        // Render everything, then crop every image to one rect: the union of what was painted
+        // and the pins (badges sit above and left of their rect), padded, inside the window. One
+        // crop for the whole capture keeps every image the same size and the same place.
+        var images: [[Image]] = []
+        var ink: CGRect = .null
+        for run in runs {
+            var row: [Image] = []
+            for frame in run.frames {
                 let img = try renderer.image(frame, scale: scale)
+                ink = ink.union(inkBounds(img, scale: CGFloat(scale)))
+                for n in frame.ax where n.control != nil {
+                    ink = ink.union(CGRect(x: CGFloat(n.rect.x) - 5, y: CGFloat(n.rect.y) - 18,
+                                           width: CGFloat(n.rect.w) + 10, height: CGFloat(n.rect.h) + 22))
+                }
+                row.append(img)
+            }
+            images.append(row)
+        }
+        let window = CGRect(x: 0, y: 0, width: CGFloat(size.w), height: CGFloat(size.h))
+        let crop = ink.isNull ? window : ink.insetBy(dx: -16, dy: -16).integral.intersection(window)
+        let px = CGRect(x: crop.minX * CGFloat(scale), y: crop.minY * CGFloat(scale),
+                        width: crop.width * CGFloat(scale), height: crop.height * CGFloat(scale)).integral
+
+        var results: [SequenceResult] = []
+        for (r, run) in runs.enumerated() {
+            var shots: [Shot] = []
+            var stripFrames: [CGImage] = []
+            for (k, frame) in run.frames.enumerated() {
+                let base = "\(run.seq.name)-\(k)"
                 let controls = frame.ax.compactMap { n -> Control? in
                     guard let c = n.control else { return nil }
                     return Control(ref: c.label, claim: c.claim, key: c.key, role: "\(n.role)", label: n.label,
                                    rect: [n.rect.x, n.rect.y, n.rect.w, n.rect.h])
                 }
                 // The control the next step acts on is drawn as the active pin.
-                let next = k < frames.1.count ? frames.1[k].ref : nil
-                let plain = opaque(img.cgImage())
-                try write(plain, to: out.appendingPathComponent("\(base).png"))
-                try write(pinned(plain, frame: frame, scale: CGFloat(scale), active: next),
-                          to: out.appendingPathComponent("\(base).pinned.png"))
+                let next = k < run.steps.count ? run.steps[k].ref : nil
+                let plain = opaque(images[r][k].cgImage())
+                let pins = pinned(plain, frame: frame, scale: CGFloat(scale), active: next)
+                try write(plain.cropping(to: px)!, to: out.appendingPathComponent("\(base).png"))
+                try write(pins.cropping(to: px)!, to: out.appendingPathComponent("\(base).pinned.png"))
+                stripFrames.append(pins.cropping(to: px)!)
                 shots.append(Shot(after: k == 0 ? nil : k - 1, image: "\(base).png", pinned: "\(base).pinned.png",
-                                  width: img.width, height: img.height, controls: controls))
+                                  width: Int(px.width), height: Int(px.height), controls: controls))
             }
-            results.append(SequenceResult(name: seq.name, shots: shots, steps: frames.1))
+            let labels = ["Start"] + run.steps.prefix(stripFrames.count - 1).enumerated().map { "\($0.offset + 1). \($0.element.step.trigger) \($0.element.ref)" }
+            try write(strip(stripFrames, labels: labels, scale: CGFloat(scale)), to: out.appendingPathComponent("\(run.seq.name).strip.png"))
+            results.append(SequenceResult(name: run.seq.name, shots: shots, steps: run.steps, strip: "\(run.seq.name).strip.png"))
         }
         let enc = JSONEncoder()
         enc.outputFormatting = [.prettyPrinted, .sortedKeys]
-        try enc.encode(Output(size: [size.w, size.h], scale: scale, sequences: results))
+        try enc.encode(Output(size: [size.w, size.h], scale: scale,
+                              crop: [Int32(crop.minX), Int32(crop.minY), Int32(crop.width), Int32(crop.height)],
+                              sequences: results))
             .write(to: out.appendingPathComponent("capture.json"))
+    }
+
+
+    /// A sequence's pinned frames side by side, each labelled with the step that led to it, so a
+    /// flow reads left to right in one image.
+    static func strip(_ frames: [CGImage], labels: [String], scale s: CGFloat) -> CGImage {
+        let gap = Int(28 * s), labelH = Int(26 * s)
+        let w = frames.reduce(0) { $0 + $1.width } + gap * (frames.count - 1)
+        let h = (frames.map(\.height).max() ?? 0) + labelH
+        let ctx = context(w, h)
+        ctx.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
+        ctx.fill(CGRect(x: 0, y: 0, width: w, height: h))
+        let font = CTFontCreateUIFontForLanguage(.system, 12 * s, nil)!
+        let grey = CGColor(red: 0.35, green: 0.35, blue: 0.38, alpha: 1)
+        var x = 0
+        for (k, img) in frames.enumerated() {
+            ctx.draw(img, in: CGRect(x: x, y: h - img.height, width: img.width, height: img.height))
+            ctx.setStrokeColor(CGColor(red: 0.85, green: 0.85, blue: 0.87, alpha: 1))
+            ctx.setLineWidth(s)
+            ctx.stroke(CGRect(x: x, y: h - img.height, width: img.width, height: img.height).insetBy(dx: s / 2, dy: s / 2))
+            let text = NSAttributedString(string: labels[k], attributes: [
+                .init(kCTFontAttributeName as String): font, .init(kCTForegroundColorAttributeName as String): grey])
+            ctx.textPosition = CGPoint(x: CGFloat(x) + 4 * s, y: 8 * s)
+            CTLineDraw(CTLineCreateWithAttributedString(text), ctx)
+            if k + 1 < frames.count {
+                // An arrow in the gap, at the frames' middle.
+                let y = CGFloat(h) - CGFloat(img.height) / 2, x0 = CGFloat(x + img.width) + 7 * s, x1 = CGFloat(x + img.width + gap) - 7 * s
+                ctx.setStrokeColor(grey)
+                ctx.setLineWidth(1.5 * s)
+                ctx.move(to: CGPoint(x: x0, y: y)); ctx.addLine(to: CGPoint(x: x1, y: y))
+                ctx.move(to: CGPoint(x: x1 - 5 * s, y: y + 4 * s)); ctx.addLine(to: CGPoint(x: x1, y: y)); ctx.addLine(to: CGPoint(x: x1 - 5 * s, y: y - 4 * s))
+                ctx.strokePath()
+            }
+            x += img.width + gap
+        }
+        return ctx.makeImage()!
+    }
+
+    /// The logical rect holding every pixel that differs from the background (the renderer's
+    /// clear colour, read from the top-left pixel).
+    static func inkBounds(_ img: Image, scale: CGFloat) -> CGRect {
+        let bg = img.bgra[0..<4]
+        var minX = img.width, minY = img.height, maxX = -1, maxY = -1
+        for y in 0..<img.height {
+            let row = y * img.width * 4
+            for x in 0..<img.width where img.bgra[row + x * 4 ..< row + x * 4 + 4] != bg {
+                minX = min(minX, x); maxX = max(maxX, x); minY = min(minY, y); maxY = max(maxY, y)
+            }
+        }
+        guard maxX >= 0 else { return .null }
+        return CGRect(x: CGFloat(minX) / scale, y: CGFloat(minY) / scale,
+                      width: CGFloat(maxX - minX + 1) / scale, height: CGFloat(maxY - minY + 1) / scale)
     }
 
     /// Runs `body` on a fresh thread with a 64 MB stack (Lean recursion on deep trees) and waits.
