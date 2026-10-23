@@ -432,8 +432,7 @@ def list {α : Type} (len : α → Nat) (xs : Array α) : Nat := xs.foldl (fun n
 
 theorem str_eq (s : String) : str s = (Enc.str s).length := by
   simp only [str, String.toUTF8_eq_toByteArray, String.size_toByteArray, Enc.str,
-      List.length_append, Enc.length_u32, Array.length_toList, ByteArray.size_data,
-      Nat.add_left_cancel_iff]; all_goals omega
+      List.length_append, Enc.length_u32, Array.length_toList, ByteArray.size_data]; all_goals omega
 
 theorem draw_eq (d : Draw) : draw d = (Enc.draw d).length := by
   cases d <;> simp only [draw, Enc.draw, Enc.bool, List.cons_append, List.nil_append, Enc.pad,
@@ -474,7 +473,7 @@ theorem list_eq {α : Type} (len : α → Nat) (e : α → List UInt8) (h : ∀ 
   induction xs.toList with
   | nil => simp only [List.map_nil, List.sum_nil, Nat.add_zero, List.flatMap_nil, List.length_nil]
   | cons x xs ih => simp_all only [Nat.zero_add, List.length_flatMap, List.map_cons, List.sum_cons,
-      List.flatMap_cons, List.length_append, Nat.add_left_cancel_iff]
+      List.flatMap_cons, List.length_append]
 
 end Len
 
