@@ -85,7 +85,8 @@ See [host.md](host.md) for how each piece works.
   - With a text field focused, AppKit's key bindings (`interpretKeyEvents`) decide which
     command a key is, and `KeyMapping`'s selector table turns the command into a Lean event.
     The table is reviewed by hand, not derived.
-  - Outside a text field, keys map by virtual key code and `charactersIgnoringModifiers`.
+  - Outside a text field, keys map by virtual key code and `charactersIgnoringModifiers`, one
+    key per character when a synthesized event carries several.
   - The host sends no key-up events. AppKit sends none for keys pressed with Cmd.
 - **Menu shortcuts.** A keyDown whose shortcut belongs to a main-menu item is dropped, so a
   shortcut reaches Lean once, through the menu action.

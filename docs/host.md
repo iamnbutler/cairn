@@ -125,7 +125,7 @@ function consumes it.
 | mouseMoved / dragged | `pointerMove` (coalesced) |
 | mouseExited | `pointerExit` |
 | scrollWheel | `scroll(p, dx, dy)` through `ScrollAccumulator` |
-| keyDown with no text field | `key(named or .char(lowercased), mods)` |
+| keyDown with no text field | `key(named or .char(lowercased), mods)`, one per character of a multi-character event |
 | keyDown in a text field | `interpretKeyEvents` → `insertText` / `setMarked` / `unmark` / selector table |
 | Edit menu | `copy`, `cut`, `paste(String)` from NSPasteboard, `selectAll`, `undo`, `redo` |
 | resize / backing scale | `resize(size)`, `scale(percent)` |

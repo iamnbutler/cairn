@@ -21,6 +21,10 @@ import Testing
         #expect(KeyMapping.key(keyCode: 36, charactersIgnoringModifiers: "\r", mods: Mods()) == .key(.enter, Mods()))
         #expect(KeyMapping.key(keyCode: 122, charactersIgnoringModifiers: "\u{F704}", mods: Mods()) == nil)  // F1
         #expect(KeyMapping.key(keyCode: 0, charactersIgnoringModifiers: nil, mods: Mods()) == nil)
+        // A synthesized event with several characters is one key per character, in order.
+        #expect(KeyMapping.keys(keyCode: 0, charactersIgnoringModifiers: "Wa\u{F704}l", mods: Mods())
+                == [.key(.char("w"), Mods()), .key(.char("a"), Mods()), .key(.char("l"), Mods())])
+        #expect(KeyMapping.keys(keyCode: 36, charactersIgnoringModifiers: "\r\r", mods: Mods()) == [.key(.enter, Mods())])
     }
 
     @Test func modifiers() {

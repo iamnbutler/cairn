@@ -108,11 +108,18 @@ public enum KeyMapping {
     /// A key press outside a text field: a named key, or the character the key produces without
     /// modifiers (so command-K is `.char("k")` with `command`).
     public static func key(keyCode: UInt16, charactersIgnoringModifiers: String?, mods: Mods) -> Event? {
-        if let k = namedKey(keyCode: keyCode) { return .key(k, mods) }
-        guard let c = charactersIgnoringModifiers?.first,
-              !(c.unicodeScalars.first.map { (0xF700...0xF8FF).contains($0.value) } ?? true)  // function keys
-        else { return nil }
-        return .key(.char(Character(c.lowercased())), mods)
+        keys(keyCode: keyCode, charactersIgnoringModifiers: charactersIgnoringModifiers, mods: mods).first
+    }
+
+    /// Every key one key event stands for. Synthesized events (accessibility tools, remote
+    /// input) can carry several characters at once; each one is a key, in order, as if typed.
+    public static func keys(keyCode: UInt16, charactersIgnoringModifiers: String?, mods: Mods) -> [Event] {
+        if let k = namedKey(keyCode: keyCode) { return [.key(k, mods)] }
+        return (charactersIgnoringModifiers ?? "").compactMap { c in
+            guard !(c.unicodeScalars.first.map { (0xF700...0xF8FF).contains($0.value) } ?? true)  // function keys
+            else { return nil }
+            return .key(.char(Character(c.lowercased())), mods)
+        }
     }
 
     public static func mods(_ flags: NSEvent.ModifierFlags) -> Mods {

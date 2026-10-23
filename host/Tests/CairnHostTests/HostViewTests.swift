@@ -57,6 +57,18 @@ final class EchoFieldCore: AppCore, @unchecked Sendable {
     }
 }
 
+/// An app with no text field that records what it receives.
+final class KeyLogCore: AppCore, @unchecked Sendable {
+    private let lock = NSLock()
+    private var received: [Event] = []
+    var events: [Event] { lock.withLock { received } }
+    func start(size: Size, scalePercent: UInt32) {}
+    func step(_ events: [Event]) { lock.withLock { received += events } }
+    func frame() throws -> Frame {
+        Frame(size: Size(w: 200, h: 100), draws: [], ax: [], textInput: nil, cursor: .arrow, effects: [])
+    }
+}
+
 final class TestRenderer: FrameRenderer {
     let device = MTLCreateSystemDefaultDevice()!
     func configure(_ layer: CAMetalLayer) { layer.device = device }
@@ -135,6 +147,40 @@ final class TestRenderer: FrameRenderer {
         settle(view)
         #expect(view.shadowDivergences.count == 1)
         #expect(view.textShadow.state?.text == "a😀b")
+    }
+
+    static func keyEvent(_ s: String) -> NSEvent {
+        NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: hostNow(), windowNumber: 0,
+                         context: nil, characters: s, charactersIgnoringModifiers: s, isARepeat: false, keyCode: 0)!
+    }
+
+    // Accessibility tools type with synthesized key events (keyCode 0, the text in the event's
+    // Unicode string): one per character, back to back, or several characters in one. Both must
+    // land whole, as they do in an NSTextView.
+    @Test func synthesizedTypingLandsWhole() {
+        let core = EchoFieldCore()
+        let view = make(core)
+        defer { view.engine.stop() }
+        view.keyDown(with: Self.keyEvent("Walk to"))
+        for c in " the cairn" { view.keyDown(with: Self.keyEvent(String(c))) }
+        #expect(view.textShadow.state?.text == "a😀bWalk to the cairn")
+        settle(view)
+        #expect(view.textShadow.state?.text == "a😀bWalk to the cairn")
+        #expect(view.shadowDivergences.isEmpty)
+        #expect(core.events.first == .insertText("Walk to", replacing: nil))
+    }
+
+    @Test func synthesizedTypingWithoutAFieldIsEveryKey() {
+        let core = KeyLogCore()
+        let engine = Engine(size: Size(w: 200, h: 100), scalePercent: 200) { core }
+        let view = HostView(engine: engine, renderer: TestRenderer(), size: NSSize(width: 200, height: 100))
+        engine.start()
+        defer { engine.stop() }
+        settle(view)
+        #expect(!view.textActive)
+        view.keyDown(with: Self.keyEvent("Hi!"))
+        settle(view)
+        #expect(core.events == [.key(.char("h"), Mods()), .key(.char("i"), Mods()), .key(.char("!"), Mods())])
     }
 
     @Test func selectedRangeIsNeverNotFound() {
