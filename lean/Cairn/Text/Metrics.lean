@@ -7,7 +7,9 @@ public import Cairn.Geometry
 Layout is parameterised by a `TextMetrics`. Theorems quantify over every metrics that is
 `Valid`; at run time the host supplies Core Text's (an `assume` claim, checked by logging and
 replay). Text indices are Unicode scalar positions (`String.length`), not bytes and not UTF-16.
-Grapheme clusters are not modelled in M1. Text is single-line in M1: no wrapping. -/
+Grapheme clusters are not modelled in M1. A metrics measures one line; wrapped text
+(`Node.para`) is broken into lines by Lean from one measurement of the whole string
+(`Cairn.Text.Wrap`). -/
 
 @[expose] public section
 

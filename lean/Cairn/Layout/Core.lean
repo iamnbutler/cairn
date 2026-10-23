@@ -9,7 +9,9 @@ public import Cairn.Text.Wrap
 selection resolved in integer logical points. It is total and pure, and works in two passes:
 
 1. **Measure** (`measure`, bottom-up): each node's preferred ("hug") size, stored in a `Sized`
-   tree so that no subtree is measured twice.
+   tree so that no subtree is measured twice. It is passed the width the parent offers, which
+   only wrapped text (`Node.para`) uses: a para measures into a clipping column of its lines,
+   one `text` each (`paraLines`), so `arrange` never sees a para.
 2. **Arrange** (`arrange`, top-down): each node is given a rect by its parent and places its
    children inside its content box.
 

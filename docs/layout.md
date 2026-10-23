@@ -10,15 +10,19 @@ points (origin top-left, y down). The code is in `lean/Cairn/Layout/`:
 | `Facts.lean` | `Node.controls`, `Laid.controls`, `Laid.Everywhere`, the per-node facts, `Facts` |
 | `Proofs.lean` | the theorems, ending in `Cairn.Layout.facts` |
 | `Bridge.lean` | `Pressable`, and the bridge to the runtime's `LayoutFacts` |
+| `Para.lean` | wrapped text (`Node.para`): its lines fit, tile the text, respect `maxLines`, and its height |
 | `Tests.lean` | `#guard` checks on concrete trees with `TextMetrics.mono` |
 
 It is a small subset of flexbox. Anything not described here is not supported in M1:
-there is no wrapping, no shrinking, no min/max sizes and no scrolling containers.
+text wraps only in `Node.para` (below); there is no shrinking, no min/max sizes and no scrolling containers.
 
 ## Two passes
 
-1. **Measure**, bottom-up (`measure : Node → Sized`). Each node gets a *preferred size*,
+1. **Measure**, bottom-up (`measure m aw : Node → Sized`). Each node gets a *preferred size*,
    stored in a `Sized` tree so that no subtree is measured twice:
+   - `aw` is the width the parent offers, used only by wrapped text: the window's width at the
+     root, and inside a box its `fixed` width (or the width it was offered) less its horizontal
+     padding. Every child of a row is offered the row's whole content width;
    - `fixed n` on an axis prefers `n`;
    - `hug` and `fill` prefer the *intrinsic* size, floored at zero:
      - text: `m.width font s` by `m.lineHeight font`;
@@ -26,7 +30,8 @@ there is no wrapping, no shrinking, no min/max sizes and no scrolling containers
        point for a caret at the end, by the line height; plus padding;
      - row: the sum of the children's preferred widths plus gaps, by the largest preferred
        height; plus padding. A column is the same with the axes swapped. A stack is the
-       largest preferred width by the largest preferred height, plus padding.
+       largest preferred width by the largest preferred height, plus padding;
+     - wrapped text: see "Wrapped text".
 2. **Arrange**, top-down (`arrange m clip rect : Sized → Laid`). The parent decides each
    child's rect; the node keeps the rect it is given and places its children inside its
    *content box*, `rect.inset padding`.
@@ -87,8 +92,70 @@ always inside the clip it cuts down (see "Contract changes").
 
 ## Text
 
-Single line. A text node's rect is its measured box at the position its parent chose, and its
+A `text` node is one line. A text node's rect is its measured box at the position its parent chose, and its
 `baseline` is `rect.y + ascent`.
+
+## Wrapped text
+
+`Node.para style wrap s` is text that wraps to the width it is offered. `Wrap` has `width`
+(default `fill`) and `height` (default `hug`) sizings, `maxLines : Option Nat`, `keep`
+(`head` or `tail`: which lines survive `maxLines`) and `align` (`start`, `center`, `finish`:
+where each line sits across the width).
+
+Lean chooses the breaks (`lean/Cairn/Text/Wrap.lean`). It measures the string once,
+`m.offsets font s` (Core Text shapes the whole string once and caches it), and a line of scalars
+`[a, b)` is `offs[b] − offs[a]` wide. The width `W` is the para's `fixed` width or the width it
+was offered.
+
+1. **Words** are maximal runs of scalars other than U+0020. Lines break only between words, and
+   the spaces at a break are dropped. A line runs from its first word's start to its last word's
+   end, keeping the spaces between its own words.
+2. **Greedy fill**: a line takes the next word while the line, measured from its first scalar to
+   that word's end, is at most `W` wide.
+3. **Over-wide words**: a word that doesn't fit on a line of its own is cut into pieces. Each
+   piece is the longest run of scalars, from where the last one ended, that fits, and never less
+   than one scalar. Every piece but the last is a line; the last starts a line that later words
+   may join.
+4. **`maxLines n`** keeps the first `n` lines (`head`) or the last `n` (`tail`).
+
+`measure` turns a para into exactly what a view could have written by hand: a clipping column
+(`paraStyle`: the para's sizings and alignment, `clip := true`) of one `text` per line, each
+`(offs[b] − offs[a]) × lineHeight`. A `hug` height is lines × line height. Everything after
+`measure` is unchanged: `arrange`, `Laid`, the frame, hit testing and the accessibility mirror
+see ordinary text nodes. No frame-format change; each line is painted as a text draw of its
+substring.
+
+**Theorems.** Over every metrics (`Cairn.Text.WrapProofs` on offsets, `Cairn.Layout.Para` on
+the laid-out lines), with no `sorry`, `native_decide` or new axioms:
+
+| Theorem | Statement |
+|---|---|
+| `allLines_fit`, `para_lines_fit` | every line is at most `W` wide, or is a single scalar (a cut over-wide word) |
+| `allLines_tiles`, `para_lines_tile` | the text is the lines, in order, with only U+0020 between and around them (`Tiles`): nothing lost, reordered or invented |
+| `lines_length_le`, `para_count` | at most `maxLines` lines |
+| `lines_tail`, `para_lines_tail` | with `tail`, the lines shown are exactly the last `min n k` of all `k` lines (all lines = some prefix ++ the lines shown) |
+| `lines_head`, `para_lines_head` | with `head`, exactly the first `min n k` |
+| `para_height`, `layout_para_height` | a `hug` para is lines × line height tall |
+| `fitsIn_arrange` (`FitsIn.para`), `facts` | the layout theorems hold with paras in the tree: a para is a clipping box of text, so it never breaks `Fits` or `Pressable` and has no controls |
+
+The examples in `WrapProofs.lean` and `Tests.lean` check the rules with `#guard`
+(`TextMetrics.mono`), and the trusted fuzzer compares Lean's lines with what Core Text paints
+and where Core Text itself would break (docs/trusted.md, ^990 and ^991).
+
+**Limits.**
+
+- Breaks only at U+0020. `\n`, tabs, U+2028/2029 and other whitespace are ordinary scalars (no
+  hard line breaks), and there is no hyphenation and no ellipsis at a `maxLines` cut.
+- Over-wide words are cut at scalar boundaries, which can split a grapheme cluster (an emoji
+  sequence, a combining mark).
+- Left-to-right only. Right-to-left, bidirectional and complex-script line breaking are not
+  modelled.
+- A line is painted by shaping its substring alone, so kerning across a dropped space or a cut
+  is lost: up to about 1 + 0.15 em off what Lean measured (^990).
+- Every child of a row is offered the row's whole content width, not its share. A para inside a
+  row with siblings measures as if it had the row to itself.
+- The accessibility mirror reads each line as its own text element.
+- An empty or all-space string has no lines (height 0 when `hug`).
 
 ## Fields
 
@@ -189,7 +256,8 @@ controls have positive size. Rows and columns only; stacks aren't covered.
   pressable whenever the window is wider than zero and at least `44 · k` tall.
 
 The honest limit: a list fits only while it fits the window (there is no scrolling yet), and
-labels are clipped rather than wrapped.
+labels are clipped rather than wrapped. A para fits anywhere (`FitsIn.para`): it clips its
+lines.
 
 The runtime uses this layout: `Cairn.Runtime.Config.layout` defaults to
 `Cairn.Layout.layout`, and the stub layout in `Runtime/Stub.lean` is gone.
@@ -205,6 +273,8 @@ The runtime uses this layout: `Cairn.Runtime.Config.layout` defaults to
   `Runtime/Stub.lean`; `Runtime/Tests.lean` runs on the real layout (its test field gained
   padding); `docs/runtime.md` says so.
 - `Node.controls` and `Laid.controls` (paint-order controls) are new, in `Layout/Facts.lean`.
+- `measure` takes the offered width (`measure m aw n`), for wrapped text; `layout` passes the
+  window's width. `Node.para` is new (`UI/Node.lean`).
 
 ## Performance
 
