@@ -33,10 +33,13 @@ inductive Event where
   | pointerExit
   | scroll (p : Point) (dx dy : Int)
   | key (k : Key) (mods : Mods)
-  /-- Committed text from the input system (typing, IME commit, dictation). -/
-  | insertText (s : String)
-  /-- IME composition: the marked text and the selection within it. -/
-  | setMarked (s : String) (selStart selLen : Nat)
+  /-- Committed text from the input system (typing, IME commit, dictation). With `replace`,
+  the text replaces that range `[a, b)` of the focused field (scalar indices) instead of the
+  selection. -/
+  | insertText (s : String) (replace : Option (Nat × Nat) := none)
+  /-- IME composition: the marked text and the selection within it, optionally replacing the
+  range `replace` of the focused field. -/
+  | setMarked (s : String) (selStart selLen : Nat) (replace : Option (Nat × Nat) := none)
   | unmark
   | copy | cut | selectAll | undo | redo
   | paste (s : String)
