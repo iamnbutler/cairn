@@ -66,6 +66,11 @@ Lean default kernel accepts the solution
 Uses axioms: Classical.choice, propext, Quot.sound, bad._native.native_decide.ax_1_1
 ```
 
+It also catches the hole note 04 found in `#print axioms`-style audits: a module that adds
+`four_eq_five : 4 = 5` under `set_option debug.skipKernelTC true` (which `#print axioms` calls
+axiom-free) builds fine, and `lake check --inadvisably-no-sandbox` then fails with
+"Lean default kernel rejected the solution" (observed).
+
 `--paranoid` also runs the bundled independent checkers (`lean4lean`, `nanoda`, `con-leche`,
 `con-ron`, `leanchecker-paranoid`; all present in the toolchain's `bin/`).
 
