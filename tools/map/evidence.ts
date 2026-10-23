@@ -234,7 +234,8 @@ export function evaluate(inp: Inputs, image: (file: string) => string = (f) => f
 			}
 		}
 
-		const ordered = KINDS.map((k) => marks.get(k)).filter((m): m is Mark => !!m);
+		// An assumption leads with what it is; anything that checked it follows.
+		const ordered = (c.kind === "assume" ? (["assumed", "fuzzed"] as const) : KINDS).map((k) => marks.get(k)).filter((m): m is Mark => !!m);
 		let headline: Headline;
 		if (c.retired) headline = "retired";
 		else if (ordered.some((m) => m.state === "fail") || findings.some((f) => f.broken)) headline = "broken";
