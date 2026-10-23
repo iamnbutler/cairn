@@ -10,6 +10,7 @@ import Cairn.Frame
 import Cairn.Frame.Bytes
 import Cairn.Frame.Encode
 import Cairn.Frame.Events
+import Cairn.Frame.Build
 import Cairn.App
 import Cairn.Runtime
 import Cairn.Spike.Bytes
