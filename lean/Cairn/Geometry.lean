@@ -49,10 +49,12 @@ def nonempty (r : Rect) : Prop := 0 < r.w ∧ 0 < r.h
 def inset (r : Rect) (i : Insets) : Rect :=
   ⟨r.x + i.left, r.y + i.top, r.w - i.left - i.right, r.h - i.top - i.bottom⟩
 
-/-- Intersection, used for clipping. Width and height floor at zero. -/
+/-- Intersection, used for clipping. Width and height floor at zero. When the rects don't
+overlap, the empty result is placed inside `a` (its origin is clamped to `a`'s far edge), so
+`a.inter b` is inside `a` whenever `a` has non-negative size. -/
 def inter (a b : Rect) : Rect :=
-  let x := max a.x b.x
-  let y := max a.y b.y
+  let x := min (max a.x b.x) (a.x + a.w)
+  let y := min (max a.y b.y) (a.y + a.h)
   ⟨x, y, max 0 (min (a.x + a.w) (b.x + b.w) - x), max 0 (min (a.y + a.h) (b.y + b.h) - y)⟩
 
 end Rect

@@ -11,7 +11,7 @@ names a control on screen, and every control names a claim.
 | `Step.lean` | `Config`, `State`, `route`, `settle`, `step`, `steps`, `start`, `cursor` |
 | `Proofs.lean` | soundness of focus/hover/press, no action without a control, step-level pressable |
 | `Abi.lean` | `Boundary`, `initState`, `stepBytes`, `frameBytes` (the Lean side of the app ABI) |
-| `Stub.lean` | **stand-ins** for B's layout and E's frame/encoding, until they land |
+| `Stub.lean` | **stand-ins** for E's frame/encoding, until it lands |
 | `Tests.lean` | `#guard` checks on a small app |
 
 ## State
@@ -19,7 +19,7 @@ names a control on screen, and every control names a claim.
 ```lean
 structure Config where
   metrics : TextMetrics := TextMetrics.mono
-  layout : TextMetrics → Size → Node → Laid       -- B's `layout` once it lands
+  layout : TextMetrics → Size → Node → Laid := Cairn.Layout.layout
 
 structure State (S : Type) where
   app : S              -- the app's state
@@ -184,7 +184,7 @@ lean_object *cairn_app_frame(lean_object *state);                     // consume
 - The frame carries the effects of the most recent `cairn_app_step`. The host requests one
   frame after each step and runs its effects once; a second frame of the same state repeats them.
 - `cfg.metrics` is `TextMetrics.mono` until F's Core Text metrics land (`@[extern]` in
-  `Cairn/Text/Host.lean`); `cfg.layout` is `Stub.layout` until B's `layout` lands.
+  `Cairn/Text/Host.lean`); `cfg.layout` defaults to `Cairn.Layout.layout` (docs/layout.md).
 
 `Boundary` is the interface to E:
 

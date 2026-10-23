@@ -1,5 +1,6 @@
 import Cairn.App
 import Cairn.Runtime.Hit
+import Cairn.Layout.Core
 
 /-! The interaction runtime: turns host events into the `Action`s an app's `update` sees.
 
@@ -14,7 +15,7 @@ namespace Cairn.Runtime
 parameter so the runtime and its theorems don't depend on one implementation. -/
 structure Config where
   metrics : TextMetrics := TextMetrics.mono
-  layout : TextMetrics → Size → Node → Laid
+  layout : TextMetrics → Size → Node → Laid := Cairn.Layout.layout
 
 structure State (S : Type) where
   app : S
