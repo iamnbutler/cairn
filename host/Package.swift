@@ -15,6 +15,8 @@ let package = Package(
             linkerSettings: [.unsafeFlags(["-L" + leanLib, "-lcairn_lean", "-lc++"])]
         ),
         .target(name: "CairnFrame"),
+        .target(name: "CairnRender", dependencies: ["CairnFrame"]),
+        .testTarget(name: "CairnRenderTests", dependencies: ["CairnRender", "CairnFrame"]),
         .executableTarget(
             name: "CairnSpike",
             dependencies: ["CLean"],
