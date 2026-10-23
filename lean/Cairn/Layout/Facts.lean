@@ -16,7 +16,7 @@ mutual
 /-- The controls of a view, in paint order (a node before its children, children in order). -/
 def Node.controls : Node → List Control
   | .box _ c kids => c.toList ++ Node.controlsList kids
-  | .text .. => []
+  | .text .. | .para .. => []
   | .field _ _ c _ => [c]
 def Node.controlsList : List Node → List Control
   | [] => []

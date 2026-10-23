@@ -223,7 +223,7 @@ shrunk from 13 operations to 2.
 The claim fuzzer above checks the Lean side. `make fuzz-trusted` checks the parts Lean's proofs
 take on trust (docs/trusted.md): the Swift half of each boundary, run against Lean's proved half
 in one process. One check per trusted item; each `assume` claim in
-`Cairn.Fuzz.Trusted.Claims` (^901–^915, ^960–^971) names its check with `check "…"` (docs/claims.md), so
+`Cairn.Fuzz.Trusted.Claims` (^901–^915, ^960–^971, ^990–^991) names its check with `check "…"` (docs/claims.md), so
 the report is the claim's evidence.
 
 ```sh
@@ -269,6 +269,8 @@ on after it.
 | `effects.type-text` | ^969 | `Typing.runs`, `Typing.type`, World's handler | the text's UTF-16 and Characters; a fake typist's calls | pool text, emoji runs, a 15–30-mark character, empty; trusted or not, app or not, comes forward or not, pids 0 to 2³²−1, Return or not |
 | `effects.upload` | ^970 | `Upload` (`body`, `run`) | a `URLProtocol` stub: what it received | 0–5 bytes and wav parts (some bad ranges and unknown clips); Yap's multipart shape around a whole-clip wav part; statuses 200, 400, 500 |
 | `effects.secret` | ^971 | `SecretSource` | generated `KEY=value` files with a known meaning; every reply, message and debug description | comments, blanks, `export`, quotes, spaces, `=` and `#` in values, repeated keys; environment set, empty or not; unreadable files; secrets with CR LF |
+| `text.wrap.painted` | ^990 | `TextSystem` shaping each wrapped line alone | Lean's `layout` of a `Node.para` and `Text.Wrap.allLines` through `cairn_tf_wrap_lean`: line rects, and width and carets from the whole-string shaping | plain letters, digits and spaces, or the text pool mixed in; families 0–2, sizes mostly 9–32 (sometimes 1–120), weights, italic; widths mostly 20–600, sometimes 0–20 |
+| `text.wrap.coretext` | ^991 | Lean's breaks, against Core Text's | `CTTypesetterSuggestLineBreak` from the same start, trailing spaces trimmed | the plain-text cases of the same |
 
 Text comes from one pool in both languages: ASCII, edge scalars (NUL, controls, U+0085,
 U+2028/9, BOM, U+FFFD, U+FFFE/F, U+10FFFF, surrogate-adjacent, private use), ZWJ families,
@@ -290,6 +292,21 @@ glyph painted for the text before it ends (its advance, or the next glyph's star
 run if sooner), less 1 pt + 0.15 em for kerning, fallback fonts and rounding. Where Core Text's
 own caret already sits inside a glyph and the host passed it on unchanged, the case is counted
 (`coreTextCaretInsideGlyph`) and not failed: that is Core Text's behaviour, listed below.
+
+`text.wrap.painted` and `text.wrap.coretext` run `N / 2` cases. The painted check allows
+`1 + ⌈0.15 em⌉` points: a line shaped alone loses the kerning across the dropped break space
+and across a cut (`widthSpaceKern`, `widthCutKern`; `widthExact` and `widthOff1` are the rest).
+It skips bidi text (`skippedRTL`), controls and line separators (`skippedControl`), lines with
+tabs (`tab`) and lines whose cut splits a grapheme cluster (`clusterCut`), and only counts
+strings that need fallback fonts (`fallbackSame`, `fallbackDiffers`), which can pick another
+font for a neutral character when shaped alone. The Core Text check compares the first line
+where the two differ: Core Text's typesetter refuses lines a fraction of a point under the
+width that Lean's rounded-up carets accept, and cuts over-wide words by its own fractional
+widths; those are counted (`roundingDiffers`, `cutDiffers`) and anything else fails. At
+40,000 cases (seeds 11 and 23, debug build, 70 s each): painted held in 18,700 cases and about
+950,000 lines (`widthSpaceKern` 3–6, `widthCutKern` about 20,000); Core Text agreed on about
+8,600 of 10,100 plain cases, the rest `roundingDiffers` (about 240) and `cutDiffers` (about
+1,300).
 
 ### Output: `build/fuzz/trusted.json`
 
@@ -412,6 +429,8 @@ in 20,000 cases), but a cap would be cheaper.
 - A worker that crashes loses up to a second of tallies (stats are flushed every second); the
   crash itself is always reported.
 - The renderer (Metal) is not fuzzed.
+- Wrapping: left-to-right only; right-to-left, bidi and complex-script line breaking are not
+  checked, and the Core Text comparison uses plain text only (no pool strings).
 - Effects: the sound is not heard, only looked up (and played with `CAIRN_FUZZ_SOUND=1`); HTTP
   goes to a stub, not a network (no TLS, redirects or proxies); files live in one temporary
   directory on the boot volume. The clock checks run while the machine is awake; sleep is not

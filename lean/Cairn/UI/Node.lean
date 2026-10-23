@@ -92,9 +92,33 @@ structure FieldView where
   focused : Bool := false
 deriving Repr, BEq, Inhabited
 
+/-- Which lines a wrapped text keeps when it has more than `maxLines`: the first ones, or the
+last ones (a growing transcript that shows its end). -/
+inductive Keep where
+  | head | tail
+deriving Repr, BEq, DecidableEq, Inhabited
+
+/-- How a wrapped text (`Node.para`) is sized and broken into lines. The rules are in
+`docs/layout.md` ("Wrapped text") and `Cairn.Text.Wrap`. -/
+structure Wrap where
+  /-- `fixed n` wraps at `n`; `hug` and `fill` wrap at the width the parent offers. `fill` then
+  takes the parent's whole cross or leftover length; `hug` the widest line. -/
+  width : Sizing := .fill
+  /-- `hug` is the lines' height (lines × line height). A shorter `fixed` height clips. -/
+  height : Sizing := .hug
+  /-- Keep at most this many lines. -/
+  maxLines : Option Nat := none
+  keep : Keep := .head
+  /-- Where each line sits in the width: `start` (and `stretch`) left, `center`, `finish` right. -/
+  align : Align := .start
+deriving Repr, BEq, Inhabited
+
 inductive Node where
   | box (style : Style) (control : Option Control) (children : List Node)
   | text (style : TextStyle) (content : String)
+  /-- Text wrapped at word boundaries to the available width (`Cairn.Text.Wrap`). Layout turns
+  it into a clipping column of one `text` per line, so it has no `Laid` form of its own. -/
+  | para (style : TextStyle) (wrap : Wrap) (content : String)
   | field (style : Style) (text : TextStyle) (control : Control) (view : FieldView)
 deriving Repr, Inhabited
 

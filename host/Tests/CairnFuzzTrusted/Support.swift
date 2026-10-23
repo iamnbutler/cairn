@@ -121,6 +121,22 @@ enum Lean {
             Int32(bitPattern: UInt32(bytes[$0]) | UInt32(bytes[$0 + 1]) << 8 | UInt32(bytes[$0 + 2]) << 16 | UInt32(bytes[$0 + 3]) << 24)
         }
     }
+
+    /// One line as Lean wraps and lays it out (`cairn_tf_wrap`).
+    struct WrapLine { var a: Int, b: Int, width: Int32, x: Int32, y: Int32, w: Int32 }
+
+    static func wrap(family: UInt32, size: UInt32, weight: UInt32, italic: Bool, width: UInt32, _ s: String) -> [WrapLine] {
+        var s = s
+        let o = s.withUTF8 { cairn_tf_wrap(family, size, weight, italic ? 1 : 0, width, $0.baseAddress, $0.count) }
+        let bytes = take(o!)
+        let v = stride(from: 0, to: bytes.count, by: 4).map {
+            Int32(bitPattern: UInt32(bytes[$0]) | UInt32(bytes[$0 + 1]) << 8 | UInt32(bytes[$0 + 2]) << 16 | UInt32(bytes[$0 + 3]) << 24)
+        }
+        return (0..<Int(v[0])).map { i in
+            let k = 1 + 6 * i
+            return WrapLine(a: Int(v[k]), b: Int(v[k + 1]), width: v[k + 2], x: v[k + 3], y: v[k + 4], w: v[k + 5])
+        }
+    }
 }
 
 /// Lowercase hex for repro lines.

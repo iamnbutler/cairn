@@ -28,7 +28,7 @@ button. -/
 theorem view_refs (s : State) (ui : UI) :
     (view s ui).controls.map (·.ref) =
       fieldRef :: addRef :: s.items.flatMap fun it => [toggleRef it.id, deleteRef it.id] := by
-  simp only [view, inputRow, heading, Node.controls, Node.controlsList, controlsList_map,
+  simp only [view, inputRow, heading, intro, Node.controls, Node.controlsList, controlsList_map,
     Option.toList, List.map_flatMap, itemRow_refs, List.nil_append, List.append_nil,
     List.cons_append, List.map_cons]
 

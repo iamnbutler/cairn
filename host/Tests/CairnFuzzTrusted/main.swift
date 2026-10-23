@@ -17,7 +17,7 @@ setvbuf(stdout, nil, _IOLBF, 0)
 
 let allSuites: [Suite] = [FrameSuite(), EventsSuite(), TextIndexSuite(), InputClientSuite(), MetricsSuite(),
                           ClockSuite(), WorldSuite(), FilesSuite(), HTTPSuite(), SoundSuite(),
-                          FileOpsSuite(), SystemSuite(), AudioSuite(), InputSuite(), UploadSuite()]
+                          FileOpsSuite(), SystemSuite(), AudioSuite(), InputSuite(), UploadSuite(), WrapSuite()]
 
 var args = Array(CommandLine.arguments.dropFirst())
 func take(_ flag: String) -> String? {
@@ -50,6 +50,11 @@ if let w = take("--worker") {
     Runner.worker(s, seed: seed, from: Int(take("--from")!)!, to: Int(take("--to")!)!,
                   progress: URL(fileURLWithPath: take("--progress")!), statsURL: URL(fileURLWithPath: take("--stats")!),
                   verbose: verbose)
+    exit(0)
+}
+
+if args.contains("--bench-wrap") {
+    WrapSuite.bench()
     exit(0)
 }
 
