@@ -81,3 +81,13 @@ Text metrics. Never linked into the host. -/
 lean_lib Conformance where
   srcDir := "../tools/conformance/lean"
   globs := #[.submodules `Conformance]
+
+/-- The fuzzer (docs/fuzz.md): generators, the walk, the checks and shrinking. Not linked into
+any host binary. -/
+@[default_target]
+lean_lib Fuzz where
+  roots := #[`Cairn.Fuzz]
+
+/-- `lake exe fuzz <App> [--seed S] [--iterations N] [--steps K]` (docs/fuzz.md). -/
+lean_exe fuzz where
+  root := `FuzzMain
