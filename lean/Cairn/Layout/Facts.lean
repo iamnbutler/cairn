@@ -101,6 +101,20 @@ def FillExact : Laid → Prop
     padMain h st.padding + (ps.map (·.2)).sum + gaps st.gap ps.length = mainOf h r
   | _ => True
 
+/-- Children that fit stay inside: if every child's rect is no larger than the content box and,
+in a row or column, the children plus gaps fit along the main axis, then every child's rect is
+inside the content box. Together with `SiblingsDisjoint`, this means nothing in one child's
+subtree can cover another child, as long as the view fits. -/
+def ChildrenInside : Laid → Prop
+  | .box r _ st _ kids =>
+    let content := r.inset st.padding
+    (∀ k ∈ kids, k.rect.w ≤ content.w ∧ k.rect.h ≤ content.h) →
+    (st.axis ≠ .stack →
+      (kids.map fun k => mainOf (Axis.horiz st.axis) k.rect).sum + gaps st.gap kids.length
+        ≤ mainOf (Axis.horiz st.axis) content) →
+    ∀ k ∈ kids, k.rect.inside content
+  | _ => True
+
 /-- Field geometry: the caret sits at the text origin plus the caret's offset, within the
 text's extent, is one point wide and a line high, and is inside the content box horizontally
 whenever the content box is at least one point wide (the text scrolls to keep it there). The
@@ -134,6 +148,7 @@ structure Facts (m : TextMetrics) (window : Size) (n : Node) (l : Laid) : Prop w
   rectNonneg : l.Everywhere RectNonneg
   siblingsDisjoint : l.Everywhere SiblingsDisjoint
   fillExact : l.Everywhere FillExact
+  childrenInside : l.Everywhere ChildrenInside
   caretPlaced : l.Everywhere (CaretPlaced m)
 
 end Layout

@@ -597,6 +597,233 @@ theorem _root_.Cairn.TextMetrics.mono_valid : TextMetrics.mono.Valid where
   ascent f := by simp only [TextMetrics.mono]; omega
   descent f := by simp only [TextMetrics.mono]; omega
 
+/-! ## Children that fit stay inside -/
+
+/-- Start and length of a rect across the main axis. -/
+def crossStart (h : Bool) (r : Rect) : Int := if h then r.y else r.x
+def crossOf (h : Bool) (r : Rect) : Int := if h then r.h else r.w
+
+@[simp] theorem mkRect_crossStart (h : Bool) (p s cp cs : Int) :
+    crossStart h (mkRect h p s cp cs) = cp := by cases h <;> rfl
+
+@[simp] theorem mkRect_crossOf (h : Bool) (p s cp cs : Int) :
+    crossOf h (mkRect h p s cp cs) = cs := by cases h <;> rfl
+
+/-- `sp i + sp (i+1) + … + sp (i+n-1)`. -/
+def spSum (sp : Nat → Int) : Nat → Nat → Int
+  | _, 0 => 0
+  | i, n + 1 => sp i + spSum sp (i + 1) n
+
+theorem spSum_nonneg (sp : Nat → Int) (hsp : ∀ i, 0 ≤ sp i) : ∀ i n, 0 ≤ spSum sp i n
+  | _, 0 => by simp [spSum]
+  | i, n + 1 => by
+    have := hsp i; have := spSum_nonneg sp hsp (i + 1) n; simp only [spSum]; omega
+
+theorem spSum_const (sp : Nat → Int) (g : Nat) (hsp : ∀ i, sp i = g) :
+    ∀ i n, spSum sp i n = ((g * n : Nat) : Int)
+  | _, 0 => by simp [spSum]
+  | i, n + 1 => by
+    have := spSum_const sp g hsp (i + 1) n
+    simp only [spSum, hsp i, this, Nat.mul_succ]; omega
+
+theorem spSum_tele (sp : Nat → Int) (g : Nat) (F : Nat → Int) (hsp : ∀ i, sp i = g + (F (i + 1) - F i)) :
+    ∀ i n, spSum sp i n = ((g * n : Nat) : Int) + (F (i + n) - F i)
+  | i, 0 => by simp [spSum]
+  | i, n + 1 => by
+    have := spSum_tele sp g F hsp (i + 1) n
+    simp only [spSum, hsp i, this, Nat.mul_succ]
+    rw [show i + 1 + n = i + (n + 1) by omega]; omega
+
+theorem sum_nonneg (l : List Int) (h : ∀ x ∈ l, 0 ≤ x) : 0 ≤ l.sum := by
+  induction l with
+  | nil => simp
+  | cons x xs ih =>
+    simp only [List.sum_cons]
+    have := h x (.head _); have := ih (fun y hy => h y (.tail _ hy)); omega
+
+theorem Line.go_mainOf_nonneg (ln : Line) (hL : 0 ≤ ln.L) (its : List Item) (i j : Nat) (pos : Int) :
+    0 ≤ ((ln.go i j pos its).map (mainOf ln.horiz)).sum := by
+  apply sum_nonneg
+  intro x hx
+  simp only [List.mem_map] at hx
+  obtain ⟨r, hr, rfl⟩ := hx
+  -- The cross length is irrelevant here, so any non-negative stand-in for `cc` will do.
+  induction its generalizing i j pos with
+  | nil => simp [Line.go] at hr
+  | cons it its ih =>
+    simp only [Line.go, List.mem_cons] at hr
+    rcases hr with rfl | hr
+    · simp only [mkRect_mainOf]; exact mainSize_nonneg _ hL _ _ _
+    · exact ih _ _ _ hr
+
+/-- Along the main axis, every child ends by the start plus all lengths and spacings. -/
+theorem Line.go_upper (ln : Line) (hL : 0 ≤ ln.L) (hsp : ∀ i, 0 ≤ ln.spacing i) :
+    ∀ (its : List Item) (i j : Nat) (pos : Int), ∀ r ∈ ln.go i j pos its,
+      mainStart ln.horiz r + mainOf ln.horiz r ≤
+        pos + ((ln.go i j pos its).map (mainOf ln.horiz)).sum + spSum ln.spacing i (its.length - 1)
+  | [], _, _, _ => by simp [Line.go]
+  | it :: its, i, j, pos => by
+    simp only [Line.go, List.mem_cons, List.map_cons, List.sum_cons, mkRect_mainOf]
+    rintro r (rfl | hr)
+    · simp only [mkRect_mainStart, mkRect_mainOf]
+      have := spSum_nonneg _ hsp i ((it :: its).length - 1)
+      have := Line.go_mainOf_nonneg ln hL its (i + 1)
+        (if (it.mainSizing ln.horiz).isFill then j + 1 else j)
+        (pos + mainSize ln.horiz ln.L ln.f j it + ln.spacing i)
+      omega
+    · have := Line.go_upper ln hL hsp its _ _ _ r hr
+      cases its with
+      | nil => simp [Line.go] at hr
+      | cons it' its' =>
+        simp only [List.length_cons, Nat.add_sub_cancel, spSum] at this ⊢
+        omega
+
+theorem crossPlace_inside (al : Align) (c0 cc : Int) (s : Sizing) (p : Int) (b : Bool)
+    (h : (crossPlace al c0 cc s p b).2 ≤ cc) :
+    c0 ≤ (crossPlace al c0 cc s p b).1 ∧
+      (crossPlace al c0 cc s p b).1 + (crossPlace al c0 cc s p b).2 ≤ c0 + cc := by
+  cases al <;> simp only [crossPlace] at h ⊢ <;> omega
+
+theorem Line.go_cross (ln : Line) :
+    ∀ (its : List Item) (i j : Nat) (pos : Int), ∀ r ∈ ln.go i j pos its,
+      crossOf ln.horiz r ≤ ln.cc →
+      ln.c0 ≤ crossStart ln.horiz r ∧ crossStart ln.horiz r + crossOf ln.horiz r ≤ ln.c0 + ln.cc
+  | [], _, _, _ => by simp [Line.go]
+  | it :: its, i, j, pos => by
+    simp only [Line.go, List.mem_cons]
+    rintro r (rfl | hr)
+    · simp only [mkRect_crossStart, mkRect_crossOf]
+      exact crossPlace_inside _ _ _ _ _ _
+    · exact Line.go_cross ln its _ _ _ r hr
+
+theorem mainPairs_snd (h : Bool) :
+    ∀ (its : List Item) (rs : List Rect), its.length = rs.length →
+      (mainPairs h its rs).map (·.2) = rs.map (mainOf h)
+  | [], [], _ => rfl
+  | _ :: its, _ :: rs, hl => by
+    have := mainPairs_snd h its rs (by simpa using hl)
+    simp only [mainPairs] at this
+    simp only [mainPairs, List.zipWith_cons_cons, List.map_cons, this]
+  | [], _ :: _, hl => by simp at hl
+  | _ :: _, [], hl => by simp at hl
+
+/-- The children's main-axis lengths add up to the space the line uses. -/
+theorem lineRects_sum (h : Bool) (st : Style) (c : Rect) (items : List Item) :
+    ((lineRects h st c items).map (mainOf h)).sum =
+      if fillCount h items = 0 then baseSum h items
+      else baseSum h items + leftover h st c items := by
+  obtain ⟨_, h2, _⟩ := Line.go_fill (lineOf h st c items) items 0 0
+    ((if h then c.x else c.y) + startOffset st.justify (free h st c items))
+  rw [mainPairs_snd _ _ _ (by simp [Line.go_length])] at h2
+  simp only [lineRects]
+  simp only [lineOf, Nat.zero_add, cumShare_zero] at h2 ⊢
+  rw [h2]
+  split
+  · rename_i hf; rw [hf, cumShare_zero]; omega
+  · rename_i hf; rw [cumShare_full _ (by omega)]; omega
+
+theorem lineRects_inside (h : Bool) (st : Style) (c : Rect) (items : List Item)
+    (hcross : ∀ r ∈ lineRects h st c items, crossOf h r ≤ crossOf h c)
+    (hfit : ((lineRects h st c items).map (mainOf h)).sum + gaps st.gap items.length ≤ mainOf h c) :
+    ∀ r ∈ lineRects h st c items, r.inside c := by
+  intro r hr
+  have hsum := lineRects_sum h st c items
+  have hcr := hcross r hr
+  have hnn := lineRects_nonneg h st c items r hr
+  simp only [lineRects] at hr hfit hsum
+  have hL := leftover_nonneg h st c items
+  have hsp := fun i => spacing_nonneg st.justify st.gap (free h st c items) items.length i
+  have hlow := Line.go_lower _ hL hsp items 0 0 _ r hr
+  have hup := Line.go_upper _ hL hsp items 0 0 _ r hr
+  have hx := Line.go_cross _ items 0 0 _ r hr
+  simp only [lineOf] at hlow hup hx hfit hsum
+  have hx := hx (by cases h <;> simp [crossOf] at hcr ⊢ <;> omega)
+  rw [hsum] at hfit
+  rw [hsum] at hup
+  -- The spacings add up to the gaps, plus the free space when justified with `stretch`.
+  have hfree : 0 ≤ free h st c items := by unfold free; simp only; omega
+  have hoff : 0 ≤ startOffset st.justify (free h st c items) := by
+    cases st.justify <;> simp only [startOffset] <;> omega
+  have hgaps : gaps st.gap items.length = ((st.gap * (items.length - 1) : Nat) : Int) := rfl
+  have hspan : startOffset st.justify (free h st c items) +
+      spSum (spacing st.justify st.gap (free h st c items) items.length) 0 (items.length - 1)
+        ≤ free h st c items + gaps st.gap items.length := by
+    by_cases hst : st.justify = .stretch ∧ 0 < free h st c items ∧ 1 < items.length
+    · obtain ⟨hj, hpos, hk⟩ := hst
+      rw [spSum_tele _ st.gap (cumShare (free h st c items) (items.length - 1)) (fun i => by
+        simp [spacing, hj, hpos, hk, fillShare])]
+      rw [Nat.zero_add, cumShare_full _ (by omega), cumShare_zero, hj]
+      simp only [startOffset]; omega
+    · rw [spSum_const _ st.gap (fun i => by
+        unfold spacing; split
+        · rename_i hj; simp only [show ¬ (0 < free h st c items ∧ 1 < items.length) from fun h' => hst ⟨hj, h'⟩, ite_false]
+        · rfl)]
+      cases hj : st.justify <;> simp only [startOffset] <;> omega
+  unfold free at hfree hspan hup hlow hoff
+  simp only at hfree hspan hup hlow hoff
+  unfold Rect.inside
+  cases h <;> simp only [mainStart, mainOf, crossStart, crossOf, ite_true, ite_false,
+    Bool.false_eq_true] at hlow hup hx hfit hspan hfree hcr hoff ⊢ <;> omega
+
+theorem stackRects_inside (st : Style) (c : Rect) (items : List Item)
+    (hfit : ∀ r ∈ stackRects st c items, r.w ≤ c.w ∧ r.h ≤ c.h) :
+    ∀ r ∈ stackRects st c items, r.inside c := by
+  intro r hr
+  have hf := hfit r hr
+  simp only [stackRects, List.mem_map] at hr
+  obtain ⟨it, _, rfl⟩ := hr
+  simp only at hf
+  have := crossPlace_nonneg st.justify c.x (Int.le_max_left 0 c.w) it.width it.size.w it.stretch
+  have := crossPlace_nonneg st.align c.y (Int.le_max_left 0 c.h) it.height it.size.h it.stretch
+  have hx := crossPlace_inside st.justify c.x (max 0 c.w) it.width it.size.w it.stretch (by omega)
+  have hy := crossPlace_inside st.align c.y (max 0 c.h) it.height it.size.h it.stretch (by omega)
+  unfold Rect.inside; simp only; omega
+
+theorem arrange_childrenInside (m : TextMetrics) (c r : Rect) (s : Sized) :
+    ChildrenInside (arrange m c r s) := by
+  cases s with
+  | box st ctl sz kids =>
+    simp only [arrange, ChildrenInside]
+    intro hsize hfit k hk
+    have hlen : (childRects st r (kids.map Sized.item)).length = kids.length := by
+      simp [childRects_length]
+    have hrs := arrangeList_rects m (innerClip st c r) _ kids hlen
+    have hmem := kid_rect_mem hlen hk
+    -- Every child rect belongs to a child, so the size hypothesis covers each rect.
+    have hsize' : ∀ q ∈ childRects st r (kids.map Sized.item),
+        q.w ≤ (r.inset st.padding).w ∧ q.h ≤ (r.inset st.padding).h := by
+      intro q hq
+      rw [← hrs] at hq
+      simp only [List.mem_map] at hq
+      obtain ⟨k', hk', rfl⟩ := hq
+      exact hsize k' hk'
+    cases hx : st.axis with
+    | stack =>
+      have e : childRects st r (kids.map Sized.item) =
+          stackRects st (r.inset st.padding) (kids.map Sized.item) := by simp [childRects, hx]
+      rw [e] at hmem hsize'
+      exact stackRects_inside _ _ _ hsize' _ hmem
+    | row | column =>
+      have e : childRects st r (kids.map Sized.item) =
+          lineRects (Axis.horiz st.axis) st (r.inset st.padding) (kids.map Sized.item) := by
+        simp [childRects, hx, Axis.horiz]
+      rw [e] at hmem hsize' hrs
+      refine lineRects_inside _ st _ _ (fun q hq => ?_) ?_ _ hmem
+      · have := hsize' q hq; simp only [crossOf]; split <;> omega
+      · have hf := hfit (by simp [hx])
+        rw [e] at hf
+        rw [← hrs, List.map_map]
+        simpa [Function.comp_def, arrangeList_length] using hf
+  | text => simp [arrange, ChildrenInside]
+  | field => simp [arrange, field, ChildrenInside]
+
+/-- **Children that fit stay inside.** In every container of the laid-out tree, if the children
+fit the content box (in size, and along the main axis with gaps), each child's rect is inside
+it. -/
+theorem layout_childrenInside (m : TextMetrics) (w : Size) (n : Node) :
+    (layout m w n).Everywhere ChildrenInside :=
+  arrange_everywhere' m _ (arrange_childrenInside m) _ _ _
+
 /-! ## Everything together -/
 
 /-- **Layout facts.** For valid metrics, every window and every view, `layout` satisfies all of
@@ -611,6 +838,7 @@ theorem facts {m : TextMetrics} (hm : m.Valid) (w : Size) (n : Node) :
   rectNonneg := layout_rectNonneg m w n
   siblingsDisjoint := layout_siblingsDisjoint m w n
   fillExact := layout_fillExact m w n
+  childrenInside := layout_childrenInside m w n
   caretPlaced := layout_caretPlaced hm w n
 
 end Cairn.Layout
