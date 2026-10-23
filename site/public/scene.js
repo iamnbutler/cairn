@@ -636,56 +636,129 @@ export function mountScene(canvas, layout = {}) {
 
 // --- Frames for the videos -------------------------------------------------------------------
 
-// Each video sits in a frame of stacked stones: flat slabs along the edges, bigger stones at the
-// corners, moss on the top, a vine hanging down one side, grass and flowers at the foot, and a
-// few fireflies that wander around it. The stones are drawn once; only the fireflies move.
-function drawFrame(L, m, seed) {
-  const { w: W, h: H } = L, own = new Int16Array(W * H).fill(-1), ramps = [];
-  const pickRamp = k => RAMPS[["slate", "slate", "slate", "slate", "violet", "violet", "teal"][Math.floor(hash(seed * 31 + k) * 7)]];
-  const put = (k, o) => stone(L, own, ramps, { shape: "slab", speck: 0.03, seed: seed * 101 + k, ramp: pickRamp(k), ...o });
-  let k = 0;
-  // The sides, top to bottom, then the top edge, then the corners; the bottom edge last, in front.
-  for (const side of [-1, 1]) {
-    const x = side < 0 ? m - 2 : W - m + 1;
-    for (let y = m + 4; y < H - m - 4;) {
-      const h = 11 + Math.floor(hash(seed * 7 + k) * 9);
-      put(k++, { x: x + Math.round((hash(seed * 9 + k) - 0.5) * 3), by: y + h, w: 10 + Math.floor(hash(seed * 5 + k) * 4), h, tilt: (hash(k) - 0.5) * 0.1, shape: hash(k * 7) < 0.4 ? "round" : "slab", p: 2.3 });
-      y += h - 1;
+// Each video sits in a thin frame with an empty margin between it and the picture. The frame lives
+// inside a margin the box reserves, so it never covers the text around it. Lit from the upper
+// right like the scene: edges facing up or right catch the moon, the others fall into shade.
+const WOOD = { line: "#1d1a36", dark: "#352a4a", mid: "#4a3956", grain: "#40324f", light: "#66506a", lit: "#8a6f84" };
+const BARK = ["#1d1a36", "#5a4462", "#7a5f7c", "#a08398"];
+const LEAF = { dark: "#3f7a68", mid: "#5a9a80", lit: "#82b896", tip: "#a8d8b0" };
+const FRAME = { gap: 4, wood: 3, m: 10 };
+const frameStyle = () => new URLSearchParams(location.search).get("frame") || "A";
+
+// Where a canvas pixel sits relative to the box: its distance out (1 = touching) and the side.
+function rim(x, y, W, H, m) {
+  const dl = m - x, dr = x - (W - m - 1), dt = m - y, db = y - (H - m - 1);
+  const dx = Math.max(dl, dr, 0), dy = Math.max(dt, db, 0), d = Math.max(dx, dy);
+  const side = dy > dx || (dy === dx && dy > 0 && dt > 0) ? (dt > 0 ? "t" : "b") : dl > 0 ? "l" : "r";
+  return { d, side, corner: dx === dy && d > 0 };
+}
+
+// A plank frame: outer and inner edges shaded by which way they face, grain along the face.
+function drawWood(L, m, seed) {
+  const { w: W, h: H } = L, g = FRAME.gap, n = FRAME.wood;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const { d, side, corner } = rim(x, y, W, H, m), r = d - g - 1;
+    if (r < 0 || r >= n) continue;
+    const along = side === "t" || side === "b" ? x : y;
+    const out = r === n - 1, inn = r === 0;
+    // The outer edge faces away from the box, the inner edge towards it.
+    const faces = out ? side : inn ? { t: "b", b: "t", l: "r", r: "l" }[side] : "";
+    let c = WOOD.mid;
+    if (faces === "t" || faces === "r") c = out ? WOOD.lit : WOOD.light;
+    else if (faces) c = out ? WOOD.line : WOOD.dark;
+    else if (h2(Math.floor(along / (3 + h2(r, seed) * 4)), r + seed) < 0.35) c = WOOD.grain;
+    if (corner && !out && !inn) c = WOOD.dark;
+    L.set(x, y, c);
+  }
+}
+
+// The perimeter at distance d, clockwise from the top left, with each point's outward normal.
+function around(W, H, m, d) {
+  const pts = [], x0 = m - d, y0 = m - d, x1 = W - m - 1 + d, y1 = H - m - 1 + d;
+  for (let x = x0; x < x1; x++) pts.push([x, y0, 0, -1]);
+  for (let y = y0; y < y1; y++) pts.push([x1, y, 1, 0]);
+  for (let x = x1; x > x0; x--) pts.push([x, y1, 0, 1]);
+  for (let y = y1; y > y0; y--) pts.push([x0, y, -1, 0]);
+  return pts;
+}
+
+// A vine winding along the frame between two perimeter fractions, with small paired leaves and,
+// now and then, a flower. Leaves on the upper and right sides take the light.
+function drawVine(L, m, seed, from, to, opt = {}) {
+  const { w: W, h: H } = L, d = opt.d || FRAME.gap + 1, pts = around(W, H, m, d), P = pts.length;
+  const span = Math.round(((to - from + 1) % 1 || 1) * P), start = Math.round(from * P);
+  for (let i = 0; i < span; i++) {
+    const [px, py, nx, ny] = pts[(start + i) % P];
+    if (opt.gaps && noise(i / 9, seed) < opt.gaps) continue;
+    const o = Math.round(Math.sin(i / 5 + seed) * 0.8), x = px + nx * o, y = py + ny * o;
+    const lit = ny < 0 || nx > 0;
+    L.set(x, y, LEAF.dark);
+    const k = i % 6;
+    if (k === 2 || k === 5) {
+      const s = -1, lx = x + nx * s, ly = y + ny * s, tx = -ny, ty = nx;
+      L.set(lx, ly, lit ? LEAF.lit : LEAF.mid);
+      L.set(lx + nx * s + tx, ly + ny * s + ty, lit ? LEAF.tip : LEAF.mid);
+      L.set(lx + tx, ly + ty, LEAF.mid);
+    }
+    if (opt.flowers && h2(i, seed + 3) < opt.flowers && k === 4) {
+      const pal = T.flowers[Math.floor(h2(i, seed + 4) * 3)];
+      L.set(x + nx, y + ny, pal[0]); L.set(x + nx * 2 - ny, y + ny * 2 + nx, pal[1]);
     }
   }
-  const row = (y, moss) => {
-    for (let x = m + 2; x < W - m - 2;) {
-      const w = 14 + Math.floor(hash(seed * 11 + k) * 12), h = 9 + Math.floor(hash(seed * 13 + k) * 4);
-      put(k++, { x: x + w / 2, by: y + h / 2 + Math.round((hash(seed * 17 + k) - 0.5) * 2), w, h, tilt: (hash(k * 3) - 0.5) * 0.12, moss: moss && hash(k * 5) < 0.85 });
-      x += w - 2;
+}
+
+// Twigs lashed at the corners: one thin, knotty branch per side, running a little past each end.
+function drawTwigs(L, m, seed) {
+  const { w: W, h: H } = L, d = FRAME.gap + 2, x0 = m - d, y0 = m - d, x1 = W - m - 1 + d, y1 = H - m - 1 + d, ext = 3;
+  const twig = (horiz, at, a, b, k) => {
+    for (let t = a - ext; t <= b + ext; t++) {
+      const w = Math.round((noise(t / 23, seed + k) - 0.5) * 2);
+      const x = horiz ? t : at + w, y = horiz ? at + w : t;
+      const lit = horiz ? at === y0 : at === x1;
+      L.set(x, y, lit ? BARK[2] : BARK[1]);
+      L.set(horiz ? x : x + 1, horiz ? y - 1 : y, lit ? BARK[3] : BARK[2]);
+      if (h2(t, seed + k) < 0.04) L.set(horiz ? x : x - 1, horiz ? y + 1 : y, BARK[0]);
     }
   };
-  row(m - 2, true);
-  for (const [cx, cy] of [[m - 2, m - 1], [W - m + 1, m - 1]]) put(k++, { x: cx, by: cy + 9, w: 21, h: 17, shape: "round", p: 2.2, moss: 1 });
-  row(H - m + 2, false);
-  for (const [cx, cy] of [[m - 2, H - m + 2], [W - m + 1, H - m + 2]]) put(k++, { x: cx, by: cy + 9, w: 22, h: 17, shape: "round", p: 2.2 });
-  // A vine hanging from the top left corner, and one from the top right on taller frames.
-  const vine = (x0, len, dir, s) => {
-    for (let i = 0; i < len; i++) {
-      const x = Math.round(x0 + Math.sin(i / 4 + s) * 1.5), y = m + 6 + i;
-      L.set(x, y, MOSS[0]);
-      if (i % 3 === 1) { L.set(x + dir, y, MOSS[2]); L.set(x + dir * 2, y - 1, MOSS[3]); }
-      if (i % 3 === 2) L.set(x - dir, y, MOSS[1]);
-    }
-    L.set(Math.round(x0 + Math.sin((len - 1) / 4 + s) * 1.5), m + 4 + len, T.flowers[0][0]);
-  };
-  vine(m - 1, Math.min(H * 0.4, 40 + hash(seed) * 20), 1, seed);
-  if (H > 160) vine(W - m, Math.min(H * 0.18, 22), -1, seed + 2);
-  // Grass and flowers along the foot.
-  for (let x = 2; x < W - 2; x++) {
-    if (h2(x, seed) < 0.35) continue;
-    const y = H - m + 7 + Math.round(h2(x, seed + 1) * 2), len = 1 + Math.floor(h2(x, seed + 2) * 4);
-    for (let j = 0; j < len; j++) L.set(x, y - j, j === len - 1 ? T.tips[h2(x, seed + 3) < 0.5 ? 0 : 1] : T.meadow[2]);
-    if (h2(x, seed + 4) < 0.08) {
-      const pal = T.flowers[Math.floor(h2(x, seed + 5) * T.flowers.length)];
-      L.set(x, y - len, pal[0]); L.set(x + 1, y - len, pal[1]); L.set(x, y - len - 1, pal[0]);
-    }
+  twig(true, y0, x0, x1, 1); twig(true, y1, x0, x1, 2); twig(false, x0, y0, y1, 3); twig(false, x1, y0, y1, 4);
+  for (const [cx, cy] of [[x0, y0], [x1, y0], [x0, y1], [x1, y1]])
+    for (const [dx, dy] of [[-1, -1], [1, 1], [1, -1], [-1, 1]]) L.set(cx + dx, cy + dy, LEAF.mid);
+}
+
+// Moss along the top edge and a tuft or two of grass on the bottom one.
+function drawMoss(L, m, seed) {
+  const { w: W, h: H } = L, top = m - FRAME.gap - FRAME.wood - 1, foot = H - m + FRAME.gap + FRAME.wood;
+  for (let x = m - 6; x < W - m + 6; x++) {
+    const v = fbm(x / 14, seed), h = Math.floor((v - 0.5) * 10 + h2(x, seed) * 1.5);
+    for (let j = 0; j < h; j++) L.set(x, top + 1 - j, j === h - 1 ? (h2(x, seed + 1) < 0.5 ? LEAF.tip : LEAF.lit) : j ? LEAF.mid : LEAF.dark);
   }
+  for (const f of [0.18, 0.74]) {
+    const cx = Math.round(m + (W - 2 * m) * f);
+    for (const [dx, len] of [[-2, 2], [-1, 3], [0, 2], [1, 4], [2, 2]])
+      for (let j = 0; j < len; j++) L.set(cx + dx, foot - j, j === len - 1 ? LEAF.tip : LEAF.mid);
+  }
+  const pal = T.flowers[0], fx = Math.round(m + (W - 2 * m) * 0.74) + 1;
+  L.set(fx, foot - 5, pal[0]); L.set(fx, foot - 4, pal[1]);
+}
+
+// The empty margin: page background between the picture and the frame, so the meadow behind a
+// featured video stops at the frame instead of running up to the picture.
+function drawMat(L, m, upto) {
+  const { w: W, h: H } = L;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const { d } = rim(x, y, W, H, m);
+    if (d >= 1 && d <= upto) L.set(x, y, "#161937");
+  }
+}
+
+function drawFrame(L, m, seed, style) {
+  drawMat(L, m, style === "D" ? FRAME.gap + 1 : style === "E" ? FRAME.gap + 3 : FRAME.gap);
+  if (style !== "D" && style !== "E") drawWood(L, m, seed);
+  if (style === "B") { drawVine(L, m, seed, 0.86, 0.12); drawVine(L, m, seed + 5, 0.46, 0.56); }
+  if (style === "C") drawVine(L, m, seed, 0, 1, { gaps: 0.42, flowers: 0.5 });
+  if (style === "D") { drawTwigs(L, m, seed); drawVine(L, m, seed, 0.9, 0.06); }
+  if (style === "E") drawVine(L, m, seed, 0, 1, { flowers: 0.3, d: FRAME.gap + 3 });
+  if (style === "F") drawMoss(L, m, seed);
 }
 
 export function mountFrames(root) {
@@ -700,7 +773,7 @@ export function mountFrames(root) {
     canvas.className = "stones";
     canvas.setAttribute("aria-hidden", "true");
     fig.append(canvas);
-    const f = { fig, box, canvas, key: "", visible: false, flies: [] };
+    const f = { fig, box, canvas, key: "", visible: false, flies: [], style: frameStyle() };
     new ResizeObserver(() => build(f)).observe(box);
     new IntersectionObserver(([e]) => { f.visible = e.isIntersecting; tick(); }).observe(canvas);
     live.add(f);
@@ -708,7 +781,8 @@ export function mountFrames(root) {
   }
 
   function build(f) {
-    const s = innerWidth < 600 ? 2 : 3, m = 14;
+    const s = innerWidth < 600 ? 2 : 3, m = FRAME.m;
+    f.box.style.margin = `${m * s}px`;
     const bw = Math.round(f.box.offsetWidth / s), bh = Math.round(f.box.offsetHeight / s);
     const key = `${s}:${bw}x${bh}`;
     if (!bw || !bh || key === f.key) return;
@@ -717,21 +791,19 @@ export function mountFrames(root) {
     Object.assign(f.canvas.style, { left: `${f.box.offsetLeft - m * s}px`, top: `${f.box.offsetTop - m * s}px`, width: `${W * s}px`, height: `${H * s}px` });
     f.canvas.width = W; f.canvas.height = H;
     f.L = new Layer(W, H);
-    drawFrame(f.L, m, (bw * 7 + bh) % 97 + 1);
+    drawFrame(f.L, m, (bw * 7 + bh) % 97 + 1, f.style);
     f.L.done();
-    f.flies = Array.from({ length: Math.max(3, Math.round((W + H) / 70)) }, (_, k) => ({ u: Math.random(), v: 0.6 + Math.random() * 0.8, off: 3 + Math.random() * 6, ph: Math.random() * 6.28, tw: 1 + Math.random() * 2 }));
+    f.ring = around(W, H, m, m - 2);
+    f.flies = Array.from({ length: f.style === "F" ? 2 : 0 }, (_, k) => ({ u: Math.random(), v: 0.6 + Math.random() * 0.8, off: 3 + Math.random() * 6, ph: Math.random() * 6.28, tw: 1 + Math.random() * 2 }));
     f.m = m;
     draw(f, performance.now());
   }
 
-  // A firefly's place: a slow walk round the frame, a few pixels outside the stones.
+  // A firefly's place: a slow walk round the frame, just outside the wood.
   function at(f, fl, t) {
-    const { width: W, height: H } = f.canvas, m = f.m;
-    const P = 2 * (W + H), d = ((fl.u + t * fl.v * 0.004) % 1) * P, o = fl.off + Math.sin(t * 0.8 + fl.ph) * 2;
-    if (d < W) return [d, m - 8 - o * 0.4];
-    if (d < W + H) return [W - m + 8 + o * 0.4 - 6, d - W];
-    if (d < 2 * W + H) return [W - (d - W - H), H - m + 4 - o * 0.5];
-    return [m - 8 + 6 - o * 0.4, H - (d - 2 * W - H)];
+    const P = f.ring.length, [x, y, nx, ny] = f.ring[Math.floor(((fl.u + t * fl.v * 0.004) % 1) * P)];
+    const o = Math.round(Math.sin(t * 0.8 + fl.ph));
+    return [x - nx * o, y - ny * o];
   }
 
   function draw(f, now) {
@@ -765,4 +837,62 @@ export function mountFrames(root) {
   new MutationObserver(() => root.querySelectorAll(".frame").forEach(mount)).observe(root, { childList: true, subtree: true });
   document.addEventListener("visibilitychange", tick);
   addEventListener("resize", () => { for (const f of live) build(f); });
+}
+
+// --- Sprigs beside the headings ----------------------------------------------------------------
+
+// A strip of ground at the far right of each section heading: a thin line of turf that thins out
+// to the left, a few tufts of grass and a flower or two. Drawn once; hidden when the heading's
+// text would reach it.
+function drawSprig(L, seed) {
+  const { w: W, h: H } = L, base = H - 2;
+  for (let x = 0; x < W; x++) {
+    const fade = x / W;
+    if (h2(x, seed) > fade * 1.6) continue;
+    L.set(x, base, h2(x, seed + 1) < 0.5 ? T.meadow[2] : T.meadow[3]);
+    if (fade > 0.45 && h2(x, seed + 2) < fade - 0.2) L.set(x, base + 1, T.meadow[5]);
+  }
+  const tuft = (cx, tall) => {
+    for (let dx = -2; dx <= 2; dx++) {
+      if (h2(cx + dx, seed + 3) < 0.3) continue;
+      const len = Math.max(1, Math.round(tall - Math.abs(dx) * 1.2 + (h2(cx + dx, seed + 4) - 0.5) * 2));
+      const lean = dx > 0 ? 1 : 0;
+      for (let j = 1; j <= len; j++) {
+        const x = cx + dx + (j > len - 1 && len > 2 ? lean : 0);
+        L.set(x, base - j, j === len ? T.tips[dx >= 0 ? 1 : 0] : j > len / 2 ? T.meadow[1] : T.meadow[3]);
+      }
+    }
+  };
+  const spots = [0.5, 0.66, 0.8, 0.93].filter((_, k) => h2(k, seed + 5) < 0.85);
+  spots.forEach((f, k) => tuft(Math.round(W * f), 3 + Math.floor(h2(k, seed + 6) * 4)));
+  const pal = T.flowers[seed % T.flowers.length];
+  for (const [f, tall] of [[0.73, 7], [0.88, 5]].slice(0, 1 + (seed % 2))) {
+    const x = Math.round(W * f) + (seed % 3) - 1;
+    for (let j = 1; j < tall; j++) L.set(x, base - j, T.meadow[2]);
+    L.set(x, base - tall, pal[0]); L.set(x + 1, base - tall, pal[0]); L.set(x, base - tall - 1, pal[0]);
+    L.set(x + 1, base - tall + 1, pal[1]); L.set(x - 1, base - tall, pal[1]);
+    L.set(x + 1, base - 3, T.meadow[1]);
+  }
+}
+
+export function mountSprigs(root) {
+  const heads = [...root.querySelectorAll("h2")];
+  heads.forEach((h, k) => {
+    const W = 46, H = 14;
+    const canvas = document.createElement("canvas");
+    canvas.className = "sprig";
+    canvas.setAttribute("aria-hidden", "true");
+    canvas.width = W; canvas.height = H;
+    const L = new Layer(W, H);
+    drawSprig(L, k * 7 + 3);
+    L.done();
+    canvas.getContext("2d").drawImage(L.canvas, 0, 0);
+    h.append(canvas);
+    // Hide the sprig rather than let it crowd a long heading on a narrow screen.
+    const range = document.createRange();
+    range.selectNodeContents(h);
+    range.setEndBefore(canvas);
+    const fit = () => { canvas.hidden = false; canvas.hidden = range.getBoundingClientRect().right + 24 > canvas.getBoundingClientRect().left; };
+    new ResizeObserver(fit).observe(h);
+  });
 }

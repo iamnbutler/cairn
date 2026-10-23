@@ -90,7 +90,9 @@
     margin: 72px 0 18px;
     display: flex; align-items: center; gap: 12px;
   }
-  h2 { color: var(--fg); }
+  h2 { color: var(--fg); position: relative; }
+  /* A strip of turf and flowers at the far right of each heading (scene.js). */
+  h2 canvas.sprig { position: absolute; right: 0; bottom: 0; width: 138px; height: 42px; image-rendering: pixelated; pointer-events: none; }
 
   h2::before {
     content: ""; width: 20px; height: 20px; flex: none;
@@ -99,13 +101,13 @@
   }
   p { margin: 0 0 14px; }
 
-  /* A framed video: an outline, then a stepped panel, then a pixel drop shadow. */
+  /* A framed video: an outline and a stepped panel. scene.js gives the box a margin and draws
+     a thin frame in it, leaving an empty gap around the picture. */
   .frame { position: relative; margin: 0; }
-  .frame .box { background: var(--ink); padding: var(--px); filter: drop-shadow(var(--px) var(--px) 0 var(--shadow)) drop-shadow(var(--px) var(--px) 0 var(--shadow)); }
+  .frame .box { background: var(--ink); padding: var(--px); }
   .frame video { display: block; width: 100%; height: auto; background: var(--panel); }
   .frame canvas.stones { position: absolute; pointer-events: none; image-rendering: pixelated; }
-  .frame figcaption { margin-top: 48px !important; }
-  .frame figcaption { font-size: 15.5px; color: var(--muted); margin-top: 16px; }
+  .frame figcaption { font-size: 15.5px; color: var(--muted); margin-top: 6px; }
 
   /* A note card: a panel with stepped corners and a gold label, for asides the reader
      shouldn't miss. */
@@ -183,6 +185,7 @@
     h1 { font-size: 48px; }
     .lede { font-size: 19px; }
     .scene { height: 290px; }
+    h2 canvas.sprig { width: 92px; height: 28px; }
   }
 </style>
 </head>
@@ -335,8 +338,9 @@
 
 </script>
 <script type="module">
-  import { mountScene, mountFrames } from "/scene.js";
+  import { mountScene, mountFrames, mountSprigs } from "/scene.js";
   mountFrames(document.querySelector("main"));
+  mountSprigs(document.querySelector("main"));
   mountScene(document.getElementById("scene"), { feature: document.getElementById("feature") });
 </script>
 </body>
