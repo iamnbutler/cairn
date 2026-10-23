@@ -87,7 +87,8 @@ def textInput : Gen TextInput := do
            selection := ← range, marked := ← opt range, textOrigin := ⟨← int, ← int⟩ }
 
 def effect : Gen Effect := do
-  if ← coin then return .setClipboard (← str) else return .beep
+  if ← coin then return .setClipboard (← str)
+  else if ← coin then return .focus (← ref) else return .beep
 
 def array {α : Type} (n : Nat) (g : Gen α) : Gen (Array α) := do
   let k ← below (n + 1)
@@ -165,7 +166,7 @@ def maxFrame : Frame where
                       text := "", selection := (4294967295, 0), marked := some (0, 4294967295),
                       textOrigin := ⟨-2147483648, 2147483647⟩ }
   cursor := .pointer
-  effects := #[.setClipboard "", .beep, .setClipboard "📋"]
+  effects := #[.setClipboard "", .beep, .setClipboard "📋", .focus ⟨202, 7⟩]
 
 def emptyFrame : Frame := { size := ⟨0, 0⟩, draws := #[], ax := #[] }
 

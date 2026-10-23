@@ -67,6 +67,9 @@ def claimInfos : List ClaimInfo := claims%
 def app : App State := machine.toApp view claimInfos
 ```
 
+`toApp` takes an optional third argument, the control focused at launch (`App.initFocus`);
+`steps_reachable` takes the same one, last.
+
 `moves%` is every (non-retired) move declared in the current namespace (or `moves% Some.Ns`);
 `claims%` is every claim's `ClaimInfo`, retired ones included, ordered by id. After `moves%`, a
 `move` in that namespace is an error (it would never be dispatched); after `claims%`, any claim

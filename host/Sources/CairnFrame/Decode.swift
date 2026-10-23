@@ -169,6 +169,10 @@ extension Frame {
             case 1:
                 er.i += 4
                 effects.append(.beep)
+            case 2:
+                try er.need(12)
+                effects.append(.focus(ControlRef(claim: er.u32(4), key: er.u32(8))))
+                er.i += 12
             case let c:
                 throw FrameDecodeError.badCode(c, at: er.i)
             }

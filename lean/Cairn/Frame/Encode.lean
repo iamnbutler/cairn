@@ -99,6 +99,7 @@ def fitsTextInput (t : TextInput) : Bool :=
 def fitsEffect : Effect → Bool
   | .setClipboard s => fs s
   | .beep => true
+  | .focus c => fitsRef c
 
 /-- Every value fits its field. The other condition of the round trip is that the encoding is
 under 4 GiB (each section's byte length is a `u32`). -/
@@ -155,6 +156,7 @@ def cursor (c : Cursor) : List UInt8 := [Cursor.code c] ++ pad 3
 def effect : Effect → List UInt8
   | .setClipboard s => [0] ++ pad 3 ++ str s
   | .beep => [1] ++ pad 3
+  | .focus c => [2] ++ pad 3 ++ ref c
 
 def magic : List UInt8 := [0x43, 0x41, 0x46, 0x52] -- "CAFR"
 
@@ -264,6 +266,9 @@ def effect : Dec Effect := do
   | 1 =>
     skip 3
     return .beep
+  | 2 =>
+    skip 3
+    return .focus (← ref)
   | _ => fail
 
 def frame : Dec Frame := do
@@ -382,6 +387,10 @@ theorem effect_enc {x : Effect} (h : fitsEffect x = true) (r : List UInt8) :
         byte_cons, skip_pad, h, str_enc, pure_apply]
   | beep => simp only [effect, Enc.effect, List.cons_append, List.nil_append, bind_apply, byte_cons,
       skip_pad, pure_apply]
+  | focus c =>
+    simp only [fitsEffect] at h
+    simp only [effect, Enc.effect, List.cons_append, List.nil_append, List.append_assoc, bind_apply,
+        byte_cons, skip_pad, ref_enc h, pure_apply]
 
 /-- Sections of a frame whose encoding is under 4 GiB have `u32` byte lengths. -/
 def SizeOk (f : Frame) : Prop := (Enc.frame f).length < 4294967296
@@ -427,6 +436,7 @@ def ax (n : AxNode) : Nat := 36 + str n.label + str n.value
 def effect : Effect → Nat
   | .setClipboard s => 4 + str s
   | .beep => 4
+  | .focus _ => 12
 
 def textInput : Option TextInput → Nat
   | none => 4
@@ -456,7 +466,7 @@ theorem effect_eq (e : Effect) : effect e = (Enc.effect e).length := by
       String.size_toByteArray, List.length_append, Enc.length_u32, Array.length_toList,
       ByteArray.size_data, Enc.effect, Enc.pad, List.reduceReplicate, List.cons_append,
       List.nil_append, List.length_cons, List.length_nil, Nat.zero_add,
-      Nat.reduceAdd] <;> all_goals omega
+      Nat.reduceAdd, Enc.ref] <;> all_goals omega
 
 theorem textInput_eq (t : Option TextInput) : textInput t = (Enc.textInput t).length := by
   cases t <;> simp only [textInput, Enc.textInput, Enc.pad, List.reduceReplicate, List.cons_append,
@@ -519,6 +529,7 @@ def cursor (b : ByteArray) (c : Cursor) : ByteArray := pad (b.push (Cursor.code 
 def effect (b : ByteArray) : Effect → ByteArray
   | .setClipboard s => str (pad (b.push 0) 3) s
   | .beep => pad (b.push 1) 3
+  | .focus c => ref (pad (b.push 2) 3) c
 
 def list {α : Type} (put : ByteArray → α → ByteArray) (len : α → Nat) (b : ByteArray)
     (xs : Array α) : ByteArray :=
@@ -575,7 +586,7 @@ def frame (f : Frame) : ByteArray :=
 @[simp] theorem effect_data (b : ByteArray) (e : Effect) :
     (effect b e).data.toList = b.data.toList ++ Enc.effect e := by
   cases e <;> simp only [effect, str_data, pad_data, ByteArray.data_push, Array.toList_push,
-      List.append_assoc, List.cons_append, List.nil_append, Enc.effect]
+      List.append_assoc, List.cons_append, List.nil_append, Enc.effect, ref_data]
 
 theorem foldl_data {α : Type} (put : ByteArray → α → ByteArray) (e : α → List UInt8)
     (h : ∀ b x, (put b x).data.toList = b.data.toList ++ e x) (xs : List α) (b : ByteArray) :

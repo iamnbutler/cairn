@@ -153,9 +153,11 @@ Cursor codes: `0` arrow, `1` pointer (hand), `2` text (I-beam).
 ```
 setClipboard  [0, 0, 0, 0]  4 string                                   4 + string
 beep          [1, 0, 0, 0]                                                   4 bytes
+focus         [2, 0, 0, 0]  4 u32 claim  8 u32 key                         12 bytes
 ```
 
-Effects run once, in order, after the frame that carries them.
+Effects run once, in order, after the frame that carries them. `focus` is the runtime's: Lean
+has already moved keyboard focus when the frame is built, so the host ignores it.
 
 ### Codes
 

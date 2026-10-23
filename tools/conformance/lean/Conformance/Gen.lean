@@ -111,6 +111,7 @@ def jframe (f : Frame) : String :=
 def jeffect : Effect → String
   | .setClipboard s => jobj [("clipboard", jstr s)]
   | .beep => jobj [("beep", "true")]
+  | .focus c => jobj [("focus", jstr (refLabel c))]
 
 def opName : TextOp → String
   | .insert s => s!"insert {repr s}" | .deleteBackward => "deleteBackward"

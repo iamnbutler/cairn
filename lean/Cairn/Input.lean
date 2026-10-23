@@ -88,10 +88,15 @@ inductive Cursor where
   | arrow | pointer | text
 deriving Repr, BEq, DecidableEq, Inhabited
 
-/-- App → host. -/
+/-- App → host (and runtime). -/
 inductive Effect where
   | setClipboard (s : String)
   | beep
+  /-- Move keyboard focus to the control `c`. The runtime runs this one, not the host: after the
+  step's actions it sets `ui.focus := some c`, and keeps it only if `c` is a focusable control
+  of the new tree (docs/runtime.md). No `blur` is delivered for a field it takes focus from.
+  The host decodes it and does nothing. -/
+  | focus (c : ControlRef)
 deriving Repr, BEq, Inhabited
 
 end Cairn

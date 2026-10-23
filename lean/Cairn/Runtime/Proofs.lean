@@ -247,6 +247,11 @@ theorem step_delivers (app : App S) (cfg : Config) (s : State S) (e : Event) :
 
 /-! ## Pressable -/
 
+/-- A focus request changes only the focus. -/
+theorem applyFocus_pressed (effs : List Effect) (ui : UI) :
+    (applyFocus effs ui).pressed = ui.pressed := by
+  unfold applyFocus; split <;> rfl
+
 /-- After a pointerDown on a non-field control `t`, the press is recorded on `t` with the
 down's click count, whatever the update and relayout did, provided `t`'s ref is still in the
 new tree. -/
@@ -268,10 +273,11 @@ theorem step_down_pressed (app : App S) (cfg : Config) (s : State S) (t : Target
   · intro hpres
     generalize deliver app.update s.app acts = d at hpres ⊢
     obtain ⟨st, effs⟩ := d
-    obtain ⟨l, hl⟩ := settle_spec app cfg st s1.pointer s1.ui settleFuel s1.ui
+    obtain ⟨l, hl⟩ := settle_spec app cfg st s1.pointer (applyFocus effs s1.ui) settleFuel
+      (applyFocus effs s1.ui)
     simp only [hl] at hpres ⊢
     refine ⟨?_, hr.2⟩
-    simp only [fixUI, Option.filter_eq_some_iff]
+    simp only [fixUI, Option.filter_eq_some_iff, applyFocus_pressed]
     exact ⟨hr.1, by simpa [present] using hpres⟩
 
 /-- The actions of a pointerDown on a non-field control: at most a blur of the field that

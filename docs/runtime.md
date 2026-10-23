@@ -50,7 +50,11 @@ controls.
 `route` reads one event against `s.laid` (the tree the person sees) and returns the new
 interaction state and the actions to deliver, in order. Then `step`:
 
-1. folds `app.update` over the actions (`deliver`), collecting effects;
+1. folds `app.update` over the actions (`deliver`), collecting effects; if an effect is
+   `focus c` (the last one wins), sets `ui.focus := some c`. This is how an app moves keyboard
+   focus (into a field it just showed, back to a field after a commit). No `blur` is delivered
+   for a field the request takes focus from, and step 3 drops the focus if `c` is not a
+   focusable control of the new tree. The effect still rides on the frame; the host ignores it;
 2. re-runs `view` with the new `UI` and lays it out (`relayout`);
 3. repairs the `UI` against the new tree (`fixUI`): hover becomes whatever the pointer is over
    now, focus survives only if its control is still there and focusable, press only if its
@@ -110,6 +114,9 @@ controls are unless their role is `group`, `text`, `heading` or `list`.
 Blur is delivered only for fields (it's how an edit is committed); focus moving between buttons
 is UI state only. When a focused control disappears from the tree, focus is dropped without a
 `blur` (there is no control left to name).
+
+At launch, `start` focuses `app.initFocus` (default `none`) if it is a focusable control of the
+first tree.
 
 ### Window
 

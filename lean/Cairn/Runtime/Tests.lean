@@ -137,6 +137,29 @@ def resetByKey : List Event := click 60 25 ++ [.pointerMove ⟨500, 500⟩, tab 
 #guard (ui (resetByKey ++ [.key .enter {}])).focus == none
 #guard (run (resetByKey ++ [.key .enter {}])).1.app.count == 0
 
+-- Focus requests (`Effect.focus`): an app that focuses the field (^2) when ^3 is pressed, and
+-- asks for a control that isn't on screen (^9) when ^1 is double-pressed.
+def focusApp : App TState :=
+  { app with
+    update := fun s a => match a with
+      | .press c => if c == ref 3 then ({ s with log := s.log ++ [a] }, [.focus (ref 2)])
+          else update s a
+      | .doublePress c => if c == ref 1 then (s, [.focus (ref 9)]) else update s a
+      | _ => update s a
+    initFocus := some (ref 2) }
+def runF (es : List Event) : State TState × List Effect := steps focusApp cfg (start focusApp cfg ⟨800, 600⟩) es
+-- At launch the field has focus.
+#guard (start focusApp cfg ⟨800, 600⟩).ui.focus == some (ref 2)
+-- The click on ^3 drops focus on the way down; the press asks for ^2 and gets it.
+#guard (runF (click 60 95)).1.ui.focus == some (ref 2)
+#guard (runF (click 60 95)).2.length == 1
+-- Typing now reaches the field.
+#guard (runF (click 60 95 ++ [.insertText "hi"])).1.app.text == "hi"
+-- A request for a control that isn't there is dropped.
+#guard (runF [down 60 25, up 60 25, down 60 25 2, up 60 25]).1.ui.focus == none
+-- An app without `initFocus` starts with nothing focused.
+#guard s0.ui.focus == none
+
 -- Window events.
 #guard (ui [.resize ⟨1024, 768⟩]).size == ⟨1024, 768⟩
 #guard (ui [down 60 25, .windowFocus false]).pressed == none
