@@ -5,7 +5,7 @@ LEAN_PREFIX = $(shell cd lean && lean --print-prefix)
 LIB = build/lib/libcairn_lean.a
 VENDOR = host/Sources/CLean/vendor/lean
 
-.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest demo fixture clean record site site-maps map conformance fuzz fuzz-quick fuzz-yap size fuzz-trusted fuzz-trusted-quick
+.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest demo fixture clean record site site-maps map conformance fuzz fuzz-quick fuzz-yap size fuzz-trusted fuzz-trusted-quick bundle
 
 # build/lib/libcairn_lean.a: the framework (`Cairn`) and Lean's runtime, linked by every host
 # target. Each app gets its own library on top (APPS: library → file), and each executable
@@ -103,6 +103,11 @@ selftest: host
 DEMO ?= CairnTodo
 demo: host
 	cd host && swift run $(DEMO)
+
+# An app bundle: `make bundle APP=Tray [SIGN=identity]` writes build/apps/Tray.app. Per-app
+# Info.plist and entitlements go in host/Bundles/<App>/ (tools/bundle/bundle.sh).
+bundle: host
+	tools/bundle/bundle.sh $(APP) $$(cd host && swift build --show-bin-path) $(or $(SIGN),-)
 
 # The Swift stand-in app with a text field, for checking IME and accessibility by hand.
 fixture: host
