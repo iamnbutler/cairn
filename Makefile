@@ -12,7 +12,7 @@ VENDOR = host/Sources/CLean/vendor/lean
 # links exactly one: v1 apps all export `cairn_app_init/step/frame` (docs/runtime.md), so two
 # in one binary would clash. The check below keeps the shared library free of app exports and
 # each app library to one set.
-APPS = Counter:counter Basics:basics
+APPS = Counter:counter Basics:basics Todo:todo
 
 lean:
 	cd lean && lake build
@@ -77,6 +77,7 @@ bench: lean
 	cd lean && lake build bench && .lake/build/bin/bench
 	cd host && swift run -c release CairnCounter --bench
 	cd host && swift run -c release CairnBasics --bench
+	cd host && LEAN_ABORT_ON_NONLINEAR=1 swift run -c release CairnTodo --bench
 	cd host && CAIRN_BENCH=1 swift test -c release -Xswiftc -enable-testing --filter RenderBench
 
 # Lean encode and Swift decode times for 1,000- and 10,000-node frames (bench/frame.md).
@@ -88,9 +89,10 @@ bench-frame: lean
 selftest: host
 	cd host && swift run CairnCounter --selftest
 	cd host && swift run CairnBasics --selftest
+	cd host && swift run CairnTodo --selftest
 
-# Opens an app in a window: `make demo` (Basics), or `make demo DEMO=CairnCounter`.
-DEMO ?= CairnBasics
+# Opens an app in a window: `make demo` (TodoMVC), or `make demo DEMO=CairnBasics`.
+DEMO ?= CairnTodo
 demo: host
 	cd host && swift run $(DEMO)
 
@@ -168,7 +170,7 @@ fuzz: lean
 
 # The quick run in `make check`: every app, 200 sequences of 50 steps (about a second).
 # Written to build/fuzz/quick/ so it doesn't replace a longer run's evidence.
-FUZZ_APPS = Counter Basics
+FUZZ_APPS = Counter Basics Todo
 fuzz-quick: lean
 	cd lean && lake build fuzz
 	@for a in $(FUZZ_APPS); do (cd lean && .lake/build/bin/fuzz $$a --iterations 200 --out ../build/fuzz/quick) || exit 1; done

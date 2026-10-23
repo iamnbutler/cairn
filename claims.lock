@@ -16,3 +16,27 @@
 107	flow	active	ed3fc7beee378157	Add two items and finish one
 108	flow	active	6e9cfd8339810b4c	Blank text adds nothing
 109	flow	active	1ee050c6a434a9a5	Add an item, then delete it
+201	place	active	-	Todos window
+202	move	active	20a9247beb8fd04e	New todo
+203	move	active	aa45340689c8dfd6	Mark all as complete
+204	move	active	bfb82886ecadd91c	Complete a todo
+205	move	active	2943b794f7d59288	Edit a todo
+206	move	active	6f4391a930943988	Delete a todo
+207	move	active	7896f5dd84b27f5a	Edit field
+208	move	active	10ba46099a3da7d8	All
+209	move	active	612f901d09bb6768	Active
+210	move	active	853d563eb0439f09	Completed
+211	move	active	d9ddae254bdeffa6	Clear completed
+212	invariant	active	8b1d23f718f063ec	Counter and ids
+213	invariant	active	b9a4bf69a085f5c3	The list is the filter applied to the todos
+214	assume	active	-	The host reports a double click as a second click
+215	move	retired	-	Back through filters
+216	flow	active	059a40708193b6f5	Add two todos and complete one
+217	flow	active	db76efd1c499092d	Blank text adds nothing
+218	flow	active	0adb86bf72541928	Edit a todo and save with Enter
+219	flow	active	49af08f7a1c67a0b	Saving a blank edit deletes the todo
+220	flow	active	b646e7f81edd3bef	Escape cancels an edit
+221	flow	active	251baf03d4d2fb06	The Active filter hides completed todos
+222	flow	active	b0d8d8a6a65e2c5f	Clear completed
+223	flow	active	36d2b8e708c4eceb	Mark all as complete, then undo it
+224	flow	active	06954be5c9e714a8	A new todo under the Completed filter

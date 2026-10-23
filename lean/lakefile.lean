@@ -63,6 +63,16 @@ lean_lib Basics where
   defaultFacets := #[LeanLib.staticFacet]
   moreLinkObjs := #[claims_meta.o]
 
+/-- TodoMVC (workstream I): its exports (`Examples.Todo.Abi`), the app, model and view. The exports
+are a separate module so that executables linking all of `Examples` (the fuzzer) don't get two
+`cairn_app_init`s. -/
+@[default_target]
+lean_lib Todo where
+  roots := #[`Examples.Todo.Abi, `Examples.Todo, `Examples.Todo.Model, `Examples.Todo.View,
+    `Cairn.Fuzz.Rng]
+  defaultFacets := #[LeanLib.staticFacet]
+  moreLinkObjs := #[claims_meta.o]
+
 lean_exe bench where
   root := `Bench
 
