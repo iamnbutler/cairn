@@ -18,7 +18,7 @@ nothing else, so a press on anything that is not a control of ^1 or ^2 changes n
 | ^2 | move | Reset: enabled only when the count is above zero |
 | ^3 | place | the window |
 | ^4, ^5 | flow | count to three; count up, then reset |
-| ^6 | invariant | no move leaves a press in progress |
+| ^6 | retired | was an invariant over a press field the v1 runtime made vacuous |
 | ^7 | assumption | the host reports clicks where they happen |
 
 Theorems about the view (presence of ^2, pressability) are in `Examples.Counter.Proofs`; runtime
@@ -32,10 +32,6 @@ open Cairn Cairn.Claims
 
 structure State where
   count : Nat := 0
-  /-- A press in progress, as the counter's own state records it. Since the move to the v1
-  runtime nothing sets it: the runtime tracks presses itself (`UI.pressed`), and ^6 says no move
-  ever leaves one here. Kept because ^6 is stated over it. -/
-  pressed : Option Nat := none
 deriving Repr, DecidableEq, Inhabited
 
 def resetEnabled (s : State) : Bool := s.count > 0
@@ -78,13 +74,7 @@ flow ^5 startOver "Start over" for machine where
   goal s := s.count = 0 ∧ resetEnabled s = false
   witness press ^1, press ^1, press ^2
 
-invariant ^6 noPressLeft "Moves never leave a press in progress" for machine where
-  does "No move touches the press the counter's state records, so after any sequence of moves none is in progress."
-  holds s := s.pressed = none
-  init := rfl
-  step := machine.preserves <|
-    Move.all_cons (increment.preserves _ fun _ h => h)
-      (Move.all_cons (reset.preserves _ fun _ _ h => h) Move.all_nil)
+retire ^6 invariant "Moves never leave a press in progress" because "The runtime owns press tracking; Counter's state no longer has a pressed field, so the invariant was vacuous."
 
 assume ^7 hostClicks "The host reports clicks where they happen" where
   does "The host sends a pointer down and up at the logical point the person clicked, in order."

@@ -96,22 +96,24 @@ enabled move, so the path is real and not a run of no-ops), and
 ### `invariant`
 
 ```lean
-invariant ^6 noPressLeft "Moves never leave a press in progress" for machine where
-  does "No move touches the press the counter's state records."
-  holds s := s.pressed = none
-  init := rfl
+invariant ^105 itemsLeft "Items left" for machine where   -- Examples.Basics
+  does "The footer's count equals the number of items not done, …"
+  holds s := Inv s
+  init := ⟨rfl, trivial, fun _ h => by simp only [machine, List.not_mem_nil] at h, Nat.one_pos⟩
   step := machine.preserves <|
-    Move.all_cons (increment.preserves _ fun _ h => h)
-      (Move.all_cons (reset.preserves _ fun _ _ h => h) Move.all_nil)
+    Move.all_cons (typeItem.preserves _ (fun _ _ h => h) fun _ h => add_inv h)
+      (Move.all_cons (addItem.preserves _ fun _ h => add_inv h)
+      (Move.all_cons (toggleItem.preserves _ fun _ k _ h => toggle_inv k h)
+      (Move.all_cons (deleteItem.preserves _ fun _ k _ h => delete_inv k h) Move.all_nil)))
 ```
 
 `init : holds machine.init`, `step : ∀ s a, holds s → holds (machine.update s a).1`. The pattern
 above proves `step` one move at a time: `Machine.preserves` reduces it to `Move.Preserves` for
 each move, and each move's generated `preserves` lemma reduces that to one obligation per
 handler, stated over its own `apply`. Also generates
-`noPressLeft.reachable : ∀ s, machine.Reachable s → holds s`, and, when `Decidable (holds s)` can
+`itemsLeft.reachable : ∀ s, machine.Reachable s → holds s`, and, when `Decidable (holds s)` can
 be synthesized (after unfolding `holds` and the definitions at the head of its body),
-`noPressLeft.check : S → Bool := fun s => decide (holds s)`: the invariant as a runnable check,
+`itemsLeft.check : S → Bool := fun s => decide (holds s)`: the invariant as a runnable check,
 for the fuzzer (docs/fuzz.md). Without an instance there is no `check` and the fuzzer reports the
 invariant as not runnable; give the predicate a `Decidable` instance to fix that.
 
@@ -140,6 +142,12 @@ A region of the view where moves appear; `in ^P` on moves, flows and places refe
 
 ```lean
 retire ^9 move "Toggle all (old)" because "Split into ^14 and ^15."
+```
+
+Counter retired ^6, an invariant over a `pressed` field that the v1 runtime made pointless:
+
+```lean
+retire ^6 invariant "Moves never leave a press in progress" because "The runtime owns press tracking; Counter's state no longer has a pressed field, so the invariant was vacuous."
 ```
 
 The claim is gone; its id stays issued. A tombstone needs the kind, the old title and a reason.

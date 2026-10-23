@@ -5,7 +5,7 @@ import Cairn.Runtime
 
 /-! # Counter: theorems about the view, the frame and the runtime
 
-The moves' own evidence (`sound`), the invariant ^6 and the flows ^4 and ^5 are checked where
+The moves' own evidence (`sound`) and the flows ^4 and ^5 are checked where
 they are declared, in `Examples.Counter`. This file adds what depends on the view and layout:
 **Reset is on screen exactly when the count is above zero**, and every control is pressable. -/
 

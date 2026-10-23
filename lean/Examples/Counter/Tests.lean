@@ -40,7 +40,5 @@ def three : List Event := clicks incrementRef 3
 -- The frame through the v1 boundary carries both controls, and the count as text.
 #guard ((decodeFrame (frameBytes Frame.boundary (run three))).map fun f =>
   f.ax.toList.filterMap (·.control)) == some [incrementRef, resetRef]
--- No press is ever left in the counter's state (^6).
-#guard (st (three ++ clickOn (run three) resetRef)).pressed == none
 
 end Examples.Counter.Tests

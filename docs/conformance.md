@@ -256,10 +256,12 @@ Apple silicon, debug build, 2x display) passed:
 | Pixel probes | 20,092, all read from the presented drawable |
 | ^1 (Increment) | 4,886 steps |
 | ^2 (Reset) | 2,118 steps |
-| ^6 (invariant) | every step |
 | Time | 178.5 s in all; per step p50 16.5 ms, p90 17.3 ms, max 25.2 ms |
 
-No failures. ^3 (place) and ^7 (assumption) aren't run.
+No failures. ^3 (place) and ^7 (assumption) aren't run. That run also checked invariant ^6 at
+every step; ^6 has since been retired (its `pressed` field was vacuous on v1), and a rerun after
+the retirement, `N=200`, passed 200/200 walks and both flows (2,406 steps, 4,037 probes, ^1 974
+steps, ^2 419).
 
 ## What it does not check
 
