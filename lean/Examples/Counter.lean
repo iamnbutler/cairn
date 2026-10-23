@@ -124,26 +124,35 @@ def redDark : Color := ⟨172, 44, 44, 255⟩
 def white : Color := ⟨255, 255, 255, 255⟩
 def focusRing : Color := ⟨0, 122, 255, 255⟩
 
-/-- The bar's width: 20 points per count up to 20, plus one so it is never empty. -/
-def barWidth (n : Nat) : Nat := 20 * min n 20 + 1
+/-- The bar's width: 20 points per count, up to 20. -/
+def barWidth (n : Nat) : Nat := 20 * min n 20
 
 def countLabel (n : Nat) : String := s!"Count: {n}"
 
-/-- A 160×44 button for `r`, darker under the pointer, with a ring when it has focus. -/
+/-- A 160×44 button for `r`, darker under the pointer, with a ring when it has focus. It clips
+its label, so its size never depends on the text (the view is rigid: `Cairn.Layout.FitsIn`). -/
 def button (ui : UI) (r : ControlRef) (label : String) (fill hover : Color) : Node :=
   .box { width := .fixed 160, height := .fixed 44, radius := 6, align := .center,
-         justify := .center,
+         justify := .center, clip := true,
          background := some (if ui.hover = some r then hover else fill),
          border := if ui.focus = some r then some ⟨2, focusRing⟩ else none }
     (some { ref := r, label := label })
     [.text { font := { size := 15, weight := 600 }, color := white } label]
 
+/-- A bar as long as the count. -/
+def bar (n : Nat) : Node :=
+  .box { width := .fixed (barWidth n), height := .fixed 20, background := some blue } none []
+
+/-- The count, in a clipped 20-point row. -/
+def countRow (n : Nat) : Node :=
+  .box { width := .fill, height := .fixed 20, clip := true } none
+    [.text { font := { size := 15 }, color := ink } (countLabel n)]
+
 def view (s : State) (ui : UI) : Node :=
   .box { width := .fill, height := .fill, padding := ⟨40, 40, 40, 40⟩, gap := 16,
          background := some bg, clip := true } none
-    ([ .box { width := .fixed (barWidth s.count), height := .fixed 20, background := some blue }
-         none [],
-       .text { font := { size := 15 }, color := ink } (countLabel s.count),
+    ([ bar s.count,
+       countRow s.count,
        button ui incrementRef "Increment" green greenDark ] ++
      (if resetEnabled s then [button ui resetRef "Reset" red redDark] else []))
 
