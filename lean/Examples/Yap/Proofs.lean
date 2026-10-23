@@ -251,6 +251,8 @@ def stepKinds : Input → List Kind
   | .recentLoaded _ => []
   | .trust _ => []
   | .menu _ => [.copy, .saveConfig, .storePrefs, .stop, .overlay, .opens]
+  | .front .. => []
+  | .keyLost => [.stop, .overlay]
 
 theorem step_kinds (s : State) (i : Input) : Kinds (stepKinds i) (step s i).2 := by
   cases i <;> simp only [step, stepKinds]
@@ -264,6 +266,7 @@ theorem step_kinds (s : State) (i : Input) : Kinds (stepKinds i) (step s i).2 :=
   case config => exact configured_kinds _ _
   case menu => exact menu_kinds _ _
   case transcriptDays => split <;> simp [Kinds, Cmd.kind]
+  case keyLost => unfold keyLost; split <;> simp [Kinds, Cmd.kind, drop]
   all_goals simp [Kinds, Cmd.kind]
 
 /-- A command of kind `k` from input `i` means `k` is one of `i`'s kinds. -/
@@ -371,8 +374,8 @@ theorem keep_recent (s : State) (t : Transcript) : (keep s t).1.recent = remembe
   unfold keep; dsimp only; split <;> rfl
 
 /-- The transcript `transcribed` keeps and types. -/
-def transcriptOf (c : ClipReq) (raw : String) : Transcript :=
-  { clip := some c.clip, text := fixText c.fixes raw, app := c.target.name, typed := false }
+def transcriptOf (c : ClipReq) (raw : String) (date : Int) : Transcript :=
+  { clip := some c.clip, text := fixText c.fixes raw, app := c.target.name, typed := false, date }
 
 /-- What a type command from a transcript means: the clip was not cancelled since it was sent,
 the text is the fixed transcript (with its trailing space or Return), the transcript is in the
@@ -382,9 +385,9 @@ theorem transcribed_type (s : State) (c : ClipReq) (raw : String) {q n pid : Nat
     (fixText c.fixes raw).isEmpty = false ∧ c.turn = s.turn ∧ n = c.clip ∧ pid = c.target.pid ∧
       ret = c.submits ∧
       text = (if c.submits then fixText c.fixes raw else fixText c.fixes raw ++ " ") ∧
-      transcriptOf c raw ∈ (transcribed s c raw).1.recent ∧
+      transcriptOf c raw s.wall ∈ (transcribed s c raw).1.recent ∧
       ∃ pre post, (transcribed s c raw).2 = pre ++ Cmd.type q n pid text ret :: post ∧
-        (s.settings.keepTranscripts = true → Cmd.save s.nextReq (transcriptOf c raw) ∈ pre) := by
+        (s.settings.keepTranscripts = true → Cmd.save s.nextReq (transcriptOf c raw s.wall) ∈ pre) := by
   unfold transcribed at h ⊢
   dsimp only at h ⊢
   split at h
@@ -401,7 +404,7 @@ theorem transcribed_type (s : State) (c : ClipReq) (raw : String) {q n pid : Nat
         obtain ⟨rfl, rfl, rfl, rfl, rfl⟩ := hy
         refine ⟨trivial, trivial, rfl, rfl, rfl, rfl, ?_, ?_⟩
         · simp only [typeIt, keep_recent]; exact mem_remember _ _
-        · refine ⟨(keep s (transcriptOf c raw)).2 ++ [.overlay c.clip (.text (fixText c.fixes raw))], [], ?_, ?_⟩
+        · refine ⟨(keep s (transcriptOf c raw s.wall)).2 ++ [.overlay c.clip (.text (fixText c.fixes raw))], [], ?_, ?_⟩
           · simp [typeIt]; rfl
           · intro hk
             simp only [keep_cmds, hk, ↓reduceIte, List.cons_append, List.nil_append,

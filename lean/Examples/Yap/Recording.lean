@@ -242,6 +242,10 @@ theorem step_ends (s : State) (i : Input) (r : Recording) (hr : s.recording = so
   | menu m => exact Or.imp_right Or.inl (menu_ends s m r hr)
   | otherKey => simp only [step]; split <;> (left; simp [hr])
   | transcriptDays => left; simp [step, hr]
+  | front c a =>
+    left; simp only [step, setFront, hr, Option.map_some]
+    split <;> rfl
+  | keyLost => right; left; simp [step, keyLost, hr, drop]
   | _ => left; simp [step, hr]
 
 /-! ## Every recording ends -/
@@ -474,6 +478,15 @@ theorem step_recInv (s : State) (i : Input) (h : RecInv s) : RecInv (step s i).1
   | config c => exact configured_recInv _ _ h
   | menu m => exact h.calm (menu_calm _ _)
   | transcriptDays => exact h
+  | front c a =>
+    refine h.calm (Or.inr ⟨?_, rfl, Nat.le_refl _⟩)
+    simp only [step, setFront, shape, Option.map_map]
+    congr 1; funext r; simp only [Function.comp]; split <;> rfl
+  | keyLost =>
+    simp only [step, keyLost]
+    split
+    · exact h.calm (Calm.none rfl)
+    · rename_i hr; exact h.calm (Calm.none hr)
   | _ => exact h.calm (Calm.same rfl rfl rfl)
 
 theorem recInv_init : RecInv init := by intro r h; simp [init] at h

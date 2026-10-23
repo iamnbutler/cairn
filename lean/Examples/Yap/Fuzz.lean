@@ -156,6 +156,10 @@ def input (s : State) (h : Host) : Gen Input := do
       return .transcriptDays today (← Gen.listOf (← Gen.range 0 8) (Gen.range 0 (today + 2)))),
     (1, do return .recentLoaded (← Gen.listOf (← Gen.range 0 7) transcript)),
     (1, do return .trust (← Gen.bool)),
+    (4, do match ← target with
+      | some t => return .front (if ← Gen.chance 1 10 then clip + 1 else clip) t
+      | none => return .otherKey),
+    (1, do return .keyLost),
     (5, do return .menu (← menuAction)),
     (1, do return .launch { enabled := ← Gen.chance 5 6, submits := ← Gen.bool,
                             model := ← opt (Gen.elem ["gpt-transcribe", "whisper-1"]) })]

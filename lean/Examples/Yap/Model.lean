@@ -131,6 +131,12 @@ inductive Input where
   /-- Whether Accessibility is granted. -/
   | trust (granted : Bool)
   | menu (m : MenuAction)
+  /-- The app that was in front when the key went down for this clip, reported after the
+  `keyDown` (the host asks once the recording has started). -/
+  | front (clip : Nat) (target : Target)
+  /-- The key can no longer be heard (its listener stopped): the key is up, and a recording in
+  progress is dropped, not sent. -/
+  | keyLost
 deriving Repr, DecidableEq, Inhabited
 
 inductive Sound where
@@ -233,6 +239,9 @@ deriving Repr, DecidableEq, Inhabited
 
 structure State where
   now : Ms := 0
+  /-- Wall-clock milliseconds since the Unix epoch, UTC: when a transcript was made. Set by the
+  host's clock; nothing here depends on it but the transcripts' dates. -/
+  wall : Int := 0
   /-- **Dictate with key** (`UserDefaults` `enabled`). -/
   enabled : Bool := true
   /-- **Press Return After Dictating**. -/
@@ -415,7 +424,8 @@ def transcribed (s : State) (c : ClipReq) (raw : String) : State × List Cmd :=
   let text := fixText c.fixes raw
   if text.isEmpty then ({ s with detail := "Heard nothing" }, [.overlay c.clip (.hide 0)])
   else
-    let t : Transcript := { clip := some c.clip, text, app := c.target.name, typed := false }
+    let t : Transcript := { clip := some c.clip, text, app := c.target.name, typed := false,
+                            date := s.wall }
     let k := keep s t
     if c.turn = s.turn then
       let y := typeIt k.1 c t
@@ -538,6 +548,17 @@ def menu (s : State) : MenuAction → State × List Cmd
   | .editSettings => (s, [.open .settings])
   | .grantAccess => if s.trusted then (s, []) else (s, [.open .accessibility])
 
+/-- The app in front for a recording that has none yet. -/
+def setFront (s : State) (clip : Nat) (app : Target) : State :=
+  { s with recording := s.recording.map fun r =>
+      if r.clip = clip ∧ r.target = none then { r with target := some app } else r }
+
+/-- The key's listener stopped: the key is up, and a recording is dropped. -/
+def keyLost (s : State) : State × List Cmd :=
+  match s.recording with
+  | some r => let d := drop s r; ({ d.1 with keyHeld := false }, d.2)
+  | none => ({ s with keyHeld := false }, [])
+
 /-- **The machine.** Total and pure: every input in every state has an answer. -/
 def step (s : State) : Input → State × List Cmd
   | .launch p =>
@@ -562,6 +583,8 @@ def step (s : State) : Input → State × List Cmd
   | .recentLoaded ts => ({ s with recent := (s.recent ++ ts).take recentLimit }, [])
   | .trust b => ({ s with trusted := b }, [])
   | .menu m => menu s m
+  | .front clip app => (setFront s clip app, [])
+  | .keyLost => keyLost s
 
 /-- The state after a sequence of inputs. -/
 def run (s : State) (is : List Input) : State := is.foldl (fun s i => (step s i).1) s

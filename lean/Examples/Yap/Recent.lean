@@ -116,6 +116,7 @@ theorem step_small (s : State) (i : Input) (h : Small s) : Small (step s i).1 :=
   | menu m => exact menu_small _ _ h
   | recentLoaded ts => simp only [step, Small, List.length_take]; exact Nat.min_le_left _ _
   | transcriptDays => exact h
+  | keyLost => simp only [step, keyLost]; split <;> simp only [drop] <;> exact h
   | _ => exact h
 
 end Examples.Yap

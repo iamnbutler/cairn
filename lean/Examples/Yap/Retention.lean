@@ -21,6 +21,9 @@ structure Transcript where
   app : Option String := none
   /-- Whether it reached that app. -/
   typed : Bool := false
+  /-- When it was transcribed: wall-clock milliseconds since the Unix epoch, UTC (the file's
+  `date`). -/
+  date : Int := 0
 deriving Repr, DecidableEq, Inhabited
 
 /-- The recent list holds the newest five. -/

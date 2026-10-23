@@ -311,6 +311,17 @@ theorem menu_rel (s : State) (m : MenuAction) : Rel s (menu s m) := by
     | exact Rel.of rfl ht (List.Sublist.refl _)
     | (split <;> exact Rel.of rfl (by simp [typedClips]) (List.Sublist.refl _))
 
+theorem setFront_live (s : State) (c : Nat) (a : Target) : live (setFront s c a) = live s := by
+  cases h : s.recording with
+  | none => simp [live, setFront, h]
+  | some r => simp only [live, setFront, h, Option.map_some]; split <;> rfl
+
+theorem keyLost_rel (s : State) : Rel s (keyLost s) := by
+  unfold keyLost
+  split
+  · rename_i r hr; exact Rel.trans_same (drop_rel s r hr) rfl rfl rfl
+  · exact Rel.of rfl rfl (List.Sublist.refl _)
+
 theorem step_rel (s : State) (i : Input) : Rel s (step s i) := by
   cases i with
   | keyDown t f =>
@@ -332,6 +343,8 @@ theorem step_rel (s : State) (i : Input) : Rel s (step s i) := by
   | menu m => exact menu_rel _ _
   | transcriptDays d ds =>
     exact Rel.of rfl (by simp only [step]; split <;> simp [typedClips]) (List.Sublist.refl _)
+  | front c a => exact Rel.of rfl rfl (by rw [show (step s (.front c a)).1 = setFront s c a from rfl, setFront_live]; exact List.Sublist.refl _)
+  | keyLost => exact keyLost_rel s
   | _ => exact Rel.of rfl (by simp [step, typedClips]) (List.Sublist.refl _)
 
 theorem fresh_add {a b c : Nat} (h₁ : a ≤ b) (h₂ : b ≤ c) (n : Nat) :
