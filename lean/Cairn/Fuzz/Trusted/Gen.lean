@@ -117,8 +117,14 @@ def bytes : Gen ByteArray := do
 
 def headers : Gen (List (String × String)) := do return (← array 3 (do return (← str, ← str))).toList
 
+def part : Gen Part := do
+  if ← Gen.chance 1 2 then return .bytes (← bytes)
+  else return .wav (← u32) (← u32) (← opt u32)
+
+def secret : Gen Secret := do return ⟨← str, ← str, ← str, ← str⟩
+
 def request : Gen Request := do
-  match ← Gen.below 9 with
+  match ← Gen.below 12 with
   | 0 => return .readFile (← str)
   | 1 => return .writeFile (← str) (← bytes)
   | 2 => return .playSound (← str)
@@ -127,6 +133,9 @@ def request : Gen Request := do
   | 5 => return .deleteFile (← str)
   | 6 => return .frontmostApp
   | 7 => return .permission (← Gen.elem [.accessibility, .microphone]) (← Gen.chance 1 2)
+  | 8 => return .typeText (← u32) (← str) (← Gen.chance 1 2)
+  | 9 => return .upload (← str) (← str) (← headers) (← opt secret) (← array 4 part).toList (← u32)
+  | 10 => return .forgetClip (← u32)
   | _ => return .http (← str) (← str) (← headers) (← bytes) (← u32)
 
 def effect : Gen Effect := do
@@ -140,9 +149,11 @@ def effect : Gen Effect := do
   | _ => return .quit
 
 def subCmd : Gen SubCmd := do
-  match ← Gen.below 3 with
+  match ← Gen.below 5 with
   | 0 => return .start (← u32) (.every (← u32))
   | 1 => return .start (← u32) (.watchFile (← str))
+  | 2 => return .start (← u32) (.record (← u32))
+  | 3 => return .start (← u32) (.globalKey (← u32) (← opt u32))
   | _ => return .stop (← u32)
 
 def frame : Gen Frame := do

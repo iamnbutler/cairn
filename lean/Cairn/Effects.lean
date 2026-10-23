@@ -33,6 +33,24 @@ inductive Permission where
   | microphone
 deriving Repr, DecidableEq, Inhabited
 
+/-- A part of an `upload` body: bytes Lean built, or audio the host holds. -/
+inductive Part where
+  | bytes (b : ByteArray)
+  /-- The recording of `clip`, samples `[start, stop)` (to the end of the recording with
+  `none`), as a WAV file: 16 kHz, mono, 16-bit PCM. Lean never sees the samples. -/
+  | wav (clip start : Nat) (stop : Option Nat)
+deriving Repr, BEq, Inhabited
+
+/-- A header whose value comes from a secret the host reads when it sends the request, so the
+secret never reaches Lean, a frame or a log: `header: scheme ++ value`, where `value` is the
+environment variable `name`, or else `name`'s line in the `KEY=value` file `file`. -/
+structure Secret where
+  header : String
+  scheme : String
+  file : String
+  name : String
+deriving Repr, DecidableEq, Inhabited
+
 /-- Something the host does that answers back. Closed: adding a kind is a constructor, its
 encoding, a `Reply.answers` case and one host handler (docs/effects.md). -/
 inductive Request where
@@ -53,6 +71,16 @@ inductive Request where
   | frontmostApp
   /-- Whether the app holds `p`; with `prompt`, the system also asks the person if it doesn't. -/
   | permission (p : Permission) (prompt : Bool)
+  /-- Bring process `pid` to the front and type `text` into it as key events, then Return if
+  `pressReturn`. Needs Accessibility. -/
+  | typeText (pid : Nat) (text : String) (pressReturn : Bool)
+  /-- `http` with a body of parts the host assembles and an optional secret header (OpenAI's
+  transcription request: multipart framing from Lean, the clip's WAV and the key from the
+  host). -/
+  | upload (method url : String) (headers : List (String × String)) (secret : Option Secret)
+      (body : List Part) (timeoutMs : Nat)
+  /-- The host may drop the clip's samples. -/
+  | forgetClip (clip : Nat)
 deriving Repr, BEq, Inhabited
 
 /-- The kind of a request, without its payload: what the runtime remembers while it is
@@ -60,6 +88,7 @@ pending. -/
 inductive Request.Kind where
   | readFile | writeFile | playSound | http
   | appendFile | listDir | deleteFile | frontmostApp | permission
+  | typeText | upload | forgetClip
 deriving Repr, DecidableEq, Inhabited
 
 def Request.kind : Request → Request.Kind
@@ -67,6 +96,7 @@ def Request.kind : Request → Request.Kind
   | .playSound .. => .playSound | .http .. => .http
   | .appendFile .. => .appendFile | .listDir .. => .listDir | .deleteFile .. => .deleteFile
   | .frontmostApp => .frontmostApp | .permission .. => .permission
+  | .typeText .. => .typeText | .upload .. => .upload | .forgetClip .. => .forgetClip
 
 inductive Reply where
   /-- `writeFile`, `appendFile`, `deleteFile` and `playSound` succeeded. -/
@@ -90,7 +120,8 @@ def Reply.answers : Request.Kind → Reply → Bool
   | _, .failed .. => true
   | .readFile, .bytes _ => true
   | .writeFile, .done | .playSound, .done | .appendFile, .done | .deleteFile, .done => true
-  | .http, .http .. => true
+  | .typeText, .done | .forgetClip, .done => true
+  | .http, .http .. | .upload, .http .. => true
   | .listDir, .names _ => true
   | .frontmostApp, .app .. => true
   | .permission, .flag _ => true
@@ -102,6 +133,21 @@ inductive Sub where
   | every (ms : Nat)
   /-- `changed` whenever the file at `path` changes: written, replaced, created or removed. -/
   | watchFile (path : String)
+  /-- Record `clip` from the microphone while active, reporting `audio`; stopping it stops the
+  microphone. The host keeps the samples for `Part.wav`. Needs Microphone. -/
+  | record (clip : Nat)
+  /-- The key with virtual key code `code` (with `modifier`, the `NSEvent.ModifierFlags` bit
+  that tells a modifier key's press from its release): `keyDown`, `keyUp`, and `otherKey` for
+  any other key pressed while it is down. Needs Accessibility. -/
+  | globalKey (code : Nat) (modifier : Option Nat)
+deriving Repr, DecidableEq, Inhabited
+
+/-- One 20 ms window of a recording (320 samples at 16 kHz), as integers. -/
+structure Level where
+  /-- The sum of its samples' squares. -/
+  sumSq : Nat
+  /-- Its largest absolute sample (`Int16.min` counts as `Int16.max`). -/
+  peak : Nat
 deriving Repr, DecidableEq, Inhabited
 
 /-- What an active subscription reports. -/
@@ -110,6 +156,17 @@ inductive SubEvent where
   | tick
   /-- `watchFile`'s file changed. -/
   | changed
+  /-- `record`: `frames` more samples, their largest absolute value `peak`, and the 20 ms
+  windows they complete, in order from the start of the clip. -/
+  | audio (frames peak : Nat) (windows : List Level)
+  /-- `globalKey`: the key went down or up, or another key went down while it was held, at
+  monotonic milliseconds `t` (the clock of `Time.mono`). -/
+  | keyDown (t : Nat)
+  | keyUp (t : Nat)
+  | otherKey (t : Nat)
+  /-- The subscription could not run (a permission missing, no microphone). It may still be
+  running; an app stops it by not asking for it. -/
+  | failed (fault : Fault) (message : String)
 deriving Repr, DecidableEq, Inhabited
 
 /-- Runtime → host: start or stop a subscription, under the runtime's id for it. -/

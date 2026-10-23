@@ -60,11 +60,12 @@ def checkedOfCode : UInt8 → Option (Option Bool)
 def Request.Kind.code : Request.Kind → UInt8
   | .readFile => 0 | .writeFile => 1 | .playSound => 2 | .http => 3
   | .appendFile => 4 | .listDir => 5 | .deleteFile => 6 | .frontmostApp => 7 | .permission => 8
+  | .typeText => 9 | .upload => 10 | .forgetClip => 11
 
 def Request.Kind.ofCode : UInt8 → Option Request.Kind
   | 0 => some .readFile | 1 => some .writeFile | 2 => some .playSound | 3 => some .http
   | 4 => some .appendFile | 5 => some .listDir | 6 => some .deleteFile | 7 => some .frontmostApp
-  | 8 => some .permission
+  | 8 => some .permission | 9 => some .typeText | 10 => some .upload | 11 => some .forgetClip
   | _ => none
 
 @[simp] theorem Request.Kind.ofCode_code (k : Request.Kind) :
@@ -81,9 +82,9 @@ def Permission.ofCode : UInt8 → Option Permission
     Permission.ofCode (Permission.code p) = some p := by
   cases p <;> rfl
 
-/-- `every` 0, `watchFile` 1. -/
+/-- `every` 0, `watchFile` 1, `record` 2, `globalKey` 3. -/
 def Sub.code : Sub → UInt8
-  | .every _ => 0 | .watchFile _ => 1
+  | .every _ => 0 | .watchFile _ => 1 | .record _ => 2 | .globalKey .. => 3
 
 /-! ## What fits
 
@@ -138,6 +139,12 @@ def fb (b : ByteArray) : Bool := decide (FitsBytes b)
 def fitsHeaders (hs : List (String × String)) : Bool :=
   fu hs.length && hs.all fun (k, v) => fs k && fs v
 
+def fitsPart : Part → Bool
+  | .bytes b => fb b
+  | .wav c st sp => fu c && fu st && sp.all fu
+
+def fitsSecret (s : Secret) : Bool := fs s.header && fs s.scheme && fs s.file && fs s.name
+
 def fitsRequest : Request → Bool
   | .readFile p => fs p
   | .writeFile p d => fs p && fb d
@@ -146,6 +153,11 @@ def fitsRequest : Request → Bool
   | .appendFile p d => fs p && fb d
   | .listDir p | .deleteFile p => fs p
   | .frontmostApp | .permission .. => true
+  | .typeText pid t _ => fu pid && fs t
+  | .upload m u hs sec body t =>
+    fs m && fs u && fitsHeaders hs && sec.all fitsSecret && fu body.length && body.all fitsPart &&
+      fu t
+  | .forgetClip c => fu c
 
 def fitsEffect : Effect → Bool
   | .setClipboard s => fs s
@@ -159,6 +171,8 @@ def fitsEffect : Effect → Bool
 def fitsSub : Sub → Bool
   | .every ms => fu ms
   | .watchFile p => fs p
+  | .record c => fu c
+  | .globalKey code m => fu code && m.all fu
 
 def fitsSubCmd : SubCmd → Bool
   | .start id sub => fu id && fitsSub sub
@@ -222,6 +236,20 @@ def header1 (kv : String × String) : List UInt8 := str kv.1 ++ str kv.2
 /-- A `u32` count, then each name and value. -/
 def headers (hs : List (String × String)) : List UInt8 := u32 hs.length ++ hs.flatMap header1
 
+/-- `[0, 0, 0, 0]` and bytes, or `[1, hasStop, 0, 0]`, clip, start and stop. -/
+def part : Part → List UInt8
+  | .bytes b => [0] ++ pad 3 ++ bytes b
+  | .wav c st sp => [1] ++ bool sp.isSome ++ pad 2 ++ u32 c ++ u32 st ++ u32 (sp.getD 0)
+
+def secret (s : Secret) : List UInt8 := str s.header ++ str s.scheme ++ str s.file ++ str s.name
+
+def optSecret : Option Secret → List UInt8
+  | none => [0] ++ pad 3
+  | some s => [1] ++ pad 3 ++ secret s
+
+/-- A `u32` count, then each part. -/
+def parts (ps : List Part) : List UInt8 := u32 ps.length ++ ps.flatMap part
+
 /-- A request's fields after its record head and id. -/
 def requestBody : Request → List UInt8
   | .readFile p => str p
@@ -233,6 +261,10 @@ def requestBody : Request → List UInt8
   | .deleteFile p => str p
   | .frontmostApp => []
   | .permission p prompt => [Permission.code p] ++ bool prompt ++ pad 2
+  | .typeText pid t r => u32 pid ++ bool r ++ pad 3 ++ str t
+  | .upload m u hs sec body t =>
+    u32 t ++ str m ++ str u ++ headers hs ++ optSecret sec ++ parts body
+  | .forgetClip c => u32 c
 
 def effect : Effect → List UInt8
   | .setClipboard s => [0] ++ pad 3 ++ str s
@@ -247,6 +279,8 @@ def effect : Effect → List UInt8
 def subBody : Sub → List UInt8
   | .every ms => u32 ms
   | .watchFile p => str p
+  | .record c => u32 c
+  | .globalKey code m => u32 code ++ bool m.isSome ++ pad 3 ++ u32 (m.getD 0)
 
 def subCmd : SubCmd → List UInt8
   | .start id s => [0, Sub.code s] ++ pad 2 ++ u32 id ++ subBody s
@@ -362,6 +396,36 @@ def headers : Dec (List (String × String)) := do
   let n ← u32
   count header1 n
 
+def part : Dec Part := do
+  match (← byte) with
+  | 0 =>
+    skip 3
+    return .bytes (← bytes)
+  | 1 =>
+    let has ← bool
+    skip 2
+    let c ← u32
+    let st ← u32
+    let sp ← u32
+    return .wav c st (if has then some sp else none)
+  | _ => fail
+
+def secret : Dec Secret := do return ⟨← str, ← str, ← str, ← str⟩
+
+def optSecret : Dec (Option Secret) := do
+  match (← byte) with
+  | 0 =>
+    skip 3
+    return none
+  | 1 =>
+    skip 3
+    return some (← secret)
+  | _ => fail
+
+def parts : Dec (List Part) := do
+  let n ← u32
+  count part n
+
 def requestBody : Request.Kind → Dec Request
   | .readFile => do return .readFile (← str)
   | .writeFile => do
@@ -386,6 +450,20 @@ def requestBody : Request.Kind → Dec Request
     let prompt ← bool
     skip 2
     return .permission p prompt
+  | .typeText => do
+    let pid ← u32
+    let r ← bool
+    skip 3
+    return .typeText pid (← str) r
+  | .upload => do
+    let t ← u32
+    let m ← str
+    let u ← str
+    let hs ← headers
+    let sec ← optSecret
+    let body ← parts
+    return .upload m u hs sec body t
+  | .forgetClip => do return .forgetClip (← u32)
 
 def effect : Dec Effect := do
   match (← byte) with
@@ -418,6 +496,13 @@ def effect : Dec Effect := do
 def subBody : UInt8 → Dec Sub
   | 0 => do return .every (← u32)
   | 1 => do return .watchFile (← str)
+  | 2 => do return .record (← u32)
+  | 3 => do
+    let code ← u32
+    let has ← bool
+    skip 3
+    let m ← u32
+    return .globalKey code (if has then some m else none)
   | _ => fail
 
 def subCmd : Dec SubCmd := do
@@ -559,6 +644,44 @@ theorem headers_enc {hs : List (String × String)} (h : fitsHeaders hs = true) (
   simp only [headers, Enc.headers, List.append_assoc, bind_apply, u32_enc h.1]
   exact count_enc hs (fun kv hkv => header1_enc (by simpa using h.2 kv hkv)) r
 
+theorem part_enc {x : Part} (h : fitsPart x = true) (r : List UInt8) :
+    part (Enc.part x ++ r) = some (x, r) := by
+  cases x with
+  | bytes b =>
+    simp only [fitsPart, fb_iff] at h
+    simp only [part, Enc.part, List.cons_append, List.nil_append, List.append_assoc, bind_apply,
+        byte_cons, skip_pad, bytes_enc h, pure_apply]
+  | wav c st sp =>
+    simp only [fitsPart, Bool.and_eq_true, fu_iff] at h
+    obtain ⟨⟨hc, hs⟩, hp⟩ := h
+    cases sp <;>
+      simp_all only [Option.all_none, Option.all_some, fu_iff, part, Enc.part, Option.isSome_none,
+        Option.isSome_some, Option.getD_none, Option.getD_some, List.cons_append, List.nil_append,
+        List.append_assoc, bind_apply, byte_cons, bool_enc, skip_pad, u32_enc, fitsU32_zero,
+        pure_apply, Bool.false_eq_true, ↓reduceIte]
+
+theorem secret_enc {s : Secret} (h : fitsSecret s = true) (r : List UInt8) :
+    secret (Enc.secret s ++ r) = some (s, r) := by
+  simp only [fitsSecret, Bool.and_eq_true, fs_iff] at h
+  obtain ⟨⟨⟨h1, h2⟩, h3⟩, h4⟩ := h
+  simp only [secret, Enc.secret, List.append_assoc, bind_apply, str_enc h1, str_enc h2,
+      str_enc h3, str_enc h4, pure_apply]
+
+theorem optSecret_enc {s : Option Secret} (h : s.all fitsSecret = true) (r : List UInt8) :
+    optSecret (Enc.optSecret s ++ r) = some (s, r) := by
+  cases s with
+  | none => simp only [optSecret, Enc.optSecret, List.cons_append, List.nil_append, bind_apply,
+      byte_cons, skip_pad, pure_apply]
+  | some s =>
+    simp only [Option.all_some] at h
+    simp only [optSecret, Enc.optSecret, List.cons_append, List.nil_append, List.append_assoc,
+        bind_apply, byte_cons, skip_pad, secret_enc h, pure_apply]
+
+theorem parts_enc {ps : List Part} (hn : FitsU32 ps.length) (h : ∀ p ∈ ps, fitsPart p = true)
+    (r : List UInt8) : parts (Enc.parts ps ++ r) = some (ps, r) := by
+  simp only [parts, Enc.parts, List.append_assoc, bind_apply, u32_enc hn]
+  exact count_enc ps (fun p hp => part_enc (h p hp)) r
+
 theorem requestBody_enc {q : Request} (h : fitsRequest q = true) (r : List UInt8) :
     requestBody q.kind (Enc.requestBody q ++ r) = some (q, r) := by
   cases q with
@@ -592,6 +715,19 @@ theorem requestBody_enc {q : Request} (h : fitsRequest q = true) (r : List UInt8
     simp only [Request.kind, requestBody, Enc.requestBody, List.cons_append, List.nil_append,
         List.append_assoc, bind_apply, byte_cons, Permission.ofCode_code, bool_enc, skip_pad,
         pure_apply]
+  | typeText pid t ret =>
+    simp only [fitsRequest, Bool.and_eq_true, fu_iff, fs_iff] at h
+    simp only [Request.kind, requestBody, Enc.requestBody, List.append_assoc, bind_apply,
+        u32_enc h.1, bool_enc, skip_pad, str_enc h.2, pure_apply]
+  | upload m u hs sec body t =>
+    simp only [fitsRequest, Bool.and_eq_true, fs_iff, fu_iff, List.all_eq_true] at h
+    obtain ⟨⟨⟨⟨⟨⟨hm, hu⟩, hh⟩, hsec⟩, hn⟩, hb⟩, ht⟩ := h
+    simp only [Request.kind, requestBody, Enc.requestBody, List.append_assoc, bind_apply,
+        u32_enc ht, str_enc hm, str_enc hu, headers_enc hh, optSecret_enc hsec,
+        parts_enc hn hb, pure_apply]
+  | forgetClip c =>
+    simp only [fitsRequest, fu_iff] at h
+    simp only [Request.kind, requestBody, Enc.requestBody, bind_apply, u32_enc h, pure_apply]
 
 theorem effect_enc {x : Effect} (h : fitsEffect x = true) (r : List UInt8) :
     effect (Enc.effect x ++ r) = some (x, r) := by
@@ -637,6 +773,20 @@ theorem subCmd_enc {x : SubCmd} (h : fitsSubCmd x = true) (r : List UInt8) :
       simp only [subCmd, Enc.subCmd, Sub.code, Enc.subBody, subBody, List.cons_append,
           List.nil_append, List.append_assoc, bind_apply, byte_cons, skip_pad, u32_enc h.1,
           str_enc h.2, pure_apply]
+    | record c =>
+      simp only [fitsSubCmd, fitsSub, Bool.and_eq_true, fu_iff] at h
+      simp only [subCmd, Enc.subCmd, Sub.code, Enc.subBody, subBody, List.cons_append,
+          List.nil_append, List.append_assoc, bind_apply, byte_cons, skip_pad, u32_enc h.1,
+          u32_enc h.2, pure_apply]
+    | globalKey code m =>
+      simp only [fitsSubCmd, fitsSub, Bool.and_eq_true, fu_iff] at h
+      obtain ⟨hid, hc, hm⟩ := h
+      cases m <;>
+        simp_all only [Option.all_none, Option.all_some, fu_iff, subCmd, Enc.subCmd, Sub.code,
+          Enc.subBody, subBody, Option.isSome_none, Option.isSome_some, Option.getD_none,
+          Option.getD_some, List.cons_append, List.nil_append, List.append_assoc, bind_apply,
+          byte_cons, skip_pad, bool_enc, u32_enc, fitsU32_zero, pure_apply, Bool.false_eq_true,
+          ↓reduceIte]
   | stop id =>
     simp only [fitsSubCmd, fu_iff] at h
     simp only [subCmd, Enc.subCmd, List.cons_append, List.nil_append, List.append_assoc,
@@ -703,6 +853,18 @@ def bytes (b : ByteArray) : Nat := 4 + b.size
 def headers (hs : List (String × String)) : Nat :=
   4 + hs.foldl (fun n kv => n + (str kv.1 + str kv.2)) 0
 
+def part : Part → Nat
+  | .bytes b => 4 + bytes b
+  | .wav .. => 16
+
+def parts (ps : List Part) : Nat := 4 + ps.foldl (fun n p => n + part p) 0
+
+def secret (s : Secret) : Nat := str s.header + str s.scheme + str s.file + str s.name
+
+def optSecret : Option Secret → Nat
+  | none => 4
+  | some s => 4 + secret s
+
 def requestBody : Request → Nat
   | .readFile p => str p
   | .writeFile p d => str p + bytes d
@@ -712,6 +874,9 @@ def requestBody : Request → Nat
   | .listDir p | .deleteFile p => str p
   | .frontmostApp => 0
   | .permission .. => 4
+  | .typeText _ t _ => 8 + str t
+  | .upload m u hs sec body _ => 4 + str m + str u + headers hs + optSecret sec + parts body
+  | .forgetClip _ => 4
 
 def effect : Effect → Nat
   | .setClipboard s => 4 + str s
@@ -725,6 +890,8 @@ def effect : Effect → Nat
 def subBody : Sub → Nat
   | .every _ => 4
   | .watchFile p => str p
+  | .record _ => 4
+  | .globalKey .. => 12
 
 def subCmd : SubCmd → Nat
   | .start _ s => 8 + subBody s
@@ -768,10 +935,24 @@ theorem headers_eq (hs : List (String × String)) : headers hs = (Enc.headers hs
   simp only [Enc.headers, List.length_append, Enc.length_u32, List.length_flatMap, Enc.header1,
       str_eq, Nat.zero_add]
 
+theorem part_eq (p : Part) : part p = (Enc.part p).length := by
+  cases p <;> simp only [part, Enc.part, bytes_eq, List.length_append, List.length_cons,
+      List.length_nil, Enc.pad, List.length_replicate, Enc.bool, Enc.length_u32] <;> omega
+
+theorem parts_eq (ps : List Part) : parts ps = (Enc.parts ps).length := by
+  rw [parts, foldl_add]
+  simp only [Enc.parts, List.length_append, Enc.length_u32, List.length_flatMap, ← part_eq,
+      Nat.zero_add]
+
+theorem optSecret_eq (s : Option Secret) : optSecret s = (Enc.optSecret s).length := by
+  cases s <;> simp only [optSecret, secret, Enc.optSecret, Enc.secret, str_eq,
+      List.length_append, List.length_cons, List.length_nil, Enc.pad, List.length_replicate] <;>
+    omega
+
 theorem requestBody_eq (r : Request) : requestBody r = (Enc.requestBody r).length := by
   cases r <;> simp only [requestBody, Enc.requestBody, List.length_append, str_eq, bytes_eq,
-      headers_eq, Enc.length_u32, List.length_nil, List.length_cons, Enc.bool, Enc.pad,
-      List.length_replicate] <;> try omega
+      headers_eq, optSecret_eq, parts_eq, Enc.length_u32, List.length_nil, List.length_cons,
+      Enc.bool, Enc.pad, List.length_replicate] <;> try omega
 
 theorem effect_eq (e : Effect) : effect e = (Enc.effect e).length := by
   cases e <;> simp only [effect, requestBody_eq, str_eq, Enc.str, String.toUTF8_eq_toByteArray,
@@ -781,9 +962,9 @@ theorem effect_eq (e : Effect) : effect e = (Enc.effect e).length := by
       Nat.reduceAdd, Enc.ref] <;> all_goals omega
 
 theorem subCmd_eq (c : SubCmd) : subCmd c = (Enc.subCmd c).length := by
-  rcases c with ⟨_, ⟨_⟩ | ⟨_⟩⟩ | _ <;> simp only [subCmd, subBody, Enc.subCmd, Enc.subBody,
-      str_eq, List.length_append, List.length_cons, Enc.pad, List.length_replicate,
-      Enc.length_u32, List.length_nil] <;> omega
+  rcases c with ⟨_, ⟨_⟩ | ⟨_⟩ | ⟨_⟩ | ⟨_, _⟩⟩ | _ <;> simp only [subCmd, subBody, Enc.subCmd,
+      Enc.subBody, str_eq, List.length_append, List.length_cons, Enc.pad, List.length_replicate,
+      Enc.length_u32, List.length_nil, Enc.bool] <;> omega
 
 theorem textInput_eq (t : Option TextInput) : textInput t = (Enc.textInput t).length := by
   cases t <;> simp only [textInput, Enc.textInput, Enc.pad, List.reduceReplicate, List.cons_append,
@@ -842,6 +1023,18 @@ def header1 (b : ByteArray) (kv : String × String) : ByteArray := str (str b kv
 def headers (b : ByteArray) (hs : List (String × String)) : ByteArray :=
   hs.foldl header1 (u32 b hs.length)
 
+def part (b : ByteArray) : Part → ByteArray
+  | .bytes d => bytes (pad (b.push 0) 3) d
+  | .wav c st sp => u32 (u32 (u32 (pad (bool (b.push 1) sp.isSome) 2) c) st) (sp.getD 0)
+
+def parts (b : ByteArray) (ps : List Part) : ByteArray := ps.foldl part (u32 b ps.length)
+
+def secret (b : ByteArray) (s : Secret) : ByteArray := str (str (str (str b s.header) s.scheme) s.file) s.name
+
+def optSecret (b : ByteArray) : Option Secret → ByteArray
+  | none => pad (b.push 0) 3
+  | some s => secret (pad (b.push 1) 3) s
+
 def requestBody (b : ByteArray) : Request → ByteArray
   | .readFile p => str b p
   | .writeFile p d => bytes (str b p) d
@@ -851,6 +1044,10 @@ def requestBody (b : ByteArray) : Request → ByteArray
   | .listDir p | .deleteFile p => str b p
   | .frontmostApp => b
   | .permission p prompt => pad (bool (b.push (Permission.code p)) prompt) 2
+  | .typeText pid t r => str (pad (bool (u32 b pid) r) 3) t
+  | .upload m u hs sec body t =>
+    parts (optSecret (headers (str (str (u32 b t) m) u) hs) sec) body
+  | .forgetClip c => u32 b c
 
 def effect (b : ByteArray) : Effect → ByteArray
   | .setClipboard s => str (pad (b.push 0) 3) s
@@ -864,6 +1061,8 @@ def effect (b : ByteArray) : Effect → ByteArray
 def subBody (b : ByteArray) : Sub → ByteArray
   | .every ms => u32 b ms
   | .watchFile p => str b p
+  | .record c => u32 b c
+  | .globalKey code m => u32 (pad (bool (u32 b code) m.isSome) 3) (m.getD 0)
 
 def subCmd (b : ByteArray) : SubCmd → ByteArray
   | .start id s => subBody (u32 (pad ((b.push 0).push (Sub.code s)) 2) id) s
@@ -940,17 +1139,36 @@ theorem foldl_data' {α : Type} (put : ByteArray → α → ByteArray) (e : α �
   simp only [headers, foldl_data' header1 Enc.header1 header1_data, u32_data, List.append_assoc,
       Enc.headers]
 
+@[simp] theorem part_data (b : ByteArray) (p : Part) :
+    (part b p).data.toList = b.data.toList ++ Enc.part p := by
+  cases p <;> simp only [part, bytes_data, u32_data, pad_data, bool_data, ByteArray.data_push,
+      Array.toList_push, List.append_assoc, List.cons_append, List.nil_append, Enc.part]
+
+@[simp] theorem parts_data (b : ByteArray) (ps : List Part) :
+    (parts b ps).data.toList = b.data.toList ++ Enc.parts ps := by
+  simp only [parts, foldl_data' part Enc.part part_data, u32_data, List.append_assoc, Enc.parts]
+
+@[simp] theorem secret_data (b : ByteArray) (s : Secret) :
+    (secret b s).data.toList = b.data.toList ++ Enc.secret s := by
+  simp only [secret, str_data, List.append_assoc, Enc.secret]
+
+@[simp] theorem optSecret_data (b : ByteArray) (s : Option Secret) :
+    (optSecret b s).data.toList = b.data.toList ++ Enc.optSecret s := by
+  cases s <;> simp only [optSecret, secret_data, pad_data, ByteArray.data_push, Array.toList_push,
+      List.append_assoc, List.cons_append, List.nil_append, Enc.optSecret]
+
 @[simp] theorem requestBody_data (b : ByteArray) (r : Request) :
     (requestBody b r).data.toList = b.data.toList ++ Enc.requestBody r := by
   cases r <;> simp only [requestBody, str_data, bytes_data, headers_data, u32_data,
       List.append_assoc, Enc.requestBody, List.append_nil, pad_data, bool_data,
-      ByteArray.data_push, Array.toList_push, List.cons_append, List.nil_append]
+      ByteArray.data_push, Array.toList_push, List.cons_append, List.nil_append, parts_data,
+      optSecret_data]
 
 @[simp] theorem subCmd_data (b : ByteArray) (c : SubCmd) :
     (subCmd b c).data.toList = b.data.toList ++ Enc.subCmd c := by
-  rcases c with ⟨_, ⟨_⟩ | ⟨_⟩⟩ | _ <;> simp only [subCmd, subBody, u32_data, str_data, pad_data,
-      ByteArray.data_push, Array.toList_push, List.append_assoc, List.cons_append,
-      List.nil_append, Enc.subCmd, Enc.subBody]
+  rcases c with ⟨_, ⟨_⟩ | ⟨_⟩ | ⟨_⟩ | ⟨_, _⟩⟩ | _ <;> simp only [subCmd, subBody, u32_data, str_data,
+      pad_data, bool_data, ByteArray.data_push, Array.toList_push, List.append_assoc,
+      List.cons_append, List.nil_append, Enc.subCmd, Enc.subBody]
 
 @[simp] theorem wake_data (b : ByteArray) (w : Option Nat) :
     (wake b w).data.toList = b.data.toList ++ Enc.wake w := by

@@ -93,16 +93,24 @@ def Reply.faultCode : Reply → UInt8
   | .failed f _ => Fault.code f
   | _ => 0
 
+/-- `tick` 0, `changed` 1, `audio` 2, `keyDown` 3, `keyUp` 4, `otherKey` 5, `failed` 6. -/
 def SubEvent.code : SubEvent → UInt8
-  | .tick => 0 | .changed => 1
+  | .tick => 0 | .changed => 1 | .audio .. => 2 | .keyDown _ => 3 | .keyUp _ => 4
+  | .otherKey _ => 5 | .failed .. => 6
 
-def SubEvent.ofCode : UInt8 → Option SubEvent
-  | 0 => some .tick | 1 => some .changed | _ => none
-
-@[simp] theorem SubEvent.ofCode_code (e : SubEvent) : SubEvent.ofCode (SubEvent.code e) = some e := by
-  cases e <;> rfl
+def SubEvent.faultCode : SubEvent → UInt8
+  | .failed f _ => Fault.code f
+  | _ => 0
 
 def fitsTime (t : Time) : Bool := fu64 t.mono && fi64 t.wall && fi t.zone
+
+def fitsLevel (l : Level) : Bool := fu64 l.sumSq && fu l.peak
+
+def fitsSubEvent : SubEvent → Bool
+  | .tick | .changed => true
+  | .audio n pk ws => fu n && fu pk && fu ws.length && ws.all fitsLevel
+  | .keyDown t | .keyUp t | .otherKey t => fu64 t
+  | .failed _ m => fs m
 
 def fitsReply : Reply → Bool
   | .done => true
@@ -125,7 +133,7 @@ def fitsEvent : Event → Bool
   | .scale p => fu p
   | .clock t => fitsTime t
   | .reply id r => fu id && fitsReply r
-  | .subEvent id _ => fu id
+  | .subEvent id e => fu id && fitsSubEvent e
   | _ => true
 
 namespace Enc
@@ -142,6 +150,15 @@ def replyBody : Reply → List UInt8
   | .names ns => u32 ns.length ++ ns.flatMap str
   | .app pid n => u32 pid ++ str n
   | .flag b => bool b ++ pad 3
+
+def level (l : Level) : List UInt8 := u64 l.sumSq ++ u32 l.peak
+
+/-- A subscription event's fields after its record head and id. -/
+def subEventBody : SubEvent → List UInt8
+  | .tick | .changed => []
+  | .audio n pk ws => u32 n ++ u32 pk ++ u32 ws.length ++ ws.flatMap level
+  | .keyDown t | .keyUp t | .otherKey t => u64 t
+  | .failed _ m => str m
 
 def event : Event → List UInt8
   | .pointerMove p => head 0 0 0 ++ point p
@@ -166,7 +183,7 @@ def event : Event → List UInt8
   | .windowFocus b => head 17 (if b then 1 else 0) 0
   | .clock t => head 18 0 0 ++ u64 t.mono ++ i64 t.wall ++ i32 t.zone
   | .reply id r => head 19 (Reply.code r) (Reply.faultCode r) ++ u32 id ++ replyBody r
-  | .subEvent id e => head 20 (SubEvent.code e) 0 ++ u32 id
+  | .subEvent id e => head 20 (SubEvent.code e) (SubEvent.faultCode e) ++ u32 id ++ subEventBody e
 
 def eventsMagic : List UInt8 := [0x43, 0x41, 0x45, 0x56] -- "CAEV"
 
@@ -210,6 +227,29 @@ def replyBody (code fault : UInt8) : Dec Reply :=
       skip 3
       return .flag b
     else fail
+  | _ => fail
+
+def level : Dec Level := do
+  let s ← u64
+  return ⟨s, ← u32⟩
+
+/-- The body of a subscription event with code `code`; only `failed` has a fault. -/
+def subEventBody (code fault : UInt8) : Dec SubEvent :=
+  match code with
+  | 0 => if fault = 0 then pure .tick else fail
+  | 1 => if fault = 0 then pure .changed else fail
+  | 2 => if fault = 0 then do
+      let n ← u32
+      let pk ← u32
+      let c ← u32
+      return .audio n pk (← count level c)
+    else fail
+  | 3 => if fault = 0 then do return .keyDown (← u64) else fail
+  | 4 => if fault = 0 then do return .keyUp (← u64) else fail
+  | 5 => if fault = 0 then do return .otherKey (← u64) else fail
+  | 6 => do
+    let some f := Fault.ofCode fault | fail
+    return .failed f (← str)
   | _ => fail
 
 def event : Dec Event := do
@@ -273,8 +313,8 @@ def event : Dec Event := do
     let id ← u32
     return .reply id (← replyBody a b)
   | 20 =>
-    let some e := SubEvent.ofCode a | fail
-    return .subEvent (← u32) e
+    let id ← u32
+    return .subEvent id (← subEventBody a b)
   | _ => fail
 
 def events : Dec (List Event) := do
@@ -315,6 +355,31 @@ theorem replyBody_enc {rp : Reply} (h : fitsReply rp = true) (r : List UInt8) :
   | flag b =>
     simp only [replyBody, Reply.code, Reply.faultCode, Enc.replyBody, ↓reduceIte,
         List.append_assoc, bind_apply, bool_enc, skip_pad, pure_apply]
+
+theorem level_enc {l : Level} (h : fitsLevel l = true) (r : List UInt8) :
+    level (Enc.level l ++ r) = some (l, r) := by
+  simp only [fitsLevel, Bool.and_eq_true, fu64_iff, fu_iff] at h
+  simp only [level, Enc.level, List.append_assoc, bind_apply, u64_enc h.1, u32_enc h.2, pure_apply]
+
+theorem subEventBody_enc {e : SubEvent} (h : fitsSubEvent e = true) (r : List UInt8) :
+    subEventBody (SubEvent.code e) (SubEvent.faultCode e) (Enc.subEventBody e ++ r) =
+      some (e, r) := by
+  cases e with
+  | tick | changed => rfl
+  | audio n pk ws =>
+    simp only [fitsSubEvent, Bool.and_eq_true, fu_iff, List.all_eq_true] at h
+    obtain ⟨⟨⟨hn, hp⟩, hc⟩, hw⟩ := h
+    simp only [subEventBody, SubEvent.code, SubEvent.faultCode, Enc.subEventBody, ↓reduceIte,
+        List.append_assoc, bind_apply, u32_enc hn, u32_enc hp, u32_enc hc]
+    rw [count_enc ws (fun l hl => level_enc (hw l hl)) r]; rfl
+  | keyDown t | keyUp t | otherKey t =>
+    simp only [fitsSubEvent, fu64_iff] at h
+    simp only [subEventBody, SubEvent.code, SubEvent.faultCode, Enc.subEventBody, ↓reduceIte,
+        bind_apply, u64_enc h, pure_apply]
+  | failed f m =>
+    simp only [fitsSubEvent, fs_iff] at h
+    simp only [subEventBody, SubEvent.code, SubEvent.faultCode, Enc.subEventBody,
+        Fault.ofCode_code, bind_apply, str_enc h, pure_apply]
 
 theorem event_enc {e : Event} (h : fitsEvent e = true) (r : List UInt8) :
     event (Enc.event e ++ r) = some (e, r) := by
@@ -380,9 +445,10 @@ theorem event_enc {e : Event} (h : fitsEvent e = true) (r : List UInt8) :
         bind_apply, byte_cons, hz, u32_enc h.1]
     rw [replyBody_enc h.2]; rfl
   | subEvent id e =>
-    simp only [fitsEvent, fu_iff] at h
-    simp only [event, Enc.event, Enc.head, List.cons_append, List.nil_append,
-        bind_apply, byte_cons, hz, SubEvent.ofCode_code, u32_enc h, pure_apply]
+    simp only [fitsEvent, Bool.and_eq_true, fu_iff] at h
+    simp only [event, Enc.event, Enc.head, List.cons_append, List.nil_append, List.append_assoc,
+        bind_apply, byte_cons, hz, u32_enc h.1]
+    rw [subEventBody_enc h.2]; rfl
   | pointerExit | unmark | copy | cut | selectAll | undo | redo => rfl
 
 theorem events_enc {es : List Event} (h : ∀ e ∈ es, fitsEvent e = true)
