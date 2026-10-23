@@ -1,5 +1,17 @@
 [
   {
+    "video": "/m/videos/5cf436dca2cd5034.mp4",
+    "poster": "/m/videos/5cf436dca2cd5034.jpg",
+    "title": "TodoMVC in Lean",
+    "caption": "The full TodoMVC, written in Lean and running natively on the Mac. Add, complete, double-click to edit, filter, clear completed, and toggle all. Every control is a claim (^202 to ^211). On the real app, 999 of 1,000 generated conformance sequences matched the Lean model. The one miss is a known edge case: a click that ends an edit can be dropped, as in a browser.",
+    "date": "2026-10-23",
+    "commit": "9224599",
+    "width": 1120,
+    "height": 840,
+    "seconds": 28,
+    "feature": true
+  },
+  {
     "video": "/m/videos/c8a7c8d6ab57ac2f.mp4",
     "poster": "/m/videos/c8a7c8d6ab57ac2f.jpg",
     "title": "Basics: the first Lean app",
@@ -9,7 +21,7 @@
     "width": 960,
     "height": 1264,
     "seconds": 17,
-    "feature": true
+    "feature": false
   },
   {
     "video": "/m/videos/9cb67df1092eb561.mp4",
