@@ -18,7 +18,10 @@ videos. Record a video whenever something new works on screen.
 - `tools/media/put.sh <take.mov> <title> <caption> [--feature]` encodes to H.264, uploads the video
   and a poster under content-hashed keys, and adds an entry to `media.json` (with the date and
   commit). `--feature` makes it the video at the top of the page.
-- Commit `media.json`, then `make site` to deploy.
+- Commit `media.json` in a lane and merge it. Then deploy **only from an up-to-date main**:
+  `git pull --ff-only` in the main checkout, then `make site`. Never deploy from a lane: the live
+  site must always match main, or one session's deploy overwrites another's work (the site's
+  design and the video list are edited by different sessions).
 
 The recorder must run inside an `NSApplication` (`NSApplication.shared.run()`), because
 ScreenCaptureKit creates its menu-bar recording indicator on its own queue and asserts that
