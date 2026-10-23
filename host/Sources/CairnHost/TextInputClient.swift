@@ -146,6 +146,7 @@ extension HostView: @preconcurrency NSTextInputClient {
     /// Reconciles the shadow with a new frame and keeps AppKit's text input in step.
     func textInputDidChange(_ p: Published, previousFrame: TextInput?) {
         var discard = false
+        let wasActive = textActive
         switch textShadow.frameArrived(p.frame.textInput, throughSeq: p.throughSeq) {
         case .pending:
             break
@@ -159,5 +160,12 @@ extension HostView: @preconcurrency NSTextInputClient {
         }
         if discard { super.inputContext?.discardMarkedText() }
         if discard || previousFrame != p.frame.textInput { inputContext?.invalidateCharacterCoordinates() }
+        // `inputContext` is nil while no field is focused, and AppKit only re-reads it when the
+        // window updates: without this the input method never engages after a focus change and
+        // keys arrive as plain characters (no IME).
+        if wasActive != textActive {
+            if textActive { super.inputContext?.activate() } else { super.inputContext?.deactivate() }
+            NSApp.updateWindows()
+        }
     }
 }

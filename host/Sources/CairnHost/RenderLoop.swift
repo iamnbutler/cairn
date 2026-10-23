@@ -100,7 +100,10 @@ final class RenderLoop: NSObject, @unchecked Sendable {
         let version = p.version
         let engine = self.engine
         drawable.addPresentedHandler { d in
-            if d.presentedTime > 0 { engine.presented(version: version, at: d.presentedTime) }
+            // presentedTime is 0 when Core Animation doesn't report it (seen on macOS 27 with a
+            // windowed, composited layer); the handler itself runs just after the present, so
+            // its time is the fallback.
+            engine.presented(version: version, at: d.presentedTime > 0 ? d.presentedTime : hostNow())
         }
         drawn = version
         renderer.draw(p.frame, to: drawable, viewport: vp)

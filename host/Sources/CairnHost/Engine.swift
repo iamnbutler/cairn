@@ -43,6 +43,9 @@ public final class Engine: @unchecked Sendable {
 
     public let stats = LatencyStats()
 
+    /// `CAIRN_LOG_EVENTS=1` logs every event sent to stderr.
+    static let logEvents = ProcessInfo.processInfo.environment["CAIRN_LOG_EVENTS"] != nil
+
     /// Called on the Lean thread after each publish. Keep it short: hop to another queue.
     public var onPublish: (@Sendable (Published) -> Void)?
 
@@ -78,6 +81,7 @@ public final class Engine: @unchecked Sendable {
     /// sent, if `events` is empty). Never blocks on Lean.
     @discardableResult
     public func send(_ events: [Event], time: Double = hostNow()) -> UInt64 {
+        if Self.logEvents { for e in events { FileHandle.standardError.write("cairn event: \(e)\n".data(using: .utf8)!) } }
         cond.lock()
         defer { cond.unlock() }
         for e in events {

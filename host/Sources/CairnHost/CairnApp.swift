@@ -118,9 +118,10 @@ public enum CairnApp {
     }
 }
 
-/// Posts synthetic mouse events into the window at a steady rate, through `NSWindow.sendEvent`
-/// (so through AppKit's dispatch and the host's input mapping, but not the HID system), then
-/// prints the engine's latency stats. Moves alternate with clicks on the window's empty corner.
+/// Feeds synthetic mouse events to the view at a steady rate, through the host's input mapping
+/// (not the HID system or AppKit's dispatch, which won't deliver clicks to an inactive window),
+/// then prints the engine's latency stats. Moves alternate with clicks in the window's empty
+/// bottom-left corner.
 @MainActor
 final class LatencyProbe {
     let view: HostView
@@ -152,7 +153,13 @@ final class LatencyProbe {
         let type: NSEvent.EventType = sent % 4 == 3 ? .leftMouseDown : (sent % 4 == 0 && sent > 0 ? .leftMouseUp : .mouseMoved)
         let e = NSEvent.mouseEvent(with: type, location: p, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
                                    windowNumber: window.windowNumber, context: nil, eventNumber: sent, clickCount: 1, pressure: type == .leftMouseDown ? 1 : 0)
-        if let e { window.sendEvent(e) }
+        if let e {
+            switch type {
+            case .leftMouseDown: view.mouseDown(with: e)
+            case .leftMouseUp: view.mouseUp(with: e)
+            default: view.mouseMoved(with: e)
+            }
+        }
         sent += 1
         // ~ 3 events per 60 Hz frame on average, uncorrelated with the display link.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.0047) { [self] in tick() }
