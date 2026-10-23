@@ -1,6 +1,7 @@
 import Cairn.Geometry
 import Cairn.Claim
 import Cairn.Text.Metrics
+import Cairn.Text.Field
 import Cairn.UI.Node
 import Cairn.Input
 import Cairn.Frame
