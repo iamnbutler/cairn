@@ -243,6 +243,7 @@ checked against Lean's decoder, so a bad batch means a host bug.
 | `decodeEvents_encodeEvents` | `es.all fitsEvent → es.size < 2^32 → decodeEvents (encodeEvents es) = some es` |
 | `encodeFrame_eq_put` | `@[csimp]`: the executable `ByteArray` encoder equals the `List UInt8` specification |
 | `controls_ofLaid` | the ax tree's control refs are exactly the laid tree's controls' refs, in order |
+| `controls_ofLaid_layout` | with `Layout.layout_controls`: the ax tree's control refs are exactly the view's controls' refs, in order |
 | `mem_ax_ofLaid` | a ref has an ax node iff some laid control has that ref |
 | `ax_refs_nodup` | distinct refs in the laid tree give distinct refs in the ax tree |
 | `parent_lt_ofLaid` | every ax parent index points at an earlier node |

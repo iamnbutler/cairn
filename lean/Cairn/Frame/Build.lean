@@ -1,5 +1,6 @@
 import Cairn.Frame
 import Cairn.App
+import Cairn.Layout.Proofs
 
 /-! `Frame.ofLaid`: a laid-out tree becomes what crosses the boundary: draw commands in paint
 order, the accessibility tree, and the focused field's text-input state.
@@ -16,7 +17,7 @@ order, the accessibility tree, and the focused field's text-input state.
 * **Text input** describes the first field whose control has focus.
 
 Focus comes from the runtime (`UI.focus`), the one source of truth; `FieldView.focused` is for the
-view's own styling and is not read here. `Laid.text`'s `baseline` is absolute (window y).
+view's own styling and is not read here. `Laid.text`'s `baseline` is absolute (window y). `Laid.controls` is layout's (`Layout/Facts.lean`).
 
 Theorems: `controls_ofLaid` (the accessibility tree's controls are exactly the laid tree's, in
 order, which is how presence reaches the accessibility mirror), `mem_ax_ofLaid`,
@@ -108,22 +109,6 @@ def ofLaid (ui : UI) (l : Laid) : Frame where
 
 end Frame
 
-namespace Laid
-
-mutual
-/-- The controls of a laid tree, in paint order. -/
-def controls : Laid → List Control
-  | .box _ _ _ c kids => c.toList ++ controlsAll kids
-  | .text .. => []
-  | .field _ _ _ _ c .. => [c]
-
-def controlsAll : List Laid → List Control
-  | [] => []
-  | l :: ls => controls l ++ controlsAll ls
-end
-
-end Laid
-
 namespace Frame
 
 /-! ## The accessibility tree has exactly the laid tree's controls -/
@@ -149,12 +134,12 @@ theorem axOf_controls (focus : Option ControlRef) (parent : Option Nat) (acc : A
 
 theorem axAll_controls (focus : Option ControlRef) (parent : Option Nat) (acc : Array AxNode)
     (ls : List Laid) : (axAll focus parent acc ls).toList.filterMap AxNode.control =
-      acc.toList.filterMap AxNode.control ++ (Laid.controlsAll ls).map Control.ref := by
+      acc.toList.filterMap AxNode.control ++ (Laid.controlsList ls).map Control.ref := by
   match ls with
-  | [] => simp only [axAll, Laid.controlsAll, List.map_nil, List.append_nil]
+  | [] => simp only [axAll, Laid.controlsList, List.map_nil, List.append_nil]
   | l :: ls =>
     rw [axAll, axAll_controls, axOf_controls]
-    simp only [List.append_assoc, Laid.controlsAll, List.map_append]
+    simp only [List.append_assoc, Laid.controlsList, List.map_append]
 end
 
 /-- **Presence reaches accessibility.** The controls in the frame's accessibility tree are
@@ -162,6 +147,12 @@ exactly the controls of the laid tree, in order. -/
 theorem controls_ofLaid (ui : UI) (l : Laid) :
     (ofLaid ui l).ax.toList.filterMap AxNode.control = l.controls.map Control.ref := by
   simp only [ofLaid, axOf_controls, List.filterMap_nil, List.nil_append]
+
+/-- Composed with layout: the accessibility tree has exactly the view's controls, in order. -/
+theorem controls_ofLaid_layout (ui : UI) (m : TextMetrics) (w : Size) (n : Node) :
+    (ofLaid ui (Layout.layout m w n)).ax.toList.filterMap AxNode.control =
+      n.controls.map Control.ref := by
+  rw [controls_ofLaid, Layout.layout_controls]
 
 /-- A claim's control is in the accessibility tree iff it is in the laid tree. -/
 theorem mem_ax_ofLaid (ui : UI) (l : Laid) (c : ControlRef) :
