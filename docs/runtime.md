@@ -212,11 +212,13 @@ lean_object *cairn_app_frame(lean_object *state);                     // consume
 ```lean
 structure Boundary where
   decode : ByteArray → List Event
-  render : Laid → UI → Frame       -- Frame.ofLaid; the runtime fills cursor and effects
+  render : Laid → UI → Canvas      -- Frame.ofLaid; the runtime fills the cursor
   encode : Frame → ByteArray
 ```
 
-`Cairn.Frame.boundary` (`Cairn/Frame/Boundary.lean`) is the real one: v1 event decoding,
-`Frame.ofLaid` and v2 frame encoding ([frame.md](frame.md)). `render` takes the whole `UI` because
-the frame needs the focus (accessibility `focused`, the caret, the text-input state) as well as
-the size. A batch that fails to decode is dropped whole.
+`Cairn.Frame.boundary` (`Cairn/Frame/Boundary.lean`) is the real one: v2 event decoding,
+`Frame.ofLaid` and v3 frame encoding ([frame.md](frame.md)). `render` takes the whole `UI` because
+the canvas needs the focus (accessibility `focused`, the caret, the text-input state) as well
+as the size. `Boundary.frame` (`Runtime/Abi.lean`) builds one surface record per surface the
+runtime shows (`State.surfaces`, docs/surfaces.md) and adds the effects, subscription commands
+and wake. A batch that fails to decode is dropped whole.
