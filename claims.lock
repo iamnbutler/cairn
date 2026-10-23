@@ -110,6 +110,11 @@
 913	assume	active	-	http sends the request as given and returns the response as received
 914	assume	active	-	The host answers every request exactly once, with its id
 915	assume	active	-	every ms ticks while started and never after it is stopped
+940	assume	active	-	The native menu shows exactly the frame's menu records
+941	assume	active	-	Choosing a menu item reports that item's ref
+942	assume	active	-	Opening and closing the menu are reported once each
+943	assume	active	-	An overlay panel never takes focus or clicks
+944	assume	active	-	An overlay panel is where its anchor says
 960	assume	active	-	appendFile adds exactly the bytes at the end, or fails and adds nothing
 961	assume	active	-	listDir lists exactly the directory's names, sorted
 962	assume	active	-	deleteFile removes a file or a link, never a directory
