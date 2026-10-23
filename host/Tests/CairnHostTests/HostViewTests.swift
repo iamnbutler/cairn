@@ -78,7 +78,7 @@ final class TestRenderer: FrameRenderer {
 @MainActor
 @Suite(.serialized) struct HostViewTextInputTests {
     func make(_ core: EchoFieldCore) -> HostView {
-        let engine = Engine(size: Size(w: 200, h: 100), scalePercent: 200) { core }
+        let engine = Engine(size: Size(w: 200, h: 100), scalePercent: 200, clock: false) { core }
         let view = HostView(engine: engine, renderer: TestRenderer(), size: NSSize(width: 200, height: 100))
         engine.start()
         settle(view)
@@ -172,7 +172,7 @@ final class TestRenderer: FrameRenderer {
 
     @Test func synthesizedTypingWithoutAFieldIsEveryKey() {
         let core = KeyLogCore()
-        let engine = Engine(size: Size(w: 200, h: 100), scalePercent: 200) { core }
+        let engine = Engine(size: Size(w: 200, h: 100), scalePercent: 200, clock: false) { core }
         let view = HostView(engine: engine, renderer: TestRenderer(), size: NSSize(width: 200, height: 100))
         engine.start()
         defer { engine.stop() }
@@ -185,7 +185,7 @@ final class TestRenderer: FrameRenderer {
 
     @Test func selectedRangeIsNeverNotFound() {
         let core = EchoFieldCore()
-        let engine = Engine(size: Size(w: 200, h: 100), scalePercent: 200) { core }
+        let engine = Engine(size: Size(w: 200, h: 100), scalePercent: 200, clock: false) { core }
         let view = HostView(engine: engine, renderer: TestRenderer(), size: NSSize(width: 200, height: 100))
         // No frame yet, so no field.
         #expect(view.selectedRange() == NSRange(location: 0, length: 0))

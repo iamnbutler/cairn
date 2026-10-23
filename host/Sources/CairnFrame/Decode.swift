@@ -2,7 +2,7 @@
 import Darwin
 #endif
 
-// Frame v1 decoder (docs/frame.md). Trusted: checked against the corpus Lean generates
+// Frame v2 decoder (docs/frame.md). Trusted: checked against the corpus Lean generates
 // (Tests/CairnFrameTests), not proved. Reads in place from the buffer: one bounds check per
 // record's fixed part and one per string, unaligned little-endian loads, no intermediate copies.
 
@@ -28,14 +28,14 @@ public struct FrameSections: Sendable {
     public var draws: Range<Int>
     public var axCount: Int
     public var ax: Range<Int>
-    /// Text input, cursor and effects.
+    /// Text input, cursor, effects, subscription commands and wake.
     public var tail: Range<Int>
 
     public init(_ raw: UnsafeRawBufferPointer) throws {
         var r = ByteReader(raw)
         try r.need(16)
-        guard r.u8(0) == 0x43, r.u8(1) == 0x41, r.u8(2) == 0x46, r.u8(3) == 0x52, r.u16(4) == 1,
-              r.u16(6) == 0  // flags: reserved, zero in v1 (found by cairn-fuzz-trusted)
+        guard r.u8(0) == 0x43, r.u8(1) == 0x41, r.u8(2) == 0x46, r.u8(3) == 0x52, r.u16(4) == 2,
+              r.u16(6) == 0  // flags: reserved, zero (found by cairn-fuzz-trusted)
         else { throw FrameDecodeError.badHeader }
         size = Size(w: r.i32(8), h: r.i32(12))
         r.i = 16
@@ -54,9 +54,9 @@ extension Frame {
         let s = try FrameSections(raw)
         let draws = try Frame.decodeDraws(raw, s)
         let ax = try Frame.decodeAx(raw, s)
-        let (textInput, cursor, effects) = try Frame.decodeTail(raw, s)
-        self.init(size: s.size, draws: draws, ax: ax, textInput: textInput, cursor: cursor,
-                  effects: effects)
+        let t = try Frame.decodeTail(raw, s)
+        self.init(size: s.size, draws: draws, ax: ax, textInput: t.textInput, cursor: t.cursor,
+                  effects: t.effects, subs: t.subs, wake: t.wake)
     }
 
     public static func decodeDraws(_ raw: UnsafeRawBufferPointer, _ s: FrameSections) throws -> [Draw] {
@@ -131,7 +131,7 @@ extension Frame {
     }
 
     public static func decodeTail(_ raw: UnsafeRawBufferPointer, _ s: FrameSections) throws
-        -> (TextInput?, Cursor, [Effect])
+        -> (textInput: TextInput?, cursor: Cursor, effects: [Effect], subs: [SubCmd], wake: UInt64?)
     {
         var r = ByteReader(raw, s.tail)
         try r.need(4)
@@ -174,13 +174,72 @@ extension Frame {
                 try er.need(12)
                 effects.append(.focus(ControlRef(claim: er.u32(4), key: er.u32(8))))
                 er.i += 12
+            case 3:
+                try er.need(8)
+                let ms = er.u32(4)
+                er.i += 8
+                effects.append(.setTimer(name: try er.string(), ms: ms))
+            case 4:
+                er.i += 4
+                effects.append(.cancelTimer(try er.string()))
+            case 5:
+                try er.need(8)
+                let kind = er.u8(1), id = er.u32(4)
+                let at = er.i + 1
+                er.i += 8
+                let req: Request
+                switch kind {
+                case 0: req = .readFile(path: try er.string())
+                case 1:
+                    let path = try er.string()
+                    req = .writeFile(path: path, data: try er.bytes())
+                case 2: req = .playSound(name: try er.string())
+                case 3:
+                    try er.need(4)
+                    let timeout = er.u32(0)
+                    er.i += 4
+                    let method = try er.string()
+                    let url = try er.string()
+                    let headers = try er.headers()
+                    req = .http(method: method, url: url, headers: headers, body: try er.bytes(),
+                                timeoutMs: timeout)
+                default: throw FrameDecodeError.badCode(kind, at: at)
+                }
+                effects.append(.request(id: id, req))
+            case 6:
+                er.i += 4
+                effects.append(.quit)
             case let c:
                 throw FrameDecodeError.badCode(c, at: er.i)
             }
         }
         try er.finish(section: range)
+        let (subCount, subRange) = try r.section()
+        var sr = ByteReader(raw, subRange)
+        var subs: [SubCmd] = []
+        for _ in 0..<subCount {
+            try sr.need(4)
+            switch sr.u8(0) {
+            case 0:
+                guard sr.u8(1) == 0 else { throw FrameDecodeError.badCode(sr.u8(1), at: sr.i + 1) }
+                try sr.need(12)
+                subs.append(.start(id: sr.u32(4), .every(ms: sr.u32(8))))
+                sr.i += 12
+            case 1:
+                try sr.need(8)
+                subs.append(.stop(id: sr.u32(4)))
+                sr.i += 8
+            case let c:
+                throw FrameDecodeError.badCode(c, at: sr.i)
+            }
+        }
+        try sr.finish(section: subRange)
+        try r.need(12)
+        let hasWake = try r.flag(0)
+        let wake = r.u64(4)
+        r.i += 12
         guard r.i == raw.count else { throw FrameDecodeError.trailingBytes(at: r.i) }
-        return (textInput, cursor, effects)
+        return (textInput, cursor, effects, subs, hasWake ? wake : nil)
     }
 }
 
@@ -205,6 +264,9 @@ struct ByteReader {
     }
     @inline(__always) func u32(_ o: Int) -> UInt32 {
         UInt32(littleEndian: raw.loadUnaligned(fromByteOffset: i + o, as: UInt32.self))
+    }
+    @inline(__always) func u64(_ o: Int) -> UInt64 {
+        UInt64(littleEndian: raw.loadUnaligned(fromByteOffset: i + o, as: UInt64.self))
     }
     @inline(__always) func i32(_ o: Int) -> Int32 {
         Int32(littleEndian: raw.loadUnaligned(fromByteOffset: i + o, as: Int32.self))
@@ -238,6 +300,29 @@ struct ByteReader {
         let same = s.withUTF8 { $0.count == n && memcmp($0.baseAddress!, bytes.baseAddress!, n) == 0 }
         guard same else { throw FrameDecodeError.badUTF8(at: start - 4) }
         return s
+    }
+
+    /// `u32` byte length, then the bytes.
+    mutating func bytes() throws -> [UInt8] {
+        try need(4)
+        let n = Int(u32(0))
+        try need(4 + n)
+        let start = i + 4
+        i = start + n
+        return Array(raw[start..<start + n])
+    }
+
+    /// `u32` count, then each name and value.
+    mutating func headers() throws -> [Header] {
+        try need(4)
+        let n = Int(u32(0))
+        i += 4
+        var out: [Header] = []
+        for _ in 0..<n {
+            let name = try string()
+            out.append(Header(name, try string()))
+        }
+        return out
     }
 
     /// `u32` count, `u32` byte length: the count and the body's range; moves past the body.

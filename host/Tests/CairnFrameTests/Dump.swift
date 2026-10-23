@@ -56,9 +56,49 @@ enum Dump {
             case let .setClipboard(s): out += "clipboard \(str(s))\n"
             case .beep: out += "beep\n"
             case let .focus(c): out += "focus \(ref(c))\n"
+            case let .setTimer(n, ms): out += "timer \(str(n)) \(ms)\n"
+            case let .cancelTimer(n): out += "cancelTimer \(str(n))\n"
+            case let .request(id, r): out += "request \(id) \(request(r))\n"
+            case .quit: out += "quit\n"
             }
         }
+        out += "subs \(f.subs.count)\n"
+        for c in f.subs {
+            switch c {
+            case let .start(id, .every(ms)): out += "start \(id) every \(ms)\n"
+            case let .stop(id): out += "stop \(id)\n"
+            }
+        }
+        out += "wake \(opt(f.wake) { "\($0)" })\n"
         return out
+    }
+
+    /// Bytes as `x` and two lowercase hex digits each.
+    static func bytes(_ b: [UInt8]) -> String {
+        "x" + b.map { ($0 < 16 ? "0" : "") + String($0, radix: 16) }.joined()
+    }
+
+    static func headers(_ hs: [Header]) -> String {
+        "headers=\(hs.count)" + hs.map { " \(str($0.name)) \(str($0.value))" }.joined()
+    }
+
+    static func request(_ r: Request) -> String {
+        switch r {
+        case let .readFile(p): return "readFile \(str(p))"
+        case let .writeFile(p, d): return "writeFile \(str(p)) \(bytes(d))"
+        case let .playSound(n): return "sound \(str(n))"
+        case let .http(m, u, hs, b, t):
+            return "http \(str(m)) \(str(u)) timeout=\(t) \(headers(hs)) body=\(bytes(b))"
+        }
+    }
+
+    static func reply(_ r: Reply) -> String {
+        switch r {
+        case .done: return "done"
+        case let .bytes(d): return "bytes \(bytes(d))"
+        case let .http(st, hs, b): return "http \(st) \(headers(hs)) body=\(bytes(b))"
+        case let .failed(f, m): return "failed \(f.rawValue) \(str(m))"
+        }
     }
 
     static func range(_ r: ScalarRange?) -> String { opt(r) { "\($0.start) \($0.end)" } }
@@ -83,6 +123,9 @@ enum Dump {
         case let .resize(s): return "resize \(s.w) \(s.h)"
         case let .scale(p): return "scale \(p)"
         case let .windowFocus(b): return "focus \(bit(b))"
+        case let .clock(t): return "clock \(t.mono) \(t.wall) \(t.zone)"
+        case let .reply(id, r): return "reply \(id) \(reply(r))"
+        case let .subEvent(id, e): return "sub \(id) \(e.rawValue)"
         }
     }
 
@@ -164,6 +207,46 @@ enum DumpParser {
         case "resize": return .resize(Size(w: try i(), h: try i()))
         case "scale": return .scale(percent: try u())
         case "focus": return .windowFocus(try u8() == 1)
+        case "clock":
+            guard let m = UInt64(t.word()), let w = Int64(t.word()) else { throw Bad(line: line) }
+            return .clock(Time(mono: m, wall: w, zone: try i()))
+        case "reply":
+            let id = try u()
+            func hexBytes(_ w: String) throws -> [UInt8] {
+                guard w.hasPrefix("x") else { throw Bad(line: line) }
+                let h = Array(w.utf8.dropFirst())
+                guard h.count % 2 == 0 else { throw Bad(line: line) }
+                return try stride(from: 0, to: h.count, by: 2).map { i in
+                    guard let b = UInt8(String(decoding: h[i..<i + 2], as: UTF8.self), radix: 16) else {
+                        throw Bad(line: line)
+                    }
+                    return b
+                }
+            }
+            switch t.word() {
+            case "done": return .reply(id: id, .done)
+            case "bytes": return .reply(id: id, .bytes(try hexBytes(t.word())))
+            case "http":
+                let st = try u()
+                let hw = t.word()
+                guard hw.hasPrefix("headers="), let n = Int(hw.dropFirst(8)) else { throw Bad(line: line) }
+                var hs: [Header] = []
+                for _ in 0..<n {
+                    let k = try t.string()
+                    hs.append(Header(k, try t.string()))
+                }
+                let bw = t.word()
+                guard bw.hasPrefix("body=") else { throw Bad(line: line) }
+                return .reply(id: id, .http(status: st, headers: hs, body: try hexBytes(String(bw.dropFirst(5)))))
+            case "failed":
+                guard let f = Fault(rawValue: try u8()) else { throw Bad(line: line) }
+                return .reply(id: id, .failed(f, try t.string()))
+            default: throw Bad(line: line)
+            }
+        case "sub":
+            let id = try u()
+            guard let e = SubEvent(rawValue: try u8()) else { throw Bad(line: line) }
+            return .subEvent(id: id, e)
         default: throw Bad(line: line)
         }
     }

@@ -17,8 +17,10 @@ public struct Published: Sendable {
 /// read the latest published frame; nothing here ever waits on Lean except `wait(through:)`,
 /// which is for tests.
 ///
-/// The Lean thread loops: wait for events, take the whole queue, encode it, `step`, `frame`,
-/// decode, publish. Events that arrive while Lean is busy form the next batch, so a slow step
+/// The Lean thread loops: wait for events (or the frame's `wake` deadline), take the whole
+/// queue, put the time in front of it (`Event.clock`, docs/effects.md), encode it, `step`,
+/// `frame`, decode, publish, and hand the frame's requests and subscription commands to the
+/// `World`. Events that arrive while Lean is busy form the next batch, so a slow step
 /// batches input instead of falling behind. Consecutive pointer moves are coalesced in the
 /// queue (only the latest position matters), and so are consecutive scrolls (deltas summed).
 public final class Engine: @unchecked Sendable {
@@ -39,6 +41,20 @@ public final class Engine: @unchecked Sendable {
     /// A pending `restart`: the size and scale to start at, and the sequence number it takes.
     private var restartRequest: (size: Size, scalePercent: UInt32, seq: UInt64)?
 
+    /// A strict dispatch timer for the latest frame's `wake` (monotonic ms), when to send a
+    /// clock event with no other input: `NSCondition.wait(until:)` runs about 7 ms late on
+    /// a 100 ms wait (timer coalescing), a strict timer about 0.1 ms (bench/effects.md).
+    private var wakeTimer: DispatchSourceTimer?
+    private var wakeDue = false
+    private let wakeQueue = DispatchQueue(label: "cairn.wake", qos: .userInteractive)
+    /// The sequence number the latest frame accounts for.
+    private var through: UInt64 = 0
+
+    /// Runs requests and subscriptions for the app.
+    public let world: World
+    /// Whether batches start with the time. Swift-only test cores turn it off.
+    private let sendsClock: Bool
+
     private let makeCore: () -> AppCore
     private let initialSize: Size
     private let initialScale: UInt32
@@ -53,10 +69,14 @@ public final class Engine: @unchecked Sendable {
 
     /// - Parameter makeCore: builds the app; called on the Lean thread, so a Lean app's runtime
     ///   initialization happens there and the main thread never calls Lean at all.
-    public init(size: Size, scalePercent: UInt32, makeCore: @escaping () -> AppCore) {
+    public init(size: Size, scalePercent: UInt32, world: World = World(), clock: Bool = true,
+                makeCore: @escaping () -> AppCore) {
         self.makeCore = makeCore
         self.initialSize = size
         self.initialScale = scalePercent
+        self.world = world
+        self.sendsClock = clock
+        world.send = { [weak self] es in self?.send(es) }
     }
 
     public func start() {
@@ -74,6 +94,7 @@ public final class Engine: @unchecked Sendable {
     /// Asks the Lean thread to finish after its current batch.
     public func stop() {
         cond.lock()
+        scheduleWake(nil)
         stopping = true
         cond.broadcast()
         cond.unlock()
@@ -107,6 +128,8 @@ public final class Engine: @unchecked Sendable {
         case (.pointerMove, .pointerMove(let p)): return .pointerMove(p)
         case let (.scroll(_, dx0, dy0), .scroll(p, dx1, dy1)):
             return .scroll(p, dx: dx0 &+ dx1, dy: dy0 &+ dy1)
+        // Ticks Lean has not caught up with say no more than one.
+        case let (.subEvent(a, e0), .subEvent(b, e1)) where a == b && e0 == e1: return .subEvent(id: b, e1)
         default: return nil
         }
     }
@@ -172,34 +195,79 @@ public final class Engine: @unchecked Sendable {
         for t in done { stats.record(.inputToPresent, ms: (time - t) * 1000) }
     }
 
+    /// A batch with the time in front.
+    private func timed(_ events: [Event]) -> [Event] {
+        sendsClock ? [.clock(HostClock.now())] + events : events
+    }
+
+    /// Waits for input, a restart or a stop, or the wake deadline (then returns with nothing
+    /// queued). Called with `cond` locked.
+    private func waitForInput() {
+        while queue.isEmpty && !stopping && restartRequest == nil && !wakeDue { cond.wait() }
+        wakeDue = false
+    }
+
+    /// Arms the wake timer for `w` (monotonic ms), or disarms it. Called with `cond` locked.
+    /// The timer runs on uptime, which never gets ahead of the monotonic clock, so it never
+    /// fires before `w`; after a sleep it fires late and the clock it sends is simply later.
+    private func scheduleWake(_ w: UInt64?) {
+        wakeTimer?.cancel()
+        wakeTimer = nil
+        guard let w else { return }
+        let now = HostClock.monoMs()
+        let t = DispatchSource.makeTimerSource(flags: .strict, queue: wakeQueue)
+        t.schedule(deadline: .now() + .milliseconds(Int(min(w > now ? w - now : 0, 1 << 40))),
+                   leeway: .nanoseconds(0))
+        t.setEventHandler { [weak self] in
+            guard let self else { return }
+            self.cond.lock()
+            self.wakeDue = true
+            self.cond.broadcast()
+            self.cond.unlock()
+        }
+        wakeTimer = t
+        t.resume()
+    }
+
     private func run() {
         let core = makeCore()
         core.start(size: initialSize, scalePercent: initialScale)
         publish(core, throughSeq: 0, inputTime: nil, stepMs: 0)
+        if sendsClock {  // the first clock: the app hears the time and runs its init effects
+            core.step(timed([]))
+            publish(core, throughSeq: 0, inputTime: nil, stepMs: 0)
+        }
         while true {
             cond.lock()
-            while queue.isEmpty && !stopping && restartRequest == nil { cond.wait() }
+            waitForInput()
             if stopping { cond.unlock(); break }
             let batch = queue
             queue.removeAll(keepingCapacity: true)
             let restart = restartRequest
             restartRequest = nil
+            let lastThrough = through
             cond.unlock()
 
             if let r = restart {
                 // Events sent before the restart run first; those sent after it run on the new state.
                 let before = batch.filter { $0.seq < r.seq }, after = batch.filter { $0.seq > r.seq }
-                if !before.isEmpty { core.step(before.map(\.event)) }
+                if !before.isEmpty { core.step(timed(before.map(\.event))) }
+                world.reset()
                 core.start(size: r.size, scalePercent: r.scalePercent)
-                if !after.isEmpty { core.step(after.map(\.event)) }
+                core.step(timed(after.map(\.event)))
                 publish(core, throughSeq: after.last?.seq ?? r.seq, inputTime: nil, stepMs: 0)
                 continue
             }
 
             let t0 = hostNow()
-            core.step(batch.map(\.event))
+            core.step(timed(batch.map(\.event)))
             let stepMs = (hostNow() - t0) * 1000
-            publish(core, throughSeq: batch.last!.seq, inputTime: batch.map(\.time).min(), stepMs: stepMs)
+            if batch.isEmpty {
+                // A timer's deadline: only the clock.
+                publish(core, throughSeq: lastThrough, inputTime: nil, stepMs: stepMs)
+            } else {
+                publish(core, throughSeq: batch.last!.seq, inputTime: batch.map(\.time).min(), stepMs: stepMs)
+            }
         }
     }
 
@@ -221,11 +289,14 @@ public final class Engine: @unchecked Sendable {
         let p = Published(frame: frame, version: version, throughSeq: throughSeq, inputTime: inputTime)
         cond.lock()
         latestPublished = p
+        through = throughSeq
+        scheduleWake(frame.wake)
         effects += frame.effects
         if let inputTime { unpresented.append((version, inputTime)) }
         if unpresented.count > 256 { unpresented.removeFirst(unpresented.count - 256) }
         cond.broadcast()
         cond.unlock()
+        world.run(frame.effects, frame.subs)
         onPublish?(p)
     }
 }
