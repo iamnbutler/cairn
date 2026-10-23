@@ -1,8 +1,8 @@
-// The header scene: a pixel landscape at night with a cairn on the meadow. It sits behind the
-// top of the page: under the text column it dissolves into mist, and in the margins the meadow
-// runs on down the page in uneven tongues, framed by foliage. Everything is drawn once at a few
-// CSS pixels per pixel; only the sparkles and fireflies move. Positions are measured from the
-// centre, so a resize reveals more land instead of reshuffling it.
+// The header scene: a pixel landscape at night with a cairn on the meadow. It runs the full
+// width of the window, the featured video sits on its meadow, and behind the video's lower part
+// it fades into the page as mist. Everything is drawn once at a few CSS pixels per pixel; only
+// the sparkles and fireflies move. Positions are measured from the centre, so a resize reveals
+// more land instead of reshuffling it.
 
 const LIGHT = { x: 0.62, y: -0.62, z: 0.48 }; // from the upper right, where the moon is
 
@@ -291,7 +291,7 @@ function drawMeadow(L, g) {
     for (let y = h; y < H; y++) {
       const d = y - h;
       // Bands of green that darken toward the viewer, broken into streaks, with moonlit tips.
-      // Further down, slow swells of light and shade keep the long tongues from going flat.
+      // Further down, slow swells of light and shade keep the meadow from going flat.
       const swell = d > 30 ? (fbm(x / 23 + y / 41, 83) - 0.5) * 4 : 0;
       let i = d < 2 ? 0 : 1 + Math.min(d / 9, 4.5) + swell;
       i += (h2(Math.floor((x + h2(y, 9) * 30) / (3 + h2(y, 4) * 6)), y) - 0.5) * 1.6;
@@ -328,48 +328,20 @@ function drawMeadow(L, g) {
   }
 }
 
-// Leaves in the foreground: pointed blades with a dark side, a lit side and a midrib.
-function leaf(L, x0, y0, ang, len, wid, tones) {
-  const dx = Math.cos(ang), dy = Math.sin(ang);
-  for (let s = 0; s <= len; s += 0.5) {
-    const half = wid * Math.sin(Math.PI * s / len) ** 0.8, px = x0 + dx * s, py = y0 + dy * s;
-    for (let w = -half; w <= half; w += 0.5) {
-      const x = Math.round(px - dy * w), y = Math.round(py + dx * w);
-      L.set(x, y, Math.abs(w) < 0.6 ? tones[2] : w > half - 1 ? tones[3] : w > 0 ? tones[1] : tones[0]);
-    }
-  }
-}
-
-// Clumps of leaves along the land's inner edge, so it ends in foliage rather than a line.
-function drawFoliage(L, g, side, seed) {
-  const edge = side < 0 ? g.edgeL : g.edgeR, n = Math.round((g.landEnd - g.clearTop) / 2.5);
-  for (let k = 0; k < n; k++) {
-    const y = Math.round(g.clearTop + hash(seed * 100 + k) * (g.landEnd - g.clearTop)), e = edge(y);
-    if (e > g.cx - 6) continue;
-    const x = g.cx + side * Math.round(e + 1 + hash(seed * 200 + k) ** 2 * 14);
-    const ang = -Math.PI / 2 - side * (0.2 + hash(seed * 300 + k) * 0.9);
-    const len = 8 + hash(seed * 400 + k) * 14, wid = 2 + hash(seed * 500 + k) * 2.5;
-    const f = T.foliage, tones = hash(seed * 600 + k) < 0.5 ? f.slice(0, 4) : f.slice(1, 5);
-    leaf(L, x, y, ang, len, wid, tones);
-  }
-}
-
-// A few lone stones resting on the land below the clearing, echoing the cairn.
-function drawBoulders(L, g, side, seed) {
-  const edge = side < 0 ? g.edgeL : g.edgeR;
-  for (let k = 0; k < 4; k++) {
-    const y = Math.round(g.clearTop + (0.1 + hash(seed * 80 + k) * 0.7) * (g.landEnd - g.clearTop));
-    const e = edge(y), room = g.cx - e;
-    if (room < 36) continue;
-    const x = g.cx + side * Math.round(e + 14 + hash(seed * 70 + k) * (room - 28));
-    const a = 4 + hash(seed * 90 + k) * 5, b = a * 0.6, ramp = T.stones[k % T.stones.length];
+// A few lone stones resting in the meadow out beside the video, echoing the cairn.
+function drawBoulders(L, g) {
+  for (let k = 0; k < 10; k++) {
+    const side = k % 2 ? 1 : -1, d = g.plateHalf + 16 + hash(k * 70 + 3) * (g.cx - g.plateHalf - 24);
+    if (d > g.cx - 10) continue;
+    const x = g.cx + side * Math.round(d), y = Math.round(g.lakeTop + 40 + hash(k * 80 + 3) * (g.fadeY - g.lakeTop - 50));
+    const a = 3 + hash(k * 90 + 3) * 5, b = a * 0.6, ramp = T.stones[k % T.stones.length];
     for (let yy = -b - 1; yy <= b + 1; yy++) for (let xx = -a - 1; xx <= a + 1; xx++) {
-      const d = (xx / a) ** 2 + (yy / b) ** 2;
-      if (d > 1) {
+      const dd = (xx / a) ** 2 + (yy / b) ** 2;
+      if (dd > 1) {
         if (yy > 0 && yy < b + 2 && Math.abs(xx) < a * 1.1 && streak(x + xx, y + yy, 0.6)) L.set(x + xx, y + yy, T.meadow[7]);
         continue;
       }
-      const lum = (xx / a) * LIGHT.x + (yy / b) * LIGHT.y + Math.sqrt(1 - d) * LIGHT.z;
+      const lum = (xx / a) * LIGHT.x + (yy / b) * LIGHT.y + Math.sqrt(1 - dd) * LIGHT.z;
       L.set(x + xx, y + yy, ramp[clamp(Math.round((lum + 0.2) * 3), 0, 4)]);
     }
   }
@@ -422,55 +394,28 @@ function drawCairn(L, g) {
 
 // --- Where the scene gives way to the page ---------------------------------------------------
 
-const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a)); return t * t * (3 - 2 * t); };
-
-// The land and the page are laid out like an image and text in a spread. The featured video
-// sits on the meadow; beside it the land comes down to just clear of its frame. Below it, the
-// left side swells into the text column in one long curve, which the text wraps around, then
-// draws back and ends in a round foot; the right side swells a little by the lede and is gone
-// sooner. `edgeL` and `edgeR` give, per row, how far from the centre the land's inner edge is.
-function makeEdges(g, k) {
-  const none = () => Infinity;
-  if (!k.wide) return { edgeL: none, edgeR: none, landEnd: g.clearTop };
-  const base = y => k.capB == null ? k.col : k.vid + (k.col - k.vid) * smooth(k.capB - 20, k.capB + 25, y);
-  const make = (amp, at, spread, endFrom, endAt, seed) => y => {
-    const r = smooth(endFrom, endAt, y);
-    let e = base(y) - amp * Math.exp(-(((y - at) / spread) ** 2)) + (fbm(y / 26, seed) - 0.5) * 16 * (1 - r);
-    if (k.capB != null && y < k.capB) e = Math.max(e, k.vid);
-    return e + r ** 1.4 * Math.max(0, g.cx + 12 - e);
-  };
-  const yb = k.spreadTop + 90;
-  return {
-    edgeL: make(48, yb, 46, yb + 40, yb + 170, 61),
-    edgeR: make(20, k.spreadTop + 16, 30, k.spreadTop + 30, k.spreadTop + 110, 67),
-    landEnd: yb + 170,
-  };
-}
-
-// The mist's own outline is a smooth union of "below the clearing's top" and "outside the
-// land's edge", so where they meet the land turns the corner in a wide round arc, not a notch.
-function smin(a, b, r) {
-  const h = Math.max(r - Math.abs(a - b), 0) / r;
-  return Math.min(a, b) - h * h * r / 4;
-}
+// The scene runs the full width of the window and ends behind the lower part of the featured
+// video in a long, slow mist: a gently arched line, a little lower on the left, with the land
+// thinning into the page colour over a tall band and pale streaks of mist drifting through it.
+const smoothT = t => t * t * (3 - 2 * t);
 
 function dissolve(L, g, bg) {
-  const { cx, W, H, clearTop } = g;
-  for (let y = clearTop - 24; y < H; y++) {
-    const eL = g.edgeL(y), eR = g.edgeR(y);
-    for (let x = 0; x < W; x++) {
-      // How far into the mist this pixel is, in pixels; negative means on the land.
-      const side = (x < cx ? eL : eR) - Math.abs(x - cx);
-      const top = (y - clearTop) + (fbm(x / 40, 79) - 0.5) * 10;
-      const out = smin(top, side, 36);
-      if (out > 7) { L.set(x, y, bg); continue; }
-      if (out > -7) {
-        const t = (out + 7) / 14;
-        if (streak(x, y, t, 4, 12)) L.set(x, y, bg);
-        else if (streak(x + 31, y, clamp(t * 1.8), 4, 12)) {
-          const c = L.get(x, y);
-          L.set(x, y, [(c[0] + bg[0]) >> 1, (c[1] + bg[1]) >> 1, (c[2] + bg[2]) >> 1]);
-        }
+  const { cx, W, H } = g, band = g.fadeBand;
+  const mist = [[0x2a, 0x2e, 0x62], [0x33, 0x37, 0x6e], [0x3c, 0x3e, 0x78]];
+  for (let x = 0; x < W; x++) {
+    const mid = g.fadeY + (fbm(x / 60, 79) - 0.5) * 14 + ((cx - x) / W) * 18 - Math.cos((x - cx) / W * Math.PI) * 6;
+    for (let y = Math.max(0, Math.floor(mid - band)); y < H; y++) {
+      const t = (y - (mid - band)) / (band * 2);
+      if (t >= 1) { L.set(x, y, bg); continue; }
+      if (streak(x, y, smoothT(t), 5, 16)) { L.set(x, y, bg); continue; }
+      if (streak(x + 57, y, Math.sin(Math.PI * t) * 0.22, 6, 20)) {
+        const c = L.get(x, y), m = mist[Math.min(2, Math.floor(h2(x >> 4, y) * 3))];
+        L.set(x, y, [(c[0] + m[0] * 2) / 3, (c[1] + m[1] * 2) / 3, (c[2] + m[2] * 2) / 3]);
+        continue;
+      }
+      if (streak(x + 31, y, clamp(t * 1.6), 4, 12)) {
+        const c = L.get(x, y);
+        L.set(x, y, [(c[0] + bg[0]) >> 1, (c[1] + bg[1]) >> 1, (c[2] + bg[2]) >> 1]);
       }
     }
   }
@@ -482,53 +427,20 @@ function dissolve(L, g, bg) {
   }
 }
 
-// Shape the spread's two floats to the land's edge, so the text runs alongside it. The land can
-// show up to 7 pixels inside its edge (the dissolve), so the text keeps clear of that too.
-function shapeText(layout, g, k, s) {
-  const gap = 14;
-  for (const [el, edge, side] of [[layout.left, g.edgeL, -1], [layout.right, g.edgeR, 1]]) {
-    if (!el) continue;
-    const pts = [];
-    let w = 0, h = 0;
-    for (let yc = 0; yc < 2400; yc += 6) {
-      const y = k.spreadTop + yc / s, e = edge(y);
-      if (y > g.landEnd) break;
-      const intr = Math.round(k.colCss - (e - 7) * s + gap);
-      pts.push([Math.max(0, intr), yc]);
-      if (intr > 0) { w = Math.max(w, intr); h = yc + 6; }
-    }
-    if (!w) { el.style.cssText = ""; continue; }
-    const p = pts.filter(([, y]) => y <= h).map(([x, y]) => `${side < 0 ? x : w - x}px ${y}px`);
-    const edgeX = side < 0 ? 0 : w;
-    el.style.cssText = `width:${w}px;height:${h}px;shape-outside:polygon(${edgeX}px 0, ${p.join(", ")}, ${edgeX}px ${h}px)`;
-  }
-}
-
 // --- Assembly --------------------------------------------------------------------------------
 
 export function mountScene(canvas, layout = {}) {
   const reduce = matchMedia("(prefers-reduced-motion: reduce)");
   const header = canvas.parentElement;
-  const floats = layout.spread ? { left: layout.spread.querySelector(".wrap.left"), right: layout.spread.querySelector(".wrap.right") } : {};
   let state = null, raf = 0, visible = true, lastKey = "";
 
-  // Where the page's pieces are, in canvas pixels from the canvas's top and centre.
+  // Where the featured video sits, in canvas pixels from the canvas's top.
   function measure(s) {
-    const top = canvas.getBoundingClientRect().top, px = v => (v - top) / s;
-    const box = layout.feature?.querySelector(".box"), fig = layout.feature?.firstElementChild;
-    const sp = layout.spread?.getBoundingClientRect();
-    const colCss = sp ? sp.width / 2 - 16 : 364;
-    const k = {
-      header: header.clientHeight / s,
-      vidTop: box ? px(box.getBoundingClientRect().top) : null,
-      vid: box ? box.getBoundingClientRect().width / 2 / s + 9 : 0,
-      capB: fig ? px(fig.getBoundingClientRect().bottom) + 4 : null,
-      spreadTop: sp ? px(sp.top) : header.clientHeight / s + 20,
-      colCss, col: colCss / s + 9,
-      wide: Math.min(innerWidth, 1600) >= 900,
-    };
-    for (const n of ["vidTop", "capB", "spreadTop", "vid", "col"]) if (k[n] != null) k[n] = Math.round(k[n]);
-    return k;
+    const top = canvas.getBoundingClientRect().top;
+    const box = layout.feature?.querySelector(".box")?.getBoundingClientRect();
+    return box
+      ? { top: Math.round((box.top - top) / s), height: Math.round(box.height / s), half: Math.round(box.width / 2 / s) }
+      : { top: Math.round(header.clientHeight / s), height: 0, half: 0 };
   }
 
   function build(force) {
@@ -537,17 +449,17 @@ export function mountScene(canvas, layout = {}) {
     const key = JSON.stringify([innerWidth, k]);
     if (!force && key === lastKey) return;
     lastKey = key;
-    const W = Math.ceil(canvas.clientWidth / s), cx = W >> 1;
-    const clearTop = (k.vidTop ?? k.header) + 20;
-    const pre = { cx, clearTop };
-    const edges = makeEdges(pre, k);
-    const H = Math.max(Math.ceil(k.header) + 120, Math.ceil(edges.landEnd) + 24);
+    // The mist is centred about two thirds of the way down the video (or a little below the
+    // header before it loads), and never so low that the scene runs on for a whole screen.
+    const fadeBand = 48;
+    const fadeY = k.top + Math.min(Math.round(k.height * 0.62), Math.round(420 / s)) + (k.height ? 0 : 30);
+    const W = Math.ceil(canvas.clientWidth / s), cx = W >> 1, H = fadeY + fadeBand + 24;
     canvas.style.height = `${H * s}px`;
     canvas.width = W; canvas.height = H;
     const bg = getComputedStyle(document.body).backgroundColor.match(/\d+/g).slice(0, 3).map(Number);
     const unit = 200, horizon = 84;
     const g = {
-      W, H, cx, unit, horizon, clearTop, ...edges,
+      W, H, cx, unit, horizon, fadeY, fadeBand, plateHalf: k.half,
       lakeTop: horizon + 24,
       moonX: cx + Math.round(Math.min(W * 0.32, 200)), moonY: Math.round(horizon * 0.22),
       glowX: cx - Math.round(Math.min(W * 0.2, 110)),
@@ -555,7 +467,6 @@ export function mountScene(canvas, layout = {}) {
       capped: canvas.clientWidth < innerWidth - 2,
     };
     g.meadowAt = x => g.lakeTop + 24 + (fbm((x - cx) / 34 + 9, 41) - 0.5) * 8;
-    shapeText(floats, g, k, s);
 
     const L = new Layer(W, H);
     const off = f => Math.round(Math.min(W * f, 1600 / s * f));
@@ -570,10 +481,7 @@ export function mountScene(canvas, layout = {}) {
     drawLake(L, g);
     drawMeadow(L, g);
     drawCairn(L, g);
-    drawBoulders(L, g, -1, 3);
-    drawBoulders(L, g, 1, 5);
-    drawFoliage(L, g, -1, 3);
-    drawFoliage(L, g, 1, 5);
+    drawBoulders(L, g);
     dissolve(L, g, bg);
     L.done();
 
@@ -644,10 +552,10 @@ export function mountScene(canvas, layout = {}) {
   });
   // The video arriving, or fonts loading, moves the text; redraw when the layout really changes.
   let layoutTimer = 0;
-  if (layout.spread) new ResizeObserver(() => {
+  if (layout.feature) new ResizeObserver(() => {
     clearTimeout(layoutTimer);
     layoutTimer = setTimeout(() => { cancelAnimationFrame(raf); build(false); }, 80);
-  }).observe(layout.spread.parentElement);
+  }).observe(layout.feature);
   reduce.addEventListener("change", restart);
   document.addEventListener("visibilitychange", restart);
   new IntersectionObserver(([e]) => { visible = e.isIntersecting; restart(); }).observe(canvas);

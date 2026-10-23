@@ -63,7 +63,7 @@
   .scene { position: relative; height: 420px; }
   .scene canvas {
     position: absolute; top: 0; left: 50%; transform: translateX(-50%);
-    width: min(100%, 2400px); height: 1400px;
+    width: min(100%, 2400px); height: 900px;
     image-rendering: pixelated;
   }
   .scene .title {
@@ -117,15 +117,11 @@
     display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px;
   }
   .meta .date { color: var(--gold); }
-  /* The featured video sits on the meadow like a plate in a spread, a little wider than the
-     text. Below it, the land comes in from the sides and the text wraps around it: scene.js
-     shapes the two .wrap floats to the land's edge. */
+  /* The featured video sits on the meadow like a plate, a little wider than the text; the
+     scene fades into mist behind its lower part. */
   .feature { margin: 0 calc((100% - min(960px, 100vw - 32px)) / 2); }
-  .spread { margin-top: 40px; }
-  .wrap { width: 0; height: 0; }
-  .wrap.left { float: left; }
-  .wrap.right { float: right; }
-  .spread figure, .spread .trail { display: flow-root; }
+  .feature .frame { width: min(100%, 720px * var(--ar, 1.6)); margin: 0 auto; } /* portrait takes stand as a narrower plate */
+  .lede { margin-top: 40px; }
 
   /* Figures: one ink (the text colour), a tint for the proved part, the accent for "proved".
      Pixel style: stepped corners, crisp 2px lines, open chevrons. */
@@ -196,8 +192,6 @@
 <main>
   <div id="feature" class="feature"></div>
 
-  <div id="spread" class="spread">
-  <div class="wrap left" aria-hidden="true"></div><div class="wrap right" aria-hidden="true"></div>
   <p class="lede">Research into user interfaces where everything a person can do is a <em>claim</em>
     with a durable id, and every claim carries machine-checked evidence.</p>
 
@@ -268,7 +262,6 @@
 </svg>
     <figcaption>One frame, from a key press to the screen.</figcaption>
   </figure>
-  </div>
 
   <aside class="note"><div class="card px">
     <p class="label"><img src="/icon.svg" alt="">Not a layer on top</p>
@@ -306,6 +299,7 @@
     const v = document.createElement("video");
     Object.assign(v, { src: m.video, poster: m.poster, controls: true, muted: true, loop: true, playsInline: true, preload: "metadata" });
     v.width = m.width; v.height = m.height;
+    f.style.setProperty("--ar", m.width / m.height);
     v.autoplay = autoplay;
     box.append(v);
     const c = document.createElement("figcaption");
@@ -339,7 +333,7 @@
 </script>
 <script type="module">
   import { mountScene } from "/scene.js";
-  mountScene(document.getElementById("scene"), { feature: document.getElementById("feature"), spread: document.getElementById("spread") });
+  mountScene(document.getElementById("scene"), { feature: document.getElementById("feature") });
 </script>
 </body>
 </html>
