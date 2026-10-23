@@ -7,8 +7,8 @@ retired, a hash of its formal statement and its title. Ids are the contract, so:
 
 - `check` fails when a locked id is missing from the code (unless the lock says it is retired),
   when an id is reused for a different kind, when a retired id comes back, when the code issues
-  an id twice, when a claim has no description, and when the code has an id the lock doesn't
-  (run `update`). It warns when a claim's formal statement or title changed: give it a new id,
+  an id twice, when a claim has no description, and when the code has an id the lock doesn't or
+  retires one the lock still has as active (run `update` for both). It warns when a claim's formal statement or title changed: give it a new id,
   or `update --accept` if the meaning is the same.
 - `update` appends new ids, marks newly retired ones, and with `--accept` records changed
   hashes and titles. It never removes a line, and refuses while `check` has errors other than
@@ -84,6 +84,8 @@ def compare (env : Environment) (locked : Array Line) : Report := Id.run do
         r := r.err s!"^{l.id} was issued as a {l.kind.name} (“{l.title}”) and is now reused as a claim of kind `{e.info.kind.name}`: {e.label}. Take a new id"
       else if l.retired && e.info.retired.isNone then
         r := r.err s!"^{l.id} “{l.title}” is retired and has come back: {e.label}. Take a new id"
+      else if !l.retired && e.info.retired.isSome then
+        r := r.new s!"^{l.id} “{l.title}” is retired in the code but active in claims.lock: run `lake exe ledger update`"
       else if e.info.retired.isNone then
         let h := statementHash env e
         if h != l.hash then
