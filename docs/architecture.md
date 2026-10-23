@@ -1,6 +1,6 @@
 # Architecture
 
-Warrant splits a UI into the part we can prove and the part we have to trust, and keeps the
+Cairn splits a UI into the part we can prove and the part we have to trust, and keeps the
 second part small, explicit and checked another way.
 
 ```

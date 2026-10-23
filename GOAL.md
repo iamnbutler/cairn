@@ -1,6 +1,6 @@
 # Goal: M1, a proved TodoMVC on the Mac
 
-Warrant is research into building user interfaces where every thing a person can do is a
+Cairn is research into building user interfaces where every thing a person can do is a
 **claim** with a durable id, and every claim carries machine-checked evidence. M1 is the first
 demo that shows the whole loop end to end on a small, well-known app.
 
