@@ -1,5 +1,17 @@
 [
   {
+    "video": "/m/videos/9cb67df1092eb561.mp4",
+    "poster": "/m/videos/9cb67df1092eb561.jpg",
+    "title": "The host, with text",
+    "caption": "The new AppKit host painting through the Metal renderer: Core Text glyphs from an atlas, a caret, a focused field, a checkbox and a list. Typing goes through the Mac's text-input path, and every control in the accessibility tree is named by its claim id (^1 field, ^2 checkbox, ^3 Add, ^4#1 the new item). This app is the host's test fixture, with its frames built in Swift; the next video is the same host running a Lean app.",
+    "date": "2026-10-23",
+    "commit": "3ff02ad",
+    "width": 1040,
+    "height": 904,
+    "seconds": 18,
+    "feature": false
+  },
+  {
     "video": "/m/videos/4dff72519883d7d3.mp4",
     "poster": "/m/videos/4dff72519883d7d3.jpg",
     "title": "Boundary spike",
