@@ -16,6 +16,7 @@ lean_lib Cairn where
   defaultFacets := #[LeanLib.staticFacet]
   moreLinkObjs := #[text_host.o]
 
+<<<<<<< HEAD
 /-- A weak stand-in for the claim commands' full initializer, so the host links apps that
 `meta import` them without libLean (see lean/c/claims_meta.c). -/
 target claims_meta.o pkg : System.FilePath := do
@@ -23,6 +24,9 @@ target claims_meta.o pkg : System.FilePath := do
   let args := #["-I", (← getLeanIncludeDir).toString]
   buildO (pkg.buildDir / "c" / "claims_meta.o") src args #["-O2", "-fPIC"] "cc"
 
+=======
+/-- The spike's Counter (`Examples.Counter`, `cairn_counter_*`, frame v0). -/
+>>>>>>> 647b394 (Basics on the v1 ABI: app, per-app libraries, FrameV1Codec, selftest, Pressable checker)
 @[default_target]
 lean_lib Examples where
   defaultFacets := #[LeanLib.staticFacet]
@@ -43,6 +47,19 @@ lean_exe ledger where
 lean_exe claims where
   root := `Cairn.Claims.Export
   supportInterpreter := true
+
+/-! One library per v1 app. Every v1 app exports the same `cairn_app_init/step/frame`, so each
+gets its own static library and each host executable links exactly one (`make lean`,
+host/Package.swift). Its proofs are a separate root: built and audited, never linked. -/
+
+@[default_target]
+lean_lib Basics where
+  roots := #[`Examples.Basics]
+  defaultFacets := #[LeanLib.staticFacet]
+
+@[default_target]
+lean_lib BasicsProofs where
+  roots := #[`Examples.Basics.Proofs]
 
 lean_exe bench where
   root := `Bench
