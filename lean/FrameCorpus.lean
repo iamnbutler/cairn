@@ -123,8 +123,9 @@ def request : Gen Request := do
   | 6 => return .frontmostApp
   | 7 => return .permission (← pick #[.accessibility, .microphone]) (← coin)
   | 8 => return .typeText (← nat) (← str) (← coin)
-  | 9 => return .upload (← str) (← str) (← headers) (← opt (do return ⟨← str, ← str, ← str, ← str⟩))
-      (← array 3 part).toList (← nat)
+  | 9 =>
+    let sec ← opt (do return (⟨← str, ← str, ← str, ← str⟩ : Secret))
+    return .upload (← str) (← str) (← headers) sec (← array 3 part).toList (← nat)
   | 10 => return .forgetClip (← nat)
   | _ => return .http (← str) (← str) (← headers) (← bytes) (← nat)
 
