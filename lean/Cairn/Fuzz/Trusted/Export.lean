@@ -4,6 +4,7 @@ import Cairn.Frame.Boundary
 import Cairn.Runtime.Abi
 import Cairn.Text.Host
 import Cairn.Text.Field
+import Cairn.Layout.Core
 
 /-! # Lean's side of the trusted-base fuzzer
 
@@ -19,7 +20,10 @@ process (docs/fuzz.md, "Trusted base"). No `import Lean`: this links into a Swif
 * `cairn_tf_field_init/step/frame`: an app that is one text field, on the real runtime and
   boundary (`Runtime.stepBytes`, `Frame.boundary`, `TextMetrics.host`), so the host's
   `NSTextInputClient` and its shadow of the field can be checked against `Field.apply`.
-  The same ABI as `cairn_app_*` (docs/runtime.md), under other names so it can't clash. -/
+  The same ABI as `cairn_app_*` (docs/runtime.md), under other names so it can't clash.
+* `cairn_tf_wrap`: where Lean breaks a string into lines at a width with `TextMetrics.host`,
+  and where layout puts each line, so the Swift side can shape each line as the renderer will
+  and compare with Core Text's own line breaking. -/
 
 namespace Cairn.Fuzz.Trusted
 open Cairn
@@ -79,5 +83,24 @@ def fieldStep (s : Runtime.State Text.Field) (events : ByteArray) : Runtime.Stat
 
 @[export cairn_tf_field_frame]
 def fieldFrame (s : Runtime.State Text.Field) : ByteArray := Runtime.frameBytes Frame.boundary s
+
+/-! ## Wrapped text -/
+
+/-- A string wrapped at `width` (a para filling a window that wide), as int32s: the line count,
+then for each line its scalar range `a, b`, Lean's width for it (`o b - o a`) and the `x, y, w`
+of the line's laid-out rect. -/
+@[export cairn_tf_wrap_lean]
+def wrap (family size weight : UInt32) (italic : UInt8) (width : UInt32) (s : String) :
+    ByteArray :=
+  let f : Font := { family := family.toNat, size := size.toNat, weight := weight.toNat,
+                    italic := italic != 0 }
+  let m := TextMetrics.host
+  let o := Layout.offAt (m.offsets f s)
+  let ls := Text.Wrap.allLines o width.toNat s.toList
+  let laid := Layout.layout m ⟨width.toNat, 1000000⟩ (.para { font := f } {} s)
+  let rects := (match laid with | .box _ _ _ _ kids => kids | _ => []).map Laid.rect
+  let words : List Int := ls.length :: (List.zip ls rects).flatMap fun (p, r) =>
+    [(p.1 : Int), p.2, o p.2 - o p.1, r.x, r.y, r.w]
+  words.foldl Text.Host.putI32 ByteArray.empty
 
 end Cairn.Fuzz.Trusted

@@ -17,7 +17,7 @@ setvbuf(stdout, nil, _IOLBF, 0)
 
 let allSuites: [Suite] = [FrameSuite(), EventsSuite(), TextIndexSuite(), InputClientSuite(), MetricsSuite(),
                           ClockSuite(), WorldSuite(), FilesSuite(), HTTPSuite(), SoundSuite(),
-                          FileOpsSuite(), SystemSuite(), AudioSuite(), InputSuite(), UploadSuite()]
+                          FileOpsSuite(), SystemSuite(), AudioSuite(), InputSuite(), UploadSuite(), WrapSuite()]
 
 var args = Array(CommandLine.arguments.dropFirst())
 func take(_ flag: String) -> String? {

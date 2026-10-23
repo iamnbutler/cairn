@@ -41,14 +41,16 @@ theorem cut_spec (o : Nat → Int) (W : Int) (a b : Nat) :
   simp only [cut]; omega
 
 theorem chunkGo_good (o : Nat → Int) (W : Int) (b : Nat) :
-    ∀ (fuel a : Nat), b ≤ a + fuel → ∀ p ∈ chunkGo o W b fuel a, Good o W p
-  | 0, a, h, p, hp => by
-    simp only [chunkGo, List.mem_singleton] at hp; subst hp; right; simp only; omega
-  | fuel + 1, a, h, p, hp => by
+    ∀ (fuel a : Nat), b ≤ a + fuel →
+      (∀ p ∈ (chunkGo o W b fuel a).1, Good o W p) ∧ Good o W (chunkGo o W b fuel a).2
+  | 0, a, h => by
+    simp only [chunkGo, List.not_mem_nil, false_implies, implies_true, true_and]
+    right; simp only; omega
+  | fuel + 1, a, h => by
     have hc := cut_spec o W a b
-    simp only [chunkGo] at hp
-    split at hp
-    · simp only [List.mem_singleton] at hp; subst hp
+    simp only [chunkGo]
+    split
+    · simp only [List.not_mem_nil, false_implies, implies_true, true_and]
       unfold Good; simp only
       rcases hc with ⟨h1, h2, h3⟩
       rcases h1 with h1 | h1
@@ -57,44 +59,48 @@ theorem chunkGo_good (o : Nat → Int) (W : Int) (b : Nat) :
           rw [this] at h1; left; exact h1
         · right; omega
       · right; omega
-    · simp only [List.mem_cons] at hp
+    · have ih := chunkGo_good o W b fuel (cut o W a b) (by omega)
+      refine ⟨fun p hp => ?_, ih.2⟩
+      simp only [List.mem_cons] at hp
       rcases hp with rfl | hp
       · unfold Good; simp only; rcases hc.1 with h1 | h1
         · left; exact h1
         · right; omega
-      · exact chunkGo_good o W b fuel _ (by omega) p hp
+      · exact ih.1 p hp
 
-theorem pieces_good (o : Nat → Int) (W : Int) (ws : List (Nat × Nat)) :
-    ∀ p ∈ pieces o W ws, Good o W p := by
-  intro p hp
-  simp only [pieces, List.mem_flatMap] at hp
-  obtain ⟨w, -, hp⟩ := hp
-  exact chunkGo_good o W w.2 (w.2 - w.1) w.1 (by omega) p hp
+theorem chunk_good (o : Nat → Int) (W : Int) (w : Nat × Nat) :
+    (∀ p ∈ (chunk o W w).1, Good o W p) ∧ Good o W (chunk o W w).2 :=
+  chunkGo_good o W w.2 (w.2 - w.1) w.1 (by omega)
 
 theorem fill_good (o : Nat → Int) (W : Int) :
-    ∀ (ps : List (Nat × Nat)) (cur : Nat × Nat), Good o W cur → (∀ p ∈ ps, Good o W p) →
-      ∀ l ∈ fill o W cur ps, Good o W l
-  | [], cur, hc, _, l, hl => by
+    ∀ (ws : List (Nat × Nat)) (cur : Nat × Nat), Good o W cur → ∀ l ∈ fill o W cur ws, Good o W l
+  | [], cur, hc, l, hl => by
     simp only [fill, List.mem_singleton] at hl; subst hl; exact hc
-  | p :: ps, cur, hc, hps, l, hl => by
+  | w :: ws, cur, hc, l, hl => by
     simp only [fill] at hl
     split at hl
-    · next h => exact fill_good o W ps _ (.inl h) (fun q hq => hps q (.tail _ hq)) l hl
-    · simp only [List.mem_cons] at hl
-      rcases hl with rfl | hl
+    · next h => exact fill_good o W ws _ (.inl h) l hl
+    · simp only [List.mem_cons, List.mem_append] at hl
+      rcases hl with rfl | hl | hl
       · exact hc
-      · exact fill_good o W ps p (hps p (.head _)) (fun q hq => hps q (.tail _ hq)) l hl
+      · exact (chunk_good o W w).1 l hl
+      · exact fill_good o W ws _ (chunk_good o W w).2 l hl
 
-theorem breakAll_good (o : Nat → Int) (W : Int) (ps : List (Nat × Nat))
-    (h : ∀ p ∈ ps, Good o W p) : ∀ l ∈ breakAll o W ps, Good o W l := by
-  cases ps with
+theorem breakAll_good (o : Nat → Int) (W : Int) (ws : List (Nat × Nat)) :
+    ∀ l ∈ breakAll o W ws, Good o W l := by
+  cases ws with
   | nil => simp only [breakAll, List.not_mem_nil, false_implies, implies_true]
-  | cons p ps => exact fill_good o W ps p (h p (.head _)) (fun q hq => h q (.tail _ hq))
+  | cons w ws =>
+    intro l hl
+    simp only [breakAll, List.mem_append] at hl
+    rcases hl with hl | hl
+    · exact (chunk_good o W w).1 l hl
+    · exact fill_good o W ws _ (chunk_good o W w).2 l hl
 
 /-- **Lines fit.** Every line is at most `W` wide, or is a single scalar. -/
 theorem allLines_fit (o : Nat → Int) (W : Int) (cs : List Char) :
     ∀ l ∈ allLines o W cs, o l.2 - o l.1 ≤ W ∨ l.2 ≤ l.1 + 1 :=
-  breakAll_good o W _ (pieces_good o W _)
+  breakAll_good o W _
 
 /-! ## Lines tile the text -/
 
@@ -167,12 +173,13 @@ theorem words_cover (cs : List Char) :
 
 theorem chunkGo_cover {sp : Nat → Prop} {len : Nat} (o : Nat → Int) (W : Int) (b : Nat)
     (rs : List (Nat × Nat)) :
-    ∀ (fuel a p : Nat), Cover sp len p ((a, b) :: rs) → Cover sp len p (chunkGo o W b fuel a ++ rs)
-  | 0, a, p, h => by simpa only [chunkGo, List.singleton_append] using h
+    ∀ (fuel a p : Nat), Cover sp len p ((a, b) :: rs) →
+      Cover sp len p ((chunkGo o W b fuel a).1 ++ (chunkGo o W b fuel a).2 :: rs)
+  | 0, a, p, h => by simpa only [chunkGo, List.nil_append] using h
   | fuel + 1, a, p, h => by
     simp only [chunkGo]
     split
-    · simpa only [List.singleton_append] using h
+    · simpa only [List.nil_append] using h
     · next hbc =>
       cases h with
       | cons h1 h2 h3 h4 =>
@@ -182,14 +189,21 @@ theorem chunkGo_cover {sp : Nat → Prop} {len : Nat} (o : Nat → Int) (W : Int
         exact chunkGo_cover o W b rs fuel _ _
           (.cons (Nat.le_refl _) (by omega) (fun i h h' => by omega) h4)
 
-theorem pieces_cover {sp : Nat → Prop} {len : Nat} (o : Nat → Int) (W : Int) :
-    ∀ {p : Nat} {ws : List (Nat × Nat)}, Cover sp len p ws → Cover sp len p (pieces o W ws) := by
-  intro p ws h
-  induction h with
-  | nil h1 h2 => exact .nil h1 h2
-  | @cons p a b rs h1 h2 h3 _ ih =>
-    simp only [pieces, List.flatMap_cons] at ih ⊢
-    exact chunkGo_cover o W b _ (b - a) a p (.cons h1 h2 h3 ih)
+theorem chunk_cover {sp : Nat → Prop} {len : Nat} (o : Nat → Int) (W : Int) (w : Nat × Nat)
+    (rs : List (Nat × Nat)) {p : Nat} (h : Cover sp len p (w :: rs)) :
+    Cover sp len p ((chunk o W w).1 ++ (chunk o W w).2 :: rs) :=
+  chunkGo_cover o W w.2 rs (w.2 - w.1) w.1 p h
+
+/-- Replacing what follows a prefix keeps a cover, if it keeps the cover from where the prefix
+ends. -/
+theorem Cover.append {sp : Nat → Prop} {len : Nat} {x : Nat × Nat} {ws F : List (Nat × Nat)}
+    (hF : ∀ q, Cover sp len q (x :: ws) → Cover sp len q F) :
+    ∀ (pre : List (Nat × Nat)) (p : Nat), Cover sp len p (pre ++ x :: ws) →
+      Cover sp len p (pre ++ F)
+  | [], p, h => hF p h
+  | y :: pre, p, h => by
+    cases h with
+    | cons h1 h2 h3 h4 => exact .cons h1 h2 h3 (Cover.append hF pre _ h4)
 
 theorem Cover.merge {sp : Nat → Prop} {len p a b c d : Nat} {rs : List (Nat × Nat)}
     (h : Cover sp len p ((a, b) :: (c, d) :: rs)) : Cover sp len p ((a, d) :: rs) := by
@@ -199,26 +213,28 @@ theorem Cover.merge {sp : Nat → Prop} {len p a b c d : Nat} {rs : List (Nat ×
     | cons h5 h6 _ h8 => exact .cons h1 (by omega) h3 h8
 
 theorem fill_cover {sp : Nat → Prop} {len : Nat} (o : Nat → Int) (W : Int) :
-    ∀ (ps : List (Nat × Nat)) (cur : Nat × Nat) (p : Nat),
-      Cover sp len p (cur :: ps) → Cover sp len p (fill o W cur ps)
+    ∀ (ws : List (Nat × Nat)) (cur : Nat × Nat) (p : Nat),
+      Cover sp len p (cur :: ws) → Cover sp len p (fill o W cur ws)
   | [], cur, p, h => by simpa only [fill] using h
-  | q :: ps, cur, p, h => by
+  | w :: ws, cur, p, h => by
     simp only [fill]
     split
-    · exact fill_cover o W ps _ p (Cover.merge h)
+    · exact fill_cover o W ws _ p (Cover.merge h)
     · cases h with
-      | cons h1 h2 h3 h4 => exact .cons h1 h2 h3 (fill_cover o W ps q _ h4)
+      | cons h1 h2 h3 h4 =>
+        exact .cons h1 h2 h3 (Cover.append (fun q hq => fill_cover o W ws _ q hq) _ _
+          (chunk_cover o W w ws h4))
 
 theorem breakAll_cover {sp : Nat → Prop} {len : Nat} (o : Nat → Int) (W : Int) {p : Nat} :
-    ∀ {ps : List (Nat × Nat)}, Cover sp len p ps → Cover sp len p (breakAll o W ps)
+    ∀ {ws : List (Nat × Nat)}, Cover sp len p ws → Cover sp len p (breakAll o W ws)
   | [], h => h
-  | q :: ps, h => fill_cover o W ps q p h
+  | w :: ws, h => Cover.append (fun q hq => fill_cover o W ws _ q hq) _ _ (chunk_cover o W w ws h)
 
 /-- **Lines cover the text.** The lines are nonempty, in order, within the text, and every
 scalar outside them is a break space. -/
 theorem allLines_cover (o : Nat → Int) (W : Int) (cs : List Char) :
     Cover (fun k => cs[k]? = some ' ') cs.length 0 (allLines o W cs) :=
-  breakAll_cover o W (pieces_cover o W (words_cover cs))
+  breakAll_cover o W (words_cover cs)
 
 /-- `Tiles cs ls`: `cs = g₀ ++ l₀ ++ g₁ ++ l₁ ++ … ++ lₖ ++ gₖ₊₁` where `ls = [l₀, …, lₖ]`, every
 line is nonempty and every gap is break spaces. -/
@@ -324,6 +340,8 @@ private def unit (i : Nat) : Int := i
   == ["ab cd", "ef"]
 -- A word wider than the line is cut into pieces that fit.
 #guard allLines unit 3 "abcdefg h".toList == [(0, 3), (3, 6), (6, 9)]
+-- An over-wide word starts a new line before it is cut.
+#guard allLines unit 4 "a bcdefg".toList == [(0, 1), (2, 6), (6, 8)]
 #guard allLines unit 4 "ab cdefghij".toList == [(0, 2), (3, 7), (7, 11)]
 -- At width 0 every line is one scalar.
 #guard allLines unit 0 "ab c".toList == [(0, 1), (1, 2), (3, 4)]
