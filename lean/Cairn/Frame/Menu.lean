@@ -63,16 +63,16 @@ theorem menuOf_controls (parent : Option Nat) (acc : Array MenuRecord) (m : Menu
   | .submenu l p kids =>
     rw [menuOf, menuAll_controls]
     simp only [Array.toList_push, List.filterMap_append, List.filterMap_cons, menuRecord, MenuRecord.ctl,
-      List.filterMap_cons_none, List.filterMap_nil, List.append_nil, MenuItem.refsOf]
+      List.filterMap_nil, List.append_nil, MenuItem.refsOf]
   | .item c e sc =>
     simp only [menuOf, Array.toList_push, List.filterMap_append, List.filterMap_cons, menuRecord, MenuRecord.ctl,
-      List.filterMap_cons_some, List.filterMap_nil, MenuItem.refsOf]
+      List.filterMap_nil, MenuItem.refsOf]
   | .info l =>
     simp only [menuOf, Array.toList_push, List.filterMap_append, List.filterMap_cons, menuRecord, MenuRecord.ctl,
-      List.filterMap_cons_none, List.filterMap_nil, MenuItem.refsOf, List.append_nil]
+      List.filterMap_nil, MenuItem.refsOf, List.append_nil]
   | .separator =>
     simp only [menuOf, Array.toList_push, List.filterMap_append, List.filterMap_cons, menuRecord, MenuRecord.ctl,
-      List.filterMap_cons_none, List.filterMap_nil, MenuItem.refsOf, List.append_nil]
+      List.filterMap_nil, MenuItem.refsOf, List.append_nil]
 
 theorem menuAll_controls (parent : Option Nat) (acc : Array MenuRecord) (ms : List MenuItem) :
     (menuAll parent acc ms).toList.filterMap MenuRecord.ctl =
@@ -88,7 +88,7 @@ end
 are exactly the description's actionable items, in order. -/
 theorem controls_ofMenu (items : List MenuItem) :
     (ofMenu items).toList.filterMap MenuRecord.ctl = MenuItem.refs items := by
-  simp only [ofMenu, menuAll_controls, List.toList_toArray, List.filterMap_nil, List.nil_append]
+  simp only [ofMenu, menuAll_controls, List.filterMap_nil, List.nil_append]
 
 mutual
 theorem menuOf_enabled (parent : Option Nat) (acc : Array MenuRecord) (m : MenuItem) :
@@ -98,20 +98,20 @@ theorem menuOf_enabled (parent : Option Nat) (acc : Array MenuRecord) (m : MenuI
   | .submenu l p kids =>
     rw [menuOf, menuAll_enabled]
     simp only [Array.toList_push, List.filterMap_append, List.filterMap_cons, menuRecord, MenuRecord.enabledCtl,
-      if_true, List.filterMap_cons_none, List.filterMap_nil, List.append_nil,
+      ite_true, List.filterMap_nil, List.append_nil,
       MenuItem.enabledRefsOf]
   | .item c e sc =>
     cases e <;>
     simp only [menuOf, Array.toList_push, List.filterMap_append, List.filterMap_cons, menuRecord,
-      MenuRecord.enabledCtl, if_true, Bool.false_eq_true, if_false, List.filterMap_cons_some,
-      List.filterMap_cons_none, List.filterMap_nil, MenuItem.enabledRefsOf, List.append_nil]
+      MenuRecord.enabledCtl, ite_true, Bool.false_eq_true, ite_false,
+      List.filterMap_nil, MenuItem.enabledRefsOf, List.append_nil]
   | .info l =>
     simp only [menuOf, Array.toList_push, List.filterMap_append, List.filterMap_cons, menuRecord,
-      MenuRecord.enabledCtl, Bool.false_eq_true, if_false, List.filterMap_cons_none,
+      MenuRecord.enabledCtl, Bool.false_eq_true, ite_false,
       List.filterMap_nil, MenuItem.enabledRefsOf, List.append_nil]
   | .separator =>
     simp only [menuOf, Array.toList_push, List.filterMap_append, List.filterMap_cons, menuRecord,
-      MenuRecord.enabledCtl, Bool.false_eq_true, if_false, List.filterMap_cons_none,
+      MenuRecord.enabledCtl, Bool.false_eq_true, ite_false,
       List.filterMap_nil, MenuItem.enabledRefsOf, List.append_nil]
 
 theorem menuAll_enabled (parent : Option Nat) (acc : Array MenuRecord) (ms : List MenuItem) :
@@ -128,7 +128,7 @@ end
 greys out is what Lean will refuse (`Runtime.menu_select_stale`). -/
 theorem enabled_ofMenu (items : List MenuItem) :
     (ofMenu items).toList.filterMap MenuRecord.enabledCtl = MenuItem.enabledRefs items := by
-  simp only [ofMenu, menuAll_enabled, List.toList_toArray, List.filterMap_nil, List.nil_append]
+  simp only [ofMenu, menuAll_enabled, List.filterMap_nil, List.nil_append]
 
 /-! ## Parents point backwards, at submenus -/
 

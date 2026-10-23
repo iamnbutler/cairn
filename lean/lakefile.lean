@@ -88,6 +88,13 @@ lean_lib Clock where
   defaultFacets := #[LeanLib.staticFacet]
   moreLinkObjs := #[claims_meta.o]
 
+/-- Tray (workstream S, docs/surfaces.md): a menu bar item and an overlay panel. -/
+@[default_target]
+lean_lib Tray where
+  roots := #[`Examples.Tray.Abi, `Examples.Tray]
+  defaultFacets := #[LeanLib.staticFacet]
+  moreLinkObjs := #[claims_meta.o]
+
 lean_exe bench where
   root := `Bench
 

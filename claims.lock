@@ -82,6 +82,19 @@
 407	flow	active	befa900cd07c80b7	Two laps
 408	flow	active	81892d4491fba6ac	Start over
 409	invariant	active	631e025c1afbf429	Pending requests have fresh ids
+450	place	active	-	Tray menu
+451	place	active	-	Recent Items submenu
+452	place	active	-	Overlay panel
+453	move	active	a29a942e4112db2f	Open the menu
+454	move	active	f1adc3f3e5064483	Show Overlay
+455	move	active	0f22ec1ce535f0de	Keep Recent Items
+456	move	active	1d5a792fc323eec7	Add Item
+457	move	active	54b9516c0a6ee336	Recent item
+458	move	active	31930b1b27c86b45	Clear Recent Items
+459	move	active	7b44b1740999c6d7	Quit Tray
+460	invariant	active	766546c5055d42df	At most five recent items
+461	flow	active	3191456f2212ab29	Show the overlay
+462	flow	active	fbb1f497f8493322	Add an item and pick it
 901	assume	active	-	The Swift frame decoder agrees with Lean's
 902	assume	active	-	Lean decodes what the Swift event encoder writes
 903	assume	active	-	UTF-16 offsets and scalar indices convert exactly

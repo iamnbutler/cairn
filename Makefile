@@ -12,7 +12,7 @@ VENDOR = host/Sources/CLean/vendor/lean
 # links exactly one: v1 apps all export `cairn_app_init/step/frame` (docs/runtime.md), so two
 # in one binary would clash. The check below keeps the shared library free of app exports and
 # each app library to one set.
-APPS = Counter:counter Basics:basics Todo:todo Clock:clock
+APPS = Counter:counter Basics:basics Todo:todo Clock:clock Tray:tray
 
 lean:
 	cd lean && lake build
@@ -97,6 +97,7 @@ selftest: host
 	cd host && swift run CairnBasics --selftest
 	cd host && swift run CairnTodo --selftest
 	cd host && swift run CairnClock --selftest
+	cd host && swift run CairnTray --selftest
 
 # Opens an app in a window: `make demo` (TodoMVC), or `make demo DEMO=CairnBasics`.
 DEMO ?= CairnTodo
@@ -193,7 +194,7 @@ fuzz-yap: lean
 # into build/size/, attributed (Lean runtime, Cairn, the app, Swift host, shaders), and checked
 # against SIZE_LIMIT bytes. No host app links `Lean` (the compiler, about 100 MB), so each is a
 # few MB; crossing the limit almost always means something imported `Lean`.
-SIZE_APPS = CairnCounter CairnBasics CairnTodo CairnClock
+SIZE_APPS = CairnCounter CairnBasics CairnTodo CairnClock CairnTray
 SIZE_LIMIT = 5000000
 size: lean
 	mkdir -p build/size

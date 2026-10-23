@@ -1241,7 +1241,7 @@ theorem canvas_eq (c : Canvas) : canvas c = (Enc.canvas c).length := by
 
 theorem menuRecord_eq (m : MenuRecord) : menuRecord m = (Enc.menuRecord m).length := by
   simp only [menuRecord, Enc.menuRecord, str_eq, List.length_append, List.length_cons,
-    List.length_nil, Enc.bool, Enc.ref, Enc.length_u32, Enc.pad, List.length_replicate,
+    Enc.bool, Enc.ref, Enc.length_u32, Enc.pad, List.length_replicate,
     List.cons_append, List.nil_append, List.append_assoc]
   omega
 
@@ -1252,7 +1252,7 @@ theorem status_eq (s : StatusFrame) : status s = (Enc.status s).length := by
 
 theorem surface_eq (s : SurfaceFrame) : surface s = (Enc.surface s).length := by
   simp only [surface, Enc.surface, str_eq, canvas_eq, status_eq, List.length_append,
-    List.length_cons, List.length_nil, Enc.bool, Enc.length_u32, List.cons_append,
+    List.length_cons, Enc.bool, Enc.length_u32, List.cons_append,
     List.nil_append]
   omega
 
