@@ -17,3 +17,35 @@ they break. For workstreams F (renderer/text) and G (host).
 | [macos/accessibility.md](macos/accessibility.md): NSAccessibilityElement trees, AccessKit, GPUI, Chromium, Flutter; identity, coordinates, notifications | G | 5 |
 | [macos/metal-ui-rendering.md](macos/metal-ui-rendering.md): SDF rects, clipping, batching, frame pacing, colour space, latency | F | 5 |
 | [macos/appkit-events.md](macos/appkit-events.md): tracking areas, cursors, scroll phases, key equivalents, Edit-menu routing | G | 5 |
+
+## Formal UI, verified layout and the TodoMVC spec
+
+What has been specified, proved or tested about UIs before, and the exact spec M1's TodoMVC must
+meet. For workstreams A (claims), B (layout), C (runtime), I (TodoMVC) and J (conformance).
+
+| Note | For | Relevance |
+|---|---|---|
+| [todomvc/README.md](todomvc/README.md): the official app spec, Cypress suite and template, archived; **requirements T1–T50**, M1's claim checklist | I, A, J | 5 |
+| [quickstrom/README.md](quickstrom/README.md): Quickstrom/Specstrom/QuickLTL (PLDI 2022), its TodoMVC spec and the 14 bugs in 20 of 43 implementations; Bombadil | I, A, J | 5 |
+| [verified-layout/README.md](verified-layout/README.md): Cassius, VizAssert, Troika (SMT-verified CSS layout), Spineless Traversal, μSkia (Skia semantics in Lean) | B, C, F, J | 4 |
+| [constraint-layout/README.md](constraint-layout/README.md): Cassowary, Auto Layout ambiguity, ORC, Flutter's one-pass box protocol | B | 3 |
+| [mvu-semantics/README.md](mvu-semantics/README.md): Elm Architecture; λMVU, Essence of React, React-tRace, Willow, Smalite | C, A | 4 |
+| [verified-gui/README.md](verified-gui/README.md): state-dependent GUIs proved in Agda; PVS-verified medical device UIs | A, I, J | 4 |
+| [xstate-mbt/README.md](xstate-mbt/README.md): XState path generation and model-based testing | J | 3 |
+| [imgui-identity/README.md](imgui-identity/README.md): Dear ImGui's ID stack, egui's `Id`, React keys; how derived widget identity fails | A, G | 4 |
+
+### Open questions (formal UI)
+
+- TodoMVC *Decide* items (todomvc/README.md T8, T29, T33, T48, T49, T50): whitespace after an
+  empty Enter, what counts as blur on the Mac, what other controls do during an edit, whether
+  pending text persists, how delete is reached without hover, and where focus goes after an edit.
+- Presence vs hover (T21) vs accessibility (T49): is presence one theorem over the drawn frame,
+  or two (pointer surface and accessibility tree)?
+- Which "trim": ASCII whitespace or Unicode White_Space? Quickstrom only ever typed `" "`.
+- How strong is the conformance comparison? Cassius's mutation check (perturb one coordinate,
+  confirm it is rejected) is a cheap way to find out.
+- Is a Lean rendering semantics (μSkia-style, over integers rather than reals) worth having for
+  the pixel probes, or is "every control's box is painted" enough for M1?
+- No prior work found proves *presence* or *pressability* of controls in a proof assistant;
+  the searches were not exhaustive (2026-10-23). Worth one more targeted search before claiming
+  novelty in writing.
