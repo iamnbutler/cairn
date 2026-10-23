@@ -5,7 +5,7 @@ LEAN_PREFIX = $(shell cd lean && lean --print-prefix)
 LIB = build/lib/libcairn_lean.a
 VENDOR = host/Sources/CLean/vendor/lean
 
-.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-frame selftest demo fixture clean record site map
+.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-frame selftest demo fixture clean record site site-maps map
 
 # build/lib/libcairn_lean.a: the framework (`Cairn`) and Lean's runtime, linked by every host
 # target. Each app gets its own library on top (APPS: library → file), and each executable
@@ -103,6 +103,14 @@ record: build/bin/record
 build/bin/record: tools/record/main.swift
 	mkdir -p build/bin
 	swiftc -O $< -o $@
+
+# Copy the Counter and Basics maps into the microsite (site/public/map/<app>/), building them first.
+site-maps:
+	$(MAKE) map APP=Counter
+	$(MAKE) map APP=Basics
+	rm -rf site/public/map && mkdir -p site/public/map
+	cp -R build/map/Counter/dist site/public/map/counter
+	cp -R build/map/Basics/dist site/public/map/basics
 
 # Deploy the microsite (site/) to Cloudflare.
 site:

@@ -1,0 +1,68 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Counter window · Counter map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="style.css"></head><body><div class="page"><nav class="rail" aria-label="Areas"><a class="home" href="index.html">Counter map</a>
+<a href="counter-window.html" class="on">Counter window</a>
+<a href="guarantees.html">Invariants and assumptions</a>
+<a href="gaps.html">Gaps <span class="count">0</span></a>
+
+
+<hr><a href="notes/evidence.html">Evidence</a></nav><main>
+<header><div class="eyebrow">Counter map · counter-window</div><h1>Counter window</h1><p class="lede">The spike's window: a bar as long as the count, Increment, and Reset when there is something to reset. Generated from the claims in <code>Examples.Counter</code>; every status comes from evidence (see the Evidence page).</p>
+</header>
+<figure class="overview"><div class="lanes"><div class="lane"><a class="lane-label" href="#3"><span class="id">^3</span>Counter window</a>
+<ol class="boxes"><li><a class="box visual" href="#1"><span class="id">^1</span><span class="t">Increment</span></a></li><li><a class="box visual" href="#2"><span class="id">^2</span><span class="t">Reset</span></a></li></ol></div><div class="lane"><a class="lane-label" href="#4"><span class="id">^4</span>Count to three</a>
+<ol class="boxes"></ol></div><div class="lane"><a class="lane-label" href="#5"><span class="id">^5</span>Start over</a>
+<ol class="boxes"></ol></div></div>
+<figcaption class="key"><span><i class="sw tested"></i>tested</span><span><i class="sw visual"></i>visual</span><span><i class="sw partial"></i>partial</span><span><i class="sw broken"></i>broken</span><span><i class="sw untested"></i>untested</span><span><i class="sw missing"></i>missing</span><span><i class="sw planned"></i>planned</span><span><b class="dot">n</b>open gap</span></figcaption></figure>
+
+<section class="flow" id="3">
+<div class="flow-head"><a class="id" href="#3">^3</a><h2>Counter window</h2><span class="st visual">visual</span></div>
+
+<p class="summary">seen ✓</p>
+
+<div class="meta"><a class="code" href="https://github.com/iamnbutler/cairn/blob/main/lean/Examples/Counter.lean#L30">lean/Examples/Counter.lean:30</a></div>
+
+<ol class="steps"><li class="step has-shot" id="1">
+<div class="step-text"><div class="step-head"><a class="id" href="#1">^1</a><h3>Increment</h3><span class="st visual">visual</span></div>
+
+<div class="where">Counter window (<a class="ref" href="counter-window.html#3" title="Counter window">^3</a>) — proved ✓ · conformance <b>not run</b> · seen ✓</div>
+<p>Press Increment.</p>
+<p class="sees">The count goes up by one.</p>
+
+<div class="meta"><a class="code" href="https://github.com/iamnbutler/cairn/blob/main/lean/Examples/Counter.lean#L33">lean/Examples/Counter.lean:33</a></div></div>
+<div class="step-shots"><div class="shot"><a href="img/flow-4-0.pinned.webp"><img loading="lazy" src="img/flow-4-0.pinned.webp" alt=""></a></div><div class="shot"><a href="img/flow-4-1.pinned.webp"><img loading="lazy" src="img/flow-4-1.pinned.webp" alt=""></a></div></div>
+</li>
+<li class="step has-shot" id="2">
+<div class="step-text"><div class="step-head"><a class="id" href="#2">^2</a><h3>Reset</h3><span class="st visual">visual</span></div>
+
+<div class="where">Counter window (<a class="ref" href="counter-window.html#3" title="Counter window">^3</a>) — proved ✓ · conformance <b>not run</b> · seen ✓</div>
+<p>Press Reset.</p>
+<p class="sees">The count is zero, and Reset disappears.</p>
+
+<div class="meta"><a class="code" href="https://github.com/iamnbutler/cairn/blob/main/lean/Examples/Counter.lean#L41">lean/Examples/Counter.lean:41</a></div></div>
+<div class="step-shots"><div class="shot"><a href="img/flow-5-2.pinned.webp"><img loading="lazy" src="img/flow-5-2.pinned.webp" alt=""></a></div><div class="shot"><a href="img/flow-5-3.pinned.webp"><img loading="lazy" src="img/flow-5-3.pinned.webp" alt=""></a></div></div>
+</li></ol>
+</section>
+<section class="flow" id="4">
+<div class="flow-head"><a class="id" href="#4">^4</a><h2>Count to three</h2><span class="st visual">visual</span></div>
+
+<p class="summary">Press Increment three times. The count is three. — proved ✓ · conformance <b>not run</b> · seen ✓</p>
+
+<div class="meta"><a class="code" href="https://github.com/iamnbutler/cairn/blob/main/lean/Examples/Counter.lean#L53">lean/Examples/Counter.lean:53</a><a class="ref" href="counter-window.html#1" title="Increment">^1</a></div>
+<figure class="fig"><div class="frame"><img src="img/flow-4.strip.webp" alt="The witness, press ^1, press ^1, press ^1, replayed on the app as clicks at each control's centre. Pins come from the frame's layout; blue marks the control the next step acts on."></div><figcaption>The witness, press <a class="ref" href="counter-window.html#1" title="Increment">^1</a>, press <a class="ref" href="counter-window.html#1" title="Increment">^1</a>, press <a class="ref" href="counter-window.html#1" title="Increment">^1</a>, replayed on the app as clicks at each control's centre. Pins come from the frame's layout; blue marks the control the next step acts on.</figcaption></figure>
+<ol class="steps"></ol>
+</section>
+<section class="flow" id="5">
+<div class="flow-head"><a class="id" href="#5">^5</a><h2>Start over</h2><span class="st visual">visual</span></div>
+
+<p class="summary">Count up, then press Reset. The count is back to zero and Reset is gone. — proved ✓ · conformance <b>not run</b> · seen ✓</p>
+
+<div class="meta"><a class="code" href="https://github.com/iamnbutler/cairn/blob/main/lean/Examples/Counter.lean#L59">lean/Examples/Counter.lean:59</a><a class="ref" href="counter-window.html#1" title="Increment">^1</a><a class="ref" href="counter-window.html#2" title="Reset">^2</a></div>
+<figure class="fig"><div class="frame"><img src="img/flow-5.strip.webp" alt="The witness, press ^1, press ^1, press ^2, replayed on the app as clicks at each control's centre. Pins come from the frame's layout; blue marks the control the next step acts on."></div><figcaption>The witness, press <a class="ref" href="counter-window.html#1" title="Increment">^1</a>, press <a class="ref" href="counter-window.html#1" title="Increment">^1</a>, press <a class="ref" href="counter-window.html#2" title="Reset">^2</a>, replayed on the app as clicks at each control's centre. Pins come from the frame's layout; blue marks the control the next step acts on.</figcaption></figure>
+<ol class="steps"></ol>
+</section>
+<footer class="pager"><span></span><a rel="next" href="guarantees.html">Invariants and assumptions →</a></footer>
+</main></div><script src="keys.js"></script></body></html>
