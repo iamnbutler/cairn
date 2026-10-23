@@ -21,7 +21,8 @@ def Frame.boundary : Runtime.Boundary where
 the font measured. -/
 theorem satU32_eq_host_sat (n : Nat) : Wire.satU32 n = (Text.Host.sat n).toNat := by
   unfold Wire.satU32 Text.Host.sat
-  split <;> simp_all [UInt32.size, Nat.toUInt32, UInt32.toNat_ofNat'] <;> omega
+  split <;> simp_all only [Nat.toUInt32, UInt32.toNat_ofNat', Nat.reducePow, Nat.not_lt,
+      UInt32.size, Nat.add_one_sub_one, UInt32.reduceOfNat, UInt32.reduceToNat] <;> omega
 
 private def hugeFont : Frame where
   size := ⟨1, 1⟩

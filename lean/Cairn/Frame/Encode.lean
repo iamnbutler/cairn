@@ -62,16 +62,19 @@ def fu (n : Nat) : Bool := decide (FitsU32 n)
 def fi (v : Int) : Bool := decide (FitsI32 v)
 def fs (s : String) : Bool := decide (FitsStr s)
 
-@[simp] theorem fu_iff (n : Nat) : fu n = true ↔ FitsU32 n := by simp [fu]
-@[simp] theorem fi_iff (v : Int) : fi v = true ↔ FitsI32 v := by simp [fi]
-@[simp] theorem fs_iff (s : String) : fs s = true ↔ FitsStr s := by simp [fs]
+@[simp] theorem fu_iff (n : Nat) : fu n = true ↔ FitsU32 n := by simp only [fu, decide_eq_true_eq]
+@[simp] theorem fi_iff (v : Int) : fi v = true ↔ FitsI32 v := by simp only [fi, decide_eq_true_eq]
+@[simp] theorem fs_iff (s : String) : fs s = true ↔ FitsStr s := by simp only [fs,
+    decide_eq_true_eq]
 
 def fitsRect (r : Rect) : Bool := fi r.x && fi r.y && fi r.w && fi r.h
 def fitsRef (c : ControlRef) : Bool := fu c.claim && fu c.key
 def fitsRange (p : Nat × Nat) : Bool := fu p.1 && fu p.2
 
-@[simp] theorem fitsRef_zero : fitsRef ⟨0, 0⟩ = true := by simp [fitsRef]
-@[simp] theorem fitsRange_zero : fitsRange (0, 0) = true := by simp [fitsRange]
+@[simp] theorem fitsRef_zero : fitsRef ⟨0, 0⟩ = true := by simp only [fitsRef, Bool.and_self,
+    fu_iff, fitsU32_zero]
+@[simp] theorem fitsRange_zero : fitsRange (0, 0) = true := by simp only [fitsRange, Bool.and_self,
+    fu_iff, fitsU32_zero]
 
 /-- Font fields are clamped, not wrapped, so out-of-range fonts still name the font layout
 measured with (`Cairn.Text.Host.sat`); the round trip is exact when they fit. -/
@@ -273,34 +276,34 @@ def frame : Dec Frame := do
 /-! ### Round trips -/
 
 theorem expect_enc (bs r : List UInt8) : expect bs (bs ++ r) = some ((), r) := by
-  simp [expect]
+  simp only [expect, List.take_left', ↓reduceIte, List.drop_left']
 
 theorem rect_enc {x : Rect} (h : fitsRect x = true) (r : List UInt8) :
     rect (Enc.rect x ++ r) = some (x, r) := by
   simp only [fitsRect, Bool.and_eq_true, fi_iff] at h
   obtain ⟨⟨⟨h1, h2⟩, h3⟩, h4⟩ := h
-  simp [rect, Enc.rect, i32_enc, *]
+  simp only [rect, Enc.rect, List.append_assoc, bind_apply, i32_enc, pure_apply, h1, h2, h3, h4]
 
 theorem point_enc {p : Point} (h1 : FitsI32 p.x) (h2 : FitsI32 p.y) (r : List UInt8) :
     point (Enc.point p ++ r) = some (p, r) := by
-  simp [point, Enc.point, i32_enc, *]
+  simp only [point, Enc.point, List.append_assoc, bind_apply, i32_enc, pure_apply, h1, h2]
 
 theorem size_enc {s : Size} (h1 : FitsI32 s.w) (h2 : FitsI32 s.h) (r : List UInt8) :
     size (Enc.size s ++ r) = some (s, r) := by
-  simp [size, Enc.size, i32_enc, *]
+  simp only [size, Enc.size, List.append_assoc, bind_apply, i32_enc, pure_apply, h1, h2]
 
 theorem color_enc (c : Color) (r : List UInt8) : color (Enc.color c ++ r) = some (c, r) := by
-  simp [color, Enc.color]
+  simp only [color, Enc.color, List.cons_append, List.nil_append, bind_apply, byte_cons, pure_apply]
 
 theorem ref_enc {c : ControlRef} (h : fitsRef c = true) (r : List UInt8) :
     ref (Enc.ref c ++ r) = some (c, r) := by
   simp only [fitsRef, Bool.and_eq_true, fu_iff] at h
-  simp [ref, Enc.ref, u32_enc, *]
+  simp only [ref, Enc.ref, List.append_assoc, bind_apply, u32_enc, pure_apply, h]
 
 theorem range_enc {p : Nat × Nat} (h : fitsRange p = true) (r : List UInt8) :
     range (Enc.range p ++ r) = some (p, r) := by
   simp only [fitsRange, Bool.and_eq_true, fu_iff] at h
-  simp [range, Enc.range, u32_enc, *]
+  simp only [range, Enc.range, List.append_assoc, bind_apply, u32_enc, pure_apply, h]
 
 theorem list_enc {α : Type} {d : Dec α} {e : α → List UInt8} (xs : List α)
     (h : ∀ x ∈ xs, ∀ r, d (e x ++ r) = some (x, r))
@@ -316,16 +319,23 @@ theorem draw_enc {x : Draw} (h : fitsDraw x = true) (r : List UInt8) :
     simp only [fitsDraw, Bool.and_eq_true, fu_iff] at h
     obtain ⟨⟨hr, hrad⟩, hb⟩ := h
     cases fill <;> cases border <;>
-      simp_all [draw, Enc.draw, bool_enc, skip_pad, rect_enc, color_enc, u32_enc]
+      simp_all only [Option.all_none, draw, Enc.draw, Option.isSome_none, List.cons_append,
+          List.nil_append, List.append_assoc, Option.getD_none, Option.elim_none, bind_apply,
+          byte_cons, bool_enc, Bool.false_eq_true, ↓reduceIte, skip_pad, rect_enc, color_enc,
+          u32_enc, fitsU32_zero, pure_apply, Option.all_some, fu_iff, Option.isSome_some,
+          Option.elim_some, Option.getD_some]
   | text o font c s =>
     simp only [fitsDraw, Bool.and_eq_true, fu_iff, fi_iff, fs_iff] at h
-    simp [draw, Enc.draw, bool_enc, skip_pad, point_enc, u32_enc, color_enc, str_enc, h,
-      satU32_of_fits]
+    simp only [draw, Enc.draw, List.cons_append, List.nil_append, List.append_assoc, h,
+        satU32_of_fits, bind_apply, byte_cons, bool_enc, skip_pad, point_enc, u32_enc, color_enc,
+        str_enc, pure_apply]
   | pushClip rc =>
     simp only [fitsDraw] at h
-    simp [draw, Enc.draw, skip_pad, rect_enc, h]
+    simp only [draw, Enc.draw, List.cons_append, List.nil_append, List.append_assoc, bind_apply,
+        byte_cons, skip_pad, h, rect_enc, pure_apply]
   | popClip =>
-    simp [draw, Enc.draw, skip_pad]
+    simp only [draw, Enc.draw, List.cons_append, List.nil_append, bind_apply, byte_cons, skip_pad,
+        pure_apply]
 
 theorem ax_enc {x : AxNode} (h : fitsAx x = true) (r : List UInt8) :
     ax (Enc.ax x ++ r) = some (x, r) := by
@@ -333,30 +343,41 @@ theorem ax_enc {x : AxNode} (h : fitsAx x = true) (r : List UInt8) :
   simp only [fitsAx, Bool.and_eq_true, fs_iff] at h
   obtain ⟨⟨⟨⟨hc, hp⟩, hr⟩, hl⟩, hv⟩ := h
   cases control <;> cases parent <;>
-    simp_all [ax, Enc.ax, bool_enc, skip_pad, ref_enc, u32_enc, rect_enc, str_enc]
+    simp_all only [Option.all_none, ax, Enc.ax, List.cons_append, List.nil_append,
+        List.append_assoc, Option.isSome_none, Option.getD_none, bind_apply, byte_cons,
+        Role.ofCode_code, bool_enc, checkedOfCode_code, Bool.false_eq_true, ↓reduceIte, skip_pad,
+        fitsRef_zero, ref_enc, fitsU32_zero, u32_enc, rect_enc, str_enc, pure_apply,
+        Option.all_some, fu_iff, Option.isSome_some, Option.getD_some]
 
 theorem textInput_enc {x : Option TextInput} (h : x.all fitsTextInput = true) (r : List UInt8) :
     textInput (Enc.textInput x ++ r) = some (x, r) := by
   cases x with
-  | none => simp [textInput, Enc.textInput, skip_pad]
+  | none => simp only [textInput, Enc.textInput, List.cons_append, List.nil_append, bind_apply,
+      byte_cons, skip_pad, pure_apply]
   | some t =>
     obtain ⟨control, rc, caret, text, selection, marked, origin⟩ := t
     simp only [Option.all_some, fitsTextInput, Bool.and_eq_true, fs_iff, fi_iff] at h
     obtain ⟨⟨⟨⟨⟨⟨⟨hc, hr⟩, hk⟩, hs⟩, hm⟩, hx⟩, hy⟩, ht⟩ := h
     cases marked <;>
-      simp_all [textInput, Enc.textInput, bool_enc, skip_pad, ref_enc, rect_enc, range_enc,
-        point_enc, str_enc]
+      simp_all only [Option.all_none, textInput, Enc.textInput, Option.isSome_none,
+          List.cons_append, List.nil_append, List.append_assoc, Option.getD_none, bind_apply,
+          byte_cons, bool_enc, Bool.false_eq_true, ↓reduceIte, skip_pad, ref_enc, rect_enc,
+          range_enc, fitsRange_zero, point_enc, str_enc, pure_apply, Option.all_some,
+          Option.isSome_some, Option.getD_some]
 
 theorem cursor_enc (c : Cursor) (r : List UInt8) : cursor (Enc.cursor c ++ r) = some (c, r) := by
-  simp [cursor, Enc.cursor, skip_pad]
+  simp only [cursor, Enc.cursor, List.cons_append, List.nil_append, bind_apply, byte_cons,
+      Cursor.ofCode_code, skip_pad, pure_apply]
 
 theorem effect_enc {x : Effect} (h : fitsEffect x = true) (r : List UInt8) :
     effect (Enc.effect x ++ r) = some (x, r) := by
   cases x with
   | setClipboard s =>
     simp only [fitsEffect, fs_iff] at h
-    simp [effect, Enc.effect, skip_pad, str_enc, h]
-  | beep => simp [effect, Enc.effect, skip_pad]
+    simp only [effect, Enc.effect, List.cons_append, List.nil_append, List.append_assoc, bind_apply,
+        byte_cons, skip_pad, h, str_enc, pure_apply]
+  | beep => simp only [effect, Enc.effect, List.cons_append, List.nil_append, bind_apply, byte_cons,
+      skip_pad, pure_apply]
 
 /-- Sections of a frame whose encoding is under 4 GiB have `u32` byte lengths. -/
 def SizeOk (f : Frame) : Prop := (Enc.frame f).length < 4294967296
@@ -377,7 +398,7 @@ theorem frame_enc {f : Frame} (h : fitsFrame f = true) (hs : SizeOk f) (r : List
   rw [cursor_enc]; dsimp only
   rw [list_enc (e := Enc.effect) _ (fun x hx => effect_enc (he x (by simpa using hx))) (by simpa using hen)
     (by unfold FitsU32; omega)]
-  simp
+  simp only [Array.toArray_toList, pure_apply]
 
 end Dec
 
@@ -410,34 +431,50 @@ def textInput : Option TextInput → Nat
 def list {α : Type} (len : α → Nat) (xs : Array α) : Nat := xs.foldl (fun n x => n + len x) 0
 
 theorem str_eq (s : String) : str s = (Enc.str s).length := by
-  simp [str, Enc.str]; all_goals omega
+  simp only [str, String.toUTF8_eq_toByteArray, String.size_toByteArray, Enc.str,
+      List.length_append, Enc.length_u32, Array.length_toList, ByteArray.size_data,
+      Nat.add_left_cancel_iff]; all_goals omega
 
 theorem draw_eq (d : Draw) : draw d = (Enc.draw d).length := by
-  cases d <;> simp [draw, Enc.draw, str_eq, Enc.rect, Enc.color, Enc.point, Enc.pad, Enc.bool,
-    Enc.str] <;> all_goals omega
+  cases d <;> simp only [draw, Enc.draw, Enc.bool, List.cons_append, List.nil_append, Enc.pad,
+      List.replicate_one, Enc.rect, List.append_assoc, Enc.color, List.length_cons,
+      List.length_append, Enc.length_i32, Enc.length_u32, List.length_nil, Nat.zero_add,
+      Nat.reduceAdd, str_eq, Enc.str, String.toUTF8_eq_toByteArray, String.size_toByteArray,
+      Array.length_toList, ByteArray.size_data, List.reduceReplicate, Enc.point] <;> all_goals omega
 
 theorem ax_eq (n : AxNode) : ax n = (Enc.ax n).length := by
-  simp [ax, Enc.ax, str_eq, Enc.rect, Enc.ref, Enc.pad, Enc.bool, Enc.str]; all_goals omega
+  simp only [ax, str_eq, Enc.str, String.toUTF8_eq_toByteArray, String.size_toByteArray,
+      List.length_append, Enc.length_u32, Array.length_toList, ByteArray.size_data, Enc.ax,
+      Enc.bool, List.cons_append, List.nil_append, Enc.pad, List.reduceReplicate, Enc.ref,
+      List.append_assoc, Enc.rect, List.length_cons, Enc.length_i32]; all_goals omega
 
 theorem effect_eq (e : Effect) : effect e = (Enc.effect e).length := by
-  cases e <;> simp [effect, Enc.effect, str_eq, Enc.pad, Enc.str] <;> all_goals omega
+  cases e <;> simp only [effect, str_eq, Enc.str, String.toUTF8_eq_toByteArray,
+      String.size_toByteArray, List.length_append, Enc.length_u32, Array.length_toList,
+      ByteArray.size_data, Enc.effect, Enc.pad, List.reduceReplicate, List.cons_append,
+      List.nil_append, List.length_cons, List.length_nil, Nat.zero_add,
+      Nat.reduceAdd] <;> all_goals omega
 
 theorem textInput_eq (t : Option TextInput) : textInput t = (Enc.textInput t).length := by
-  cases t <;> simp [textInput, Enc.textInput, str_eq, Enc.pad, Enc.bool, Enc.ref, Enc.rect,
-    Enc.range, Enc.point, Enc.str] <;> all_goals omega
+  cases t <;> simp only [textInput, Enc.textInput, Enc.pad, List.reduceReplicate, List.cons_append,
+      List.nil_append, List.length_cons, List.length_nil, Nat.zero_add, Nat.reduceAdd, str_eq,
+      Enc.str, String.toUTF8_eq_toByteArray, String.size_toByteArray, List.length_append,
+      Enc.length_u32, Array.length_toList, ByteArray.size_data, Enc.bool, Enc.ref, Enc.rect,
+      List.append_assoc, Enc.range, Enc.point, Enc.length_i32] <;> all_goals omega
 
 theorem foldl_add {α : Type} (len : α → Nat) (xs : List α) (n : Nat) :
     xs.foldl (fun n x => n + len x) n = n + (xs.map len).sum := by
   induction xs generalizing n with
-  | nil => simp
-  | cons x xs ih => simp [ih]; omega
+  | nil => simp only [List.foldl_nil, List.map_nil, List.sum_nil, Nat.add_zero]
+  | cons x xs ih => simp only [List.foldl_cons, ih, List.map_cons, List.sum_cons]; omega
 
 theorem list_eq {α : Type} (len : α → Nat) (e : α → List UInt8) (h : ∀ x, len x = (e x).length)
     (xs : Array α) : list len xs = (xs.toList.flatMap e).length := by
   rw [list, ← Array.foldl_toList, foldl_add]
   induction xs.toList with
-  | nil => simp
-  | cons x xs ih => simp_all
+  | nil => simp only [List.map_nil, List.sum_nil, Nat.add_zero, List.flatMap_nil, List.length_nil]
+  | cons x xs ih => simp_all only [Nat.zero_add, List.length_flatMap, List.map_cons, List.sum_cons,
+      List.flatMap_cons, List.length_append, Nat.add_left_cancel_iff]
 
 end Len
 
@@ -494,56 +531,71 @@ def frame (f : Frame) : ByteArray :=
   list effect Len.effect b f.effects
 
 @[simp] theorem rect_data (b : ByteArray) (r : Rect) :
-    (rect b r).data.toList = b.data.toList ++ Enc.rect r := by simp [rect, Enc.rect]
+    (rect b r).data.toList = b.data.toList ++ Enc.rect r := by simp only [rect, i32_data,
+        List.append_assoc, Enc.rect]
 @[simp] theorem point_data (b : ByteArray) (p : Point) :
-    (point b p).data.toList = b.data.toList ++ Enc.point p := by simp [point, Enc.point]
+    (point b p).data.toList = b.data.toList ++ Enc.point p := by simp only [point, i32_data,
+        List.append_assoc, Enc.point]
 @[simp] theorem color_data (b : ByteArray) (c : Color) :
-    (color b c).data.toList = b.data.toList ++ Enc.color c := by simp [color, Enc.color]
+    (color b c).data.toList = b.data.toList ++ Enc.color c := by simp only [color,
+        ByteArray.data_push, Array.toList_push, List.append_assoc, List.cons_append,
+        List.nil_append, Enc.color]
 @[simp] theorem ref_data (b : ByteArray) (c : ControlRef) :
-    (ref b c).data.toList = b.data.toList ++ Enc.ref c := by simp [ref, Enc.ref]
+    (ref b c).data.toList = b.data.toList ++ Enc.ref c := by simp only [ref, u32_data,
+        List.append_assoc, Enc.ref]
 @[simp] theorem range_data (b : ByteArray) (p : Nat × Nat) :
-    (range b p).data.toList = b.data.toList ++ Enc.range p := by simp [range, Enc.range]
+    (range b p).data.toList = b.data.toList ++ Enc.range p := by simp only [range, u32_data,
+        List.append_assoc, Enc.range]
 
 @[simp] theorem draw_data (b : ByteArray) (d : Draw) :
     (draw b d).data.toList = b.data.toList ++ Enc.draw d := by
-  cases d <;> simp [draw, Enc.draw]
+  cases d <;> simp only [draw, color_data, u32_data, rect_data, pad_data, bool_data,
+      ByteArray.data_push, Array.toList_push, List.append_assoc, List.cons_append, List.nil_append,
+      Enc.draw, str_data, point_data]
 
 @[simp] theorem ax_data (b : ByteArray) (n : AxNode) :
     (ax b n).data.toList = b.data.toList ++ Enc.ax n := by
-  simp [ax, Enc.ax]
+  simp only [ax, str_data, rect_data, u32_data, ref_data, pad_data, bool_data, ByteArray.data_push,
+      Array.toList_push, List.append_assoc, List.cons_append, List.nil_append, Enc.ax]
 
 @[simp] theorem textInput_data (b : ByteArray) (t : Option TextInput) :
     (textInput b t).data.toList = b.data.toList ++ Enc.textInput t := by
-  cases t <;> simp [textInput, Enc.textInput]
+  cases t <;> simp only [textInput, pad_data, ByteArray.data_push, Array.toList_push,
+      List.append_assoc, List.cons_append, List.nil_append, Enc.textInput, str_data, point_data,
+      range_data, rect_data, ref_data, bool_data]
 
 @[simp] theorem cursor_data (b : ByteArray) (c : Cursor) :
     (cursor b c).data.toList = b.data.toList ++ Enc.cursor c := by
-  simp [cursor, Enc.cursor]
+  simp only [cursor, pad_data, ByteArray.data_push, Array.toList_push, List.append_assoc,
+      List.cons_append, List.nil_append, Enc.cursor]
 
 @[simp] theorem effect_data (b : ByteArray) (e : Effect) :
     (effect b e).data.toList = b.data.toList ++ Enc.effect e := by
-  cases e <;> simp [effect, Enc.effect]
+  cases e <;> simp only [effect, str_data, pad_data, ByteArray.data_push, Array.toList_push,
+      List.append_assoc, List.cons_append, List.nil_append, Enc.effect]
 
 theorem foldl_data {α : Type} (put : ByteArray → α → ByteArray) (e : α → List UInt8)
     (h : ∀ b x, (put b x).data.toList = b.data.toList ++ e x) (xs : List α) (b : ByteArray) :
     (xs.foldl put b).data.toList = b.data.toList ++ xs.flatMap e := by
   induction xs generalizing b with
-  | nil => simp
-  | cons x xs ih => simp [ih, h]
+  | nil => simp only [List.foldl_nil, List.flatMap_nil, List.append_nil]
+  | cons x xs ih => simp only [List.foldl_cons, ih, h, List.append_assoc, List.flatMap_cons]
 
 theorem list_data {α : Type} (put : ByteArray → α → ByteArray) (len : α → Nat)
     (e : α → List UInt8) (h : ∀ b x, (put b x).data.toList = b.data.toList ++ e x)
     (hl : ∀ x, len x = (e x).length) (b : ByteArray) (xs : Array α) :
     (list put len b xs).data.toList = b.data.toList ++ Enc.list e xs.toList := by
   rw [list, ← Array.foldl_toList, foldl_data put e h]
-  simp [Enc.list, Enc.sect, Len.list_eq len e hl]
+  simp only [Len.list_eq len e hl, List.length_flatMap, u32_data, List.append_assoc, Enc.list,
+      Array.length_toList, Enc.sect]
 
 theorem frame_data (f : Frame) : (frame f).data.toList = Enc.frame f := by
   have hempty : (ByteArray.emptyWithCapacity 0).data.toList = [] := rfl
   simp only [frame, Enc.frame]
   rw [list_data _ _ _ effect_data Len.effect_eq, cursor_data, textInput_data,
     list_data _ _ _ ax_data Len.ax_eq, list_data _ _ _ draw_data Len.draw_eq]
-  simp [ByteArray.data_append, Enc.size]
+  simp only [ByteArray.append_eq, i32_data, ByteArray.data_append, Array.toList_append,
+      List.append_assoc, Enc.size, List.append_left_eq_self, Array.toList_eq_nil_iff]
   rfl
 
 end Put
@@ -562,7 +614,7 @@ def decodeFrame (b : ByteArray) : Option Frame := Dec.run Dec.frame b.data.toLis
 @[csimp] theorem encodeFrame_eq_put : @encodeFrame = @Put.frame := by
   funext f
   apply ByteArray.ext
-  simp [encodeFrame, ← Put.frame_data f]
+  simp only [encodeFrame, ← Put.frame_data f, Array.toArray_toList]
 
 /-- **Round trip.** Every frame whose values fit the wire's fields (`fitsFrame`, executable)
 and whose encoding is under 4 GiB decodes to itself. -/

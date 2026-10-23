@@ -45,7 +45,7 @@ def Key.ofCode (code : UInt8) (scalar : Nat) : Option Key :=
   cases k with
   | char c =>
     have : c.toNat.isValidChar := c.valid
-    simp [ofCode, code, scalar, this, Char.ofNat_toNat]
+    simp only [ofCode, code, scalar, this, ↓reduceIte, Char.ofNat_toNat]
   | _ => rfl
 
 theorem Key.scalar_fits (k : Key) : FitsU32 (Key.scalar k) := by
@@ -195,37 +195,53 @@ theorem event_enc {e : Event} (h : fitsEvent e = true) (r : List UInt8) :
   cases e with
   | pointerMove p =>
     simp only [fitsEvent, Bool.and_eq_true, fi_iff] at h
-    simp [event, Enc.event, Enc.head, hz, point_enc, h]
+    simp only [event, Enc.event, Enc.head, List.cons_append, List.nil_append, bind_apply, byte_cons,
+        hz, h, point_enc, pure_apply]
   | pointerDown p btn clicks m =>
     simp only [fitsEvent, Bool.and_eq_true, fi_iff, fu_iff] at h
-    simp [event, Enc.event, Enc.head, hz, point_enc, u32_enc, h]
+    simp only [event, Enc.event, Enc.head, List.cons_append, List.nil_append, List.append_assoc,
+        bind_apply, byte_cons, Button.ofCode_code, Mods.ofCode_code, hz, h, point_enc, u32_enc,
+        pure_apply]
   | pointerUp p btn m =>
     simp only [fitsEvent, Bool.and_eq_true, fi_iff] at h
-    simp [event, Enc.event, Enc.head, hz, point_enc, h]
+    simp only [event, Enc.event, Enc.head, List.cons_append, List.nil_append, bind_apply, byte_cons,
+        Button.ofCode_code, Mods.ofCode_code, hz, h, point_enc, pure_apply]
   | scroll p dx dy =>
     simp only [fitsEvent, Bool.and_eq_true, fi_iff] at h
-    simp [event, Enc.event, Enc.head, hz, point_enc, i32_enc, h]
+    simp only [event, Enc.event, Enc.head, List.cons_append, List.nil_append, List.append_assoc,
+        bind_apply, byte_cons, hz, h, point_enc, i32_enc, pure_apply]
   | key k m =>
-    simp [event, Enc.event, Enc.head, hz, u32_enc, (Key.scalar_fits k)]
+    simp only [event, Enc.event, Enc.head, List.cons_append, List.nil_append, bind_apply, byte_cons,
+        Mods.ofCode_code, hz, (Key.scalar_fits k), u32_enc, Key.ofCode_code, pure_apply]
   | insertText s rep =>
     simp only [fitsEvent, Bool.and_eq_true, fs_iff] at h
     obtain ⟨hs, hr⟩ := h
-    have hr' : fitsRange (rep.getD (0, 0)) = true := by cases rep <;> simp_all
-    simp [event, Enc.event, Enc.head, hz, range_enc hr', opt_isSome, str_enc hs]
+    have hr' : fitsRange (rep.getD (0,
+        0)) = true := by cases rep <;> simp_all only [Option.all_none, Option.getD_none,
+        fitsRange_zero, Option.all_some, Option.getD_some]
+    simp only [event, Enc.event, Enc.head, List.cons_append, List.nil_append, List.append_assoc,
+        bind_apply, byte_cons, hz, range_enc hr', opt_isSome, str_enc hs, pure_apply]
   | setMarked s a l rep =>
     simp only [fitsEvent, Bool.and_eq_true, fs_iff, fu_iff] at h
     obtain ⟨⟨⟨hs, ha⟩, hl⟩, hr⟩ := h
-    have hr' : fitsRange (rep.getD (0, 0)) = true := by cases rep <;> simp_all
-    simp [event, Enc.event, Enc.head, hz, range_enc hr', opt_isSome, u32_enc, str_enc hs, ha, hl]
+    have hr' : fitsRange (rep.getD (0,
+        0)) = true := by cases rep <;> simp_all only [Option.all_none, Option.getD_none,
+        fitsRange_zero, Option.all_some, Option.getD_some]
+    simp only [event, Enc.event, Enc.head, List.cons_append, List.nil_append, List.append_assoc,
+        bind_apply, byte_cons, hz, range_enc hr', opt_isSome, ha, u32_enc, hl, str_enc hs,
+        pure_apply]
   | paste s =>
     simp only [fitsEvent, fs_iff] at h
-    simp [event, Enc.event, Enc.head, hz, str_enc h]
+    simp only [event, Enc.event, Enc.head, List.cons_append, List.nil_append, bind_apply, byte_cons,
+        hz, str_enc h, pure_apply]
   | resize sz =>
     simp only [fitsEvent, Bool.and_eq_true, fi_iff] at h
-    simp [event, Enc.event, Enc.head, hz, size_enc h.1 h.2]
+    simp only [event, Enc.event, Enc.head, List.cons_append, List.nil_append, bind_apply, byte_cons,
+        hz, size_enc h.1 h.2, pure_apply]
   | scale p =>
     simp only [fitsEvent, fu_iff] at h
-    simp [event, Enc.event, Enc.head, hz, u32_enc h]
+    simp only [event, Enc.event, Enc.head, List.cons_append, List.nil_append, bind_apply, byte_cons,
+        hz, u32_enc h, pure_apply]
   | windowFocus b => cases b <;> rfl
   | pointerExit | unmark | copy | cut | selectAll | undo | redo => rfl
 
@@ -254,7 +270,7 @@ theorem decodeEvents_encodeEvents (es : Array Event) (h : es.all fitsEvent = tru
   simp only [Array.all_eq_true'] at h
   have := Dec.events_enc (es := es.toList) (fun e he => h e (by simpa using he))
     (by simpa [FitsU32] using hn) []
-  simp [decodeEvents, encodeEvents, Dec.run_enc this]
+  simp only [decodeEvents, encodeEvents, Dec.run_enc this, Option.map_some, Array.toArray_toList]
 
 end Cairn
 

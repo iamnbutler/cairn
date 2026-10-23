@@ -39,8 +39,9 @@ theorem i32Word_eq (v : Int) : i32Word v = UInt32.ofNat (toU32 v) := by
   apply UInt32.toNat_inj.mp
   unfold i32Word toU32
   split
-  · simp [UInt32.toNat_ofNat']; omega
-  · simp [UInt32.toNat_ofNat', UInt32.size]; omega
+  · simp only [UInt32.toNat_ofNat', Nat.reducePow]; omega
+  · simp only [UInt32.zero_sub, UInt32.toNat_neg, UInt32.size, UInt32.toNat_ofNat',
+      Nat.reducePow]; omega
 
 theorem toU32_fits (v : Int) : FitsU32 (toU32 v) := by unfold FitsU32 toU32; omega
 
@@ -51,7 +52,7 @@ theorem ofU32_toU32 {v : Int} (h : FitsI32 v) : ofU32 (toU32 v) = v := by
 def satU32 (n : Nat) : Nat := if n < 4294967296 then n else 4294967295
 
 theorem satU32_of_fits {n : Nat} (h : FitsU32 n) : satU32 n = n := by
-  unfold FitsU32 at h; simp [satU32, h]
+  unfold FitsU32 at h; simp only [satU32, h, ↓reduceIte]
 
 theorem satU32_fits (n : Nat) : FitsU32 (satU32 n) := by
   unfold satU32 FitsU32; split <;> omega
@@ -120,7 +121,7 @@ def fail : Dec α := fun _ => none
 /-- The step every compound round-trip proof takes: run the first decoder, continue. -/
 theorem bind_of_eq {d : Dec α} {f : α → Dec β} {l r : List UInt8} {a : α}
     (h : d l = some (a, r)) : (d >>= f) l = f a r := by
-  simp [h]
+  simp only [bind_apply, h]
 
 def byte : Dec UInt8
   | b :: r => some (b, r)
@@ -188,25 +189,28 @@ theorem u32_enc {n : Nat} (h : FitsU32 n) (r : List UInt8) :
 
 theorem i32_enc {v : Int} (h : FitsI32 v) (r : List UInt8) :
     i32 (Enc.i32 v ++ r) = some (v, r) := by
-  simp [i32, Enc.i32, u32_enc (toU32_fits v), ofU32_toU32 h]
+  simp only [i32, Enc.i32, bind_apply, u32_enc (toU32_fits v), ofU32_toU32 h, pure_apply]
 
 theorem bool_enc (b : Bool) (r : List UInt8) : bool (Enc.bool b ++ r) = some (b, r) := by
   cases b <;> rfl
 
 theorem take_enc (l r : List UInt8) : take l.length (l ++ r) = some (l, r) := by
-  simp [take]
+  simp only [take, List.length_append, Nat.le_add_right, ↓reduceIte, List.take_left',
+      List.drop_left']
 
 theorem skip_pad (n : Nat) (r : List UInt8) : skip n (Enc.pad n ++ r) = some ((), r) := by
-  simp [skip, Enc.pad]
+  simp only [skip, Enc.pad, List.length_append, List.length_replicate, Nat.le_add_right, ↓reduceIte,
+      List.drop_left']
 
 theorem fromUTF8?_toUTF8 (s : String) :
     String.fromUTF8? ⟨s.toUTF8.data.toList.toArray⟩ = some s := by
   simp only [Array.toArray_toList]
-  simp [String.fromUTF8?, String.fromUTF8, String.toUTF8, s.isValidUTF8]
+  simp only [String.fromUTF8?, String.toUTF8, s.isValidUTF8, ↓reduceDIte, String.fromUTF8]
 
 theorem str_enc {s : String} (h : FitsStr s) (r : List UInt8) :
     str (Enc.str s ++ r) = some (s, r) := by
-  have hl : s.toUTF8.data.toList.length = s.toUTF8.size := by simp
+  have hl : s.toUTF8.data.toList.length = s.toUTF8.size := by simp only [String.toUTF8_eq_toByteArray,
+      Array.length_toList, ByteArray.size_data, String.size_toByteArray]
   simp only [str, Enc.str, List.append_assoc, bind_apply, u32_enc h]
   rw [← hl, take_enc]
   dsimp only
@@ -221,7 +225,7 @@ theorem count_enc {d : Dec α} {e : α → List UInt8} (xs : List α)
   | cons x xs ih =>
     simp only [List.length_cons, count, List.flatMap_cons, List.append_assoc, bind_apply,
       h x List.mem_cons_self]
-    simp [ih (fun y hy => h y (List.mem_cons_of_mem _ hy))]
+    simp only [ih (fun y hy => h y (List.mem_cons_of_mem _ hy)), pure_apply]
 
 theorem sect_enc {d : Dec α} {body : List UInt8} {a : α} (hd : d body = some (a, []))
     (hn : FitsU32 body.length) (r : List UInt8) :
@@ -232,7 +236,7 @@ theorem sect_enc {d : Dec α} {body : List UInt8} {a : α} (hd : d body = some (
 theorem run_enc {d : Dec α} {l : List UInt8} {a : α} (h : d (l ++ []) = some (a, [])) :
     run d l = some a := by
   simp only [List.append_nil] at h
-  simp [run, h]
+  simp only [run, h]
 
 end Dec
 
@@ -265,28 +269,32 @@ namespace Put
 
 @[simp] theorem u8_data (b : ByteArray) (v : UInt8) :
     (u8 b v).data.toList = b.data.toList ++ [v] := by
-  simp [u8]
+  simp only [u8, ByteArray.data_push, Array.toList_push]
 
 theorem shift8 (n : Nat) : ((UInt32.ofNat n) >>> 8).toUInt8 = UInt8.ofNat (n / 256) := by
   apply UInt8.toNat_inj.mp
-  simp [UInt32.toNat_shiftRight, UInt32.toNat_toUInt8, UInt8.toNat_ofNat']
+  simp only [UInt32.toNat_toUInt8, UInt32.toNat_shiftRight, UInt32.toNat_ofNat', Nat.reducePow,
+      UInt32.reduceToNat, Nat.reduceMod, UInt8.toNat_ofNat']
   omega
 
 theorem shift16 (n : Nat) : ((UInt32.ofNat n) >>> 16).toUInt8 = UInt8.ofNat (n / 65536) := by
   apply UInt8.toNat_inj.mp
-  simp [UInt32.toNat_shiftRight, UInt32.toNat_toUInt8, UInt8.toNat_ofNat']
+  simp only [UInt32.toNat_toUInt8, UInt32.toNat_shiftRight, UInt32.toNat_ofNat', Nat.reducePow,
+      UInt32.reduceToNat, Nat.reduceMod, UInt8.toNat_ofNat']
   omega
 
 theorem shift24 (n : Nat) : ((UInt32.ofNat n) >>> 24).toUInt8 = UInt8.ofNat (n / 16777216) := by
   apply UInt8.toNat_inj.mp
-  simp [UInt32.toNat_shiftRight, UInt32.toNat_toUInt8, UInt8.toNat_ofNat']
+  simp only [UInt32.toNat_toUInt8, UInt32.toNat_shiftRight, UInt32.toNat_ofNat', Nat.reducePow,
+      UInt32.reduceToNat, Nat.reduceMod, UInt8.toNat_ofNat']
   omega
 
 @[simp] theorem u32_data (b : ByteArray) (n : Nat) :
     (u32 b n).data.toList = b.data.toList ++ Enc.u32 n := by
   have h0 : (UInt32.ofNat n).toUInt8 = UInt8.ofNat n := by
-    apply UInt8.toNat_inj.mp; simp [UInt8.toNat_ofNat']
-  simp [u32, word, Enc.u32, h0, shift8, shift16, shift24]
+    apply UInt8.toNat_inj.mp; simp only [UInt32.toUInt8_ofNat', UInt8.toNat_ofNat', Nat.reducePow]
+  simp only [u32, word, h0, shift8, shift16, shift24, ByteArray.data_push, Array.toList_push,
+      List.append_assoc, List.cons_append, List.nil_append, Enc.u32]
 
 @[simp] theorem i32_data (b : ByteArray) (v : Int) :
     (i32 b v).data.toList = b.data.toList ++ Enc.i32 v := by
@@ -294,17 +302,19 @@ theorem shift24 (n : Nat) : ((UInt32.ofNat n) >>> 24).toUInt8 = UInt8.ofNat (n /
 
 @[simp] theorem bool_data (b : ByteArray) (v : Bool) :
     (bool b v).data.toList = b.data.toList ++ Enc.bool v := by
-  simp [bool, Enc.bool]
+  simp only [bool, ByteArray.data_push, Array.toList_push, Enc.bool]
 
 @[simp] theorem str_data (b : ByteArray) (s : String) :
     (str b s).data.toList = b.data.toList ++ Enc.str s := by
-  simp [str, Enc.str]
+  simp only [str, String.toUTF8_eq_toByteArray, String.size_toByteArray, ByteArray.data_append,
+      Array.toList_append, u32_data, List.append_assoc, Enc.str]
 
 @[simp] theorem pad_data (b : ByteArray) (n : Nat) :
     (pad b n).data.toList = b.data.toList ++ Enc.pad n := by
   induction n generalizing b with
-  | zero => simp [pad, Enc.pad]
-  | succ n ih => simp [pad, ih, Enc.pad, List.replicate_succ]
+  | zero => simp only [pad, Enc.pad, List.replicate_zero, List.append_nil]
+  | succ n ih => simp only [pad, ih, ByteArray.data_push, Array.toList_push, Enc.pad,
+      List.append_assoc, List.cons_append, List.nil_append, List.replicate_succ]
 
 end Put
 

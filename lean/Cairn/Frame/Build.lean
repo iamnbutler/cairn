@@ -135,28 +135,33 @@ theorem axOf_controls (focus : Option ControlRef) (parent : Option Nat) (acc : A
   match l with
   | .box r clip s (some c) kids =>
     rw [axOf, axAll_controls]
-    simp [Laid.controls, controlNode]
+    simp only [controlNode, Array.toList_push, List.filterMap_append, Option.some.injEq,
+        List.filterMap_cons_some, List.filterMap_nil, List.append_assoc, List.cons_append,
+        List.nil_append, Laid.controls, Option.toList_some, List.map_cons]
   | .box _ _ _ none kids =>
     rw [axOf, axAll_controls]
-    simp [Laid.controls]
-  | .text .. => simp [axOf, Laid.controls]
-  | .field .. => simp [axOf, Laid.controls, controlNode]
+    simp only [Laid.controls, Option.toList_none, List.nil_append]
+  | .text .. => simp only [axOf, Array.toList_push, List.filterMap_append, List.filterMap_cons_none,
+      List.filterMap_nil, List.append_nil, Laid.controls, List.map_nil]
+  | .field .. => simp only [axOf, controlNode, Array.toList_push, List.filterMap_append,
+      Option.some.injEq, List.filterMap_cons_some, List.filterMap_nil, Laid.controls, List.map_cons,
+      List.map_nil]
 
 theorem axAll_controls (focus : Option ControlRef) (parent : Option Nat) (acc : Array AxNode)
     (ls : List Laid) : (axAll focus parent acc ls).toList.filterMap AxNode.control =
       acc.toList.filterMap AxNode.control ++ (Laid.controlsAll ls).map Control.ref := by
   match ls with
-  | [] => simp [axAll, Laid.controlsAll]
+  | [] => simp only [axAll, Laid.controlsAll, List.map_nil, List.append_nil]
   | l :: ls =>
     rw [axAll, axAll_controls, axOf_controls]
-    simp [Laid.controlsAll]
+    simp only [List.append_assoc, Laid.controlsAll, List.map_append]
 end
 
 /-- **Presence reaches accessibility.** The controls in the frame's accessibility tree are
 exactly the controls of the laid tree, in order. -/
 theorem controls_ofLaid (ui : UI) (l : Laid) :
     (ofLaid ui l).ax.toList.filterMap AxNode.control = l.controls.map Control.ref := by
-  simp [ofLaid, axOf_controls]
+  simp only [ofLaid, axOf_controls, List.filterMap_nil, List.nil_append]
 
 /-- A claim's control is in the accessibility tree iff it is in the laid tree. -/
 theorem mem_ax_ofLaid (ui : UI) (l : Laid) (c : ControlRef) :
@@ -196,15 +201,16 @@ theorem axOf_size (focus : Option ControlRef) (parent : Option Nat) (acc : Array
     (l : Laid) : acc.size ≤ (axOf focus parent acc l).size := by
   match l with
   | .box r clip s (some c) kids =>
-    rw [axOf]; exact Nat.le_trans (by simp) (axAll_size _ _ _ _)
+    rw [axOf]; exact Nat.le_trans (by simp only [Array.size_push,
+        Nat.le_add_right]) (axAll_size _ _ _ _)
   | .box _ _ _ none kids => rw [axOf]; exact axAll_size ..
-  | .text .. => simp [axOf]
-  | .field .. => simp [axOf]
+  | .text .. => simp only [axOf, Array.size_push, Nat.le_add_right]
+  | .field .. => simp only [axOf, Array.size_push, Nat.le_add_right]
 
 theorem axAll_size (focus : Option ControlRef) (parent : Option Nat) (acc : Array AxNode)
     (ls : List Laid) : acc.size ≤ (axAll focus parent acc ls).size := by
   match ls with
-  | [] => simp [axAll]
+  | [] => simp only [axAll, Std.le_refl]
   | l :: ls =>
     rw [axAll]
     exact Nat.le_trans (axOf_size focus parent acc l) (axAll_size ..)
@@ -222,7 +228,8 @@ theorem axOf_parents (focus : Option ControlRef) (parent : Option Nat) (acc : Ar
     rw [axOf]
     apply axAll_parents
     · exact h.push hp
-    · intro q hq; simp at hq; simp [hq]
+    · intro q hq; simp only [Option.some.injEq] at hq; simp only [Array.size_push, hq,
+        Nat.lt_add_one]
   | .box _ _ _ none kids => rw [axOf]; exact axAll_parents _ _ _ _ h hp
   | .text .. => exact h.push hp
   | .field .. => exact h.push hp
@@ -240,7 +247,8 @@ end
 /-- Every accessibility node's parent comes before it, so the host can build the tree in one
 pass. -/
 theorem parent_lt_ofLaid (ui : UI) (l : Laid) : ParentsOk (ofLaid ui l).ax :=
-  axOf_parents _ _ _ _ (fun i h => by simp at h) (fun _ h => by simp at h)
+  axOf_parents _ _ _ _ (fun i h => by simp only [List.size_toArray, List.length_nil,
+      Nat.not_lt_zero] at h) (fun _ h => by simp only [reduceCtorEq] at h)
 
 /-! ## Clips are balanced -/
 
@@ -274,7 +282,8 @@ theorem clipDepth_noClip {ds : List Draw} (h : NoClip ds) (d : Nat) (rest : List
     | popClip => exact absurd rfl (hx ⟨0, 0, 0, 0⟩).2
 
 theorem noClip_boxDraws (r : Rect) (s : Style) : NoClip (boxDraws r s) := by
-  unfold boxDraws; split <;> simp [NoClip]
+  unfold boxDraws; split <;> simp only [NoClip, List.mem_cons, List.not_mem_nil, or_false, ne_eq,
+      forall_eq, reduceCtorEq, not_false_eq_true, and_self, implies_true, false_implies]
 
 theorem noClip_fieldDraws (focus : Option ControlRef) (ts : TextStyle) (c : Control)
     (v : FieldView) (o : Point) (caret : Rect) (sel : List Rect) :
@@ -283,11 +292,14 @@ theorem noClip_fieldDraws (focus : Option ControlRef) (ts : TextStyle) (c : Cont
   intro d hd r
   simp only [List.mem_append, List.mem_map] at hd
   rcases hd with (⟨s, _, rfl⟩ | hd) | hd
-  · simp
+  · simp only [ne_eq, reduceCtorEq, not_false_eq_true, and_self]
   · split at hd
-    · split at hd <;> simp_all
-    · simp_all
-  · split at hd <;> simp_all
+    · split at hd <;> simp_all only [String.isEmpty_iff, List.not_mem_nil, List.mem_cons, or_false,
+        ne_eq, reduceCtorEq, not_false_eq_true, and_self]
+    · simp_all only [String.isEmpty_iff, List.mem_cons, List.not_mem_nil, or_false, ne_eq,
+        reduceCtorEq, not_false_eq_true, and_self]
+  · split at hd <;> simp_all only [Bool.and_eq_true, beq_iff_eq, List.mem_cons, List.not_mem_nil,
+      or_false, ne_eq, reduceCtorEq, not_false_eq_true, and_self, not_and]
 
 mutual
 theorem clipDepth_paint (focus : Option ControlRef) (l : Laid) (d : Nat) (rest : List Draw) :
