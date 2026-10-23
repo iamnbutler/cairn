@@ -40,6 +40,11 @@ def todoRows (n : Nat) : Node :=
           .box { padding := ⟨2, 6, 2, 6⟩ } (some { ref := ⟨3, i⟩, label := "Delete" })
             [.text {} "×"] ]
 
+/-- `n` boxes nested one inside the next, each with 1 point of padding: the deepest tree. -/
+def nested : Nat → Node
+  | 0 => .text {} "leaf"
+  | n + 1 => .box { padding := ⟨1, 1, 1, 1⟩ } none [nested n]
+
 /-- Forces every rect of a laid tree. -/
 partial def checksum : Laid → Int
   | .box r c _ _ kids => kids.foldl (fun a k => a + checksum k) (r.x + r.y + r.w + r.h + c.w)
@@ -64,13 +69,31 @@ def timeLayout (tree : Node) (reps : Nat) : IO Float := do
   if sum == 0 then IO.println "empty"
   return total.toFloat / reps.toFloat / 1000000.0
 
-def main : IO Unit := do
+/-- `bench 100000` adds a size; the default is 100, 1,000 and 10,000. -/
+def sizesOf (args : List String) : List Nat :=
+  [100, 1000, 10000] ++ args.filterMap String.toNat?
+
+/-- `bench --task-depth n`: lay out `nested n` on a Lean task thread (default stack), to find
+how deep a tree the default thread stack takes. -/
+def taskDepth (n : Nat) : IO Unit := do
+  let t ← IO.asTask (prio := .dedicated) do
+    let l := Layout.layout TextMetrics.mono ⟨800 + n, 600⟩ (nested n)
+    return checksum l
+  match t.get with
+  | .ok v => IO.println s!"depth {n}: ok ({v})"
+  | .error e => IO.println s!"depth {n}: {e}"
+
+def main (args : List String) : IO Unit := do
+  if let ["--task-depth", n] := args then
+    taskDepth n.toNat!
+    return
+  let sizes : IO (List Nat) := pure (sizesOf args)
   for n in [100, 1000, 10000] do
     let _ ← timeIt n 5
     let ms ← timeIt n 50
     IO.println s!"{n} boxes: {ms} ms per frame (spike layout + encode)"
-  for (name, mk) in [("flat column", flatColumn), ("todo rows", todoRows)] do
-    for n in [100, 1000, 10000] do
+  for (name, mk) in [("flat column", flatColumn), ("todo rows", todoRows), ("nested", nested)] do
+    for n in (← sizes) do
       let tree := mk n
       let nodes := count tree
       let _ ← timeLayout tree 5
