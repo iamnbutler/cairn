@@ -116,10 +116,10 @@ See [host.md](host.md) for how each piece works.
 
   Lean's frame always replaces the copy. Any prediction that disagrees is recorded in
   `HostView.shadowDivergences` for the conformance driver.
-- **Text geometry for the IME.** `firstRect` and `characterIndex(for:)` lay out the focused
-  field's text with Core Text in the host. The host maps the frame `Font` to a CTFont itself,
-  through `Font.ctFont`. The result can differ from what the renderer draws until frames carry
-  per-scalar offsets.
+- **Text geometry for the IME.** `firstRect` and `characterIndex(for:)` use
+  `TextSystem.shared.shape`, the renderer's shaping, to get caret offsets. The offsets are
+  measured from the origin of the frame's text draw inside the field's rect, which is assumed
+  to be the field's text.
 
 ### Accessibility
 
@@ -133,8 +133,10 @@ See [host.md](host.md) for how each piece works.
 
 ### Output
 
-- **Rendering.** Until workstream F lands, `StubRenderer` paints frames with Core Graphics and
-  Core Text. We trust it, and later F's renderer, to draw what the `Draw` list says.
+- **Rendering.** `MetalRenderer` hands each frame to F's `Renderer` (see the section above).
+  The host sets the layer to `bgra8Unorm` with an sRGB colour space, as F requires. While the
+  render loop holds a frame back during a resize, the screen shows an older frame than the
+  latest one.
 - **Effects.** `setClipboard` writes a plain string to the general pasteboard. `beep` calls
   `NSSound.beep()`.
 - **Cursor.** The frame's cursor becomes an NSCursor through cursor rects over the whole view.
@@ -152,6 +154,10 @@ See [host.md](host.md) for how each piece works.
 - **Decoder.** The Swift decoder is trusted to turn the frame's bytes into exactly the
   `Frame` Lean encoded: `SpikeV0Codec` now, workstream E's v1 decoder later. E's round-trip
   tests are the evidence.
-- **Lean runtime.** The runtime is initialized once, on the Lean thread. Every other thread
-  that calls Lean registers with `lean_initialize_thread` (`cairn_lean_thread_begin`). The
-  main and render threads never call Lean.
+- **Lean runtime.** The runtime is initialized once, on the Lean thread, and the `Cairn`
+  module is initialized before the app's module. Every other thread that calls Lean registers
+  with `lean_initialize_thread` (`cairn_lean_thread_begin`). The main and render threads never
+  call Lean.
+  - The Lean thread's 64 MB stack is assumed to be enough for the app's recursion depth.
+  - Release builds keep Lean's default panic behaviour, where `panic!` returns a default value
+    and execution continues. Debug builds abort on panic.

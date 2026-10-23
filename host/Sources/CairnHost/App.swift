@@ -47,14 +47,22 @@ public enum LeanRuntime {
     nonisolated(unsafe) private static var initialized = false
     private static let lock = NSLock()
 
-    /// Call on a thread before it calls into Lean.
+    /// Call on a thread before it calls into Lean. The first call initializes the runtime, the
+    /// framework module (`Cairn`, which text metrics need) and then `module`; later calls
+    /// register the thread.
     public static func enter(module: cairn_module_init) {
         lock.lock()
         defer { lock.unlock() }
         if initialized {
             cairn_lean_thread_begin()
         } else {
-            cairn_lean_init(module)
+            #if DEBUG
+            let exitOnPanic: UInt8 = 1
+            #else
+            let exitOnPanic: UInt8 = 0
+            #endif
+            let inits: [cairn_module_init?] = [initialize_cairn_Cairn, module]
+            inits.withUnsafeBufferPointer { cairn_lean_init($0.baseAddress, $0.count, exitOnPanic) }
             initialized = true
         }
     }

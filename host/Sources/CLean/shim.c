@@ -11,14 +11,17 @@ extern void lean_initialize_runtime_module(void);
 #define L(o) ((lean_object *)(o))
 #define C(o) ((cairn_obj *)(o))
 
-void cairn_lean_init(cairn_module_init init) {
+void cairn_lean_init(const cairn_module_init *inits, size_t count, uint8_t exit_on_panic) {
     lean_initialize_runtime_module();
-    lean_object *res = L(init(1));
-    if (!lean_io_result_is_ok(res)) {
-        lean_io_result_show_error(res);
-        abort();
+    lean_set_exit_on_panic(exit_on_panic != 0);
+    for (size_t i = 0; i < count; i++) {
+        lean_object *res = L(inits[i](1));
+        if (!lean_io_result_is_ok(res)) {
+            lean_io_result_show_error(res);
+            abort();
+        }
+        lean_dec_ref(res);
     }
-    lean_dec_ref(res);
     lean_io_mark_end_initialization();
 }
 

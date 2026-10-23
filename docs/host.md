@@ -58,9 +58,20 @@ render thread   CADisplayLink (NSView.displayLink) on its own run loop; paints t
   2. sets the cursor;
   3. reconciles the text shadow;
   4. updates the AX mirror.
-- **Lean runtime.** The runtime is initialized on the Lean thread by `LeanRuntime.enter`. The
-  first thread to enter runs `cairn_lean_init(module)`. Any later thread calls
-  `cairn_lean_thread_begin`. The Lean thread has a 64 MB stack.
+- **Lean runtime.** The runtime is initialized on the Lean thread by `LeanRuntime.enter`.
+  - The first thread to enter runs `cairn_lean_init`. That initializes the runtime, then the
+    `Cairn` module (`TextMetrics.host` reads its state), then the app's module.
+  - Any later thread calls `cairn_lean_thread_begin`.
+  - In debug builds `lean_set_exit_on_panic(true)` is set, so a `panic!` aborts instead of
+    returning a default value.
+  - The Lean thread has a 64 MB stack. Deep structural recursion overflows the 512 KB default
+    for secondary threads (research/lean).
+  - Only ByteArrays cross the boundary, never Lean structures, because Lean reorders scalar
+    fields.
+- **Effects run once per step.** Each published frame follows exactly one `step`, or the
+  initial `start`. The Lean thread appends that frame's effects to a queue when it publishes,
+  and the main thread takes the queue (`takeEffects`). Repaints and re-reads of `latest` never
+  re-run effects.
 
 ### Live resize
 
@@ -101,9 +112,9 @@ function consumes it.
 | Seam | Now | When it lands |
 |---|---|---|
 | `BoundaryCodec` (E) | `SpikeV0Codec` | E's v1 decoder/encoder in CairnFrame |
-| `FrameRenderer` (F) | `StubRenderer`: Core Graphics into a bitmap, blitted to the drawable | `CairnRender`'s Metal renderer, passed as `Config.makeRenderer` |
+| `FrameRenderer` (F) | `MetalRenderer`, over `CairnRender.Renderer` (landed). The layer is `bgra8Unorm` with an sRGB colour space | |
 | `LeanApp` (C) | `cairn_counter_*` | `cairn_app_init/step/frame` |
-| Text metrics (F) | `Font.ctFont` in the stub and in `firstRect` | F's canonical font mapping |
+| Text metrics (F) | landed. `firstRect` and `characterIndex` use `TextSystem.shared.shape`, the same line Lean measures with `cairn_text_metrics` | |
 
 ## Input
 
@@ -199,11 +210,13 @@ in scalar indices. Chromium's browser process does the same.
   replacement range in scalar indices (`ScalarRange`). This contract change is in
   `lean/Cairn/Input.lean` and `CairnFrame/Model.swift`.
 - **Geometry.**
-  - `firstRect(forCharacterRange:)` lays out the shadow's text with Core Text in the field's
-    font, starting at the frame's drawn text origin. It takes its height from Lean's caret rect
-    and returns zero width for an empty range.
-  - `characterIndex(for:)` is the inverse.
-  - Both are approximations until frames carry per-scalar offsets (question 2 below).
+  - `firstRect(forCharacterRange:)` takes x from the per-scalar caret offsets of
+    `TextSystem.shared.shape`. That is the shaped line the renderer draws and the one Lean
+    measures through `cairn_text_metrics`. The offsets are measured from the frame's drawn text
+    origin for the field.
+  - It takes y and height from Lean's caret rect, and returns zero width for an empty range.
+  - `characterIndex(for:)` is the inverse, snapping to the nearest scalar boundary.
+  - The host reshapes the shadow's text, which during a composition is ahead of Lean's.
 - **Input context.** `inputContext` is nil while no field is focused, so outside a text field
   keys go straight to `KeyMapping`. When a field gains or loses focus, the host activates or
   deactivates the context and calls `NSApp.updateWindows()`, which makes AppKit re-read it.
@@ -251,19 +264,20 @@ in scalar indices. Chromium's browser process does the same.
 
 ## Latency
 
-These were measured on this machine (macOS 27, Apple silicon) on 2026-10-23, with the release
-build, `CairnCounter --latency 600`. Input → present depends on the display's refresh rate and
-on whether the window is frontmost.
+These were measured on this machine (macOS 27, Apple silicon) on 2026-10-23. The run used the
+release build, `CairnCounter --latency 600`, and F's Metal renderer. Events go through the
+view's input handlers; a display-link tick comes every 16.7 ms.
 
 | | p50 | p95 | p99 | max |
 |---|---|---|---|---|
-| Lean step+frame+decode | 0.01 ms | 0.01 ms | 0.01 ms | 0.02 ms |
-| input → frame published | 0.02 ms | 0.03 ms | 0.04 ms | 0.05 ms |
-| input → present | 25.6 ms | 32.8 ms | 33.2 ms | 33.3 ms |
+| Lean step+frame+decode | 0.01 ms | 0.01 ms | 0.02 ms | 0.02 ms |
+| input → frame published | 0.02 ms | 0.03 ms | 0.04 ms | 0.06 ms |
+| input → present | 10.2 ms | 17.2 ms | 17.3 ms | 17.3 ms |
 
-An earlier debug-build run with the window frontmost gave input → present p50 9.7 ms and
-p95 17.2 ms. Input → present is dominated by waiting for the next display-link tick plus the
-compositor's one or two frames, not by Lean.
+Input → present is dominated by waiting for the next display-link tick, not by Lean.
+- An earlier run with the Core Graphics stand-in renderer, with the window behind other
+  windows, measured p50 25.6 ms. The compositor added a frame there.
+- Present time is the presented handler's time (see open question 4).
 
 `CairnCounter --bench` (release) measures one frame across the FFI as Lean frame time plus
 Swift decode time:
@@ -279,9 +293,9 @@ Swift decode time:
 1. **Edit-menu capabilities.** The frame doesn't say what can be copied or undone, so the Edit
    items are always enabled and Lean ignores what doesn't apply. A `canCopy`/`canUndo` bit
    field in `TextInput` or `Frame` would let the menu grey out properly.
-2. **Per-scalar offsets.** `firstRect` relayouts text with Core Text. If F's metrics and the
-   frame's text origin disagree, IME candidate windows sit slightly off. Per-scalar x offsets
-   for the focused field in the frame would remove the host's own layout.
+2. **Text origin.** `firstRect` finds the field's text origin by looking for the text draw
+   inside the field's rect. A `TextInput.textOrigin` field in the frame would make that
+   lookup exact (scrolled fields, placeholders).
 3. **ControlRef uniqueness.** The mirror assumes each ControlRef labels at most one node per
    frame (duplicates: the first one wins). A theorem on the Lean side would discharge this.
 4. **`presentedTime`.** It reads 0 for a windowed layer on macOS 27, so the presented handler's

@@ -19,7 +19,7 @@ public enum CairnApp {
         public var makeCore: () -> AppCore
         public var makeRenderer: () -> FrameRenderer
 
-        public init(title: String, size: Size, makeRenderer: @escaping () -> FrameRenderer = { StubRenderer() },
+        public init(title: String, size: Size, makeRenderer: @escaping () -> FrameRenderer = { MetalRenderer() },
                     makeCore: @escaping () -> AppCore) {
             self.title = title
             self.size = size

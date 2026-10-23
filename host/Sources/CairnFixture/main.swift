@@ -1,6 +1,7 @@
 import AppKit
 import CairnFrame
 import CairnHost
+import CairnRender
 
 // A stand-in app written in Swift, for checking the host by hand before a Lean app has a text
 // field: IME and dead keys, the accessibility mirror (heading, text field, checkbox, button,
@@ -12,7 +13,6 @@ import CairnHost
 
 final class FixtureCore: AppCore {
     let font = Font(family: 0, size: 15, weight: 400, italic: false)
-    lazy var nsFont = NSFont.systemFont(ofSize: 15, weight: .regular)
 
     var size = Size(w: 520, h: 420)
     var text: [Unicode.Scalar] = []
@@ -137,16 +137,12 @@ final class FixtureCore: AppCore {
         }
     }
 
-    func line(_ s: String) -> CTLine {
-        CTLineCreateWithAttributedString(NSAttributedString(string: s, attributes: [.font: nsFont]))
-    }
-    func x(_ i: Int) -> Int32 {
-        let u = TextIndex(string).utf16(i)
-        return Int32(CTLineGetOffsetForStringIndex(line(string), u, nil).rounded())
-    }
+    // Measured like a Lean app measures: the renderer's shaped line, per scalar boundary.
+    var offsets: [Int32] { TextSystem.shared.shape(font, string).offsets }
+    func x(_ i: Int) -> Int32 { let o = offsets; return o[min(max(i, 0), o.count - 1)] }
     func index(atX x: CGFloat) -> Int {
-        let u = CTLineGetStringIndexForPosition(line(string), CGPoint(x: x, y: 0))
-        return TextIndex(string).scalar(max(0, u))
+        let o = offsets
+        return o.indices.min { abs(CGFloat(o[$0]) - x) < abs(CGFloat(o[$1]) - x) } ?? 0
     }
 
     // MARK: Frame

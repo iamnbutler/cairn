@@ -1,6 +1,6 @@
 import AppKit
 import CairnFrame
-import CoreText
+import CairnRender
 
 /// `NSTextInputClient`, answered from the host's shadow of the focused field (see
 /// `TextInputShadow`) and the last frame's geometry. Every AppKit range is UTF-16 and goes
@@ -85,42 +85,40 @@ extension HostView: @preconcurrency NSTextInputClient {
         return NSAttributedString(string: (st.text as NSString).substring(with: u))
     }
 
-    /// Screen rect for a range: x from Core Text over the shadow's text with the field's font,
-    /// anchored where the frame drew the field's text; y and height from the frame's caret. An
-    /// empty range is a zero-width rect at that position (dictation draws its indicator there).
+    /// Screen rect for a range: x from the same shaped line Lean measures with
+    /// (`TextSystem.shape`, the renderer's and `cairn_text_metrics`'s), anchored where the frame
+    /// drew the field's text; y and height from the frame's caret. An empty range is a
+    /// zero-width rect at that position (dictation draws its indicator there).
     public func firstRect(forCharacterRange range: NSRange, actualRange: NSRangePointer?) -> NSRect {
         guard let f = shown?.frame.textInput, let st = textShadow.state else { return .zero }
         let ix = textShadowIndex
         let r = ix.scalars(range) ?? (st.selection.lowerBound..<st.selection.lowerBound)
-        let u = ix.nsRange(scalars: r.lowerBound, r.upperBound)
-        actualRange?.pointee = u
+        actualRange?.pointee = ix.nsRange(scalars: r.lowerBound, r.upperBound)
         var rect = f.caret.cg
         rect.size.width = 0
         if let (origin, font) = fieldText(f) {
-            let line = Self.line(st.text, font)
-            let a = CTLineGetOffsetForStringIndex(line, u.location, nil)
-            let b = CTLineGetOffsetForStringIndex(line, NSMaxRange(u), nil)
-            rect.origin.x = origin.x + a
-            rect.size.width = b - a
+            let offsets = TextSystem.shared.shape(font, st.text).offsets
+            func x(_ i: Int) -> CGFloat { CGFloat(offsets[min(max(i, 0), offsets.count - 1)]) }
+            rect.origin.x = origin.x + x(r.lowerBound)
+            rect.size.width = x(r.upperBound) - x(r.lowerBound)
         }
         return screenRect(rect)
     }
 
+    /// The UTF-16 offset of the scalar boundary nearest a screen point in the field.
     public func characterIndex(for point: NSPoint) -> Int {
         guard let f = shown?.frame.textInput, let st = textShadow.state, let window else { return NSNotFound }
         let p = convert(window.convertPoint(fromScreen: point), from: nil)
         guard f.rect.cg.contains(p), let (origin, font) = fieldText(f) else { return NSNotFound }
-        let i = CTLineGetStringIndexForPosition(Self.line(st.text, font), CGPoint(x: p.x - origin.x, y: 0))
-        return i == kCFNotFound ? NSNotFound : i
+        let offsets = TextSystem.shared.shape(font, st.text).offsets
+        let dx = p.x - origin.x
+        let i = offsets.indices.min { abs(CGFloat(offsets[$0]) - dx) < abs(CGFloat(offsets[$1]) - dx) } ?? 0
+        return textShadowIndex.utf16(i)
     }
 
     public func windowLevel() -> Int { window?.level.rawValue ?? 0 }
 
     public func baselineDeltaForCharacter(at anIndex: Int) -> CGFloat { 0 }
-
-    private static func line(_ s: String, _ font: Font) -> CTLine {
-        CTLineCreateWithAttributedString(NSAttributedString(string: s, attributes: [.font: font.ctFont]))
-    }
 
     /// Where and in which font the frame drew the field's text: the text draw whose string is
     /// the field's text and whose baseline starts inside the field. Positions within it come

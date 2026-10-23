@@ -24,13 +24,13 @@ let package = Package(
         .testTarget(name: "CairnRenderLeanTests", dependencies: ["CairnRender", "CairnLeanText"]),
 
         // The generic AppKit host: threads, input, text input, accessibility, effects.
-        .target(name: "CairnHost", dependencies: ["CLean", "CairnFrame"]),
+        .target(name: "CairnHost", dependencies: ["CLean", "CairnFrame", "CairnRender"]),
 
         // Apps: one executable per Lean app.
         .executableTarget(name: "CairnCounter", dependencies: ["CairnHost", "CLean", "CairnFrame"]),
         // A Swift stand-in app with a text field, for checking the host by hand (IME, AX) before
         // a Lean app has one. Not product code.
-        .executableTarget(name: "CairnFixture", dependencies: ["CairnHost", "CairnFrame"]),
+        .executableTarget(name: "CairnFixture", dependencies: ["CairnHost", "CairnFrame", "CairnRender"]),
 
         .testTarget(name: "CairnHostTests", dependencies: ["CairnHost", "CairnFrame"]),
     ]
