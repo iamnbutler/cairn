@@ -25,10 +25,18 @@ final class FrameSuite: Suite {
             UInt32(b[o]) | UInt32(b[o + 1]) << 8 | UInt32(b[o + 2]) << 16 | UInt32(b[o + 3]) << 24
         }
         func put(_ o: Int, _ v: UInt32) { for k in 0..<4 { b[o + k] = UInt8(truncatingIfNeeded: v >> (8 * k)) } }
-        // Offsets of the section headers (count, byteLength) in a valid frame.
-        let drawsLen = Int(u32(20))
-        let axAt = 24 + drawsLen
-        let sections = [16, axAt]
+        // Offsets of the section headers (count, byteLength) in a valid frame: the surfaces, and
+        // the first surface's draws and accessibility nodes.
+        var sections = [8]
+        if u32(8) > 0, b.count >= 32 {
+            let canvas = 32 + Int(u32(28))
+            let drawsAt = canvas + 8
+            if drawsAt + 8 <= b.count {
+                sections.append(drawsAt)
+                let axAt = drawsAt + 8 + Int(u32(drawsAt + 4))
+                if axAt + 8 <= b.count { sections.append(axAt) }
+            }
+        }
         var lengthFields = sections.flatMap { [$0, $0 + 4] }.filter { $0 + 4 <= b.count }
         // The tail ends with the effects and subs sections, then the 12-byte wake record: find
         // each section header by its byte length reaching the next one.
@@ -99,7 +107,7 @@ final class FrameSuite: Suite {
     }
 
     /// The empty frame: size 0×0, no draws, no ax, no text input, arrow, no effects, no subs, no wake.
-    static let emptyFrame: [UInt8] = [0x43, 0x41, 0x46, 0x52, 2, 0, 0, 0] + [UInt8](repeating: 0, count: 60)
+    static let emptyFrame: [UInt8] = [0x43, 0x41, 0x46, 0x52, 3, 0, 0, 0] + [UInt8](repeating: 0, count: 36)
 
     enum Outcome: Equatable { case agree, leanOnly, swiftOnly, differ }
 
@@ -126,15 +134,16 @@ final class FrameSuite: Suite {
         func u32(_ o: Int) -> Int {
             o + 4 <= b.count ? Int(UInt32(b[o]) | UInt32(b[o + 1]) << 8 | UInt32(b[o + 2]) << 16 | UInt32(b[o + 3]) << 24) : 0
         }
-        if u32(16) > b.count { return true }
-        let ax = 24 + u32(20)
-        return u32(ax) > b.count
+        if u32(8) > b.count { return true }
+        let drawsAt = 40 + u32(28)
+        if u32(drawsAt) > b.count { return true }
+        return u32(drawsAt + 8 + u32(drawsAt + 4)) > b.count
     }
 
     /// Delta debugging over bytes: remove chunks while the same disagreement remains.
     func shrink(_ b0: [UInt8], _ want: Outcome) -> [UInt8] {
         var b = b0
-        // First, the same 8-byte header on the empty frame: header bugs shrink to 68 bytes.
+        // First, the same 8-byte header on the empty frame: header bugs shrink to 44 bytes.
         if b.count >= 8 {
             let c = Array(b.prefix(8)) + Self.emptyFrame.dropFirst(8)
             if compare(c).0 == want { b = c }

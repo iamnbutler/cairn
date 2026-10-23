@@ -2,9 +2,9 @@
 
 Design for GOAL.md M2, "Done means" item 3: a menu bar item whose menu is built from Lean's view,
 every item a move with an id, and a panel that never takes focus or clicks, both mirrored to
-accessibility. Design only; nothing here is implemented yet. Sources are in
-[research/surfaces/](../research/surfaces/README.md); the decisions a human should make are at
-the end, under [Open questions](#open-questions).
+accessibility. Sections 1–7 are the design; [What was built](#what-was-built) says where the
+implementation differs from it, and [Decisions](#decisions) records how the open questions were
+settled. Sources are in [research/surfaces/](../research/surfaces/README.md).
 
 M1 has one surface: a window whose whole content is `view : S → UI → Node`, laid out, hit tested
 and painted by Metal. Yap (`~/code/yap`) has no window at all. It has:
@@ -551,7 +551,76 @@ New entries, each an `assume` claim with its check:
 6. **Yap's menu and overlay** on all of the above, with their presence, enablement and overlay
    theorems.
 
-## Open questions
+## What was built
+
+The structure (types, runtime, frame v3, events v2) follows sections 3 and 4 with these
+differences:
+
+- **`Surface`** is `window place title view`, `panel place view`, `statusItem place view`
+  (`lean/Cairn/App.lean`; `MenuItem`, `StatusItem`, `PanelView`, `Anchor` in
+  `lean/Cairn/Surface.lean`). A window has no `size` field: the host opens it at its launch size
+  and Lean lays out at whatever `resize` says, as in M1. A panel's view takes only the state
+  (`S → Option PanelView`): panels ignore the mouse, so they have no hover or press `UI` to
+  read. M1 apps pass `[.window place title view]` to `toApp`; `App.view` is now derived (the
+  first window's view), so every M1 theorem stated about `app.view` holds unchanged.
+- **At most one window.** The runtime routes window events to the first `window` surface;
+  later ones are shown nowhere. Multiple windows are a later milestone.
+- **No `surfaces_nodup` field.** Distinct places are checked per app with `decide` next to its
+  claims, as the claim commands check `in ^P`, rather than carried as a proof obligation on
+  every `App`.
+- **`Runtime.State.surfaces : List Shown`** keeps, per surface, what it shows: the window's title,
+  a shown panel's `PanelView`, its size and its laid tree, a shown status item's `StatusItem`. It
+  is recomputed only when an action was delivered (`shows`), like the window's layout. The panel's
+  height comes from `Config.panelHeight` (its content's measured height), so wrapped text can
+  refine it without touching the runtime.
+- **Events address a surface by wrapping**, not by a `u32` in every record: tag 21 `surface place
+  e` carries one local event, and a bare local event is the window's, so M1 batches mean what
+  they meant. The decoder rejects a wrapped non-local event, so wrapping never nests.
+  `menuSelect` carries the status item's place as well as the ref, so an app with two status
+  items can't confuse them.
+- **One surface record shape** (docs/frame.md): every record has every field, at defaults for
+  kinds that don't use them. A record costs about 60 bytes of defaults; in exchange the decoder
+  and its proof have no per-kind branches.
+
+The runtime theorems are in `lean/Cairn/Runtime/Proofs.lean`: `menu_route_names` (a menu event
+emits only presses of refs the menu offers), `menu_select_presses` (selecting an enabled item
+presses exactly it), `menu_open_presses`, `menu_select_stale` (a selection of a ref that is not
+an enabled item of the menu being shown changes nothing: `step` returns the same state and no
+effects), `menu_select_absent`, and `route_surface_other` (a surface event for a place that is not
+the window's is dropped). `route_names` and `route_laid` now hold for every event, including
+wrapped ones, by induction.
+
+## Decisions
+
+The open questions as first written are kept below; each was settled as follows. Every answer is
+the **lead's default; Nate may override.**
+
+1. **Native menu.** *Lead's default; Nate may override.* Presence, enablement and checked state
+   are proved on the description (`controls_ofMenu`, `enabled_ofMenu`, and the example app's
+   theorems). That the item AppKit reports is the item the person chose is an `assume` claim in
+   the trusted range, checked through the debug socket's `menuSelect` (which goes through
+   `NSMenu.performActionForItem(at:)`, AppKit's own dispatch).
+2. **Disabled-but-visible controls only in menus.** *Lead's default; Nate may override.* Only
+   `MenuItem.item` has `enabled`; Metal surfaces keep M1's rule that a disabled move has no
+   control.
+3. **The host resolves Lean's anchor.** *Lead's default; Nate may override.* Lean gives
+   `Anchor.bottomCenter offset` and a `ScreenChoice`; the host places the panel against that
+   screen's `visibleFrame`. Trusted, listed in docs/trusted.md.
+4. **Accessory follows from having no window surface.** *Lead's default; Nate may override.*
+   `App.accessory` is `true` exactly when `surfaces` has no `window`; no separate flag.
+5. **Waveform from Lean primitives** (bars as rects), provided frame times allow about 50 Hz.
+   *Lead's default; Nate may override.* Measured in bench/ (bench/surfaces.md).
+6. **The hide fade is a host-only look effect.** *Lead's default; Nate may override.* No
+   animation model in Lean; the fade changes no state Lean reads.
+7. **VoiceOver doesn't announce the live transcript.** *Lead's default; Nate may override.* It
+   is readable by navigating to the panel's text.
+8. **The overlay may appear in screen captures.** *Lead's default; Nate may override.* Accepted,
+   as Yap does.
+9. **Window-server behaviour is evidenced by debug-socket checks plus a manual checklist** in
+   docs/ (docs/surfaces-checklist.md). *Lead's default; Nate may override.* No test in
+   `make check` uses the real menu bar.
+
+### Open questions as first written
 
 For a human to decide:
 

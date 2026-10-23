@@ -268,23 +268,132 @@ public enum Effect: Equatable, Sendable {
     case quit
 }
 
-public struct Frame: Equatable, Sendable {
+/// What one Metal surface (the window, a panel) shows (`Cairn.Canvas`).
+public struct Canvas: Equatable, Sendable {
     public var size: Size
     public var draws: [Draw]
     public var ax: [AxNode]
     public var textInput: TextInput?
     public var cursor: Cursor
+    public init(size: Size, draws: [Draw], ax: [AxNode] = [], textInput: TextInput? = nil,
+                cursor: Cursor = .arrow) {
+        self.size = size; self.draws = draws; self.ax = ax; self.textInput = textInput
+        self.cursor = cursor
+    }
+    public static let empty = Canvas(size: Size(w: 0, h: 0), draws: [])
+}
+
+public enum SurfaceKind: UInt8, Sendable { case window, panel, statusItem }
+public enum MenuKind: UInt8, Sendable { case item, info, submenu, separator }
+/// Which screen a panel is shown on.
+public enum ScreenChoice: UInt8, Sendable { case pointer, main }
+
+/// Where a panel goes on its screen (`Cairn.Anchor`).
+public enum Anchor: Equatable, Sendable {
+    /// Horizontally centred, `offset` points above the bottom of the visible frame.
+    case bottomCenter(offset: UInt32)
+    public var code: UInt8 { switch self { case .bottomCenter: 0 } }
+    public var offset: UInt32 { switch self { case let .bottomCenter(o): o } }
+}
+
+public struct Shortcut: Equatable, Sendable {
+    public var key: Key
+    public var mods: Mods
+    public init(key: Key, mods: Mods) { self.key = key; self.mods = mods }
+}
+
+/// One menu item, flattened (`Frame.ofMenu`): parents come before children.
+public struct MenuRecord: Equatable, Sendable {
+    public var kind: MenuKind
+    public var label: String
+    public var control: ControlRef?
+    /// A submenu's place claim.
+    public var place: UInt32?
+    /// Index of the enclosing submenu's record.
+    public var parent: Int?
+    public var enabled: Bool
+    public var checked: Bool?
+    public var shortcut: Shortcut?
+    public init(kind: MenuKind, label: String = "", control: ControlRef? = nil, place: UInt32? = nil,
+                parent: Int? = nil, enabled: Bool = true, checked: Bool? = nil,
+                shortcut: Shortcut? = nil) {
+        self.kind = kind; self.label = label; self.control = control; self.place = place
+        self.parent = parent; self.enabled = enabled; self.checked = checked; self.shortcut = shortcut
+    }
+}
+
+/// A status item's button and menu.
+public struct StatusFrame: Equatable, Sendable {
+    public var control: ControlRef
+    public var symbol: String
+    public var title: String
+    public var label: String
+    public var menu: [MenuRecord]
+    public init(control: ControlRef = ControlRef(claim: 0), symbol: String = "", title: String = "",
+                label: String = "", menu: [MenuRecord] = []) {
+        self.control = control; self.symbol = symbol; self.title = title; self.label = label
+        self.menu = menu
+    }
+}
+
+/// One surface's record (docs/frame.md). Fields a kind doesn't use are at their defaults.
+public struct Surface: Equatable, Sendable {
+    public var kind: SurfaceKind
+    /// The surface's place claim: its identity.
+    public var place: UInt32
+    public var shown: Bool
+    public var title: String
+    public var anchor: Anchor
+    public var screen: ScreenChoice
+    public var canvas: Canvas
+    public var status: StatusFrame
+    public init(kind: SurfaceKind, place: UInt32, shown: Bool = true, title: String = "",
+                anchor: Anchor = .bottomCenter(offset: 0), screen: ScreenChoice = .pointer,
+                canvas: Canvas = .empty, status: StatusFrame = StatusFrame()) {
+        self.kind = kind; self.place = place; self.shown = shown; self.title = title
+        self.anchor = anchor; self.screen = screen; self.canvas = canvas; self.status = status
+    }
+}
+
+public struct Frame: Equatable, Sendable {
+    /// Every surface of the app, in the app's order.
+    public var surfaces: [Surface]
     public var effects: [Effect]
     /// Subscriptions to start and stop, in order.
     public var subs: [SubCmd]
     /// Send a clock event once the monotonic clock reaches this (ms): the earliest timer.
     public var wake: UInt64?
+    public init(surfaces: [Surface], effects: [Effect] = [], subs: [SubCmd] = [], wake: UInt64? = nil) {
+        self.surfaces = surfaces; self.effects = effects; self.subs = subs; self.wake = wake
+    }
+    /// A frame with one window (place 0): M1's frame (`Frame.single`).
     public init(size: Size, draws: [Draw], ax: [AxNode] = [], textInput: TextInput? = nil,
                 cursor: Cursor = .arrow, effects: [Effect] = [], subs: [SubCmd] = [],
                 wake: UInt64? = nil) {
-        self.size = size; self.draws = draws; self.ax = ax; self.textInput = textInput
-        self.cursor = cursor; self.effects = effects; self.subs = subs; self.wake = wake
+        let c = Canvas(size: size, draws: draws, ax: ax, textInput: textInput, cursor: cursor)
+        self.init(surfaces: [Surface(kind: .window, place: 0, canvas: c)], effects: effects,
+                  subs: subs, wake: wake)
     }
+
+    /// The index of the first window, if any.
+    public var windowIndex: Int? { surfaces.firstIndex { $0.kind == .window } }
+
+    /// The first window's canvas; empty when there is none. Setting it with no window adds one.
+    public var window: Canvas {
+        get { windowIndex.map { surfaces[$0].canvas } ?? .empty }
+        set {
+            if let i = windowIndex { surfaces[i].canvas = newValue }
+            else { surfaces.insert(Surface(kind: .window, place: 0, canvas: newValue), at: 0) }
+        }
+    }
+    public var size: Size { get { window.size } set { window.size = newValue } }
+    public var draws: [Draw] { get { window.draws } set { window.draws = newValue } }
+    public var ax: [AxNode] { get { window.ax } set { window.ax = newValue } }
+    public var textInput: TextInput? { get { window.textInput } set { window.textInput = newValue } }
+    public var cursor: Cursor { get { window.cursor } set { window.cursor = newValue } }
+
+    /// The surface with this place.
+    public func surface(_ place: UInt32) -> Surface? { surfaces.first { $0.place == place } }
 }
 
 public struct Mods: Equatable, Sendable {
@@ -330,5 +439,14 @@ public enum Event: Equatable, Sendable {
     case clock(Time)
     case reply(id: UInt32, Reply)
     case subEvent(id: UInt32, SubEvent)
+    /// A surface-local event for the surface whose place is `place`. A bare local event is the
+    /// window's (M1).
+    indirect case surface(place: UInt32, Event)
+    /// The status item's menu is opening (`menuWillOpen`).
+    case menuOpen(place: UInt32)
+    /// The status item's menu closed (`menuDidClose`).
+    case menuClose(place: UInt32)
+    /// The person chose the item `ref` in the status item's menu.
+    case menuSelect(place: UInt32, ControlRef)
 }
 
