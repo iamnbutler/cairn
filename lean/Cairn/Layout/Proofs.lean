@@ -537,4 +537,80 @@ theorem layout_fillExact (m : TextMetrics) (w : Size) (n : Node) :
     (layout m w n).Everywhere FillExact :=
   arrange_everywhere' m _ (arrange_fillExact m) _ _ _
 
+/-! ## Carets and selections -/
+
+theorem offAt_eq (offs : Array Int) {i : Nat} (h : i < offs.size) : offAt offs i = offs[i] := by
+  simp [offAt, h]
+
+/-- Under valid metrics every caret offset lies between 0 and the text's width. -/
+theorem offAt_bounds {m : TextMetrics} (hm : m.Valid) (f : Font) (s : String) (i : Nat) :
+    0 ≤ offAt (m.offsets f s) i ∧ offAt (m.offsets f s) i ≤ m.width f s := by
+  have hsz := hm.size f s
+  have h0 := hm.zero f s
+  have hpos : 0 < (m.offsets f s).size := by omega
+  have hz : (m.offsets f s)[0] = 0 := by
+    rw [Array.getElem?_eq_getElem hpos] at h0; simpa using h0
+  have hlast : m.width f s = (m.offsets f s)[(m.offsets f s).size - 1] := by
+    simp [TextMetrics.width, Array.back?, Array.getElem?_eq_getElem (show (m.offsets f s).size - 1 < (m.offsets f s).size by omega)]
+  have hmono := hm.mono f s
+  have hl0 := hmono 0 ((m.offsets f s).size - 1) hpos (by omega) (Nat.zero_le _)
+  unfold offAt
+  by_cases hi : i < (m.offsets f s).size
+  · simp only [Array.getElem?_eq_getElem hi, Option.getD_some]
+    have := hmono 0 i hpos hi (Nat.zero_le _)
+    have := hmono i _ hi (by omega : (m.offsets f s).size - 1 < (m.offsets f s).size) (by omega)
+    omega
+  · simp only [Array.getElem?_eq_none (by omega : (m.offsets f s).size ≤ i), Option.getD_none]
+    rw [show (m.offsets f s).back?.getD 0 = m.width f s from rfl]
+    omega
+
+theorem arrange_caretPlaced {m : TextMetrics} (hm : m.Valid) (c r : Rect) (s : Sized) :
+    CaretPlaced m (arrange m c r s) := by
+  cases s with
+  | field st ts ctl v sz =>
+    simp only [arrange, field, CaretPlaced]
+    have hb := offAt_bounds hm ts.font v.text v.caret
+    refine ⟨fun h => by rw [offAt_eq _ h], by omega, by omega, by trivial, by trivial, fun hw => ?_,
+      fun he => ?_, fun hne => ?_⟩
+    · unfold scrollFor; omega
+    · simp [he]
+    · simp only [show ¬ min v.anchor v.caret = max v.anchor v.caret by omega, ite_false]
+      exact ⟨_, rfl, rfl, rfl, rfl, by simp only; omega⟩
+  | box => simp [arrange, CaretPlaced]
+  | text => simp [arrange, CaretPlaced]
+
+/-- **Caret placement.** In every field of the laid-out tree, the caret's x is the text origin
+plus the caret's offset, lies within the text's extent, and lies inside the content box whenever
+the box is at least a point wide; the selection runs between the offsets of its ends. -/
+theorem layout_caretPlaced {m : TextMetrics} (hm : m.Valid) (w : Size) (n : Node) :
+    (layout m w n).Everywhere (CaretPlaced m) :=
+  arrange_everywhere' m _ (arrange_caretPlaced hm) _ _ _
+
+/-! ## The mono metrics are valid -/
+
+theorem _root_.Cairn.TextMetrics.mono_valid : TextMetrics.mono.Valid where
+  size f s := by simp [TextMetrics.mono]
+  zero f s := by simp [TextMetrics.mono]
+  mono f s i j hi hj hij := by
+    simp only [TextMetrics.mono, Array.getElem_map, Array.getElem_range]
+    exact Int.mul_le_mul_of_nonneg_right (by omega) (by omega)
+  ascent f := by simp only [TextMetrics.mono]; omega
+  descent f := by simp only [TextMetrics.mono]; omega
+
+/-! ## Everything together -/
+
+/-- **Layout facts.** For valid metrics, every window and every view, `layout` satisfies all of
+`Facts`. -/
+theorem facts {m : TextMetrics} (hm : m.Valid) (w : Size) (n : Node) :
+    Facts m w n (layout m w n) where
+  controls := layout_controls m w n
+  rootClip := layout_rootClip m w n
+  rootOrigin := layout_rootOrigin m w n
+  childClips := layout_childClips m w n
+  clipInside := layout_clipInside m w n
+  rectNonneg := layout_rectNonneg m w n
+  siblingsDisjoint := layout_siblingsDisjoint m w n
+  fillExact := layout_fillExact m w n
+  caretPlaced := layout_caretPlaced hm w n
+
 end Cairn.Layout
