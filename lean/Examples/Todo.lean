@@ -9,7 +9,7 @@ public import Cairn.Fuzz.Rng
 
 /-! # TodoMVC
 
-The app (workstream I, GOAL.md M1): the claims over `Examples.Todo.Model`, the machine they
+The app (workstream I, M1, docs/goals/m1.md): the claims over `Examples.Todo.Model`, the machine they
 make; the v1 exports are in `Examples.Todo.Abi`. `update` is `machine.update`, built from these moves and nothing else. The
 view is `Examples.Todo.View`; theorems about it (presence, pressability) are in
 `Examples.Todo.Proofs`, runtime checks in `Examples.Todo.Tests`, the mapping from the TodoMVC

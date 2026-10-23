@@ -1,7 +1,7 @@
 # AGENTS
 
 Cairn is research into UIs where every action is a claim with a durable id and machine-checked
-evidence. Read [GOAL.md](GOAL.md) for what we are building now and
+evidence. Read [GOAL.md](GOAL.md) for what we are building now (M2; M1 is in docs/goals/) and
 [docs/architecture.md](docs/architecture.md) for how it fits together.
 
 ## Layout

@@ -1,6 +1,6 @@
 # The map
 
-GOAL.md item 7: the map is a build output. The claims in an app's code compile to a map in the
+[M1](goals/m1.md) item 7: the map is a build output. The claims in an app's code compile to a map in the
 map skill's format (`~/.claude/skills/map`): one page per place, a stable `^N` on every flow and
 step, screenshots, and a status per step. Here nothing in the map is written by hand: titles and
 prose come from the claims, every status comes from evidence, and pins on the screenshots come
@@ -135,7 +135,7 @@ A claim missing from the file is "not run".
 - **Presence and pressability** theorems are per app and not linked to claims in the export, so
   they are not columns yet (`Counter.reset_present_iff_enabled` exists, but only the audit sees
   it).
-- **Model-checked** (GOAL.md item 7) has no source yet.
+- **Model-checked** (M1 item 7) has no source yet.
 - **Prose isn't checked:** `does` and `sees` are shown as written; nothing proves `sees` matches
   `post` (docs/claims.md).
 - **Kernel replay** is whole-build (`make kernel` in `make check`), not per theorem.
