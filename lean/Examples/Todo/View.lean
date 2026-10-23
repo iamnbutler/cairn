@@ -219,7 +219,7 @@ theorem todoRow_rowKeys (s : State) (ui : UI) (t : Todo) :
   have hv : (todoRow.viewRow ui t).controls.filterMap rowKey = [t.id] := by
     simp only [todoRow.viewRow, cell, Node.controls, Node.controlsList, Option.toList,
       List.nil_append, List.append_nil, List.cons_append, List.filterMap_cons, rowKey, toggleRef,
-      titleRef, deleteRef, List.filterMap_nil]
+      titleRef, deleteRef]
     cases t.completed <;> cases hot ui t.id <;> simp [Node.controls, Node.controlsList]
   split
   · split
@@ -250,15 +250,15 @@ theorem view_rows (s : State) (ui : UI) :
     | cons t ts ih => simp only [List.flatMap_cons, ih, List.map_cons, List.singleton_append]
   unfold view
   cases h : s.todos.isEmpty
-  · simp only [Node.controls, Option.toList, List.nil_append, controlsList_append,
+  · simp only [Node.controls, Option.toList, List.nil_append,
       Node.controlsList, List.filterMap_append, header_rowKeys, footer_rowKeys, hl, heading, info,
-      Bool.false_eq_true, ↓reduceIte, List.cons_append, List.singleton_append, List.append_nil,
-      List.filterMap_nil, List.nil_append]
+      Bool.false_eq_true, ↓reduceIte, List.cons_append, List.append_nil,
+      List.nil_append]
   · have : visible s = [] := by
       simp only [visible, List.isEmpty_iff.1 h, List.filter_nil]
-    simp only [Node.controls, Option.toList, List.nil_append, controlsList_append,
-      Node.controlsList, List.filterMap_append, header_rowKeys, heading, info, ↓reduceIte,
-      List.cons_append, List.singleton_append, List.append_nil, List.filterMap_nil, this,
+    simp only [Node.controls, Option.toList, List.nil_append,
+      Node.controlsList, header_rowKeys, heading, info, ↓reduceIte,
+      List.cons_append, List.append_nil, this,
       List.map_nil]
 
 end Examples.Todo
