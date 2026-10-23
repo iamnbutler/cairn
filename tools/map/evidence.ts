@@ -54,6 +54,8 @@ export type Inputs = {
 	trusted: Trusted | null;
 	conformance: Conformance | null;
 	capture: Capture | null;
+	/** Whether the app has a conformance generator (tools/conformance/lean/Conformance/Apps/). */
+	conformable?: boolean;
 };
 
 // ---- The model ---------------------------------------------------------------------------------
@@ -187,7 +189,8 @@ export function evaluate(inp: Inputs, image: (file: string) => string = (f) => f
 		if (c.kind === "move" || c.kind === "flow" || c.kind === "invariant") {
 			const t = conformance?.claims[c.ref];
 			const what = c.kind === "move" ? (n: number) => `${plural(n, "step")} on the running app exercised it` : c.kind === "flow" ? () => "Its witness replayed on the running app" : (n: number) => `Every state the running app reached (${plural(n, "step")}) was the model's`;
-			if (!conformance) mark("tested", "gap", "not tested", `No \`build/conformance/${app}.json\`: run \`make conformance APP=${app}\`.`);
+			if (!conformance)
+				mark("tested", "gap", "not tested", inp.conformable === false ? `${app} has no conformance generator yet (\`tools/conformance/lean/Conformance/Apps/${app}.lean\`).` : `No \`build/conformance/${app}.json\`: run \`make conformance APP=${app}\`.`);
 			else if (!t) mark("tested", "gap", "not tested", "No conformance step exercised it.");
 			else if (t.pass) mark("tested", "pass", c.kind === "move" && t.runs ? `tested ${short(t.runs)}` : "tested", `${what(t.runs ?? 0)}, and the frame, accessibility tree, effects and pixels matched the model.`);
 			else mark("tested", "fail", "test fails", `Conformance failed${t.note ? `: ${t.note}` : "."}`);

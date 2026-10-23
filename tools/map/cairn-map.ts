@@ -81,14 +81,15 @@ function build() {
 		return out;
 	};
 
-	const rows = evaluate({ app, claims, audit, lock, fuzz, trusted, conformance, capture }, image);
+	const conformable = existsSync(join(root, "tools/conformance/lean/Conformance/Apps", `${app}.lean`));
+	const rows = evaluate({ app, claims, audit, lock, fuzz, trusted, conformance, capture, conformable }, image);
 	const ours = new Set(claims.map((c) => c.id));
 	const retiredElsewhere = lock.filter((l) => !ours.has(l.id) && l.status === "retired");
 
 	const inputs = [
 		`Audit: ${Object.keys(audit.theorems).length.toLocaleString("en")} theorems.`,
 		fuzz ? `Fuzz: ${fuzz.iterations.toLocaleString("en")} sequences${fuzz.mode === "model" ? " of the model" : ""}, seed ${fuzz.seed}.` : `Fuzz: not run (\`make fuzz APP=${app}\`).`,
-		conformance ? `Conformance: ${conformance.runs?.toLocaleString("en") ?? "?"} walks${conformance.commit ? ` at \`${conformance.commit}\`` : ""}.` : `Conformance: not run.`,
+		conformance ? `Conformance: ${conformance.runs?.toLocaleString("en") ?? "?"} walks${conformance.commit ? ` at \`${conformance.commit}\`` : ""}.` : `Conformance: ${conformable ? "not run" : "no generator yet"}.`,
 		capture ? `Capture: ${capture.sequences.length} sequences, headless.` : `Capture: not run.`,
 		trusted ? `Trusted base: \`build/fuzz/trusted.json\`.` : "",
 	].filter(Boolean);
