@@ -510,6 +510,24 @@ def stepAction (step : Syntax) : CommandElabM (Term × ClaimId) := do
 
 /-! ### `invariant` -/
 
+/-- The definitions to unfold, from `holds` down its body's head, before `Decidable` of the
+property can be synthesized; `none` when it can't be, even after unfolding a few. -/
+def decidableUnfolds (holds : Name) (SM : Term) : CommandElabM (Option (Array Name)) :=
+  liftTermElabM do
+    let ty ← elabType SM
+    withLocalDeclD `s ty fun s => do
+      let mut t := mkApp (← mkConstWithLevelParams holds) s
+      let mut names : Array Name := #[]
+      for _ in [0:8] do
+        let found ← try pure (← synthInstance? (mkApp (mkConst ``Decidable) t)).isSome
+          catch _ => pure false
+        if found then return some names
+        let some c := t.getAppFn.constName? | return none
+        let some t' ← unfoldDefinition? t | return none
+        names := names.push c
+        t := t'.headBeta
+      return none
+
 @[command_elab invariantCmd] def elabInvariant : CommandElab := fun stx => do
   let doc? := stx[0].getOptional?
   let id := refId stx[2]
@@ -527,6 +545,14 @@ def stepAction (step : Syntax) : CommandElabM (Term × ClaimId) := do
   let (hbs, hrhs) ← needDefn c.items stx[1] "holds" "the property, as `holds s := …`" 1
   mkDef (name ++ `holds) #[(hbs[0]!, SM)] (← `(Prop)) hrhs s!"^{id} {title}: {does}"
   let holds := cid (full ++ `holds)
+  -- Runnable invariants (docs/fuzz.md): `check` is `decide`, so it agrees with `holds` by
+  -- construction. Generated only when `Decidable` can be found.
+  if let some names ← decidableUnfolds (full ++ `holds) SM then
+    let sId := mkIdent `s
+    let inst ← if names.isEmpty then `(inferInstance)
+      else `(by unfold $(names.map cid)*; infer_instance)
+    mkDef (name ++ `check) #[(sId, SM)] (← `(Bool)) (← `(@decide ($holds $sId) $inst))
+      s!"^{id} {title}, decided: what `lake exe fuzz` runs after every step."
   let (_, initP) ← needDefn c.items stx[1] "init" "the proof that it holds initially" 0
   mkThm (name ++ `init) (← `($holds (Cairn.Claims.Machine.init $M))) initP
     s!"^{id} holds in the initial state."

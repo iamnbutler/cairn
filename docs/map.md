@@ -77,6 +77,7 @@ The skill's renderer is used unchanged. The one adapter is its documented styles
 | Column | Computed from | Values |
 |---|---|---|
 | **proved** | every theorem the claim names (a move's `sound` per handler; a flow's `live` and `reaches`; an invariant's `init`, `step`, `reachable`) is in `audit.json` and depends only on `propext`, `Classical.choice`, `Quot.sound` | yes, fails, missing, n/a (places, assumptions) |
+| **fuzzed** | `build/fuzz/<App>.json` from `make fuzz APP=<App>` ([fuzz.md](fuzz.md)): the claim's checks held in every randomized sequence of the model and runtime | pass, fail, not run, not runnable (an invariant without a `check`), n/a (flows, places, assumptions) |
 | **assumed** | the claim is an `assume` | yes, no |
 | **conformance** | `build/conformance/<App>.json` (workstream J) | pass, fail, not run, n/a |
 | **seen** | the capture: a move's control is in a captured frame; a flow's whole witness was replayed, each step on the control it names; a place's window was rendered | yes, no, n/a (invariants, assumptions) |
@@ -92,16 +93,21 @@ order:
 | Status | When |
 |---|---|
 | `closed` | the claim is retired |
-| `broken` | a named theorem is missing or uses another axiom; conformance failed; or the capture contradicts the model: a flow's witness step names a control the app doesn't show, although the witness is proved live (every step answered by an enabled move) |
+| `broken` | a named theorem is missing or uses another axiom; conformance failed; fuzzing failed; or the capture contradicts the model: a flow's witness step names a control the app doesn't show, although the witness is proved live (every step answered by an enabled move) |
 | `untested` | an assumption (stated, never checked) |
 | `tested` | proved, conformance passed, and seen where seeing applies (an automated study on the real app, the skill's meaning) |
 | `visual` | proved and seen: the app's own code produced frames showing it, rendered by the real renderer |
 | `untested` | proved, but nothing has run it on the app: invariants today, and any move no capture reached |
 
 A proved invariant shows `untested` unless a conformance run covers it (an invariant passes
-there when every state the app reached was the model's); its proof is on the Evidence page. Findings become the step's
+there when every state the app reached was the model's); its proof is on the Evidence page.
+**Fuzzing has no rung:** the skill's ladder (planned, untested, visual, tested, partial, broken,
+missing) is fixed and measures the real app, while the fuzzer runs the Lean model and runtime.
+So a fuzz pass never moves a status up; it shows in the fuzzed column, in `evidence.json` and in
+each step's evidence line, between proved and seen. A fuzz failure does move it down, to
+`broken`. Findings become the step's
 `gaps` (so they reach the skill's Gaps page): a failing theorem, a capture that contradicts the
-model, a conformance failure, a claim missing from `claims.lock`, or a statement hash that
+model, a conformance failure, a fuzz failure (with its replay command), a claim missing from `claims.lock`, or a statement hash that
 differs from the lock (meaning changed and not accepted).
 
 ## For workstream J: the conformance file

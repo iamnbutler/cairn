@@ -140,6 +140,13 @@ def Ascending (lo : Nat) : List Item → Prop
   | [] => True
   | i :: is => lo < i.id ∧ Ascending i.id is
 
+/-- `Ascending` is decidable, so ^105 gets a runnable `check` (docs/fuzz.md). -/
+instance Ascending.decidable : (lo : Nat) → (xs : List Item) → Decidable (Ascending lo xs)
+  | _, [] => isTrue trivial
+  | lo, i :: is =>
+    have := Ascending.decidable i.id is
+    inferInstanceAs (Decidable (lo < i.id ∧ Ascending i.id is))
+
 /-- ^105's statement: the count is right, and ids are distinct, positive and below `nextId`
 (which is positive). -/
 def Inv (s : State) : Prop :=

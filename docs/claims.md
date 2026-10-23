@@ -106,7 +106,11 @@ invariant ^6 noPressLeft "Moves never leave a press in progress" for machine whe
 above proves `step` one move at a time: `Machine.preserves` reduces it to `Move.Preserves` for
 each move, and each move's generated `preserves` lemma reduces that to one obligation per
 handler, stated over its own `apply`. Also generates
-`noPressLeft.reachable : ∀ s, machine.Reachable s → holds s`.
+`noPressLeft.reachable : ∀ s, machine.Reachable s → holds s`, and, when `Decidable (holds s)` can
+be synthesized (after unfolding `holds` and the definitions at the head of its body),
+`noPressLeft.check : S → Bool := fun s => decide (holds s)`: the invariant as a runnable check,
+for the fuzzer (docs/fuzz.md). Without an instance there is no `check` and the fuzzer reports the
+invariant as not runnable; give the predicate a `Decidable` instance to fix that.
 
 ### `assume`
 
