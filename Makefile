@@ -5,7 +5,7 @@ LEAN_PREFIX = $(shell cd lean && lean --print-prefix)
 LIB = build/lib/libcairn_lean.a
 VENDOR = host/Sources/CLean/vendor/lean
 
-.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-frame selftest demo fixture clean record site site-maps map conformance fuzz fuzz-quick size
+.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-frame selftest demo fixture clean record site site-maps map conformance fuzz fuzz-quick size fuzz-trusted fuzz-trusted-quick
 
 # build/lib/libcairn_lean.a: the framework (`Cairn`) and Lean's runtime, linked by every host
 # target. Each app gets its own library on top (APPS: library → file), and each executable
@@ -26,6 +26,7 @@ lean:
 		$(LEAN_PREFIX)/lib/libgmp.a 2>&1 | grep -v "has no symbols" || true
 	@for a in $(APPS); do \
 		cp lean/.lake/build/lib/libcairn_$${a%%:*}.a build/lib/libcairn_app_$${a##*:}.a; done
+	cp lean/.lake/build/lib/libcairn_TrustedFuzz.a build/lib/libcairn_trusted_fuzz.a
 	@! nm -gU $(LIB) 2>/dev/null | grep -E ' _cairn_app_' \
 	  || (echo "lean: app exports in the shared library $(LIB)"; exit 1)
 	@for a in $(APPS); do n=$$(nm -gU build/lib/libcairn_app_$${a##*:}.a 2>/dev/null | grep -c ' _cairn_app_init$$'); \
@@ -71,7 +72,7 @@ corpus: lean
 	cd lean && .lake/build/bin/framecorpus gen ../$(CORPUS)
 
 # Everything a PR must pass.
-check: lint audit ledger kernel test selftest fuzz-quick size
+check: lint audit ledger kernel test selftest fuzz-quick size fuzz-trusted-quick
 
 bench: lean
 	cd lean && lake build bench && .lake/build/bin/bench
@@ -186,3 +187,22 @@ size: lean
 		swift build -c release --product $$a -Xlinker -map -Xlinker $(CURDIR)/build/size/$$a.map || exit 1; done
 	bun tools/size/size.ts --bin $$(cd host && swift build -c release --show-bin-path) \
 		--maps build/size --out build/size --limit $(SIZE_LIMIT) $(SIZE_APPS)
+
+# The trusted base's fuzzer (docs/fuzz.md, "Trusted base"): the Swift frame decoder and event
+# encoder against Lean's proved codecs, TextIndex, the NSTextInputClient and the text-input
+# shadow against a Lean field, and Core Text metrics against TextMetrics.Valid. `make
+# fuzz-trusted [N=20000] [SEED=0]` writes build/fuzz/trusted.json, with the evidence for each
+# `assume` claim in Cairn.Fuzz.Trusted.Claims that names a check; repros go to build/fuzz/trusted/.
+fuzz-trusted: lean
+	mkdir -p build/fuzz
+	cd lean && lake build claims TrustedClaims && lake exe claims Cairn.Fuzz.Trusted.Claims > ../build/fuzz/trusted-claims.json
+	cd host && swift build -c release --product CairnFuzzTrusted
+	host/.build/release/CairnFuzzTrusted --n $(or $(N),20000) --seed $(or $(SEED),0) \
+		--claims build/fuzz/trusted-claims.json --out build/fuzz/trusted.json
+
+# The quick run in `make check`: 500 cases a suite, debug build (about 2 s).
+fuzz-trusted-quick: lean
+	mkdir -p build/fuzz/quick
+	cd lean && lake build claims TrustedClaims && lake exe claims Cairn.Fuzz.Trusted.Claims > ../build/fuzz/quick/trusted-claims.json
+	cd host && swift build --product CairnFuzzTrusted
+	host/.build/debug/CairnFuzzTrusted --n 500 --claims build/fuzz/quick/trusted-claims.json --out build/fuzz/quick/trusted.json

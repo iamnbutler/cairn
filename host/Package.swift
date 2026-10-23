@@ -51,5 +51,15 @@ let package = Package(
         .executableTarget(name: "CairnFixture", dependencies: ["CairnHost", "CairnFrame", "CairnRender"]),
 
         .testTarget(name: "CairnHostTests", dependencies: ["CairnHost", "CairnFrame"]),
+
+        // The trusted-base fuzzer (docs/fuzz.md, "Trusted base"): the Swift side of each trusted
+        // boundary against Lean's proved side, in one process. Not product code; `make
+        // fuzz-trusted` runs it. Dump.swift is a symlink to CairnFrameTests' canonical dump.
+        .target(name: "CairnTrustedLean", dependencies: ["CLean"], path: "Tests/CairnTrustedLean"),
+        .executableTarget(name: "CairnFuzzTrusted",
+                          dependencies: ["CairnHost", "CairnFrame", "CairnRender", "CLean", "CairnTrustedLean"],
+                          path: "Tests/CairnFuzzTrusted",
+                          swiftSettings: [.swiftLanguageMode(.v5)],
+                          linkerSettings: [.unsafeFlags(["-L" + leanLib, "-lcairn_trusted_fuzz"])]),
     ]
 )

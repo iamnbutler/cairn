@@ -31,11 +31,21 @@ public struct FieldState: Equatable, Sendable, CustomStringConvertible {
             + (marked.map { " marked \($0.lowerBound)..<\($0.upperBound)" } ?? "")
     }
 
-    /// Replaces scalar range `r` (clamped) with `s`; returns where `s` starts.
+    /// Lean's `Cairn.Text.isLineBreak`: a single-line field stores each of these as a space
+    /// (`Field.clean`), so inserted and marked text is flattened the same way here.
+    static func flatten(_ u: Unicode.Scalar) -> Unicode.Scalar {
+        switch u.value {
+        case 0x0A, 0x0D, 0x0B, 0x0C, 0x85, 0x2028, 0x2029: return " "
+        default: return u
+        }
+    }
+
+    /// Replaces scalar range `r` (clamped) with `s`, line breaks flattened; returns where `s`
+    /// starts.
     fileprivate mutating func replace(_ r: Range<Int>, with s: String) -> Int {
         var scalars = Array(text.unicodeScalars)
         let lo = min(r.lowerBound, scalars.count), hi = min(max(r.upperBound, lo), scalars.count)
-        scalars.replaceSubrange(lo..<hi, with: s.unicodeScalars)
+        scalars.replaceSubrange(lo..<hi, with: s.unicodeScalars.map(Self.flatten))
         var u = String.UnicodeScalarView()
         u.append(contentsOf: scalars)
         text = String(u)
@@ -63,6 +73,7 @@ public struct ShadowDivergence: Sendable, CustomStringConvertible {
 ///
 /// - the replaced range is the explicit replacement range, else the marked text, else the
 ///   selection;
+/// - line breaks in the new text become spaces (the field is single-line);
 /// - `setMarked(s, sel)` puts `s` there, marks it (nothing if `s` is empty) and selects `sel`
 ///   inside it;
 /// - `insertText(s)` puts `s` there, unmarks, and leaves the caret after it;

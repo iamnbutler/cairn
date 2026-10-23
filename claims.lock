@@ -40,3 +40,10 @@
 222	flow	active	b0d8d8a6a65e2c5f	Clear completed
 223	flow	active	36d2b8e708c4eceb	Mark all as complete, then undo it
 224	flow	active	06954be5c9e714a8	A new todo under the Completed filter
+901	assume	active	-	The Swift frame decoder agrees with Lean's
+902	assume	active	-	Lean decodes what the Swift event encoder writes
+903	assume	active	-	UTF-16 offsets and scalar indices convert exactly
+904	assume	active	-	The text-input shadow predicts Lean's field
+905	assume	active	-	Input-method geometry agrees with Lean's caret
+906	assume	active	-	The host's text metrics are what layout assumes
+907	assume	active	-	Carets follow the painted glyphs

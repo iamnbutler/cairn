@@ -81,6 +81,8 @@ public final class TextSystem: @unchecked Sendable {
         let ctRuns = CTLineGetGlyphRuns(line) as! [CTRun]
 
         var runs: [GlyphRun] = []
+        // Where each glyph starts, by the UTF-16 index of the text it draws (for `caret` below).
+        var glyphStarts: [(index: Int, x: CGFloat)] = []
         for r in ctRuns {
             let n = CTRunGetGlyphCount(r)
             guard n > 0 else { continue }
@@ -93,6 +95,9 @@ public final class TextSystem: @unchecked Sendable {
             CTRunGetGlyphs(r, all, &glyphs)
             CTRunGetPositions(r, all, &pos)
             CTRunGetAdvances(r, all, &adv)
+            var indices = [CFIndex](repeating: 0, count: n)
+            CTRunGetStringIndices(r, all, &indices)
+            for k in 0..<n { glyphStarts.append((indices[k], pos[k].x)) }
             let color = CTFontGetSymbolicTraits(runFont).contains(.traitColorGlyphs)
             runs.append(GlyphRun(font: FontKey(font: runFont), isColor: color,
                                  glyphs: glyphs, positions: pos, advances: adv))
@@ -104,17 +109,31 @@ public final class TextSystem: @unchecked Sendable {
         // 0 there). Boundaries inside a grapheme cluster report the cluster's end; we keep that.
         // Text is left-to-right in M1: a running max makes RTL or bidi lines nondecreasing
         // (and wrong as carets), so `TextMetrics.Valid` holds whatever Core Text returns.
+        //
+        // Core Text answers 0 for some real caret positions: after a scalar with no glyph at the
+        // end of a line ("a\u{0}": 0 before the NUL) and for the rest of a line after some
+        // fallback runs ("\u{93F}\u{1F3FB}\\x": 0 before the backslash and the x). Found by
+        // cairn-fuzz-trusted. There the caret is where the first glyph drawn for the text at or
+        // after it starts, or the line's end when no glyph follows.
+        let width = CTLineGetTypographicBounds(line, nil, nil, nil)
+        glyphStarts.sort { ($0.index, $0.x) < ($1.index, $1.x) }
+        func caret(_ u: Int) -> CGFloat {
+            let x = CTLineGetOffsetForStringIndex(line, u, nil)
+            guard x == 0, u > 0 else { return x }
+            var lo = 0, hi = glyphStarts.count  // the first glyph whose index is ≥ u
+            while lo < hi { let m = (lo + hi) / 2; if glyphStarts[m].index < u { lo = m + 1 } else { hi = m } }
+            return lo < glyphStarts.count ? glyphStarts[lo].x : width
+        }
         var offsets: [Int32] = [0]
         offsets.reserveCapacity(string.unicodeScalars.count + 1)
         var u = 0
         var running: Int32 = 0
         for s in string.unicodeScalars {
             u += s.utf16.count
-            running = max(running, round(CTLineGetOffsetForStringIndex(line, u, nil)))
+            running = max(running, round(caret(u)))
             offsets.append(running)
         }
         // The box must cover the whole advance even if a caret offset undershoots it.
-        let width = CTLineGetTypographicBounds(line, nil, nil, nil)
         offsets[offsets.count - 1] = max(running, round(width))
         return ShapedLine(runs: runs, offsets: offsets,
                           ascent: round(CTFontGetAscent(ct)), descent: round(CTFontGetDescent(ct)))

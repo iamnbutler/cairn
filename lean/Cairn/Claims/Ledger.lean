@@ -14,8 +14,8 @@ retired, a hash of its formal statement and its title. Ids are the contract, so:
   hashes and titles. It never removes a line, and refuses while `check` has errors other than
   new ids.
 
-The code's claims are those reachable by importing the roots (`Cairn` and `Examples` by
-default). -/
+The code's claims are those reachable by importing the roots (`Cairn`, `Examples` and
+`Cairn.Fuzz.Trusted.Claims`, the trusted base's assumptions, by default). -/
 
 namespace Cairn.Claims.Ledger
 open Lean Cairn.Claims Cairn.Claims.Tool
@@ -141,7 +141,7 @@ unsafe def main (args : List String) : IO UInt32 := do
     | c :: r => if cmd.isNone then cmd := some c; rest := r else
         IO.eprintln usage; return 2
     | [] => rest := []
-  if roots.isEmpty then roots := [`Cairn, `Examples]
+  if roots.isEmpty then roots := [`Cairn, `Examples, `Cairn.Fuzz.Trusted.Claims]
   let env ← load roots
   let text ← if ← lock.pathExists then IO.FS.readFile lock else pure ""
   let locked ← match parse text with

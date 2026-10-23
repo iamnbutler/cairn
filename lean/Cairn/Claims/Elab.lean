@@ -593,8 +593,12 @@ def decidableUnfolds (holds : Name) (SM : Term) : CommandElabM (Option (Array Na
   checkTitle titleStx title
   checkFresh stx[2] id
   checkUnsealed stx[1] false
-  let c ← Clauses.read stx[6] ["does", "statement"] "assumption"
+  let c ← Clauses.read stx[6] ["does", "statement", "check"] "assumption"
   let does ← needProse c stx[1] "does" "what is assumed, in words"
+  let check? := c.prose? "check"
+  if let some k := check? then
+    unless !k.isEmpty && k.all fun ch => ch.isLower || ch.isDigit || ch == '.' || ch == '-' do
+      throwErrorAt stx[1] m!"`check` names a fuzzer check, like \"frame.decode\" (lowercase, digits, `.` and `-`); got {repr k}"
   let full := (← getCurrNamespace) ++ name
   let stmt? ← optDefn c.items "statement" 0
   let stmt ← match stmt? with
@@ -609,7 +613,8 @@ def decidableUnfolds (holds : Name) (SM : Term) : CommandElabM (Option (Array Na
   register {
     info := { id, kind := .assume, title, does }
     ns := ← getCurrNamespace, decl := full, infoDecl := full ++ `info, module := ← getMainModule
-    statement := if stmt?.isSome then #[full ++ `statement] else #[] }
+    statement := if stmt?.isSome then #[full ++ `statement] else #[]
+    check := check? }
 
 @[command_elab placeCmd] def elabPlace : CommandElab := fun stx => do
   let doc? := stx[0].getOptional?

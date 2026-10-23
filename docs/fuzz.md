@@ -206,7 +206,8 @@ shrunk from 13 operations to 2.
 ## Limits
 
 - It fuzzes the Lean model and runtime, not the host: no AppKit, Core Text or Metal. J's
-  conformance driver covers the running app, and can replay fuzz sequences.
+  conformance driver covers the running app, and can replay fuzz sequences; the trusted-base
+  fuzzer below covers the host's codecs, text input and metrics.
 - Flows are not fuzzed (their witnesses are proved live); they are n/a.
 - Presence assumes every move has a control while enabled. A move meant to be keyboard-only
   would need an opt-out in `Custom`.
@@ -216,3 +217,157 @@ shrunk from 13 operations to 2.
 - Shrinking removes operations; it doesn't simplify text or renumber keys, and window size and
   metrics stay those of the seed.
 - The fuzz exe links `Lean` (for `fuzz_targets%`), about 100 MB; apps and the host don't.
+
+## Trusted base
+
+The claim fuzzer above checks the Lean side. `make fuzz-trusted` checks the parts Lean's proofs
+take on trust (docs/trusted.md): the Swift half of each boundary, run against Lean's proved half
+in one process. One check per trusted item; each `assume` claim in
+`Cairn.Fuzz.Trusted.Claims` (^901–^907) names its check with `check "…"` (docs/claims.md), so
+the report is the claim's evidence.
+
+```sh
+make fuzz-trusted                 # N=20000 cases a suite, SEED=0; release build
+make fuzz-trusted N=200000 SEED=7
+host/.build/release/CairnFuzzTrusted --replay frame --case 1234 --seed 7   # one case, verbose
+```
+
+The executable (`host/Tests/CairnFuzzTrusted`) links the host and a small Lean library,
+`TrustedFuzz` (`lean/Cairn/Fuzz/Trusted/`: generators, a one-field app and C exports; no
+`import Lean`). libFuzzer is not available (`-sanitize=fuzzer` is unsupported for
+arm64-apple-macosx27 in Xcode 27.1), so it is a seeded loop on SplitMix64, the same PRNG as
+`Cairn.Fuzz.Rng`: case `i` of seed `S` replays alone. Each suite runs in a child process that
+records the case it is on, so a crash in trusted code is reported with its case and the run goes
+on after it.
+
+| Check | Claim | Trusted | Checked against | Inputs |
+|---|---|---|---|---|
+| `frame.decode` | ^901 | `Frame(bytes:)` | Lean's `decodeFrame`: same accept/reject, same canonical dump | Lean-encoded random frames, then bit flips, edge bytes, length and count fields ±1/±4/huge, truncation, splices of two frames, inserted and deleted bytes, header bytes, trailing bytes |
+| `events.encode` | ^902 | `encodeEvents` | Lean's `decodeEvents` accepts, same dump; Lean's `encodeEvents` gives back the same bytes | random batches of every event, extreme integers, text from the pool below, multi-scalar `Key.char` |
+| `text.index` | ^903 | `TextIndex` | Swift's `unicodeScalars`/`utf16` views and `NSString` | text below; offsets on, between and inside surrogate pairs; `NSNotFound`, negative, `Int.max`, `Int.min` |
+| `text.shadow` | ^904 | `TextInputShadow` | the next frame of a Lean field app (`TextInput`) | 4–24 input-method calls a sequence: `insertText`, `setMarkedText` with selections and replacement ranges (valid, inverted, out of range, mid-pair), `unmarkText`, editing commands, resizes |
+| `text.input-client` | ^905 | `HostView`'s `NSTextInputClient` | Lean's frame: `selectedRange`, `markedRange`, caret rect; round trips | same sequences; `firstRect`, `characterIndex(for:)` at the caret and at random points, `attributedSubstring`, after every frame |
+| `text.metrics` | ^906 | `cairn_text_metrics`, `TextSystem`, `Fonts` | `TextMetrics.Valid`'s shape; Lean's `TextMetrics.host` through `cairn_text_host_check` (normalise must be the identity) | families 0, 1, 2 and random; sizes 0, 1, 2, 8–400, 1024, 1025, 2³²−1; weights 0–1000 and 2³²−1; italic; text below; invalid UTF-8; short and null output buffers |
+| `text.metrics.carets` | ^907 | the same, and Core Text | the glyphs Core Text lays out on a fresh `CTLine` | the same, left-to-right only |
+
+Text comes from one pool in both languages: ASCII, edge scalars (NUL, controls, U+0085,
+U+2028/9, BOM, U+FFFD, U+FFFE/F, U+10FFFF, surrogate-adjacent, private use), ZWJ families,
+skin tones, flags, tag sequences, keycaps, combining stacks, Devanagari conjuncts, CJK, Hebrew,
+Arabic, bidi controls, and long runs of one scalar.
+
+The input-client suite drives a real `HostView` and `Engine` with a Lean app (one text field
+with `TextMetrics.host`) in a borderless window that is never shown. It checks the shadow after
+every call, and the geometry once the frame for the call has arrived.
+
+`text.metrics.carets` checks that the caret after each grapheme lies at or right of where every
+glyph painted for the text before it ends (its advance, or the next glyph's start in the same
+run if sooner), less 1 pt + 0.15 em for kerning, fallback fonts and rounding. Where Core Text's
+own caret already sits inside a glyph and the host passed it on unchanged, the case is counted
+(`coreTextCaretInsideGlyph`) and not failed: that is Core Text's behaviour, listed below.
+
+### Output: `build/fuzz/trusted.json`
+
+```json
+{
+  "version": 1, "seed": "0", "n": 20000, "seconds": 41.4, "date": "2026-10-23T…Z",
+  "checks": {
+    "frame.decode": {
+      "title": "…", "suite": "frame", "claims": ["^901"],
+      "trusted": ["host/Sources/CairnFrame/Decode.swift", "…"], "oracle": "…",
+      "cases": 20000, "failingCases": 0, "pass": true,
+      "evidence": "held in 20000 cases",
+      "seconds": 12.0, "casesPerSecond": 1673,
+      "counters": {"leanAccepts": 6272, "leanRejects": 13728, "mutated": 16877},
+      "failures": [{"case": 17, "seed": "…", "message": "…", "repro": "hex:…"}]
+    }
+  }
+}
+```
+
+- `seed` is a string (a `UInt64`); `n` is the run's size. Expensive suites run fewer cases
+  (input sequences: `n / 5`), and `text.metrics.carets` counts only left-to-right cases.
+- `pass` is `null` and `evidence` is `"not run"` when a check ran no cases (`--only`).
+  `evidence` is otherwise `"held in N cases"` or `"failed in F of N cases"`.
+- `claims` lists the `assume` claims naming the check (with `--claims`, which `make` passes).
+- `failures` keeps the first 10. `repro` is a minimal input: `hex:` bytes for codecs (frame
+  failures are shrunk: header first, then byte deletion), the call sequence for input, the font
+  and string for metrics. A crash is a failure of the suite's first check with message
+  `crashed (signal N): <the case>`. `case` and `seed` replay it with `--replay`.
+- `counters` are per-check tallies of what was exercised (`mutated`, `leanAcceptsNonCanonical`,
+  `rangesSplittingPairs`, `edits`, `invalidUTF8`, `coreTextZeroAfterGlyphs`, …).
+
+The quick run in `make check` (`make fuzz-trusted-quick`) is 500 cases a suite on the debug
+build, written to `build/fuzz/quick/trusted.json`: about 2 s.
+
+### Throughput
+
+Release build, Apple silicon, `make fuzz-trusted N=20000` (41 s in all):
+
+| Check | Cases | Seconds | Cases/s | Notes |
+|---|---:|---:|---:|---|
+| `frame.decode` | 20,000 | 12.0 | 1,670 | mostly Lean decode and both dumps; about 30% accepted |
+| `events.encode` | 20,000 | 0.5 | 39,600 | 179,000 events |
+| `text.index` | 20,000 | 0.3 | 72,100 | |
+| `text.shadow`, `text.input-client` | 4,000 sequences | 22.1 | 181 | 55,700 input-method calls and 13,740 caret checks, through the real `Engine` threads |
+| `text.metrics` | 20,000 | 5.9 | 3,380 | |
+| `text.metrics.carets` | 11,205 | 5.9 | 1,900 | 334,000 scalars; 4,889 right-to-left cases skipped |
+
+### Findings
+
+Each fix is its own commit, with a regression test holding the minimal repro.
+
+1. **The Swift decoder ignored the frame's flags** (`frame.decode`, fixed in
+   `CairnFrame/Decode.swift`). Lean rejects a nonzero flags field (reserved in v1); Swift
+   accepted it. Repro: the 48-byte empty frame with byte 6 set,
+   `hex:434146520100c500` followed by 40 zero bytes. Test: `FuzzRegressionTests` in
+   CairnFrameTests.
+2. **The text-input shadow kept line breaks** (`text.shadow`, fixed in
+   `TextInputShadow.swift`). Lean's single-line field stores LF, CR, VT, FF, U+0085, U+2028 and
+   U+2029 as spaces (`Field.clean`); the shadow kept them, so its prediction diverged until the
+   next frame (47 of 200 sequences). Repro: `insertText("a\nb")` into an empty field: shadow
+   `"a\nb"`, Lean `"a b"`. Test: `HostFuzzRegressionTests.shadowFlattensLineBreaks`.
+3. **Input-method geometry was lost when a field scrolled** (`text.input-client`, fixed in
+   `TextInputClient.swift`). With the caret past the field's right edge, the text draw starts
+   left of the field, the host found no text draw inside the field, and
+   `characterIndex(for:)` returned `NSNotFound` while `firstRect` collapsed to a zero-width rect
+   at the caret (103 of 200 sequences). Now it measures from the frame's `textOrigin`. Repro:
+   a 40 × "w" field drawn at x −250 in a 180-wide field; `firstRect` of scalars 30..<35, then
+   `characterIndex` at its left edge, should be 30. Test: `ScrolledFieldTests`.
+4. **Core Text reports some carets as 0** (`text.metrics.carets`, fixed in
+   `TextSystem.swift`). `CTLineGetOffsetForStringIndex` answers 0 before a trailing control
+   (`"a\u{0}"`: 0 at index 1; also U+0080, U+200E, tag characters) and for every later index
+   after some fallback runs (`"\u{93F}\u{1F3FB}\\x"`: 0 at 3 and 4, though `\` and `x` are
+   painted at 43 and 48 at 20 pt). The running max turned these into zero-width scalars at an
+   earlier caret, so Lean's caret and hit testing sat left of painted text: 405 of 28,046
+   left-to-right cases. Now a 0 at a nonzero index falls back to where the first glyph for the
+   text at or after it starts, or the line's end. Tests: `RenderFuzzRegressionTests`.
+5. **Core Text's own caret can sit inside a painted glyph** (not fixed; counted as
+   `coreTextCaretInsideGlyph`, 170 of 11,205 cases). An unassigned private-use scalar drawn
+   with LastResort: in `"\u{4AA2}L\u{FFFD}4\u{F89E}\u{100}{/"` (family 1, 22 pt, weight 900),
+   the caret after U+F89E is at 63, the glyph's start, though the glyph is 24 pt wide. Runs of
+   CJK brackets with contextual spacing: `"\u{300C}\u{300C}\u{300C}"` (family 1, 31 pt, weight
+   886) has carets 15 and 37, glyphs starting at 23 and 45. Lean's caret lags the painted text
+   by up to a glyph there. A fix would replace Core Text's caret model with one built from the
+   glyph runs; that is a design change for workstream F, so it is reported, not made.
+
+Not findings: Lean accepts about 2% of mutated frames that are not canonical (reserved bytes it
+ignores; `A~` in the verdict), and Swift agrees on every one. A `count` field of 2³²−1 makes
+the Swift decoder reserve that many elements before failing; virtual memory absorbs it (no crash
+in 20,000 cases), but a cap would be cheaper.
+
+### Limits
+
+- A seeded loop, not coverage-guided: no libFuzzer on this toolchain. Mutations are structural
+  (the frame format's length and count fields) to make up for it.
+- Frames and events are compared through two dump printers (Lean's `Cairn.Dump` and the
+  Swift tests' `Dump`), which could share a bug. `events.encode` also compares bytes.
+- Input-method calls are shaped like an input method's; no real input method runs, and the
+  window is never shown or made key. `firstRect`'s screen conversion is checked only in window
+  coordinates.
+- `text.metrics.carets` skips right-to-left and bidi text (out of scope in M1), and its
+  oracle is Core Text's own glyph layout, so it cannot catch Core Text laying glyphs out
+  wrongly. Ink (painted pixels) is covered by `InkTests`, not fuzzed. Fonts are the system UI
+  and monospaced families; no custom fonts.
+- A worker that crashes loses up to a second of tallies (stats are flushed every second); the
+  crash itself is always reported.
+- The renderer (Metal) is not fuzzed.

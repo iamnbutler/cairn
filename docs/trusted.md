@@ -4,6 +4,12 @@ Everything the proofs rely on but do not prove, and how each item is checked ins
 entry is an `assume`: a statement about the world we take as given, with its evidence. Add
 entries in the section of the workstream that introduces the assumption.
 
+Items marked **Fuzzed** are also checked by the trusted-base fuzzer (`make fuzz-trusted`,
+docs/fuzz.md "Trusted base"), against Lean's proved side or an independent oracle, and are
+declared as `assume` claims ^901–^907 in `lean/Cairn/Fuzz/Trusted/Claims.lean`, each naming its
+check; `build/fuzz/trusted.json` holds the evidence. Items not marked are checked only by the
+tests and reviews they list.
+
 ## Renderer and text (workstream F)
 
 See docs/render.md for the design.
@@ -42,6 +48,15 @@ rounding), `Fonts.swift` (Font → CTFont), `Metrics.swift` (the C export),
   (kerning); boundaries never land mid-surrogate.
 - `InkTests`: the painted pixels of every sample text draw lie inside the box Lean computes
   (upright LTR text: exactly; italic and RTL: within 1 pt), at 1x and 2x.
+- **Fuzzed** (^906 `text.metrics`): `cairn_text_metrics` across families, sizes 0 to 2³²−1,
+  weights, italic, edge text and invalid UTF-8 returns `TextMetrics.Valid`'s shape, its
+  truncated and null-buffer forms agree, and Lean's `TextMetrics.host` sees the same numbers.
+- **Fuzzed** (^907 `text.metrics.carets`): on left-to-right text, the caret after each grapheme
+  is at or right of the glyphs painted before it. This found Core Text answering 0 for real
+  caret positions (before a trailing control, and after some fallback runs); `TextSystem` now
+  takes those from the glyph runs. Core Text's own caret can still sit inside a LastResort or
+  contextually spaced CJK glyph (fuzz.md, finding 5): that part of the statement holds only up
+  to such glyphs.
 - To do (workstream G/J): log every measurement in the running app and replay the log against a
   fresh Core Text in conformance runs, as the `assume` claim's runtime evidence.
 
@@ -84,6 +99,12 @@ and 300 event batches from Lean, compared through a canonical text dump and byte
 Swift-encoded batches decoded by Lean; truncated, corrupted and invalid-UTF-8 frames rejected.
 The comparison itself goes through two dump printers, one per language, which could share a
 bug; the dump is deliberately simple (one line per item, every field printed).
+
+**Fuzzed** (^901 `frame.decode`, ^902 `events.encode`): random Lean frames and their mutations
+(bit flips, length and count fields, truncation, splices, inserted and deleted bytes) must be
+accepted or rejected alike by `Frame(bytes:)` and Lean's `decodeFrame`, with equal dumps; random
+Swift event batches must decode in Lean to equal dumps and re-encode to the same bytes. This
+found the Swift decoder ignoring the reserved flags field (fixed).
 
 **Also assumed.**
 - **Key characters.** `Key.char` in Swift holds a `Character`, Lean's a single scalar. The
@@ -132,7 +153,8 @@ See [host.md](host.md) for how each piece works.
 
 - **Index conversion.** `TextIndex` converts UTF-16 offsets to scalar indices. Unit tests
   cover it, and nothing proves it. Out-of-range offsets are clamped. A range that splits a
-  surrogate pair is widened to whole scalars.
+  surrogate pair is widened to whole scalars. **Fuzzed** (^903 `text.index`) against Swift's
+  own string views, with AppKit's `NSNotFound`, negative and `Int.max` ranges.
 - **IME behaviour.** We trust the system input methods (Japanese, Chinese, Korean, dictation,
   dead keys) to drive `NSTextInputClient` as documented. Their behaviour is not modelled,
   only reflected.
@@ -142,14 +164,21 @@ See [host.md](host.md) for how each piece works.
   - the target is the replacement range, else the marked text, else the selection;
   - `setMarked` marks its string and selects within it;
   - `insert` unmarks and leaves the caret after the text;
-  - `unmark` keeps the text.
+  - `unmark` keeps the text;
+  - line breaks (LF, CR, VT, FF, U+0085, U+2028, U+2029) become spaces, as `Field.clean` makes
+    them.
 
   Lean's frame always replaces the copy. Any prediction that disagrees is recorded in
-  `HostView.shadowDivergences` for the conformance driver.
+  `HostView.shadowDivergences` for the conformance driver. **Fuzzed** (^904 `text.shadow`):
+  random input-method sequences against a Lean field app; after each call the copy must be what
+  Lean's next frame shows. This found the line-break rule missing (fixed).
 - **Text geometry for the IME.** `firstRect` and `characterIndex(for:)` use
   `TextSystem.shared.shape`, the renderer's shaping, to get caret offsets. The offsets are
-  measured from the origin of the frame's text draw inside the field's rect, which is assumed
-  to be the field's text.
+  measured from the frame's `textOrigin`, in the font of the text draw at that origin, which
+  is assumed to be the field's text. **Fuzzed** (^905 `text.input-client`): selected and marked
+  ranges equal Lean's, `firstRect` at the selection is Lean's caret, `characterIndex(for:)` at
+  the caret round-trips, and every answer is a scalar boundary or `NSNotFound`. This found the
+  geometry lost in a scrolled field, when the text draw starts left of the field (fixed).
 
 ### Accessibility
 
@@ -182,7 +211,8 @@ See [host.md](host.md) for how each piece works.
 ### Boundary
 
 - **Decoder.** The Swift decoder is trusted to turn the frame's bytes into exactly the
-  `Frame` Lean encoded: the v1 decoder in `CairnFrame` (`FrameV1Codec`), for every app. See "Frame encoding (workstream E)" for v1's evidence.
+  `Frame` Lean encoded: the v1 decoder in `CairnFrame` (`FrameV1Codec`), for every app. See
+  "Frame encoding (workstream E)" for v1's evidence (fuzzed, ^901).
 - **Lean runtime.** The runtime is initialized once, on the Lean thread, and the `Cairn`
   module is initialized before the app's module. Every other thread that calls Lean registers
   with `lean_initialize_thread` (`cairn_lean_thread_begin`). The main and render threads never

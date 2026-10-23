@@ -34,7 +34,8 @@ public struct FrameSections: Sendable {
     public init(_ raw: UnsafeRawBufferPointer) throws {
         var r = ByteReader(raw)
         try r.need(16)
-        guard r.u8(0) == 0x43, r.u8(1) == 0x41, r.u8(2) == 0x46, r.u8(3) == 0x52, r.u16(4) == 1
+        guard r.u8(0) == 0x43, r.u8(1) == 0x41, r.u8(2) == 0x46, r.u8(3) == 0x52, r.u16(4) == 1,
+              r.u16(6) == 0  // flags: reserved, zero in v1 (found by cairn-fuzz-trusted)
         else { throw FrameDecodeError.badHeader }
         size = Size(w: r.i32(8), h: r.i32(12))
         r.i = 16

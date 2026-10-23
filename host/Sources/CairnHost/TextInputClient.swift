@@ -86,8 +86,8 @@ extension HostView: @preconcurrency NSTextInputClient {
     }
 
     /// Screen rect for a range: x from the same shaped line Lean measures with
-    /// (`TextSystem.shape`, the renderer's and `cairn_text_metrics`'s), anchored where the frame
-    /// drew the field's text; y and height from the frame's caret. An empty range is a
+    /// (`TextSystem.shape`, the renderer's and `cairn_text_metrics`'s), from the frame's
+    /// `textOrigin`; y and height from the frame's caret. An empty range is a
     /// zero-width rect at that position (dictation draws its indicator there).
     public func firstRect(forCharacterRange range: NSRange, actualRange: NSRangePointer?) -> NSRect {
         guard let f = shown?.frame.textInput, let st = textShadow.state else { return .zero }
@@ -120,23 +120,22 @@ extension HostView: @preconcurrency NSTextInputClient {
 
     public func baselineDeltaForCharacter(at anIndex: Int) -> CGFloat { 0 }
 
-    /// Where and in which font the frame drew the field's text: the text draw whose string is
-    /// the field's text and whose baseline starts inside the field. Positions within it come
-    /// from Core Text with that font, the shaping the renderer uses.
+    /// Where and in which font the field's text is drawn. The origin is the frame's
+    /// `textOrigin` (the left end of the baseline after horizontal scroll, docs/frame.md); the
+    /// font is that of the text draw at that origin, preferring the one showing the field's
+    /// text (an empty field may draw its placeholder there, in the same font).
+    ///
+    /// The origin used to be found by searching for a text draw whose baseline starts inside
+    /// the field, which fails once the text scrolls left: `characterIndex` then answered
+    /// NSNotFound and `firstRect` collapsed to the caret (found by cairn-fuzz-trusted).
     private func fieldText(_ f: TextInput) -> (CGPoint, Font)? {
-        guard let frame = shown?.frame else { return nil }
-        let box = f.rect.cg
-        var fallback: (CGPoint, Font)?
-        for case let .text(origin, font, _, s) in frame.draws {
-            let o = CGPoint(x: CGFloat(origin.x), y: CGFloat(origin.y))
-            guard box.contains(CGPoint(x: o.x + 0.5, y: o.y - 0.5)) else { continue }
-            if s == f.text { return (o, font) }
-            if fallback == nil { fallback = (o, font) }
+        let origin = CGPoint(x: CGFloat(f.textOrigin.x), y: CGFloat(f.textOrigin.y))
+        var font: Font?
+        for case let .text(o, ft, _, s) in shown?.frame.draws ?? [] where o == f.textOrigin {
+            if s == f.text { font = ft; break }
+            if font == nil { font = ft }
         }
-        if let fallback { return fallback }
-        // An empty field may draw nothing (or a placeholder elsewhere): use the caret.
-        if f.text.isEmpty { return (CGPoint(x: CGFloat(f.caret.x), y: 0), Font(family: 0, size: 13, weight: 400, italic: false)) }
-        return nil
+        return (origin, font ?? Font(family: 0, size: 13, weight: 400, italic: false))
     }
 
     // MARK: Frames
