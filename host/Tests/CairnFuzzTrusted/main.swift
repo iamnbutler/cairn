@@ -40,6 +40,11 @@ func suite(_ name: String) -> Suite {
 // Some suites drive AppKit (HostView); they need the shared application, never shown.
 _ = MainActor.assumeIsolated { NSApplication.shared }
 
+if args.contains("--bench-audio") {
+    AudioBench.run()
+    exit(0)
+}
+
 if let w = take("--worker") {
     let s = suite(w)
     Runner.worker(s, seed: seed, from: Int(take("--from")!)!, to: Int(take("--to")!)!,

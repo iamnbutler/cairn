@@ -22,6 +22,7 @@ event Lean decodes with a proved decoder. No `IO` below the app boundary.
 | Example | `lean/Examples/Clock.lean`, `host/Sources/CairnClock` |
 | Trusted claims ^908–^915, ^960– | `lean/Cairn/Fuzz/Trusted/Claims.lean`, [trusted.md](trusted.md) |
 | Yap's host effects (files, watch, frontmost app, permissions) | `host/Sources/CairnHost/FileEffects.swift`, `SystemEffects.swift`; "Yap's host effects" below |
+| Yap's devices (recording, the hotkey, typing, uploads and secrets) | `host/Sources/CairnHost/AudioEffects.swift`, `InputEffects.swift`, `UploadEffects.swift`; "Recording, keys, typing, uploads" below |
 
 ## The app's side
 
@@ -134,11 +135,23 @@ inductive Request where
   | deleteFile (path : String)
   | frontmostApp
   | permission (p : Permission) (prompt : Bool)
+  | typeText (pid : Nat) (text : String) (pressReturn : Bool)
+  | upload (method url : String) (headers : List (String × String)) (secret : Option Secret)
+      (body : List Part) (timeoutMs : Nat)
+  | forgetClip (clip : Nat)
+
+inductive Part where
+  | bytes (b : ByteArray)
+  | wav (clip start : Nat) (stop : Option Nat)       -- the clip's 20 ms windows start..<stop
+
+structure Secret where
+  header scheme file name : String                    -- `header: scheme ++ value of name`
 
 inductive Reply where
-  | done                                              -- writeFile, appendFile, deleteFile, playSound
+  | done                                              -- writeFile, appendFile, deleteFile, playSound,
+                                                      -- typeText, forgetClip
   | bytes (data : ByteArray)                          -- readFile
-  | http (status : Nat) (headers : List (String × String)) (body : ByteArray)
+  | http (status : Nat) (headers : List (String × String)) (body : ByteArray)   -- http, upload
   | failed (fault : Fault) (message : String)          -- any request
   | names (names : List String)                       -- listDir
   | app (pid : Nat) (name : String)                   -- frontmostApp
@@ -198,14 +211,14 @@ Yap's machine (`lean/Examples/Yap/Model.lean`, PR #40) talks to the host through
 
 | Yap `Cmd` / `Input` | Shape | Slot | Status |
 |---|---|---|---|
-| `transcribe req …`, `transcribeChunk req …` → `reply req` | request by id | `request req (.http …)`, multipart body built in Lean from the clip's bytes | `http` implemented; the clip's bytes come from `record` |
+| `transcribe req …`, `transcribeChunk req …` → `reply req` | request by id | `request req (.upload "POST" url hs (some key) [.bytes head, .wav clip a b, .bytes tail] t)`: Lean writes the multipart body, the host splices in the WAV and the key | implemented |
 | `saveConfig req c` → `reply req` | request by id | `request req (.writeFile configPath json)` | implemented |
 | `save req t` (append to today's file) → `reply req` | request by id | `request req (.appendFile dayPath line)` | implemented |
-| `type req clip pid text ret` → `reply req` | request by id | `request req (.typeText pid text ret)`, reply `done` / `failed denied` | designed, not built |
-| `startRecording clip`, `stopRecording clip`, `Input.audio`, `Input.micFailed` | request by id + subscription | `request clip (.record maxMs)` answered with `bytes` or `failed` when it stops; `request _ (.stopRecording clip)`; levels as `Sub.micLevel ms` | designed, not built |
+| `type req clip pid text ret` → `reply req` | request by id | `request req (.typeText pid text ret)`, reply `done` / `failed denied` | implemented |
+| `startRecording clip`, `stopRecording clip`, `Input.audio`, `Input.micFailed` | subscription | `Sub.record clip` while recording (start and stop are the subscription's); `SubEvent.audio` levels, `SubEvent.failed`; `forgetClip clip` when done | implemented |
 | `wakeAt t` → `Input.tick t` | timer | `setTimer name (t - now)`; the clock arrives with it (`Msg.clock`, then `Msg.timer`) | implemented |
 | `readConfig`, `readDictionary` → `Input.config`, `Input.dictionary` | request, then subscription | `readFile` now, `Sub.watchFile path` for changes (`SubEvent.changed`, then read again) | implemented |
-| `listen k` → `keyDown`, `keyUp`, `otherKey` | subscription | `Sub.globalKey k` with `SubEvent.keyDown/keyUp/otherKey` | designed, not built |
+| `listen k` → `keyDown`, `keyUp`, `otherKey` | subscription | `Sub.globalKey code modifier` with `SubEvent.keyDown/keyUp/otherKey t` | implemented |
 | `listDays` → `transcriptDays`, `deleteDays ds`, `loadRecent n` → `recentLoaded` | request by id | `listDir path` (names), `deleteFile path`, `readFile` per day | implemented |
 | `play s` | one-way | `request _ (.playSound name)`, reply ignored | implemented |
 | `copy text` | one-way | `setClipboard` | implemented (M1) |
@@ -232,8 +245,13 @@ subscriptions : S → List Sub
 inductive Sub where
   | every (ms : Nat)        -- a tick every `ms` milliseconds (at least 1)
   | watchFile (path : String)  -- `changed` when the file changes (below)
+  | record (clip : Nat)        -- the microphone into clip `clip`, as levels (below)
+  | globalKey (code : Nat) (modifier : Option Nat)  -- the hotkey (below)
 inductive SubEvent where
   | tick | changed
+  | audio (frames peak : Nat) (windows : List Level)
+  | keyDown (t : Nat) | keyUp (t : Nat) | otherKey (t : Nat)
+  | failed (fault : Fault) (message : String)
 ```
 
 Subscriptions are data derived from state, as in Elm. After every step that delivered
@@ -251,8 +269,9 @@ a stopped subscription, however late, never reaches the app (`step_sub`, `step_s
 `cairn.world`, which also handles every start and stop, so once a frame's `stop` has been
 handled no tick of it is sent). It proves the mechanism end to end through the host. It is not
 how an app should keep exact time: ticks can be late, and the engine coalesces consecutive
-ticks of one subscription that Lean has not caught up with into one; the clock that precedes
-each tick is the truth.
+ticks (and `changed` events) of one subscription that Lean has not caught up with into one;
+the clock that precedes each tick is the truth. Events that carry data (`audio`, keys,
+`failed`) are never coalesced.
 
 ## Yap's host effects
 
@@ -300,6 +319,98 @@ Decisions, and why:
   back, as Yap re-checks when its menu opens) or asks for the microphone while it is
   undecided, answering with the person's choice. A refused permission is never asked again
   by the system; the person changes it in System Settings.
+
+## Recording, keys, typing, uploads
+
+The effects that need the microphone, the keyboard or another app, and the upload that carries
+a recording and the API key. The logic in each (what a press is, how text is split into key
+events, where a window starts, how a body is spliced) is pure Swift fuzzed against an
+independent model; the system calls sit behind small structs of functions (`Devices`:
+`Microphone`, `KeySource`, `Typist`, `SecretSource`, a `URLSession`) that the fuzzer replaces,
+so `make check` records nothing, installs no key monitor, types into no app and reads no real
+secret.
+
+| Effect | Answer | Host | Claim, check |
+|---|---|---|---|
+| `Sub.record clip` | `audio frames peak windows` events, or one `failed` | `AVAudioEngine` input tap converted to 16 kHz mono 16-bit (Yap's AudioCapture), samples kept in `Clips`, levels by `LevelMeter` | ^966 `subs.record` |
+| `upload …` with `.wav clip a b` parts, `forgetClip clip` | `http …`; `done` | `Clips.wav`: a 44-byte RIFF/WAVE header and samples `320a ..< 320b` | ^967 `effects.clip-wav` |
+| `Sub.globalKey code modifier` | `keyDown t`, `keyUp t`, `otherKey t` events | global and local `NSEvent` monitors, `KeyWatch` (Yap's PushToTalk) | ^968 `subs.global-key` |
+| `typeText pid text ret` | `done` | activate the app, then `CGEvent`s with Unicode payloads (Yap's TextInjector) | ^969 `effects.type-text` |
+| `upload method url hs secret parts t` | as `http` | the parts spliced, the secret's header added, then `HTTP.run` | ^970 `effects.upload` |
+| the secret | | environment, then `KEY=value` file (Yap's Secrets) | ^971 `effects.secret` |
+
+Decisions, and why:
+
+- **Recording is a subscription, keyed by clip.** Yap records while it is in a recording
+  state, so `subscriptions` returns `record clip` exactly then: the runtime's diff starts it
+  when recording begins and stops it when it ends, with no start and stop requests to keep in
+  step (`diffSubs_*`). The clip id is Lean's (Yap's clip sequence number). A clip is kept until
+  `forgetClip` or until it is one of more than 8 (the oldest finished one goes); a clip stops
+  growing at 30 minutes, with a `failed other` event. A restart (`World.reset`) drops them all.
+- **Lean sees levels, never samples.** Each `audio` event carries the number of samples it
+  covers, their peak, and the 20 ms windows (320 samples) completed so far: each window's sum
+  of squares and peak (`Int16.min` counts as 32767), exactly the integers
+  `Examples/Yap/Chunker.lean` cuts on. Windows count from the start of the clip, whatever
+  buffer sizes Core Audio delivers, so window `i` is samples `320 i ..< 320 (i + 1)` of the
+  clip, and a cut Lean computes is a sample offset the host can use. The tap asks for about
+  20 ms of input per buffer; Core Audio may deliver larger ones, so events come at up to 50 a
+  second and windows at exactly 50 a second of audio.
+- **The host keeps the samples and makes the WAV.** An upload's `.wav clip a b` part is the WAV
+  file of windows `a ..< b` (`none`: to the end of the clip, with any partial last window),
+  16 kHz mono 16-bit PCM, as Yap's `WAV.pcm16`. A clip still recording is waited for (up to a
+  second): until it has the windows asked for, or, for `none`, until it finishes, which is what
+  happens when Lean stops `record` in the same frame as it uploads (requests run before
+  subscription commands, but on another queue). A range past the end or backwards is
+  `failed invalid`; an unknown clip `failed notFound`.
+- **Upload is a new kind**, not `http`: `http`'s body is bytes from Lean, so the WAV would
+  have to cross into Lean and back, against "Lean never sees the samples", and the API key would
+  have to be in Lean's state and on the frame. With `upload`, Lean still builds the whole
+  multipart body as bytes (boundary, part headers, the model field), as Yap's
+  `OpenAITranscription.body` does, and names the clip range where the file goes; the host only
+  splices. The fuzzer checks that body arrives byte for byte.
+- **Secrets are read by the host as it sends, and never shown.** `Secret header scheme file name`
+  names where the value is: the environment variable `name` if set and not empty, else `name`'s
+  line in the `KEY=value` file `file` (Yap's `Secrets.parseDotEnv`: `#` comments, `export `,
+  matching quotes; a later line wins). The header sent is `header: scheme ++ value` (Yap:
+  `Authorization: Bearer …`). A missing secret is `failed notFound` naming the variable and
+  file; a value with CR, LF or NUL is `failed invalid`. The value is in no reply, failure
+  message, frame, event or debug description (`DebugJSON` shows the header's name only); the
+  fuzzer checks this with random values.
+- **`globalKey` is Yap's PushToTalk.** A modifier hotkey (`modifier = some flag`, the
+  `NSEvent.ModifierFlags` bit) is pressed or released by its flag in `flagsChanged`; an
+  ordinary key by `keyDown` (repeats ignored) and `keyUp`; any other `keyDown` while it is held
+  is `otherKey` (a chord, which Yap drops). Times are the host's monotonic milliseconds
+  (`Time.mono`): the event's age (`systemUptime − timestamp`) is subtracted from now, since
+  `NSEvent` times stop while the machine sleeps. Changing the hotkey is a new subscription; the
+  old one stops without a `keyUp`, and Lean, which made the change, knows the hold ended (Yap
+  sends itself `onUp`). The key still reaches the app in front: a global monitor only listens.
+- **`typeText` is Yap's TextInjector.** Key events with a Unicode payload (virtual key 0, so
+  the layout doesn't matter), at most 20 UTF-16 units each, never splitting a character (a
+  character longer than 20 units is an event of its own), from one `CGEventSource`, 4 ms
+  apart, posted at the HID tap; Return is key code 36. The app is brought forward first and
+  must be in front within 600 ms, or nothing is typed (`failed other`): words in the wrong
+  window are worse than none. Empty text is `failed invalid`; no app with that pid
+  `failed notFound`. The typed text is not in the debug description (only its length).
+
+### Permissions
+
+Each needs a TCC permission, and without it fails with an ordinary `failed` instead of
+touching anything (so asking without the permission never shows a system prompt by accident;
+an app asks with `permission p true`):
+
+| Effect | Permission (TCC service) | Without it |
+|---|---|---|
+| `typeText` | Accessibility (`kTCCServiceAccessibility`): posting events into other apps | reply `failed denied`; nothing posted (checked with `AXIsProcessTrusted` first, since untrusted events are dropped silently) |
+| `Sub.globalKey` | Accessibility: `NSEvent` global monitors see key events only for a trusted app | event `failed denied`; no monitor installed |
+| `Sub.record` | Microphone (`kTCCServiceMicrophone`) | event `failed denied`; the engine is never started (starting it while undecided would show the prompt) |
+
+The app that holds them must be a bundle with `NSMicrophoneUsageDescription` in its
+`Info.plist` (without it the system ends the process when it opens the microphone), the
+`com.apple.security.device.audio-input` entitlement under the hardened runtime, and a stable
+signature: TCC keys a grant on the bundle id and signing certificate, and an ad-hoc signature
+changes with every build, so every rebuild would ask again (Yap signs with an Apple Development
+certificate for this). A bare `swift run` binary is attributed to the terminal that started
+it, whose grants it borrows. No new permission is needed for anything else here.
 
 ## Wire format
 
@@ -401,7 +512,13 @@ Each kind of host effect is an `assume` claim naming a check of the trusted-base
 | ^963 | `watchFile` reports every change to its file, and nothing after its stop | `subs.watch-file` |
 | ^964 | `frontmostApp` answers the app in front | `effects.frontmost-app` |
 | ^965 | `permission` answers whether the app holds it, and prompts only when asked | `effects.permission` |
+| ^966 | `record` streams the levels of exactly the samples it keeps, and nothing after its stop | `subs.record` |
+| ^967 | a clip's WAV for a range of windows holds exactly those samples | `effects.clip-wav` |
+| ^968 | `globalKey` reports the hotkey's press and release, and other keys while it is held | `subs.global-key` |
+| ^969 | `typeText` types exactly the text into that app, or nothing | `effects.type-text` |
+| ^970 | `upload` sends the body assembled from its parts, with the secret in its header | `effects.upload` |
+| ^971 | a secret is read from the environment or its file, and never shown | `effects.secret` |
 
 The new records are also covered by ^901 and ^902 (the Swift codecs against Lean's), whose
-generators now produce them. The suites (`clock`, `world`, `files`, `http`, `sound`, `fileops`, `system` in
+generators now produce them. The suites (`clock`, `world`, `files`, `http`, `sound`, `fileops`, `system`, `audio`, `input`, `upload` in
 `host/Tests/CairnFuzzTrusted`) are described in docs/fuzz.md.

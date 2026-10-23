@@ -5,7 +5,7 @@ LEAN_PREFIX = $(shell cd lean && lean --print-prefix)
 LIB = build/lib/libcairn_lean.a
 VENDOR = host/Sources/CLean/vendor/lean
 
-.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-frame selftest demo fixture clean record site site-maps map conformance fuzz fuzz-quick fuzz-yap size fuzz-trusted fuzz-trusted-quick
+.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest demo fixture clean record site site-maps map conformance fuzz fuzz-quick fuzz-yap size fuzz-trusted fuzz-trusted-quick
 
 # build/lib/libcairn_lean.a: the framework (`Cairn`) and Lean's runtime, linked by every host
 # target. Each app gets its own library on top (APPS: library → file), and each executable
@@ -79,6 +79,12 @@ bench: lean
 	cd host && swift run -c release CairnBasics --bench
 	cd host && LEAN_ABORT_ON_NONLINEAR=1 swift run -c release CairnTodo --bench
 	cd host && CAIRN_BENCH=1 swift test -c release -Xswiftc -enable-testing --filter RenderBench
+
+# What recording costs: the level stream in Lean and the host, and WAV extraction
+# (bench/effects.md, "Recording"). Synthetic audio only.
+bench-audio: lean
+	cd lean && lake build framecorpus && .lake/build/bin/framecorpus bench-audio
+	cd host && swift build -c release --product CairnFuzzTrusted && .build/release/CairnFuzzTrusted --bench-audio
 
 # Lean encode and Swift decode times for 1,000- and 10,000-node frames (bench/frame.md).
 bench-frame: lean

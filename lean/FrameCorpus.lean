@@ -360,6 +360,24 @@ def bench (root : System.FilePath) (reps : Nat := 50) : IO Unit := do
     let ms (t : Nat) : Float := t.toFloat / reps.toFloat / 1000000.0
     IO.println s!"{n} nodes: ofLaid {ms tBuild} ms, encodeFrame {ms tEnc} ms, {bytes} bytes"
 
+/-- What one second of recording costs Lean to read: 25 event batches of one `audio` event each,
+640 samples (two 20 ms windows) per batch, as the host sends at 50 windows a second. -/
+def benchAudio (seconds : Nat := 2000) : IO Unit := do
+  let batch (i : Nat) : ByteArray := encodeEvents #[.subEvent 3 (.audio 640 (9000 + i % 7)
+    [⟨123456789 + i, 9000 + i % 5⟩, ⟨987654321 + i, 8000 + i % 3⟩])]
+  let batches := (List.range 25).toArray.map batch
+  let bytes := batches.foldl (fun n b => n + b.size) 0
+  let mut windows := 0
+  let t0 ← IO.monoNanosNow
+  for s in [0:seconds] do
+    for b in batches do
+      match decodeEvents b with
+      | some #[.subEvent _ (.audio _ _ ws)] => windows := windows + ws.length + s % 1
+      | _ => throw (IO.userError "audio batch did not decode")
+  let t1 ← IO.monoNanosNow
+  let perSecond := (t1 - t0).toFloat / seconds.toFloat / 1000.0
+  IO.println s!"audio: {bytes} bytes per second of recording in 25 batches; Lean decodes them in {perSecond} µs ({windows} windows checked)"
+
 def main (args : List String) : IO UInt32 := do
   try
     match args with
@@ -367,6 +385,7 @@ def main (args : List String) : IO UInt32 := do
     | ["verify", dir] => verify dir
     | ["bench", dir] => bench dir
     | ["bench", dir, reps] => bench dir reps.toNat!
+    | ["bench-audio"] => benchAudio
     | _ => throw (IO.userError "usage: framecorpus (gen | verify | bench) DIR")
     return 0
   catch e =>
