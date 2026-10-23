@@ -57,6 +57,12 @@ def bytes (b : ByteArray) : String :=
 def headers (hs : List (String × String)) : String :=
   s!"headers={hs.length}" ++ hs.foldl (fun acc (k, v) => acc ++ s!" {str k} {str v}") ""
 
+def part : Part → String
+  | .bytes b => s!"bytes {bytes b}"
+  | .wav c st sp => s!"wav {c} {st} {opt toString sp}"
+
+def secret (s : Secret) : String := s!"{str s.header} {str s.scheme} {str s.file} {str s.name}"
+
 def request : Request → String
   | .readFile p => s!"readFile {str p}"
   | .writeFile p d => s!"writeFile {str p} {bytes d}"
@@ -67,6 +73,11 @@ def request : Request → String
   | .deleteFile p => s!"deleteFile {str p}"
   | .frontmostApp => "frontmostApp"
   | .permission p prompt => s!"permission {Permission.code p} {bit prompt}"
+  | .typeText pid t r => s!"typeText {pid} {bit r} {str t}"
+  | .upload m u hs sec body t =>
+    s!"upload {str m} {str u} timeout={t} {headers hs} secret={opt secret sec} parts={body.length}" ++
+      body.foldl (fun acc p => acc ++ s!" {part p}") ""
+  | .forgetClip c => s!"forgetClip {c}"
 
 def effect : Effect → String
   | .setClipboard s => s!"clipboard {str s}"
@@ -80,6 +91,8 @@ def effect : Effect → String
 def subCmd : SubCmd → String
   | .start id (.every ms) => s!"start {id} every {ms}"
   | .start id (.watchFile p) => s!"start {id} watchFile {str p}"
+  | .start id (.record c) => s!"start {id} record {c}"
+  | .start id (.globalKey code m) => s!"start {id} globalKey {code} {opt toString m}"
   | .stop id => s!"stop {id}"
 
 def reply : Reply → String
@@ -105,6 +118,16 @@ def frame (f : Frame) : String := Id.run do
   out := out ++ s!"wake {opt toString f.wake}\n"
   return out
 
+def subEvent : SubEvent → String
+  | .tick => "0"
+  | .changed => "1"
+  | .audio n pk ws =>
+    s!"2 {n} {pk} {ws.length}" ++ ws.foldl (fun acc l => acc ++ s!" {l.sumSq}:{l.peak}") ""
+  | .keyDown t => s!"3 {t}"
+  | .keyUp t => s!"4 {t}"
+  | .otherKey t => s!"5 {t}"
+  | .failed f m => s!"6 {Fault.code f} {str m}"
+
 def event : Event → String
   | .pointerMove p => s!"move {p.x} {p.y}"
   | .pointerDown p b clicks m => s!"down {p.x} {p.y} {Button.code b} {clicks} {Mods.code m}"
@@ -126,7 +149,7 @@ def event : Event → String
   | .windowFocus b => s!"focus {bit b}"
   | .clock t => s!"clock {t.mono} {t.wall} {t.zone}"
   | .reply id r => s!"reply {id} {reply r}"
-  | .subEvent id e => s!"sub {id} {SubEvent.code e}"
+  | .subEvent id e => s!"sub {id} {subEvent e}"
 
 def events (es : Array Event) : String := Id.run do
   let mut out := s!"events {es.size}\n"

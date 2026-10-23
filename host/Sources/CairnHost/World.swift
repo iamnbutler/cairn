@@ -46,6 +46,65 @@ public struct Handlers: Sendable {
     ])
 }
 
+/// What the host's world reaches through: the microphone, the keyboard, typing into other apps,
+/// secrets and the network. Tests swap in stubs, so `make check` never records, listens to keys,
+/// types into another app or reads a real secret.
+public struct Devices: Sendable {
+    public var microphone: Microphone
+    public var keys: KeySource
+    public var typist: Typist
+    public var secrets: SecretSource
+    public var session: URLSession
+
+    public init(microphone: Microphone, keys: KeySource, typist: Typist, secrets: SecretSource, session: URLSession) {
+        self.microphone = microphone; self.keys = keys; self.typist = typist; self.secrets = secrets
+        self.session = session
+    }
+
+    public static let live = Devices(microphone: .live, keys: .live, typist: .live, secrets: .live, session: HTTP.session)
+
+    /// Devices that touch nothing: no microphone, no keys, no Accessibility, no secrets, and a
+    /// session no request reaches the network through. For tests.
+    public static let inert = Devices(
+        microphone: Microphone { _ throws(ReplyError) in throw ReplyError(.denied, "inert microphone") },
+        keys: KeySource(trusted: { false }, start: { _ in {} }),
+        typist: Typist(trusted: { false }, exists: { _ in false }, activate: { _, _ in false }, post: { _, _ in }),
+        secrets: SecretSource(environment: { _ in nil }, readFile: { _ in nil }),
+        session: {
+            let c = URLSessionConfiguration.ephemeral
+            c.protocolClasses = [RefuseProtocol.self]
+            return URLSession(configuration: c)
+        }())
+}
+
+/// Fails every request without sending it.
+final class RefuseProtocol: URLProtocol, @unchecked Sendable {
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        client?.urlProtocol(self, didFailWithError: NSError(domain: NSURLErrorDomain, code: NSURLErrorNotConnectedToInternet))
+    }
+    override func stopLoading() {}
+}
+
+extension Handlers {
+    /// `typeText`, `upload` and `forgetClip`, which reach the world's clips and devices.
+    public static func devices(_ clips: Clips, _ d: Devices) -> [UInt8: RequestHandler] {
+        [
+            9: { r, reply in
+                if case let .typeText(pid, text, ret) = r { reply(Typing.type(pid: pid, text: text, pressReturn: ret, d.typist)) }
+            },
+            10: { r, reply in
+                if case let .upload(m, u, hs, sec, body, t) = r {
+                    Upload.run(method: m, url: u, headers: hs, secret: sec, body: body, timeoutMs: t,
+                               clips: clips, secrets: d.secrets, session: d.session, reply)
+                }
+            },
+            11: { r, reply in if case let .forgetClip(c) = r { reply(clips.forget(c)) } },
+        ]
+    }
+}
+
 /// Files for `readFile` and `writeFile` (^910, ^911).
 public enum Files {
     /// A leading `~/` is the home directory; other paths are taken as given.
@@ -191,8 +250,9 @@ public enum HTTP {
 /// Runs the requests and subscriptions of each published frame. Requests run concurrently and
 /// answer through `send`, each exactly once (^914). Subscriptions start and stop on one serial
 /// queue, and every event they send is sent from it, so after a `stop` is handled none of its
-/// events is sent (^915, ^963): `every` is a dispatch timer, `watchFile` a dispatch timer that
-/// polls the file.
+/// events is sent (^915, ^963, ^966, ^969): `every` is a dispatch timer, `watchFile` a dispatch
+/// timer that polls the file, `record` the microphone and `globalKey` the key monitors, whose
+/// callbacks hop onto the queue and are dropped once their subscription has stopped.
 public final class World: @unchecked Sendable {
     public var handlers: Handlers
     private let queue = DispatchQueue(label: "cairn.world")
@@ -206,7 +266,17 @@ public final class World: @unchecked Sendable {
     /// Where replies and ticks go (the engine's `send`).
     public var send: (@Sendable ([Event]) -> Void)?
 
-    public init(handlers: Handlers = .standard) { self.handlers = handlers }
+    /// Every recording, by clip id (`record`, `upload`'s `wav` parts, `forgetClip`).
+    public let clips = Clips()
+    public let devices: Devices
+
+    /// `handlers`, plus the device handlers (`Handlers.devices`) for kinds it has none for.
+    public init(handlers: Handlers = .standard, devices: Devices = .live) {
+        self.devices = devices
+        var h = handlers
+        for (k, v) in Handlers.devices(clips, devices) where h.table[k] == nil { h.table[k] = v }
+        self.handlers = h
+    }
 
     /// The frame's effects and subscription commands, in order. Called on the Lean thread.
     public func run(_ effects: [Effect], _ subs: [SubCmd]) {
@@ -270,6 +340,70 @@ public final class World: @unchecked Sendable {
             }
             t.resume()
             return { t.cancel() }
+        case let .record(clip):
+            return record(id, clip)
+        case let .globalKey(code, modifier):
+            return globalKey(id, code, modifier)
+        }
+    }
+
+    /// Records into `clip`: the samples into `clips` from the audio thread, their levels to
+    /// Lean from the queue. Fails with a `failed` event (and an empty, finished clip) when the
+    /// microphone can't start.
+    private func record(_ id: UInt32, _ clip: UInt32) -> () -> Void {
+        let live = Guarded(true)
+        let meter = Guarded(LevelMeter())
+        let clips = self.clips
+        clips.begin(clip)
+        do {
+            let stopMic = try devices.microphone.start { [weak self] samples in
+                let kept = clips.append(clip, samples)
+                let batch = Array(samples)
+                self?.queue.async { [weak self] in
+                    guard let self, live.value else { return }
+                    guard kept else {
+                        live.value = false
+                        self.send?([.subEvent(id: id, .failed(.other, "clip \(clip) is full or gone"))])
+                        return
+                    }
+                    let (peak, windows) = meter.update { $0.feed(batch) }
+                    self.send?([.subEvent(id: id, .audio(frames: UInt32(batch.count), peak: peak, windows: windows))])
+                }
+            }
+            return {
+                live.value = false
+                stopMic()
+                clips.finish(clip)
+            }
+        } catch {
+            clips.finish(clip)
+            send?([.subEvent(id: id, .failed(error.fault, error.message))])
+            return {}
+        }
+    }
+
+    /// Watches the hotkey (Yap's PushToTalk). Without Accessibility nothing is installed and
+    /// the subscription reports `failed denied` once.
+    private func globalKey(_ id: UInt32, _ code: UInt32, _ modifier: UInt32?) -> () -> Void {
+        guard code <= UInt32(UInt16.max) else {
+            send?([.subEvent(id: id, .failed(.invalid, "no key code \(code)"))])
+            return {}
+        }
+        guard devices.keys.trusted() else {
+            send?([.subEvent(id: id, .failed(.denied, "Accessibility is not granted, so the app cannot watch keys"))])
+            return {}
+        }
+        let live = Guarded(true)
+        let watch = Guarded(KeyWatch(code: UInt16(code), modifier: modifier.map(UInt.init)))
+        let stop = devices.keys.start { [weak self] e in
+            self?.queue.async { [weak self] in
+                guard let self, live.value, let ev = watch.update({ $0.handle(e) }) else { return }
+                self.send?([.subEvent(id: id, ev)])
+            }
+        }
+        return {
+            live.value = false
+            stop()
         }
     }
 
@@ -283,6 +417,7 @@ public final class World: @unchecked Sendable {
             for stop in running_.values { stop() }
             running_.removeAll()
         }
+        clips.reset()
     }
 
     /// The ids of running subscriptions (tests).

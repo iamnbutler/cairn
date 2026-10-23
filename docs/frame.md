@@ -182,6 +182,16 @@ Request kinds and their fields:
 | 6 | deleteFile | string path |
 | 7 | frontmostApp | (none) |
 | 8 | permission | `[permission, prompt, 0, 0]`: permission `0` accessibility, `1` microphone; prompt a bool |
+| 9 | typeText | u32 pid, `[pressReturn, 0, 0, 0]`, string text |
+| 10 | upload | u32 timeoutMs, string method, string url, headers, secret, u32 count, parts |
+| 11 | forgetClip | u32 clip |
+
+An upload's `secret` is `[0, 0, 0, 0]` for none, or `[1, 0, 0, 0]` and four strings: the header
+name, the scheme written before the value (`"Bearer "`), the `KEY=value` file and the key. Only
+these names cross the wire; the host reads the value as it sends. Each part is
+`[0, 0, 0, 0]` and bytes, or `[1, hasStop, 0, 0]`, u32 clip, u32 start window, u32 stop window
+(`hasStop` a bool; the stop is written as 0 and ignored when it is 0): the clip's WAV for
+those 20 ms windows.
 
 Effects run once, in order, after the frame that carries them. `focus`, `setTimer` and
 `cancelTimer` are the runtime's (focus has moved and the timer table has changed when the
@@ -199,6 +209,8 @@ stop   [1, 0, 0, 0]    4 u32 id                                          8 bytes
 |---:|---|---|
 | 0 | every | u32 ms |
 | 1 | watchFile | string path |
+| 2 | record | u32 clip |
+| 3 | globalKey | u32 key code, `[hasModifier, 0, 0, 0]`, u32 modifier flag (0 and ignored without one) |
 
 Commands run in order after the frame's effects. `wake`, when present, asks the host to send a
 batch (whose `clock` is all it holds, if nothing else is waiting) once the monotonic clock
@@ -251,7 +263,7 @@ error. `button` is `0` primary, `1` secondary.
 | 17 | windowFocus | focused (bool) | 0 | | 4 |
 | 18 | clock | 0 | 0 | u64 mono ms, i64 wall ms since 1970, i32 zone (s east of UTC) | 24 |
 | 19 | reply | reply code | fault | u32 id, reply fields | 8 + fields |
-| 20 | subEvent | event code | 0 | u32 id | 8 |
+| 20 | subEvent | event code | fault | u32 id, event fields | 8 + fields |
 
 - **Keys.** Codes `0` enter, `1` escape, `2` tab, `3` backspace, `4` delete, `5` left,
   `6` right, `7` up, `8` down, `9` home, `10` end, `11` pageUp, `12` pageDown, `13` char.
@@ -267,8 +279,11 @@ error. `button` is `0` primary, `1` secondary.
   headers, bytes body), `3` failed (string message; `b` is the fault: `0` notFound, `1` denied,
   `2` timeout, `3` network, `4` invalid, `5` other). For codes other than `3`, `b` is written as
   0 and must be 0. Code `4` names (u32 count, then each name as a string), `5` app (u32 pid,
-  string name), `6` flag (`[granted, 0, 0, 0]`, granted a bool). Subscription event codes:
-  `0` tick, `1` changed.
+  string name), `6` flag (`[granted, 0, 0, 0]`, granted a bool).
+- **Subscription events.** Codes `0` tick and `1` changed (no fields); `2` audio (u32 frames,
+  u32 peak, u32 count, then each window as u64 sum of squares and u32 peak: 12 bytes);
+  `3` keyDown, `4` keyUp, `5` otherKey (u64 monotonic ms); `6` failed (string message; `b` is
+  the fault, coded as for replies). For codes other than `6`, `b` is written as 0 and must be 0.
 - **Global events.** `clock`, `reply` and `subEvent` belong to the app, not to a window; a
   surface id for window events (docs/surfaces.md) can go in a later version without touching
   them.
@@ -343,21 +358,26 @@ request ID readFile "PATH" | request ID writeFile "PATH" BYTES | request ID soun
 request ID http "METHOD" "URL" timeout=MS HEADERS body=BYTES
 request ID appendFile "PATH" BYTES | request ID listDir "PATH" | request ID deleteFile "PATH"
 request ID frontmostApp | request ID permission CODE PROMPT
+request ID typeText PID RETURN "TEXT" | request ID forgetClip CLIP
+request ID upload "METHOD" "URL" timeout=MS HEADERS secret=none|"HEADER" "SCHEME" "FILE" "NAME" parts=N PART…
 subs N
-start ID every MS | start ID watchFile "PATH" | stop ID
+start ID every MS | start ID watchFile "PATH" | start ID record CLIP
+start ID globalKey CODE MODIFIER|none | stop ID
 wake MS|none
 
 events N
 move X Y | down X Y BUTTON CLICKS MODS | up X Y BUTTON MODS | exit | scroll X Y DX DY
 key CODE SCALAR MODS | insert "…" replace=A B|none | marked "…" START LEN replace=A B|none
 unmark | copy | cut | selectAll | undo | redo | paste "…" | resize W H | scale P | focus B
-clock MONO WALL ZONE | sub ID CODE
+clock MONO WALL ZONE | sub ID 0 | sub ID 1 | sub ID 2 FRAMES PEAK N SUMSQ:PEAK…
+sub ID 3 T | sub ID 4 T | sub ID 5 T | sub ID 6 FAULT "…"
 reply ID done | reply ID bytes BYTES | reply ID http STATUS HEADERS body=BYTES | reply ID failed FAULT "…"
 reply ID names N "…"… | reply ID app PID "NAME" | reply ID flag B
 ```
 
 `BYTES` is `x` followed by two lowercase hex digits per byte (`x` alone when empty);
-`HEADERS` is `headers=N` followed by each name and value as strings.
+`HEADERS` is `headers=N` followed by each name and value as strings; `PART` is `bytes BYTES` or
+`wav CLIP START STOP|none`.
 
 Strings print printable ASCII (U+0020–U+007E) as itself except `"` and `\`; every other scalar
 prints as `\u{HEX}`, uppercase hex, no leading zeros. Booleans print as `0`/`1`.

@@ -109,8 +109,11 @@ def bytes : Gen ByteArray := do
 def headers : Gen (List (String × String)) := do
   return (← array 3 (return (← str, ← str))).toList
 
+def part : Gen Part := do
+  if ← coin then return .bytes (← bytes) else return .wav (← nat) (← nat) (← opt nat)
+
 def request : Gen Request := do
-  match ← below 9 with
+  match ← below 12 with
   | 0 => return .readFile (← str)
   | 1 => return .writeFile (← str) (← bytes)
   | 2 => return .playSound (← str)
@@ -119,6 +122,11 @@ def request : Gen Request := do
   | 5 => return .deleteFile (← str)
   | 6 => return .frontmostApp
   | 7 => return .permission (← pick #[.accessibility, .microphone]) (← coin)
+  | 8 => return .typeText (← nat) (← str) (← coin)
+  | 9 =>
+    let sec ← opt (do return (⟨← str, ← str, ← str, ← str⟩ : Secret))
+    return .upload (← str) (← str) (← headers) sec (← array 3 part).toList (← nat)
+  | 10 => return .forgetClip (← nat)
   | _ => return .http (← str) (← str) (← headers) (← bytes) (← nat)
 
 def effect : Gen Effect := do
@@ -132,9 +140,11 @@ def effect : Gen Effect := do
   | _ => return .quit
 
 def subCmd : Gen SubCmd := do
-  match ← below 3 with
+  match ← below 5 with
   | 0 => return .start (← nat) (.every (← nat))
   | 1 => return .start (← nat) (.watchFile (← str))
+  | 2 => return .start (← nat) (.record (← nat))
+  | 3 => return .start (← nat) (.globalKey (← nat) (← opt nat))
   | _ => return .stop (← nat)
 
 def fault : Gen Fault := pick #[.notFound, .denied, .timeout, .network, .invalid, .other]
@@ -147,6 +157,16 @@ def reply : Gen Reply := do
   | 3 => return .names (← array 4 str).toList
   | 4 => return .app (← nat) (← str)
   | 5 => return .flag (← coin)
+  | _ => return .failed (← fault) (← str)
+
+def subEvent : Gen SubEvent := do
+  match ← below 7 with
+  | 0 => return .tick
+  | 1 => return .changed
+  | 2 => return .audio (← nat) (← nat) (← array 6 (do return ⟨← u64, ← nat⟩)).toList
+  | 3 => return .keyDown (← u64)
+  | 4 => return .keyUp (← u64)
+  | 5 => return .otherKey (← u64)
   | _ => return .failed (← fault) (← str)
 
 def frame : Gen Frame := do
@@ -183,7 +203,7 @@ def event : Gen Event := do
   | 17 => return .windowFocus (← coin)
   | 18 => return .clock ⟨← u64, ← i64, ← int⟩
   | 19 => return .reply (← nat) (← reply)
-  | _ => return .subEvent (← nat) (← pick #[.tick, .changed])
+  | _ => return .subEvent (← nat) (← subEvent)
 
 /-! ## Frames from layout -/
 
@@ -229,8 +249,15 @@ def maxFrame : Frame where
       ByteArray.empty 0),
     .request 1 (.appendFile "" ByteArray.empty), .request 2 (.listDir "~/日本"),
     .request 3 (.deleteFile "\x00"), .request 4 .frontmostApp,
-    .request 5 (.permission .microphone true)]
-  subs := #[.start 4294967295 (.every 0), .stop 0, .start 1 (.watchFile "~/a 🙂.json")]
+    .request 5 (.permission .microphone true), .request 6 (.typeText 4294967295 "" true),
+    .request 7 (.typeText 0 "héllo 🙂\n" false), .request 8 (.forgetClip 4294967295),
+    .request 9 (.upload "POST" "https://api.openai.com/v1/audio/transcriptions" []
+      (some ⟨"Authorization", "Bearer ", "~/.config/yap/secrets.env", "OPENAI_API_KEY"⟩)
+      [.bytes ⟨#[45, 45]⟩, .wav 4294967295 0 none, .wav 0 4294967295 (some 4294967295),
+       .bytes ByteArray.empty] 4294967295),
+    .request 10 (.upload "" "" [("", "")] none [] 0)]
+  subs := #[.start 4294967295 (.every 0), .stop 0, .start 1 (.watchFile "~/a 🙂.json"),
+    .start 2 (.record 4294967295), .start 3 (.globalKey 63 none), .start 4 (.globalKey 0 (some 4294967295))]
   wake := some 18446744073709551615
 
 def emptyFrame : Frame := { size := ⟨0, 0⟩, draws := #[], ax := #[] }
@@ -248,7 +275,11 @@ def edgeEvents : Array Event := #[
   .reply 2 (.failed .other "é"), .subEvent 4294967295 .tick,
   .reply 3 (.names []), .reply 4 (.names ["", "2026-10-23.jsonl", "🙂"]),
   .reply 5 (.app 4294967295 "Terminal"), .reply 6 (.app 0 ""), .reply 7 (.flag true),
-  .reply 8 (.flag false), .subEvent 0 .changed]
+  .reply 8 (.flag false), .subEvent 0 .changed,
+  .subEvent 1 (.audio 4294967295 32768 [⟨18446744073709551615, 32767⟩, ⟨0, 0⟩]),
+  .subEvent 2 (.audio 0 0 []), .subEvent 3 (.keyDown 18446744073709551615), .subEvent 4 (.keyUp 0),
+  .subEvent 5 (.otherKey 1), .subEvent 6 (.failed .denied "Accessibility"),
+  .subEvent 7 (.failed .other "")]
 
 /-! ## Commands -/
 
@@ -329,6 +360,24 @@ def bench (root : System.FilePath) (reps : Nat := 50) : IO Unit := do
     let ms (t : Nat) : Float := t.toFloat / reps.toFloat / 1000000.0
     IO.println s!"{n} nodes: ofLaid {ms tBuild} ms, encodeFrame {ms tEnc} ms, {bytes} bytes"
 
+/-- What one second of recording costs Lean to read: 25 event batches of one `audio` event each,
+640 samples (two 20 ms windows) per batch, as the host sends at 50 windows a second. -/
+def benchAudio (seconds : Nat := 2000) : IO Unit := do
+  let batch (i : Nat) : ByteArray := encodeEvents #[.subEvent 3 (.audio 640 (9000 + i % 7)
+    [⟨123456789 + i, 9000 + i % 5⟩, ⟨987654321 + i, 8000 + i % 3⟩])]
+  let batches := (List.range 25).toArray.map batch
+  let bytes := batches.foldl (fun n b => n + b.size) 0
+  let mut windows := 0
+  let t0 ← IO.monoNanosNow
+  for s in [0:seconds] do
+    for b in batches do
+      match decodeEvents b with
+      | some #[.subEvent _ (.audio _ _ ws)] => windows := windows + ws.length + s % 1
+      | _ => throw (IO.userError "audio batch did not decode")
+  let t1 ← IO.monoNanosNow
+  let perSecond := (t1 - t0).toFloat / seconds.toFloat / 1000.0
+  IO.println s!"audio: {bytes} bytes per second of recording in 25 batches; Lean decodes them in {perSecond} µs ({windows} windows checked)"
+
 def main (args : List String) : IO UInt32 := do
   try
     match args with
@@ -336,6 +385,7 @@ def main (args : List String) : IO UInt32 := do
     | ["verify", dir] => verify dir
     | ["bench", dir] => bench dir
     | ["bench", dir, reps] => bench dir reps.toNat!
+    | ["bench-audio"] => benchAudio
     | _ => throw (IO.userError "usage: framecorpus (gen | verify | bench) DIR")
     return 0
   catch e =>

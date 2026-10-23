@@ -259,7 +259,7 @@ final class FileOpsSuite: Suite {
 
     func watch(_ g: inout SplitMix, _ r: Recorder, _ root: String) {
         let c = "subs.watch-file"
-        let world = World(handlers: Handlers(table: [:]))
+        let world = World(handlers: Handlers(table: [:]), devices: .inert)
         world.watchPeriodMs = g.elem([5, 10, 20])
         let period = world.watchPeriodMs
         let events = Locked<[(UInt32, SubEvent, UInt64)]>([])

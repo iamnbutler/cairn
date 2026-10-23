@@ -67,6 +67,8 @@ enum Dump {
             switch c {
             case let .start(id, .every(ms)): out += "start \(id) every \(ms)\n"
             case let .start(id, .watchFile(p)): out += "start \(id) watchFile \(str(p))\n"
+            case let .start(id, .record(c)): out += "start \(id) record \(c)\n"
+            case let .start(id, .globalKey(code, m)): out += "start \(id) globalKey \(code) \(opt(m) { "\($0)" })\n"
             case let .stop(id): out += "stop \(id)\n"
             }
         }
@@ -95,6 +97,31 @@ enum Dump {
         case let .deleteFile(p): return "deleteFile \(str(p))"
         case .frontmostApp: return "frontmostApp"
         case let .permission(p, prompt): return "permission \(p.rawValue) \(bit(prompt))"
+        case let .typeText(pid, t, ret): return "typeText \(pid) \(bit(ret)) \(str(t))"
+        case let .upload(m, u, hs, sec, body, t):
+            let secret = opt(sec) { "\(str($0.header)) \(str($0.scheme)) \(str($0.file)) \(str($0.name))" }
+            return "upload \(str(m)) \(str(u)) timeout=\(t) \(headers(hs)) secret=\(secret) parts=\(body.count)"
+                + body.map { " " + part($0) }.joined()
+        case let .forgetClip(c): return "forgetClip \(c)"
+        }
+    }
+
+    static func part(_ p: Part) -> String {
+        switch p {
+        case let .bytes(b): return "bytes \(bytes(b))"
+        case let .wav(c, s, e): return "wav \(c) \(s) \(opt(e) { "\($0)" })"
+        }
+    }
+
+    static func subEvent(_ e: SubEvent) -> String {
+        switch e {
+        case .tick: return "0"
+        case .changed: return "1"
+        case let .audio(n, pk, ws): return "2 \(n) \(pk) \(ws.count)" + ws.map { " \($0.sumSq):\($0.peak)" }.joined()
+        case let .keyDown(t): return "3 \(t)"
+        case let .keyUp(t): return "4 \(t)"
+        case let .otherKey(t): return "5 \(t)"
+        case let .failed(f, m): return "6 \(f.rawValue) \(str(m))"
         }
     }
 
@@ -134,7 +161,7 @@ enum Dump {
         case let .windowFocus(b): return "focus \(bit(b))"
         case let .clock(t): return "clock \(t.mono) \(t.wall) \(t.zone)"
         case let .reply(id, r): return "reply \(id) \(reply(r))"
-        case let .subEvent(id, e): return "sub \(id) \(e.rawValue)"
+        case let .subEvent(id, e): return "sub \(id) \(subEvent(e))"
         }
     }
 
@@ -261,8 +288,26 @@ enum DumpParser {
             }
         case "sub":
             let id = try u()
-            guard let e = SubEvent(rawValue: try u8()) else { throw Bad(line: line) }
-            return .subEvent(id: id, e)
+            func u64() throws -> UInt64 { guard let v = UInt64(t.word()) else { throw Bad(line: line) }; return v }
+            switch try u8() {
+            case 0: return .subEvent(id: id, .tick)
+            case 1: return .subEvent(id: id, .changed)
+            case 2:
+                let n = try u(), pk = try u(), c = try u()
+                let ws = try (0..<c).map { _ -> Level in
+                    let parts = t.word().split(separator: ":")
+                    guard parts.count == 2, let s = UInt64(parts[0]), let p = UInt32(parts[1]) else { throw Bad(line: line) }
+                    return Level(sumSq: s, peak: p)
+                }
+                return .subEvent(id: id, .audio(frames: n, peak: pk, windows: ws))
+            case 3: return .subEvent(id: id, .keyDown(try u64()))
+            case 4: return .subEvent(id: id, .keyUp(try u64()))
+            case 5: return .subEvent(id: id, .otherKey(try u64()))
+            case 6:
+                guard let f = Fault(rawValue: try u8()) else { throw Bad(line: line) }
+                return .subEvent(id: id, .failed(f, try t.string()))
+            default: throw Bad(line: line)
+            }
         default: throw Bad(line: line)
         }
     }

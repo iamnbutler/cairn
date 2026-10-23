@@ -28,8 +28,12 @@ private def frame : Frame where
     .request 4294967295 (.http "POST" "http://x/" [("A", "b"), ("", "")] ⟨#[1]⟩ 1000), .quit,
     .request 10 (.appendFile "~/t/2026-10-23.jsonl" ⟨#[123, 10]⟩), .request 11 (.listDir "~/t"),
     .request 12 (.deleteFile "~/t/old"), .request 13 .frontmostApp,
-    .request 14 (.permission .accessibility true)]
-  subs := #[.start 1 (.every 50), .stop 0, .start 2 (.watchFile "~/c.json")]
+    .request 14 (.permission .accessibility true), .request 15 (.typeText 501 "hi 🙂" true),
+    .request 16 (.upload "POST" "https://h/t" [("A", "b")] (some ⟨"Authorization", "Bearer ", "~/s.env", "K"⟩)
+      [.bytes ⟨#[1, 2]⟩, .wav 3 0 none, .wav 3 2 (some 5)] 30000),
+    .request 17 (.upload "GET" "" [] none [] 0), .request 18 (.forgetClip 3)]
+  subs := #[.start 1 (.every 50), .stop 0, .start 2 (.watchFile "~/c.json"), .start 3 (.record 7),
+    .start 4 (.globalKey 63 none), .start 5 (.globalKey 49 (some 55))]
   wake := some 18446744073709551615
 
 #guard fitsFrame frame
@@ -50,7 +54,9 @@ private def events : Array Event := #[.pointerMove ⟨-1, 2⟩,
   .reply 3 .done, .reply 4 (.bytes ⟨#[9, 8]⟩), .reply 5 (.http 404 [("Content-Type", "x")] .empty),
   .reply 6 (.failed .timeout "slow"), .subEvent 2 .tick, .subEvent 3 .changed,
   .reply 7 (.names ["a", "日本"]), .reply 8 (.names []), .reply 9 (.app 501 "Terminal"),
-  .reply 10 (.flag true)]
+  .reply 10 (.flag true), .subEvent 4 (.audio 160 900 [⟨123456789012, 900⟩, ⟨0, 0⟩]),
+  .subEvent 4 (.audio 0 0 []), .subEvent 5 (.keyDown 18446744073709551615), .subEvent 5 (.keyUp 0),
+  .subEvent 5 (.otherKey 7), .subEvent 4 (.failed .denied "no microphone")]
 
 #guard events.all fitsEvent
 #guard decodeEvents (encodeEvents events) == some events

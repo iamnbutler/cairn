@@ -103,3 +103,9 @@
 963	assume	active	-	watchFile reports every change to its file, and nothing after its stop
 964	assume	active	-	frontmostApp answers the app in front
 965	assume	active	-	permission answers whether the app holds it, and prompts only when asked
+966	assume	active	-	record streams the levels of exactly the samples it keeps, and nothing after its stop
+967	assume	active	-	A clip's WAV for a range of windows holds exactly those samples
+968	assume	active	-	globalKey reports the hotkey's press and release, and other keys while it is held
+969	assume	active	-	typeText types exactly the text into that app, or nothing
+970	assume	active	-	upload sends the body assembled from its parts, with the secret in its header
+971	assume	active	-	A secret is read from the environment or its file, and never shown

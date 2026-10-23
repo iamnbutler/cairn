@@ -6,7 +6,7 @@ entries in the section of the workstream that introduces the assumption.
 
 Items marked **Fuzzed** are also checked by the trusted-base fuzzer (`make fuzz-trusted`,
 docs/fuzz.md "Trusted base"), against Lean's proved side or an independent oracle, and are
-declared as `assume` claims ^901–^915 and ^960– in `lean/Cairn/Fuzz/Trusted/Claims.lean`, each naming its
+declared as `assume` claims ^901–^915 and ^960–^971 in `lean/Cairn/Fuzz/Trusted/Claims.lean`, each naming its
 check; `build/fuzz/trusted.json` holds the evidence. Items not marked are checked only by the
 tests and reviews they list.
 
@@ -319,6 +319,57 @@ in a scratch directory and never prompts.
 - **Permissions.** None of these needs one. Accessibility and Microphone are what
   `permission` reports; they are granted to the app's code signature, so an unsigned or
   re-signed build is a new app to TCC (docs/effects.md).
+
+## Yap's devices: recording, keys, typing, uploads (workstream T)
+
+The microphone, the keyboard, other apps and the network, for Yap (docs/effects.md,
+"Recording, keys, typing, uploads"). Trusted code: `host/Sources/CairnHost/AudioEffects.swift`
+(LevelMeter, WAV, Clips, Microphone.live), `InputEffects.swift` (KeyWatch, KeySource.live,
+Typing, Typist.live), `UploadEffects.swift` (SecretSource, Upload), the `record` and
+`globalKey` parts of `World.swift`, and under them AVAudioEngine, `NSEvent` monitors,
+`CGEvent` posting, `NSRunningApplication` and TCC. The fuzz suites (`audio`, `input`,
+`upload`) replace every device with a fake (`Devices`): `make check` records no audio,
+installs no monitor, types into no app and reads no real secret.
+
+- **Fuzzed** (^966 `subs.record`): with a fake microphone on another thread, the clip is
+  exactly the samples delivered; the `audio` events cover a prefix of them in order, each with
+  its batch's frames and peak, and their windows are the levels of that prefix computed
+  directly, however the buffers were split; nothing is sent after the stop or reset returns; a
+  failing microphone is one `failed` event and an empty clip. **Also assumed:** that
+  `AVAudioEngine`'s tap and `AVAudioConverter` deliver the microphone's audio at 16 kHz in
+  order without gaps (Yap's capture path, used as is), and that after `removeTap` and `stop`
+  return no tap block is still running (if one were, its samples would be dropped by the
+  stopped flag, but could still be appended to the clip after it finished). Not checked live:
+  this session must not record.
+- **Fuzzed** (^967 `effects.clip-wav`): every range is the header and exactly those samples;
+  bad ranges, unknown and forgotten clips fail; a clip finishing while asked for is waited for;
+  at most 8 clips are kept. **Also assumed:** a clip still recording after the one-second wait
+  is cut at what it has; Lean asks for a range it has seen the windows of, or for the end after
+  stopping.
+- **Fuzzed** (^968 `subs.global-key`): `KeyWatch` equals a state-table model of PushToTalk on
+  random streams; through the world the events are the model's, in order; without
+  Accessibility nothing is installed. **Also assumed:** that the global and local monitors
+  together see every key event of the session once (global: other apps; local: this app),
+  which is how Yap works; and that the monitors deliver in order on the main thread. Not
+  checked live: this session must not watch the keyboard.
+- **Fuzzed** (^969 `effects.type-text`): the runs are the text's UTF-16, whole characters, at
+  most 20 units unless one character is longer; with a fake typist, nothing is posted unless
+  trusted, the app exists and it came forward, and then exactly the runs and Return as asked.
+  **Also assumed:** that posting at the HID tap reaches the app in front, as Yap relies on, and
+  that the app is still in front while the burst is posted (the person could switch apps in
+  those milliseconds; Yap has the same window). Not checked live: nothing types into another
+  app from a test.
+- **Fuzzed** (^970 `effects.upload`): the server receives the parts in order with each WAV
+  spliced in and the secret header; failures send nothing. **Also assumed:** what ^913 assumes
+  of `HTTP.run`.
+- **Fuzzed** (^971 `effects.secret`): the dotenv reader against files of known meaning;
+  environment first; the value in no reply, message or debug description. **Also assumed:**
+  the environment and the file are the person's (anyone who can write them can choose the key);
+  the file should be mode 600 in a 700 directory, as Yap's is; the host doesn't check.
+- **Permissions.** `typeText` and `globalKey` need Accessibility; `record` needs the
+  microphone, an `NSMicrophoneUsageDescription` in the bundle's Info.plist and the
+  `com.apple.security.device.audio-input` entitlement under the hardened runtime. Each fails
+  with an ordinary `failed denied` without its permission, and none of them prompts.
 
 ## Conformance (workstream J)
 

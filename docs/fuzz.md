@@ -223,7 +223,7 @@ shrunk from 13 operations to 2.
 The claim fuzzer above checks the Lean side. `make fuzz-trusted` checks the parts Lean's proofs
 take on trust (docs/trusted.md): the Swift half of each boundary, run against Lean's proved half
 in one process. One check per trusted item; each `assume` claim in
-`Cairn.Fuzz.Trusted.Claims` (^901–^915, ^960–^965) names its check with `check "…"` (docs/claims.md), so
+`Cairn.Fuzz.Trusted.Claims` (^901–^915, ^960–^971) names its check with `check "…"` (docs/claims.md), so
 the report is the claim's evidence.
 
 ```sh
@@ -263,13 +263,20 @@ on after it.
 | `subs.watch-file` | ^963 | `World` (`watchFile`), `FileSignature` | the changes the case made | polls of 5–20 ms; 2–5 operations a case: write in place, atomic replace, append, delete, create, `touch`, `chmod`, nothing, a sibling written; then the stop and a write after it |
 | `effects.frontmost-app` | ^964 | `Apps.frontmost` | a stubbed source; for the live answer `NSRunningApplication` and `kill(pid, 0)` | pids 1 to `Int32.max`, 0 and −1; names from the text pool and none; no app |
 | `effects.permission` | ^965 | `Permissions.check` | a stubbed TCC: statuses and the calls made | both permissions × trusted or not × the four microphone statuses × prompt × granted or not; the live system without prompting |
+| `subs.record` | ^966 | `World` (`record`), `LevelMeter`, `Clips` | a fake microphone's delivered samples; levels computed directly from them | 0–2 s of synthetic audio (silence, square waves, noise, ±32768 extremes) split into buffers of 0–4000 samples, delivered from another thread with 0–3 ms pauses; stops and resets after 0–100 ms; failing microphones; the meter over random splits |
+| `effects.clip-wav` | ^967 | `Clips.wav`, `WAV`, `forgetClip` | the RIFF/WAVE layout written out field by field; the samples | 6 ranges a case in and past 0–6000 samples, to the end or not; clips that finish 20 ms after the ask; unknown and forgotten clips; 1–20 clips begun (at most 8 kept) |
+| `subs.global-key` | ^968 | `KeyWatch`, `World` (`globalKey`) | a state-table model of Yap's PushToTalk; a fake key source | Yap's 7 modifier and 3 ordinary hotkeys; 0–60 events of each kind on the hotkey and others, with repeats and unrelated flag bits; untrusted; codes past 16 bits; events after the stop |
+| `effects.type-text` | ^969 | `Typing.runs`, `Typing.type`, World's handler | the text's UTF-16 and Characters; a fake typist's calls | pool text, emoji runs, a 15–30-mark character, empty; trusted or not, app or not, comes forward or not, pids 0 to 2³²−1, Return or not |
+| `effects.upload` | ^970 | `Upload` (`body`, `run`) | a `URLProtocol` stub: what it received | 0–5 bytes and wav parts (some bad ranges and unknown clips); Yap's multipart shape around a whole-clip wav part; statuses 200, 400, 500 |
+| `effects.secret` | ^971 | `SecretSource` | generated `KEY=value` files with a known meaning; every reply, message and debug description | comments, blanks, `export`, quotes, spaces, `=` and `#` in values, repeated keys; environment set, empty or not; unreadable files; secrets with CR LF |
 
 Text comes from one pool in both languages: ASCII, edge scalars (NUL, controls, U+0085,
 U+2028/9, BOM, U+FFFD, U+FFFE/F, U+10FFFF, surrogate-adjacent, private use), ZWJ families,
 skin tones, flags, tag sequences, keycaps, combining stacks, Devanagari conjuncts, CJK, Hebrew,
 Arabic, bidi controls, and long runs of one scalar.
 
-The effect suites (`clock`, `world`, `files`, `http`, `sound`) run fewer cases than N (a
+The effect suites (`clock`, `world`, `files`, `http`, `sound`, `fileops`, `system`, `audio`,
+`input`, `upload`) run fewer cases than N (a
 twentieth to a quarter): their cases wait on real time. Timing bounds are loose (a wake within
 40 ms, a tick within twenty periods) so that a loaded machine during `make check` doesn't fail
 them; the counters record the actual lateness (`late0ms`, `late1ms`, …).

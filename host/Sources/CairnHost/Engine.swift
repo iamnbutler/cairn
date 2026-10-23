@@ -128,8 +128,10 @@ public final class Engine: @unchecked Sendable {
         case (.pointerMove, .pointerMove(let p)): return .pointerMove(p)
         case let (.scroll(_, dx0, dy0), .scroll(p, dx1, dy1)):
             return .scroll(p, dx: dx0 &+ dx1, dy: dy0 &+ dy1)
-        // Ticks Lean has not caught up with say no more than one.
-        case let (.subEvent(a, e0), .subEvent(b, e1)) where a == b && e0 == e1: return .subEvent(id: b, e1)
+        // Ticks (and file changes) Lean has not caught up with say no more than one. Audio and
+        // key events carry data and are never merged.
+        case let (.subEvent(a, e0), .subEvent(b, e1)) where a == b && e0 == e1 && e1.isSignal:
+            return .subEvent(id: b, e1)
         default: return nil
         }
     }

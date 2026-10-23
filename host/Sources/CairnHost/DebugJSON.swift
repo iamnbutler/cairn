@@ -4,7 +4,7 @@ import CairnFrame
 /// The debug socket's JSON (docs/conformance.md). A frame is written in exactly the shape the
 /// conformance generator writes the model's frame (`Conformance.jframe` in
 /// tools/conformance/lean/Conformance/Gen.lean), so the driver compares the two as values.
-enum DebugJSON {
+public enum DebugJSON {
     static func rect(_ r: Rect) -> [Any] { [Int(r.x), Int(r.y), Int(r.w), Int(r.h)] }
     static func point(_ p: Point) -> [Any] { [Int(p.x), Int(p.y)] }
     static func color(_ c: Color) -> [Any] { [Int(c.r), Int(c.g), Int(c.b), Int(c.a)] }
@@ -75,6 +75,10 @@ enum DebugJSON {
         }
     }
 
+    /// How the debug socket describes a request (public for the trusted fuzzer, which checks
+    /// that no secret or typed text shows up in it).
+    public static func describe(_ r: Request) -> String { request(r) }
+
     static func request(_ r: Request) -> String {
         switch r {
         case .readFile(let p): "readFile \(p)"
@@ -86,6 +90,11 @@ enum DebugJSON {
         case .deleteFile(let p): "deleteFile \(p)"
         case .frontmostApp: "frontmostApp"
         case let .permission(p, prompt): "permission \(p)\(prompt ? " prompt" : "")"
+        // The typed text is what the person dictated: its length only.
+        case let .typeText(pid, t, ret): "typeText \(pid) (\(t.utf8.count) bytes)\(ret ? " return" : "")"
+        // Never the secret's value (the host reads it only when sending) nor the body.
+        case let .upload(m, u, _, s, body, _): "upload \(m) \(u) (\(body.count) parts)\(s.map { " secret \($0.header)" } ?? "")"
+        case .forgetClip(let c): "forgetClip \(c)"
         }
     }
 

@@ -17,7 +17,7 @@ setvbuf(stdout, nil, _IOLBF, 0)
 
 let allSuites: [Suite] = [FrameSuite(), EventsSuite(), TextIndexSuite(), InputClientSuite(), MetricsSuite(),
                           ClockSuite(), WorldSuite(), FilesSuite(), HTTPSuite(), SoundSuite(),
-                          FileOpsSuite(), SystemSuite()]
+                          FileOpsSuite(), SystemSuite(), AudioSuite(), InputSuite(), UploadSuite()]
 
 var args = Array(CommandLine.arguments.dropFirst())
 func take(_ flag: String) -> String? {
@@ -39,6 +39,11 @@ func suite(_ name: String) -> Suite {
 
 // Some suites drive AppKit (HostView); they need the shared application, never shown.
 _ = MainActor.assumeIsolated { NSApplication.shared }
+
+if args.contains("--bench-audio") {
+    AudioBench.run()
+    exit(0)
+}
 
 if let w = take("--worker") {
     let s = suite(w)
