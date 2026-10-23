@@ -67,6 +67,7 @@ enum DebugJSON {
         switch e {
         case .setClipboard(let s): ["clipboard": s]
         case .beep: ["beep": true]
+        case .focus(let c): ["focus": c.label]
         }
     }
 
