@@ -3,6 +3,7 @@ import Examples.Basics
 import Examples.Basics.Proofs
 import Examples.Basics.Tests
 import Examples.Todo
+import Examples.Todo.Proofs
 import Examples.Todo.Tests
 
 /-! Every app and its proofs: what the ledger, the axiom audit and the kernel replay read. Not
