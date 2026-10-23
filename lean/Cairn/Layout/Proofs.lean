@@ -232,4 +232,200 @@ theorem layout_rootOrigin (m : TextMetrics) (w : Size) (n : Node) :
     (layout m w n).rect.x = 0 ∧ (layout m w n).rect.y = 0 := by
   simp [layout, rootRect]
 
+/-! ## Sizes are non-negative -/
+
+theorem cumShare_mono {L : Int} (hL : 0 ≤ L) (f : Nat) {a b : Nat} (hab : a ≤ b) :
+    cumShare L f a ≤ cumShare L f b := by
+  unfold cumShare
+  rcases Nat.eq_zero_or_pos f with rfl | hf
+  · simp
+  · exact Int.ediv_le_ediv (by omega) (Int.mul_le_mul_of_nonneg_left (by omega) hL)
+
+theorem fillShare_nonneg {L : Int} (hL : 0 ≤ L) (f j : Nat) : 0 ≤ fillShare L f j := by
+  have := cumShare_mono hL f (Nat.le_add_right j 1)
+  unfold fillShare; omega
+
+theorem resolve_nonneg (s : Sizing) (x : Int) : 0 ≤ resolve s x := by
+  cases s <;> simp [resolve] <;> omega
+
+theorem mainBase_nonneg (s : Sizing) (p : Int) : 0 ≤ mainBase s p := by
+  cases s <;> simp [mainBase] <;> omega
+
+theorem mainSize_nonneg (h : Bool) {L : Int} (hL : 0 ≤ L) (f j : Nat) (it : Item) :
+    0 ≤ mainSize h L f j it := by
+  unfold mainSize; split
+  · exact fillShare_nonneg hL f j
+  · exact mainBase_nonneg _ _
+
+theorem crossPlace_nonneg (al : Align) (c0 : Int) {cc : Int} (hc : 0 ≤ cc) (s : Sizing) (p : Int)
+    (b : Bool) : 0 ≤ (crossPlace al c0 cc s p b).2 := by
+  unfold crossPlace; simp only; split <;> (try split) <;> omega
+
+theorem spacing_nonneg (j : Align) (gap : Nat) (free : Int) (k i : Nat) :
+    0 ≤ spacing j gap free k i := by
+  unfold spacing; split
+  · split
+    · have := fillShare_nonneg (L := free) (by omega) (k - 1) i; omega
+    · omega
+  · omega
+
+/-- Start of a rect along the main axis. -/
+def mainStart (h : Bool) (r : Rect) : Int := if h then r.x else r.y
+
+@[simp] theorem mkRect_mainStart (h : Bool) (p s cp cs : Int) : mainStart h (mkRect h p s cp cs) = p := by
+  cases h <;> rfl
+
+@[simp] theorem mkRect_mainOf (h : Bool) (p s cp cs : Int) : mainOf h (mkRect h p s cp cs) = s := by
+  cases h <;> rfl
+
+theorem mkRect_nonneg (h : Bool) (p s cp cs : Int) (hs : 0 ≤ s) (hcs : 0 ≤ cs) :
+    0 ≤ (mkRect h p s cp cs).w ∧ 0 ≤ (mkRect h p s cp cs).h := by
+  cases h <;> simp [mkRect] <;> omega
+
+theorem Line.go_length (ln : Line) :
+    ∀ (its : List Item) (i j : Nat) (pos : Int), (ln.go i j pos its).length = its.length
+  | [], _, _, _ => rfl
+  | _ :: its, _, _, _ => by simp [Line.go, Line.go_length ln its]
+
+theorem Line.go_nonneg (ln : Line) (hL : 0 ≤ ln.L) (hcc : 0 ≤ ln.cc) :
+    ∀ (its : List Item) (i j : Nat) (pos : Int), ∀ r ∈ ln.go i j pos its, 0 ≤ r.w ∧ 0 ≤ r.h
+  | [], _, _, _ => by simp [Line.go]
+  | it :: its, i, j, pos => by
+    simp only [Line.go, List.mem_cons]
+    rintro r (rfl | hr)
+    · have h1 := mainSize_nonneg ln.horiz hL ln.f j it
+      have h2 := crossPlace_nonneg ln.align ln.c0 hcc (it.crossSizing ln.horiz) (it.crossPref ln.horiz) it.stretch
+      exact mkRect_nonneg _ _ _ _ _ h1 h2
+    · exact Line.go_nonneg ln hL hcc its _ _ _ r hr
+
+theorem Line.go_lower (ln : Line) (hL : 0 ≤ ln.L) (hsp : ∀ i, 0 ≤ ln.spacing i) :
+    ∀ (its : List Item) (i j : Nat) (pos : Int), ∀ r ∈ ln.go i j pos its, pos ≤ mainStart ln.horiz r
+  | [], _, _, _ => by simp [Line.go]
+  | it :: its, i, j, pos => by
+    simp only [Line.go, List.mem_cons]
+    rintro r (rfl | hr)
+    · simp
+    · have := Line.go_lower ln hL hsp its _ _ _ r hr
+      have := mainSize_nonneg ln.horiz hL ln.f j it
+      have := hsp i
+      omega
+
+/-- Along the main axis, each child ends before every later child starts. -/
+theorem Line.go_pairwise (ln : Line) (hL : 0 ≤ ln.L) (hsp : ∀ i, 0 ≤ ln.spacing i) :
+    ∀ (its : List Item) (i j : Nat) (pos : Int),
+      (ln.go i j pos its).Pairwise fun a b =>
+        mainStart ln.horiz a + mainOf ln.horiz a ≤ mainStart ln.horiz b
+  | [], _, _, _ => by simp [Line.go]
+  | it :: its, i, j, pos => by
+    simp only [Line.go]
+    refine List.pairwise_cons.2 ⟨fun b hb => ?_, Line.go_pairwise ln hL hsp its _ _ _⟩
+    have := Line.go_lower ln hL hsp its _ _ _ b hb
+    have := hsp i
+    simp only [mkRect_mainStart, mkRect_mainOf]
+    omega
+
+theorem disjoint_of_main (h : Bool) {a b : Rect}
+    (hab : mainStart h a + mainOf h a ≤ mainStart h b) : a.disjoint b := by
+  cases h <;> simp [mainStart, mainOf] at hab <;> unfold Rect.disjoint <;> omega
+
+theorem leftover_nonneg (h : Bool) (st : Style) (c : Rect) (items : List Item) :
+    0 ≤ leftover h st c items := by
+  unfold leftover; omega
+
+theorem lineRects_length (h : Bool) (st : Style) (c : Rect) (items : List Item) :
+    (lineRects h st c items).length = items.length := by
+  simp [lineRects, Line.go_length]
+
+theorem lineRects_nonneg (h : Bool) (st : Style) (c : Rect) (items : List Item) :
+    ∀ r ∈ lineRects h st c items, 0 ≤ r.w ∧ 0 ≤ r.h :=
+  Line.go_nonneg _ (leftover_nonneg h st c items) (by simp only [lineOf]; omega) _ _ _ _
+
+theorem lineRects_pairwise (h : Bool) (st : Style) (c : Rect) (items : List Item) :
+    (lineRects h st c items).Pairwise fun a b => a.disjoint b :=
+  (Line.go_pairwise (lineOf h st c items) (leftover_nonneg h st c items)
+    (fun _ => spacing_nonneg _ _ _ _ _) _ _ _ _).imp (disjoint_of_main _)
+
+theorem childRects_length (st : Style) (r : Rect) (items : List Item) :
+    (childRects st r items).length = items.length := by
+  unfold childRects; split <;> simp [lineRects_length, stackRects]
+
+theorem childRects_nonneg (st : Style) (r : Rect) (items : List Item) :
+    ∀ q ∈ childRects st r items, 0 ≤ q.w ∧ 0 ≤ q.h := by
+  unfold childRects; split
+  · exact lineRects_nonneg _ _ _ _
+  · exact lineRects_nonneg _ _ _ _
+  · simp only [stackRects, List.mem_map]
+    rintro q ⟨it, _, rfl⟩
+    exact ⟨crossPlace_nonneg _ (r.inset st.padding).x (Int.le_max_left 0 _) _ _ _,
+      crossPlace_nonneg _ (r.inset st.padding).y (Int.le_max_left 0 _) _ _ _⟩
+
+theorem childRects_pairwise (st : Style) (r : Rect) (items : List Item) (hax : st.axis ≠ .stack) :
+    (childRects st r items).Pairwise fun a b => a.disjoint b := by
+  unfold childRects; split
+  · exact lineRects_pairwise _ _ _ _
+  · exact lineRects_pairwise _ _ _ _
+  · contradiction
+
+theorem kid_rect_mem {m : TextMetrics} {c : Rect} {rs : List Rect} {ss : List Sized}
+    (h : rs.length = ss.length) {k : Laid} (hk : k ∈ arrangeList m c rs ss) : k.rect ∈ rs := by
+  rw [← arrangeList_rects m c rs ss h]
+  exact List.mem_map_of_mem hk
+
+theorem arrange_rectNonneg (m : TextMetrics) (c r : Rect) (s : Sized) (hw : 0 ≤ r.w) (hh : 0 ≤ r.h) :
+    RectNonneg (arrange m c r s) ∧ ∀ k ∈ (arrange m c r s).children, 0 ≤ k.rect.w ∧ 0 ≤ k.rect.h := by
+  refine ⟨by simp [RectNonneg, hw, hh], fun k hk => ?_⟩
+  cases s with
+  | box st ctl sz kids =>
+    rw [arrange_children_box] at hk
+    exact childRects_nonneg _ _ _ _ (kid_rect_mem (by simp [childRects_length]) hk)
+  | text => simp [arrange, Laid.children] at hk
+  | field => simp [arrange, field, Laid.children] at hk
+
+theorem measure_size_nonneg (m : TextMetrics) (n : Node) :
+    0 ≤ (measure m n).size.w ∧ 0 ≤ (measure m n).size.h := by
+  cases n <;> simp only [measure, Sized.size] <;>
+    first | exact ⟨resolve_nonneg _ _, resolve_nonneg _ _⟩ | omega
+
+theorem layout_rectNonneg (m : TextMetrics) (w : Size) (n : Node) :
+    (layout m w n).Everywhere RectNonneg := by
+  refine arrange_everywhere m _ (fun _ r => 0 ≤ r.w ∧ 0 ≤ r.h)
+    (fun c r s hq => arrange_rectNonneg m c r s hq.1 hq.2) _ _ _ ?_
+  have := measure_size_nonneg m n
+  have := windowRect_nonneg w
+  simp only [rootRect]
+  constructor <;> split <;> omega
+
+/-! ## Siblings are disjoint -/
+
+theorem arrange_siblingsDisjoint (m : TextMetrics) (c r : Rect) (s : Sized) :
+    SiblingsDisjoint (arrange m c r s) := by
+  cases s with
+  | box st ctl sz kids =>
+    simp only [arrange, SiblingsDisjoint]
+    intro hax
+    have hlen : (childRects st r (kids.map Sized.item)).length = kids.length := by
+      simp [childRects_length]
+    have := childRects_pairwise st r (kids.map Sized.item) hax
+    rw [← arrangeList_rects m (innerClip st c r) _ kids hlen] at this
+    exact List.pairwise_map.mp this
+  | text => simp [arrange, SiblingsDisjoint]
+  | field => simp [arrange, field, SiblingsDisjoint]
+
+/-- **Siblings disjoint.** In every row and column of the laid-out tree, distinct children's
+rects are disjoint (earlier children end before later ones start on the main axis). -/
+theorem layout_siblingsDisjoint (m : TextMetrics) (w : Size) (n : Node) :
+    (layout m w n).Everywhere SiblingsDisjoint :=
+  arrange_everywhere' m _ (arrange_siblingsDisjoint m) _ _ _
+
+/-- The index form: children `i ≠ j` of a row or column have disjoint rects. -/
+theorem SiblingsDisjoint.get {r c : Rect} {st : Style} {ctl : Option Control} {kids : List Laid}
+    (h : SiblingsDisjoint (.box r c st ctl kids)) (hax : st.axis ≠ .stack) {i j : Nat}
+    (hi : i < kids.length) (hj : j < kids.length) (hij : i ≠ j) :
+    kids[i].rect.disjoint kids[j].rect := by
+  have hp := List.pairwise_iff_getElem.mp (h hax)
+  rcases Nat.lt_or_gt_of_ne hij with hlt | hlt
+  · exact hp i j hi hj hlt
+  · have := hp j i hj hi hlt
+    unfold Rect.disjoint at this ⊢; omega
+
 end Cairn.Layout
