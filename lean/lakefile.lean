@@ -26,3 +26,6 @@ lean_exe bench where
 lean_exe audit where
   root := `Audit
   supportInterpreter := true
+
+lean_exe framecorpus where
+  root := `FrameCorpus

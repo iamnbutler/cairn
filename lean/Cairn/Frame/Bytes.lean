@@ -30,6 +30,18 @@ def ofU32 (n : Nat) : Int := if n < 2147483648 then n else (n : Int) - 429496729
 
 @[simp] theorem fitsU32_zero : FitsU32 0 := by decide
 
+/-- The two's-complement word of `v`, without big-integer arithmetic: 2³² is not a small number
+to Lean's runtime, so `v % 4294967296` (and even the literal) goes through GMP. -/
+def i32Word (v : Int) : UInt32 :=
+  if 0 ≤ v then UInt32.ofNat v.toNat else 0 - UInt32.ofNat (-v).toNat
+
+theorem i32Word_eq (v : Int) : i32Word v = UInt32.ofNat (toU32 v) := by
+  apply UInt32.toNat_inj.mp
+  unfold i32Word toU32
+  split
+  · simp [UInt32.toNat_ofNat']; omega
+  · simp [UInt32.toNat_ofNat', UInt32.size]; omega
+
 theorem toU32_fits (v : Int) : FitsU32 (toU32 v) := by unfold FitsU32 toU32; omega
 
 theorem ofU32_toU32 {v : Int} (h : FitsI32 v) : ofU32 (toU32 v) = v := by
@@ -221,11 +233,13 @@ namespace Put
 
 @[inline] def u8 (b : ByteArray) (v : UInt8) : ByteArray := b.push v
 
-@[inline] def u32 (b : ByteArray) (n : Nat) : ByteArray :=
-  (((b.push (UInt8.ofNat n)).push (UInt8.ofNat (n / 256))).push
-    (UInt8.ofNat (n / 65536))).push (UInt8.ofNat (n / 16777216))
+/-- A machine word, little-endian, by shifts. -/
+@[inline] def word (b : ByteArray) (w : UInt32) : ByteArray :=
+  (((b.push w.toUInt8).push (w >>> 8).toUInt8).push (w >>> 16).toUInt8).push (w >>> 24).toUInt8
 
-@[inline] def i32 (b : ByteArray) (v : Int) : ByteArray := u32 b (toU32 v)
+@[inline] def u32 (b : ByteArray) (n : Nat) : ByteArray := word b (UInt32.ofNat n)
+
+@[inline] def i32 (b : ByteArray) (v : Int) : ByteArray := word b (i32Word v)
 
 @[inline] def bool (b : ByteArray) (v : Bool) : ByteArray := b.push (if v then 1 else 0)
 
@@ -244,13 +258,30 @@ namespace Put
     (u8 b v).data.toList = b.data.toList ++ [v] := by
   simp [u8]
 
+theorem shift8 (n : Nat) : ((UInt32.ofNat n) >>> 8).toUInt8 = UInt8.ofNat (n / 256) := by
+  apply UInt8.toNat_inj.mp
+  simp [UInt32.toNat_shiftRight, UInt32.toNat_toUInt8, UInt8.toNat_ofNat']
+  omega
+
+theorem shift16 (n : Nat) : ((UInt32.ofNat n) >>> 16).toUInt8 = UInt8.ofNat (n / 65536) := by
+  apply UInt8.toNat_inj.mp
+  simp [UInt32.toNat_shiftRight, UInt32.toNat_toUInt8, UInt8.toNat_ofNat']
+  omega
+
+theorem shift24 (n : Nat) : ((UInt32.ofNat n) >>> 24).toUInt8 = UInt8.ofNat (n / 16777216) := by
+  apply UInt8.toNat_inj.mp
+  simp [UInt32.toNat_shiftRight, UInt32.toNat_toUInt8, UInt8.toNat_ofNat']
+  omega
+
 @[simp] theorem u32_data (b : ByteArray) (n : Nat) :
     (u32 b n).data.toList = b.data.toList ++ Enc.u32 n := by
-  simp [u32, Enc.u32]
+  have h0 : (UInt32.ofNat n).toUInt8 = UInt8.ofNat n := by
+    apply UInt8.toNat_inj.mp; simp [UInt8.toNat_ofNat']
+  simp [u32, word, Enc.u32, h0, shift8, shift16, shift24]
 
 @[simp] theorem i32_data (b : ByteArray) (v : Int) :
     (i32 b v).data.toList = b.data.toList ++ Enc.i32 v := by
-  simp [i32, Enc.i32]
+  rw [i32, i32Word_eq, ← u32, u32_data, Enc.i32]
 
 @[simp] theorem bool_data (b : ByteArray) (v : Bool) :
     (bool b v).data.toList = b.data.toList ++ Enc.bool v := by
