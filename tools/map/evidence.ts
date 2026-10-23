@@ -166,6 +166,8 @@ export function evaluate(inp: Inputs, image: (file: string) => string = (f) => f
 			const f = fuzz?.claims[c.ref];
 			const model = fuzz?.mode === "model" ? " of the model (no App yet)" : "";
 			if (!fuzz) mark("fuzzed", "gap", "not fuzzed", `No \`build/fuzz/${app}.json\`: run \`make fuzz APP=${app}\`.`);
+			else if ((!f || f.pass === null) && c.kind === "move" && fuzz.mode === "model")
+				mark("fuzzed", "gap", "not fuzzed", "The app is fuzzed at the model level only (it has no `App` yet), where a move has no checks of its own: presence and pressability need a frame.");
 			else if (!f || f.pass === null)
 				mark("fuzzed", "gap", f?.note?.startsWith("not runnable") ? "not runnable" : "not fuzzed", f?.note?.startsWith("not runnable") ? `The fuzzer can't run it: ${f.note}.` : "No fuzzed sequence exercised it.");
 			else if (f.pass) mark("fuzzed", "pass", `fuzzed ${short(f.sequences ?? fuzz.iterations)}`, `Held in ${plural(f.sequences ?? fuzz.iterations, "random sequence")}${model}, ${plural(f.steps ?? 0, "step")} checked (seed ${fuzz.seed}).`);
