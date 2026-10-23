@@ -192,15 +192,15 @@ enum SelfTest {
 }
 
 /// Lean through the real exports and codec, with no threads. For 100, 1,000 and 10,000 nodes
-/// (about 5 nodes per todo, so 20, 200 and 2,000 todos): one keystroke in the new-todo field and
-/// one checkbox click, each timed as encode events → step (update, view, layout) → frame
-/// (encode) → decode. The window is tall enough for every row, as the proofs require.
+/// (about 5 nodes per todo, so 20, 200 and 2,000 todos), plus 100 and 1,000 todos: one keystroke
+/// in the new-todo field and one checkbox click, each timed as encode events → step (update,
+/// view, layout) → frame (encode) → decode, with each part reported (bench/todo.md). The window is tall enough for every row, as the proofs require.
 enum Bench {
     static func run() {
         LeanRuntime.enter(module: todo.module)
         let codec = FrameV1Codec()
         print("TodoMVC bench (release, LEAN_ABORT_ON_NONLINEAR=\(ProcessInfo.processInfo.environment["LEAN_ABORT_ON_NONLINEAR"] ?? "unset"))")
-        for todos in [20, 200, 2000] {
+        for todos in [20, 100, 200, 1000, 2000] {
             let h = UInt32(32 + 56 + 48 + 40 + 28 + 44 * todos)
             var state = cairn_app_init(UInt32(size.w), h, 200)!
             func step(_ es: [Event]) { state = cairn_app_step(state, LeanRuntime.bytes(codec.encode(es)))! }
@@ -219,16 +219,25 @@ enum Bench {
             let toggle = center(box)
 
             func time(_ label: String, _ events: () -> [Event]) {
-                var ms: [Double] = []
+                var total: [Double] = [], stepMs: [Double] = [], encMs: [Double] = [], decMs: [Double] = []
                 for i in 0..<60 {
                     let es = events()
                     let t0 = hostNow()
                     step(es)
-                    _ = frame()
-                    if i >= 10 { ms.append((hostNow() - t0) * 1000) }
+                    let t1 = hostNow()
+                    cairn_lean_inc(state)
+                    let raw = cairn_app_frame(state)!
+                    let t2 = hostNow()
+                    _ = try! LeanRuntime.withBytes(raw) { try codec.decodeFrame($0) }
+                    let t3 = hostNow()
+                    if i >= 10 {
+                        total.append((t3 - t0) * 1000); stepMs.append((t1 - t0) * 1000)
+                        encMs.append((t2 - t1) * 1000); decMs.append((t3 - t2) * 1000)
+                    }
                 }
-                ms.sort()
-                print(String(format: "    %@: p50 %.3f ms, p95 %.3f ms", label, ms[ms.count / 2], ms[ms.count * 95 / 100]))
+                func p(_ xs: [Double], _ q: Int) -> Double { let s = xs.sorted(); return s[s.count * q / 100] }
+                print(String(format: "    %@: p50 %.3f ms, p95 %.3f ms (p50: step %.3f, frame encode %.3f, decode %.3f)",
+                             label, p(total, 50), p(total, 95), p(stepMs, 50), p(encMs, 50), p(decMs, 50)))
             }
             print("  \(todos) todos: \(f.draws.count) draws, \(f.ax.count) ax nodes, frame \(bytes) bytes; adding them took \(String(format: "%.1f", addMs)) ms")
             time("type one character (field focused)") { [.insertText("x")] }
