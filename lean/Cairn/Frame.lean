@@ -35,6 +35,9 @@ structure TextInput where
   text : String
   selection : Nat × Nat
   marked : Option (Nat × Nat)
+  /-- The left end of the text's baseline, in window coordinates, after any horizontal
+  scroll: where scalar 0 starts. -/
+  textOrigin : Point := ⟨0, 0⟩
 deriving Repr, BEq, Inhabited
 
 structure Frame where

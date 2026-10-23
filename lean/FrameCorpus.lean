@@ -84,7 +84,7 @@ def axNode : Gen AxNode := do
 
 def textInput : Gen TextInput := do
   return { control := ← ref, rect := ← rect, caret := ← rect, text := ← str,
-           selection := ← range, marked := ← opt range }
+           selection := ← range, marked := ← opt range, textOrigin := ⟨← int, ← int⟩ }
 
 def effect : Gen Effect := do
   if ← coin then return .setClipboard (← str) else return .beep
@@ -162,7 +162,8 @@ def maxFrame : Frame where
   ax := #[{ control := some ⟨4294967295, 4294967295⟩, role := .tab, rect := ⟨0, 0, 0, 0⟩,
             label := "", value := "", parent := some 4294967295, checked := some false }]
   textInput := some { control := ⟨0, 0⟩, rect := ⟨-1, -1, -1, -1⟩, caret := ⟨0, 0, 0, 0⟩,
-                      text := "", selection := (4294967295, 0), marked := some (0, 4294967295) }
+                      text := "", selection := (4294967295, 0), marked := some (0, 4294967295),
+                      textOrigin := ⟨-2147483648, 2147483647⟩ }
   cursor := .pointer
   effects := #[.setClipboard "", .beep, .setClipboard "📋"]
 

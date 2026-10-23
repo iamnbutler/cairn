@@ -11,7 +11,7 @@ Layout, all little-endian:
 header     "CAFR" u16 version=1 u16 flags=0 i32 w i32 h                       16 bytes
 draws      u32 count u32 byteLength, then count records
 ax         u32 count u32 byteLength, then count records
-textInput  4 bytes [present, hasMarked, 0, 0], then the record when present
+textInput  4 bytes [present, hasMarked, 0, 0], then the rest of the record when present
 cursor     4 bytes [cursor, 0, 0, 0]
 effects    u32 count u32 byteLength, then count records
 ```
@@ -87,7 +87,7 @@ def fitsAx (n : AxNode) : Bool :=
 
 def fitsTextInput (t : TextInput) : Bool :=
   fitsRef t.control && fitsRect t.rect && fitsRect t.caret && fitsRange t.selection &&
-    t.marked.all fitsRange && fs t.text
+    t.marked.all fitsRange && fi t.textOrigin.x && fi t.textOrigin.y && fs t.text
 
 def fitsEffect : Effect → Bool
   | .setClipboard s => fs s
@@ -141,7 +141,7 @@ def textInput : Option TextInput → List UInt8
   | none => [0] ++ pad 3
   | some t =>
     [1] ++ bool t.marked.isSome ++ pad 2 ++ ref t.control ++ rect t.rect ++ rect t.caret ++
-      range t.selection ++ range (t.marked.getD (0, 0)) ++ str t.text
+      range t.selection ++ range (t.marked.getD (0, 0)) ++ point t.textOrigin ++ str t.text
 
 def cursor (c : Cursor) : List UInt8 := [Cursor.code c] ++ pad 3
 
@@ -238,8 +238,9 @@ def textInput : Dec (Option TextInput) := do
     let caret ← rect
     let selection ← range
     let marked ← range
+    let textOrigin ← point
     let text ← str
-    return some { control, rect := r, caret, text, selection,
+    return some { control, rect := r, caret, text, selection, textOrigin,
                   marked := if hasMarked then some marked else none }
   | _ => fail
 
@@ -339,12 +340,12 @@ theorem textInput_enc {x : Option TextInput} (h : x.all fitsTextInput = true) (r
   cases x with
   | none => simp [textInput, Enc.textInput, skip_pad]
   | some t =>
-    obtain ⟨control, rc, caret, text, selection, marked⟩ := t
-    simp only [Option.all_some, fitsTextInput, Bool.and_eq_true, fs_iff] at h
-    obtain ⟨⟨⟨⟨⟨hc, hr⟩, hk⟩, hs⟩, hm⟩, ht⟩ := h
+    obtain ⟨control, rc, caret, text, selection, marked, origin⟩ := t
+    simp only [Option.all_some, fitsTextInput, Bool.and_eq_true, fs_iff, fi_iff] at h
+    obtain ⟨⟨⟨⟨⟨⟨⟨hc, hr⟩, hk⟩, hs⟩, hm⟩, hx⟩, hy⟩, ht⟩ := h
     cases marked <;>
       simp_all [textInput, Enc.textInput, bool_enc, skip_pad, ref_enc, rect_enc, range_enc,
-        str_enc]
+        point_enc, str_enc]
 
 theorem cursor_enc (c : Cursor) (r : List UInt8) : cursor (Enc.cursor c ++ r) = some (c, r) := by
   simp [cursor, Enc.cursor, skip_pad]
@@ -404,7 +405,7 @@ def effect : Effect → Nat
 
 def textInput : Option TextInput → Nat
   | none => 4
-  | some t => 60 + str t.text
+  | some t => 68 + str t.text
 
 def list {α : Type} (len : α → Nat) (xs : Array α) : Nat := xs.foldl (fun n x => n + len x) 0
 
@@ -423,7 +424,7 @@ theorem effect_eq (e : Effect) : effect e = (Enc.effect e).length := by
 
 theorem textInput_eq (t : Option TextInput) : textInput t = (Enc.textInput t).length := by
   cases t <;> simp [textInput, Enc.textInput, str_eq, Enc.pad, Enc.bool, Enc.ref, Enc.rect,
-    Enc.range, Enc.str] <;> all_goals omega
+    Enc.range, Enc.point, Enc.str] <;> all_goals omega
 
 theorem foldl_add {α : Type} (len : α → Nat) (xs : List α) (n : Nat) :
     xs.foldl (fun n x => n + len x) n = n + (xs.map len).sum := by
@@ -471,7 +472,7 @@ def textInput (b : ByteArray) : Option TextInput → ByteArray
   | some t =>
     let b := ref (pad (bool (b.push 1) t.marked.isSome) 2) t.control
     let b := range (range (rect (rect b t.rect) t.caret) t.selection) (t.marked.getD (0, 0))
-    str b t.text
+    str (point b t.textOrigin) t.text
 
 def cursor (b : ByteArray) (c : Cursor) : ByteArray := pad (b.push (Cursor.code c)) 3
 

@@ -47,7 +47,8 @@ def textInput : Option TextInput → String
   | none => "textInput none"
   | some t =>
     s!"textInput control={ref t.control} rect={rect t.rect} caret={rect t.caret} " ++
-      s!"selection={range t.selection} marked={opt range t.marked} text={str t.text}"
+      s!"selection={range t.selection} marked={opt range t.marked} " ++
+      s!"origin={t.textOrigin.x} {t.textOrigin.y} text={str t.text}"
 
 def effect : Effect → String
   | .setClipboard s => s!"clipboard {str s}"

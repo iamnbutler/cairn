@@ -19,8 +19,9 @@ Focus comes from the runtime (`UI.focus`), the one source of truth; `FieldView.f
 view's own styling and is not read here. `Laid.text`'s `baseline` is absolute (window y).
 
 Theorems: `controls_ofLaid` (the accessibility tree's controls are exactly the laid tree's, in
-order, which is how presence reaches the accessibility mirror), `parent_lt_ofLaid` (every
-parent index points at an earlier node) and `balanced_ofLaid` (clips are balanced). -/
+order, which is how presence reaches the accessibility mirror), `mem_ax_ofLaid`,
+`ax_refs_nodup` (distinct refs in the tree give distinct refs in the mirror), `parent_lt_ofLaid`
+(every parent index points at an earlier node) and `balanced_ofLaid` (clips are balanced). -/
 
 namespace Cairn
 
@@ -87,9 +88,9 @@ mutual
 def textInputOf (focus : Option ControlRef) : Laid → Option TextInput
   | .box _ _ _ _ kids => textInputAll focus kids
   | .text .. => none
-  | .field r _ _ _ c v _ caret _ =>
+  | .field r _ _ _ c v origin caret _ =>
     if focus == some c.ref then
-      some { control := c.ref, rect := r, caret, text := v.text,
+      some { control := c.ref, rect := r, caret, text := v.text, textOrigin := origin,
              selection := (min v.anchor v.caret, max v.anchor v.caret), marked := v.marked }
     else none
 
@@ -163,6 +164,12 @@ theorem mem_ax_ofLaid (ui : UI) (l : Laid) (c : ControlRef) :
   have h := congrArg (c ∈ ·) (controls_ofLaid ui l)
   simp only [List.mem_filterMap, List.mem_map, Array.mem_toList_iff] at h
   exact Iff.of_eq h
+
+/-- **One node per control.** If the laid tree's controls have pairwise distinct refs (an app
+invariant), so do the accessibility nodes': the host may key its elements by `ControlRef`. -/
+theorem ax_refs_nodup (ui : UI) (l : Laid) (h : (l.controls.map Control.ref).Nodup) :
+    ((ofLaid ui l).ax.toList.filterMap AxNode.control).Nodup := by
+  rw [controls_ofLaid]; exact h
 
 /-! ## Parents point backwards -/
 
@@ -345,6 +352,7 @@ private def f := ofLaid { focus := some ⟨2, 0⟩ } sample
 -- No caret while there is a selection; a caret once it collapses.
 #guard !(f.draws.contains (.rect ⟨44, 44, 1, 16⟩ (some ⟨0, 0, 0, 255⟩) 0 none))
 #guard (ofLaid { focus := none } sample).textInput.isNone
+#guard (f.textInput.map (·.textOrigin)) == some ⟨14, 57⟩
 
 end Frame.Examples
 end Cairn
