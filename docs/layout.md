@@ -9,6 +9,7 @@ points (origin top-left, y down). The code is in `lean/Cairn/Layout/`:
 | `Core.lean` | `measure`, `arrange`, `layout` |
 | `Facts.lean` | `Node.controls`, `Laid.controls`, `Laid.Everywhere`, the per-node facts, `Facts` |
 | `Proofs.lean` | the theorems, ending in `Cairn.Layout.facts` |
+| `Bridge.lean` | `Pressable`, and the bridge to the runtime's `LayoutFacts` |
 | `Tests.lean` | `#guard` checks on concrete trees with `TextMetrics.mono` |
 
 It is a small subset of flexbox. Anything not described here is not supported in M1:
@@ -142,12 +143,47 @@ something of the incoming clip or rect (non-negative sizes) use its invariant fo
 lemmas about one line (`Line.go_pairwise`, `Line.go_fill`, `Line.go_upper`) carry the
 arithmetic.
 
+## Bridge to the runtime
+
+The runtime's pressability theorems (`Cairn.Runtime.hitTest_center`, `click_center_presses`)
+assume `Cairn.Runtime.LayoutFacts laid t`: the control's visible rect is nonempty and a pointer
+at its centre reaches it, which means no other target's visible rect covers that point later in
+paint order. `Bridge.lean` proves this for every control of `layout m w n` under four
+conditions an app can check of its laid-out view, packaged as `Pressable w l`:
+
+| Field | Condition |
+|---|---|
+| `rootInside` | the root's rect is inside the window rect (the window is at least the view's size) |
+| `fits` | everywhere, padding is non-negative, each child is no larger than its parent's content box, and in a row or column the children plus gaps fit along the main axis (`Fits`) |
+| `stackTop` | in a stack, only the last child may contain controls (`StackTop`) |
+| `controlLeaf` | a box with a control has no controls below it (`ControlLeaf`), so a label inside a button routes to the button |
+
+Theorems:
+
+- `reaches_of_pressable`: a pointer at *any* point of a control's visible rect reaches it.
+- `layoutFacts_of_pressable (hp : Pressable w (layout m w n)) (ht : t ∈ targets (layout m w n))
+  (hne : t.node.rect.nonempty) : LayoutFacts (layout m w n) t`. Under these conditions the
+  visible rect is the whole rect.
+- `hitTest_center_of_pressable`: so `hitTest` at the control's centre returns it.
+
+The conditions are stated on the laid-out tree, not on the `Node`, because "fits" depends on
+the window and the metrics. For a concrete view and window they can be checked by evaluating
+the layout; there is no decidable checker yet.
+
+The runtime uses this layout: `Cairn.Runtime.Config.layout` defaults to
+`Cairn.Layout.layout`, and the stub layout in `Runtime/Stub.lean` is gone.
+
 ## Contract changes
 
 - `Rect.inter` (`lean/Cairn/Geometry.lean`) now clamps the origin of an empty intersection
   into its first argument (`x := min (max a.x b.x) (a.x + a.w)`, likewise `y`). Non-empty
   intersections are unchanged. Without this, intersecting a clip with a rect outside it gave a
   zero-size rect *outside* the clip, and "every clip is inside its parent's clip" was false.
+- Runtime (workstream C's files): `Config.layout` defaults to `Cairn.Layout.layout`
+  (`Runtime/Step.lean` imports `Cairn.Layout.Core`); the test layout was removed from
+  `Runtime/Stub.lean`; `Runtime/Tests.lean` runs on the real layout (its test field gained
+  padding); `docs/runtime.md` says so.
+- `Node.controls` and `Laid.controls` (paint-order controls) are new, in `Layout/Facts.lean`.
 
 ## Performance
 
