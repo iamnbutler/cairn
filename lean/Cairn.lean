@@ -18,6 +18,7 @@ import Cairn.App
 -- of the host's library (see Cairn/Claims/host_init.c).
 import Cairn.Claims.Core
 import Cairn.Runtime
+import Cairn.Claims.Deliver
 import Cairn.Spike.Bytes
 import Cairn.Spike.Frame
 import Cairn.Layout

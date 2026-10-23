@@ -106,7 +106,17 @@ example : (∀ s : St, reset.enabled s = true → reset.press.post s (reset.pres
 
 example : ∀ s : St, machine.Reachable s → ∀ k ∈ s.log, k < 10 := small.reachable
 
-/-! ### Each check, failing -/
+/-! ### Each check, failing
+
+`#reject` elaborates a declaration and then throws away whatever it added to the environment,
+keeping only its messages, so a failing proof doesn't leave a `sorry` behind for the kernel
+replay (`make kernel`) to find. -/
+
+open Lean Elab Command in
+/-- Elaborate `cmd` for its messages only. -/
+elab "#reject " cmd:command : command => do
+  let env ← getEnv
+  try elabCommand cmd finally setEnv env
 
 namespace Bad
 
@@ -114,7 +124,7 @@ namespace Bad
 error: claim id ^9101 is already issued: ^9101 move “Increment” (Cairn.Claims.Tests.inc, module Cairn.Claims.Tests). Ids are never reused; take a new one
 -/
 #guard_msgs in
-move ^9101 again (s : St) "Increment again" where
+#reject move ^9101 again (s : St) "Increment again" where
   does "Press +."
   sees "n goes up."
   on press
@@ -126,7 +136,7 @@ move ^9101 again (s : St) "Increment again" where
 error: missing `sees "…"`: what follows
 -/
 #guard_msgs in
-move ^9120 noSees (s : St) "No sees" where
+#reject move ^9120 noSees (s : St) "No sees" where
   does "Press it."
   on press
     apply := s
@@ -135,7 +145,7 @@ move ^9120 noSees (s : St) "No sees" where
 
 /-- error: missing `sound`: the proof that `apply` meets `post` -/
 #guard_msgs in
-move ^9121 noProof (s : St) "No proof" where
+#reject move ^9121 noProof (s : St) "No proof" where
   does "Press it."
   sees "Nothing."
   on press
@@ -148,7 +158,7 @@ s : St
 ⊢ s.n = 1
 -/
 #guard_msgs in
-move ^9122 badProof (s : St) "Wrong proof" where
+#reject move ^9122 badProof (s : St) "Wrong proof" where
   does "Press it."
   sees "n is one."
   on press
@@ -160,14 +170,14 @@ move ^9122 badProof (s : St) "Wrong proof" where
 error: unknown place ^9999: declare it with `place ^9999 …` first
 -/
 #guard_msgs in
-place ^9123 nowhere "Nowhere" in ^9999 where
+#reject place ^9123 nowhere "Nowhere" in ^9999 where
   does "Inside a place that does not exist."
 
 /--
 error: ^9101 is not a place: ^9101 move “Increment” (Cairn.Claims.Tests.inc, module Cairn.Claims.Tests)
 -/
 #guard_msgs in
-move ^9124 inMove (s : St) "In a move" in ^9101 where
+#reject move ^9124 inMove (s : St) "In a move" in ^9101 where
   does "Press it."
   sees "Nothing."
   on press
@@ -179,7 +189,7 @@ move ^9124 inMove (s : St) "In a move" in ^9101 where
 error: a retired claim says why it was retired
 -/
 #guard_msgs in
-retire ^9125 move "Gone" because ""
+#reject retire ^9125 move "Gone" because ""
 
 /--
 error: Tactic `decide` proved that the proposition
@@ -187,7 +197,7 @@ error: Tactic `decide` proved that the proposition
 is false
 -/
 #guard_msgs in
-flow ^9126 stuck "Reset at zero" for machine where
+#reject flow ^9126 stuck "Reset at zero" for machine where
   does "Press Reset at zero."
   goal s := s.n = 0
   witness press ^9102
@@ -196,7 +206,7 @@ flow ^9126 stuck "Reset at zero" for machine where
 error: a witness step names a move, and ^9100 is not one: ^9100 place “Main” (Cairn.Claims.Tests.main, module Cairn.Claims.Tests)
 -/
 #guard_msgs in
-flow ^9127 notAMove "Through a place" for machine where
+#reject flow ^9127 notAMove "Through a place" for machine where
   does "Press the place."
   goal s := s.n = 0
   witness press ^9100
@@ -208,7 +218,7 @@ def moves : List (Move St) := moves%
 error: `moves%` already collected namespace Cairn.Claims.Tests.Bad.Late; a move declared now would never be dispatched. Declare moves before it
 -/
 #guard_msgs in
-move ^9128 late (s : St) "Too late" where
+#reject move ^9128 late (s : St) "Too late" where
   does "Press it."
   sees "Nothing."
   on press
@@ -221,7 +231,7 @@ end Late
 error: `on edit` names its text operation: `on edit (op : TextOp)`
 -/
 #guard_msgs in
-move ^9129 twoApplies (s : St) "Edit without op" where
+#reject move ^9129 twoApplies (s : St) "Edit without op" where
   does "Type."
   sees "Nothing."
   on edit
