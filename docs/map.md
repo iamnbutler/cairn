@@ -8,7 +8,7 @@ comes from evidence.
 
 ```sh
 make map APP=Counter        # writes build/map/Counter/dist/; open build/map/Counter/dist/index.html
-make site-maps              # fuzz, conformance and map for Counter and Basics → site/public/map/
+make site-maps              # fuzz, conformance and map for Counter, Basics and Todo → site/public/map/
 ```
 
 `make map` reads whatever evidence is already in `build/`: run `make fuzz APP=<App>` and
@@ -102,7 +102,7 @@ Every claim shows all its evidence. It also *reads as* one word, so the map can 
 
 | Reads as | When |
 |---|---|
-| `retired` | the claim is retired |
+| `retired` | the claim is retired: it shows its reason, has no evidence and no gaps, and its ledger hash isn't compared |
 | `broken` | any of its evidence failed |
 | `assumed` | an assumption (even when the trusted-base fuzzer checked it: that shows as a `fuzzed N` chip beside it) |
 | the strongest kind it passes | `proved`, else `fuzzed`, `tested`, `seen` |
@@ -185,6 +185,6 @@ assumption's fuzzed entry is a gap: nothing checks it.
 
 ## Publishing
 
-`build/map/<App>/dist/` is not committed. `make site-maps` copies each app's into
+`build/map/<App>/dist/` is not committed. `make site-maps` copies each app's in `MAP_APPS` into
 `site/public/map/<app>/`, where the site links to them; the lead deploys from main
 (docs/media.md).

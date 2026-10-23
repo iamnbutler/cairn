@@ -138,10 +138,10 @@ build/bin/record: tools/record/main.swift
 	mkdir -p build/bin
 	swiftc -O $< -o $@
 
-# Copy the Counter and Basics maps into the microsite (site/public/map/<app>/), building them
+# Copy the Counter, Basics and Todo maps into the microsite (site/public/map/<app>/), building them
 # first with fresh evidence: fuzzing for each, and conformance for each app with a generator
 # (it shows the app's window while it runs; CONFORMANCE=0 skips it and keeps any earlier run).
-MAP_APPS = Counter Basics
+MAP_APPS = Counter Basics Todo
 site-maps:
 	@for a in $(MAP_APPS); do \
 		$(MAKE) fuzz APP=$$a N=1000 || exit 1; \

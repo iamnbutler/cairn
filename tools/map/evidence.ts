@@ -233,7 +233,8 @@ export function evaluate(inp: Inputs, image: (file: string) => string = (f) => f
 		if (!locked) findings.push({ text: "Not in `claims.lock`: run `lake exe ledger update`.", broken: false });
 		else {
 			ledger = locked.status;
-			if (locked.statement !== c.statement) {
+			// A retired claim's meaning is frozen; only a live claim's hash is compared.
+			if (!c.retired && locked.statement !== c.statement) {
 				ledger += ", meaning changed";
 				findings.push({ text: `Its statement hash (\`${c.statement}\`) differs from \`claims.lock\` (\`${locked.statement}\`): give it a new id, or accept the change.`, broken: false });
 			}

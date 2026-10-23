@@ -68,7 +68,9 @@ test("assumptions read as assumed, and trusted-base fuzzing adds a chip", () => 
 });
 
 test("retired claims have no evidence and no gaps; a changed meaning is a finding", () => {
-	const rows = evaluate(inputs([claim(1, "move", ["good"], { retired: "gone" }), claim(2, "move", ["good"], { statement: "other" })]));
+	const rows = evaluate(inputs([claim(1, "invariant", ["good"], { retired: "gone", statement: "-" }), claim(2, "move", ["good"], { statement: "other" })]));
+	expect(rows[0]!.findings).toEqual([]);
+	expect(rows[0]!.marks).toEqual([]);
 	expect(rows[0]!.headline).toBe("retired");
 	expect(gaps(rows).filter((g) => g.row.claim.id === 1)).toEqual([]);
 	expect(rows[1]!.ledger).toBe("active, meaning changed");
