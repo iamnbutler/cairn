@@ -2,17 +2,35 @@
 // encoder (Decode.swift, Encode.swift) are generated against docs/frame.md; these types are
 // the contract the renderer and host code against.
 
-public struct Point: Equatable, Sendable { public var x, y: Int32 }
-public struct Size: Equatable, Sendable { public var w, h: Int32 }
-public struct Rect: Equatable, Sendable { public var x, y, w, h: Int32 }
-public struct Color: Equatable, Sendable { public var r, g, b, a: UInt8 }
-public struct Border: Equatable, Sendable { public var width: UInt32; public var color: Color }
+public struct Point: Equatable, Sendable {
+    public var x, y: Int32
+    public init(x: Int32, y: Int32) { self.x = x; self.y = y }
+}
+public struct Size: Equatable, Sendable {
+    public var w, h: Int32
+    public init(w: Int32, h: Int32) { self.w = w; self.h = h }
+}
+public struct Rect: Equatable, Sendable {
+    public var x, y, w, h: Int32
+    public init(x: Int32, y: Int32, w: Int32, h: Int32) { self.x = x; self.y = y; self.w = w; self.h = h }
+}
+public struct Color: Equatable, Sendable {
+    public var r, g, b, a: UInt8
+    public init(r: UInt8, g: UInt8, b: UInt8, a: UInt8 = 255) { self.r = r; self.g = g; self.b = b; self.a = a }
+}
+public struct Border: Equatable, Sendable {
+    public var width: UInt32; public var color: Color
+    public init(width: UInt32, color: Color) { self.width = width; self.color = color }
+}
 
 public struct Font: Hashable, Sendable {
     public var family: UInt32  // 0 system UI, 1 system monospaced
     public var size: UInt32    // points
     public var weight: UInt32  // 100–900
     public var italic: Bool
+    public init(family: UInt32 = 0, size: UInt32 = 13, weight: UInt32 = 400, italic: Bool = false) {
+        self.family = family; self.size = size; self.weight = weight; self.italic = italic
+    }
 }
 
 public enum Draw: Equatable, Sendable {
@@ -74,6 +92,11 @@ public struct Frame: Equatable, Sendable {
     public var textInput: TextInput?
     public var cursor: Cursor
     public var effects: [Effect]
+    public init(size: Size, draws: [Draw], ax: [AxNode] = [], textInput: TextInput? = nil,
+                cursor: Cursor = .arrow, effects: [Effect] = []) {
+        self.size = size; self.draws = draws; self.ax = ax; self.textInput = textInput
+        self.cursor = cursor; self.effects = effects
+    }
 }
 
 public struct Mods: Equatable, Sendable {
