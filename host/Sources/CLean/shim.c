@@ -1,13 +1,16 @@
 #include "cairn_lean.h"
 #include <lean/lean.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 // Declared by the runtime but not in lean.h.
 extern void lean_initialize_thread(void);
 extern void lean_finalize_thread(void);
+extern void lean_initialize_runtime_module(void);
 extern lean_object *initialize_cairn_Examples(uint8_t builtin);
+
+#define L(o) ((lean_object *)(o))
+#define C(o) ((cairn_obj *)(o))
 
 void cairn_lean_init(void) {
     lean_initialize_runtime_module();
@@ -22,13 +25,13 @@ void cairn_lean_init(void) {
 
 void cairn_lean_thread_begin(void) { lean_initialize_thread(); }
 void cairn_lean_thread_end(void) { lean_finalize_thread(); }
-void cairn_lean_inc(lean_object *o) { lean_inc(o); }
-void cairn_lean_dec(lean_object *o) { lean_dec(o); }
+void cairn_lean_inc(cairn_obj *o) { lean_inc(L(o)); }
+void cairn_lean_dec(cairn_obj *o) { lean_dec(L(o)); }
 
-lean_object *cairn_bytes_new(const uint8_t *data, size_t size) {
+cairn_obj *cairn_bytes_new(const uint8_t *data, size_t size) {
     lean_object *b = lean_alloc_sarray(1, size, size);
     if (size) memcpy(lean_sarray_cptr(b), data, size);
-    return b;
+    return C(b);
 }
-const uint8_t *cairn_bytes_data(lean_object *b) { return lean_sarray_cptr(b); }
-size_t cairn_bytes_size(lean_object *b) { return lean_sarray_size(b); }
+const uint8_t *cairn_bytes_data(cairn_obj *b) { return lean_sarray_cptr(L(b)); }
+size_t cairn_bytes_size(cairn_obj *b) { return lean_sarray_size(L(b)); }

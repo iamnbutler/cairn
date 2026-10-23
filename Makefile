@@ -5,7 +5,7 @@ LEAN_PREFIX = $(shell cd lean && lean --print-prefix)
 LIB = build/lib/libcairn_lean.a
 VENDOR = host/Sources/CLean/vendor/lean
 
-.PHONY: lean host build bench spike selftest clean
+.PHONY: lean host build check audit bench spike selftest clean
 
 lean:
 	cd lean && lake build
@@ -23,6 +23,12 @@ host: lean
 	cd host && swift build
 
 build: host
+
+audit: lean
+	cd lean && lake build audit && lake env .lake/build/bin/audit
+
+# Everything a PR must pass.
+check: audit selftest
 
 bench: lean
 	cd lean && lake build bench && .lake/build/bin/bench

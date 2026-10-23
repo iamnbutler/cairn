@@ -7,16 +7,17 @@ let leanLib = Context.packageDirectory + "/../build/lib"
 
 let package = Package(
     name: "CairnHost",
-    platforms: [.macOS(.v15)],
+    platforms: [.macOS("27.0")],
     targets: [
         .target(
             name: "CLean",
-            cSettings: [.headerSearchPath("vendor")],
+            cSettings: [.headerSearchPath("vendor"), .unsafeFlags(["-Wno-shorten-64-to-32"])],
             linkerSettings: [.unsafeFlags(["-L" + leanLib, "-lcairn_lean", "-lc++"])]
         ),
         .executableTarget(
             name: "CairnSpike",
-            dependencies: ["CLean"]
+            dependencies: ["CLean"],
+            swiftSettings: [.swiftLanguageMode(.v5)]
         ),
     ]
 )

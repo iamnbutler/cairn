@@ -14,3 +14,7 @@ lean_lib Examples where
 
 lean_exe bench where
   root := `Bench
+
+lean_exe audit where
+  root := `Audit
+  supportInterpreter := true
