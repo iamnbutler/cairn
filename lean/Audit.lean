@@ -27,7 +27,7 @@ def jsonPath : List String → Option String × List String
 
 def main (args : List String) : IO UInt32 := do
   let (json, args) := jsonPath args
-  let roots := if args.isEmpty then [`Cairn, `Examples] else args.map String.toName
+  let roots := if args.isEmpty then [`Cairn, `Examples, `Cairn.Fuzz] else args.map String.toName
   initSearchPath (← findSysroot)
   let env ← importModules (roots.map ({ module := · })).toArray {} (trustLevel := 1024)
   let mut checked := 0
