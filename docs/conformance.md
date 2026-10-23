@@ -172,7 +172,7 @@ the failure.
 `build/conformance/<App>.json` uses the map's shape (docs/map.md):
 
 ```json
-{"runs": 1000, "commit": "38018f9",
+{"runs": 1000, "commit": "2e63d83",
  "claims": {"^101": {"pass": true, "runs": 5899}, "...": {}},
  "sequences": {}, "steps": 12011, "probes": 27797, "triggers": {}, "timing": {}}
 ```
@@ -200,7 +200,7 @@ generator's gesture format.
 
 ## Basics
 
-`make conformance APP=Basics N=1000` at commit 38018f9 (macOS 27, Apple silicon, debug build,
+`make conformance APP=Basics N=1000` on this branch, rebased on b28cb50 (macOS 27, Apple silicon, debug build,
 2x display) passed:
 
 | | |
@@ -216,7 +216,7 @@ generator's gesture format.
 | ^104 (delete) | 133 presses |
 | Plain-UI steps | 2,935 |
 | ^105 (invariant) | every step |
-| Time | 146 s in all; per step p50 15.7 ms, p90 17.2 ms, max 26 ms |
+| Time | 146 s in all; per step p50 15.7 ms, p90 17.2 ms, max 27 ms |
 
 Each step costs about one display refresh. The pixel read waits for the frame to be presented.
 
