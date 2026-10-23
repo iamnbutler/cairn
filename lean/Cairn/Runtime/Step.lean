@@ -292,10 +292,11 @@ def hear (app : App S) (c : Ctx S) : Ctx S :=
 def fire (app : App S) (c : Ctx S) (n : String) : Ctx S :=
   if c.world.dueNow n then give app { c with world := c.world.cancelTimer n } (.timer n) else c
 
-/-- On the first clock: run `initEffects`. -/
+/-- On the first clock: the app hears the time, then `initEffects` run. -/
 def boot (app : App S) (c : Ctx S) : Ctx S :=
   if c.world.booted then c else
-  let (w, kept) := { c.world with booted := true }.absorb app.initEffects
+  let c := hear app { c with world := { c.world with booted := true } }
+  let (w, kept) := c.world.absorb app.initEffects
   { c with world := w, effs := c.effs ++ kept, delivered := true }
 
 /-- What the world events deliver: a clock event fires due timers, a reply is delivered if its

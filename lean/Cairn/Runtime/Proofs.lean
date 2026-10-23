@@ -329,16 +329,18 @@ theorem foldl_fire_app {app : App S} (h : Quiet app) (ns : List String) :
   | nil => intro c; rfl
   | cons n ns ih => intro c; simp only [List.foldl_cons]; rw [ih, fire_app h]
 
-theorem boot_app (app : App S) (c : Ctx S) : (boot app c).app = c.app := by
-  unfold boot; split <;> rfl
+theorem boot_app {app : App S} (h : Quiet app) (c : Ctx S) : (boot app c).app = c.app := by
+  unfold boot; split
+  · rfl
+  · exact hear_app h _
 
 theorem admit_app {app : App S} (h : Quiet app) (s : State S) (e : Event) :
     (admit app s e).app = s.app := by
   cases e <;> simp only [admit]
   case clock t =>
     split
-    · exact boot_app _ _
-    · rw [foldl_fire_app h, hear_app h, boot_app]
+    · exact boot_app h _
+    · rw [foldl_fire_app h, hear_app h, boot_app h]
   all_goals (try split) <;> (try split) <;> (try rfl) <;>
     first | (rw [give_app h, hear_app h]) | exact hear_app h _
 

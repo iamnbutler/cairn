@@ -492,8 +492,9 @@ theorem foldl_fire_grows (app : App S) (ns : List String) :
 theorem boot_grows (app : App S) (c : Ctx S) : Grows c.world (boot app c).world := by
   unfold boot; split
   · exact Grows.refl _
-  · have h := absorb_same app.initEffects { c.world with booted := true }
-    exact ⟨by rw [h.1]; exact Nat.le_refl _, fun _ => h.2.2.1⟩
+  · have h0 : Grows c.world { c.world with booted := true } := ⟨Nat.le_refl _, fun _ => rfl⟩
+    have h1 := hear_grows app { c with world := { c.world with booted := true } }
+    exact (h0.trans h1).trans (absorb_same _ _).grows
 
 theorem tick_mono (w : World) (t : Time) : w.clock.mono ≤ (w.tick t).clock.mono :=
   Nat.le_max_left _ _
