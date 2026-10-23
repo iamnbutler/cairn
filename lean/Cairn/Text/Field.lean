@@ -33,12 +33,12 @@ def SingleLine (t : List Char) : Prop := ∀ c ∈ t, isLineBreak c = false
 /-- `s` as scalars, with line breaks removed. -/
 def clean (s : String) : List Char := s.toList.filter (fun c => !isLineBreak c)
 
-/-- A word is a maximal run of word characters: ASCII letters and digits, and every non-ASCII
+/-- A word is a maximal run of word characters: ASCII letters, digits and `_`, and every non-ASCII
 scalar except the Unicode spaces below. Everything else (ASCII punctuation and spaces) separates
 words. This is deliberately simpler than `NSTextView`, which uses ICU word boundaries and a
 dictionary for scripts without spaces; see `docs/text.md`. -/
 def isWordChar (c : Char) : Bool :=
-  c.isAlphanum ||
+  c.isAlphanum || c == '_' ||
     (c.val ≥ 128 && !(c == ' ' || c == ' ' || (c.val ≥ 0x2000 && c.val ≤ 0x200a) ||
       c == ' ' || c == ' ' || c == '　'))
 
@@ -148,14 +148,16 @@ def deleteSelOr (f : Field) (a b : Nat) : Field :=
 a collapsed caret is one undo step; committing a composition joins the step its first
 `setMarked` opened. -/
 def insert (f : Field) (s : String) : Field :=
-  let (a, b) := f.target
+  let a := f.target.1
+  let b := f.target.2
   let cs := clean s
   let push := f.marked.isNone && !(f.typing && f.lo == f.hi)
   f.edit (splice f.text a b cs) (a + cs.length) (a + cs.length) push true
 
 /-- Like `insert`, but always its own undo step (unless it commits a composition). -/
 def paste (f : Field) (s : String) : Field :=
-  let (a, b) := f.target
+  let a := f.target.1
+  let b := f.target.2
   let cs := clean s
   f.edit (splice f.text a b cs) (a + cs.length) (a + cs.length) f.marked.isNone false
 
@@ -164,7 +166,8 @@ def paste (f : Field) (s : String) : Field :=
 Starting a composition opens an undo step; the whole composition, through its commit, is that
 one step. An empty composition ends it. -/
 def setMarked (f : Field) (s : String) (selStart selLen : Nat) : Field :=
-  let (a, b) := f.target
+  let a := f.target.1
+  let b := f.target.2
   let cs := clean s
   let n := cs.length
   let text := splice f.text a b cs
