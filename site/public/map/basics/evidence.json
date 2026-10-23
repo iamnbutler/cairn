@@ -1,0 +1,499 @@
+{
+  "app": "Basics",
+  "generated": "2026-10-23T17:22:07.135Z",
+  "inputs": {
+    "fuzz": "/Users/natebutler/code/cairn/.lane/trees/map-own/build/fuzz/Basics.json",
+    "trusted": null,
+    "conformance": "/Users/natebutler/code/cairn/.lane/trees/map-own/build/conformance/Basics.json",
+    "capture": true,
+    "theoremsAudited": 1481
+  },
+  "counts": {
+    "kinds": [
+      {
+        "kind": "proved",
+        "have": 8,
+        "fail": 0,
+        "of": 8
+      },
+      {
+        "kind": "fuzzed",
+        "have": 5,
+        "fail": 0,
+        "of": 5
+      },
+      {
+        "kind": "tested",
+        "have": 8,
+        "fail": 0,
+        "of": 8
+      },
+      {
+        "kind": "seen",
+        "have": 8,
+        "fail": 0,
+        "of": 8
+      },
+      {
+        "kind": "assumed",
+        "have": 0,
+        "fail": 0,
+        "of": 0
+      }
+    ],
+    "headlines": {
+      "proved": 8,
+      "seen": 1
+    }
+  },
+  "claims": [
+    {
+      "id": 101,
+      "ref": "^101",
+      "kind": "move",
+      "title": "Type a new item",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "2 theorems (sound edit, sound submit), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 1k",
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested 5.9k",
+          "detail": "5,899 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Pressed in the capture: before and after."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "sound edit",
+          "theorem": "Examples.Basics.typeItem.edit.sound",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "sound submit",
+          "theorem": "Examples.Basics.typeItem.submit.sound",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "before": "flow-107-0.pinned.webp",
+        "after": "flow-107-1.pinned.webp",
+        "frames": [
+          "img/flow-107-0.pinned.webp",
+          "img/flow-107-1.pinned.webp"
+        ]
+      }
+    },
+    {
+      "id": 102,
+      "ref": "^102",
+      "kind": "move",
+      "title": "Add",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "1 theorem (sound press), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 1k",
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested 2.9k",
+          "detail": "2,858 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Pressed in the capture: before and after."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "sound press",
+          "theorem": "Examples.Basics.addItem.press.sound",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "before": "flow-107-3.pinned.webp",
+        "after": "flow-107-4.pinned.webp",
+        "frames": [
+          "img/flow-107-3.pinned.webp",
+          "img/flow-107-4.pinned.webp"
+        ]
+      }
+    },
+    {
+      "id": 103,
+      "ref": "^103",
+      "kind": "move",
+      "title": "Toggle an item",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "1 theorem (sound press), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 1k",
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested 175",
+          "detail": "175 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Pressed in the capture: before and after."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "sound press",
+          "theorem": "Examples.Basics.toggleItem.press.sound",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "before": "flow-107-4.pinned.webp",
+        "after": "flow-107-5.pinned.webp",
+        "frames": [
+          "img/flow-107-4.pinned.webp",
+          "img/flow-107-5.pinned.webp"
+        ]
+      }
+    },
+    {
+      "id": 104,
+      "ref": "^104",
+      "kind": "move",
+      "title": "Delete an item",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "1 theorem (sound press), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 1k",
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested 133",
+          "detail": "133 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Pressed in the capture: before and after."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "sound press",
+          "theorem": "Examples.Basics.deleteItem.press.sound",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "before": "flow-109-2.pinned.webp",
+        "after": "flow-109-3.pinned.webp",
+        "frames": [
+          "img/flow-109-2.pinned.webp",
+          "img/flow-109-3.pinned.webp"
+        ]
+      }
+    },
+    {
+      "id": 105,
+      "ref": "^105",
+      "kind": "invariant",
+      "title": "Items left",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "3 theorems (init, step, reachable), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 1k",
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested",
+          "detail": "Every state the running app reached (12,011 steps) was the model's, and the frame, accessibility tree, effects and pixels matched the model."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "init",
+          "theorem": "Examples.Basics.itemsLeft.init",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "step",
+          "theorem": "Examples.Basics.itemsLeft.step",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachable",
+          "theorem": "Examples.Basics.itemsLeft.reachable",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": []
+      }
+    },
+    {
+      "id": 106,
+      "ref": "^106",
+      "kind": "place",
+      "title": "Basics window",
+      "headline": "seen",
+      "evidence": [
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "The window, rendered from the app's initial frame."
+        }
+      ],
+      "theorems": [],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": [
+          "img/start-0.pinned.webp"
+        ]
+      }
+    },
+    {
+      "id": 107,
+      "ref": "^107",
+      "kind": "flow",
+      "title": "Add two items and finish one",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "2 theorems (live, reaches), standard axioms only."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested",
+          "detail": "Its witness replayed on the running app, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Its 5 steps replayed in the capture, each on the control it names."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "live",
+          "theorem": "Examples.Basics.addAndFinish.live",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reaches",
+          "theorem": "Examples.Basics.addAndFinish.reaches",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": [
+          "img/flow-107-0.pinned.webp",
+          "img/flow-107-1.pinned.webp",
+          "img/flow-107-2.pinned.webp",
+          "img/flow-107-3.pinned.webp",
+          "img/flow-107-4.pinned.webp",
+          "img/flow-107-5.pinned.webp"
+        ],
+        "strip": "flow-107.strip.webp",
+        "complete": true
+      }
+    },
+    {
+      "id": 108,
+      "ref": "^108",
+      "kind": "flow",
+      "title": "Blank text adds nothing",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "2 theorems (live, reaches), standard axioms only."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested",
+          "detail": "Its witness replayed on the running app, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Its 3 steps replayed in the capture, each on the control it names."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "live",
+          "theorem": "Examples.Basics.blankAddsNothing.live",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reaches",
+          "theorem": "Examples.Basics.blankAddsNothing.reaches",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": [
+          "img/flow-108-0.pinned.webp",
+          "img/flow-108-1.pinned.webp",
+          "img/flow-108-2.pinned.webp",
+          "img/flow-108-3.pinned.webp"
+        ],
+        "strip": "flow-108.strip.webp",
+        "complete": true
+      }
+    },
+    {
+      "id": 109,
+      "ref": "^109",
+      "kind": "flow",
+      "title": "Add an item, then delete it",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "2 theorems (live, reaches), standard axioms only."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested",
+          "detail": "Its witness replayed on the running app, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Its 3 steps replayed in the capture, each on the control it names."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "live",
+          "theorem": "Examples.Basics.addThenDelete.live",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reaches",
+          "theorem": "Examples.Basics.addThenDelete.reaches",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": [
+          "img/flow-109-0.pinned.webp",
+          "img/flow-109-1.pinned.webp",
+          "img/flow-109-2.pinned.webp",
+          "img/flow-109-3.pinned.webp"
+        ],
+        "strip": "flow-109.strip.webp",
+        "complete": true
+      }
+    }
+  ],
+  "gaps": [],
+  "retiredElsewhere": []
+}

@@ -1,29 +1,34 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8">
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Invariants and assumptions · Basics map</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="style.css"></head><body><div class="page"><nav class="rail" aria-label="Areas"><a class="home" href="index.html">Basics map</a>
-<a href="basics-window.html">Basics window</a>
-<a href="guarantees.html" class="on">Invariants and assumptions</a>
-<a href="gaps.html">Gaps <span class="count">0</span></a>
+<meta name="description" content="Every claim Basics makes, with the evidence the build has for it.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav class="bar"><a class="home" href="../../"><img src="icon.svg" alt="">Cairn</a><span class="sep">/</span><a href="index.html">Basics map</a><a href="basics-window.html">Basics window</a><a href="guarantees.html" class="on">Invariants and assumptions</a><a href="evidence.html">Evidence</a></nav>
+<main>
+<header class="page"><div class="eyebrow">Basics</div><h1>Invariants and assumptions</h1><p class="lede">What holds in every state the app can reach (proved), and what the proofs take as given about the world (assumed).</p></header>
 
 
-<hr><a href="notes/evidence.html">Evidence</a></nav><main>
-<header><div class="eyebrow">Basics map · guarantees</div><h1>Invariants and assumptions</h1><p class="lede">What holds in every reachable state (proved), and what the proofs take as given about the world (assumed, never proved).</p>
-</header>
-<figure class="overview"><div class="lanes"><div class="lane"><a class="lane-label" href="#105"><span class="id">^105</span>Items left</a>
-<ol class="boxes"></ol></div></div>
-<figcaption class="key"><span><i class="sw tested"></i>tested</span><span><i class="sw visual"></i>visual</span><span><i class="sw partial"></i>partial</span><span><i class="sw broken"></i>broken</span><span><i class="sw untested"></i>untested</span><span><i class="sw missing"></i>missing</span><span><i class="sw planned"></i>planned</span><span><b class="dot">n</b>open gap</span></figcaption></figure>
+<h2>Invariants <span class="n">1</span></h2>
+<section class="claim px" id="105">
+<div class="head"><a class="id" href="#105">^105</a><h3>Items left</h3><span class="pix muted">invariant</span><span class="hl proved">proved</span></div>
+<div class="body wide"><div class="said"><b>Does</b><p>The footer's count equals the number of items not done, and item ids stay distinct, in every reachable state.</p><dl class="ev"><dt><span class="m proved pass" title="3 theorems (init, step, reachable), standard axioms only.">proved</span></dt><dd>3 theorems (init, step, reachable), standard axioms only.</dd><dt><span class="m fuzzed pass" title="Held in 1,000 random sequences, 51,000 steps checked (seed 0).">fuzzed 1k</span></dt><dd>Held in 1,000 random sequences, 51,000 steps checked (seed 0).</dd><dt><span class="m tested pass" title="Every state the running app reached (12,011 steps) was the model's, and the frame, accessibility tree, effects and pixels matched the model.">tested</span></dt><dd>Every state the running app reached (12,011 steps) was the model's, and the frame, accessibility tree, effects and pixels matched the model.</dd></dl><details><summary>3 theorems</summary><div class="thm"><div><span class="ok">✓</span> <code>Basics.itemsLeft.init</code> <span class="muted">init</span></div><div><span class="ok">✓</span> <code>Basics.itemsLeft.step</code> <span class="muted">step</span></div><div><span class="ok">✓</span> <code>Basics.itemsLeft.reachable</code> <span class="muted">reachable</span></div></div></details><p class="src"><a href="https://github.com/iamnbutler/cairn/blob/main/lean/Examples/Basics.lean#L334">lean/Examples/Basics.lean:334</a> · <code>Basics.itemsLeft</code> · ledger: active</p></div></div>
 
-<section class="flow" id="105">
-<div class="flow-head"><a class="id" href="#105">^105</a><h2>Items left</h2><span class="st untested">untested</span></div>
-
-<p class="summary">The footer's count equals the number of items not done, and item ids stay distinct, in every reachable state. — proved ✓ · conformance <b>not run</b></p>
-
-<div class="meta"><a class="code" href="https://github.com/iamnbutler/cairn/blob/main/lean/Examples/Basics.lean#L327">lean/Examples/Basics.lean:327</a></div>
-
-<ol class="steps"></ol>
 </section>
-<footer class="pager"><a rel="prev" href="basics-window.html">← Basics window</a></footer>
-</main></div><script src="keys.js"></script></body></html>
+
+</main>
+<footer>Generated by <code>make map APP=Basics</code> from the claims and the build. Nothing here is written by hand.</footer>
+<script type="module">
+// On the site, the headings get the meadow's sprigs (site/public/scene.js); elsewhere, nothing.
+import("/scene.js").then((m) => m.mountSprigs(document.querySelector("main"))).catch(() => {});
+</script>
+</body>
+</html>

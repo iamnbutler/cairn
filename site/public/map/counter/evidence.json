@@ -1,0 +1,413 @@
+{
+  "app": "Counter",
+  "generated": "2026-10-23T17:22:06.165Z",
+  "inputs": {
+    "fuzz": "/Users/natebutler/code/cairn/.lane/trees/map-own/build/fuzz/Counter.json",
+    "trusted": null,
+    "conformance": null,
+    "capture": true,
+    "theoremsAudited": 1481
+  },
+  "counts": {
+    "kinds": [
+      {
+        "kind": "proved",
+        "have": 5,
+        "fail": 0,
+        "of": 5
+      },
+      {
+        "kind": "fuzzed",
+        "have": 1,
+        "fail": 0,
+        "of": 4
+      },
+      {
+        "kind": "tested",
+        "have": 0,
+        "fail": 0,
+        "of": 5
+      },
+      {
+        "kind": "seen",
+        "have": 5,
+        "fail": 0,
+        "of": 5
+      },
+      {
+        "kind": "assumed",
+        "have": 1,
+        "fail": 0,
+        "of": 1
+      }
+    ],
+    "headlines": {
+      "proved": 5,
+      "seen": 1,
+      "assumed": 1
+    }
+  },
+  "claims": [
+    {
+      "id": 1,
+      "ref": "^1",
+      "kind": "move",
+      "title": "Increment",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "1 theorem (sound press), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "gap",
+          "label": "not fuzzed",
+          "detail": "The app is fuzzed at the model level only (it has no `App` yet), where a move has no checks of its own: presence and pressability need a frame."
+        },
+        {
+          "kind": "tested",
+          "state": "gap",
+          "label": "not tested",
+          "detail": "Counter has no conformance generator yet (`tools/conformance/lean/Conformance/Apps/Counter.lean`)."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Pressed in the capture: before and after."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "sound press",
+          "theorem": "Examples.Counter.increment.press.sound",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "before": "flow-4-0.pinned.webp",
+        "after": "flow-4-1.pinned.webp",
+        "frames": [
+          "img/flow-4-0.pinned.webp",
+          "img/flow-4-1.pinned.webp"
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "ref": "^2",
+      "kind": "move",
+      "title": "Reset",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "1 theorem (sound press), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "gap",
+          "label": "not fuzzed",
+          "detail": "The app is fuzzed at the model level only (it has no `App` yet), where a move has no checks of its own: presence and pressability need a frame."
+        },
+        {
+          "kind": "tested",
+          "state": "gap",
+          "label": "not tested",
+          "detail": "Counter has no conformance generator yet (`tools/conformance/lean/Conformance/Apps/Counter.lean`)."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Pressed in the capture: before and after."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "sound press",
+          "theorem": "Examples.Counter.reset.press.sound",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "before": "flow-5-2.pinned.webp",
+        "after": "flow-5-3.pinned.webp",
+        "frames": [
+          "img/flow-5-2.pinned.webp",
+          "img/flow-5-3.pinned.webp"
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "ref": "^3",
+      "kind": "place",
+      "title": "Counter window",
+      "headline": "seen",
+      "evidence": [
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "The window, rendered from the app's initial frame."
+        }
+      ],
+      "theorems": [],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": [
+          "img/start-0.pinned.webp"
+        ]
+      }
+    },
+    {
+      "id": 4,
+      "ref": "^4",
+      "kind": "flow",
+      "title": "Count to three",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "2 theorems (live, reaches), standard axioms only."
+        },
+        {
+          "kind": "tested",
+          "state": "gap",
+          "label": "not tested",
+          "detail": "Counter has no conformance generator yet (`tools/conformance/lean/Conformance/Apps/Counter.lean`)."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Its 3 steps replayed in the capture, each on the control it names."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "live",
+          "theorem": "Examples.Counter.countToThree.live",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reaches",
+          "theorem": "Examples.Counter.countToThree.reaches",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": [
+          "img/flow-4-0.pinned.webp",
+          "img/flow-4-1.pinned.webp",
+          "img/flow-4-2.pinned.webp",
+          "img/flow-4-3.pinned.webp"
+        ],
+        "strip": "flow-4.strip.webp",
+        "complete": true
+      }
+    },
+    {
+      "id": 5,
+      "ref": "^5",
+      "kind": "flow",
+      "title": "Start over",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "2 theorems (live, reaches), standard axioms only."
+        },
+        {
+          "kind": "tested",
+          "state": "gap",
+          "label": "not tested",
+          "detail": "Counter has no conformance generator yet (`tools/conformance/lean/Conformance/Apps/Counter.lean`)."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Its 3 steps replayed in the capture, each on the control it names."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "live",
+          "theorem": "Examples.Counter.startOver.live",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reaches",
+          "theorem": "Examples.Counter.startOver.reaches",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": [
+          "img/flow-5-0.pinned.webp",
+          "img/flow-5-1.pinned.webp",
+          "img/flow-5-2.pinned.webp",
+          "img/flow-5-3.pinned.webp"
+        ],
+        "strip": "flow-5.strip.webp",
+        "complete": true
+      }
+    },
+    {
+      "id": 6,
+      "ref": "^6",
+      "kind": "invariant",
+      "title": "Moves never leave a press in progress",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "3 theorems (init, step, reachable), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 1k",
+          "detail": "Held in 1,000 random sequences of the model (no App yet), 51,000 steps checked (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "gap",
+          "label": "not tested",
+          "detail": "Counter has no conformance generator yet (`tools/conformance/lean/Conformance/Apps/Counter.lean`)."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "init",
+          "theorem": "Examples.Counter.noPressLeft.init",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "step",
+          "theorem": "Examples.Counter.noPressLeft.step",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachable",
+          "theorem": "Examples.Counter.noPressLeft.reachable",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": []
+      }
+    },
+    {
+      "id": 7,
+      "ref": "^7",
+      "kind": "assume",
+      "title": "The host reports clicks where they happen",
+      "headline": "assumed",
+      "evidence": [
+        {
+          "kind": "assumed",
+          "state": "pass",
+          "label": "assumed",
+          "detail": "Recorded, never proved. Theorems that rely on it take it as a hypothesis."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json`."
+        }
+      ],
+      "theorems": [],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": []
+      }
+    }
+  ],
+  "gaps": [
+    {
+      "ref": "^1",
+      "what": "not fuzzed",
+      "detail": "The app is fuzzed at the model level only (it has no `App` yet), where a move has no checks of its own: presence and pressability need a frame.",
+      "broken": false
+    },
+    {
+      "ref": "^1",
+      "what": "not tested",
+      "detail": "Counter has no conformance generator yet (`tools/conformance/lean/Conformance/Apps/Counter.lean`).",
+      "broken": false
+    },
+    {
+      "ref": "^2",
+      "what": "not fuzzed",
+      "detail": "The app is fuzzed at the model level only (it has no `App` yet), where a move has no checks of its own: presence and pressability need a frame.",
+      "broken": false
+    },
+    {
+      "ref": "^2",
+      "what": "not tested",
+      "detail": "Counter has no conformance generator yet (`tools/conformance/lean/Conformance/Apps/Counter.lean`).",
+      "broken": false
+    },
+    {
+      "ref": "^4",
+      "what": "not tested",
+      "detail": "Counter has no conformance generator yet (`tools/conformance/lean/Conformance/Apps/Counter.lean`).",
+      "broken": false
+    },
+    {
+      "ref": "^5",
+      "what": "not tested",
+      "detail": "Counter has no conformance generator yet (`tools/conformance/lean/Conformance/Apps/Counter.lean`).",
+      "broken": false
+    },
+    {
+      "ref": "^6",
+      "what": "not tested",
+      "detail": "Counter has no conformance generator yet (`tools/conformance/lean/Conformance/Apps/Counter.lean`).",
+      "broken": false
+    },
+    {
+      "ref": "^7",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json`.",
+      "broken": false
+    }
+  ],
+  "retiredElsewhere": []
+}
