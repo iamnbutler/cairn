@@ -152,6 +152,9 @@ enum SelfTest {
         let lean = engine.stats.summary(.lean)
         let gaps = zip(times.dropFirst(), times).map { ($0 - $1) * 1000 }.sorted()
         if rate < 30 { fail(String(format: "the overlay ticks at %.1f Hz", rate)) }
+        // The caption has grown past two lines; the paragraph keeps the last two, with the tick.
+        let lines: [String] = frame.surface(452)?.canvas.draws.compactMap { d -> String? in if case let .text(_, _, _, s) = d { s } else { nil } } ?? []
+        if lines.count != 2 || !(lines.last ?? "").contains("tick ") { fail("caption lines \(lines)") }
 
         // Hide it: the panel goes, and the subscription stops.
         choose("^454")

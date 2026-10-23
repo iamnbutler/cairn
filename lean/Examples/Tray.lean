@@ -15,7 +15,7 @@ menu bar status item and a non-activating, click-through overlay panel.
   (the items, or "None yet", then Clear Recent Items, disabled when there are none) and Quit
   Tray (⌘Q). Opening the menu is a press on ^453 and is counted on the status line.
 * **The overlay** shows 24 bars moving at 50 Hz (an `every 20` subscription while it is shown)
-  and a line of text. The bars are plain rects: the waveform path of decision 5 in
+  and a growing caption wrapped to its last two lines (`Node.para`, keep tail). The bars are plain rects: the waveform path of decision 5 in
   docs/surfaces.md, measured in bench/surfaces.md.
 
 | Id | Kind | What |
@@ -246,13 +246,24 @@ def bar (phase i : Nat) : Node :=
   .box { width := .fixed 8, height := .fixed (barHeight phase i), radius := 2,
          background := some barColor } none []
 
+/-- Words the caption grows by, one every ten ticks, like a live transcript. -/
+def words : List String :=
+  ["the", "overlay", "keeps", "its", "last", "two", "lines", "as", "the", "text", "grows"]
+
+/-- The overlay's text: a growing run of words, then the tick. Shown as a paragraph that keeps
+its last two lines (`Node.para`, keep tail), so the newest words and the tick stay in view. -/
+def caption (s : State) : String :=
+  let n := s.phase / 10
+  let ws := (List.range n).map fun i => words.getD (i % words.length) ""
+  " ".intercalate (s!"Tray overlay, {s.recent.length} recent:" :: ws) ++ s!" · tick {s.phase}"
+
 def overlayView (s : State) : Node :=
   .box { width := .fill, padding := ⟨14, 16, 14, 16⟩, gap := 10, radius := 12,
          background := some panelBg } none
     [ .box { axis := .row, width := .fill, height := .fixed 40, gap := 4, align := .finish }
         none ((List.range bars).map (bar s.phase)),
-      .text { font := { size := 13, weight := 500 }, color := textColor }
-        s!"Tray overlay: {s.recent.length} recent, tick {s.phase}" ]
+      .para { font := { size := 13, weight := 500 }, color := textColor }
+        { maxLines := some 2, keep := .tail } (caption s) ]
 
 def panel (s : State) : Option PanelView :=
   if s.overlay then some { width := 320, content := overlayView s } else none
