@@ -15,7 +15,7 @@ structure UI where
   pressed : Option ControlRef := none
   focus : Option ControlRef := none
   windowFocused : Bool := true
-deriving Repr, BEq, Inhabited
+deriving Repr, DecidableEq, Inhabited
 
 structure App (S : Type) where
   init : S
@@ -25,3 +25,6 @@ structure App (S : Type) where
   claims : List ClaimInfo
 
 end Cairn
+
+/-- `==` on `UI` is the lawful one from `DecidableEq`, so proofs can use it. -/
+example : LawfulBEq Cairn.UI := inferInstance
