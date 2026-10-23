@@ -393,6 +393,22 @@ def micFailed (s : State) (clip : Nat) (err : String) : State × List Cmd :=
     else (s, [])
   | none => (s, [])
 
+/-- Keep a transcript: at the front of the recent list, and in today's file if transcripts are
+kept (`Yap.remember`), then prune old days. -/
+def keep (s : State) (t : Transcript) : State × List Cmd :=
+  let s := { s with recent := remember t s.recent }
+  if s.settings.keepTranscripts then
+    ({ s with nextReq := s.nextReq + 1, reqs := (s.nextReq, .save) :: s.reqs }, [.save s.nextReq t, .listDays])
+  else (s, [])
+
+/-- Type the transcript into the app that was in front, with a trailing space so the next
+dictation doesn't fuse onto it, or with Return after it. -/
+def typeIt (s : State) (c : ClipReq) (t : Transcript) : State × List Cmd :=
+  let q := s.nextReq
+  ({ s with nextReq := q + 1, reqs := (q, .type c.clip t) :: s.reqs },
+   [.overlay c.clip (.text t.text),
+    .type q c.clip c.target.pid (if c.submits then t.text else t.text ++ " ") c.submits])
+
 /-- The whole clip's transcript came back: fix it, keep it, then type it unless it was
 cancelled since it was sent. Kept before typing, so a failed type can't lose it. -/
 def transcribed (s : State) (c : ClipReq) (raw : String) : State × List Cmd :=
@@ -400,26 +416,21 @@ def transcribed (s : State) (c : ClipReq) (raw : String) : State × List Cmd :=
   if text.isEmpty then ({ s with detail := "Heard nothing" }, [.overlay c.clip (.hide 0)])
   else
     let t : Transcript := { clip := some c.clip, text, app := c.target.name, typed := false }
-    let s := { s with recent := remember t s.recent }
-    let q := s.nextReq
-    let saved := if s.settings.keepTranscripts then [Cmd.save q t, .listDays] else []
-    let s := if s.settings.keepTranscripts then { s with nextReq := q + 1, reqs := (q, .save) :: s.reqs } else s
-    if c.turn ≠ s.turn then (s, saved)
-    else
-      let q := s.nextReq
-      ({ s with nextReq := q + 1, reqs := (q, .type c.clip t) :: s.reqs },
-       saved ++ [.overlay c.clip (.text text),
-                 .type q c.clip c.target.pid (if c.submits then text else text ++ " ") c.submits])
+    let k := keep s t
+    if c.turn = s.turn then
+      let y := typeIt k.1 c t
+      (y.1, k.2 ++ y.2)
+    else k
 
 /-- Mark the clip's transcript in the recent list. -/
 def setTyped (clip : Nat) (b : Bool) (recent : List Transcript) : List Transcript :=
   recent.map fun x => if x.clip = some clip then { x with typed := b } else x
 
-/-- Typing failed: the transcript is flagged in the recent list, put back at the front if newer
-ones pushed it out. -/
+/-- Typing failed: the transcript goes to the front of the recent list, flagged, even if newer
+ones had pushed it out (Swift remembers a transcript once typing is over, so a failed one is
+the newest too). -/
 def flagFailed (clip : Nat) (t : Transcript) (recent : List Transcript) : List Transcript :=
-  if recent.any (·.clip == some clip) then setTyped clip false recent
-  else remember { t with typed := false } recent
+  remember { t with typed := false } (recent.filter (·.clip != some clip))
 
 def typedOk (s : State) (clip : Nat) (t : Transcript) : State × List Cmd :=
   ({ s with recent := setTyped clip true s.recent, detail := s!"Typed {t.text.length} characters" },
@@ -450,7 +461,7 @@ def reply (s : State) (q : Nat) (x : Reply) : State × List Cmd :=
   match s.reqs.lookup q with
   | none => (s, [])  -- a duplicate, or a reply to nothing: ignored
   | some req =>
-    let s := { s with reqs := s.reqs.filter (·.1 != q) }
+    let s := { s with reqs := s.reqs.eraseP (·.1 == q) }
     match req, x with
     | .clip c, .ok raw => transcribed s c raw
     | .clip c, .failed e =>
@@ -482,21 +493,21 @@ def setKey (s : State) (k : Hotkey) : State × List Cmd :=
 
 /-- `config.json` was read (`Yap.reloadConfig`). The first read also loads the recent list and
 prunes old days, if transcripts are kept. -/
+def applySettings (s : State) (cfg : Settings) : State × List Cmd :=
+  let s := { s with settings := cfg }
+  match Hotkey.parse cfg.key with
+  | none => ({ s with detail := s!"config.json: no key called \"{cfg.key}\", still using {s.hotkey.name}" }, [])
+  | some k =>
+    let r := setKey s k
+    ((if r.1.recording.isNone ∧ transcribing r.1 = false then { r.1 with detail := ready r.1 } else r.1), r.2)
+
+def readConfig (s : State) : ConfigRead → State × List Cmd
+  | .unreadable e => ({ s with detail := s!"config.json won't parse, keeping the last settings: {e}" }, [])
+  | .missing => applySettings s {}
+  | .ok f => applySettings s f.settings
+
 def configured (s : State) (r : ConfigRead) : State × List Cmd :=
-  let res : State × List Cmd := match r with
-    | .unreadable e =>
-      ({ s with detail := s!"config.json won't parse, keeping the last settings: {e}" }, [])
-    | .missing | .ok _ =>
-      let cfg := match r with
-        | .ok f => f.settings
-        | _ => {}
-      let s := { s with settings := cfg }
-      match Hotkey.parse cfg.key with
-      | none => ({ s with detail := s!"config.json: no key called \"{cfg.key}\", still using {s.hotkey.name}" }, [])
-      | some k =>
-        let r := setKey s k
-        let s := r.1
-        ((if s.recording.isNone ∧ transcribing s = false then { s with detail := ready s } else s), r.2)
+  let res := readConfig s r
   let boot := if s.booting ∧ res.1.settings.keepTranscripts then [Cmd.listDays, .loadRecent recentLimit] else []
   ({ res.1 with booting := false }, res.2 ++ boot)
 
