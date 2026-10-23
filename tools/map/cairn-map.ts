@@ -22,6 +22,7 @@ const { values: opts, positionals } = parseArgs({
 	options: {
 		claims: { type: "string" },
 		app: { type: "string", default: "Counter" },
+		name: { type: "string" },
 		dir: { type: "string" },
 		root: { type: "string", default: resolve(import.meta.dir, "../..") },
 	},
@@ -83,18 +84,18 @@ function build() {
 
 	const conformable = existsSync(join(root, "tools/conformance/lean/Conformance/Apps", `${app}.lean`));
 	const rows = evaluate({ app, claims, audit, lock, fuzz, trusted, conformance, capture, conformable }, image);
-	const ours = new Set(claims.map((c) => c.id));
-	const retiredElsewhere = lock.filter((l) => !ours.has(l.id) && l.status === "retired");
 
+	// An app-less map (the trusted base's assumptions) has nothing to fuzz, run or capture.
+	const isApp = claims.some((c) => c.kind !== "assume");
 	const inputs = [
 		`Audit: ${Object.keys(audit.theorems).length.toLocaleString("en")} theorems.`,
-		fuzz ? `Fuzz: ${fuzz.iterations.toLocaleString("en")} sequences${fuzz.mode === "model" ? " of the model" : ""}, seed ${fuzz.seed}.` : `Fuzz: not run (\`make fuzz APP=${app}\`).`,
-		conformance ? `Conformance: ${conformance.runs?.toLocaleString("en") ?? "?"} walks${conformance.commit ? ` at \`${conformance.commit}\`` : ""}.` : `Conformance: ${conformable ? "not run" : "no generator yet"}.`,
-		capture ? `Capture: ${capture.sequences.length} sequences, headless.` : `Capture: not run.`,
-		trusted ? `Trusted base: \`build/fuzz/trusted.json\`.` : "",
+		!isApp ? "" : fuzz ? `Fuzz: ${fuzz.iterations.toLocaleString("en")} sequences${fuzz.mode === "model" ? " of the model" : ""}, seed ${fuzz.seed}.` : `Fuzz: not run (\`make fuzz APP=${app}\`).`,
+		!isApp ? "" : conformance ? `Conformance: ${conformance.runs?.toLocaleString("en") ?? "?"} walks${conformance.commit ? ` at \`${conformance.commit}\`` : ""}.` : `Conformance: ${conformable ? "not run" : "no generator yet"}.`,
+		!isApp ? "" : capture ? `Capture: ${capture.sequences.length} sequences, headless.` : `Capture: not run.`,
+		trusted ? `Trusted base: ${Object.keys(trusted.checks ?? {}).length} checks${trusted.n ? `, ${trusted.n.toLocaleString("en")} cases a suite` : ""}${trusted.seed ? `, seed ${trusted.seed}` : ""}.` : "",
 	].filter(Boolean);
 
-	const pages = render({ app, rows, size: (f) => sizes.get(f), inputs, retiredElsewhere, code: "https://github.com/iamnbutler/cairn/blob/main/" });
+	const pages = render({ app: opts.name || app, rows, size: (f) => sizes.get(f), inputs, code: "https://github.com/iamnbutler/cairn/blob/main/" });
 	for (const [file, html] of Object.entries(pages)) writeFileSync(join(DIST, file), html);
 	cpSync(join(import.meta.dir, "style.css"), join(DIST, "style.css"));
 	cpSync(join(root, "site/public/icon.svg"), join(DIST, "icon.svg"));
@@ -122,7 +123,6 @@ function build() {
 					shots: { ...r.shots, frames: r.shots.frames.map((f) => `img/${f}`) },
 				})),
 				gaps: gaps(rows).map((g) => ({ ref: g.row.claim.ref, what: g.what, detail: g.detail, broken: g.broken })),
-				retiredElsewhere,
 			},
 			null,
 			2,

@@ -8,7 +8,8 @@ comes from evidence.
 
 ```sh
 make map APP=Counter        # writes build/map/Counter/dist/; open build/map/Counter/dist/index.html
-make site-maps              # fuzz, conformance and map for Counter, Basics and Todo → site/public/map/
+make map-trusted            # the trusted base's assumptions → build/map/Trusted/dist/
+make site-maps              # fuzz, conformance and map for Counter, Basics, Todo and the trusted base → site/public/map/
 ```
 
 `make map` reads whatever evidence is already in `build/`: run `make fuzz APP=<App>` and
@@ -74,7 +75,7 @@ The kinds, strongest first. This order is the ladder:
 | Kind | Computed from | Passes when |
 |---|---|---|
 | **proved** | `audit.json` | every theorem the claim names (each move handler's `sound`; a flow's `live` and `reaches`; an invariant's `init`, `step`, `reachable`) is in the audit and depends only on `propext`, `Classical.choice`, `Quot.sound` |
-| **fuzzed** | `build/fuzz/<App>.json` ([fuzz.md](fuzz.md)); for an assumption, `build/fuzz/trusted.json` | the claim's checks held in every random sequence that exercised it; shown as `fuzzed N`, N sequences |
+| **fuzzed** | `build/fuzz/<App>.json` ([fuzz.md](fuzz.md)); for an assumption, `build/fuzz/trusted.json` | the claim's checks held in every random sequence that exercised it, shown as `fuzzed N` (N sequences); for an assumption, every trusted-base check naming it held (N cases) |
 | **tested** | `build/conformance/<App>.json` ([conformance.md](conformance.md)) | the running app matched the model at every step that exercised it; `tested N`, N steps, for a move |
 | **seen** | the capture | a move's control is in a captured frame; a flow's whole witness was replayed, each step on the control it names; a place's window was rendered |
 | **assumed** | the claim is an `assume` | always: it is stated, never proved |
@@ -127,7 +128,7 @@ wasn't accepted).
 | `<place>.html` | one per place: the window as the app starts, pinned; each move with its does and sees, its evidence and what each rests on, its theorems, its source, and before and after screenshots from a step that performed it; each flow that starts there, with its witness (linking to the moves) and a filmstrip of the replay |
 | `guarantees.html` | invariants and assumptions |
 | `elsewhere.html` | moves and flows that name no place, if any |
-| `evidence.html` | one row per claim with every kind of evidence, its theorems and its ledger state; retired ids no module declares; the ladder |
+| `evidence.html` | one row per claim with every kind of evidence, its theorems and its ledger state; the ladder |
 | `evidence.json` | the same rows, the counts and the gaps, for anything that wants its own view |
 
 A flow lives on the page of its place, or of the place of its first witness step. A move can recur
@@ -156,11 +157,17 @@ opened from disk they don't, and nothing else changes.
 **Fuzz** (`build/fuzz/<App>.json`, docs/fuzz.md): `mode`, `seed`, `iterations`, and per claim
 `pass` (`true`, `false`, or `null` with a `note`), `sequences`, `steps` and `failure`.
 
-**Trusted base** (`build/fuzz/trusted.json`, workstream M, optional). Read per assumption's ref,
-like the fuzz file: `{"claims": {"^7": {"pass": true, "sequences": 1000, "check": "…"}}}`, or an
-`assumptions` array of the same objects with `ref` (or `claim`, the number). `pass: null` is a
-gap; `sequences`, `runs` or `iterations` gives N in `fuzzed N`. Without the file, every
-assumption's fuzzed entry is a gap: nothing checks it.
+**Trusted base** (`build/fuzz/trusted.json`, `make fuzz-trusted`; docs/fuzz.md, "Trusted base").
+The map reads `checks`: each check lists the `assume` claims it is evidence for (`claims`), with
+`pass` (`null` when it ran no cases), `cases`, `suite` and the first `failures`. An assumption is
+`fuzzed N` when every check naming it passed, N being their cases together; `fuzz fails`, with
+the `CairnFuzzTrusted --replay` command, when one failed; and a gap when no check names it (an
+app's own assumptions, such as Counter's ^7) or its check ran no cases.
+
+The trusted base's assumptions (`Cairn.Fuzz.Trusted.Claims`) belong to no app, so they get a
+map of their own: `make map-trusted` exports that module's claims and builds
+`build/map/Trusted/dist/` with no capture (`cairn-map.ts build --app Trusted --name "Trusted
+base"`).
 
 ## What is not yet evidenced
 
@@ -178,13 +185,13 @@ assumption's fuzzed entry is a gap: nothing checks it.
 - **Prose isn't checked:** `does` and `sees` are shown as written; nothing proves `sees` matches
   `post` (docs/claims.md).
 - **Kernel replay** is whole-build (`make kernel` in `make check`), not per theorem.
-- **Counter has no conformance generator** (`tools/conformance/lean/Conformance/Apps/`), so its
-  moves, flows and invariant have a `tested` gap.
-- **Retired ids no module declares** are listed on the Evidence page from `claims.lock`; they
-  can't be attributed to an app.
 
 ## Publishing
 
 `build/map/<App>/dist/` is not committed. `make site-maps` copies each app's in `MAP_APPS` into
-`site/public/map/<app>/`, where the site links to them; the lead deploys from main
-(docs/media.md).
+`site/public/map/<app>/`, and the trusted base's into `site/public/map/trusted/`, where the site
+links to them; the lead deploys from main (docs/media.md).
+
+Every retired claim is still declared (`retire` leaves a tombstone in its module), so it shows on
+its app's map as retired, with its reason: on its place's page, on the guarantees page, or, for a
+move or flow that names no place, at the foot of the index.

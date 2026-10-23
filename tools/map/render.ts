@@ -12,7 +12,6 @@ export type Context = {
 	size: (file: string) => [number, number] | undefined;
 	/** A line on what the build had: fuzz, conformance, capture, audit. */
 	inputs: string[];
-	retiredElsewhere: { id: number; title: string }[];
 	code: string;
 };
 
@@ -171,7 +170,7 @@ ${p.place.shots.frames[0] ? `<div class="hero">${img(p.place.shots.frames[0], `$
 		"index.html",
 		`${app} map`,
 		`<header class="page"><div class="eyebrow">Cairn · map</div><h1>${esc(app)}</h1>
-<p class="lede">Every claim ${esc(app)} makes, and the evidence the build has for each: what Lean proved, what the fuzzer and the conformance driver ran, and what a capture of the app shows.</p></header>
+<p class="lede">${rows.every((r) => r.claim.kind === "assume") ? `What Cairn's proofs take on trust about the code Lean can't see (docs/trusted.md), and the fuzzing that checks each assumption against Lean's proved side.` : `Every claim ${esc(app)} makes, and the evidence the build has for each: what Lean proved, what the fuzzer and the conformance driver ran, and what a capture of the app shows.`}</p></header>
 <section class="summary"><div class="card px">
 <div class="tiles">${n.kinds.map(tile).join("")}</div>
 <div class="spread" aria-hidden="true">${spread}</div>
@@ -196,7 +195,6 @@ ${retiredHere.length ? `<h2 id="retired">Retired <span class="n">${retiredHere.l
 <p class="lede">One row per claim, every column computed from the build. Hover a chip for what it rests on.</p></header>
 <div class="wrap"><table class="claims"><thead><tr><th>Id</th><th>Kind</th><th>Claim</th><th>Reads as</th>${KINDS.map((k) => `<th>${k}</th>`).join("")}<th>Theorems (axiom audit)</th><th>Ledger</th></tr></thead>
 <tbody>${rows.map(evRow).join("\n")}</tbody></table></div>
-${ctx.retiredElsewhere.length ? `<h2>Retired elsewhere</h2><p class="prose">Retired ids in <code>claims.lock</code> that no module declares any more: ${ctx.retiredElsewhere.map((l) => `<code>^${l.id}</code> ${esc(l.title)}`).join(", ")}.</p>` : ""}
 <h2 id="ladder">The ladder</h2>
 <div class="prose">
 <p>A claim shows every kind of evidence it has. It <em>reads as</em> the strongest of them, so a proved invariant reads as proved whatever else ran. Strongest first:</p>

@@ -59,12 +59,17 @@ test("a failure anywhere makes the claim broken", () => {
 
 test("assumptions read as assumed, and trusted-base fuzzing adds a chip", () => {
 	expect(evaluate(inputs([claim(7, "assume")]))[0]!.marks.map((m) => `${m.label}:${m.state}`)).toEqual(["assumed:pass", "unchecked:gap"]);
-	const trusted = { claims: { "^7": { pass: true, sequences: 2000 } } };
-	const [r] = evaluate(inputs([claim(7, "assume")], { trusted }));
+	const check = (pass: boolean | null, cases = 20000) => ({ suite: "frame", claims: ["^7"], cases, pass, failures: pass === false ? [{ case: 17, seed: "0", message: "differs" }] : [] });
+	const [r] = evaluate(inputs([claim(7, "assume")], { trusted: { seed: "0", checks: { "frame.decode": check(true) } } }));
 	expect(r!.headline).toBe("assumed");
-	expect(r!.marks.map((m) => m.label)).toEqual(["assumed", "fuzzed 2k"]);
-	const [a] = evaluate(inputs([claim(7, "assume")], { trusted: { assumptions: [{ claim: 7, pass: false, note: "x" }] } }));
+	expect(r!.marks.map((m) => m.label)).toEqual(["assumed", "fuzzed 20k"]);
+	const [a] = evaluate(inputs([claim(7, "assume")], { trusted: { checks: { "frame.decode": check(true), "frame.other": check(false) } } }));
 	expect(a!.headline).toBe("broken");
+	expect(a!.marks[1]!.detail).toContain("--replay frame --case 17");
+	const [b] = evaluate(inputs([claim(8, "assume")], { trusted: { checks: { "frame.decode": check(true) } } }));
+	expect(b!.marks[1]!.state).toBe("gap"); // no check names ^8
+	const [c] = evaluate(inputs([claim(7, "assume")], { trusted: { checks: { "frame.decode": check(null, 0) } } }));
+	expect(c!.marks[1]!.state).toBe("gap"); // ran no cases
 });
 
 test("retired claims have no evidence and no gaps; a changed meaning is a finding", () => {

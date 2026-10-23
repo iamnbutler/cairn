@@ -5,7 +5,7 @@ LEAN_PREFIX = $(shell cd lean && lean --print-prefix)
 LIB = build/lib/libcairn_lean.a
 VENDOR = host/Sources/CLean/vendor/lean
 
-.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest demo fixture clean record site site-maps map conformance fuzz fuzz-quick fuzz-yap size fuzz-trusted fuzz-trusted-quick bundle yap yap-install
+.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest demo fixture clean record site site-maps map map-trusted conformance fuzz fuzz-quick fuzz-yap size fuzz-trusted fuzz-trusted-quick bundle yap yap-install
 
 # build/lib/libcairn_lean.a: the framework (`Cairn`) and Lean's runtime, linked by every host
 # target. Each app gets its own library on top (APPS: library → file), and each executable
@@ -138,7 +138,8 @@ build/bin/record: tools/record/main.swift
 	mkdir -p build/bin
 	swiftc -O $< -o $@
 
-# Copy the Counter, Basics and Todo maps into the microsite (site/public/map/<app>/), building them
+# Copy the Counter, Basics and Todo maps, and the trusted base's, into the microsite
+# (site/public/map/<app>/, site/public/map/trusted/), building them
 # first with fresh evidence: fuzzing for each, and conformance for each app with a generator
 # (it shows the app's window while it runs; CONFORMANCE=0 skips it and keeps any earlier run).
 # A failing fuzz or conformance run doesn't stop it: the failure is evidence, and the map shows it.
@@ -150,8 +151,11 @@ site-maps:
 			$(MAKE) conformance APP=$$a || echo "site-maps: conformance on $$a failed; its map shows it"; fi; \
 		$(MAKE) map APP=$$a || exit 1; \
 	done
+	$(MAKE) fuzz-trusted || echo "site-maps: the trusted-base fuzzer failed; its map shows it"
+	$(MAKE) map-trusted
 	rm -rf site/public/map && mkdir -p site/public/map
 	@for a in $(MAP_APPS); do cp -R build/map/$$a/dist site/public/map/$$(echo $$a | tr A-Z a-z); done
+	cp -R build/map/Trusted/dist site/public/map/trusted
 
 # Deploy the microsite (site/) to Cloudflare.
 site:
@@ -174,6 +178,15 @@ map: host
 	rm -rf $(MAPDIR)/capture
 	cd host && swift run Cairn$(APP) --map-capture ../$(MAPDIR)/script.json ../$(MAPDIR)/capture
 	bun tools/map/cairn-map.ts build --app $(APP) --dir $(MAPDIR)
+
+# The trusted base's assumptions (Cairn.Fuzz.Trusted.Claims) as a map of their own: no app, so
+# no capture; the evidence is build/fuzz/trusted.json from `make fuzz-trusted`.
+map-trusted: lean
+	mkdir -p build/map/Trusted
+	cd lean && lake build claims audit TrustedClaims
+	cd lean && lake exe claims Cairn.Fuzz.Trusted.Claims > ../build/map/Trusted/claims.json
+	cd lean && lake env .lake/build/bin/audit --json ../build/map/Trusted/audit.json > /dev/null
+	bun tools/map/cairn-map.ts build --app Trusted --name "Trusted base" --dir build/map/Trusted
 
 # Conformance (docs/conformance.md): the Lean model's sequences replayed on the running app
 # through its debug socket. `make conformance APP=Basics [N=1000] [LEN=12] [SEED=1]` writes

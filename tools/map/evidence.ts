@@ -34,10 +34,18 @@ export type Conformance = { runs?: number; commit?: string; claims: Record<strin
 /** `build/fuzz/<App>.json` (docs/fuzz.md). */
 export type FuzzClaim = { pass: boolean | null; steps?: number; sequences?: number; note?: string; failure?: { check: string; seed: number; step: number; message: string } };
 export type Fuzz = { mode?: string; seed: number; iterations: number; stepsRun: number; claims: Record<string, FuzzClaim> };
-/** `build/fuzz/trusted.json` (workstream M, optional): assumptions checked by fuzzing the
- *  trusted base. Read per claim ref, like the app's fuzz file; see docs/map.md. */
-export type TrustedClaim = { pass: boolean | null; sequences?: number; runs?: number; iterations?: number; note?: string; check?: string };
-export type Trusted = { claims?: Record<string, TrustedClaim>; assumptions?: (TrustedClaim & { ref?: string; claim?: number })[] };
+/** `build/fuzz/trusted.json` (`make fuzz-trusted`, docs/fuzz.md "Trusted base"): one entry per
+ *  check of the trusted base, naming the `assume` claims it is evidence for. */
+export type TrustedCheck = {
+	suite?: string;
+	claims?: string[];
+	cases?: number;
+	failingCases?: number;
+	pass: boolean | null;
+	evidence?: string;
+	failures?: { case: number; seed: string; message: string }[];
+};
+export type Trusted = { seed?: string; n?: number; checks: Record<string, TrustedCheck> };
 /** The headless capture (`Cairn<App> --map-capture`). */
 export type Control = { ref: string; claim: number; key: number; role: string; label: string; rect: number[] };
 export type Shot = { image: string; pinned: string; width: number; height: number; controls: Control[] };
@@ -178,11 +186,19 @@ export function evaluate(inp: Inputs, image: (file: string) => string = (f) => f
 				mark("fuzzed", "fail", "fuzz fails", x ? `${x.check} failed at seed ${x.seed}, step ${x.step}: ${x.message}. Replay with \`lake exe fuzz ${app} --seed ${x.seed} --iterations 1 -v\`.` : `Fuzzing failed${f.note ? `: ${f.note}` : "."}`);
 			}
 		} else if (c.kind === "assume") {
-			const t = trusted.get(c.ref);
-			const n = t?.sequences ?? t?.runs ?? t?.iterations;
-			if (!t || t.pass === null) mark("fuzzed", "gap", "unchecked", inp.trusted ? "The trusted-base fuzzer doesn't check it." : "Nothing checks it: no `build/fuzz/trusted.json`.");
-			else if (t.pass) mark("fuzzed", "pass", n ? `fuzzed ${short(n)}` : "fuzzed", `The trusted-base fuzzer checked it${t.check ? ` (${t.check})` : ""}${n ? ` in ${plural(n, "case")}` : ""}, with no counterexample.`);
-			else mark("fuzzed", "fail", "fuzz fails", `The trusted-base fuzzer found a counterexample${t.note ? `: ${t.note}` : "."}`);
+			const checks = trusted.get(c.ref) ?? [];
+			const ran = checks.filter(([, t]) => t.pass !== null);
+			const failed = ran.filter(([, t]) => t.pass === false);
+			const cases = ran.reduce((n, [, t]) => n + (t.cases ?? 0), 0);
+			const names = checks.map(([name]) => `\`${name}\``).join(", ");
+			if (!inp.trusted) mark("fuzzed", "gap", "unchecked", "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).");
+			else if (!checks.length) mark("fuzzed", "gap", "unchecked", "No check of the trusted-base fuzzer names it.");
+			else if (failed.length) {
+				const [name, t] = failed[0]!;
+				const f = t.failures?.[0];
+				mark("fuzzed", "fail", "fuzz fails", `The trusted-base check \`${name}\` ${t.evidence ?? "failed"}${f ? `: ${f.message}. Replay with \`host/.build/release/CairnFuzzTrusted --replay ${t.suite ?? name} --case ${f.case} --seed ${f.seed}\`` : ""}.`);
+			} else if (ran.length < checks.length) mark("fuzzed", "gap", "unchecked", `Its check ${names} ran no cases.`);
+			else mark("fuzzed", "pass", `fuzzed ${short(cases)}`, `The trusted-base fuzzer's ${names} held in ${plural(cases, "case")}, against Lean's proved side (seed ${inp.trusted.seed ?? "?"}).`);
 		}
 
 		// Tested: conformance on the running app.
@@ -274,13 +290,10 @@ export function counts(rows: Row[]) {
 	return { kinds, headlines, live: live.length, total: rows.length };
 }
 
+/** Each assumption's checks in `trusted.json`, by claim ref. */
 function trustedClaims(t: Trusted | null) {
-	const m = new Map<string, TrustedClaim>();
-	for (const [ref, v] of Object.entries(t?.claims ?? {})) m.set(ref, v);
-	for (const a of t?.assumptions ?? []) {
-		const ref = a.ref ?? (a.claim !== undefined ? `^${a.claim}` : undefined);
-		if (ref && !m.has(ref)) m.set(ref, a);
-	}
+	const m = new Map<string, [string, TrustedCheck][]>();
+	for (const [name, check] of Object.entries(t?.checks ?? {})) for (const ref of check.claims ?? []) m.set(ref, [...(m.get(ref) ?? []), [name, check]]);
 	return m;
 }
 
