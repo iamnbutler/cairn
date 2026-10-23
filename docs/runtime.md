@@ -11,7 +11,6 @@ names a control on screen, and every control names a claim.
 | `Step.lean` | `Config`, `State`, `route`, `settle`, `step`, `steps`, `start`, `cursor` |
 | `Proofs.lean` | soundness of focus/hover/press, no action without a control, step-level pressable |
 | `Abi.lean` | `Boundary`, `initState`, `stepBytes`, `frameBytes` (the Lean side of the app ABI) |
-| `Stub.lean` | **stand-ins** for E's frame/encoding, until it lands |
 | `Tests.lean` | `#guard` checks on a small app |
 
 ## State
@@ -191,9 +190,11 @@ lean_object *cairn_app_frame(lean_object *state);                     // consume
 ```lean
 structure Boundary where
   decode : ByteArray → List Event
-  render : Laid → Size → Frame     -- E's Frame.ofLaid; the runtime fills cursor and effects
+  render : Laid → UI → Frame       -- Frame.ofLaid; the runtime fills cursor and effects
   encode : Frame → ByteArray
 ```
 
-Until E lands, `Stub.decode` and `Stub.encode` speak the spike's v0 formats (pointer down/up and
-resize; quads and accessibility nodes), so the spike host can already drive a runtime app.
+`Cairn.Frame.boundary` (`Cairn/Frame/Boundary.lean`) is the real one: v1 event decoding,
+`Frame.ofLaid` and v1 frame encoding ([frame.md](frame.md)). `render` takes the whole `UI` because
+the frame needs the focus (accessibility `focused`, the caret, the text-input state) as well as
+the size. A batch that fails to decode is dropped whole.
