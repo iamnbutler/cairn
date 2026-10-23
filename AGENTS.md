@@ -31,12 +31,36 @@ evidence. Read [GOAL.md](GOAL.md) for what we are building now and
 - **Lean dependencies:** none beyond core and Std for now (no Mathlib), to keep builds fast.
 - **Measure, don't guess.** Performance claims come with numbers in `bench/`.
 
+## Writing Lean
+
+From [research/lean/](research/lean/), measured on our toolchain:
+
+- **Banned:** `implemented_by` (runs unchecked code), `debug.skipKernelTC`, `native_decide`,
+  `bv_decide` (each adds its own axiom) and `axiom`. `make lint` greps for them. `make kernel`
+  replays every declaration through the kernel, because the axiom audit can't see a skipped
+  kernel check.
+- **Spec and fast code:** pair them with `@[csimp]` and a proof. `partial def` is opaque to proofs.
+- **Recursion over `Node` and `Laid`:** `children.map f` silently becomes well-founded and
+  irreducible, so `rfl`, `decide` and `#guard` stop working. Write a structural pair (`f` with
+  `where go : List Node → _`, or `mutual`) and prove with mutual theorems or `f.induct`.
+  `deriving DecidableEq` doesn't work on nested inductives; hand-write it.
+- **Bytes:** write encoding specs arithmetically (`toNat`, `/`, `%`, `*`) over `List UInt8`,
+  close round trips with `omega`, and bridge to `ByteArray` and shift-based fast paths once.
+- **No `import Lean` in anything the host links.** It makes a small app about 100 MB. Commands
+  and elaborators live in modules that apps use only at compile time.
+- **Tactics:** `omega` for integer geometry; `simp only [...]` and `grind only [...]` in committed
+  proofs; `decide +kernel` for bounded enumerations; `decidable_of_iff` for instances.
+- **Performance:** don't alias arrays you update (old frames, undo snapshots), and don't share
+  live state with a `Task`; either one copies on every write. Run benches with
+  `LEAN_ABORT_ON_NONLINEAR=1` to catch it. The host's Lean thread needs a large stack (64 MB).
+- Only `ByteArray`s cross to Swift, never Lean structures: Lean reorders their scalar fields.
+
 ## Toolchain
 
 - Lean via elan, pinned in `lean/lean-toolchain`. `export PATH=$HOME/.elan/bin:$PATH` if `lake`
   is missing.
 - Swift 6 and the Metal toolchain from Xcode.
-- `make build`, `make check` (Lean build, axiom audit, ledger check, Swift build and tests),
+- `make build`, `make check` (lint, Lean build, axiom audit, kernel replay, Swift build and tests),
   `make demo`.
 
 ## Workflow: lane

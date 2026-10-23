@@ -70,3 +70,26 @@ A, B, C, D, E, F, G and H start now. I, J and K start as their inputs land.
   that don't link the host (bench, audit, tests) use the mono metrics.
 - **G** owns the Swift package layout (`Package.swift`) and the `Makefile`; others add their
   target or rule in their PR and G keeps it tidy.
+
+## Decisions
+
+Answers to questions raised in workstream PRs. Newest last.
+
+- **Replacement ranges (2026-10-23).** `Event.insertText` and `Event.setMarked` carry
+  `replace : Option (Nat × Nat)` in scalar indices; the runtime selects the clamped range, then
+  applies the op. Press-and-hold accents, Korean input and reconversion need it.
+- **Text is left-to-right only in M1.** The host enforces `TextMetrics.Valid` (running max), and
+  Lean re-checks it (`TextMetrics.host_valid`). RTL and bidi carets are out of scope.
+- **Editing is per Unicode scalar in M1.** Grapheme-cluster deletion and ICU word boundaries
+  may come later from the host, like metrics. Known limitation: `👍🏽` takes two Backspaces.
+- **Hit testing:** opaque boxes and text without a control block clicks; a label inside a
+  button routes to the button. `LayoutFacts` is stated that way.
+- **Focusable controls** are chosen by role (`group`, `text`, `heading`, `list` are skipped).
+  Apps pick roles accordingly; anything that acts is a button, checkbox, field, link or tab.
+- **Fonts across the boundary** convert `Nat` to `UInt32` by saturating, as `Text.Host.sat` does,
+  so layout and painting always name the same font.
+- **Effects** ride on the frame of the step that produced them; the host runs them once per
+  step.
+- **Double-click word selection** in fields is deferred; it needs a word-select `TextOp`.
+- **The pressed-relayout hypothesis** in `click_presses` stays. Apps whose controls don't move
+  when pressed discharge it with the same layout fact.
