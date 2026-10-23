@@ -11,7 +11,7 @@ The moves' own evidence (`post` for every enabled state), the invariants ^212 an
 flows ^216–^224 are checked where they are declared, in `Examples.Todo`. This file proves what
 depends on the view and layout:
 
-- **presence** (GOAL.md M1): a control tagged with a move's id is in the view, and so in every
+- **presence** (M1, docs/goals/m1.md): a control tagged with a move's id is in the view, and so in every
   frame's accessibility tree, exactly when the move is enabled. The keyed moves follow from one
   lemma about keyed lists (`mem_flatMap_keyed`).
 - **pressable**: in a window at least `minWidth` wide and `height s` tall, with **any** text
@@ -497,7 +497,7 @@ theorem view_pressable (s : State) (ui : UI) (m : TextMetrics) (w : Size)
   unfold view at hf ⊢
   exact hitTest_center_of_fitsIn rfl rfl hf
 
-/-- **Pressable, per move** (GOAL.md M1): for every move of the machine enabled at key `k`, its
+/-- **Pressable, per move** (M1, docs/goals/m1.md): for every move of the machine enabled at key `k`, its
 control is on screen, and hit testing at the control's centre returns that control, in any
 window at least `minWidth` × `height s`, with any metrics. -/
 theorem enabled_pressable (s : State) (ui : UI) (m : TextMetrics) (w : Size)

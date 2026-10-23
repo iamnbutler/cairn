@@ -1,6 +1,6 @@
 # Conformance
 
-GOAL.md, "Done means" item 5: sequences of moves are generated from the Lean model and performed
+[M1](goals/m1.md), "Done means" item 5: sequences of moves are generated from the Lean model and performed
 on the running app as real input. After every step, the app's frame, accessibility tree, effects
 and pixels are compared with the model's.
 

@@ -14,7 +14,8 @@ window, events, text and accessibility; and Metal for painting.
 
 - [cairn.iamnbutler.workers.dev](https://cairn.iamnbutler.workers.dev): the site, with demo videos of
   each step.
-- [GOAL.md](GOAL.md): the first demo, a proved TodoMVC on the Mac, and what done means.
+- [GOAL.md](GOAL.md): what we are building now, M2: Yap, a dictation app Nate uses every day, rebuilt on Cairn.
+- [docs/goals/m1.md](docs/goals/m1.md): M1, a proved TodoMVC on the Mac.
 - [docs/architecture.md](docs/architecture.md): how the pieces fit.
 
 MIT licensed.

@@ -1,7 +1,7 @@
 # Plan to M1
 
 The boundary spike landed (`docs/spike-boundary.md`). This page splits the rest of
-[GOAL.md](../GOAL.md) into workstreams that can run in parallel, each owning its own files, all
+[the M1 goal](goals/m1.md) into workstreams that can run in parallel, each owning its own files, all
 coding against the contracts below.
 
 ## Contracts (landed first, change by PR only)

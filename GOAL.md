@@ -1,71 +1,72 @@
-# Goal: M1, a proved TodoMVC on the Mac
+# Goal: M2, Yap on Cairn
 
 Cairn is research into building user interfaces where every thing a person can do is a
-**claim** with a durable id, and every claim carries machine-checked evidence. M1 is the first
-demo that shows the whole loop end to end on a small, well-known app.
+**claim** with a durable id, and every claim carries machine-checked evidence. M1
+([docs/goals/m1.md](docs/goals/m1.md)) showed the loop on TodoMVC, a closed app with one window
+and no outside world. M2 asks whether it holds up on real software someone uses every day.
 
-TodoMVC is the subject because it is small, completely specified, has text input, and is the
-benchmark formal UI testing already uses: Quickstrom's temporal-logic spec found bugs in about
-half of its implementations. It is big enough to need every layer of the stack and small enough
-to finish.
+The subject is [Yap](https://github.com/iamnbutler/yap) (`~/code/yap`), Nate's dictation app for
+the Mac: hold or tap a key, talk, and the transcript is typed into the app in front. It is small
+(about 1,500 lines of Swift), but almost all of it is outside the window: a global key, the
+microphone, timers, a network request, files, sounds, and typing into another app. Its UI is a
+menu bar menu and an overlay that never takes focus. TodoMVC needed none of that.
+
+The existing Yap is the reference. Read it; don't change it.
 
 ## The demo
 
-`make demo` opens a native macOS window running TodoMVC. Its state, update, view, layout, hit
-testing, focus and text editing are written in Lean. A thin Swift host turns events into bytes and
-paints Lean's frames with Metal.
+`make yap` builds and installs a signed `Yap (Cairn).app`. Nate uses it instead of Yap for a day
+of real work. Its state, its decisions and its menus are Lean; Swift captures audio, hears the
+key, makes the request, writes files and types the text, each one an effect Lean asked for.
 
 ## Done means
 
-1. **The app.** Every behaviour in the TodoMVC spec works: add with Enter (trimmed, empty ignored),
-   toggle, toggle all, edit on double-click (Enter or blur saves, Escape cancels, empty deletes),
-   delete (shown on hover), filters All, Active and Completed, clear completed, and the item
-   counter with its plural. Text fields support typing, caret movement, selection, deletion,
-   copy and paste, and IME composition.
-2. **Claims.** Every action a person can take is a `move` with a durable id. Flows, invariants and
-   assumptions are claims too. `claims.lock` records every id ever issued; the build fails when
-   one disappears, is reused, or has no description.
-3. **Proofs.** Checked by Lean, with no `sorry` and no axioms beyond Lean's standard three
-   (`propext`, `Classical.choice`, `Quot.sound`), enforced by an audit in `make check`:
-   - each move does what its claim says (`post`);
-   - the invariants hold in every reachable state: the counter equals the active items, the
-     visible list is the filter applied to the items, item ids are unique;
-   - **presence:** a control tagged with a move's id is in the frame if and only if the move is
-     enabled;
-   - **pressable:** for every enabled pointer move, at window sizes at or above the minimum, hit
-     testing at its control's centre returns that move, so it is visible, unclipped and on top;
-   - the frame and event encodings round-trip (`decode (encode x) = x`);
-   - every flow has a checked witness path from the initial state.
-4. **The host.** Swift and Metal on three threads (AppKit main, a Lean thread that owns the state,
-   a render thread). The main thread never waits on Lean. Text is shaped by Core Text and drawn
-   from a glyph atlas. Every node is mirrored as an accessibility element whose identifier is its
-   claim id (`^12`).
-5. **Conformance.** A driver generates move sequences from the Lean model, performs them on the
-   running app through its debug socket as real pointer and key events, and compares the
-   accessibility tree and the frame with the model after every step. Pixel probes check that each
-   control's box is painted. 1,000 generated sequences pass.
-6. **Measured.** Lean's update + view + layout + encode time at 100, 1,000 and 10,000 nodes, and
-   frame times in the running app, recorded in `bench/`.
-7. **The map is a build output.** The claims compile to a map (the map skill's format) with an
-   evidence column computed from the build: proved, model-checked, conformance-tested, seen.
-   Screenshots come with pins placed from the layout, not by hand.
-8. **Written down.** `docs/trusted.md` lists everything the proofs trust, and why each item is
-   checked another way. `docs/frame.md` specifies the boundary byte format.
+1. **The app.** Everything in Yap's README works: hold to talk and release to send; tap (under
+   0.3 s) for hands free and tap again to send; a key used in a shortcut cancels; hands free sends
+   on its own after 10 minutes; clips that are too short or silent are dropped; the overlay shows
+   a waveform and a live preview from chunks cut at pauses; the dictionary's terms (first 25) and
+   fixes; transcripts saved before typing, the recent-transcripts menu, keep-transcripts with
+   retention; `config.json` read and live-reloaded; the configurable key; Return after dictating;
+   the menu shows missing permissions and errors.
+2. **Effects in Cairn.** The framework, not the app, gains:
+   - **time:** the runtime gives `update` the clock, and an app can ask for a timer;
+   - **requests:** effects the host performs that answer back (transcribe, read and write a file,
+     type text, play a sound), with failures as ordinary replies;
+   - **subscriptions:** outside inputs an app asks for (a global key, microphone levels);
+   - each kind of effect is an `assume` claim with a check, like M1's trusted base.
+3. **Surfaces.** A menu bar item whose menu is built from Lean's view, every item a move with an
+   id, and a panel that never takes focus or clicks. Both mirrored to accessibility.
+4. **Claims and proofs** about the dictation machine, with M1's rules (no `sorry`, standard
+   axioms only):
+   - a key used in a shortcut never sends;
+   - the hold/tap split is exactly the 0.3 s threshold;
+   - at most one recording at a time, and every recording ends (released, tapped, cancelled or
+     timed out at 10 minutes);
+   - a transcript is saved before the effect that types it is issued, and one that fails to type
+     stays recoverable and flagged;
+   - every send produces at most one typed transcript, and a late reply for an old clip never
+     types;
+   - dictionary fixes replace whole words only; retention never deletes today's file;
+   - menu presence and enablement, as in M1.
+5. **Fuzzed.** Random key timings, replies (slow, failed, out of order, duplicated), config edits
+   and clock jumps, checking the invariants every step. The host's new effects get trusted-base
+   fuzz like M1's codecs.
+6. **Measured.** Key-up to text typed, against the original Yap with the same audio; app size;
+   idle CPU and memory, in `bench/`.
+7. **Mapped and written down.** The map covers Yap; `docs/trusted.md` lists every new
+   assumption.
 
-## Not in M1
+## Not in M2
 
-More than one user, network effects, an LLM, persistence beyond a file, iOS or other platforms,
-animation, rich text, accessibility beyond the mirror (VoiceOver actions are a stretch), scrolling
-(a stretch), and Ace.
+HTTP or audio processing written in Lean (the host does both; Lean decides what to do with the
+results), iOS, other platforms, replacing the original Yap repository, and Ace.
 
 ## Order of work
 
-1. **Boundary spike.** Lean static library linked into a Swift and Metal app; two buttons with
-   claims; clicks round-trip; one presence proof; timing at 100/1k/10k nodes. This de-risks
-   everything else.
-2. **Foundations in parallel.** Claim language and ledger; the UI core (tree, style, layout, hit
-   testing, focus); text editing; frame and event encoding with proofs; the Metal renderer and
-   glyph atlas; the AppKit host with IME and the accessibility mirror; the debug socket; research
-   notes on prior art.
-3. **TodoMVC** on the foundations, then the proofs over it.
-4. **Conformance, benchmarks and the generated map.**
+1. **In parallel:** the dictation machine as a headless Lean model with claims, proofs and fuzz
+   (no UI, its own command type); the effects design (time, requests, subscriptions) in the
+   runtime, ABI and host, shown on a small example.
+2. **Surfaces:** the menu bar menu and the non-focusing panel.
+3. **Yap on Cairn:** the machine moved onto the framework's effects, with the menu, overlay and
+   the host's audio, key, network and typing.
+4. **Ship:** signing, install, a day of use, the benchmarks and the map.
