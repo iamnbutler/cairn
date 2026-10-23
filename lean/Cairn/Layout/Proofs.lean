@@ -428,4 +428,113 @@ theorem SiblingsDisjoint.get {r c : Rect} {st : Style} {ctl : Option Control} {k
   · have := hp j i hj hi hlt
     unfold Rect.disjoint at this ⊢; omega
 
+/-! ## Fill exactness -/
+
+/-- Each child's main-axis sizing paired with its main-axis length. -/
+def mainPairs (h : Bool) (its : List Item) (rs : List Rect) : List (Sizing × Int) :=
+  List.zipWith (fun it r => (it.mainSizing h, mainOf h r)) its rs
+
+theorem Line.go_fill (ln : Line) :
+    ∀ (its : List Item) (i j : Nat) (pos : Int),
+      ((mainPairs ln.horiz its (ln.go i j pos its)).filter (!·.1.isFill) |>.map (·.2)).sum =
+          baseSum ln.horiz its ∧
+      ((mainPairs ln.horiz its (ln.go i j pos its)).map (·.2)).sum =
+          baseSum ln.horiz its +
+            (cumShare ln.L ln.f (j + fillCount ln.horiz its) - cumShare ln.L ln.f j) ∧
+      ((mainPairs ln.horiz its (ln.go i j pos its)).any (·.1.isFill) = true →
+          0 < fillCount ln.horiz its)
+  | [], _, j, _ => by simp [Line.go, mainPairs, baseSum, fillCount]
+  | it :: its, i, j, pos => by
+    obtain ⟨h1, h2, h3⟩ := Line.go_fill ln its (i + 1)
+      (if (it.mainSizing ln.horiz).isFill then j + 1 else j)
+      (pos + mainSize ln.horiz ln.L ln.f j it + ln.spacing i)
+    have hb : baseSum ln.horiz (it :: its) =
+        mainBase (it.mainSizing ln.horiz) (it.mainPref ln.horiz) + baseSum ln.horiz its := by
+      simp [baseSum]
+    have hf : fillCount ln.horiz (it :: its) =
+        (if (it.mainSizing ln.horiz).isFill then 1 else 0) + fillCount ln.horiz its := by
+      simp only [fillCount, List.filter_cons]; split <;> simp <;> omega
+    rw [hb, hf]
+    simp only [mainPairs] at h1 h2 h3 ⊢
+    simp only [Line.go, List.zipWith_cons_cons, mkRect_mainOf, List.filter_cons, List.map_cons,
+      List.sum_cons, List.any_cons]
+    generalize List.zipWith _ its _ = rest at h1 h2 h3 ⊢
+    unfold mainSize
+    cases hs : it.mainSizing ln.horiz <;>
+      simp only [hs, Sizing.isFill, mainBase, Bool.not_true, Bool.not_false, ite_true, ite_false,
+        Bool.false_eq_true, Bool.true_or, Bool.false_or, Nat.zero_add, Int.zero_add,
+        List.map_cons, List.sum_cons] at h1 h2 h3 ⊢
+    · exact ⟨by omega, by omega, h3⟩
+    · exact ⟨by omega, by omega, h3⟩
+    · rw [show j + (1 + fillCount ln.horiz its) = j + 1 + fillCount ln.horiz its by omega]
+      unfold fillShare
+      exact ⟨h1, by omega, fun _ => by omega⟩
+
+theorem cumShare_full (L : Int) {f : Nat} (hf : 0 < f) : cumShare L f f = L := by
+  unfold cumShare; exact Int.mul_ediv_cancel L (by omega)
+
+theorem cumShare_zero (L : Int) (f : Nat) : cumShare L f 0 = 0 := by simp [cumShare]
+
+/-- Fill exactness for one line, in terms of its content box. -/
+theorem lineRects_fill (h : Bool) (st : Style) (c : Rect) (items : List Item)
+    (hany : (mainPairs h items (lineRects h st c items)).any (·.1.isFill) = true)
+    (hle : (((mainPairs h items (lineRects h st c items)).filter (!·.1.isFill)).map (·.2)).sum
+      + gaps st.gap items.length ≤ mainOf h c) :
+    ((mainPairs h items (lineRects h st c items)).map (·.2)).sum + gaps st.gap items.length =
+      mainOf h c := by
+  obtain ⟨h1, h2, h3⟩ := Line.go_fill (lineOf h st c items) items 0 0
+    ((if h then c.x else c.y) + startOffset st.justify (free h st c items))
+  have hF := h3 hany
+  simp only [lineRects] at hany hle ⊢
+  simp only [lineOf] at h1 h2 hF hle ⊢
+  rw [Nat.zero_add, cumShare_full _ hF, cumShare_zero] at h2
+  rw [h1] at hle
+  rw [h2]
+  unfold leftover
+  omega
+
+theorem mainOf_inset (h : Bool) (r : Rect) (p : Insets) :
+    mainOf h (r.inset p) = mainOf h r - padMain h p := by
+  cases h <;> simp [mainOf, padMain, Rect.inset] <;> omega
+
+theorem arrange_fillExact (m : TextMetrics) (c r : Rect) (s : Sized) :
+    FillExact (arrange m c r s) := by
+  cases s with
+  | box st ctl sz kids =>
+    simp only [arrange, FillExact]
+    intro hax
+    have hlen : (childRects st r (kids.map Sized.item)).length = kids.length := by
+      simp [childRects_length]
+    have hcr : childRects st r (kids.map Sized.item) =
+        lineRects (Axis.horiz st.axis) st (r.inset st.padding) (kids.map Sized.item) := by
+      unfold childRects; cases hx : st.axis <;> simp_all [Axis.horiz]
+    have hps : (arrangeList m (innerClip st c r) (childRects st r (kids.map Sized.item)) kids).map
+        (fun k => ((if Axis.horiz st.axis then k.sizings.1 else k.sizings.2),
+          mainOf (Axis.horiz st.axis) k.rect)) =
+        mainPairs (Axis.horiz st.axis) (kids.map Sized.item)
+          (lineRects (Axis.horiz st.axis) st (r.inset st.padding) (kids.map Sized.item)) := by
+      rw [arrangeList_map m _ (fun sz q => ((if Axis.horiz st.axis then sz.1 else sz.2),
+        mainOf (Axis.horiz st.axis) q)) _ _ hlen, hcr]
+      simp [mainPairs, List.zipWith_map_left, Item.mainSizing, Sized.item]
+    rw [hps]
+    have hl : (mainPairs (Axis.horiz st.axis) (kids.map Sized.item)
+        (lineRects (Axis.horiz st.axis) st (r.inset st.padding) (kids.map Sized.item))).length =
+        (kids.map Sized.item).length := by
+      simp [mainPairs, lineRects_length]
+    rw [hl]
+    intro hany hle
+    have := lineRects_fill (Axis.horiz st.axis) st (r.inset st.padding) (kids.map Sized.item) hany
+      (by rw [mainOf_inset]; omega)
+    rw [mainOf_inset] at this
+    omega
+  | text => simp [arrange, FillExact]
+  | field => simp [arrange, field, FillExact]
+
+/-- **Fill exactness.** In every row and column of the laid-out tree with a fill child, if the
+other children, gaps and padding fit, then children, gaps and padding span the parent exactly
+along the main axis. -/
+theorem layout_fillExact (m : TextMetrics) (w : Size) (n : Node) :
+    (layout m w n).Everywhere FillExact :=
+  arrange_everywhere' m _ (arrange_fillExact m) _ _ _
+
 end Cairn.Layout
