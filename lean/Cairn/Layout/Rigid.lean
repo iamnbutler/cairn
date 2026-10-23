@@ -32,6 +32,7 @@ open Cairn.Runtime
 def nodeSizings : Node → Sizing × Sizing
   | .box st .. | .field st .. => (st.width, st.height)
   | .text .. => (.hug, .hug)
+  | .para _ wr _ => (wr.width, wr.height)
 
 def _root_.Cairn.Node.isText : Node → Bool
   | .text .. => true
@@ -80,6 +81,7 @@ def hOf (horiz : Bool) (main cross : Int) : Int := if horiz then cross else main
 /-- `FitsIn n w h`: laid out in a `w × h` rect, `n` and everything below it fit, and its
 controls have positive size. Three shapes:
 
+- wrapped text (a clipping column of lines, with no controls);
 - a field of positive size;
 - a box that clips and holds only text (a label: the text may overflow; the clip holds it);
 - a row or column whose children are all `fixed` or `fill` on both axes, whose fixed
@@ -87,6 +89,8 @@ controls have positive size. Three shapes:
   whose every child fits at the size it will get. A `fill` child on the main axis must fit at
   every length from `⌊leftover / fills⌋` up. A box with a control has no controls below it. -/
 inductive FitsIn : Node → Int → Int → Prop
+  /-- Wrapped text always fits: it is a clipping column of text with no controls. -/
+  | para {ts : TextStyle} {wr : Wrap} {s : String} {w h : Int} : FitsIn (.para ts wr s) w h
   | field {st : Style} {ts : TextStyle} {c : Control} {v : FieldView} {w h : Int} :
       0 < w → 0 < h → FitsIn (.field st ts c v) w h
   | clipped {st : Style} {ctl : Option Control} {kids : List Node} {w h : Int} :
@@ -146,24 +150,26 @@ theorem le_sum_of_mem {l : List Int} (h : ∀ x ∈ l, 0 ≤ x) {x : Int} (hx : 
 
 /-! ## Measure and arrange, for rigid children -/
 
-theorem measure_sizings (m : TextMetrics) (n : Node) : (measure m n).sizings = nodeSizings n := by
+theorem measure_sizings (m : TextMetrics) (aw : Int) (n : Node) :
+    (measure m aw n).sizings = nodeSizings n := by
   cases n <;> rfl
 
-theorem measureList_eq_map (m : TextMetrics) : ∀ ks : List Node, measureList m ks = ks.map (measure m)
+theorem measureList_eq_map (m : TextMetrics) (aw : Int) :
+    ∀ ks : List Node, measureList m aw ks = ks.map (measure m aw)
   | [] => rfl
-  | k :: ks => by simp only [measureList, List.map_cons, measureList_eq_map m ks]
+  | k :: ks => by simp only [measureList, List.map_cons, measureList_eq_map m aw ks]
 
 /-- With one rect per child, each laid-out child is its node arranged in its rect. -/
-theorem mem_arrangeList (m : TextMetrics) (c : Rect) :
+theorem mem_arrangeList (m : TextMetrics) (aw : Int) (c : Rect) :
     ∀ (rs : List Rect) (ks : List Node), rs.length = ks.length →
-      ∀ k' ∈ arrangeList m c rs (ks.map (measure m)),
-        ∃ p ∈ List.zip ks rs, k' = arrange m c p.2 (measure m p.1)
+      ∀ k' ∈ arrangeList m c rs (ks.map (measure m aw)),
+        ∃ p ∈ List.zip ks rs, k' = arrange m c p.2 (measure m aw p.1)
   | [], [], _, k', hk => by simp only [List.map_nil, arrangeList, List.not_mem_nil] at hk
   | r :: rs, k :: ks, hl, k', hk => by
     simp only [List.map_cons, arrangeList, List.mem_cons] at hk
     rcases hk with rfl | hk
     · exact ⟨(k, r), by simp only [List.zip_cons_cons, List.mem_cons, true_or], rfl⟩
-    · obtain ⟨p, hp, e⟩ := mem_arrangeList m c rs ks (by simpa using hl) k' hk
+    · obtain ⟨p, hp, e⟩ := mem_arrangeList m aw c rs ks (by simpa using hl) k' hk
       exact ⟨p, by simp only [List.zip_cons_cons, List.mem_cons, hp, or_true], e⟩
   | [], _ :: _, hl, _, _ => by simp at hl
   | _ :: _, [], hl, _, _ => by simp at hl
@@ -182,8 +188,9 @@ theorem Line.go_lens (ln : Line) :
     · exact Line.go_lens ln its _ _ _ p hp
 
 /-- A rigid child's item: its sizings are its node's. -/
-theorem item_sizing (m : TextMetrics) (h : Bool) (k : Node) :
-    ((measure m k).item.mainSizing h = mainSz h k) ∧ ((measure m k).item.crossSizing h = crossSz h k) := by
+theorem item_sizing (m : TextMetrics) (aw : Int) (h : Bool) (k : Node) :
+    ((measure m aw k).item.mainSizing h = mainSz h k) ∧
+      ((measure m aw k).item.crossSizing h = crossSz h k) := by
   refine ⟨?_, ?_⟩ <;>
     simp only [Item.mainSizing, Item.crossSizing, Sized.item, measure_sizings, mainSz, crossSz]
 
@@ -199,24 +206,24 @@ theorem crossPlace_len (al : Align) (c0 cc : Int) (s : Sizing) (p : Int) (b : Bo
     (hh : s.isHug = false) : (crossPlace al c0 cc s p b).2 = lenIn s cc := by
   cases s <;> simp_all [crossPlace, lenIn, Sizing.isHug]
 
-theorem baseSum_rigid (h : Bool) (m : TextMetrics) :
+theorem baseSum_rigid (h : Bool) (m : TextMetrics) (aw : Int) :
     ∀ (ks : List Node), (∀ k ∈ ks, (mainSz h k).isHug = false) →
-      baseSum h (ks.map fun k => (measure m k).item) = (ks.map fun k => fixedOf (mainSz h k)).sum
+      baseSum h (ks.map fun k => (measure m aw k).item) = (ks.map fun k => fixedOf (mainSz h k)).sum
   | [], _ => rfl
   | k :: ks, hk => by
-    have ih := baseSum_rigid h m ks (fun x hx => hk x (.tail _ hx))
+    have ih := baseSum_rigid h m aw ks (fun x hx => hk x (.tail _ hx))
     simp only [baseSum, List.map_cons, List.sum_cons] at ih ⊢
-    rw [ih, (item_sizing m h k).1]
+    rw [ih, (item_sizing m aw h k).1]
     have := hk k (.head _)
     cases hs : mainSz h k <;> simp_all [Sizing.isHug, mainBase, fixedOf]
 
-theorem fillCount_eq (h : Bool) (m : TextMetrics) (ks : List Node) :
-    fillCount h (ks.map fun k => (measure m k).item) = lineFills h ks := by
+theorem fillCount_eq (h : Bool) (m : TextMetrics) (aw : Int) (ks : List Node) :
+    fillCount h (ks.map fun k => (measure m aw k).item) = lineFills h ks := by
   simp only [fillCount, lineFills, List.filter_map, List.length_map]
   congr 1
   apply List.filter_congr
   intro k _
-  simp only [Function.comp, (item_sizing m h k).1]
+  simp only [Function.comp, (item_sizing m aw h k).1]
 
 theorem mainSz_hug (h : Bool) (k : Node) (h1 : (nodeSizings k).1.isHug = false)
     (h2 : (nodeSizings k).2.isHug = false) :
@@ -242,14 +249,16 @@ theorem mainOf_content (h : Bool) (st : Style) (r : Rect) :
 /-- What `Pressable` asks at each node. -/
 def NodeOk (l : Laid) : Prop := Fits l ∧ StackTop l ∧ ControlLeaf l
 
-theorem text_ok (m : TextMetrics) (c r : Rect) {k : Node} (hk : k.isText = true) :
-    (arrange m c r (measure m k)).Everywhere NodeOk ∧
-      (arrange m c r (measure m k)).isText = true ∧ (arrange m c r (measure m k)).controls = [] := by
+theorem text_ok (m : TextMetrics) (aw : Int) (c r : Rect) {k : Node} (hk : k.isText = true) :
+    (arrange m c r (measure m aw k)).Everywhere NodeOk ∧
+      (arrange m c r (measure m aw k)).isText = true ∧
+      (arrange m c r (measure m aw k)).controls = [] := by
   cases k with
   | text ts s =>
     refine ⟨.intro ⟨trivial, trivial, trivial⟩ ?_, rfl, rfl⟩
     simp only [measure, arrange, Laid.children, List.not_mem_nil, false_implies, implies_true]
   | box => simp only [Node.isText, Bool.false_eq_true] at hk
+  | para => simp only [Node.isText, Bool.false_eq_true] at hk
   | field => simp only [Node.isText, Bool.false_eq_true] at hk
 
 theorem controlsList_nil_of {ls : List Laid} (h : ∀ l ∈ ls, l.controls = []) :
@@ -269,16 +278,68 @@ theorem mem_targetsList {t : Target} :
     · obtain ⟨k, hk, ht⟩ := mem_targetsList ht
       exact ⟨k, .tail _ hk, ht⟩
 
+/-- Arranged lines of text are text with nothing below them. -/
+theorem arrangeList_texts (m : TextMetrics) (c : Rect) :
+    ∀ (rs : List Rect) (ss : List Sized), (∀ s ∈ ss, ∃ ts str sz, s = .text ts str sz) →
+      ∀ k ∈ arrangeList m c rs ss, k.Everywhere NodeOk ∧ k.isText = true ∧ k.controls = []
+  | _, [], _, k, hk => by simp only [arrangeList, List.not_mem_nil] at hk
+  | rs, s :: ss, h, k, hk => by
+    have hs : ∀ r, (arrange m c r s).Everywhere NodeOk ∧ (arrange m c r s).isText = true ∧
+        (arrange m c r s).controls = [] := by
+      intro r
+      obtain ⟨ts, str, sz, rfl⟩ := h s (.head _)
+      refine ⟨.intro ⟨trivial, trivial, trivial⟩ ?_, rfl, rfl⟩
+      simp only [arrange, Laid.children, List.not_mem_nil, false_implies, implies_true]
+    have h' := fun s hs => h s (.tail _ hs)
+    cases rs with
+    | nil =>
+      simp only [arrangeList, List.mem_cons] at hk
+      rcases hk with rfl | hk
+      · exact hs _
+      · exact arrangeList_texts m c [] ss h' k hk
+    | cons r rs =>
+      simp only [arrangeList, List.mem_cons] at hk
+      rcases hk with rfl | hk
+      · exact hs _
+      · exact arrangeList_texts m c rs ss h' k hk
+
+/-- Wrapped text lays out as a clipping column of text: it meets `Pressable`'s conditions and
+has no controls. -/
+theorem para_ok (m : TextMetrics) (ts : TextStyle) (wr : Wrap) (s : String) (aw : Int)
+    (c r : Rect) :
+    (arrange m c r (measure m aw (.para ts wr s))).Everywhere NodeOk ∧
+      ∀ t ∈ targetsOf (arrange m c r (measure m aw (.para ts wr s))), t.node.rect.nonempty := by
+  simp only [measure, arrange]
+  have hkid := arrangeList_texts m (innerClip (paraStyle wr) c r)
+    (childRects (paraStyle wr) r ((paraLines m ts wr aw s).map Sized.item)) (paraLines m ts wr aw s)
+    (fun s hs => by
+      simp only [paraLines, List.mem_map] at hs
+      obtain ⟨p, -, rfl⟩ := hs
+      exact ⟨_, _, _, rfl⟩)
+  have hnil := controlsList_nil_of fun l hl => (hkid l hl).2.2
+  refine ⟨.intro ⟨.inl ⟨rfl, fun k hk => (hkid k hk).2.1⟩, fun h => ?_, trivial⟩ ?_, ?_⟩
+  · simp only [paraStyle] at h; exact absurd h (by decide)
+  · intro k hk; exact (hkid k hk).1
+  · intro t ht
+    rcases mem_targetsOf_box ht with ⟨k, h, _⟩ | ht
+    · exact absurd h (by simp only [reduceCtorEq, not_false_eq_true])
+    · obtain ⟨l, hl, ht⟩ := mem_targetsList ht
+      rw [targetsOf_eq_nil (hkid l hl).2.2] at ht
+      simp only [List.not_mem_nil] at ht
+
 /-- **Rigid views lay out pressably.** If `n` fits in `w × h`, then laid out in any rect of that
 size, with any clip and any text metrics, every node meets `Pressable`'s per-node conditions
 and every control's rect is nonempty. -/
 theorem fitsIn_arrange (m : TextMetrics) {n : Node} {w h : Int} (hf : FitsIn n w h) :
-    ∀ (c r : Rect), r.w = w → r.h = h →
-      (arrange m c r (measure m n)).Everywhere NodeOk ∧
-      ∀ t ∈ targetsOf (arrange m c r (measure m n)), t.node.rect.nonempty := by
+    ∀ (aw : Int) (c r : Rect), r.w = w → r.h = h →
+      (arrange m c r (measure m aw n)).Everywhere NodeOk ∧
+      ∀ t ∈ targetsOf (arrange m c r (measure m aw n)), t.node.rect.nonempty := by
   induction hf with
+  | @para ts wr s w h =>
+    intro aw c r _ _
+    exact para_ok m ts wr s aw c r
   | @field st ts ctl v w h hw hh =>
-    intro c r hrw hrh
+    intro aw c r hrw hrh
     refine ⟨.intro ⟨trivial, trivial, trivial⟩ ?_, ?_⟩
     · simp only [measure, arrange, field, Laid.children, List.not_mem_nil, false_implies,
         implies_true]
@@ -286,16 +347,17 @@ theorem fitsIn_arrange (m : TextMetrics) {n : Node} {w h : Int} (hf : FitsIn n w
       rintro t rfl
       exact ⟨by simp only [Laid.rect]; omega, by simp only [Laid.rect]; omega⟩
   | @clipped st ctl kids w h hclip htext hctl =>
-    intro c r hrw hrh
+    intro aw c r hrw hrh
     simp only [measure, arrange, measureList_eq_map]
-    have hlen : (childRects st r ((kids.map (measure m)).map Sized.item)).length = kids.length := by
+    generalize innerAvail st aw = a'
+    have hlen : (childRects st r ((kids.map (measure m a')).map Sized.item)).length = kids.length := by
       simp only [childRects_length, List.length_map]
-    have hkid : ∀ k' ∈ arrangeList m (innerClip st c r) (childRects st r ((kids.map (measure m)).map
-        Sized.item)) (kids.map (measure m)),
+    have hkid : ∀ k' ∈ arrangeList m (innerClip st c r) (childRects st r ((kids.map (measure m a')).map
+        Sized.item)) (kids.map (measure m a')),
         k'.Everywhere NodeOk ∧ k'.isText = true ∧ k'.controls = [] := by
       intro k' hk'
-      obtain ⟨p, hp, rfl⟩ := mem_arrangeList m _ _ kids hlen k' hk'
-      exact text_ok m _ _ (htext p.1 (List.of_mem_zip hp).1)
+      obtain ⟨p, hp, rfl⟩ := mem_arrangeList m a' _ _ kids hlen k' hk'
+      exact text_ok m a' _ _ (htext p.1 (List.of_mem_zip hp).1)
     have hnil := controlsList_nil_of fun l hl => (hkid l hl).2.2
     refine ⟨.intro ⟨.inl ⟨hclip, fun k hk => (hkid k hk).2.1⟩, ?_, ?_⟩ ?_, ?_⟩
     · intro _ k hk; exact (hkid k (List.dropLast_subset _ hk)).2.2
@@ -309,26 +371,27 @@ theorem fitsIn_arrange (m : TextMetrics) {n : Node} {w h : Int} (hf : FitsIn n w
         rw [targetsOf_eq_nil (hkid l hl).2.2] at ht
         simp only [List.not_mem_nil] at ht
   | @line st ctl kids w h hax hpad hcw hch hctl hbase hkids hsub ih =>
-    intro c r hrw hrh
+    intro aw c r hrw hrh
     simp only [measure, arrange, measureList_eq_map]
+    generalize innerAvail st aw = a'
     -- The line, its items and its rects.
     generalize hH : Axis.horiz st.axis = H at hbase hkids ih
-    have hitems : (kids.map (measure m)).map Sized.item = kids.map fun k => (measure m k).item := by
+    have hitems : (kids.map (measure m a')).map Sized.item = kids.map fun k => (measure m a' k).item := by
       simp only [List.map_map, Function.comp_def]
     rw [hitems, childRects_line st r _ hax, hH]
-    generalize hrs : lineRects H st (r.inset st.padding) (kids.map fun k => (measure m k).item) = rs
+    generalize hrs : lineRects H st (r.inset st.padding) (kids.map fun k => (measure m a' k).item) = rs
     have hlen : rs.length = kids.length := by
       rw [← hrs, lineRects_length, List.length_map]
     obtain ⟨hcm, hcc⟩ := mainOf_content H st r
     rw [hrw, hrh] at hcm hcc
     have hrigid : ∀ k ∈ kids, (mainSz H k).isHug = false ∧ (crossSz H k).isHug = false :=
       fun k hk => mainSz_hug H k (hkids k hk).1 (hkids k hk).2.1
-    have hbs : baseSum H (kids.map fun k => (measure m k).item) =
+    have hbs : baseSum H (kids.map fun k => (measure m a' k).item) =
         (kids.map fun k => fixedOf (mainSz H k)).sum :=
-      baseSum_rigid H m kids fun k hk => (hrigid k hk).1
-    have hfc := fillCount_eq H m kids
+      baseSum_rigid H m a' kids fun k hk => (hrigid k hk).1
+    have hfc := fillCount_eq H m a' kids
     -- Leftover space: exactly the content length minus the fixed lengths and gaps.
-    have hL : leftover H st (r.inset st.padding) (kids.map fun k => (measure m k).item) =
+    have hL : leftover H st (r.inset st.padding) (kids.map fun k => (measure m a' k).item) =
         mainIn H st w h - lineBase H st.gap kids := by
       unfold leftover; rw [hbs, hcm, List.length_map]; unfold lineBase at hbase ⊢; omega
     -- Each child's rect.
@@ -340,13 +403,13 @@ theorem fitsIn_arrange (m : TextMetrics) {n : Node} {w h : Int} (hf : FitsIn n w
         crossOf H p.2 = lenIn (crossSz H p.1) (crossIn H st w h) := by
       intro p hp
       have hk := (List.of_mem_zip hp).1
-      have hp' : ((measure m p.1).item, p.2) ∈
-          List.zip (kids.map fun k => (measure m k).item) rs := by
+      have hp' : ((measure m a' p.1).item, p.2) ∈
+          List.zip (kids.map fun k => (measure m a' k).item) rs := by
         rw [List.zip_map_left]; exact List.mem_map_of_mem hp
       rw [← hrs] at hp'
       obtain ⟨⟨j', hmain⟩, hcross⟩ := Line.go_lens _ _ _ _ _ _ hp'
       simp only [lineOf] at hmain hcross
-      obtain ⟨hms, hcs⟩ := item_sizing m H p.1
+      obtain ⟨hms, hcs⟩ := item_sizing m a' H p.1
       refine ⟨⟨_, rfl, ?_, ?_⟩, ?_⟩
       · intro hfill
         rw [hmain, mainSize_fill (hms.trans hfill), hL, hfc]
@@ -363,15 +426,15 @@ theorem fitsIn_arrange (m : TextMetrics) {n : Node} {w h : Int} (hf : FitsIn n w
         simp only [crossOf] at hci ⊢
         congr 1; omega
     -- The children, each where `mem_arrangeList` puts it.
-    have hkid : ∀ k' ∈ arrangeList m (innerClip st c r) rs (kids.map (measure m)),
+    have hkid : ∀ k' ∈ arrangeList m (innerClip st c r) rs (kids.map (measure m a')),
         k'.Everywhere NodeOk ∧ (∀ t ∈ targetsOf k', t.node.rect.nonempty) ∧
-        ∃ p ∈ List.zip kids rs, k' = arrange m (innerClip st c r) p.2 (measure m p.1) := by
+        ∃ p ∈ List.zip kids rs, k' = arrange m (innerClip st c r) p.2 (measure m a' p.1) := by
       intro k' hk'
-      obtain ⟨p, hp, rfl⟩ := mem_arrangeList m _ rs kids hlen k' hk'
+      obtain ⟨p, hp, rfl⟩ := mem_arrangeList m a' _ rs kids hlen k' hk'
       obtain ⟨⟨len, hlen', hfill, hfix⟩, hcross⟩ := hdims p hp
       have hk := (List.of_mem_zip hp).1
       obtain ⟨hw', hh'⟩ := rect_wh H p.2
-      have := ih p.1 hk len hfill hfix (innerClip st c r) p.2
+      have := ih p.1 hk len hfill hfix a' (innerClip st c r) p.2
         (by rw [hw', hlen', hcross]) (by rw [hh', hlen', hcross])
       exact ⟨this.1, this.2, p, hp, rfl⟩
     -- Lengths: every main length is non-negative, and they add up to what the line uses.
@@ -384,9 +447,9 @@ theorem fitsIn_arrange (m : TextMetrics) {n : Node} {w h : Int} (hf : FitsIn n w
       rw [← hrs, lineRects_sum, hbs, hfc, hL]
       unfold lineBase at hbase ⊢
       split <;> omega
-    have hrects : (arrangeList m (innerClip st c r) rs (kids.map (measure m))).map Laid.rect = rs :=
+    have hrects : (arrangeList m (innerClip st c r) rs (kids.map (measure m a'))).map Laid.rect = rs :=
       arrangeList_rects m _ rs _ (by simp only [List.length_map, hlen])
-    have hkidrect : ∀ k' ∈ arrangeList m (innerClip st c r) rs (kids.map (measure m)),
+    have hkidrect : ∀ k' ∈ arrangeList m (innerClip st c r) rs (kids.map (measure m a')),
         k'.rect ∈ rs := fun k' hk' => by rw [← hrects]; exact List.mem_map_of_mem hk'
     refine ⟨.intro ⟨.inr ?_, ?_, ?_⟩ ?_, ?_⟩
     · -- `Fits`: padding, every child inside the content box, and the main axis.
@@ -412,7 +475,7 @@ theorem fitsIn_arrange (m : TextMetrics) {n : Node} {w h : Int} (hf : FitsIn n w
         rw [← hcc'] at hcle
         cases H <;> simp_all [mainOf, crossOf]
       · rw [hH]
-        have : ((arrangeList m (innerClip st c r) rs (kids.map (measure m))).map
+        have : ((arrangeList m (innerClip st c r) rs (kids.map (measure m a'))).map
             fun k => mainOf H k.rect) = rs.map (mainOf H) := by
           have e := congrArg (List.map (mainOf H)) hrects
           rw [List.map_map] at e; exact e
@@ -449,10 +512,10 @@ theorem hitTest_center_of_fitsIn {m : TextMetrics} {w : Size} {st : Style}
     ∀ t ∈ targets (layout m w (.box st ctl kids)),
       hitTest (layout m w (.box st ctl kids)) t.visible.center = some t.control := by
   have hl : layout m w (.box st ctl kids) =
-      arrange m (windowRect w) (windowRect w) (measure m (.box st ctl kids)) := by
+      arrange m (windowRect w) (windowRect w) (measure m (windowRect w).w (.box st ctl kids)) := by
     simp only [layout, rootRect, measure, Sized.sizings, hw, hh, Sizing.isFill, ↓reduceIte,
       windowRect]
-  obtain ⟨hE, hne⟩ := fitsIn_arrange m hf (windowRect w) (windowRect w) rfl rfl
+  obtain ⟨hE, hne⟩ := fitsIn_arrange m hf _ (windowRect w) (windowRect w) rfl rfl
   rw [← hl] at hE hne
   have hp : Pressable w (layout m w (.box st ctl kids)) :=
     ⟨by rw [hl, arrange_rect]; exact Rect.inside_refl _,

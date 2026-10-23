@@ -5,6 +5,8 @@ import Cairn.Text.Field
 import Cairn.Text.FieldTests
 import Cairn.Text.Proofs
 import Cairn.Text.Host
+import Cairn.Text.Wrap
+import Cairn.Text.WrapProofs
 import Cairn.UI.Node
 import Cairn.Input
 import Cairn.Frame

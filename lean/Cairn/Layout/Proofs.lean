@@ -29,18 +29,31 @@ def Sized.controlsList : List Sized → List Control
   | s :: ss => s.controls ++ Sized.controlsList ss
 end
 
+/-- A wrapped text's lines are text, so they have no controls. -/
+theorem paraLines_controls (m : TextMetrics) (ts : TextStyle) (wr : Wrap) (aw : Int) (s : String) :
+    Sized.controlsList (paraLines m ts wr aw s) = [] := by
+  simp only [paraLines]
+  generalize Text.Wrap.lines _ _ _ _ = ls
+  induction ls with
+  | nil => simp only [List.map_nil, Sized.controlsList]
+  | cons p ls ih => simp only [List.map_cons, Sized.controlsList, Sized.controls, ih,
+      List.append_nil]
+
 mutual
-theorem measure_controls (m : TextMetrics) : ∀ n : Node, (measure m n).controls = n.controls
+theorem measure_controls (m : TextMetrics) (aw : Int) :
+    ∀ n : Node, (measure m aw n).controls = n.controls
   | .box st c kids => by
-    simp only [measure, Sized.controls, Node.controls, measureList_controls m kids]
+    simp only [measure, Sized.controls, Node.controls, measureList_controls m _ kids]
   | .text .. => by simp only [measure, Sized.controls, Node.controls]
+  | .para .. => by simp only [measure, Sized.controls, Node.controls, paraLines_controls,
+      Option.toList, List.append_nil]
   | .field .. => by simp only [measure, Sized.controls, Node.controls]
-theorem measureList_controls (m : TextMetrics) :
-    ∀ ns : List Node, Sized.controlsList (measureList m ns) = Node.controlsList ns
+theorem measureList_controls (m : TextMetrics) (aw : Int) :
+    ∀ ns : List Node, Sized.controlsList (measureList m aw ns) = Node.controlsList ns
   | [] => by simp only [measureList, Sized.controlsList, Node.controlsList]
   | n :: ns => by
-    simp only [measureList, Sized.controlsList, Node.controlsList, measure_controls m n,
-      measureList_controls m ns]
+    simp only [measureList, Sized.controlsList, Node.controlsList, measure_controls m aw n,
+      measureList_controls m aw ns]
 end
 
 mutual
@@ -399,8 +412,8 @@ theorem arrange_rectNonneg (m : TextMetrics) (c r : Rect) (s : Sized) (hw : 0 �
   | text => simp only [Laid.children, arrange, List.not_mem_nil] at hk
   | field => simp only [Laid.children, arrange, field, List.not_mem_nil] at hk
 
-theorem measure_size_nonneg (m : TextMetrics) (n : Node) :
-    0 ≤ (measure m n).size.w ∧ 0 ≤ (measure m n).size.h := by
+theorem measure_size_nonneg (m : TextMetrics) (aw : Int) (n : Node) :
+    0 ≤ (measure m aw n).size.w ∧ 0 ≤ (measure m aw n).size.h := by
   cases n <;> simp only [measure, Sized.size] <;>
     first | exact ⟨resolve_nonneg _ _, resolve_nonneg _ _⟩ | omega
 
@@ -408,7 +421,7 @@ theorem layout_rectNonneg (m : TextMetrics) (w : Size) (n : Node) :
     (layout m w n).Everywhere RectNonneg := by
   refine arrange_everywhere m _ (fun _ r => 0 ≤ r.w ∧ 0 ≤ r.h)
     (fun c r s hq => arrange_rectNonneg m c r s hq.1 hq.2) _ _ _ ?_
-  have := measure_size_nonneg m n
+  have := measure_size_nonneg m (windowRect w).w n
   have := windowRect_nonneg w
   simp only [rootRect]
   constructor <;> split <;> omega

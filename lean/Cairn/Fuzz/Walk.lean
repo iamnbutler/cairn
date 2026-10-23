@@ -132,7 +132,7 @@ def Target.budgetNs : Nat := t.custom.budgetNs.getD 8_000_000
 def Target.minSize (m : TextMetrics) (s : t.S) (ui : UI) : Size :=
   match t.custom.minSize s, t.app with
   | some z, _ => z
-  | none, some app => (measure m (app.view s ui)).size
+  | none, some app => (measure m ui.size.w (app.view s ui)).size
   | none, none => ⟨0, 0⟩
 
 end

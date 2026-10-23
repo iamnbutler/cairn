@@ -1,6 +1,7 @@
 module
 
 public import Cairn.UI.Node
+public import Cairn.Text.Wrap
 
 /-! # Layout
 
@@ -81,11 +82,42 @@ def contentSize (axis : Axis) (gap : Nat) (kids : List Size) : Size :=
 /-- The string a field sizes itself to: its text, or its placeholder when empty. -/
 def FieldView.shown (v : FieldView) : String := if v.text.isEmpty then v.placeholder else v.text
 
+/-- Caret offset at scalar index `i`, clamped to the end of the text. -/
+def offAt (offs : Array Int) (i : Nat) : Int := offs[i]?.getD (offs.back?.getD 0)
+
+/-- The width a box offers its children to wrap in: its own (`fixed`) width or the width it was
+offered, less its horizontal padding. -/
+def innerAvail (st : Style) (aw : Int) : Int :=
+  (match st.width with | .fixed n => (n : Int) | _ => aw) - st.padding.left - st.padding.right
+
+/-- The width a wrapped text breaks at: its `fixed` width, or the width it was offered. -/
+def wrapWidth (wr : Wrap) (aw : Int) : Int :=
+  match wr.width with
+  | .fixed n => n
+  | _ => aw
+
+/-- A wrapped text is laid out as a column of its lines that clips to its rect. -/
+def paraStyle (wr : Wrap) : Style :=
+  { axis := .column, width := wr.width, height := wr.height, align := wr.align, clip := true }
+
+/-- The lines of a wrapped text, each a `text` sized to its width by the line height. The
+offsets come from one measurement of the whole string. -/
+def paraLines (m : TextMetrics) (ts : TextStyle) (wr : Wrap) (aw : Int) (s : String) : List Sized :=
+  let cs := s.toList
+  let o := offAt (m.offsets ts.font s)
+  let lh := max 0 (m.lineHeight ts.font)
+  (Text.Wrap.lines o (wrapWidth wr aw) wr cs).map fun p =>
+    .text ts (String.ofList (Text.Wrap.slice cs p)) ⟨max 0 (Text.Wrap.width o p), lh⟩
+
 mutual
-/-- The measure pass. -/
-def measure (m : TextMetrics) : Node → Sized
+/-- The measure pass. `aw` is the width the parent offers, which only wrapped text uses. -/
+def measure (m : TextMetrics) (aw : Int) : Node → Sized
+  | .para ts wr s =>
+    let ks := paraLines m ts wr aw s
+    let c := contentSize .column 0 (ks.map Sized.size)
+    .box (paraStyle wr) none ⟨resolve wr.width c.w, resolve wr.height c.h⟩ ks
   | .box st ctl kids =>
-    let ks := measureList m kids
+    let ks := measureList m (innerAvail st aw) kids
     let c := contentSize st.axis st.gap (ks.map Sized.size)
     .box st ctl
       ⟨resolve st.width (c.w + st.padding.left + st.padding.right),
@@ -96,9 +128,9 @@ def measure (m : TextMetrics) : Node → Sized
     .field st ts ctl v
       ⟨resolve st.width (max 0 (m.width ts.font (FieldView.shown v)) + 1 + st.padding.left + st.padding.right),
        resolve st.height (max 0 (m.lineHeight ts.font) + st.padding.top + st.padding.bottom)⟩
-def measureList (m : TextMetrics) : List Node → List Sized
+def measureList (m : TextMetrics) (aw : Int) : List Node → List Sized
   | [] => []
-  | n :: ns => measure m n :: measureList m ns
+  | n :: ns => measure m aw n :: measureList m aw ns
 end
 
 /-! ## Arrange: rows and columns -/
@@ -239,9 +271,6 @@ def childRects (st : Style) (r : Rect) (items : List Item) : List Rect :=
 
 /-! ## Arrange: fields -/
 
-/-- Caret offset at scalar index `i`, clamped to the end of the text. -/
-def offAt (offs : Array Int) (i : Nat) : Int := offs[i]?.getD (offs.back?.getD 0)
-
 /-- How far a field's text is scrolled left so that a caret at offset `co` is visible in a
 content box `cw` wide: zero unless the caret would fall off the right edge, and then just
 enough to put it at the right edge. -/
@@ -296,7 +325,7 @@ def rootRect (window : Size) (s : Sized) : Rect :=
 
 /-- Lay out a view in a window. -/
 def layout (m : TextMetrics) (window : Size) (n : Node) : Laid :=
-  let s := measure m n
+  let s := measure m (windowRect window).w n
   arrange m (windowRect window) (rootRect window s) s
 
 end Cairn.Layout

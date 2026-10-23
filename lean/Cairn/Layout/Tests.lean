@@ -1,4 +1,4 @@
-import Cairn.Layout.Proofs
+import Cairn.Layout.Check
 
 /-! Concrete checks of `layout` with the mono metrics (13 pt: 7 points per scalar, ascent 10,
 descent 2, so a line is 12 high). These fail fast when a definition is wrong, before any proof
@@ -109,5 +109,29 @@ private def withControls : Node :=
 -- The theorems apply to these trees too.
 example : (layout m win withControls).controls = withControls.controls := layout_controls m win _
 example : Facts m win toolbar (layout m win toolbar) := facts TextMetrics.mono_valid win toolbar
+
+-- Wrapped text: a clipping column of lines, broken at the width offered (the window's here).
+private def lineTexts (l : Laid) : List String :=
+  l.children.map fun | .text _ _ _ _ s => s | _ => "?"
+private def para (wr : Wrap := {}) (s : String := "aaa bbb ccc") : Node := .para {} wr s
+#guard (layout m ⟨50, 100⟩ (para)).rect == ⟨0, 0, 50, 24⟩
+#guard lineTexts (layout m ⟨50, 100⟩ (para)) == ["aaa bbb", "ccc"]
+#guard rects (layout m ⟨50, 100⟩ (para)) == [⟨0, 0, 49, 12⟩, ⟨0, 12, 21, 12⟩]
+-- Rewraps when the width changes.
+#guard lineTexts (layout m ⟨30, 100⟩ (para)) == ["aaa", "bbb", "ccc"]
+#guard lineTexts (layout m ⟨200, 100⟩ (para)) == ["aaa bbb ccc"]
+-- Alignment, a line limit that keeps the tail, and a word wider than the line.
+#guard rects (layout m ⟨50, 100⟩ (para { align := .center })) == [⟨0, 0, 49, 12⟩, ⟨14, 12, 21, 12⟩]
+#guard rects (layout m ⟨50, 100⟩ (para { align := .finish })) == [⟨1, 0, 49, 12⟩, ⟨29, 12, 21, 12⟩]
+#guard lineTexts (layout m ⟨30, 100⟩ (para { maxLines := some 2, keep := .tail })) == ["bbb", "ccc"]
+#guard lineTexts (layout m ⟨30, 100⟩ (para { maxLines := some 2 })) == ["aaa", "bbb"]
+#guard lineTexts (layout m ⟨30, 100⟩ (para {} "abcdefghij k")) == ["abcd", "efgh", "ij k"]
+-- In a column it wraps to the content box (60 less 5 + 5 of padding) and hugs its lines.
+private def inCol : Node :=
+  .box { width := .fixed 60, padding := ⟨0, 5, 0, 5⟩ } none [para, .text {} "x"]
+#guard rects (layout m win inCol) == [⟨5, 0, 50, 24⟩, ⟨5, 24, 7, 12⟩]
+#guard (layout m win inCol).rect == ⟨0, 0, 60, 36⟩
+example : Facts m win inCol (layout m win inCol) := facts TextMetrics.mono_valid win inCol
+#guard checkPressable win (layout m win (.box {} none [para, .box {} (some (ctl 1)) [.text {} "go"]]))
 
 end Cairn.Layout.Tests
