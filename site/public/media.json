@@ -1,5 +1,17 @@
 [
   {
+    "video": "/m/videos/a79d52b1bab3288e.mp4",
+    "poster": "/m/videos/a79d52b1bab3288e.jpg",
+    "title": "Clock: effects",
+    "caption": "Cairn's first effects. A stopwatch whose time, ticks, sounds and lap file come from the host as replies to requests Lean makes: Lap plays a sound, Save writes the laps to a file, Reset clears them and Load reads them back. Timers fire within 1–2 ms; a click → read file → frame round trip is 1.5 ms (p50).",
+    "date": "2026-10-23",
+    "commit": "4fc3970",
+    "width": 960,
+    "height": 1104,
+    "seconds": 16,
+    "feature": false
+  },
+  {
     "video": "/m/videos/5cf436dca2cd5034.mp4",
     "poster": "/m/videos/5cf436dca2cd5034.jpg",
     "title": "TodoMVC in Lean",
