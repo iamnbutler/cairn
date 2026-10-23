@@ -1,0 +1,34 @@
+// Serves the static site, and /m/<key> from the cairn-media R2 bucket.
+// Media keys are content-hashed, so they cache forever. Range and conditional
+// requests pass through to R2: video seeking needs them, and Safari won't play
+// video without range support.
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    if (!url.pathname.startsWith("/m/")) return env.ASSETS.fetch(request);
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      return new Response("method not allowed", { status: 405 });
+    }
+    const key = decodeURIComponent(url.pathname.slice(3));
+    const object = await env.MEDIA.get(key, { range: request.headers, onlyIf: request.headers });
+    if (object === null) return new Response("not found", { status: 404 });
+
+    const headers = new Headers();
+    object.writeHttpMetadata(headers);
+    headers.set("etag", object.httpEtag);
+    headers.set("accept-ranges", "bytes");
+    headers.set("cache-control", "public, max-age=31536000, immutable");
+    if (!("body" in object)) return new Response(null, { status: 304, headers });
+
+    let status = 200;
+    if (object.range && request.headers.has("range")) {
+      const { offset = 0, length = object.size - offset } = object.range;
+      headers.set("content-range", `bytes ${offset}-${offset + length - 1}/${object.size}`);
+      headers.set("content-length", String(length));
+      status = 206;
+    } else {
+      headers.set("content-length", String(object.size));
+    }
+    return new Response(request.method === "HEAD" ? null : object.body, { status, headers });
+  },
+};

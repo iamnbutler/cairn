@@ -6,3 +6,4 @@ build/
 .spool/
 /bench/out/
 host/Sources/CLean/vendor/
+.wrangler/

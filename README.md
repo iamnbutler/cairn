@@ -12,6 +12,8 @@ real app.
 The stack is Lean 4 for state, view, layout, hit testing and proofs; a thin Swift host for the
 window, events, text and accessibility; and Metal for painting.
 
+- [cairn.iamnbutler.workers.dev](https://cairn.iamnbutler.workers.dev): the site, with demo videos of
+  each step.
 - [GOAL.md](GOAL.md): the first demo, a proved TodoMVC on the Mac, and what done means.
 - [docs/architecture.md](docs/architecture.md): how the pieces fit.
 
