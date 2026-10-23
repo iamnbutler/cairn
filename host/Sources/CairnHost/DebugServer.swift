@@ -82,6 +82,7 @@ public final class DebugServer: @unchecked Sendable {
             effects.append(e)
             lock.unlock()
             if case .beep = e { return true }  // recorded, not sounded
+            if case .quit = e { return true }  // recorded, not run: the driver ends the app with `quit`
             return false  // setClipboard runs, into the private pasteboard
         }
         NSApp.setActivationPolicy(.accessory)  // no Dock icon, no menu bar takeover

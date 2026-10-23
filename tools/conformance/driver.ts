@@ -10,6 +10,8 @@
 // field. After every step it compares what the app shows with what the model says it must show:
 //
 //   frame    the decoded frame the app applied, value for value (draws, AX nodes, text input, cursor)
+//   menus    each status item's native menu as AppKit holds it (titles, enabled, checkmarks, ids,
+//            key equivalents, submenus), and each surface's kind, place and shown flag
 //   ax       the accessibility tree as NSAccessibility answers it, against the model's AX nodes
 //            through the host's role and value table (docs/host.md)
 //   effects  the effects the host ran (clipboard writes, beeps)
@@ -65,9 +67,12 @@ type AxNode = {
 	focused: boolean; selected: boolean; checked: boolean | null;
 };
 type TextInput = { control: string; rect: Rect; caret: Rect; text: string; selection: [number, number]; marked: [number, number] | null; origin: [number, number] };
-type Frame = { size: [number, number]; draws: unknown[]; ax: AxNode[]; textInput: TextInput | null; cursor: string };
+type Frame = {
+	size: [number, number]; draws: unknown[]; ax: AxNode[]; textInput: TextInput | null; cursor: string;
+	menus: { place: number; items: unknown[] }[]; surfaces: { kind: string; place: number; shown: boolean }[];
+};
 type Probe = { ref: string; at: [number, number]; expect: Color; own: boolean };
-type Gesture = { g: string; at?: [number, number]; clicks?: number; key?: string; mods?: string[]; char?: string; text?: string; sel?: [number, number]; name?: string };
+type Gesture = { g: string; at?: [number, number]; clicks?: number; key?: string; mods?: string[]; char?: string; text?: string; sel?: [number, number]; name?: string; place?: number; id?: string; ref?: [number, number] };
 type Step = {
 	label: string; move: { ref: string; claim: number; key: number; trigger: string } | null; gestures: Gesture[];
 	events: string[]; actions: { action: string; claim: number; ref: string; accepted: boolean }[];
@@ -166,6 +171,10 @@ async function perform(c: Client, g: Gesture): Promise<number> {
 			return (await c.req({ cmd: "text", op: "unmark" })).seq;
 		case "menu":
 			return (await c.req({ cmd: "menu", name: g.name })).seq;
+		case "menuOpen": case "menuClose":
+			return (await c.req({ cmd: g.g, place: g.place })).seq;
+		case "menuSelect":
+			return (await c.req({ cmd: "menuSelect", place: g.place, id: g.id })).seq;
 	}
 	throw new Error(`unknown gesture ${g.g}`);
 }
@@ -179,6 +188,8 @@ function gestureLine(g: Gesture): string {
 		case "text": return `text ${g.text}`;
 		case "marked": return `marked ${g.sel![0]} ${g.sel![1]} ${g.text}`;
 		case "menu": return `menu ${g.name}`;
+		case "menuOpen": case "menuClose": return `${g.g} ${g.place}`;
+		case "menuSelect": return `menuSelect ${g.place} ${g.ref![0]} ${g.ref![1]}`;
 		default: return g.g;
 	}
 }
@@ -261,9 +272,20 @@ function compareAx(model: Frame, actual: Record<string, unknown>[]): string | nu
 const near = (a: Color, b: Color) => a.every((v, i) => Math.abs(v - b[i]) <= TOLERANCE);
 
 async function checkFrame(c: Client, f: Frame, probes: Probe[], clear: Color, problems: Problem[], stats: Stats) {
+	const { menus, surfaces, ...window } = f;
 	const fr = await c.req({ cmd: "frame" });
-	const d = diff(f, fr.frame, "frame");
+	const d = diff(window, fr.frame, "frame");
 	if (d) problems.push({ kind: "frame", detail: d });
+	for (const m of menus ?? []) {
+		const got = await c.req({ cmd: "menu", place: m.place });
+		const dm = diff(m.items, got.items, `menu ^${m.place}`);
+		if (dm) problems.push({ kind: "menus", detail: dm });
+	}
+	if (surfaces?.length) {
+		const got = (await c.req({ cmd: "surfaces" })).surfaces.map((s: any) => ({ kind: s.kind, place: s.place, shown: s.shown }));
+		const ds = diff(surfaces, got, "surfaces");
+		if (ds) problems.push({ kind: "menus", detail: ds });
+	}
 	const ax = await c.req({ cmd: "ax" });
 	const a = compareAx(f, ax.nodes);
 	if (a) problems.push({ kind: "ax", detail: a });

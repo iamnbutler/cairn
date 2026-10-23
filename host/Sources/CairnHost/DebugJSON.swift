@@ -158,7 +158,9 @@ public enum DebugJSON {
                 "title": item.title, "enabled": item.isEnabled,
                 "state": item.state == .on ? "on" : item.state == .mixed ? "mixed" : "off",
                 "id": item.identifier?.rawValue ?? NSNull(),
-                "key": item.keyEquivalent, "mods": modNames(item.keyEquivalentModifierMask),
+                "key": item.keyEquivalent,
+                // The mask defaults to ⌘ with no key; it means something only with a key.
+                "mods": item.keyEquivalent.isEmpty ? [] : modNames(item.keyEquivalentModifierMask),
             ]
             if let sub = item.submenu { o["items"] = menu(sub) }
             return o
