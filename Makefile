@@ -5,7 +5,7 @@ LEAN_PREFIX = $(shell cd lean && lean --print-prefix)
 LIB = build/lib/libcairn_lean.a
 VENDOR = host/Sources/CLean/vendor/lean
 
-.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-frame selftest demo fixture clean record site site-maps map
+.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-frame selftest demo fixture clean record site site-maps map conformance
 
 # build/lib/libcairn_lean.a: the framework (`Cairn`) and Lean's runtime, linked by every host
 # target. Each app gets its own library on top (APPS: library → file), and each executable
@@ -132,3 +132,33 @@ map: host
 	rm -rf $(MAPDIR)/capture
 	cd host && swift run Cairn$(APP) --map-capture ../$(MAPDIR)/script.json ../$(MAPDIR)/capture
 	bun tools/map/cairn-map.ts build --app $(APP) --dir $(MAPDIR)
+
+# Conformance (docs/conformance.md): the Lean model's sequences replayed on the running app
+# through its debug socket. `make conformance APP=Basics [N=1000] [LEN=12] [SEED=1]` writes
+# build/conformance/$(APP).json (read by the map) and build/conformance/$(APP)/report.md.
+# Adding an app takes one file: tools/conformance/lean/Conformance/Apps/<App>.lean.
+# The generator links with system clang, not Lake: Lake's bundled lld can't read the SDK's
+# Swift .tbd files, and the host's Core Text metrics (CairnMetrics) must replace the weak
+# fallback in lean/c/text_host.c, hence -force_load.
+N ?= 1000
+LEN ?= 12
+SEED ?= 1
+CONFDIR = build/conformance
+CONF_LIB = $(patsubst $(APP):%,%,$(filter $(APP):%,$(APPS)))
+SDK = $(shell xcrun --show-sdk-path)
+conformance: lean
+	@[ -n "$(CONF_LIB)" ] || { echo "conformance: $(APP) is not in APPS"; exit 1; }
+	@[ -f tools/conformance/lean/Conformance/Apps/$(APP).lean ] || { echo "conformance: no tools/conformance/lean/Conformance/Apps/$(APP).lean"; exit 1; }
+	cd host && swift build --product Cairn$(APP) && swift build --product CairnMetrics
+	cd lean && lake build Conformance.Apps.$(APP) claims
+	mkdir -p $(CONFDIR)/$(APP)
+	cd lean && lake exe claims Examples.$(APP) > ../$(CONFDIR)/$(APP)/claims.json
+	clang -O2 -I$(LEAN_PREFIX)/include -DCAIRN_APP_INIT=runtime_initialize_cairn_Conformance_Apps_$(APP) \
+		tools/conformance/gen_main.c \
+		$$(cd lean && lake query +Conformance.Gen:c.o +Conformance.Apps.$(APP):c.o 2>/dev/null) \
+		build/lib/libcairn_app_$(CONF_LIB).a $(LIB) \
+		-Wl,-force_load,$$(cd host && swift build --show-bin-path)/libCairnMetrics.a \
+		-L$(SDK)/usr/lib/swift -lc++ -o $(CONFDIR)/$(APP)/gen
+	bun tools/conformance/driver.ts --app $(APP) --n $(N) --length $(LEN) --seed $(SEED) \
+		--bin $$(cd host && swift build --show-bin-path)/Cairn$(APP) --gen $(CONFDIR)/$(APP)/gen \
+		--claims $(CONFDIR)/$(APP)/claims.json --out $(CONFDIR)

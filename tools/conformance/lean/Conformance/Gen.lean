@@ -455,6 +455,8 @@ structure Options where
   clear : Color := ⟨247, 247, 245, 255⟩
   /-- Witnesses to replay instead of random walks (`--witness FILE`). -/
   witness : Option String := none
+  /-- Raw gesture sequences to replay (`--gestures FILE`). -/
+  gestures : Option String := none
 
 /-- Model checks that need no app: every control on screen belongs to an enabled move
 (presence), and a chosen press delivers exactly that press, after any blurs (pressable). -/
@@ -512,6 +514,25 @@ def stepModel (M : Machine S) (app : App S) (cfg : Config) (o : Options)
 def start (app : App S) (cfg : Config) (o : Options) : Runtime.State S :=
   initState app cfg o.width.toUInt32 o.height.toUInt32 o.scale.toUInt32
 
+/-- The group a choice belongs to: its control and trigger, or plain UI. -/
+def Choice.group (ch : Choice) : String :=
+  match ch.move with
+  | some (c, t) => s!"{refLabel c} {t}"
+  | none => "ui"
+
+/-- Picks a group (a control and trigger, or plain UI) uniformly, with editing the focused field
+weighted three times, then a choice within it. Picking among choices directly would let the
+field's many gestures crowd out the other moves. -/
+def pickGrouped (cs : Array Choice) (r : Rng) : Choice × Rng := Id.run do
+  let mut groups : Array String := #[]
+  for ch in cs do
+    unless groups.contains ch.group do groups := groups.push ch.group
+  let weighted := groups.flatMap fun g =>
+    if (cs.find? (·.group == g)).any (fun ch => ch.move.any (·.2 == "edit") && ch.gestures.length == 1)
+    then #[g, g, g] else #[g]
+  let (g, r) := r.pick weighted
+  r.pick (cs.filter (·.group == g))
+
 /-- A random walk of `o.length` steps from the initial state. -/
 def walk (M : Machine S) (app : App S) (cfg : Config) (o : Options) (i : Nat) : String := Id.run do
   let mut r := Rng.ofSeed (o.seed * 1000003 + i)
@@ -522,7 +543,7 @@ def walk (M : Machine S) (app : App S) (cfg : Config) (o : Options) (i : Nat) : 
   for _ in [0:o.length] do
     let f := modelFrame s []
     let (cs, r') := choices M s f r
-    let (ch, r'') := r'.pick cs
+    let (ch, r'') := pickGrouped cs r'
     r := r''
     let (s', clip', js) := stepModel M app cfg o s clip ch
     s := s'
@@ -593,6 +614,67 @@ def replay (M : Machine S) (app : App S) (cfg : Config) (o : Options) (line : St
                ("initProbes", jarr (initFrame.ax.toList.filterMap (probeFor cfg.metrics initFrame o.clear))),
                ("stopped", jopt jstr stopped), ("steps", jarr steps.toList)]
 
+/-! ## Gesture replay
+
+`--gestures FILE` replays raw gesture lists, which the driver uses to shrink a failing sequence:
+one sequence per line, gestures separated by tabs, each one of `move X Y`, `down X Y CLICKS`,
+`up X Y`, `exit`, `key NAME MODS [CHAR]` (MODS comma-separated, or `-`), `text TEXT`,
+`marked START LEN TEXT`, `unmark` or `menu NAME`. Text runs to the end of the gesture. -/
+
+def parseInt (s : String) : Int := s.toInt?.getD 0
+
+def parseKey (name : String) (ch : String) : Option Key :=
+  match name with
+  | "enter" => some .enter | "escape" => some .escape | "tab" => some .tab
+  | "backspace" => some .backspace | "delete" => some .delete | "left" => some .left
+  | "right" => some .right | "up" => some .up | "down" => some .down | "home" => some .home
+  | "end" => some .finish | "pageUp" => some .pageUp | "pageDown" => some .pageDown
+  | "char" => ch.toList.head?.map Key.char
+  | _ => none
+
+def parseMods (s : String) : Mods :=
+  let ms := s.splitOn ","
+  { shift := ms.contains "shift", command := ms.contains "command",
+    option := ms.contains "option", control := ms.contains "control" }
+
+def parseGesture (g : String) : Option Gesture :=
+  let ps := g.splitOn " "
+  let pt (i : Nat) : Point := ⟨parseInt (ps[i]?.getD "0"), parseInt (ps[i+1]?.getD "0")⟩
+  let rest (n : Nat) := " ".intercalate (ps.drop n)
+  match ps.headD "" with
+  | "move" => some (.move (pt 1))
+  | "down" => some (.down (pt 1) (parseNat (ps[3]?.getD "1")))
+  | "up" => some (.up (pt 1))
+  | "exit" => some .exit
+  | "key" => (parseKey (ps[1]?.getD "") (rest 3)).map (Gesture.key · (parseMods (ps[2]?.getD "-")))
+  | "text" => some (.text (rest 1))
+  | "marked" => some (.marked (rest 3) (parseNat (ps[1]?.getD "0")) (parseNat (ps[2]?.getD "0")))
+  | "unmark" => some .unmark
+  | "menu" => some (.menu (ps[1]?.getD ""))
+  | _ => none
+
+/-- One sequence of steps, each step its gestures separated by `\x1f` (unit separator). -/
+def replayGestures (M : Machine S) (app : App S) (cfg : Config) (o : Options) (line : String) :
+    String := Id.run do
+  let mut s := start app cfg o
+  let mut clip := ""
+  let mut steps : Array String := #[]
+  let initFrame := modelFrame s []
+  let mut stopped : Option String := none
+  for (st, i) in (line.splitOn "\t").zipIdx do
+    let gs := (st.splitOn "\x1f").filterMap parseGesture
+    if gs.isEmpty then
+      stopped := some s!"cannot parse step {i}: {repr st}"
+      break
+    let ch : Choice := { label := s!"replay {i}", move := none, gestures := gs }
+    let (s', clip', js) := stepModel M app cfg o s clip ch
+    s := s'
+    clip := clip'
+    steps := steps.push js
+  return jobj [("name", jstr "replay"), ("init", jframe initFrame),
+               ("initProbes", jarr (initFrame.ax.toList.filterMap (probeFor cfg.metrics initFrame o.clear))),
+               ("stopped", jopt jstr stopped), ("steps", jarr steps.toList)]
+
 /-! ## Entry point -/
 
 def parseColor (s : String) : Color :=
@@ -609,14 +691,21 @@ def parseArgs : List String → Options → Options
   | "--scale" :: v :: rest, o => parseArgs rest { o with scale := parseNat v }
   | "--clear" :: v :: rest, o => parseArgs rest { o with clear := parseColor v }
   | "--witness" :: v :: rest, o => parseArgs rest { o with witness := some v }
+  | "--gestures" :: v :: rest, o => parseArgs rest { o with gestures := some v }
   | _ :: rest, o => parseArgs rest o
   | [], o => o
 
 /-- `gen [--seed N] [--count N] [--length N] [--size W H] [--scale P] [--clear R,G,B]
-[--witness FILE]`: one JSON sequence per line on stdout. -/
+[--witness FILE] [--gestures FILE]`: one JSON sequence per line on stdout. -/
 def run (M : Machine S) (app : App S) (cfg : Config) (args : List String) : IO UInt32 := do
   let o := parseArgs args {}
   let out ← IO.getStdout
+  if let some file := o.gestures then
+    for line in (← IO.FS.lines file) do
+      unless line.isEmpty do
+        out.putStrLn (replayGestures M app cfg o line)
+    out.flush
+    return 0
   match o.witness with
   | some file =>
     for line in (← IO.FS.lines file) do

@@ -396,8 +396,8 @@ public final class DebugServer: @unchecked Sendable {
         } else {
             guard let k = Self.keys[name] else { throw DebugError("unknown key \(name)") }
             code = k.0
-            plain = k.1
             chars = name == "tab" && flags.contains(.shift) ? "\u{19}" : k.1  // Shift-Tab is backtab
+            plain = chars
             if k.2 { flags.formUnion([.function, .numericPad]) }
         }
         guard let e = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: flags,
