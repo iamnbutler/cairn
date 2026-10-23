@@ -7,5 +7,6 @@ import Cairn.UI.Node
 import Cairn.Input
 import Cairn.Frame
 import Cairn.App
+import Cairn.Runtime
 import Cairn.Spike.Bytes
 import Cairn.Spike.Frame
