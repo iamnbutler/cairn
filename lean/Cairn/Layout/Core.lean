@@ -1,4 +1,6 @@
-import Cairn.UI.Node
+module
+
+public import Cairn.UI.Node
 
 /-! # Layout
 
@@ -13,6 +15,8 @@ selection resolved in integer logical points. It is total and pure, and works in
 The semantics are specified in `docs/layout.md`; the theorems are in `Cairn.Layout.Proofs`.
 Every definition here is plain structural recursion over lists so that the proofs can follow
 the code. -/
+
+@[expose] public section
 
 namespace Cairn.Layout
 

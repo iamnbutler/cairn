@@ -1,4 +1,6 @@
-import Cairn.UI.Node
+module
+
+public import Cairn.UI.Node
 
 /-! Hit testing over a laid-out tree.
 
@@ -8,6 +10,8 @@ control, every text run and every field) leaves a *hit entry*: its visible rect
 (`rect.inter clip`) and its *owner*, the nearest control at or above it. A point hits the
 topmost entry that contains it, and the hit goes to that entry's owner. So a label inside a
 button routes to the button, and an opaque panel painted over a button blocks it. -/
+
+@[expose] public section
 
 namespace Cairn.Runtime
 

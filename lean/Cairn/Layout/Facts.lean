@@ -1,10 +1,14 @@
-import Cairn.Layout.Core
+module
+
+public import Cairn.Layout.Core
 
 /-! # What layout guarantees
 
 The vocabulary for the layout theorems: controls of a tree, a predicate holding at every node
 (`Laid.Everywhere`), the local facts layout establishes at each node, and `Facts`, the package
 the runtime's pressability proof consumes. The theorems are in `Cairn.Layout.Proofs`. -/
+
+@[expose] public section
 
 namespace Cairn
 

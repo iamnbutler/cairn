@@ -1,5 +1,7 @@
-import Cairn.Runtime.Step
-import Cairn.Frame
+module
+
+public import Cairn.Runtime.Step
+public import Cairn.Frame
 
 /-! The Lean side of the app ABI. The host (workstream G) loads one app per binary and calls
 three exported functions; each app file defines them by applying these generic functions to
@@ -19,6 +21,8 @@ def appFrame (s : Runtime.State MyApp.State) : ByteArray := Runtime.frameBytes b
 Lean 4.35 rejects `@&` on `@[export]`, so every argument is owned: the host passes its
 reference to the state into `cairn_app_step` and keeps the one that comes back, and calls
 `lean_inc` on the state before `cairn_app_frame` if it keeps using it. See docs/runtime.md. -/
+
+@[expose] public section
 
 namespace Cairn.Runtime
 

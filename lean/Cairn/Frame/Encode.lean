@@ -1,5 +1,7 @@
-import Cairn.Frame
-import Cairn.Frame.Bytes
+module
+
+public import Cairn.Frame
+public import Cairn.Frame.Bytes
 
 /-! Frame byte format v1 (docs/frame.md): specification encoder `Wire.Enc.frame`, decoder
 `Wire.Dec.frame`, the executable encoder `encodeFrame` (proved equal to the specification and
@@ -18,6 +20,8 @@ effects    u32 count u32 byteLength, then count records
 
 Records start with a 4-byte head whose first byte is the tag, followed by fixed-size fields and
 at most two strings, each `u32` byte length + UTF-8. -/
+
+@[expose] public section
 
 namespace Cairn.Wire
 

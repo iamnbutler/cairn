@@ -1,6 +1,8 @@
-import Cairn.App
-import Cairn.Runtime.Hit
-import Cairn.Layout.Core
+module
+
+public import Cairn.App
+public import Cairn.Runtime.Hit
+public import Cairn.Layout.Core
 
 /-! The interaction runtime: turns host events into the `Action`s an app's `update` sees.
 
@@ -8,6 +10,8 @@ import Cairn.Layout.Core
 the new interaction state and a list of actions, each naming a control of that tree. `step`
 then hands the actions to `app.update` in order, re-runs `view` and layout, and repairs focus,
 hover and press against the new tree. The semantics are written out in docs/runtime.md. -/
+
+@[expose] public section
 
 namespace Cairn.Runtime
 

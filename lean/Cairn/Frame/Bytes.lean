@@ -1,3 +1,5 @@
+module
+
 /-! The byte layer of the boundary format (docs/frame.md): little-endian primitives, three ways.
 
 * `Enc.*` encode to `List UInt8`. They are the specification: short, and what the round-trip
@@ -10,6 +12,8 @@
 
 Integers that cross the boundary are 32-bit: `Int` as two's complement (`i32`), `Nat` as
 unsigned (`u32`). The round trip needs the value to fit, stated with `FitsI32` and `FitsU32`. -/
+
+@[expose] public section
 
 namespace Cairn.Wire
 
@@ -204,8 +208,8 @@ theorem skip_pad (n : Nat) (r : List UInt8) : skip n (Enc.pad n ++ r) = some (()
 
 theorem fromUTF8?_toUTF8 (s : String) :
     String.fromUTF8? ⟨s.toUTF8.data.toList.toArray⟩ = some s := by
-  simp only [Array.toArray_toList]
-  simp only [String.fromUTF8?, String.toUTF8, s.isValidUTF8, ↓reduceDIte, String.fromUTF8]
+  simp only [Array.toArray_toList, String.toUTF8_eq_toByteArray]
+  simp only [String.fromUTF8?, s.isValidUTF8, ↓reduceDIte, String.fromUTF8]
 
 theorem str_enc {s : String} (h : FitsStr s) (r : List UInt8) :
     str (Enc.str s ++ r) = some (s, r) := by
