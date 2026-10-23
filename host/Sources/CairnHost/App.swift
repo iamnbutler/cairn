@@ -97,8 +97,10 @@ public final class LeanCore: AppCore {
 
     public init(_ app: LeanApp) { self.app = app }
 
+    /// Called again by `Engine.restart` (debug socket): the old state is released and the thread,
+    /// already registered with Lean, is not registered twice.
     public func start(size: Size, scalePercent: UInt32) {
-        LeanRuntime.enter(module: app.module)
+        if let old = state { cairn_lean_dec(old) } else { LeanRuntime.enter(module: app.module) }
         state = app.initialize(UInt32(max(0, size.w)), UInt32(max(0, size.h)), scalePercent)
     }
 
