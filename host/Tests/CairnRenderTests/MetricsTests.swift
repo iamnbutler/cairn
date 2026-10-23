@@ -73,6 +73,29 @@ func cMetrics(_ f: Font, _ s: String, cap: Int? = nil) -> (count: Int32, values:
         #expect(e.count == 3 && e[1] > 0 && e[2] > e[1], "\(e)")
     }
 
+    /// The fast path in `TextSystem.shape`: on a line with no right-to-left run, the leading-edge
+    /// caret CTLineEnumerateCaretOffsets reports at a UTF-16 index is CTLineGetOffsetForStringIndex
+    /// there. (Checked on 158,000 random strings when it was introduced; these keep it honest.)
+    @Test(arguments: sampleFonts) func enumeratedCaretsAreTheIndexedOnes(_ f: Font) {
+        let extra = ["=\u{F883}E", "x\u{E000}\u{F8FF}y", "a\u{0}", "\u{93F}\u{1F3FB}\\x", "AV To. W,y",
+                     "ffi fl", "ᚠᛇ 𐀀", "1️⃣ 🇺🇸🇬🇧", String(repeating: "lorem ipsum ", count: 40)]
+        for s in sampleStrings + extra {
+            let line = CTLineCreateWithAttributedString(
+                NSAttributedString(string: s, attributes: [.font: TextSystem.shared.ctFont(f)]))
+            let runs = CTLineGetGlyphRuns(line) as! [CTRun]
+            if runs.contains(where: { CTRunGetStatus($0).contains(.rightToLeft) }) { continue }
+            var seen = Set<Int>()
+            var pairs: [(idx: Int, enumerated: Double)] = []
+            CTLineEnumerateCaretOffsets(line) { off, idx, leading, _ in
+                if leading, seen.insert(idx).inserted { pairs.append((idx, off)) }
+            }
+            for p in pairs {
+                let x = Double(CTLineGetOffsetForStringIndex(line, p.idx, nil))
+                #expect(p.enumerated == x, "\(f) \(s.debugDescription) at \(p.idx): enumerated \(p.enumerated), indexed \(x)")
+            }
+        }
+    }
+
     /// The rounding rule: ⌈x − 1/256⌉, monotone, never below the exact advance by more than 1/256.
     @Test func rounding() {
         #expect(TextSystem.round(0) == 0)

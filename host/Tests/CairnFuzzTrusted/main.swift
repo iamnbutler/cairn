@@ -53,6 +53,11 @@ if let w = take("--worker") {
     exit(0)
 }
 
+if args.contains("--bench-wrap") {
+    WrapSuite.bench()
+    exit(0)
+}
+
 if let name = take("--replay") {
     let s = suite(name)
     let i = Int(take("--case") ?? "0")!

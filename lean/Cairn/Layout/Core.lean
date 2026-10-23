@@ -106,8 +106,8 @@ def paraLines (m : TextMetrics) (ts : TextStyle) (wr : Wrap) (aw : Int) (s : Str
   let cs := s.toList
   let o := offAt (m.offsets ts.font s)
   let lh := max 0 (m.lineHeight ts.font)
-  (Text.Wrap.lines o (wrapWidth wr aw) wr cs).map fun p =>
-    .text ts (String.ofList (Text.Wrap.slice cs p)) ⟨max 0 (Text.Wrap.width o p), lh⟩
+  Text.Wrap.mapSlices (fun p t => .text ts (String.ofList t) ⟨max 0 (Text.Wrap.width o p), lh⟩)
+    cs (Text.Wrap.lines o (wrapWidth wr aw) wr cs)
 
 mutual
 /-- The measure pass. `aw` is the width the parent offers, which only wrapped text uses. -/

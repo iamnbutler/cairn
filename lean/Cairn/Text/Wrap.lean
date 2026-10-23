@@ -105,4 +105,41 @@ def lines (o : Nat → Int) (W : Int) (wr : Wrap) (cs : List Char) : List (Nat �
 /-- The scalars of the range `[a, b)`. -/
 def slice (cs : List Char) (p : Nat × Nat) : List Char := (cs.drop p.1).take (p.2 - p.1)
 
+/-- `f` applied to each range and its scalars: the specification. Each `slice` walks from the
+start of the text, so this is quadratic in the text's length; the compiler runs
+`mapSlicesFast` instead (`mapSlices_eq`). -/
+def mapSlices {β : Type} (f : Nat × Nat → List Char → β) (cs : List Char)
+    (ps : List (Nat × Nat)) : List β :=
+  ps.map fun p => f p (slice cs p)
+
+/-- `cur` is `cs.drop base`; ranges that start at or after `base` drop from there, so lines in
+order cost one pass over the text. Any other range drops from the start. -/
+def mapSlicesGo {β : Type} (f : Nat × Nat → List Char → β) (cs : List Char) :
+    Nat → List Char → List (Nat × Nat) → List β
+  | _, _, [] => []
+  | base, cur, p :: ps =>
+    let t := if base ≤ p.1 then cur.drop (p.1 - base) else cs.drop p.1
+    f p (t.take (p.2 - p.1)) :: mapSlicesGo f cs p.1 t ps
+
+def mapSlicesFast {β : Type} (f : Nat × Nat → List Char → β) (cs : List Char)
+    (ps : List (Nat × Nat)) : List β :=
+  mapSlicesGo f cs 0 cs ps
+
+theorem mapSlicesGo_eq {β : Type} (f : Nat × Nat → List Char → β) (cs : List Char) :
+    ∀ (ps : List (Nat × Nat)) (base : Nat), mapSlicesGo f cs base (cs.drop base) ps =
+      mapSlices f cs ps
+  | [], _ => rfl
+  | p :: ps, base => by
+    have ht : (if base ≤ p.1 then (cs.drop base).drop (p.1 - base) else cs.drop p.1) =
+        cs.drop p.1 := by
+      split
+      · rw [List.drop_drop]; congr 1; omega
+      · rfl
+    simp only [mapSlicesGo, ht, mapSlicesGo_eq f cs ps p.1, mapSlices, List.map_cons, slice]
+
+@[csimp] theorem mapSlices_eq : @mapSlices = @mapSlicesFast := by
+  funext β f cs ps
+  simp only [mapSlicesFast]
+  exact (mapSlicesGo_eq f cs ps 0).symm
+
 end Cairn.Text.Wrap

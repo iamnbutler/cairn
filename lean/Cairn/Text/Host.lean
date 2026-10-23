@@ -39,9 +39,11 @@ def sat (n : Nat) : UInt32 := if n < UInt32.size then n.toUInt32 else UInt32.ofN
 def rawFor (f : Font) (s : String) : ByteArray :=
   raw (sat f.family) (sat f.size) (sat f.weight) (if f.italic then 1 else 0) s
 
-/-- The `i`th little-endian int32 of `b`; bytes past the end read as 0. -/
+/-- The `i`th little-endian int32 of `b`; bytes past the end read as 0. (`b[j]?`, not
+`b.data.getD j`: compiled, `ByteArray.data` copies the whole array, which made decoding a
+string's offsets quadratic.) -/
 def word (b : ByteArray) (i : Nat) : Int :=
-  let byte (k : Nat) : Nat := (b.data.getD (4 * i + k) 0).toNat
+  let byte (k : Nat) : Nat := (b[4 * i + k]?.getD 0).toNat
   let u := byte 0 + byte 1 * 0x100 + byte 2 * 0x10000 + byte 3 * 0x1000000
   if u < 0x80000000 then u else (u : Int) - 0x100000000
 

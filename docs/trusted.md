@@ -23,7 +23,7 @@ See docs/render.md for the design.
 caret offset at scalar boundary `i` is Core Text's primary caret offset there, rounded up to a
 whole point.
 
-**Scope.** Text is single-line and left-to-right in M1. Right-to-left and bidirectional text are
+**Scope.** Text is left-to-right in M1; a text draw is one line (wrapped text is several draws, below). Right-to-left and bidirectional text are
 out of scope: their offsets are made nondecreasing by a running max and are not meaningful
 carets. Scalar boundaries inside a grapheme cluster report the cluster's end, so several
 consecutive offsets can be equal (the caret appears to stall over "é" written as e + U+0301, or
@@ -59,6 +59,45 @@ rounding), `Fonts.swift` (Font → CTFont), `Metrics.swift` (the C export),
   to such glyphs.
 - To do (workstream G/J): log every measurement in the running app and replay the log against a
   fresh Core Text in conformance runs, as the `assume` claim's runtime evidence.
+
+### Wrapped lines are what Core Text paints (`assume`, ^990, ^991)
+
+**Statement.** Lean breaks `Node.para` text (docs/layout.md, "Wrapped text") using the caret
+offsets of *one* shaping of the whole string: a line `[a, b)` is taken to be `o b − o a` wide.
+The renderer then paints each line as its own `Draw.text`, which Core Text shapes again on its
+own. ^990: on left-to-right text, that second shaping is within `1 + ⌈0.15 em⌉` points of what
+Lean measured, so a line Lean proved fits the width paints within that slack of it. ^991: Lean's
+breaks are the ones Core Text's typesetter would choose, except near the width and inside cut
+words.
+
+**Why it can differ.** Kerning across the dropped break space (", " pairs) and across a cut in
+an over-wide word is lost when the line is shaped alone, and Core Text rounds and cuts by its own
+fractional widths. A host that wanted exact agreement would have to report per-line widths,
+which would make the breaks depend on a host round trip per candidate line.
+
+**Scope.** Left-to-right only. Right-to-left, bidirectional and complex scripts are not
+modelled (their offsets are a running max, see above). Tabs, line separators (U+2028/2029) and
+other controls are not break opportunities and shape unpredictably; the fuzzer skips them.
+Breaks are only at U+0020, and over-wide words are cut at scalar boundaries, which can split a
+grapheme cluster (an emoji sequence or a combining mark); the fuzzer counts and skips such lines.
+Strings that need fallback fonts can shape differently alone than in context; the fuzzer only
+counts those.
+
+**What is not assumed.** That every line fits, the lines tile the text, the count respects
+`maxLines`, `tail` keeps the last lines and the height is lines × line height are *proved* over
+every valid metrics (`Cairn.Text.WrapProofs`, `Cairn.Layout.Para`).
+
+**Trusted code.** As for text metrics above; no new host code paints wrapped text.
+
+**Evidence.**
+- **Fuzzed** (^990 `text.wrap.painted`): random letters, digits, spaces and `TextPool` strings
+  at random families, sizes, weights and widths, laid out by Lean's `layout` through the real
+  export; each line sits at x 0, `i` line heights down, and its width and carets re-shaped alone
+  agree with Lean's to the slack. Counters split exact, off-by-one, cut-kerning and
+  space-kerning lines.
+- **Fuzzed** (^991 `text.wrap.coretext`): on plain text, Lean's lines against
+  `CTTypesetterSuggestLineBreak`'s; a difference must be a line within 1 pt of the width
+  (`roundingDiffers`) or a cut within two scalars (`cutDiffers`).
 
 ### The renderer paints the frame (`assume`)
 

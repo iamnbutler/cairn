@@ -40,6 +40,26 @@ partial def count : Node → Nat
   | .box _ _ kids => kids.foldl (fun a k => a + count k) 1
   | _ => 1
 
+/-- A paragraph of `n` words of 1 to 10 letters, wrapped to the window (`Node.para`). -/
+def paragraph (n : Nat) : Node :=
+  let word (i : Nat) := String.ofList (List.replicate (1 + (i * 7 + i / 3) % 10) 'a')
+  .para {} {} (" ".intercalate ((List.range n).map word))
+
+def timeLayoutAt (tree : Node) (reps width : Nat) : IO (Float × Nat) := do
+  let mut total := 0
+  let mut sum : Int := 0
+  let mut kids := 0
+  for i in [0:reps] do
+    let w : Size := ⟨width + i % 2, 600⟩
+    let t0 ← IO.monoNanosNow
+    let l := Layout.layout TextMetrics.mono w tree
+    sum := sum + checksum l
+    let t1 ← IO.monoNanosNow
+    total := total + (t1 - t0)
+    if let .box _ _ _ _ ks := l then kids := ks.length
+  if sum == 0 then IO.println "empty"
+  return (total.toFloat / reps.toFloat / 1000000.0, kids)
+
 def timeLayout (tree : Node) (reps : Nat) : IO Float := do
   let mut total := 0
   let mut sum : Int := 0
@@ -80,3 +100,9 @@ def main (args : List String) : IO Unit := do
       let _ ← timeLayout tree 5
       let ms ← timeLayout tree 50
       IO.println s!"layout {name}, {nodes} nodes: {ms} ms ({ms * 1000.0 / nodes.toFloat} µs/node)"
+  for words in [100, 1000, 10000] do
+    let tree := paragraph words
+    for width in [200, 400, 800] do
+      let _ ← timeLayoutAt tree 5 width
+      let (ms, lines) ← timeLayoutAt tree 50 width
+      IO.println s!"layout paragraph, {words} words at width {width}: {ms} ms ({lines} lines)"

@@ -313,7 +313,7 @@ theorem para_ok (m : TextMetrics) (ts : TextStyle) (wr : Wrap) (s : String) (aw 
   have hkid := arrangeList_texts m (innerClip (paraStyle wr) c r)
     (childRects (paraStyle wr) r ((paraLines m ts wr aw s).map Sized.item)) (paraLines m ts wr aw s)
     (fun s hs => by
-      simp only [paraLines, List.mem_map] at hs
+      simp only [paraLines, Text.Wrap.mapSlices, List.mem_map] at hs
       obtain ⟨p, -, rfl⟩ := hs
       exact ⟨_, _, _, rfl⟩)
   have hnil := controlsList_nil_of fun l hl => (hkid l hl).2.2

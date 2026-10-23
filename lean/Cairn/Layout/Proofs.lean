@@ -32,7 +32,7 @@ end
 /-- A wrapped text's lines are text, so they have no controls. -/
 theorem paraLines_controls (m : TextMetrics) (ts : TextStyle) (wr : Wrap) (aw : Int) (s : String) :
     Sized.controlsList (paraLines m ts wr aw s) = [] := by
-  simp only [paraLines]
+  simp only [paraLines, Text.Wrap.mapSlices]
   generalize Text.Wrap.lines _ _ _ _ = ls
   induction ls with
   | nil => simp only [List.map_nil, Sized.controlsList]

@@ -243,3 +243,48 @@ final class WrapSuite: Suite {
         "wrap " + gen(&g).description
     }
 }
+
+extension WrapSuite {
+    /// `CairnFuzzTrusted --bench-wrap` (bench/layout.md, "Wrapped text"): the host's share of a
+    /// 1,000-word paragraph at 13 pt. Core Text shaping the whole string once (cold, a new string
+    /// each run), shaping each line for painting (cold), and Lean breaking and laying it out with
+    /// `TextMetrics.host` through the export, with the whole string already in the cache.
+    static func bench() {
+        Lean.start()
+        let vocab = ["the", "quick", "brown", "fox", "jumps", "over", "a", "lazy", "dog", "while",
+                     "measuring", "every", "glyph", "of", "text", "in", "Lean,", "and", "Metal", "paints",
+                     "what", "was", "measured.", "Wrapping", "breaks", "at", "spaces", "only"]
+        func paragraph(_ salt: Int) -> String {
+            var g = SplitMix(seed: UInt64(salt + 1))
+            return (0..<1000).map { _ in vocab[Int(g.next() % UInt64(vocab.count))] }.joined(separator: " ")
+                + " \(salt)"
+        }
+        let font = Font(family: 0, size: 13, weight: 400, italic: false)
+        func median(_ a: [Double]) -> Double { a.sorted()[a.count / 2] }
+        func ms(_ f: () -> Void) -> Double {
+            let t0 = DispatchTime.now().uptimeNanoseconds
+            f()
+            return Double(DispatchTime.now().uptimeNanoseconds - t0) / 1e6
+        }
+        var shapeWhole: [Double] = [], shapeLines: [Double] = [], lean: [Double] = []
+        var lineCount = 0
+        for width in [200, 400, 800] {
+            shapeWhole = []; shapeLines = []; lean = []
+            for i in 0..<25 {
+                let s = paragraph(width * 100 + i)
+                shapeWhole.append(ms { _ = TextSystem.shared.shape(font, s) })
+                var lines: [Lean.WrapLine] = []
+                lean.append(ms { lines = Lean.wrap(family: 0, size: 13, weight: 400, italic: false, width: UInt32(width), s) })
+                lineCount = lines.count
+                let scalars = Array(s.unicodeScalars)
+                let strs = lines.map { l in
+                    var u = String.UnicodeScalarView(); u.append(contentsOf: scalars[l.a..<l.b]); return String(u)
+                }
+                shapeLines.append(ms { for l in strs { _ = TextSystem.shared.shape(font, l) } })
+            }
+            print(String(format: "wrap 1000 words at width %d (%d lines, %d scalars): shape whole %.3f ms, Lean wrap+layout %.3f ms, shape lines %.3f ms",
+                         width, lineCount, paragraph(width * 100).unicodeScalars.count,
+                         median(shapeWhole), median(lean), median(shapeLines)))
+        }
+    }
+}
