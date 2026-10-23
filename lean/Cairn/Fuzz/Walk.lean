@@ -258,6 +258,20 @@ def World.noteSeen (w : World S) (laid : Laid) : World S :=
 
 def isPointer (m : Move S) : Bool := m.triggers.any fun tr => tr == .press || tr == .doublePress
 
+mutual
+/-- The first node, in paint order, that breaks one of `Pressable`'s conditions, and which. -/
+def firstBad (l : Laid) : Option (String × Laid) :=
+  if !fitsB l then some ("a container's children don't fit it", l)
+  else if !stackTopB l then some ("a stack has controls below its top child", l)
+  else if !controlLeafB l then some ("a control has controls inside it", l)
+  else match l with
+    | .box _ _ _ _ kids => firstBadList kids
+    | _ => none
+def firstBadList : List Laid → Option (String × Laid)
+  | [] => none
+  | k :: ks => (firstBad k).orElse fun _ => firstBadList ks
+end
+
 /-- Every check after an operation: the checks that ran and the failures. `act?` is the
 action the operation meant to perform, if it ran. -/
 def checks (t : Target) (setup : Setup) (w : World t.S) (act? : Option Action)
@@ -315,8 +329,15 @@ def checks (t : Target) (setup : Setup) (w : World t.S) (act? : Option Action)
           s!"{tg.ref.label}'s centre {reprStr tg.visible.center} hits {reprStr (hit.map (·.label))} at {size.w}×{size.h}"
     if let some r := anyPointer then
       unless checkPressable size laid && controlsNonempty laid do
+        -- Blame the first control inside the first node that breaks a condition.
+        let (why, r) := match firstBad laid with
+          | some (why, n) => (why, (n.controls.head?.map fun (c : Control) => c.ref).getD r)
+          | none =>
+            if !insideB laid.rect (windowRect size) then ("the root is outside the window", r)
+            else ("a control's rect is empty", ((targets laid).find? fun (tg : Cairn.Runtime.Target) =>
+              !(decide (0 < tg.node.rect.w) && decide (0 < tg.node.rect.h))).map Cairn.Runtime.Target.ref |>.getD r)
         fails := fails.push <| mkFail "pressable-check" r stepIx
-          s!"Layout.checkPressable rejects the tree at {size.w}×{size.h} (window ≥ minimum {min.w}×{min.h}), so pressability can't be proved by evaluation here"
+          s!"Layout.checkPressable rejects the tree at {size.w}×{size.h} (window ≥ minimum {min.w}×{min.h}): {why}, near {r.label}"
   return (ran.toList, fails.toList)
 
 /-! ## Generating operations -/
