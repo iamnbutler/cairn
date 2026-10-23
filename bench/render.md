@@ -27,8 +27,7 @@ Reading:
   the miss is paid on the Lean thread and the render thread hits the cache. A frame where 1,000
   strings change at once would spend ~24 ms shaping on the Lean thread; typing changes one.
 - New glyphs are rasterised once per (font, glyph, subpixel bin, scale); the warm-up frames
-  absorb that here. The atlas-filling test (`atlasResetsWhenFull`, 2,600 CJK glyphs at 64 pt
-  @2x) shows the cold cost is tens of ms for thousands of large glyphs.
+  absorb that, so the rasterisation cost is not in these numbers.
 
 For comparison, the Lean side (spike numbers, docs/spike-boundary.md) spends 0.4 ms on layout
 and encoding at 1,000 nodes and 3.7–4.0 ms at 10,000.

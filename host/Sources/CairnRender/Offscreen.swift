@@ -77,10 +77,7 @@ extension Renderer {
     /// (x + ½, y + ½), rendered at `scale`. For conformance checks such as "this control's box
     /// is painted": probe the control's centre and compare with its fill.
     public func probe(_ frame: Frame, at p: Point, scale: Float = 2) throws -> Color {
-        let img = try image(frame, scale: scale)
-        let x = Int(((Float(p.x) + 0.5) * scale).rounded(.down))
-        let y = Int(((Float(p.y) + 0.5) * scale).rounded(.down))
-        return img.pixel(min(max(x, 0), img.width - 1), min(max(y, 0), img.height - 1))
+        try probe(frame, at: [p], scale: scale)[0]
     }
 
     /// Several probes from one render.
