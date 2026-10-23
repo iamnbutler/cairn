@@ -3,7 +3,9 @@
 Workstream F: `host/Sources/CairnRender` paints a frame's `[Draw]` with Metal, and gives Lean the
 text metrics it lays out with. Both halves shape text through one object, `TextSystem.shared`,
 so what Lean measures is what gets drawn. This code is trusted (docs/trusted.md); it is kept
-small and checked by goldens, pixel probes and an end-to-end metrics test.
+small and checked by goldens, pixel probes and an end-to-end metrics test. The choices below
+follow research/macos/text-rendering.md and research/macos/metal-ui-rendering.md (Zed, Ghostty
+and others).
 
 ## API
 
