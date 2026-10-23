@@ -218,12 +218,13 @@ ledger, so every app module must be reachable from `Examples.lean`).
    "place": 3, "retired": null, "module": "Examples.Counter", "decl": "Examples.Counter.reset",
    "statement": "5ace86b109a74bf5",
    "statementDecls": ["Examples.Counter.reset.enabled", "Examples.Counter.reset.press.post"],
-   "triggers": ["press"], "keyed": false, "passes": [], "machine": null,
+   "triggers": ["press"], "keyed": false, "passes": [], "witness": null, "machine": null,
+   "pos": {"file": "lean/Examples/Counter.lean", "line": 41},
    "evidence": [{"role": "sound press", "theorem": "Examples.Counter.reset.press.sound",
                  "proved": true, "extraAxioms": []}]}]}
 ```
 
-`passes` is a flow's path through move ids; `machine` is the machine a flow or invariant is
+`passes` is a flow's path through move ids, and `witness` its steps (`{"trigger": "press", "ref": "^1", "claim": 1, "key": 0}`, plus `op` for edits), for drivers that replay it (docs/map.md); `pos` is where the claim is declared; `machine` is the machine a flow or invariant is
 stated against. Evidence roles: `sound <trigger>` (moves), `live` and `reaches` (flows),
 `init`, `step` and `reachable` (invariants). `proved` is true when the theorem depends on no
 axioms beyond `propext`, `Classical.choice` and `Quot.sound`.

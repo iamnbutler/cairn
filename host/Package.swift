@@ -30,10 +30,14 @@ let package = Package(
         // The generic AppKit host: threads, input, text input, accessibility, effects.
         .target(name: "CairnHost", dependencies: ["CLean", "CairnFrame", "CairnRender"]),
 
+        // Headless screenshots with pins for the map (tools/map): each app executable calls
+        // MapCapture.main, since each links its own app.
+        .target(name: "CairnCapture", dependencies: ["CairnHost", "CairnFrame", "CairnRender"]),
+
         // Apps: one executable per Lean app, each linking its own app library.
-        .executableTarget(name: "CairnCounter", dependencies: ["CairnHost", "CLean", "CairnFrame"],
+        .executableTarget(name: "CairnCounter", dependencies: ["CairnHost", "CLean", "CairnFrame", "CairnCapture"],
                           linkerSettings: [.unsafeFlags(["-L" + leanLib, "-lcairn_app_counter"])]),
-        .executableTarget(name: "CairnBasics", dependencies: ["CairnHost", "CLean", "CairnFrame", "CairnRender"],
+        .executableTarget(name: "CairnBasics", dependencies: ["CairnHost", "CLean", "CairnFrame", "CairnRender", "CairnCapture"],
                           linkerSettings: [.unsafeFlags(["-L" + leanLib, "-lcairn_app_basics"])]),
         // A Swift stand-in app with a text field, for checking the host by hand (IME, AX) before
         // a Lean app has one. Not product code.

@@ -16,7 +16,40 @@ def evidenceJson (env : Environment) (role : String) (thm : Name) : IO Json := d
   return Json.mkObj [("role", role), ("theorem", thm.toString),
     ("proved", extra.isEmpty), ("extraAxioms", toJson (extra.map (·.toString)))]
 
-def claimJson (env : Environment) (e : Entry) : IO Json := do
+/-- One step of a flow's witness, for drivers that replay it (the map's capture). -/
+def actionJson : Cairn.Action → Json
+  | .press c => step "press" c
+  | .doublePress c => step "doublePress" c
+  | .edit c op => (step "edit" c).setObjVal! "op" (opJson op)
+  | .submit c => step "submit" c
+  | .cancel c => step "cancel" c
+  | .blur c => step "blur" c
+where
+  /-- `{"kind": "insert", "text": "milk"}`; operations without text are just their kind. -/
+  opJson : Cairn.TextOp → Json
+    | .insert s => Json.mkObj [("kind", "insert"), ("text", s)]
+    | .paste s => Json.mkObj [("kind", "paste"), ("text", s)]
+    | op => Json.mkObj [("kind", ((toString (repr op)).splitOn " ").head!.replace "Cairn.TextOp." "")]
+  step (trigger : String) (c : Cairn.ControlRef) : Json :=
+    Json.mkObj [("trigger", trigger), ("ref", c.label), ("claim", c.claim), ("key", c.key)]
+
+/-- A flow's witness, evaluated from its generated `witness` definition. -/
+unsafe def witnessJson (env : Environment) (e : Entry) : Json :=
+  if e.info.kind != .flow then Json.null else
+  match env.evalConst (List Cairn.Action) {} (e.decl ++ `witness) (checkMeta := false) with
+  | .ok w => Json.arr (w.map actionJson).toArray
+  | .error err => Json.mkObj [("error", err)]
+
+/-- Where the claim is declared: the module's source file under `lean/`, and the line. -/
+def posJson (env : Environment) (e : Entry) : IO Json := do
+  let file := "lean/" ++ "/".intercalate (e.module.components.map (·.toString)) ++ ".lean"
+  let ranges ← [e.decl, e.infoDecl].findSomeM? fun n => do
+    let (r, _) ← (findDeclarationRanges? n : CoreM _).toIO { fileName := "claims", fileMap := default } { env }
+    return r
+  return Json.mkObj [("file", file),
+    ("line", match ranges with | some r => toJson r.range.pos.line | none => Json.null)]
+
+unsafe def claimJson (env : Environment) (e : Entry) : IO Json := do
   let ev ← e.evidence.mapM fun (r, n) => evidenceJson env r n
   let opt (o : Option String) : Json := match o with | some s => s | none => Json.null
   return Json.mkObj [
@@ -28,7 +61,8 @@ def claimJson (env : Environment) (e : Entry) : IO Json := do
     ("statement", statementHash env e),
     ("statementDecls", toJson (e.statement.map (·.toString))),
     ("triggers", toJson e.triggers), ("keyed", e.keyed),
-    ("passes", toJson e.passes),
+    ("passes", toJson e.passes), ("witness", witnessJson env e),
+    ("pos", ← posJson env e),
     ("machine", opt (e.machine.map (·.toString))),
     ("evidence", Json.arr ev)]
 
