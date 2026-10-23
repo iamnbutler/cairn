@@ -20,6 +20,7 @@ import Cairn.Frame.Layout
 import Cairn.Frame.EventsTests
 import Cairn.Frame.BuildTests
 import Cairn.Frame.BoundaryTests
+import Cairn.Surface
 import Cairn.App
 -- The runtime half of the claim language only: `Cairn.Claims` imports `Lean` and must stay out
 -- of the host's library (see "Linking" in docs/claims.md).

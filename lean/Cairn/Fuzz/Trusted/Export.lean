@@ -66,7 +66,7 @@ def fieldUpdate (f : Text.Field) : Action → Text.Field × List Effect
 
 def fieldApp : App Text.Field where
   init := {}
-  view := fieldView
+  surfaces := [.window 0 "Field" fieldView]
   update := fieldUpdate
   claims := []
   initFocus := some fieldRef

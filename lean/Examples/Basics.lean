@@ -436,7 +436,7 @@ def view (s : State) (ui : UI) : Node :=
       .box { width := .fill, gap := 4 } none (s.items.map (itemRow ui)),
       .text { font := { size := 13 }, color := muted } (footer s) ]
 
-def app : App State := machine.toApp view claimInfos
+def app : App State := machine.toApp [.window 106 "Basics" view] claimInfos
 
 /-! ## The app ABI (docs/runtime.md) -/
 

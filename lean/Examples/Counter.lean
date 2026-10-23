@@ -146,6 +146,6 @@ def view (s : State) (ui : UI) : Node :=
        button ui incrementRef "Increment" green greenDark ] ++
      (if resetEnabled s then [button ui resetRef "Reset" red redDark] else []))
 
-def app : App State := machine.toApp view claimInfos
+def app : App State := machine.toApp [.window 3 "Counter" view] claimInfos
 
 end Examples.Counter

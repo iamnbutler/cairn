@@ -100,7 +100,7 @@ theorem footer_reachable {s : State} (h : machine.Reachable s) :
 theorem footer_on_screen (cfg : Config) (size : Size) (scale : Nat) (es : List Event) :
     let st := (steps app cfg (start app cfg size scale) es).1.app
     footer st = leftLabel (undone st.items) :=
-  footer_reachable (steps_reachable machine view claimInfos cfg size scale es)
+  footer_reachable (steps_reachable machine [.window 106 "Basics" view] claimInfos cfg size scale es)
 
 /-! ## Pressable, for a concrete state -/
 
