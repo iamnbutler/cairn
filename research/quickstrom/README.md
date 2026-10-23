@@ -37,14 +37,14 @@ must check at least n states for φ before concluding that the formula is presum
 Evaluation is formula progression: unroll against the current state, simplify, and if a
 required-next remains, take another action.
 
-**Specs are not models** (§6.4, L1039–1046): model-based PBT "require[s] that the model capture
+**Specs are not models** (§6.4, L1039–1046, quote at L1043): model-based PBT "require[s] that the model capture
 the essential complexity of the application … Quickstrom specifications can be more abstract …
 free to leave out details". The TodoMVC spec is a state machine over *observations*:
 `initial ∧ □(focusNewTodo ∨ enterNewTodoText ∨ addNew ∨ changeFilter ∨ setSameFilter ∨ toggleAll ∨
 checkOne ∨ uncheckOne ∨ delete ∨ enterEditMode ∨ inEditMode) ∧ □⟨invariants⟩` (Fig. "Sketch of our
-TodoMVC specification", L790–818). Editing is a nested machine entered by `enterEditMode` and
+TodoMVC specification", L773–802). Editing is a nested machine entered by `enterEditMode` and
 left via `Release` on commit/abort; "we also 'remember' the original value of an item … so that
-we can specify that the text returns to its original value if an edit is aborted" (L834).
+we can specify that the text returns to its original value if an edit is aborted" (L818).
 
 **The informal spec is ambiguous** (§5.1, L759–770): "our formalisation efforts show the
 official specification is rife with ambiguity and under-specification." Two examples: what
@@ -53,7 +53,7 @@ assumption that no other part of the interface (such as pending input) should be
 and the filter after deleting all items (left undefined; de-facto "unchanged").
 
 **Results** (§5.2, L887–933, Tables "Summary of Results" and "Problems found"): 43
-implementations tested, **20 failed** ("almost half"; the abstract says "more than a third";
+implementations tested, **20 failed** ("almost half", L893 and abstract L214; the introduction, L329, says "more than a third";
 Wickström's 2026 post says "more than half"; the table says 20/43 = 47%). The 14 problems:
 
 | # | Problem | Impls |
@@ -75,13 +75,13 @@ Wickström's 2026 post says "more than half"; the table says 20/43 = 47%). The 1
 
 "problems often manifest when the user does something unexpected after entering (but not
 committing) some input text … the interaction between filters and the 'Toggle all' button is
-another common source of bugs" (L926–928). Even the three reference implementations (vanillajs,
+another common source of bugs" (L923–928). Even the three reference implementations (vanillajs,
 vanilla-es6, jquery) failed. Elm failed (row 4, blank items).
 
 **Cost of random search** (§5.3, Fig. "False negative rate", L935–1000): false-negative rate
 100% at subscript 1, 64.5% at 10, 30.5% at 50, 21.4% at 100 (default, ~42 s per passing
 implementation), 8.1% at 500. "the more involved faults such as Problem 11 are only found
-infrequently, resulting in flaky tests."
+infrequently, resulting in flaky tests." (L997)
 
 **What the spec leaves out**, read from `case-studies_todomvc.strom`:
 
@@ -89,7 +89,7 @@ infrequently, resulting in flaky tests."
   during an edit is unspecified.
 - Delete is `click!(.destroy)`; hover is never exercised and the spec does not check that delete
   is hidden without hover.
-- "We have not yet formalized the persistence aspect" (L840). No reload action.
+- "We have not yet formalized the persistence aspect" (L821). No reload action.
 - `typePendingText!` types only `" ", "a", "b", backspace`; edit text only `"c", backspace`. So
   trimming and Unicode are barely explored, and the counter is never checked above small N.
 - Initial state requires `selectedFilter == null`, i.e. filters hidden with no items; after
