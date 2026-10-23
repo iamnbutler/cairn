@@ -33,11 +33,11 @@ mutual
 theorem measure_controls (m : TextMetrics) : ∀ n : Node, (measure m n).controls = n.controls
   | .box st c kids => by
     simp only [measure, Sized.controls, Node.controls, measureList_controls m kids]
-  | .text .. => by simp [measure, Sized.controls, Node.controls]
-  | .field .. => by simp [measure, Sized.controls, Node.controls]
+  | .text .. => by simp only [measure, Sized.controls, Node.controls]
+  | .field .. => by simp only [measure, Sized.controls, Node.controls]
 theorem measureList_controls (m : TextMetrics) :
     ∀ ns : List Node, Sized.controlsList (measureList m ns) = Node.controlsList ns
-  | [] => by simp [measureList, Sized.controlsList, Node.controlsList]
+  | [] => by simp only [measureList, Sized.controlsList, Node.controlsList]
   | n :: ns => by
     simp only [measureList, Sized.controlsList, Node.controlsList, measure_controls m n,
       measureList_controls m ns]
@@ -48,12 +48,12 @@ theorem arrange_controls (m : TextMetrics) :
     ∀ (s : Sized) (c r : Rect), (arrange m c r s).controls = s.controls
   | .box st ctl sz kids, c, r => by
     simp only [arrange, Laid.controls, Sized.controls, arrangeList_controls m kids]
-  | .text .., c, r => by simp [arrange, Laid.controls, Sized.controls]
-  | .field .., c, r => by simp [arrange, field, Laid.controls, Sized.controls]
+  | .text .., c, r => by simp only [arrange, Laid.controls, Sized.controls]
+  | .field .., c, r => by simp only [arrange, field, Laid.controls, Sized.controls]
 theorem arrangeList_controls (m : TextMetrics) :
     ∀ (ss : List Sized) (c : Rect) (rs : List Rect),
       Laid.controlsList (arrangeList m c rs ss) = Sized.controlsList ss
-  | [], c, rs => by cases rs <;> simp [arrangeList, Laid.controlsList, Sized.controlsList]
+  | [], c, rs => by cases rs <;> simp only [arrangeList, Laid.controlsList, Sized.controlsList]
   | s :: ss, c, [] => by
     simp only [arrangeList, Laid.controlsList, Sized.controlsList, arrange_controls m s,
       arrangeList_controls m ss]
@@ -66,65 +66,72 @@ end
 controls of the view: none lost, none invented, none reordered. -/
 theorem layout_controls (m : TextMetrics) (w : Size) (n : Node) :
     (layout m w n).controls = n.controls := by
-  simp [layout, arrange_controls, measure_controls]
+  simp only [layout, arrange_controls, measure_controls]
 
 /-! ## Shape of `arrange` -/
 
 @[simp] theorem arrange_rect (m : TextMetrics) (c r : Rect) (s : Sized) :
     (arrange m c r s).rect = r := by
-  cases s <;> simp [arrange, field, Laid.rect]
+  cases s <;> simp only [Laid.rect, arrange, field]
 
 @[simp] theorem arrange_clip (m : TextMetrics) (c r : Rect) (s : Sized) :
     (arrange m c r s).clip = c := by
-  cases s <;> simp [arrange, field, Laid.clip]
+  cases s <;> simp only [Laid.clip, arrange, field]
 
 @[simp] theorem arrange_sizings (m : TextMetrics) (c r : Rect) (s : Sized) :
     (arrange m c r s).sizings = s.sizings := by
-  cases s <;> simp [arrange, field, Laid.sizings, Sized.sizings]
+  cases s <;> simp only [Laid.sizings, arrange, Sized.sizings, field]
 
 theorem arrange_children_box (m : TextMetrics) (c r : Rect) (st : Style) (ctl : Option Control)
     (sz : Size) (kids : List Sized) :
     (arrange m c r (.box st ctl sz kids)).children =
       arrangeList m (innerClip st c r) (childRects st r (kids.map Sized.item)) kids := by
-  simp [arrange, Laid.children]
+  simp only [Laid.children, arrange]
 
 theorem arrange_children_nil (m : TextMetrics) (c r : Rect) (s : Sized)
     (h : ∀ st ctl sz kids, s ≠ .box st ctl sz kids) : (arrange m c r s).children = [] := by
   cases s with
   | box st ctl sz kids => exact absurd rfl (h st ctl sz kids)
-  | text => simp [arrange, Laid.children]
-  | field => simp [arrange, field, Laid.children]
+  | text => simp only [Laid.children, arrange]
+  | field => simp only [Laid.children, arrange, field]
 
 theorem arrangeList_clip (m : TextMetrics) (c : Rect) :
     ∀ (rs : List Rect) (ss : List Sized), ∀ k ∈ arrangeList m c rs ss, k.clip = c
-  | _, [] => by simp [arrangeList]
+  | _, [] => by simp only [arrangeList, List.not_mem_nil, false_implies, implies_true]
   | [], s :: ss => by
     simp only [arrangeList, List.mem_cons]
     rintro k (rfl | hk)
-    · simp
+    · simp only [arrange_clip]
     · exact arrangeList_clip m c [] ss k hk
   | r :: rs, s :: ss => by
     simp only [arrangeList, List.mem_cons]
     rintro k (rfl | hk)
-    · simp
+    · simp only [arrange_clip]
     · exact arrangeList_clip m c rs ss k hk
 
 theorem arrangeList_length (m : TextMetrics) (c : Rect) :
     ∀ (rs : List Rect) (ss : List Sized), (arrangeList m c rs ss).length = ss.length
-  | _, [] => by simp [arrangeList]
-  | [], s :: ss => by simp [arrangeList, arrangeList_length m c [] ss]
-  | r :: rs, s :: ss => by simp [arrangeList, arrangeList_length m c rs ss]
+  | _, [] => by simp only [arrangeList, List.length_nil]
+  | [], s :: ss => by simp only [arrangeList, List.length_cons, arrangeList_length m c [] ss]
+  | r :: rs, s :: ss => by simp only [arrangeList, List.length_cons, arrangeList_length m c rs ss]
 
 /-- With one rect per child, each child lands in its rect. -/
 theorem arrangeList_map {α : Type} (m : TextMetrics) (c : Rect) (g : Sizing × Sizing → Rect → α) :
     ∀ (rs : List Rect) (ss : List Sized), rs.length = ss.length →
       (arrangeList m c rs ss).map (fun k => g k.sizings k.rect) =
         List.zipWith (fun s r => g s.sizings r) ss rs
-  | [], [], _ => by simp [arrangeList]
+  | [], [], _ => by simp only [arrangeList, List.map_nil, List.zipWith_nil_right]
   | r :: rs, s :: ss, h => by
-    simp [arrangeList, arrangeList_map m c g rs ss (by simpa using h)]
-  | [], _ :: _, h => by simp at h
-  | _ :: _, [], h => by simp at h
+    simp only [arrangeList, List.map_cons, arrange_sizings, arrange_rect,
+      arrangeList_map m c g rs ss (by simpa only [List.length_cons,
+          Nat.add_right_cancel_iff] using h),
+      List.zipWith_cons_cons]
+  | [], _ :: _, h => by simp only [List.length_nil, List.length_cons, Nat.right_eq_add,
+      Nat.add_eq_zero_iff, List.length_eq_zero_iff,
+    Nat.succ_ne_self, and_false] at h
+  | _ :: _, [], h => by simp only [List.length_cons, List.length_nil, Nat.add_eq_zero_iff,
+      List.length_eq_zero_iff, Nat.succ_ne_self,
+    and_false] at h
 
 theorem arrangeList_rects (m : TextMetrics) (c : Rect) (rs : List Rect) (ss : List Sized)
     (h : rs.length = ss.length) : (arrangeList m c rs ss).map Laid.rect = rs := by
@@ -132,8 +139,11 @@ theorem arrangeList_rects (m : TextMetrics) (c : Rect) (rs : List Rect) (ss : Li
   rw [this]
   clear this
   induction ss generalizing rs with
-  | nil => cases rs <;> simp_all
-  | cons s ss ih => cases rs <;> simp_all
+  | nil => cases rs <;> simp_all only [List.length_nil, List.zipWith_nil_right, List.length_cons,
+      Nat.add_eq_zero_iff, List.length_eq_zero_iff, Nat.succ_ne_self, and_false]
+  | cons s ss ih => cases rs <;> simp_all only [List.length_nil, List.length_cons,
+      Nat.right_eq_add, Nat.add_eq_zero_iff, List.length_eq_zero_iff, Nat.succ_ne_self, and_false,
+      Nat.add_right_cancel_iff, List.zipWith_cons_cons]
 
 /-! ## Lifting local facts to the whole tree -/
 
@@ -152,27 +162,31 @@ theorem arrange_everywhere
     have h2 := (H c r (.box st ctl sz kids) hq).2
     rw [arrange_children_box] at h2 ⊢
     exact arrangeList_everywhere H kids _ _ h2
-  | .text ts s sz, c, r, hq => .intro (H c r _ hq).1 (by simp [arrange, Laid.children])
-  | .field st ts ctl v sz, c, r, hq => .intro (H c r _ hq).1 (by simp [arrange, field, Laid.children])
+  | .text ts s sz, c, r, hq => .intro (H c r _ hq).1 (by simp only [Laid.children, arrange,
+      List.not_mem_nil, false_implies, implies_true])
+  | .field st ts ctl v sz, c, r, hq => .intro (H c r _ hq).1 (by simp only [Laid.children,
+      arrange, field, List.not_mem_nil, false_implies, implies_true])
 theorem arrangeList_everywhere
     (H : ∀ c r s, Q c r → P (arrange m c r s) ∧ ∀ k ∈ (arrange m c r s).children, Q k.clip k.rect) :
     ∀ (ss : List Sized) (c : Rect) (rs : List Rect),
       (∀ k ∈ arrangeList m c rs ss, Q k.clip k.rect) → ∀ k ∈ arrangeList m c rs ss, k.Everywhere P
-  | [], c, rs, _ => by cases rs <;> simp [arrangeList]
+  | [], c, rs, _ => by cases rs <;> simp only [arrangeList, List.not_mem_nil, false_implies,
+      implies_true]
   | s :: ss, c, [], h => by
     simp only [arrangeList, List.mem_cons, forall_eq_or_imp] at h ⊢
-    refine ⟨arrange_everywhere H s c _ (by simpa using h.1), ?_⟩
+    refine ⟨arrange_everywhere H s c _ (by simpa only [arrange_clip, arrange_rect] using h.1), ?_⟩
     exact arrangeList_everywhere H ss c [] h.2
   | s :: ss, c, r :: rs, h => by
     simp only [arrangeList, List.mem_cons, forall_eq_or_imp] at h ⊢
-    refine ⟨arrange_everywhere H s c _ (by simpa using h.1), ?_⟩
+    refine ⟨arrange_everywhere H s c _ (by simpa only [arrange_clip, arrange_rect] using h.1), ?_⟩
     exact arrangeList_everywhere H ss c rs h.2
 end
 
 /-- The unconditional case. -/
 theorem arrange_everywhere' (H : ∀ c r s, P (arrange m c r s)) (s : Sized) (c r : Rect) :
     (arrange m c r s).Everywhere P :=
-  arrange_everywhere m P (fun _ _ => True) (fun c r s _ => ⟨H c r s, fun _ _ => trivial⟩) s c r trivial
+  arrange_everywhere m P (fun _ _ => True) (fun c r s _ => ⟨H c r s,
+      fun _ _ => trivial⟩) s c r trivial
 
 end Lift
 
@@ -195,14 +209,15 @@ theorem arrange_childClips (m : TextMetrics) (c r : Rect) (s : Sized) :
   | box st ctl sz kids =>
     rw [arrange_children_box] at hk
     rw [arrangeList_clip m _ _ _ k hk]
-    simp [arrange, Laid.innerClip]
-  | text => simp [arrange, Laid.children] at hk
-  | field => simp [arrange, field, Laid.children] at hk
+    simp only [Laid.innerClip, arrange]
+  | text => simp only [Laid.children, arrange, List.not_mem_nil] at hk
+  | field => simp only [Laid.children, arrange, field, List.not_mem_nil] at hk
 
 theorem arrange_clipInside (m : TextMetrics) (c r : Rect) (s : Sized) (hw : 0 ≤ c.w) (hh : 0 ≤ c.h) :
     ClipInside (arrange m c r s) ∧
       ∀ k ∈ (arrange m c r s).children, 0 ≤ k.clip.w ∧ 0 ≤ k.clip.h := by
-  refine ⟨⟨by simpa using hw, by simpa using hh, ?_⟩, ?_⟩ <;> intro k hk <;>
+  refine ⟨⟨by simpa only [arrange_clip] using hw, by simpa only [arrange_clip] using hh, ?_⟩,
+      ?_⟩ <;> intro k hk <;>
     have hc := arrange_childClips m c r s k hk <;> rw [hc] <;>
     cases s <;> simp only [arrange, field, Laid.children, Laid.innerClip, Laid.clip, innerClip,
       List.not_mem_nil] at hk ⊢ <;> split <;>
@@ -226,11 +241,11 @@ theorem layout_clipInside (m : TextMetrics) (w : Size) (n : Node) :
 
 theorem layout_rootClip (m : TextMetrics) (w : Size) (n : Node) :
     (layout m w n).clip = windowRect w := by
-  simp [layout]
+  simp only [layout, arrange_clip]
 
 theorem layout_rootOrigin (m : TextMetrics) (w : Size) (n : Node) :
     (layout m w n).rect.x = 0 ∧ (layout m w n).rect.y = 0 := by
-  simp [layout, rootRect]
+  simp only [layout, rootRect, arrange_rect, and_self]
 
 /-! ## Sizes are non-negative -/
 
@@ -238,7 +253,7 @@ theorem cumShare_mono {L : Int} (hL : 0 ≤ L) (f : Nat) {a b : Nat} (hab : a �
     cumShare L f a ≤ cumShare L f b := by
   unfold cumShare
   rcases Nat.eq_zero_or_pos f with rfl | hf
-  · simp
+  · simp only [Int.cast_ofNat_Int, Int.ediv_zero, Std.le_refl]
   · exact Int.ediv_le_ediv (by omega) (Int.mul_le_mul_of_nonneg_left (by omega) hL)
 
 theorem fillShare_nonneg {L : Int} (hL : 0 ≤ L) (f j : Nat) : 0 ≤ fillShare L f j := by
@@ -246,10 +261,10 @@ theorem fillShare_nonneg {L : Int} (hL : 0 ≤ L) (f j : Nat) : 0 ≤ fillShare 
   unfold fillShare; omega
 
 theorem resolve_nonneg (s : Sizing) (x : Int) : 0 ≤ resolve s x := by
-  cases s <;> simp [resolve] <;> omega
+  cases s <;> simp only [resolve, Int.natCast_nonneg] <;> omega
 
 theorem mainBase_nonneg (s : Sizing) (p : Int) : 0 ≤ mainBase s p := by
-  cases s <;> simp [mainBase] <;> omega
+  cases s <;> simp only [mainBase, Int.natCast_nonneg, Std.le_refl] <;> omega
 
 theorem mainSize_nonneg (h : Bool) {L : Int} (hL : 0 ≤ L) (f j : Nat) (it : Item) :
     0 ≤ mainSize h L f j it := by
@@ -280,16 +295,16 @@ def mainStart (h : Bool) (r : Rect) : Int := if h then r.x else r.y
 
 theorem mkRect_nonneg (h : Bool) (p s cp cs : Int) (hs : 0 ≤ s) (hcs : 0 ≤ cs) :
     0 ≤ (mkRect h p s cp cs).w ∧ 0 ≤ (mkRect h p s cp cs).h := by
-  cases h <;> simp [mkRect] <;> omega
+  cases h <;> simp only [mkRect, Bool.false_eq_true, ↓reduceIte] <;> omega
 
 theorem Line.go_length (ln : Line) :
     ∀ (its : List Item) (i j : Nat) (pos : Int), (ln.go i j pos its).length = its.length
   | [], _, _, _ => rfl
-  | _ :: its, _, _, _ => by simp [Line.go, Line.go_length ln its]
+  | _ :: its, _, _, _ => by simp only [go, List.length_cons, Line.go_length ln its]
 
 theorem Line.go_nonneg (ln : Line) (hL : 0 ≤ ln.L) (hcc : 0 ≤ ln.cc) :
     ∀ (its : List Item) (i j : Nat) (pos : Int), ∀ r ∈ ln.go i j pos its, 0 ≤ r.w ∧ 0 ≤ r.h
-  | [], _, _, _ => by simp [Line.go]
+  | [], _, _, _ => by simp only [go, List.not_mem_nil, false_implies, implies_true]
   | it :: its, i, j, pos => by
     simp only [Line.go, List.mem_cons]
     rintro r (rfl | hr)
@@ -300,11 +315,11 @@ theorem Line.go_nonneg (ln : Line) (hL : 0 ≤ ln.L) (hcc : 0 ≤ ln.cc) :
 
 theorem Line.go_lower (ln : Line) (hL : 0 ≤ ln.L) (hsp : ∀ i, 0 ≤ ln.spacing i) :
     ∀ (its : List Item) (i j : Nat) (pos : Int), ∀ r ∈ ln.go i j pos its, pos ≤ mainStart ln.horiz r
-  | [], _, _, _ => by simp [Line.go]
+  | [], _, _, _ => by simp only [go, List.not_mem_nil, false_implies, implies_true]
   | it :: its, i, j, pos => by
     simp only [Line.go, List.mem_cons]
     rintro r (rfl | hr)
-    · simp
+    · simp only [mkRect_mainStart, Std.le_refl]
     · have := Line.go_lower ln hL hsp its _ _ _ r hr
       have := mainSize_nonneg ln.horiz hL ln.f j it
       have := hsp i
@@ -315,7 +330,7 @@ theorem Line.go_pairwise (ln : Line) (hL : 0 ≤ ln.L) (hsp : ∀ i, 0 ≤ ln.sp
     ∀ (its : List Item) (i j : Nat) (pos : Int),
       (ln.go i j pos its).Pairwise fun a b =>
         mainStart ln.horiz a + mainOf ln.horiz a ≤ mainStart ln.horiz b
-  | [], _, _, _ => by simp [Line.go]
+  | [], _, _, _ => by simp only [go, List.Pairwise.nil]
   | it :: its, i, j, pos => by
     simp only [Line.go]
     refine List.pairwise_cons.2 ⟨fun b hb => ?_, Line.go_pairwise ln hL hsp its _ _ _⟩
@@ -326,7 +341,8 @@ theorem Line.go_pairwise (ln : Line) (hL : 0 ≤ ln.L) (hsp : ∀ i, 0 ≤ ln.sp
 
 theorem disjoint_of_main (h : Bool) {a b : Rect}
     (hab : mainStart h a + mainOf h a ≤ mainStart h b) : a.disjoint b := by
-  cases h <;> simp [mainStart, mainOf] at hab <;> unfold Rect.disjoint <;> omega
+  cases h <;> simp only [mainStart, Bool.false_eq_true, ↓reduceIte,
+      mainOf] at hab <;> unfold Rect.disjoint <;> omega
 
 theorem leftover_nonneg (h : Bool) (st : Style) (c : Rect) (items : List Item) :
     0 ≤ leftover h st c items := by
@@ -334,7 +350,7 @@ theorem leftover_nonneg (h : Bool) (st : Style) (c : Rect) (items : List Item) :
 
 theorem lineRects_length (h : Bool) (st : Style) (c : Rect) (items : List Item) :
     (lineRects h st c items).length = items.length := by
-  simp [lineRects, Line.go_length]
+  simp only [lineRects, Line.go_length]
 
 theorem lineRects_nonneg (h : Bool) (st : Style) (c : Rect) (items : List Item) :
     ∀ r ∈ lineRects h st c items, 0 ≤ r.w ∧ 0 ≤ r.h :=
@@ -347,7 +363,7 @@ theorem lineRects_pairwise (h : Bool) (st : Style) (c : Rect) (items : List Item
 
 theorem childRects_length (st : Style) (r : Rect) (items : List Item) :
     (childRects st r items).length = items.length := by
-  unfold childRects; split <;> simp [lineRects_length, stackRects]
+  unfold childRects; split <;> simp only [lineRects_length, stackRects, List.length_map]
 
 theorem childRects_nonneg (st : Style) (r : Rect) (items : List Item) :
     ∀ q ∈ childRects st r items, 0 ≤ q.w ∧ 0 ≤ q.h := by
@@ -372,14 +388,16 @@ theorem kid_rect_mem {m : TextMetrics} {c : Rect} {rs : List Rect} {ss : List Si
   exact List.mem_map_of_mem hk
 
 theorem arrange_rectNonneg (m : TextMetrics) (c r : Rect) (s : Sized) (hw : 0 ≤ r.w) (hh : 0 ≤ r.h) :
-    RectNonneg (arrange m c r s) ∧ ∀ k ∈ (arrange m c r s).children, 0 ≤ k.rect.w ∧ 0 ≤ k.rect.h := by
-  refine ⟨by simp [RectNonneg, hw, hh], fun k hk => ?_⟩
+    RectNonneg (arrange m c r s) ∧ ∀ k ∈ (arrange m c r s).children,
+        0 ≤ k.rect.w ∧ 0 ≤ k.rect.h := by
+  refine ⟨by simp only [RectNonneg, arrange_rect, hw, hh, and_self], fun k hk => ?_⟩
   cases s with
   | box st ctl sz kids =>
     rw [arrange_children_box] at hk
-    exact childRects_nonneg _ _ _ _ (kid_rect_mem (by simp [childRects_length]) hk)
-  | text => simp [arrange, Laid.children] at hk
-  | field => simp [arrange, field, Laid.children] at hk
+    exact childRects_nonneg _ _ _ _ (kid_rect_mem (by simp only [childRects_length,
+        List.length_map]) hk)
+  | text => simp only [Laid.children, arrange, List.not_mem_nil] at hk
+  | field => simp only [Laid.children, arrange, field, List.not_mem_nil] at hk
 
 theorem measure_size_nonneg (m : TextMetrics) (n : Node) :
     0 ≤ (measure m n).size.w ∧ 0 ≤ (measure m n).size.h := by
@@ -404,12 +422,12 @@ theorem arrange_siblingsDisjoint (m : TextMetrics) (c r : Rect) (s : Sized) :
     simp only [arrange, SiblingsDisjoint]
     intro hax
     have hlen : (childRects st r (kids.map Sized.item)).length = kids.length := by
-      simp [childRects_length]
+      simp only [childRects_length, List.length_map]
     have := childRects_pairwise st r (kids.map Sized.item) hax
     rw [← arrangeList_rects m (innerClip st c r) _ kids hlen] at this
     exact List.pairwise_map.mp this
-  | text => simp [arrange, SiblingsDisjoint]
-  | field => simp [arrange, field, SiblingsDisjoint]
+  | text => simp only [SiblingsDisjoint, arrange]
+  | field => simp only [SiblingsDisjoint, arrange, field]
 
 /-- **Siblings disjoint.** In every row and column of the laid-out tree, distinct children's
 rects are disjoint (earlier children end before later ones start on the main axis). -/
@@ -443,17 +461,22 @@ theorem Line.go_fill (ln : Line) :
             (cumShare ln.L ln.f (j + fillCount ln.horiz its) - cumShare ln.L ln.f j) ∧
       ((mainPairs ln.horiz its (ln.go i j pos its)).any (·.1.isFill) = true →
           0 < fillCount ln.horiz its)
-  | [], _, j, _ => by simp [Line.go, mainPairs, baseSum, fillCount]
+  | [], _, j, _ => by simp only [mainPairs, go, List.zipWith_nil_right, List.filter_nil,
+      List.map_nil, List.sum_nil, baseSum,
+    fillCount, List.length_nil, Nat.add_zero, Int.sub_self, Int.add_zero, List.any_nil,
+        Bool.false_eq_true,
+    Nat.lt_irrefl, imp_self, and_self]
   | it :: its, i, j, pos => by
     obtain ⟨h1, h2, h3⟩ := Line.go_fill ln its (i + 1)
       (if (it.mainSizing ln.horiz).isFill then j + 1 else j)
       (pos + mainSize ln.horiz ln.L ln.f j it + ln.spacing i)
     have hb : baseSum ln.horiz (it :: its) =
         mainBase (it.mainSizing ln.horiz) (it.mainPref ln.horiz) + baseSum ln.horiz its := by
-      simp [baseSum]
+      simp only [baseSum, List.map_cons, List.sum_cons]
     have hf : fillCount ln.horiz (it :: its) =
         (if (it.mainSizing ln.horiz).isFill then 1 else 0) + fillCount ln.horiz its := by
-      simp only [fillCount, List.filter_cons]; split <;> simp <;> omega
+      simp only [fillCount, List.filter_cons]; split <;> simp only [List.length_cons,
+          Nat.zero_add] <;> omega
     rw [hb, hf]
     simp only [mainPairs] at h1 h2 h3 ⊢
     simp only [Line.go, List.zipWith_cons_cons, mkRect_mainOf, List.filter_cons, List.map_cons,
@@ -473,7 +496,8 @@ theorem Line.go_fill (ln : Line) :
 theorem cumShare_full (L : Int) {f : Nat} (hf : 0 < f) : cumShare L f f = L := by
   unfold cumShare; exact Int.mul_ediv_cancel L (by omega)
 
-theorem cumShare_zero (L : Int) (f : Nat) : cumShare L f 0 = 0 := by simp [cumShare]
+theorem cumShare_zero (L : Int) (f : Nat) : cumShare L f 0 = 0 := by simp only [cumShare,
+    Int.cast_ofNat_Int, Int.mul_zero, Int.zero_ediv]
 
 /-- Fill exactness for one line, in terms of its content box. -/
 theorem lineRects_fill (h : Bool) (st : Style) (c : Rect) (items : List Item)
@@ -495,7 +519,7 @@ theorem lineRects_fill (h : Bool) (st : Style) (c : Rect) (items : List Item)
 
 theorem mainOf_inset (h : Bool) (r : Rect) (p : Insets) :
     mainOf h (r.inset p) = mainOf h r - padMain h p := by
-  cases h <;> simp [mainOf, padMain, Rect.inset] <;> omega
+  cases h <;> simp only [mainOf, Bool.false_eq_true, ↓reduceIte, Rect.inset, padMain] <;> omega
 
 theorem arrange_fillExact (m : TextMetrics) (c r : Rect) (s : Sized) :
     FillExact (arrange m c r s) := by
@@ -504,10 +528,11 @@ theorem arrange_fillExact (m : TextMetrics) (c r : Rect) (s : Sized) :
     simp only [arrange, FillExact]
     intro hax
     have hlen : (childRects st r (kids.map Sized.item)).length = kids.length := by
-      simp [childRects_length]
+      simp only [childRects_length, List.length_map]
     have hcr : childRects st r (kids.map Sized.item) =
         lineRects (Axis.horiz st.axis) st (r.inset st.padding) (kids.map Sized.item) := by
-      unfold childRects; cases hx : st.axis <;> simp_all [Axis.horiz]
+      unfold childRects; cases hx : st.axis <;> simp_all only [ne_eq, reduceCtorEq,
+          not_false_eq_true, Axis.horiz, not_true_eq_false]
     have hps : (arrangeList m (innerClip st c r) (childRects st r (kids.map Sized.item)) kids).map
         (fun k => ((if Axis.horiz st.axis then k.sizings.1 else k.sizings.2),
           mainOf (Axis.horiz st.axis) k.rect)) =
@@ -515,20 +540,21 @@ theorem arrange_fillExact (m : TextMetrics) (c r : Rect) (s : Sized) :
           (lineRects (Axis.horiz st.axis) st (r.inset st.padding) (kids.map Sized.item)) := by
       rw [arrangeList_map m _ (fun sz q => ((if Axis.horiz st.axis then sz.1 else sz.2),
         mainOf (Axis.horiz st.axis) q)) _ _ hlen, hcr]
-      simp [mainPairs, List.zipWith_map_left, Item.mainSizing, Sized.item]
+      simp only [mainPairs, Item.mainSizing, List.zipWith_map_left, Sized.item]
     rw [hps]
     have hl : (mainPairs (Axis.horiz st.axis) (kids.map Sized.item)
         (lineRects (Axis.horiz st.axis) st (r.inset st.padding) (kids.map Sized.item))).length =
         (kids.map Sized.item).length := by
-      simp [mainPairs, lineRects_length]
+      simp only [mainPairs, List.length_zipWith, List.length_map, lineRects_length, Std.le_refl,
+          Nat.min_eq_left]
     rw [hl]
     intro hany hle
     have := lineRects_fill (Axis.horiz st.axis) st (r.inset st.padding) (kids.map Sized.item) hany
       (by rw [mainOf_inset]; omega)
     rw [mainOf_inset] at this
     omega
-  | text => simp [arrange, FillExact]
-  | field => simp [arrange, field, FillExact]
+  | text => simp only [FillExact, arrange]
+  | field => simp only [FillExact, arrange, field]
 
 /-- **Fill exactness.** In every row and column of the laid-out tree with a fill child, if the
 other children, gaps and padding fit, then children, gaps and padding span the parent exactly
@@ -540,7 +566,7 @@ theorem layout_fillExact (m : TextMetrics) (w : Size) (n : Node) :
 /-! ## Carets and selections -/
 
 theorem offAt_eq (offs : Array Int) {i : Nat} (h : i < offs.size) : offAt offs i = offs[i] := by
-  simp [offAt, h]
+  simp only [offAt, h, getElem?_pos, Option.getD_some]
 
 /-- Under valid metrics every caret offset lies between 0 and the text's width. -/
 theorem offAt_bounds {m : TextMetrics} (hm : m.Valid) (f : Font) (s : String) (i : Nat) :
@@ -549,9 +575,11 @@ theorem offAt_bounds {m : TextMetrics} (hm : m.Valid) (f : Font) (s : String) (i
   have h0 := hm.zero f s
   have hpos : 0 < (m.offsets f s).size := by omega
   have hz : (m.offsets f s)[0] = 0 := by
-    rw [Array.getElem?_eq_getElem hpos] at h0; simpa using h0
+    rw [Array.getElem?_eq_getElem hpos] at h0; simpa only [Option.some.injEq] using h0
   have hlast : m.width f s = (m.offsets f s)[(m.offsets f s).size - 1] := by
-    simp [TextMetrics.width, Array.back?, Array.getElem?_eq_getElem (show (m.offsets f s).size - 1 < (m.offsets f s).size by omega)]
+    simp only [TextMetrics.width, Array.back?,
+    Array.getElem?_eq_getElem (show (m.offsets f s).size - 1 < (m.offsets f s).size by omega),
+        Option.getD_some]
   have hmono := hm.mono f s
   have hl0 := hmono 0 ((m.offsets f s).size - 1) hpos (by omega) (Nat.zero_le _)
   unfold offAt
@@ -573,11 +601,11 @@ theorem arrange_caretPlaced {m : TextMetrics} (hm : m.Valid) (c r : Rect) (s : S
     refine ⟨fun h => by rw [offAt_eq _ h], by omega, by omega, by trivial, by trivial, fun hw => ?_,
       fun he => ?_, fun hne => ?_⟩
     · unfold scrollFor; omega
-    · simp [he]
+    · simp only [he, Std.le_refl, Nat.min_eq_left, Nat.max_eq_right, ↓reduceIte]
     · simp only [show ¬ min v.anchor v.caret = max v.anchor v.caret by omega, ite_false]
       exact ⟨_, rfl, rfl, rfl, rfl, by simp only; omega⟩
-  | box => simp [arrange, CaretPlaced]
-  | text => simp [arrange, CaretPlaced]
+  | box => simp only [CaretPlaced, arrange]
+  | text => simp only [CaretPlaced, arrange]
 
 /-- **Caret placement.** In every field of the laid-out tree, the caret's x is the text origin
 plus the caret's offset, lies within the text's extent, and lies inside the content box whenever
@@ -589,8 +617,13 @@ theorem layout_caretPlaced {m : TextMetrics} (hm : m.Valid) (w : Size) (n : Node
 /-! ## The mono metrics are valid -/
 
 theorem _root_.Cairn.TextMetrics.mono_valid : TextMetrics.mono.Valid where
-  size f s := by simp [TextMetrics.mono]
-  zero f s := by simp [TextMetrics.mono]
+  size f s := by simp only [TextMetrics.mono, Int.natCast_ediv, Int.natCast_mul,
+      Int.cast_ofNat_Int, Array.size_map,
+    Array.size_range]
+  zero f s := by simp only [TextMetrics.mono, Int.natCast_ediv, Int.natCast_mul,
+      Int.cast_ofNat_Int, Array.size_map,
+    Array.size_range, Nat.zero_lt_succ, getElem?_pos, Array.getElem_map, Array.getElem_range,
+        Int.zero_mul]
   mono f s i j hi hj hij := by
     simp only [TextMetrics.mono, Array.getElem_map, Array.getElem_range]
     exact Int.mul_le_mul_of_nonneg_right (by omega) (by omega)
@@ -615,20 +648,22 @@ def spSum (sp : Nat → Int) : Nat → Nat → Int
   | i, n + 1 => sp i + spSum sp (i + 1) n
 
 theorem spSum_nonneg (sp : Nat → Int) (hsp : ∀ i, 0 ≤ sp i) : ∀ i n, 0 ≤ spSum sp i n
-  | _, 0 => by simp [spSum]
+  | _, 0 => by simp only [spSum, Std.le_refl]
   | i, n + 1 => by
     have := hsp i; have := spSum_nonneg sp hsp (i + 1) n; simp only [spSum]; omega
 
 theorem spSum_const (sp : Nat → Int) (g : Nat) (hsp : ∀ i, sp i = g) :
     ∀ i n, spSum sp i n = ((g * n : Nat) : Int)
-  | _, 0 => by simp [spSum]
+  | _, 0 => by simp only [spSum, Nat.mul_zero, Int.cast_ofNat_Int]
   | i, n + 1 => by
     have := spSum_const sp g hsp (i + 1) n
     simp only [spSum, hsp i, this, Nat.mul_succ]; omega
 
-theorem spSum_tele (sp : Nat → Int) (g : Nat) (F : Nat → Int) (hsp : ∀ i, sp i = g + (F (i + 1) - F i)) :
+theorem spSum_tele (sp : Nat → Int) (g : Nat) (F : Nat → Int) (hsp : ∀ i,
+    sp i = g + (F (i + 1) - F i)) :
     ∀ i n, spSum sp i n = ((g * n : Nat) : Int) + (F (i + n) - F i)
-  | i, 0 => by simp [spSum]
+  | i, 0 => by simp only [spSum, Nat.mul_zero, Int.cast_ofNat_Int, Nat.add_zero, Int.sub_self,
+      Int.add_zero]
   | i, n + 1 => by
     have := spSum_tele sp g F hsp (i + 1) n
     simp only [spSum, hsp i, this, Nat.mul_succ]
@@ -636,7 +671,7 @@ theorem spSum_tele (sp : Nat → Int) (g : Nat) (F : Nat → Int) (hsp : ∀ i, 
 
 theorem sum_nonneg (l : List Int) (h : ∀ x ∈ l, 0 ≤ x) : 0 ≤ l.sum := by
   induction l with
-  | nil => simp
+  | nil => simp only [List.sum_nil, Std.le_refl]
   | cons x xs ih =>
     simp only [List.sum_cons]
     have := h x (.head _); have := ih (fun y hy => h y (.tail _ hy)); omega
@@ -649,7 +684,7 @@ theorem Line.go_mainOf_nonneg (ln : Line) (hL : 0 ≤ ln.L) (its : List Item) (i
   obtain ⟨r, hr, rfl⟩ := hx
   -- The cross length is irrelevant here, so any non-negative stand-in for `cc` will do.
   induction its generalizing i j pos with
-  | nil => simp [Line.go] at hr
+  | nil => simp only [go, List.not_mem_nil] at hr
   | cons it its ih =>
     simp only [Line.go, List.mem_cons] at hr
     rcases hr with rfl | hr
@@ -661,7 +696,9 @@ theorem Line.go_upper (ln : Line) (hL : 0 ≤ ln.L) (hsp : ∀ i, 0 ≤ ln.spaci
     ∀ (its : List Item) (i j : Nat) (pos : Int), ∀ r ∈ ln.go i j pos its,
       mainStart ln.horiz r + mainOf ln.horiz r ≤
         pos + ((ln.go i j pos its).map (mainOf ln.horiz)).sum + spSum ln.spacing i (its.length - 1)
-  | [], _, _, _ => by simp [Line.go]
+  | [], _, _, _ => by simp only [go, List.not_mem_nil, List.map_nil, List.sum_nil, Int.add_zero,
+      List.length_nil, Nat.zero_le,
+    Nat.sub_eq_zero_of_le, false_implies, implies_true]
   | it :: its, i, j, pos => by
     simp only [Line.go, List.mem_cons, List.map_cons, List.sum_cons, mkRect_mainOf]
     rintro r (rfl | hr)
@@ -673,7 +710,7 @@ theorem Line.go_upper (ln : Line) (hL : 0 ≤ ln.L) (hsp : ∀ i, 0 ≤ ln.spaci
       omega
     · have := Line.go_upper ln hL hsp its _ _ _ r hr
       cases its with
-      | nil => simp [Line.go] at hr
+      | nil => simp only [go, List.not_mem_nil] at hr
       | cons it' its' =>
         simp only [List.length_cons, Nat.add_sub_cancel, spSum] at this ⊢
         omega
@@ -688,7 +725,7 @@ theorem Line.go_cross (ln : Line) :
     ∀ (its : List Item) (i j : Nat) (pos : Int), ∀ r ∈ ln.go i j pos its,
       crossOf ln.horiz r ≤ ln.cc →
       ln.c0 ≤ crossStart ln.horiz r ∧ crossStart ln.horiz r + crossOf ln.horiz r ≤ ln.c0 + ln.cc
-  | [], _, _, _ => by simp [Line.go]
+  | [], _, _, _ => by simp only [go, List.not_mem_nil, false_implies, implies_true]
   | it :: its, i, j, pos => by
     simp only [Line.go, List.mem_cons]
     rintro r (rfl | hr)
@@ -701,11 +738,16 @@ theorem mainPairs_snd (h : Bool) :
       (mainPairs h its rs).map (·.2) = rs.map (mainOf h)
   | [], [], _ => rfl
   | _ :: its, _ :: rs, hl => by
-    have := mainPairs_snd h its rs (by simpa using hl)
+    have := mainPairs_snd h its rs (by simpa only [List.length_cons,
+        Nat.add_right_cancel_iff] using hl)
     simp only [mainPairs] at this
     simp only [mainPairs, List.zipWith_cons_cons, List.map_cons, this]
-  | [], _ :: _, hl => by simp at hl
-  | _ :: _, [], hl => by simp at hl
+  | [], _ :: _, hl => by simp only [List.length_nil, List.length_cons, Nat.right_eq_add,
+      Nat.add_eq_zero_iff, List.length_eq_zero_iff,
+    Nat.succ_ne_self, and_false] at hl
+  | _ :: _, [], hl => by simp only [List.length_cons, List.length_nil, Nat.add_eq_zero_iff,
+      List.length_eq_zero_iff, Nat.succ_ne_self,
+    and_false] at hl
 
 /-- The children's main-axis lengths add up to the space the line uses. -/
 theorem lineRects_sum (h : Bool) (st : Style) (c : Rect) (items : List Item) :
@@ -714,7 +756,7 @@ theorem lineRects_sum (h : Bool) (st : Style) (c : Rect) (items : List Item) :
       else baseSum h items + leftover h st c items := by
   obtain ⟨_, h2, _⟩ := Line.go_fill (lineOf h st c items) items 0 0
     ((if h then c.x else c.y) + startOffset st.justify (free h st c items))
-  rw [mainPairs_snd _ _ _ (by simp [Line.go_length])] at h2
+  rw [mainPairs_snd _ _ _ (by simp only [Line.go_length])] at h2
   simp only [lineRects]
   simp only [lineOf, Nat.zero_add, cumShare_zero] at h2 ⊢
   rw [h2]
@@ -737,7 +779,8 @@ theorem lineRects_inside (h : Bool) (st : Style) (c : Rect) (items : List Item)
   have hup := Line.go_upper _ hL hsp items 0 0 _ r hr
   have hx := Line.go_cross _ items 0 0 _ r hr
   simp only [lineOf] at hlow hup hx hfit hsum
-  have hx := hx (by cases h <;> simp [crossOf] at hcr ⊢ <;> omega)
+  have hx := hx (by cases h <;> simp only [crossOf, Bool.false_eq_true,
+      ↓reduceIte] at hcr ⊢ <;> omega)
   rw [hsum] at hfit
   rw [hsum] at hup
   -- The spacings add up to the gaps, plus the free space when justified with `stretch`.
@@ -751,7 +794,7 @@ theorem lineRects_inside (h : Bool) (st : Style) (c : Rect) (items : List Item)
     by_cases hst : st.justify = .stretch ∧ 0 < free h st c items ∧ 1 < items.length
     · obtain ⟨hj, hpos, hk⟩ := hst
       rw [spSum_tele _ st.gap (cumShare (free h st c items) (items.length - 1)) (fun i => by
-        simp [spacing, hj, hpos, hk, fillShare])]
+        simp only [spacing, hj, hpos, hk, and_self, ↓reduceIte, fillShare])]
       rw [Nat.zero_add, cumShare_full _ (by omega), cumShare_zero, hj]
       simp only [startOffset]; omega
     · rw [spSum_const _ st.gap (fun i => by
@@ -786,7 +829,7 @@ theorem arrange_childrenInside (m : TextMetrics) (c r : Rect) (s : Sized) :
     simp only [arrange, ChildrenInside]
     intro hsize hfit k hk
     have hlen : (childRects st r (kids.map Sized.item)).length = kids.length := by
-      simp [childRects_length]
+      simp only [childRects_length, List.length_map]
     have hrs := arrangeList_rects m (innerClip st c r) _ kids hlen
     have hmem := kid_rect_mem hlen hk
     -- Every child rect belongs to a child, so the size hypothesis covers each rect.
@@ -800,22 +843,22 @@ theorem arrange_childrenInside (m : TextMetrics) (c r : Rect) (s : Sized) :
     cases hx : st.axis with
     | stack =>
       have e : childRects st r (kids.map Sized.item) =
-          stackRects st (r.inset st.padding) (kids.map Sized.item) := by simp [childRects, hx]
+          stackRects st (r.inset st.padding) (kids.map Sized.item) := by simp only [childRects, hx]
       rw [e] at hmem hsize'
       exact stackRects_inside _ _ _ hsize' _ hmem
     | row | column =>
       have e : childRects st r (kids.map Sized.item) =
           lineRects (Axis.horiz st.axis) st (r.inset st.padding) (kids.map Sized.item) := by
-        simp [childRects, hx, Axis.horiz]
+        simp only [childRects, hx, Axis.horiz]
       rw [e] at hmem hsize' hrs
       refine lineRects_inside _ st _ _ (fun q hq => ?_) ?_ _ hmem
       · have := hsize' q hq; simp only [crossOf]; split <;> omega
-      · have hf := hfit (by simp [hx])
+      · have hf := hfit (by simp only [hx, ne_eq, reduceCtorEq, not_false_eq_true])
         rw [e] at hf
         rw [← hrs, List.map_map]
-        simpa [Function.comp_def, arrangeList_length] using hf
-  | text => simp [arrange, ChildrenInside]
-  | field => simp [arrange, field, ChildrenInside]
+        simpa only [Function.comp_def, List.length_map, ge_iff_le, arrangeList_length] using hf
+  | text => simp only [ChildrenInside, arrange]
+  | field => simp only [ChildrenInside, arrange, field]
 
 /-- **Children that fit stay inside.** In every container of the laid-out tree, if the children
 fit the content box (in size, and along the main axis with gaps), each child's rect is inside
