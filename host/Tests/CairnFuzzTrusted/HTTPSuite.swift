@@ -107,7 +107,12 @@ final class HTTPSuite: Suite {
         let key = "\(g.next())"
         let method = g.elem(["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "X-CUSTOM"])
         let url = "\(g.bool() ? "https" : "http")://example.test/\(Self.token(&g))?q=\(g.below(1000))"
-        var headers = (0..<g.below(5)).map { _ in Header("X-" + Self.token(&g), Self.value(&g)) }
+        // Distinct names (case-insensitively): Foundation joins repeated ones with commas.
+        var headers: [Header] = []
+        for _ in 0..<g.below(5) {
+            let h = Header("X-" + Self.token(&g), Self.value(&g))
+            if !headers.contains(where: { $0.name.lowercased() == h.name.lowercased() }) { headers.append(h) }
+        }
         headers.append(Header("X-Cairn-Case", key))
         let body = (method == "GET" || method == "HEAD") ? [] : EventsSuite.bytes(&g)
 
@@ -147,7 +152,10 @@ final class HTTPSuite: Suite {
         default:
             let status = g.elem([200, 200, 201, 204, 301, 304, 400, 404, 418, 500, 503, 599, 100 + g.below(500)])
             var rh: [String: String] = [:]
-            for _ in 0..<g.below(5) { rh["X-" + Self.token(&g)] = Self.value(&g) }
+            for _ in 0..<g.below(5) {
+                let k = "X-" + Self.token(&g)
+                if !rh.keys.contains(where: { $0.lowercased() == k.lowercased() }) { rh[k] = Self.value(&g) }
+            }
             let rbody = method == "HEAD" ? [] : EventsSuite.bytes(&g)
             StubProtocol.answers.update { $0[key] = .respond(status: status, headers: rh, body: rbody) }
             let replies = call(method: method, url: url, headers: headers, body: body, timeoutMs: UInt32(g.elem([0, 2000])))

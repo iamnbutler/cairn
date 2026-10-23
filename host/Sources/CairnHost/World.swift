@@ -105,9 +105,11 @@ public enum Files {
 /// Named system sounds for `playSound` (^912).
 public enum Sounds {
     /// The sound `name` names: a system sound (`/System/Library/Sounds`) or one in the app's
-    /// bundle. Main thread.
+    /// bundle, by its plain name. A name with `.` or `/` is no sound (`NSSound(named:)` would
+    /// read "Morse.x" as Morse with an extension). Main thread.
     @MainActor public static func lookup(_ name: String) -> NSSound? {
-        name.isEmpty || name.utf8.contains(0) ? nil : NSSound(named: NSSound.Name(name))
+        name.isEmpty || name.contains(where: { $0 == "." || $0 == "/" || $0 == "\0" }) ? nil
+            : NSSound(named: NSSound.Name(name))
     }
 
     public static func play(_ name: String, _ reply: @escaping @Sendable (Reply) -> Void) {

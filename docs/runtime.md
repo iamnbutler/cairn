@@ -28,6 +28,8 @@ structure State (S : Type) where
   scale : Nat          -- backing scale × 100
   laid : Laid          -- the tree on screen; hit testing reads this
   effects : Array Effect  -- effects of the last `stepBytes` batch
+  world : World        -- clock, timers, pending requests, active subscriptions (effects.md)
+  subCmds : Array SubCmd  -- subscription commands of the last `stepBytes` batch
 ```
 
 ## Hit testing
@@ -48,9 +50,15 @@ controls.
 ## Events
 
 `route` reads one event against `s.laid` (the tree the person sees) and returns the new
-interaction state and the actions to deliver, in order. Then `step`:
+interaction state and the actions to deliver, in order. Events from the outside world
+(`clock`, `reply`, `subEvent`) route to no actions; `admit` handles them first: it advances the
+clock (the first clock boots the app: it hears the time, then `app.initEffects` run), fires due
+timers, and delivers a valid reply or an active subscription's event to `app.receive`, hearing
+the current time before any delivery (docs/effects.md, "Order within a step"). Then `step`:
 
-1. folds `app.update` over the actions (`deliver`), collecting effects; if an effect is
+1. folds `app.update` over the actions (`act`), hearing the clock first if the app hasn't,
+   collecting effects; every effect is absorbed into the world as it is returned (timers set
+   and cancelled, requests admitted to the pending table or refused); if an effect is
    `focus c` (the last one wins), sets `ui.focus := some c`. This is how an app moves keyboard
    focus (into a field it just showed, back to a field after a commit). No `blur` is delivered
    for a field the request takes focus from, and step 3 drops the focus if `c` is not a
@@ -63,7 +71,9 @@ interaction state and the actions to deliver, in order. Then `step`:
    again, up to `settleFuel` (2) more times (`settle`). The stored `UI` is always the routed one
    repaired against the stored tree, so the soundness theorem holds whether or not it converged.
 
-If an event produces no actions and leaves the `UI` unchanged, `step` skips view and layout.
+If anything was delivered, `step` then diffs `app.subscriptions` against the active set and
+records the commands for the frame (`diffSubs`). If an event delivers nothing and leaves the
+`UI` unchanged, `step` skips view and layout; only the world changes.
 
 ### Pointer (primary button; the secondary button only moves hover)
 
@@ -139,6 +149,10 @@ All in `Cairn.Runtime`; none assume anything about the layout function.
   of `s.laid`; `step_delivers`: those are exactly the actions `step` passes to `update`, in order.
 - **Focus is sound.** `start_sound`, `step_sound`, `steps_sound`: focus is none or a focusable
   control of the tree on screen; hover and press are none or controls of it.
+- **M1 apps are unchanged.** `step_delivers_quiet`: for an app whose `receive` ignores every
+  message, a step's state is what folding `update` over the routed actions gives, as before.
+- **Time, timers, replies, subscriptions.** `step_clock`, `steps_book`, `step_reply`,
+  `step_sub_ignored`, `diffSubs_*`: see docs/effects.md, "Theorems".
 
 ### `LayoutFacts` (what B proves about its trees)
 
@@ -187,7 +201,8 @@ lean_object *cairn_app_frame(lean_object *state);                     // consume
 - `cairn_app_step` consumes the state and the event bytes and returns the new state; the host
   drops its old reference. To keep the state across `cairn_app_frame`, `lean_inc` it first.
 - `events` is a batch, decoded by `Boundary.decode` and run in order (`steps`).
-- The frame carries the effects of the most recent `cairn_app_step`. The host requests one
+- The frame carries the effects and subscription commands of the most recent `cairn_app_step`,
+  and the earliest timer's deadline as `wake`. The host requests one
   frame after each step and runs its effects once; a second frame of the same state repeats them.
 - `cfg.metrics` is `TextMetrics.mono` until F's Core Text metrics land (`@[extern]` in
   `Cairn/Text/Host.lean`); `cfg.layout` defaults to `Cairn.Layout.layout` (docs/layout.md).
@@ -202,6 +217,6 @@ structure Boundary where
 ```
 
 `Cairn.Frame.boundary` (`Cairn/Frame/Boundary.lean`) is the real one: v1 event decoding,
-`Frame.ofLaid` and v1 frame encoding ([frame.md](frame.md)). `render` takes the whole `UI` because
+`Frame.ofLaid` and v2 frame encoding ([frame.md](frame.md)). `render` takes the whole `UI` because
 the frame needs the focus (accessibility `focused`, the caret, the text-input state) as well as
 the size. A batch that fails to decode is dropped whole.

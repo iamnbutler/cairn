@@ -1,9 +1,10 @@
-# Frame and event format, v1
+# Frame and event format: frames v2, events v1
 
 Two byte buffers cross the boundary between Lean and the Swift host, and nothing else does:
 
 - **Frame** (Lean → host): what to paint, the accessibility tree, the focused field's
-  text-input state, the cursor and effects. Lean builds a `Cairn.Frame` with `Frame.ofLaid`
+  text-input state, the cursor, effects, subscription commands and the wake deadline
+  (docs/effects.md). Lean builds a `Cairn.Frame` with `Frame.ofLaid`
   and encodes it with `encodeFrame`; the host decodes it with `Frame(bytes:)`.
 - **Events** (host → Lean): a batch of input events. The host encodes them with
   `encodeEvents`; Lean decodes them with `decodeEvents`.
@@ -26,13 +27,17 @@ where it and the Lean specification (`Wire.Enc.*`) disagree, Lean is right and t
 
 ## Conventions
 
-- **Integers are little-endian.** `u8`, `u16`, `u32` are unsigned; `i32` is two's complement.
+- **Integers are little-endian.** `u8`, `u16`, `u32`, `u64` are unsigned; `i32` and `i64` are
+  two's complement. A `u64` is written as two `u32`s, low word first.
 - **Booleans** are one byte, `0` or `1`. Any other value is an error.
 - **Reserved bytes** (shown as `0`) are written as zero and ignored when read. They keep fixed
   fields 4-byte aligned relative to the record's start.
 - **Strings** are a `u32` byte length followed by that many bytes of UTF-8. No terminator, no
   padding after the bytes. Invalid UTF-8 (overlong forms, surrogates, scalars above U+10FFFF,
   truncated sequences) is an error.
+- **Bytes** (raw data: file contents, HTTP bodies) are a `u32` length followed by that many
+  bytes, unchecked, no padding after.
+- **Headers** (HTTP) are a `u32` count, then each name and value as two strings.
 - **Sections** are a `u32` byte length followed by the body. The body must decode to exactly
   its length: leftover bytes inside a section are an error.
 - **Lists** are a `u32` count, then a section holding `count` records back to back.
@@ -51,8 +56,8 @@ where it and the Lean specification (`Wire.Enc.*`) disagree, Lean is right and t
 ### What fits
 
 Lean's model uses unbounded `Int` and `Nat`. The round trip is exact for every value that fits:
-`i32` fields in `[-2^31, 2^31)`, `u32` fields in `[0, 2^32)`, strings under 4 GiB of UTF-8, and
-every list and section under 4 GiB. `fitsFrame` and `fitsEvent` are executable checks of
+`i32` fields in `[-2^31, 2^31)`, `u32` fields in `[0, 2^32)`, `u64` in `[0, 2^64)`, `i64` in
+`[-2^63, 2^63)`, strings and bytes under 4 GiB, and every list and section under 4 GiB. `fitsFrame` and `fitsEvent` are executable checks of
 exactly this. A value that does not fit is written modulo 2^32, with one exception:
 
 - **Font fields saturate.** A text draw's `family`, `size` and `weight` are written as
@@ -67,7 +72,7 @@ Swift's model uses `Int32` and `UInt32` for these fields, so every Swift value f
 ```
 offset  size  field
 0       4     magic "CAFR" (43 41 46 52)
-4       2     u16 version = 1
+4       2     u16 version = 2
 6       2     u16 flags = 0
 8       4     i32 window width
 12      4     i32 window height
@@ -76,10 +81,14 @@ offset  size  field
 .       4..   textInput record (always present; its head says whether there is one)
 .       4     cursor: [code, 0, 0, 0]
 .       4+4   effects: u32 count, u32 byteLength, then the effect records
+.       4+4   subs: u32 count, u32 byteLength, then the subscription commands
+.       12    wake: [hasWake, 0, 0, 0], u64 deadline (monotonic ms; 0 when absent)
 ```
 
 A decoder rejects any other magic, version or flags. A future incompatible format changes the
-version; flags are reserved for compatible additions and must be zero in v1.
+version; flags are reserved for compatible additions and must be zero. Version 1 (M1) ended
+after the effects; version 2 added `subs` and `wake` and the effect records 3–6. docs/surfaces.md
+plans the next version (per-surface frame records).
 
 The section lengths are there so the two host threads can each decode only what they use: the
 render thread reads the size and draws and skips the rest by length; the main thread skips the
@@ -151,13 +160,39 @@ and the marked range measure from `textOrigin` with the same shaping Lean measur
 Cursor codes: `0` arrow, `1` pointer (hand), `2` text (I-beam).
 
 ```
-setClipboard  [0, 0, 0, 0]  4 string                                   4 + string
+setClipboard  [0, 0, 0, 0]     4 string                                4 + string
 beep          [1, 0, 0, 0]                                                   4 bytes
-focus         [2, 0, 0, 0]  4 u32 claim  8 u32 key                         12 bytes
+focus         [2, 0, 0, 0]     4 u32 claim  8 u32 key                      12 bytes
+setTimer      [3, 0, 0, 0]     4 u32 ms  8 string name                 8 + string
+cancelTimer   [4, 0, 0, 0]     4 string name                           4 + string
+request       [5, kind, 0, 0]  4 u32 id  8 request fields              8 + fields
+quit          [6, 0, 0, 0]                                                   4 bytes
 ```
 
-Effects run once, in order, after the frame that carries them. `focus` is the runtime's: Lean
-has already moved keyboard focus when the frame is built, so the host ignores it.
+Request kinds and their fields:
+
+| Kind | Request | Fields |
+|---:|---|---|
+| 0 | readFile | string path |
+| 1 | writeFile | string path, bytes data |
+| 2 | playSound | string name |
+| 3 | http | u32 timeoutMs, string method, string url, headers, bytes body |
+
+Effects run once, in order, after the frame that carries them. `focus`, `setTimer` and
+`cancelTimer` are the runtime's (focus has moved and the timer table has changed when the
+frame is built; the host ignores them; they are on the frame for tools and tests). `request`
+is run by the host's handler table and answered by a `reply` event; `quit` ends the app.
+
+### Subscription commands and wake
+
+```
+start  [0, sub, 0, 0]  4 u32 id  8 u32 ms (sub 0: every)               12 bytes
+stop   [1, 0, 0, 0]    4 u32 id                                          8 bytes
+```
+
+Commands run in order after the frame's effects. `wake`, when present, asks the host to send a
+batch (whose `clock` is all it holds, if nothing else is waiting) once the monotonic clock
+reaches the deadline. A deadline in the past means at once.
 
 ### Codes
 
@@ -204,6 +239,9 @@ error. `button` is `0` primary, `1` secondary.
 | 15 | resize | 0 | 0 | i32 w, i32 h | 12 |
 | 16 | scale | 0 | 0 | u32 backing scale × 100 | 8 |
 | 17 | windowFocus | focused (bool) | 0 | | 4 |
+| 18 | clock | 0 | 0 | u64 mono ms, i64 wall ms since 1970, i32 zone (s east of UTC) | 24 |
+| 19 | reply | reply code | fault | u32 id, reply fields | 8 + fields |
+| 20 | subEvent | event code | 0 | u32 id | 8 |
 
 - **Keys.** Codes `0` enter, `1` escape, `2` tab, `3` backspace, `4` delete, `5` left,
   `6` right, `7` up, `8` down, `9` home, `10` end, `11` pageUp, `12` pageDown, `13` char.
@@ -215,6 +253,13 @@ error. `button` is `0` primary, `1` secondary.
   selection. With `hasReplace = 0` the range is written as `0,0` and ignored. `hasReplace`
   other than 0 or 1 is an error.
 - **setMarked** `selStart`, `selLen` select within the marked string, in scalars.
+- **Replies.** Codes `0` done (no fields), `1` bytes (bytes data), `2` http (u32 status,
+  headers, bytes body), `3` failed (string message; `b` is the fault: `0` notFound, `1` denied,
+  `2` timeout, `3` network, `4` invalid, `5` other). For codes other than `3`, `b` is written as
+  0 and must be 0. Subscription event code `0` is tick.
+- **Global events.** `clock`, `reply` and `subEvent` belong to the app, not to a window; a
+  surface id for window events (docs/surfaces.md) can go in a later version without touching
+  them.
 
 Lean drops a batch that fails to decode, whole (`Frame.boundary`): the host's encoder is
 checked against Lean's decoder, so a bad batch means a host bug.
@@ -241,7 +286,7 @@ checked against Lean's decoder, so a bad batch means a host bug.
 
 | Theorem | Statement |
 |---|---|
-| `decodeFrame_encodeFrame` | `fitsFrame f → (encodeFrame f).size < 2^32 → decodeFrame (encodeFrame f) = some f` |
+| `decodeFrame_encodeFrame` | `fitsFrame f → (encodeFrame f).size < 2^32 → decodeFrame (encodeFrame f) = some f`, over every record including requests, subscription commands and wake |
 | `decodeEvents_encodeEvents` | `es.all fitsEvent → es.size < 2^32 → decodeEvents (encodeEvents es) = some es` |
 | `encodeFrame_eq_put` | `@[csimp]`: the executable `ByteArray` encoder equals the `List UInt8` specification |
 | `controls_ofLaid` | the ax tree's control refs are exactly the laid tree's controls' refs, in order |
@@ -280,12 +325,24 @@ cursor CODE
 effects N
 clipboard "…"
 beep
+focus CLAIM#KEY
+timer "NAME" MS | cancelTimer "NAME" | quit
+request ID readFile "PATH" | request ID writeFile "PATH" BYTES | request ID sound "NAME"
+request ID http "METHOD" "URL" timeout=MS HEADERS body=BYTES
+subs N
+start ID every MS | stop ID
+wake MS|none
 
 events N
 move X Y | down X Y BUTTON CLICKS MODS | up X Y BUTTON MODS | exit | scroll X Y DX DY
 key CODE SCALAR MODS | insert "…" replace=A B|none | marked "…" START LEN replace=A B|none
 unmark | copy | cut | selectAll | undo | redo | paste "…" | resize W H | scale P | focus B
+clock MONO WALL ZONE | sub ID CODE
+reply ID done | reply ID bytes BYTES | reply ID http STATUS HEADERS body=BYTES | reply ID failed FAULT "…"
 ```
+
+`BYTES` is `x` followed by two lowercase hex digits per byte (`x` alone when empty);
+`HEADERS` is `headers=N` followed by each name and value as strings.
 
 Strings print printable ASCII (U+0020–U+007E) as itself except `"` and `\`; every other scalar
 prints as `\u{HEX}`, uppercase hex, no leading zeros. Booleans print as `0`/`1`.

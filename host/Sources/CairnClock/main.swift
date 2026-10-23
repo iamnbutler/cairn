@@ -52,8 +52,6 @@ func scratchHandlers(_ home: String) -> Handlers {
 @MainActor
 enum SelfTest {
     static func run() {
-        let activity = ProcessInfo.processInfo.beginActivity(options: [.userInitiated, .latencyCritical], reason: "selftest")
-        defer { ProcessInfo.processInfo.endActivity(activity) }
         let home = NSTemporaryDirectory() + "cairn-clock-selftest-\(getpid())"
         defer { try? FileManager.default.removeItem(atPath: home) }
         let engine = Engine(size: size, scalePercent: 200, world: World(handlers: scratchHandlers(home))) {

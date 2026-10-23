@@ -12,7 +12,7 @@ event Lean decodes with a proved decoder. No `IO` below the app boundary.
 | Piece | Where |
 |---|---|
 | Types: `Time`, `Request`, `Reply`, `Fault`, `Sub`, `SubEvent`, `Msg` | `lean/Cairn/Effects.lean` |
-| `Effect` (grows `setTimer`, `cancelTimer`, `request`), `Event` (grows `clock`, `reply`, `subEvent`) | `lean/Cairn/Input.lean` |
+| `Effect` (grows `setTimer`, `cancelTimer`, `request`, `quit`), `Event` (grows `clock`, `reply`, `subEvent`) | `lean/Cairn/Input.lean` |
 | `App.receive`, `App.subscriptions`, `App.initEffects` | `lean/Cairn/App.lean` |
 | The runtime's world: clock, timers, pending requests, active subscriptions | `lean/Cairn/Runtime/World.lean` |
 | Delivery and `step` | `lean/Cairn/Runtime/Step.lean` |
@@ -61,17 +61,21 @@ apps prove things about directly, as P's Yap machine does.
 
 **Decision: the clock arrives on every event, and the app hears it before anything else.**
 
-- The host stamps every batch: its first event is `clock t`, and the host sends a `clock`
-  event before any later event in the batch whose arrival time differs by a millisecond or
-  more. So the runtime's time is the time the input arrived, not the time Lean got to it.
+- The host stamps every batch: its first event is `clock t`, read as the batch is taken off
+  the queue (`Engine.timed`). One clock per batch, not one per event: events that queued up
+  while Lean was busy share the time the batch started, at most one step's duration (a few ms,
+  bench/effects.md) after they arrived.
 - `Time` is `{ mono : Nat, wall : Int, zone : Int }`: monotonic milliseconds (Darwin's
   `CLOCK_MONOTONIC`, which counts sleep), wall-clock milliseconds since the Unix epoch, and the
   local offset from UTC in seconds. `mono` is what timers and durations use; `wall` and `zone`
   are for dates (Yap's "today's transcripts file", retention). The runtime keeps
   `mono := max old new`, so its clock never goes back whatever the host sends (proved,
   `tick_mono`). `wall` can jump; nothing in the runtime reads it.
-- The runtime delivers `Msg.clock t` to `receive` **lazily**: immediately before the first
-  delivery (action or message) after the clock changed. An app that stores the time therefore
+- **The first clock boots the app**: the runtime delivers `Msg.clock t`, then runs
+  `app.initEffects` (so a launch request already knows the time). The host sends that first
+  clock on its own right after the first frame.
+- After that the runtime delivers `Msg.clock t` to `receive` **lazily**: immediately before the
+  first delivery (action or message) after the clock changed. An app that stores the time therefore
   always has the current time when any `update` or `receive` runs, including a button press
   (a stopwatch's Start reads `s.now`). A clock event that delivers nothing else (no timer due)
   delivers nothing at all and does not re-run `view`, so idle input stays as cheap as in M1.
@@ -89,7 +93,10 @@ Both: time on every event (lazily heard), and periodic ticks when the app subscr
 
 Timers are the runtime's, not the host's. The runtime keeps a table `name ↦ due` and the frame
 carries one number, `wake`: the earliest due time, if any. The host's only job is to send a
-`clock` event no later than `wake` (it waits on a deadline on the Lean thread). When a clock
+`clock` event once the monotonic clock reaches `wake`. It arms a strict `DispatchSourceTimer`
+for it on every publish (`Engine.scheduleWake`): `NSCondition.wait(until:)` on the Lean thread
+ran about 7 ms late on a 100 ms wait (timer coalescing), the strict timer about 0.1 ms. It runs
+on its own queue, not the main run loop, so it keeps firing while a menu is open. When a clock
 event arrives, the runtime fires every timer due at the new time, earliest first (ties in the
 order they were set), **re-checking the table before each one**: a timer whose handler cancels
 or re-sets another due timer stops that one from firing. A timer is removed from the table
@@ -137,24 +144,35 @@ inductive Fault where
   answers `readFile`, `done` answers `writeFile` and `playSound`, `http` answers `http`,
   `failed` answers anything); the id leaves the table as it is delivered. So the app sees each
   request answered at most once, with the id it asked with and a reply of the right shape,
-  whatever the host sends (proved, `reply_delivers`, `reply_once`). A duplicate or misshapen
-  reply is dropped.
+  whatever the host sends (proved, `step_reply`, `step_reply_ignored`, `steps_book`). A
+  duplicate or misshapen reply is dropped.
 - **Paths** are strings the host uses as given, except that a leading `~/` is the user's home
-  directory. `writeFile` creates missing parent directories and replaces the file atomically
-  (write to a temporary file in the same directory, then rename), so a reader sees the old
-  bytes or the new ones, never a mix.
+  directory. An empty path, a path with NUL in it (the file system would cut it there) and a
+  name the file system refuses (APFS: unassigned code points and noncharacters, `EILSEQ`) are
+  `failed invalid`. `writeFile` creates missing parent directories and replaces the file
+  atomically (write to a temporary file in the same directory, then rename), so a reader sees
+  the old bytes or the new ones, never a mix.
 - **Sounds** are named system sounds (`NSSound(named:)`: "Tink", "Pop", "Basso", …). The reply
   is `done` once the sound has started, or `failed notFound` for an unknown name.
-- **HTTP** is `URLSession` with the given method, headers, body and timeout; the reply carries
-  the status, the response headers (names as the server sent them, in the order Foundation
-  gives them) and the body. The host follows redirects (Foundation's default) and keeps no
-  cookies or cache (an ephemeral session).
+- **HTTP** is `URLSession` with the given method, headers, body and timeout (0: 60 s); the
+  reply carries the status, the response headers sorted by name, and the body. Only `http` and
+  `https` URLs; the method is letters and `-`; header names are RFC 9110 tokens and values have
+  no CR, LF or NUL (no header injection); anything else is `failed invalid` and sends nothing.
+  Foundation percent-encodes characters a URL can't hold. The host follows redirects
+  (Foundation's default) and keeps no cookies or cache (an ephemeral session).
+- **Quit** (`Effect.quit`) ends the app (`NSApp.terminate`), for a menu bar app's Quit item
+  (docs/surfaces.md). It is not a request: there is no one to reply to.
 
 ### The host side is a table
 
-`host/Sources/CairnHost/World.swift` has one handler per request kind, each a function from the
-request to a reply, run off the main thread; the reply goes back through `Engine.send` as a
-`reply` event. Adding a kind is a constructor in `Request`, its encoding (with the round-trip
+`host/Sources/CairnHost/World.swift` has one handler per request kind (`Handlers.standard`,
+keyed by the request's kind code), each a function from the request and a `reply` callback,
+started on a global queue; the reply goes back through `Engine.send` as a `reply` event. The
+callback is once-guarded (a handler that answers twice sends one reply), a kind with no
+handler is answered `failed invalid`, and when the app starts over (`Engine.restart`) the
+world's generation moves on, so answers to earlier requests are dropped and every
+subscription is stopped. A test or a tool swaps the table (the Clock self test redirects `~/`
+to a scratch directory and plays no sound). Adding a kind is a constructor in `Request`, its encoding (with the round-trip
 proof extended), a `Reply.answers` case, and one handler. Each handler is an `assume` claim
 with a fuzz check (below).
 
@@ -191,15 +209,19 @@ Subscriptions are data derived from state, as in Elm. After every step that deli
 anything, the runtime evaluates `app.subscriptions` on the new state and diffs it against the
 active set (by value): it **stops exactly the active subscriptions no longer wanted and starts
 exactly the wanted ones not already active**, giving each new one a fresh id
-(`diffSubs_starts`, `diffSubs_stops`, `diffSubs_active`). A subscription asked for twice is one
-subscription. The frame carries the diff as `start id sub` and `stop id` commands; the host
-keeps a table `id ↦ running thing` and sends `subEvent id e` events. The runtime delivers
-`Msg.sub sub e` only for an id that is active at that moment, so an event from a stopped
-subscription, however late, never reaches the app (`subEvent_delivers`).
+(`diffSubs_stop`, `diffSubs_starts`, `diffSubs_fresh`, `diffSubs_active`). A subscription asked
+for twice is one subscription. The frame carries the diff as `start id sub` and `stop id`
+commands; the host keeps a table `id ↦ running thing` and sends `subEvent id e` events. The
+runtime delivers `Msg.sub sub e` only for an id that is active at that moment, so an event from
+a stopped subscription, however late, never reaches the app (`step_sub`, `step_sub_ignored`,
+`diffSubs_stopped`).
 
-`every ms` is implemented by the host (a `DispatchSourceTimer`), to prove the mechanism end to
-end through the host. It is not how an app should keep exact time: ticks can be late or
-coalesced; the clock that precedes each tick is the truth.
+`every ms` is implemented by the host (a `DispatchSourceTimer` on the serial queue
+`cairn.world`, which also handles every start and stop, so once a frame's `stop` has been
+handled no tick of it is sent). It proves the mechanism end to end through the host. It is not
+how an app should keep exact time: ticks can be late, and the engine coalesces consecutive
+ticks of one subscription that Lean has not caught up with into one; the clock that precedes
+each tick is the truth.
 
 ## Wire format
 
@@ -214,8 +236,10 @@ types, not added beside them. The byte layout is in [frame.md](frame.md).
 
 For one event:
 
-1. **World first.** `clock t`: advance the clock; on the first clock, run `app.initEffects`;
-   collect the timers now due. `reply id r`: check and remove `id` from the pending table.
+1. **World first.** `clock t`: advance the clock; on the first clock, hear it and run
+   `app.initEffects`; fire the timers now due. `reply id r`: if `id` is pending and `r` answers
+   its kind, the app hears the clock, then the id leaves the pending table and the reply is
+   delivered (re-checked after the clock, whose handler could itself have asked again).
    `subEvent id e`: look `id` up in the active set. Every other event is routed as in M1.
 2. **Deliver**, in order: `Msg.clock` first if the app hasn't heard the current time; then
    the event's actions (to `update`) or messages (to `receive`). After each delivery its
@@ -233,20 +257,48 @@ In `Cairn.Runtime` (`WorldProofs.lean`), for every app; none assume anything abo
 
 | Theorem | Statement |
 |---|---|
-| `tick_mono`, `step_clock_mono` | the runtime's clock never decreases |
-| `fire_guard` | firing `n` delivers `Msg.timer n` only if `n` is set and due at that moment, and removes it |
-| `absorb_cancel` | after effects whose last timer effect for `n` is `cancelTimer n`, `n` is not set |
-| `cancelled_never_fires` | if `n` is not set before a step (or batch) and nothing in it sets `n`, no `Msg.timer n` is delivered |
-| `reply_delivers` | a `reply id r` event delivers `Msg.reply id r` exactly when `id` is pending and `r` answers its kind, and nothing else but the clock |
-| `reply_once` | after that delivery `id` is no longer pending unless the app asked again |
-| `absorb_request` | a request is admitted exactly when its id is not pending, and then becomes pending with its kind |
-| `diffSubs_starts`, `diffSubs_stops`, `diffSubs_active` | the diff starts exactly the added, stops exactly the removed, and leaves the active set equal (as a set) to what the app asked for |
-| `subEvent_delivers` | a subscription event is delivered exactly when its id is active, as the subscription it was started for |
-| `decodeFrame_encodeFrame`, `decodeEvents_encodeEvents` | round trips, now over every new record |
+| `tick_mono`, `step_clock`, `steps_clock` | the runtime's clock never decreases, over a step or a batch, and a booted app stays booted |
+| `step_clock_reaches` | a `clock t` event brings the runtime's clock at least to `t` |
+| `step_book`, `steps_book` | **timers and replies**: over any batch after boot, every message delivered is allowed by the specification `Book` (a timer only while armed, so never after its `cancelTimer` and once per `setTimer`; a reply only to a pending request, in a shape that answers its kind, once), and the runtime's tables agree with the book after |
+| `Book.cancel_disarms` | a timer whose last word in a delivery's effects is `cancelTimer` is not armed after it |
+| `Book.reply_once` | once a reply is delivered, no second reply to that id is admitted |
+| `step_reply` | a reply to a pending request, in the right shape, reaches `receive` under the id it was requested with |
+| `step_reply_ignored` | a reply to an id not pending, or in the wrong shape, reaches no one |
+| `step_sub`, `step_sub_ignored` | a subscription event is delivered as its subscription's message exactly when its id is active |
+| `diffSubs_stop`, `diffSubs_starts`, `diffSubs_fresh`, `diffSubs_active`, `diffSubs_stopped` | the diff stops exactly the running subscriptions no longer wanted, starts exactly the wanted ones not running, each under a fresh id, leaves the active set equal (as a set) to what the app asked for, and a stopped id is gone |
+| `decodeFrame_encodeFrame`, `decodeEvents_encodeEvents` | round trips, now over every new record (`u64_enc`, `i64_enc`, `headers_enc`, `requestBody_enc`, `effect_enc`, `subCmd_enc`, `wake_enc`, `replyBody_enc`) |
+| `step_delivers_quiet` (`Proofs.lean`) | for an app whose `receive` ignores every message, a step delivers exactly what M1's did, so M1's claim proofs carry over |
 
-The step-level theorems are stated with `App.logged`, which wraps any app so that its state
-records every `Action` and `Msg` delivered to it; since the runtime is generic in the app, what
-it delivers to the wrapper is what it delivers to any app.
+The step-level theorems are stated with `logged`, which wraps any app so that its state
+records every `Action` and `Msg` delivered to it with the effects it returned; since the runtime
+is generic in the app, what it delivers to the wrapper is what it delivers to any app.
+`Book.run` replays such a log against the specification.
+
+## Example: Clock
+
+`lean/Examples/Clock.lean` (host: `host/Sources/CairnClock`, run with `cd host && swift run CairnClock`)
+is a stopwatch: Start/Stop (^401) sets and cancels a 100 ms `tick` timer, Lap (^402) records
+the reading and plays "Tink", Reset (^403), Save (^404) writes the laps to
+`~/Library/Application Support/Cairn/Clock/laps.txt`, Load (^405) reads them back (also once
+at launch, from `initEffects`), and the time of day comes from an `every 1000` subscription.
+`stopped_tick` proves a tick that arrives after Stop changes nothing. Its self test drives the
+real host threads: launch read, the reading moving with no input, cancel on Stop (no `wake`,
+reading frozen), save, reset, load, and measures the numbers below.
+
+Measured on an Apple M4 Max, debug host build (bench/effects.md):
+
+| | p50 | p90 | max |
+|---|---|---|---|
+| request round trip: click → `readFile` → reply → frame | 1.5 ms | 2.0 ms | 6.6 ms |
+| a timer's clock after its deadline (0.5 ms polling, upper bound) | 1 ms | 2 ms | |
+
+## Surfaces
+
+The new events are global: a clock, a reply and a subscription event belong to the app, not
+to a window, so docs/surfaces.md's per-surface frames and surface-tagged input events can be
+added beside them without changing these tags (18–20). Host-owned timers (the wake timer and
+`every`) run on dispatch queues, not the main run loop, so they keep firing while a menu is
+open.
 
 ## What is trusted
 
@@ -265,4 +317,5 @@ Each kind of host effect is an `assume` claim naming a check of the trusted-base
 | ^915 | `every ms` ticks while started and never after it is stopped | `subs.every` |
 
 The new records are also covered by ^901 and ^902 (the Swift codecs against Lean's), whose
-generators now produce them.
+generators now produce them. The suites (`clock`, `world`, `files`, `http`, `sound` in
+`host/Tests/CairnFuzzTrusted`) are described in docs/fuzz.md.

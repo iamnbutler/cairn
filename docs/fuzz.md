@@ -223,7 +223,7 @@ shrunk from 13 operations to 2.
 The claim fuzzer above checks the Lean side. `make fuzz-trusted` checks the parts Lean's proofs
 take on trust (docs/trusted.md): the Swift half of each boundary, run against Lean's proved half
 in one process. One check per trusted item; each `assume` claim in
-`Cairn.Fuzz.Trusted.Claims` (^901–^907) names its check with `check "…"` (docs/claims.md), so
+`Cairn.Fuzz.Trusted.Claims` (^901–^915) names its check with `check "…"` (docs/claims.md), so
 the report is the claim's evidence.
 
 ```sh
@@ -249,11 +249,24 @@ on after it.
 | `text.input-client` | ^905 | `HostView`'s `NSTextInputClient` | Lean's frame: `selectedRange`, `markedRange`, caret rect; round trips | same sequences; `firstRect`, `characterIndex(for:)` at the caret and at random points, `attributedSubstring`, after every frame |
 | `text.metrics` | ^906 | `cairn_text_metrics`, `TextSystem`, `Fonts` | `TextMetrics.Valid`'s shape; Lean's `TextMetrics.host` through `cairn_text_host_check` (normalise must be the identity) | families 0, 1, 2 and random; sizes 0, 1, 2, 8–400, 1024, 1025, 2³²−1; weights 0–1000 and 2³²−1; italic; text below; invalid UTF-8; short and null output buffers |
 | `text.metrics.carets` | ^907 | the same, and Core Text | the glyphs Core Text lays out on a fresh `CTLine` | the same, left-to-right only |
+| `clock.monotonic` | ^908 | `HostClock`, `Engine.timed` | `CLOCK_MONOTONIC` and `Date` read as each batch arrives at a Swift app (`WakeCore`) | every batch of a run through the real `Engine`; `HostClock.now()` from 2–8 threads at once |
+| `clock.wake` | ^909 | `Engine`'s wake timer | the frame's `wake` and the clock of the batch that answers it | deadlines 0 (already due) to 80 ms; deadlines cleared before they come due; 1–3 a case |
+| `effects.read-file` | ^910 | `Files.read` | the bytes written; the file system's state | paths of 1–3 components from the text pool (NUL, refused names), missing files, directories, unreadable files |
+| `effects.write-file` | ^911 | `Files.write` | `FileManager` reads after `done`; a reader thread during replacement; POSIX `mkdir`/`open` of the same names | 0 bytes to 2 MB, replacing 1–3 times, writes under a file and over a directory, read-only directories |
+| `effects.sound` | ^912 | `Sounds` | the files in `/System/Library/Sounds` | every system name; random and near-miss names (played only with `CAIRN_FUZZ_SOUND=1`) |
+| `effects.http` | ^913 | `HTTP.run` | a `URLProtocol` stub: what it received and what it answered | methods, paths with URL-illegal characters, token headers with pool values, bodies to a few hundred bytes, statuses 100–599; refused URLs, methods and headers (CR/LF/NUL); connection failures; a server that never answers with 50–200 ms timeouts |
+| `effects.reply-once` | ^914 | `World` (requests) | the requests run and what each handler answered first; `reset`'s return | 1–24 requests a case with distinct random ids; handlers that answer 0–3 times, in order or racing on other threads, after 0–3 ms; a kind with no handler; a `reset` at a random moment |
+| `subs.every` | ^915 | `World` (subscriptions) | the started/stopped model of the commands; the monotonic clock | 1–8 frames of 0–4 start/stop commands over 5 ids (restarts with a new period, stops of ids not running), periods 1–40 ms, 0–60 ms between frames, then `reset` |
 
 Text comes from one pool in both languages: ASCII, edge scalars (NUL, controls, U+0085,
 U+2028/9, BOM, U+FFFD, U+FFFE/F, U+10FFFF, surrogate-adjacent, private use), ZWJ families,
 skin tones, flags, tag sequences, keycaps, combining stacks, Devanagari conjuncts, CJK, Hebrew,
 Arabic, bidi controls, and long runs of one scalar.
+
+The effect suites (`clock`, `world`, `files`, `http`, `sound`) run fewer cases than N (a
+twentieth to a quarter): their cases wait on real time. Timing bounds are loose (a wake within
+40 ms, a tick within twenty periods) so that a loaded machine during `make check` doesn't fail
+them; the counters record the actual lateness (`late0ms`, `late1ms`, …).
 
 The input-client suite drives a real `HostView` and `Engine` with a Lean app (one text field
 with `TextMetrics.host`) in a borderless window that is never shown. It checks the shadow after
@@ -350,6 +363,21 @@ Each fix is its own commit, with a regression test holding the minimal repro.
    by up to a glyph there. A fix would replace Core Text's caret model with one built from the
    glyph runs; that is a design change for workstream F, so it is reported, not made.
 
+6. **A NUL in a path cut the path** (`effects.write-file`, fixed in `World.swift`). Foundation
+   passes the path to the file system as a C string, so `"a\u{0}b"` named the file `a`. Now a
+   path with NUL is `failed invalid`.
+7. **Names APFS refuses were `failed other`** (`effects.write-file`, fixed in `World.swift`).
+   APFS rejects names with unassigned code points or noncharacters (`EILSEQ`): 3 of the first
+   200 cases. They are `failed invalid` now (and `ENAMETOOLONG` with them); the oracle makes
+   the same names with POSIX calls to know which to expect.
+
+Also changed while writing the suites, found by reading rather than by a failing case: a reply
+checked against the world's generation and then sent outside the lock could arrive after
+`reset` returned (now sent under the lock), and header names and values were passed to
+Foundation unchecked (now tokens, and no CR, LF or NUL). The `http` oracle compares URLs as
+Foundation parses them: it percent-encodes characters a URL can't hold (`|`, `` ` ``, `^`, a
+lone `%`), which the first run reported as a difference.
+
 Not findings: Lean accepts about 2% of mutated frames that are not canonical (reserved bytes it
 ignores; `A~` in the verdict), and Swift agrees on every one. A `count` field of 2³²−1 makes
 the Swift decoder reserve that many elements before failing; virtual memory absorbs it (no crash
@@ -371,3 +399,7 @@ in 20,000 cases), but a cap would be cheaper.
 - A worker that crashes loses up to a second of tallies (stats are flushed every second); the
   crash itself is always reported.
 - The renderer (Metal) is not fuzzed.
+- Effects: the sound is not heard, only looked up (and played with `CAIRN_FUZZ_SOUND=1`); HTTP
+  goes to a stub, not a network (no TLS, redirects or proxies); files live in one temporary
+  directory on the boot volume. The clock checks run while the machine is awake; sleep is not
+  exercised.

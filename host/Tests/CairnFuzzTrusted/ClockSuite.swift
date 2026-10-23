@@ -12,6 +12,8 @@ final class WakeCore: AppCore, @unchecked Sendable {
     private var batches: [Batch] = []
     private var target: UInt64?
     private var arming: UInt64?
+    /// The deadline the latest `arm` set, once a batch has set it.
+    private(set) var armed: UInt64?
 
     func start(size: Size, scalePercent: UInt32) {}
 
@@ -21,7 +23,7 @@ final class WakeCore: AppCore, @unchecked Sendable {
             batches.append(Batch(events: events, arrived: now, wall: wall))
             guard case let .clock(t)? = events.first else { return }
             if let w = target, t.mono >= w { target = nil }
-            if let d = arming { target = t.mono + d; arming = nil }
+            if let d = arming { target = t.mono + d; armed = target; arming = nil }
         }
     }
 
@@ -29,7 +31,8 @@ final class WakeCore: AppCore, @unchecked Sendable {
         lock.withLock { Frame(size: Size(w: 10, h: 10), draws: [], wake: target) }
     }
 
-    func arm(_ d: UInt64) { lock.withLock { arming = d } }
+    func arm(_ d: UInt64) { lock.withLock { arming = d; armed = nil } }
+    var armedAt: UInt64? { lock.withLock { armed } }
     func clear() { lock.withLock { target = nil } }
     var log: [Batch] { lock.withLock { batches } }
 }
@@ -98,11 +101,12 @@ final class ClockSuite: Suite {
             let d = UInt64(g.elem([0, 0, 1, 2, 5, 10, 17, 33, 80]))
             let clearing = g.chance(1, 4) && d >= 30
             core.arm(d)
+            let at = core.log.count
             _ = engine.wait(through: engine.send([.pointerExit]))
-            guard let target = core.frameTarget else { r.fail("clock.wake", "no wake armed for \(d) ms"); continue }
+            // (A deadline already due may have been woken for and met by now.)
+            guard let target = core.armedAt else { r.fail("clock.wake", "no wake armed for \(d) ms"); continue }
             if clearing {
                 // Cleared before it is due: no wake, if the clearing frame came first.
-                let at = core.log.count
                 core.clear()
                 _ = engine.wait(through: engine.send([.pointerExit]))
                 let cleared = core.log.last?.arrived ?? .max
@@ -114,7 +118,6 @@ final class ClockSuite: Suite {
                 }
                 continue
             }
-            let at = core.log.count
             let deadline = Date(timeIntervalSinceNow: Double(d + Self.lateBound + 200) / 1000)
             var wake: WakeCore.Batch?
             while Date() < deadline {
@@ -160,9 +163,4 @@ final class ClockSuite: Suite {
     func describe(_ g: inout SplitMix, reproDir: URL, caseIndex: Int) -> String {
         "Engine wake and clock with a WakeCore"
     }
-}
-
-extension WakeCore {
-    /// The deadline the next frame will carry.
-    var frameTarget: UInt64? { (try? frame())?.wake }
 }
