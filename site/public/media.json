@@ -9,7 +9,7 @@
     "width": 1040,
     "height": 904,
     "seconds": 18,
-    "feature": false
+    "feature": true
   },
   {
     "video": "/m/videos/4dff72519883d7d3.mp4",
@@ -21,6 +21,6 @@
     "width": 960,
     "height": 704,
     "seconds": 9,
-    "feature": true
+    "feature": false
   }
 ]
