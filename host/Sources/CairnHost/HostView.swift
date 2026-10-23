@@ -18,6 +18,13 @@ public final class HostView: NSView {
     public internal(set) var textShadow = TextInputShadow()
     /// Every time the shadow's prediction disagreed with Lean (most recent last, capped).
     public private(set) var shadowDivergences: [ShadowDivergence] = []
+    /// Runs before each effect; returning true means it was handled and the host's own handling is
+    /// skipped. The debug socket uses it to record effects and keep them off the user's clipboard
+    /// and speakers (docs/conformance.md).
+    public var effectHook: ((Effect) -> Bool)?
+    /// The pasteboard `setClipboard` writes and Paste reads: the general one, or a private one
+    /// under the debug socket.
+    public var pasteboard: NSPasteboard = .general
     private var scroll = ScrollAccumulator()
     private var cursor: Cursor = .arrow
     private var tracking: NSTrackingArea?
@@ -259,7 +266,7 @@ public final class HostView: NSView {
     @objc func copy(_ sender: Any?) { sendEditing([.copy]) }
     @objc func cut(_ sender: Any?) { sendEditing([.cut]) }
     @objc func paste(_ sender: Any?) {
-        sendEditing([.paste(NSPasteboard.general.string(forType: .string) ?? "")])
+        sendEditing([.paste(pasteboard.string(forType: .string) ?? "")])
     }
     public override func selectAll(_ sender: Any?) { sendEditing([.selectAll]) }
     @objc func undo(_ sender: Any?) { sendEditing([.undo]) }
@@ -288,10 +295,11 @@ public final class HostView: NSView {
     }
 
     private func run(_ effect: Effect) {
+        if effectHook?(effect) == true { return }
         switch effect {
         case .setClipboard(let s):
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(s, forType: .string)
+            pasteboard.clearContents()
+            pasteboard.setString(s, forType: .string)
         case .beep:
             NSSound.beep()
         }

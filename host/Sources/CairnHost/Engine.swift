@@ -36,6 +36,8 @@ public final class Engine: @unchecked Sendable {
     private var unpresented: [(version: Int, time: Double)] = []
     private var running = false
     private var stopping = false
+    /// A pending `restart`: the size and scale to start at, and the sequence number it takes.
+    private var restartRequest: (size: Size, scalePercent: UInt32, seq: UInt64)?
 
     private let makeCore: () -> AppCore
     private let initialSize: Size
@@ -109,6 +111,20 @@ public final class Engine: @unchecked Sendable {
         }
     }
 
+    /// Starts the app again from its initial state at `size` and `scalePercent`, after every event
+    /// already sent. Returns the sequence number the restarted frame accounts for. For the debug
+    /// socket (docs/conformance.md): each conformance sequence starts from a fresh state without
+    /// relaunching the app. Never waits on Lean.
+    public func restart(size: Size, scalePercent: UInt32) -> UInt64 {
+        cond.lock()
+        defer { cond.unlock() }
+        let seq = nextSeq
+        nextSeq += 1
+        restartRequest = (size, scalePercent, seq)
+        cond.broadcast()
+        return seq
+    }
+
     /// The newest frame, if Lean has produced one. Cheap; safe from any thread.
     public var latest: Published? {
         cond.lock()
@@ -162,11 +178,23 @@ public final class Engine: @unchecked Sendable {
         publish(core, throughSeq: 0, inputTime: nil, stepMs: 0)
         while true {
             cond.lock()
-            while queue.isEmpty && !stopping { cond.wait() }
+            while queue.isEmpty && !stopping && restartRequest == nil { cond.wait() }
             if stopping { cond.unlock(); break }
             let batch = queue
             queue.removeAll(keepingCapacity: true)
+            let restart = restartRequest
+            restartRequest = nil
             cond.unlock()
+
+            if let r = restart {
+                // Events sent before the restart run first; those sent after it run on the new state.
+                let before = batch.filter { $0.seq < r.seq }, after = batch.filter { $0.seq > r.seq }
+                if !before.isEmpty { core.step(before.map(\.event)) }
+                core.start(size: r.size, scalePercent: r.scalePercent)
+                if !after.isEmpty { core.step(after.map(\.event)) }
+                publish(core, throughSeq: after.last?.seq ?? r.seq, inputTime: nil, stepMs: 0)
+                continue
+            }
 
             let t0 = hostNow()
             core.step(batch.map(\.event))

@@ -9,7 +9,10 @@ public final class MetalRenderer: FrameRenderer {
     private let renderer: Renderer
     public var device: MTLDevice { renderer.device }
 
-    public init(clearColor: Color = Color(r: 247, g: 247, b: 245, a: 255)) {
+    /// The window background behind every frame.
+    public static let defaultClearColor = Color(r: 247, g: 247, b: 245, a: 255)
+
+    public init(clearColor: Color = MetalRenderer.defaultClearColor) {
         do { renderer = try Renderer() } catch { fatalError("cairn: no Metal renderer (\(error))") }
         renderer.clearColor = clearColor
     }

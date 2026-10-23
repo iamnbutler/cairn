@@ -76,6 +76,7 @@ public enum CairnApp {
         var window: NSWindow!
         var view: HostView!
         var statsTimer: Timer?
+        var debug: DebugServer?
 
         init(config: Config) { self.config = config }
 
@@ -83,7 +84,9 @@ public enum CairnApp {
             let size = NSSize(width: CGFloat(config.size.w), height: CGFloat(config.size.h))
             let scale = NSScreen.main?.backingScaleFactor ?? 2
             let engine = Engine(size: config.size, scalePercent: HostView.percent(scale), makeCore: config.makeCore)
-            view = HostView(engine: engine, renderer: config.makeRenderer(), size: size)
+            // Off unless CAIRN_DEBUG_SOCKET or --debug-socket asks for it (docs/conformance.md).
+            debug = DebugServer.requested(title: config.title)
+            view = HostView(engine: engine, renderer: debug?.renderer ?? config.makeRenderer(), size: size)
             window = NSWindow(contentRect: NSRect(origin: .zero, size: size),
                               styleMask: [.titled, .closable, .resizable, .miniaturizable],
                               backing: .buffered, defer: false)
@@ -93,8 +96,14 @@ public enum CairnApp {
             window.center()
             window.setFrameAutosaveName("cairn.\(config.title)")
             engine.start()
-            window.makeKeyAndOrderFront(nil)
-            NSApp.activate()
+            if let debug {
+                // Driven only through the socket: shown without taking focus from the person at the
+                // keyboard, and deaf to the real mouse.
+                debug.attach(view: view, window: window)
+            } else {
+                window.makeKeyAndOrderFront(nil)
+                NSApp.activate()
+            }
 
             let args = CommandLine.arguments
             if args.contains("--stats") {

@@ -98,15 +98,16 @@ order:
 | `visual` | proved and seen: the app's own code produced frames showing it, rendered by the real renderer |
 | `untested` | proved, but nothing has run it on the app: invariants today, and any move no capture reached |
 
-A proved invariant shows `untested` because the ladder measures the running app, and nothing
-runs an invariant there yet; its proof is on the Evidence page. Findings become the step's
+A proved invariant shows `untested` unless a conformance run covers it (an invariant passes
+there when every state the app reached was the model's); its proof is on the Evidence page. Findings become the step's
 `gaps` (so they reach the skill's Gaps page): a failing theorem, a capture that contradicts the
 model, a conformance failure, a claim missing from `claims.lock`, or a statement hash that
 differs from the lock (meaning changed and not accepted).
 
 ## For workstream J: the conformance file
 
-Proposed shape for `build/conformance/<App>.json`; the map reads only `claims`:
+The shape of `build/conformance/<App>.json`, as `make conformance` writes it (docs/conformance.md,
+which also says how moves, flows and invariants are counted); the map reads only `claims`:
 
 ```json
 {"runs": 1000, "commit": "abc1234",
@@ -117,7 +118,8 @@ A claim missing from the file is "not run".
 
 ## What is not yet evidenced
 
-- **Conformance** is a placeholder until J's driver writes its file. No claim is `tested` today.
+- **Conformance** is read only when `build/conformance/<App>.json` exists: run
+  `make conformance APP=<App>` before `make map`.
 - **Seen is the Lean model's own frames,** rendered by the real renderer, not the running host:
   no window, no accessibility mirror, no AppKit event path. The capture clicks through the app's
   hit testing, so a control that is covered or mis-laid fails to act, but the host's event
