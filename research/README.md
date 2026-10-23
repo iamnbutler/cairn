@@ -49,3 +49,21 @@ meet. For workstreams A (claims), B (layout), C (runtime), I (TodoMVC) and J (co
 - No prior work found proves *presence* or *pressability* of controls in a proof assistant;
   the searches were not exhaustive (2026-10-23). Worth one more targeted search before claiming
   novelty in writing.
+
+## Lean as a platform (`lean/`)
+
+What Lean 4.35 (core + Std) gives and costs us for verified code that runs every frame:
+automation and the axioms it adds, proof-friendly recursion, the runtime's reference counting,
+the claims DSL's metaprogramming, FFI, and widgets. Claims were tested on the pinned toolchain;
+scratch code is in `lean/raw/`. For every workstream, A–E most.
+
+| Note | For | Relevance |
+|---|---|---|
+| [lean/01-proof-automation.md](lean/01-proof-automation.md): `omega`, `grind`, `simp`, `decide`/`+kernel`, `cbv`, `bv_decide`, `native_decide`; axioms observed per tactic; `lake check` | all | 5 |
+| [lean/02-proof-friendly-code.md](lean/02-proof-friendly-code.md): structural recursion on `Node`, no derived `DecidableEq` for nested types, `@[csimp]` vs `@[implemented_by]`, Array/String lemmas, `Id.run do` proofs | B, C, D, E | 5 |
+| [lean/03-runtime-performance.md](lean/03-runtime-performance.md): reset/reuse, when arrays update in place, boxing, `markLinear`, stack depth on host threads; numbers | C, E, G, B | 5 |
+| [lean/04-production-verification.md](lean/04-production-verification.md): Cedar's verification-guided development, SampCert, LNSym; spec/impl structure, upgrades, differential testing | all, J | 5 |
+| [lean/05-metaprogramming-dsl.md](lean/05-metaprogramming-dsl.md): env extensions, `move` command, cross-module uniqueness, `initialize`, module system and `meta import` | A | 5 |
+| [lean/06-ffi-embedding.md](lean/06-ffi-embedding.md): export/extern ownership, initialization, threads, struct layout, linking, lean-ios | G, E, F | 5 |
+| [lean/07-proofwidgets.md](lean/07-proofwidgets.md): drawing a counterexample frame in the infoview with core widgets | B, C, D | 3 |
+| [lean/raw/release-notes-4.20-4.35.md](lean/raw/release-notes-4.20-4.35.md): release-note digest filtered for Cairn | all | 4 |
