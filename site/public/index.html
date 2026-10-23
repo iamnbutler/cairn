@@ -3,78 +3,197 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex">
 <title>Cairn</title>
 <meta name="description" content="Research into user interfaces where every action a person can take is a claim with a durable id and machine-checked evidence.">
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #f4f2ee;
-    --fg: #22211f;
-    --muted: #6d6a64;
-    --rule: #dcd8d0;
-    --card: #fbfaf8;
-    --accent: #4f5d4a;
+    --bg: #f1eef8;
+    --fg: #2b2d55;
+    --muted: #6c6a92;
+    --rule: #d8d2ec;
+    --ink: #2e3160;
+    --panel: #faf8fe;
+    --shadow: #cfc8ee;
+    --chip: #e4def5;
+    --accent: #4f7fa8;
+    --gold: #d99a3a;
+    --stone-1: #a9b6e2;
+    --stone-2: #bdb4e6;
+    --stone-3: #a8d4c8;
+    --px: 4px;
+    --pixel: "Pixelify Sans", ui-monospace, monospace;
     --mono: ui-monospace, "SF Mono", Menlo, monospace;
     color-scheme: light dark;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #1b1b19;
-      --fg: #e9e6e0;
-      --muted: #9c988f;
-      --rule: #34332f;
-      --card: #222220;
-      --accent: #a9b8a0;
+      --bg: #161937;
+      --fg: #e6e2f6;
+      --muted: #a29fca;
+      --rule: #2d3062;
+      --ink: #0c0e26;
+      --panel: #1d2047;
+      --shadow: #0c0e26;
+      --chip: #2a2d5e;
+      --accent: #9cc8e8;
+      --gold: #f2c46a;
+      --stone-1: #4b5596;
+      --stone-2: #5b4f96;
+      --stone-3: #3f7a78;
     }
   }
   * { box-sizing: border-box; }
+  html { background: var(--bg); }
   body {
     margin: 0;
     background: var(--bg);
     color: var(--fg);
-    font: 17px/1.6 ui-serif, "New York", Georgia, serif;
+    font: 17px/1.65 ui-serif, "New York", Georgia, serif;
     -webkit-font-smoothing: antialiased;
   }
-  main { max-width: 760px; margin: 0 auto; padding: 56px 16px 96px; }
-  header h1 { font-size: 44px; line-height: 1.1; margin: 0 0 12px; letter-spacing: -0.01em; font-weight: 600; }
-  header p { margin: 0; color: var(--muted); font-size: 19px; max-width: 34em; }
+  a { color: var(--accent); text-underline-offset: 3px; }
+  code {
+    font: 0.84em var(--mono);
+    background: var(--chip);
+    padding: 1px 5px;
+    border-radius: 2px;
+  }
+
+  /* Stepped corners: the shape every panel, stone and frame on the page shares. */
+  .px {
+    --s: var(--px);
+    clip-path: polygon(
+      0 calc(var(--s) * 2), var(--s) calc(var(--s) * 2), var(--s) var(--s), calc(var(--s) * 2) var(--s), calc(var(--s) * 2) 0,
+      calc(100% - var(--s) * 2) 0, calc(100% - var(--s) * 2) var(--s), calc(100% - var(--s)) var(--s), calc(100% - var(--s)) calc(var(--s) * 2), 100% calc(var(--s) * 2),
+      100% calc(100% - var(--s) * 2), calc(100% - var(--s)) calc(100% - var(--s) * 2), calc(100% - var(--s)) calc(100% - var(--s)), calc(100% - var(--s) * 2) calc(100% - var(--s)), calc(100% - var(--s) * 2) 100%,
+      calc(var(--s) * 2) 100%, calc(var(--s) * 2) calc(100% - var(--s)), var(--s) calc(100% - var(--s)), var(--s) calc(100% - var(--s) * 2), 0 calc(100% - var(--s) * 2)
+    );
+  }
+
+  /* The scene */
+  .scene { position: relative; height: 380px; }
+  .scene canvas {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    image-rendering: pixelated;
+  }
+  .scene .title {
+    position: relative; max-width: 760px; margin: 0 auto; padding: 56px 16px 0;
+  }
+  h1 {
+    font: 700 64px/1 var(--pixel);
+    margin: 0;
+    color: var(--ink);
+    letter-spacing: 0.02em;
+    text-shadow: 4px 4px 0 rgba(255, 255, 255, 0.55);
+  }
+  @media (prefers-color-scheme: dark) {
+    h1 { color: #f3efff; text-shadow: 4px 4px 0 #2b2d6a; }
+  }
+
+  main { max-width: 760px; margin: 0 auto; padding: 8px 16px 64px; }
+  .lede { font-size: 21px; line-height: 1.5; margin: 24px 0 0; max-width: 32em; }
+  .lede em { font-style: normal; font: 600 0.95em var(--pixel); color: var(--accent); }
+
   h2 {
-    font: 600 13px/1 -apple-system, system-ui, sans-serif;
-    letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
-    margin: 56px 0 16px; padding-top: 16px; border-top: 1px solid var(--rule);
+    font: 600 22px/1.2 var(--pixel);
+    color: var(--ink);
+    margin: 72px 0 18px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  @media (prefers-color-scheme: dark) { h2 { color: var(--fg); } }
+  h2::before {
+    content: ""; width: 20px; height: 20px; flex: none;
+    background: url("/icon.svg") center / contain no-repeat;
+    image-rendering: pixelated;
   }
   p { margin: 0 0 14px; }
-  code { font: 0.88em var(--mono); }
-  video {
-    display: block; width: 100%; height: auto; border-radius: 10px;
-    background: var(--card); border: 1px solid var(--rule);
+
+  /* A framed video: an outline, then a stepped panel, then a pixel drop shadow. */
+  .frame { position: relative; margin: 0; }
+  .frame .box { background: var(--ink); padding: var(--px); filter: drop-shadow(var(--px) var(--px) 0 var(--shadow)) drop-shadow(var(--px) var(--px) 0 var(--shadow)); }
+  .frame video { display: block; width: 100%; height: auto; background: var(--panel); }
+  .frame figcaption { font-size: 15.5px; color: var(--muted); margin-top: 16px; }
+  .meta {
+    font: 15px/1.4 var(--pixel); color: var(--muted);
+    display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px;
   }
-  figure { margin: 0; }
-  figcaption { font-size: 15px; color: var(--muted); margin-top: 10px; }
+  .meta .date { color: var(--gold); }
   .feature { margin-top: 40px; }
-  .meta { font: 12px/1.4 var(--mono); color: var(--muted); }
-  .log { display: grid; gap: 40px; }
-  .log h3 { font-size: 19px; margin: 0 0 4px; font-weight: 600; }
-  ol.goal { padding-left: 1.3em; margin: 0; }
-  ol.goal li { margin-bottom: 8px; }
-  .stack { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 8px; }
-  .stack div { background: var(--card); border: 1px solid var(--rule); border-radius: 8px; padding: 12px 14px; font-size: 15px; }
-  .stack b { display: block; font-size: 16px; }
-  @media (max-width: 560px) {
-    header h1 { font-size: 34px; }
-    .stack { grid-template-columns: 1fr; }
+
+  /* The stack: Lean at the base, the host and the renderer on top. */
+  .cairn { display: grid; justify-items: center; gap: 0; margin: 28px 0 8px; }
+  .stone {
+    --s: 6px;
+    padding: 14px 22px 16px;
+    font-size: 15.5px; line-height: 1.45;
+    color: #24264d;
+    text-align: center;
   }
-  footer { margin-top: 64px; color: var(--muted); font-size: 14px; }
-  a { color: var(--accent); }
+  .stone b { display: block; font: 600 18px/1.3 var(--pixel); }
+  .stone:nth-child(1) { width: 62%; background: var(--stone-3); }
+  .stone:nth-child(2) { width: 82%; background: var(--stone-2); margin-top: -2px; }
+  .stone:nth-child(3) { width: 100%; background: var(--stone-1); margin-top: -2px; }
+  @media (prefers-color-scheme: dark) { .stone { color: var(--fg); } }
+
+  /* Trails: the milestone and the progress log. */
+  .trail { list-style: none; margin: 0; padding: 0; position: relative; }
+  .trail::before {
+    content: ""; position: absolute; left: 13px; top: 18px; bottom: 18px; width: 4px;
+    background: repeating-linear-gradient(to bottom, var(--rule) 0 8px, transparent 8px 16px);
+  }
+  .trail > li { position: relative; padding-left: 48px; margin-bottom: 18px; }
+  .trail > li::before {
+    position: absolute; left: 0; top: 0;
+    width: 30px; height: 30px;
+    display: grid; place-items: center;
+    font: 600 15px/1 var(--pixel);
+    background: var(--chip); color: var(--ink);
+  }
+  @media (prefers-color-scheme: dark) { .trail > li::before { color: var(--fg); } }
+  ol.trail { counter-reset: step; }
+  ol.trail > li { counter-increment: step; }
+  ol.trail > li::before { content: counter(step); }
+  .log > li { margin-bottom: 56px; }
+  .log > li::before { content: ""; background: var(--gold); width: 18px; height: 18px; left: 6px; top: 6px; }
+  .log h3 { font: 600 20px/1.3 var(--pixel); margin: 0 0 14px; color: var(--ink); }
+  @media (prefers-color-scheme: dark) { .log h3 { color: var(--fg); } }
+  /* The trail markers share the stepped corners at a smaller step. */
+  .trail > li::before { clip-path: polygon(0 4px, 4px 4px, 4px 0, calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px), 0 calc(100% - 4px)); }
+
+  footer {
+    max-width: 760px; margin: 0 auto; padding: 24px 16px 56px;
+    font: 15px/1.4 var(--pixel); color: var(--muted);
+    display: flex; align-items: center; gap: 10px;
+  }
+  footer img { width: 32px; height: 32px; image-rendering: pixelated; }
+
+  @media (max-width: 600px) {
+    :root { --px: 3px; }
+    .scene { height: 300px; }
+    .scene .title { padding-top: 40px; }
+    h1 { font-size: 48px; }
+    .lede { font-size: 19px; }
+    .stone:nth-child(1), .stone:nth-child(2), .stone:nth-child(3) { width: 100%; }
+    .stone:nth-child(1) { width: 78%; }
+    .stone:nth-child(2) { width: 90%; }
+  }
 </style>
 </head>
 <body>
+<header class="scene">
+  <canvas id="scene" aria-hidden="true"></canvas>
+  <div class="title"><h1>Cairn</h1></div>
+</header>
+
 <main>
-  <header>
-    <h1>Cairn</h1>
-    <p>Research into user interfaces where everything a person can do is a <em>claim</em> with a
-      durable id, and every claim carries machine-checked evidence.</p>
-  </header>
+  <p class="lede">Research into user interfaces where everything a person can do is a <em>claim</em>
+    with a durable id, and every claim carries machine-checked evidence.</p>
 
   <div id="feature" class="feature"></div>
 
@@ -87,14 +206,14 @@
   <p>To make those claims mean something, the code they talk about has to be the code that runs.
     So the app's state, view, layout, hit testing, focus and text editing are all pure Lean, and
     the theorems are about exactly those functions.</p>
-  <div class="stack">
-    <div><b>Lean 4</b>State, update, view, layout, hit testing, claims and proofs.</div>
-    <div><b>Swift</b>A thin host: window, input, text input, accessibility, Core Text.</div>
-    <div><b>Metal</b>Paints the frame Lean describes.</div>
+  <div class="cairn">
+    <div class="stone px"><b>Metal</b>Paints the frame Lean describes.</div>
+    <div class="stone px"><b>Swift</b>A thin host: window, input, text input, accessibility, Core Text.</div>
+    <div class="stone px"><b>Lean 4</b>State, update, view, layout, hit testing, claims and proofs.</div>
   </div>
 
   <h2>First milestone: a proved TodoMVC</h2>
-  <ol class="goal">
+  <ol class="trail">
     <li>The full TodoMVC app on the Mac, including real text fields and input methods.</li>
     <li>Every action is a claim with an id that the build refuses to let drift.</li>
     <li>Proofs: each action does what it says, the counts and filters stay right, and every
@@ -104,38 +223,209 @@
   </ol>
 
   <h2>Progress</h2>
-  <div id="log" class="log"><p class="meta">Loading…</p></div>
-
-  <footer>MIT licensed. Built in the open, slowly.</footer>
+  <ul id="log" class="trail log"><li class="meta">Loading…</li></ul>
 </main>
+
+<footer><img src="/icon.svg" alt="">MIT licensed. Built in the open, slowly.</footer>
+
 <script>
-  function figure(m, heading) {
+  // Video list: media.json, newest first, written by tools/media/put.sh.
+  function figure(m, autoplay) {
     const f = document.createElement("figure");
-    if (heading) {
-      const h = document.createElement("h3");
-      h.textContent = m.title;
-      f.append(h);
-    }
+    f.className = "frame";
+    const box = document.createElement("div");
+    box.className = "box px";
     const v = document.createElement("video");
     Object.assign(v, { src: m.video, poster: m.poster, controls: true, muted: true, loop: true, playsInline: true, preload: "metadata" });
     v.width = m.width; v.height = m.height;
-    if (!heading) v.autoplay = true;
+    v.autoplay = autoplay;
+    box.append(v);
     const c = document.createElement("figcaption");
     c.textContent = m.caption;
     const meta = document.createElement("div");
     meta.className = "meta";
-    meta.textContent = `${m.date} · ${m.commit} · ${m.seconds}s`;
-    f.append(v, c, meta);
+    for (const [cls, text] of [["date", m.date], ["", m.commit], ["", `${m.seconds}s`]]) {
+      const s = document.createElement("span");
+      if (cls) s.className = cls;
+      s.textContent = text;
+      meta.append(s);
+    }
+    f.append(box, c, meta);
     return f;
   }
   fetch("/media.json").then(r => r.json()).then(list => {
     const log = document.getElementById("log");
     log.textContent = "";
     const feature = list.find(m => m.feature) || list[0];
-    if (feature) document.getElementById("feature").append(figure(feature, false));
-    for (const m of list) log.append(figure(m, true));
-    if (!list.length) log.innerHTML = '<p class="meta">No videos yet.</p>';
-  }).catch(() => { document.getElementById("log").innerHTML = '<p class="meta">Could not load the video list.</p>'; });
+    if (feature) document.getElementById("feature").append(figure(feature, true));
+    for (const m of list) {
+      const li = document.createElement("li");
+      const h = document.createElement("h3");
+      h.textContent = m.title;
+      li.append(h, figure(m, false));
+      log.append(li);
+    }
+    if (!list.length) log.innerHTML = '<li class="meta">No videos yet.</li>';
+  }).catch(() => { document.getElementById("log").innerHTML = '<li class="meta">Could not load the video list.</li>'; });
+
+  // The scene: a dusk (or night) landscape with a cairn on the hill, drawn at a few
+  // CSS pixels per pixel. Positions are measured from the centre so a resize reveals
+  // more land instead of reshuffling it.
+  const PALETTES = {
+    day: {
+      sky: ["#8c9fe0", "#a3abe6", "#bbb6ea", "#d2c8ef", "#e6d6ee", "#f1dcd6"],
+      cloud: ["#fbf9ff", "#e9e3f7", "#cdc4ea", "#ead2d4"],
+      far: ["#b0aee0", "#9c9bd6"], mid: ["#93b4d8", "#7d9cc8"], hill: ["#8cc3b2", "#6fa89b"],
+      near: ["#83bd8e", "#69a27c", "#558a6b"],
+      flowers: ["#9b86e0", "#f2c46a", "#b9d4f6", "#fbf9ff"],
+      stones: [["#cbd6f2", "#8fa1d8", "#6070a8"], ["#ddd6f4", "#aca1db", "#7d72b3"], ["#c9eadf", "#8cc6b6", "#5f9590"], ["#e3dcf0", "#b3abd0", "#827aa8"]],
+      outline: "#2e3160", moon: ["#fffaf0", "#e9e0f6"], sparkle: "#f2b45a", stars: 0, fireflies: 0,
+    },
+    night: {
+      sky: ["#0f1233", "#161a45", "#1f2357", "#2b2d68", "#3b3577", "#4d3f82"],
+      cloud: ["#3d4284", "#323675", "#282b62", "#4a3f7c"],
+      far: ["#2e3170", "#272a63"], mid: ["#232860", "#1d2153"], hill: ["#1d3a55", "#17304a"],
+      near: ["#1d3b45", "#16303a", "#112630"],
+      flowers: ["#6e5fb0", "#c9a157", "#5f7fb8", "#9aa0d0"],
+      stones: [["#7b86c4", "#4f5a98", "#343e72"], ["#8f84c8", "#5f5599", "#40386f"], ["#6fb0a6", "#447d78", "#2c5654"], ["#9a92c4", "#665e96", "#463f6e"]],
+      outline: "#0a0c22", moon: ["#fff4d6", "#e8d9b4"], sparkle: "#f2c46a", stars: 1, fireflies: 1,
+    },
+  };
+  const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map(v => (v + 0.5) / 16);
+
+  function hash(n) { n = (n ^ 61) ^ (n >>> 16); n = Math.imul(n, 9); n ^= n >>> 4; n = Math.imul(n, 0x27d4eb2d); n ^= n >>> 15; return (n >>> 0) / 4294967296; }
+  function noise(x, seed) { const i = Math.floor(x), f = x - i, u = f * f * (3 - 2 * f); return hash(i * 374761 + seed) * (1 - u) + hash((i + 1) * 374761 + seed) * u; }
+  function fbm(x, seed) { return noise(x, seed) * 0.68 + noise(x * 2.1, seed + 7) * 0.24 + noise(x * 4.3, seed + 13) * 0.08; }
+  function rgb(h) { return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; }
+
+  function drawScene() {
+    const canvas = document.getElementById("scene");
+    const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+    const P = PALETTES[dark ? "night" : "day"];
+    const s = innerWidth < 600 ? 3 : 4;
+    const W = Math.ceil(canvas.clientWidth / s), H = Math.ceil(canvas.clientHeight / s);
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext("2d");
+    const img = ctx.createImageData(W, H);
+    const buf = img.data;
+    const cx = W >> 1;
+    const set = (x, y, hex) => {
+      if (x < 0 || y < 0 || x >= W || y >= H) return;
+      const [r, g, b] = typeof hex === "string" ? rgb(hex) : hex, i = (y * W + x) * 4;
+      buf[i] = r; buf[i + 1] = g; buf[i + 2] = b; buf[i + 3] = 255;
+    };
+    const dither = (x, y, t) => BAYER[(y & 3) * 4 + (x & 3)] < t;
+    const horizon = Math.round(H * 0.6);
+
+    // Sky: bands with dithered seams.
+    for (let y = 0; y < H; y++) {
+      const f = Math.min(y / horizon, 1) * (P.sky.length - 1), i = Math.min(Math.floor(f), P.sky.length - 2);
+      const t = Math.max(0, Math.min(1, (f - i - 0.3) / 0.4));
+      for (let x = 0; x < W; x++) set(x, y, dither(x, y, t) ? P.sky[i + 1] : P.sky[i]);
+    }
+
+    // Stars at night, sparkles by day.
+    if (P.stars) {
+      for (let y = 0; y < horizon; y++) for (let x = 0; x < W; x++) {
+        const h = hash((x - cx) * 7919 + y * 104729);
+        if (h > 0.9965) set(x, y, h > 0.9988 ? "#fff6dc" : "#b9c0f0");
+      }
+    }
+    const sparkle = (x, y, big) => {
+      set(x, y, "#fffaf0");
+      for (let d = 1; d <= (big ? 2 : 1); d++) { set(x + d, y, P.sparkle); set(x - d, y, P.sparkle); set(x, y + d, P.sparkle); set(x, y - d, P.sparkle); }
+    };
+    [[-70, 10, 1], [-28, 22, 0], [34, 8, 0], [62, 30, 1], [-96, 34, 0], [108, 16, 0], [-140, 18, 1], [150, 36, 0]]
+      .forEach(([dx, y, big]) => sparkle(cx + dx, Math.round(y * H / 95), big));
+
+    // Moon: a disc with a darker lower-right rim.
+    const mx = cx + Math.round(Math.min(W * 0.36, 172)), my = Math.round(H * 0.13), mr = dark ? 5 : 4;
+    for (let y = -mr; y <= mr; y++) for (let x = -mr; x <= mr; x++) {
+      const d = x * x + y * y;
+      if (d <= mr * mr + 1) set(mx + x, my + y, d > (mr - 1) * (mr - 1) && x + y > 0 ? P.moon[1] : P.moon[0]);
+    }
+
+    // Clouds: cumulus heaps, flat-bottomed. Each puff is lit from above on its own,
+    // and puffs in front (the base row) cover the ones behind.
+    const clouds = [[-150, 0.30, 44, 1], [-20, 0.44, 64, 7], [120, 0.22, 36, 3], [230, 0.42, 52, 11], [-290, 0.40, 46, 5]];
+    for (const [dx, fy, w, seed] of clouds) {
+      const base = Math.round(H * fy), x0 = cx + dx, puffs = [];
+      const r = k => hash(seed * 31 + k);
+      puffs.push([x0 + (r(1) - 0.5) * w * 0.2, base - w * 0.34, w * 0.2]);
+      for (let k = 0; k < 3; k++) puffs.push([x0 + (k - 1) * w * 0.22 + (r(k + 2) - 0.5) * 4, base - w * 0.2, w * (0.17 + r(k + 5) * 0.06)]);
+      for (let k = 0; k < 5; k++) puffs.push([x0 + (k - 2) * w * 0.19 + (r(k + 9) - 0.5) * 4, base - w * 0.06, w * (0.11 + r(k + 14) * 0.04)]);
+      for (let y = Math.floor(base - w * 0.6); y <= base; y++) for (let x = Math.floor(x0 - w); x <= x0 + w; x++) {
+        let hit = null;
+        for (const p of puffs) if ((x - p[0]) ** 2 + (y - p[1]) ** 2 <= p[2] * p[2]) hit = p;
+        if (!hit) continue;
+        const ly = (y - hit[1] + (x - hit[0]) * 0.3) / hit[2];
+        let c = ly < -0.15 ? 0 : ly < 0.35 ? (dither(x, y, (ly + 0.15) / 0.5) ? 1 : 0) : 1;
+        if (base - y < 3) c = dither(x, y, (3 - (base - y)) / 3) ? 2 : c;
+        if (y === base) c = 3;
+        set(x, y, P.cloud[c]);
+      }
+    }
+
+    // Land: far ridges, nearer hills, the meadow. Slopes facing the light are lighter.
+    const layer = (pal, base, amp, scale, seed, fill) => {
+      const hAt = x => Math.round(base - fbm((x - cx) / scale + 50, seed) * amp);
+      for (let x = 0; x < W; x++) {
+        const h = hAt(x), lit = hAt(x + 3) - hAt(x - 3);
+        for (let y = h; y < H; y++) {
+          if (fill) { set(x, y, fill(x, y, h)); continue; }
+          // A lit rim along the ridge, deeper on slopes facing the light, fading by dither.
+          const rim = lit > 0 ? 2 + Math.min(lit, 6) : 1;
+          set(x, y, y - h < rim || (y - h < rim + 3 && dither(x, y, 1 - (y - h - rim) / 3)) ? pal[0] : pal[1]);
+        }
+      }
+      return hAt;
+    };
+    layer(P.far, horizon - 2, H * 0.34, 48, 3);
+    layer(P.mid, horizon + 4, H * 0.22, 36, 9);
+    layer(P.hill, horizon + 10, H * 0.14, 28, 21);
+    const nearBase = horizon + Math.round(H * 0.26);
+    const near = layer(P.near, nearBase, H * 0.16, 30, 33, (x, y, h) => {
+      const d = y - h, f = hash((x - cx) * 92821 + y * 68917);
+      if (d > 2 && f > 0.99 - d * 0.0008) return P.flowers[Math.floor(hash(x * 3 + y * 5) * P.flowers.length)];
+      if (d === 0) return P.near[0];
+      return d < 6 ? (dither(x, y, d / 6) ? P.near[1] : P.near[0]) : (dither(x, y, Math.min(1, (d - 6) / 12)) ? P.near[2] : P.near[1]);
+    });
+
+    // Fireflies at night.
+    if (P.fireflies) for (let k = 0; k < 24; k++) {
+      const x = cx + Math.round((hash(k * 7 + 1) - 0.5) * W), y = horizon + Math.round(hash(k * 11 + 3) * (H - horizon - 4));
+      set(x, y, "#f2c46a");
+    }
+
+    // The cairn, on the meadow's rise. Stones bottom to top: width, height, offset.
+    const kx = cx + Math.round(Math.min(W * 0.28, 110));
+    let ky = near(kx) + 3;
+    for (let x = kx - 18; x <= kx + 20; x++) for (let y = ky - 1; y <= ky + 1; y++) {
+      if (((x - kx - 1) / 19) ** 2 + (y - ky) ** 2 / 2.2 <= 1) set(x, y, P.near[2]);
+    }
+    const stones = [[30, 11, 0], [24, 9, 1], [18, 8, -1], [12, 6, 1], [7, 5, 0]];
+    stones.forEach(([w, h, off], k) => {
+      const pal = P.stones[k % P.stones.length], scx = kx + off, scy = ky - h / 2;
+      const inside = (x, y) => ((x - scx + 0.5) / (w / 2)) ** 2 + ((y - scy + 0.5) / (h / 2)) ** 2 <= 1;
+      for (let y = Math.floor(scy - h / 2) - 1; y <= scy + h / 2 + 1; y++) for (let x = Math.floor(scx - w / 2) - 1; x <= scx + w / 2 + 1; x++) {
+        if (!inside(x, y)) continue;
+        const edge = !inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1);
+        const u = (x - scx) / w + (y - scy) / h;
+        set(x, y, edge ? P.outline : u < -0.35 ? pal[0] : u > 0.3 ? pal[2] : pal[1]);
+      }
+      ky -= h - 1;
+    });
+
+    // Grass tufts along the bottom, so the scene ends on the page's own colour.
+    for (let x = 0; x < W; x++) {
+      const tuft = hash((x - cx) * 15731) < 0.45 ? 1 : 0;
+      for (let y = H - 3 + tuft; y < H; y++) buf[(y * W + x) * 4 + 3] = 0;
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+  drawScene();
+  addEventListener("resize", drawScene);
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawScene);
 </script>
 </body>
 </html>
