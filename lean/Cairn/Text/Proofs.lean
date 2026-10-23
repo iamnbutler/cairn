@@ -2,14 +2,18 @@ import Cairn.Text.Field
 
 /-! # Theorems about `Cairn.Text.Field`
 
-1. `Field.wf_empty`, `Field.wf_ofString`, `Field.wf_apply`, `Field.wf_applyAll`: every index
-   stays within `0 … length`, from any well-formed field, for every op.
-2. `Field.insert_deleteBackward`: insert then delete backward restores the text and caret.
-3. `Field.undo_apply`, `Field.undo_apply_coalesced`, `Field.redo_undo`: undo after an edit.
-4. `Field.insert_replaces_selection`: insert over a selection is `before ++ s ++ after`.
-5. `Field.apply_copy`: copy changes nothing and emits exactly the selected text.
-6. `Field.apply_movement_text`: movement never edits.
-7. `Field.singleLine_apply`, `Field.view_no_newline`: the text never holds a line break. -/
+1. **In bounds.** `Field.wf_empty`, `Field.wf_ofString`, `Field.wf_apply`, `Field.wf_applyAll`,
+   `Field.wf_reachable`, `Field.view_wf`: caret, anchor, marked range and every undo and redo
+   entry stay within `0 … length`, from any well-formed field, for every op.
+2. **Round trip.** `Field.insert_deleteBackward`, `Field.insert_deleteBackward'`: typing `s` at
+   a collapsed caret, then deleting backward `s.length` times, restores the text and selection.
+3. **Undo.** `Field.undo_apply` (one edit, outside a typing run or composition),
+   `Field.undo_typing_run` (a run of coalesced typing), `Field.undo_composition` (a whole IME
+   composition), `Field.redo_undo`.
+4. **Selection replace.** `Field.insert_replaces_selection`, `Field.insert_replaces_selection'`.
+5. **Copy is pure.** `Field.apply_copy`, `Field.selected_spec`.
+6. **Movement never edits.** `Field.apply_movement_text`.
+7. **Single line.** `Field.singleLine_apply`, `Field.view_no_newline` (and `WF.single`). -/
 
 namespace Cairn.Text
 
@@ -51,14 +55,29 @@ theorem singleLine_splice {t s : List Char} (a b : Nat) (ht : SingleLine t) (hs 
 
 theorem singleLine_nil : SingleLine [] := by intro c hc; simp at hc
 
+theorem singleLine_flatten (c : Char) : isLineBreak (flatten c) = false := by
+  unfold flatten
+  split
+  · rfl
+  · rename_i hc; simpa using hc
+
 theorem singleLine_clean (s : String) : SingleLine (clean s) := by
   intro c hc
-  simp only [clean, List.mem_filter, Bool.not_eq_true'] at hc
-  exact hc.2
+  obtain ⟨d, _, rfl⟩ := List.mem_map.1 hc
+  exact singleLine_flatten d
 
-theorem clean_of_singleLine {s : String} (h : SingleLine s.toList) : clean s = s.toList := by
-  simp only [clean]
-  exact List.filter_eq_self.2 (fun c hc => by simp [h c hc])
+theorem length_clean (s : String) : (clean s).length = s.length := by
+  simp [clean, String.length_toList]
+
+theorem map_flatten_of_singleLine : ∀ {l : List Char}, SingleLine l → l.map flatten = l
+  | [], _ => rfl
+  | c :: cs, h => by
+    have hc : flatten c = c := by simp [flatten, h c (by simp)]
+    have ht : SingleLine cs := fun d hd => h d (List.mem_cons_of_mem c hd)
+    simp only [List.map_cons, hc, map_flatten_of_singleLine ht]
+
+theorem clean_of_singleLine {s : String} (h : SingleLine s.toList) : clean s = s.toList :=
+  map_flatten_of_singleLine h
 
 namespace Field
 
@@ -116,17 +135,17 @@ theorem wf_moveTo {f : Field} (h : f.WF) {i : Nat} (hi : i ≤ f.text.length) (e
   refine ⟨hi, ?_, by simp [moveTo], h.single, h.undo_wf, h.redo_wf⟩
   cases ext <;> simp [moveTo, hi, h.anchor_le]
 
-theorem wf_deleteRange {f : Field} (h : f.WF) {a b : Nat} (hab : a ≤ b) (hb : b ≤ f.text.length) :
-    (f.deleteRange a b).WF := by
+theorem wf_deleteRange {f : Field} (h : f.WF) {a b : Nat} (hab : a ≤ b) (hb : b ≤ f.text.length)
+    (co : Bool := false) : (f.deleteRange a b co).WF := by
   apply wf_edit h _ _ (singleLine_splice a b h.single singleLine_nil) <;>
     rw [length_splice _ _ _ _ hab hb] <;> simp
 
-theorem wf_deleteSelOr {f : Field} (h : f.WF) {a b : Nat} (hab : a ≤ b) (hb : b ≤ f.text.length) :
-    (f.deleteSelOr a b).WF := by
+theorem wf_deleteSelOr {f : Field} (h : f.WF) {a b : Nat} (hab : a ≤ b) (hb : b ≤ f.text.length)
+    (co : Bool := false) : (f.deleteSelOr a b co).WF := by
   unfold deleteSelOr
   split
   · exact wf_deleteRange h (lo_le_hi f) (hi_le h)
-  · exact wf_deleteRange h hab hb
+  · exact wf_deleteRange h hab hb co
 
 theorem wf_insert {f : Field} (h : f.WF) (s : String) : (f.insert s).WF := by
   obtain ⟨hab, hb⟩ := target_wf h
@@ -210,9 +229,9 @@ theorem wf_apply (op : TextOp) {f : Field} (h : f.WF) : (apply op f).1.WF := by
   have hlo : f.lo ≤ f.text.length := by omega
   cases op with
   | insert s => exact wf_insert h s
-  | deleteBackward => exact wf_deleteSelOr h (by omega) hc
+  | deleteBackward => exact wf_deleteSelOr h (by omega) hc true
   | deleteForward =>
-    exact wf_deleteSelOr h (by simp only [len]; omega) (by simp only [len]; omega)
+    exact wf_deleteSelOr h (by simp only [len]; omega) (by simp only [len]; omega) true
   | deleteWordBackward => exact wf_deleteSelOr h (wordLeft_le _ _) hc
   | deleteWordForward =>
     have := le_wordRight f.text f.caret
@@ -363,14 +382,16 @@ theorem insert_deleteBackward {f : Field} (h : f.WF) (s : String) (hc : f.anchor
     (f.text.take f.caret) _ h1 (by rw [h2, hA]) (by rw [h3, h2])
   refine ⟨by rw [r1, List.take_append_drop], by rw [r2, hA], by rw [r3, hA, hc]⟩
 
-/-- The same for a string without line breaks, deleting `s.length` times. -/
+/-- The same in terms of the string typed: `s.length` deletions (each line break in `s` became
+one space, so the count is unchanged). For `s` without line breaks, the text in between is
+exactly `before ++ s ++ after` (`insert_replaces_selection'`). -/
 theorem insert_deleteBackward' {f : Field} (h : f.WF) (s : String) (hc : f.anchor = f.caret)
-    (hm : f.marked = none) (hs : SingleLine s.toList) :
+    (hm : f.marked = none) :
     let g := iterate .deleteBackward s.length (apply (.insert s) f).1
-    g.text = f.text ∧ g.caret = f.caret := by
+    g.text = f.text ∧ g.caret = f.caret ∧ g.anchor = f.anchor := by
   have := insert_deleteBackward h s hc hm
-  rw [clean_of_singleLine hs, String.length_toList] at this
-  exact ⟨this.1, this.2.1⟩
+  rw [length_clean] at this
+  exact this
 
 /-! ## 3. Undo restores -/
 
@@ -396,7 +417,7 @@ theorem apply_pushes (op : TextOp) (f : Field) (hop : op.isHistory = false)
     simp only [apply, paste, hm, Option.isNone_none] at hch ⊢
     exact edit_undoStack_of_ne f _ _ _ (by simpa using hch)
   | deleteBackward | deleteForward | deleteWordBackward | deleteWordForward =>
-    simp only [apply, deleteSelOr, deleteRange] at hch ⊢
+    simp only [apply, deleteSelOr, deleteRange, htyping, Bool.and_false, Bool.not_false] at hch ⊢
     split <;> split at hch <;> (try contradiction) <;>
       exact edit_undoStack_of_ne f _ _ _ (by simpa using hch)
   | cut =>
@@ -424,23 +445,110 @@ theorem undo_apply (op : TextOp) (f : Field) (hop : op.isHistory = false)
   have hp := apply_pushes op f hop htyping hm hch
   simp [g, undo, hp, snapshot]
 
-/-- **Coalesced typing.** Typing at a collapsed caret right after typing joins the open undo
-step: the undo stack is unchanged, so undo goes back to the same state it would have before
-this keystroke, i.e. to before the whole run of typing. -/
-theorem undo_apply_coalesced (f : Field) (s : String) (htyping : f.typing = true)
-    (hm : f.marked = none) (hc : f.anchor = f.caret) :
-    (apply (.insert s) f).1.undoStack = f.undoStack ∧
-    (((apply (.insert s) f).1.undo).1.text = (f.undo).1.text ∨ f.undoStack = []) ∧
-    (((apply (.insert s) f).1.undo).1.caret = (f.undo).1.caret ∨ f.undoStack = []) ∧
-    (((apply (.insert s) f).1.undo).1.anchor = (f.undo).1.anchor ∨ f.undoStack = []) := by
-  have hs : (apply (.insert s) f).1.undoStack = f.undoStack := by
-    simp only [apply, insert, hm, htyping, lo, hi, hc, Option.isNone_none, Nat.min_self,
-      Nat.max_self, beq_self_eq_true, Bool.and_self, Bool.not_true, Bool.true_and, edit]
-    split <;> rfl
-  refine ⟨hs, ?_⟩
-  cases hu : f.undoStack with
-  | nil => simp
-  | cons t rest => simp [undo, hs, hu]
+/-- Undo restores whatever is on top of the undo stack. -/
+theorem undo_of_stack (k : Field) {s : Snapshot} {rest : List Snapshot}
+    (h : k.undoStack = s :: rest) :
+    k.undo.1.text = s.text ∧ k.undo.1.caret = s.caret ∧ k.undo.1.anchor = s.anchor := by
+  simp [undo, h]
+
+/-- Ops that join an open typing step. -/
+def _root_.Cairn.TextOp.isTyping : TextOp → Bool
+  | .insert _ | .deleteBackward | .deleteForward => true
+  | _ => false
+
+/-- One typing op at a collapsed caret that changes the text: it leaves the caret collapsed,
+no composition, the typing step open, and pushes the state before it only if no typing step was
+open. -/
+theorem typing_step (op : TextOp) (g : Field) (hop : op.isTyping) (hm : g.marked = none)
+    (hc : g.anchor = g.caret) (hch : (apply op g).1.text ≠ g.text) :
+    (apply op g).1.typing = true ∧ (apply op g).1.marked = none ∧
+    (apply op g).1.anchor = (apply op g).1.caret ∧
+    (apply op g).1.undoStack = (if g.typing then g.undoStack else g.snapshot :: g.undoStack) := by
+  have hlo : g.lo = g.caret := by simp [lo, hc]
+  have hhi : g.hi = g.caret := by simp [hi, hc]
+  cases op with
+  | insert s =>
+    simp only [apply, insert, target, hm, hlo, hhi, Option.getD_none, edit_text] at hch ⊢
+    simp only [edit, hch, ite_false, Option.isNone_none, beq_self_eq_true, Bool.and_true,
+      Bool.true_and, true_and]
+    cases g.typing <;> rfl
+  | deleteBackward | deleteForward =>
+    simp only [apply, deleteSelOr, hlo, hhi, Nat.lt_irrefl, ite_false, deleteRange,
+      edit_text] at hch ⊢
+    simp only [edit, hch, ite_false, Bool.true_and, true_and]
+    cases g.typing <;> rfl
+  | _ => simp [TextOp.isTyping] at hop
+
+/-- Every op in `ops` changes the text when applied in turn. -/
+def ChangesEach : Field → List TextOp → Prop
+  | _, [] => True
+  | g, op :: ops => (apply op g).1.text ≠ g.text ∧ ChangesEach (apply op g).1 ops
+
+theorem typing_run (ops : List TextOp) (g : Field) (s : Snapshot) (rest : List Snapshot)
+    (hops : ∀ o ∈ ops, o.isTyping) (hch : ChangesEach g ops) (ht : g.typing = true)
+    (hm : g.marked = none) (hc : g.anchor = g.caret) (hu : g.undoStack = s :: rest) :
+    (g.applyAll ops).undoStack = s :: rest := by
+  induction ops generalizing g with
+  | nil => exact hu
+  | cons op ops ih =>
+    obtain ⟨h1, h2, h3, h4⟩ := typing_step op g (hops op (by simp)) hm hc hch.1
+    exact ih (apply op g).1 (fun o ho => hops o (by simp [ho])) hch.2 h1 h2 h3
+      (by rw [h4, ht, hu]; rfl)
+
+/-- **Coalesced typing.** A run of typing (inserts, and single-scalar deletes) at a collapsed
+caret, each step changing the text, is one undo step: undo after the whole run restores the
+text and selection from before its first keystroke. -/
+theorem undo_typing_run (f : Field) (op : TextOp) (ops : List TextOp)
+    (hop : op.isTyping) (hops : ∀ o ∈ ops, o.isTyping) (htyping : f.typing = false)
+    (hm : f.marked = none) (hc : f.anchor = f.caret) (hch : ChangesEach f (op :: ops)) :
+    let g := (f.applyAll (op :: ops)).undo.1
+    g.text = f.text ∧ g.caret = f.caret ∧ g.anchor = f.anchor := by
+  obtain ⟨h1, h2, h3, h4⟩ := typing_step op f hop hm hc hch.1
+  rw [htyping] at h4
+  have hu := typing_run ops (apply op f).1 f.snapshot f.undoStack hops hch.2 h1 h2 h3
+    (by simpa using h4)
+  exact undo_of_stack _ (by simpa [applyAll] using hu)
+
+/-- **Composition is one undo step.** From a field with no composition, a composition (one or
+more non-empty `setMarked`) and its commit (`unmark`) undo back to the field before it. -/
+theorem undo_composition (f : Field) (hm : f.marked = none) (s : String) (i n : Nat)
+    (more : List (String × Nat × Nat)) (hs : 0 < s.length) (hmore : ∀ x ∈ more, 0 < x.1.length) :
+    let ops := (TextOp.setMarked s i n :: more.map (fun x => .setMarked x.1 x.2.1 x.2.2)) ++
+      [.unmark]
+    let g := (f.applyAll ops).undo.1
+    g.text = f.text ∧ g.caret = f.caret ∧ g.anchor = f.anchor := by
+  intro ops g
+  -- After the first `setMarked`, a composition is open and the state before it is on top.
+  have first : ((apply (.setMarked s i n) f).1.marked.isSome = true) ∧
+      (apply (.setMarked s i n) f).1.undoStack = f.snapshot :: f.undoStack := by
+    have hn : (clean s).length ≠ 0 := by rw [length_clean]; omega
+    simp [apply, setMarked, hm, hn]
+  have step : ∀ (k : Field) (x : String × Nat × Nat), 0 < x.1.length → k.marked.isSome = true →
+      (apply (.setMarked x.1 x.2.1 x.2.2) k).1.marked.isSome = true ∧
+      (apply (.setMarked x.1 x.2.1 x.2.2) k).1.undoStack = k.undoStack := by
+    intro k x hx hk
+    have hn : (clean x.1).length ≠ 0 := by rw [length_clean]; omega
+    have hk' : k.marked.isNone = false := by cases h : k.marked <;> simp_all
+    simp [apply, setMarked, hn, hk']
+  have run : ∀ (l : List (String × Nat × Nat)) (k : Field), (∀ x ∈ l, 0 < x.1.length) →
+      k.marked.isSome = true →
+      (k.applyAll (l.map (fun x => .setMarked x.1 x.2.1 x.2.2))).undoStack = k.undoStack := by
+    intro l
+    induction l with
+    | nil => intro k _ _; rfl
+    | cons x l ih =>
+      intro k hl hk
+      obtain ⟨a1, a2⟩ := step k x (hl x (by simp)) hk
+      simp only [List.map_cons, applyAll, List.foldl_cons] at ih ⊢
+      rw [ih _ (fun y hy => hl y (by simp [hy])) a1, a2]
+  have hu := run more _ hmore first.1
+  rw [first.2] at hu
+  have hops : f.applyAll ops = (apply .unmark (((apply (.setMarked s i n) f).1).applyAll
+      (more.map (fun x => .setMarked x.1 x.2.1 x.2.2)))).1 := by
+    simp only [ops, applyAll, List.cons_append, List.foldl_cons, List.foldl_append,
+      List.foldl_nil]
+  have := undo_of_stack (f.applyAll ops) (by rw [hops]; exact hu)
+  exact this
 
 /-- **Redo undoes undo.** After an undo, redo restores the text and selection undo replaced. -/
 theorem redo_undo (f : Field) (hu : f.undoStack ≠ []) :

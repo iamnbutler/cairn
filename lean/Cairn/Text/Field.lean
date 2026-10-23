@@ -22,7 +22,7 @@ namespace Cairn.Text
 /-! ## Characters -/
 
 /-- Scalars that would start a new line. A single-line field never contains them: inserted and
-pasted text has them removed (as HTML's `<input>` does). -/
+pasted text has each one replaced by a space, as `NSTextField` does in single-line mode. -/
 def isLineBreak (c : Char) : Bool :=
   c == '\n' || c == '\r' || c == '\x0b' || c == '\x0c' || c == '\u0085' || c == ' ' ||
     c == ' '
@@ -30,8 +30,11 @@ def isLineBreak (c : Char) : Bool :=
 /-- The text a field may contain: no line breaks. -/
 def SingleLine (t : List Char) : Prop := ∀ c ∈ t, isLineBreak c = false
 
-/-- `s` as scalars, with line breaks removed. -/
-def clean (s : String) : List Char := s.toList.filter (fun c => !isLineBreak c)
+/-- One scalar as a single-line field stores it: a line break becomes a space. -/
+def flatten (c : Char) : Char := if isLineBreak c then ' ' else c
+
+/-- `s` as scalars, each line break replaced by a space. Same length as `s`. -/
+def clean (s : String) : List Char := s.toList.map flatten
 
 /-- A word is a maximal run of word characters: ASCII letters, digits and `_`, and every non-ASCII
 scalar except the Unicode spaces below. Everything else (ASCII punctuation and spaces) separates
@@ -134,13 +137,14 @@ def edit (f : Field) (text : List Char) (caret anchor : Nat) (push typing : Bool
 def moveTo (f : Field) (i : Nat) (extend : Bool) : Field :=
   { f with caret := i, anchor := if extend then f.anchor else i, marked := none, typing := false }
 
-/-- Delete `[a, b)` as its own undo step. -/
-def deleteRange (f : Field) (a b : Nat) : Field :=
-  f.edit (splice f.text a b []) a a true false
+/-- Delete `[a, b)`. With `coalesce`, the deletion joins an open typing step and keeps it open
+(Backspace while typing); otherwise it is its own undo step. -/
+def deleteRange (f : Field) (a b : Nat) (coalesce : Bool := false) : Field :=
+  f.edit (splice f.text a b []) a a (!(coalesce && f.typing)) coalesce
 
-/-- Delete the selection if there is one, else `[a, b)`. -/
-def deleteSelOr (f : Field) (a b : Nat) : Field :=
-  if f.lo < f.hi then f.deleteRange f.lo f.hi else f.deleteRange a b
+/-- Delete the selection if there is one (its own undo step), else `[a, b)`. -/
+def deleteSelOr (f : Field) (a b : Nat) (coalesce : Bool := false) : Field :=
+  if f.lo < f.hi then f.deleteRange f.lo f.hi else f.deleteRange a b coalesce
 
 /-! ## Ops -/
 
@@ -203,8 +207,8 @@ def clipboard (f : Field) : List Effect :=
 /-- The meaning of every `TextOp`. See `docs/text.md`. -/
 def apply : TextOp → Field → Field × List Effect
   | .insert s, f => (f.insert s, [])
-  | .deleteBackward, f => (f.deleteSelOr (f.caret - 1) f.caret, [])
-  | .deleteForward, f => (f.deleteSelOr f.caret (min (f.caret + 1) f.len), [])
+  | .deleteBackward, f => (f.deleteSelOr (f.caret - 1) f.caret true, [])
+  | .deleteForward, f => (f.deleteSelOr f.caret (min (f.caret + 1) f.len) true, [])
   | .deleteWordBackward, f => (f.deleteSelOr (wordLeft f.text f.caret) f.caret, [])
   | .deleteWordForward, f => (f.deleteSelOr f.caret (min (wordRight f.text f.caret) f.len), [])
   | .moveLeft ext, f =>
@@ -271,7 +275,8 @@ private def eff (f : Field) (op : TextOp) : List Effect := (apply op f).2
 #guard st (run "" [.insert "hi"]) == ("hi", 2, 2)
 #guard st (run "ac" [.setCaret 1 false, .insert "b"]) == ("abc", 2, 2)
 #guard st (run "hello" [.setCaret 1 false, .setCaret 4 true, .insert "ipp"]) == ("hippo", 4, 4)
-#guard st (run "" [.insert "a\nb\r\nc"]) == ("abc", 3, 3)
+#guard st (run "" [.insert "a\nb\r\nc"]) == ("a b  c", 6, 6)
+#guard st (run "" [.insert "a\u2028b\tc"]) == ("a b\tc", 5, 5)
 #guard st (run "" [.insert "日本語"]) == ("日本語", 3, 3)
 #guard st (run "ab" [.insert "😀"]) == ("ab😀", 3, 3)
 -- deleteBackward / deleteForward
@@ -323,14 +328,19 @@ private def eff (f : Field) (op : TextOp) : List Effect := (apply op f).2
 #guard eff (run "hello" [.setCaret 1 false, .setCaret 4 true]) .cut == [.setClipboard "ell"]
 #guard st (run "hello" [.setCaret 1 false, .setCaret 4 true, .cut]) == ("ho", 1, 1)
 #guard st (run "hello" [.cut]) == ("hello", 5, 5)
-#guard st (run "hello" [.selectAll, .paste "bye\nnow"]) == ("byenow", 6, 6)
+#guard st (run "hello" [.selectAll, .paste "bye\nnow"]) == ("bye now", 7, 7)
 #guard st (run "ab" [.moveLeft false, .paste "XY"]) == ("aXYb", 3, 3)
 -- undo / redo, with typing coalesced into one step
 #guard st (run "" [.insert "a", .insert "b", .insert "c", .undo]) == ("", 0, 0)
 #guard st (run "" [.insert "a", .insert "b", .undo, .redo]) == ("ab", 2, 2)
 #guard st (run "" [.insert "ab", .moveLeft false, .insert "x", .undo]) == ("ab", 1, 1)
 #guard st (run "" [.insert "ab", .moveLeft false, .insert "x", .undo, .undo]) == ("", 0, 0)
-#guard st (run "abc" [.deleteBackward, .deleteBackward, .undo]) == ("ab", 2, 2)
+#guard st (run "abc" [.deleteBackward, .deleteBackward, .undo]) == ("abc", 3, 3)
+#guard st (run "" [.insert "a", .insert "b", .deleteBackward, .undo]) == ("", 0, 0)
+#guard st (run "" [.insert "a", .insert "b", .deleteBackward, .insert "c", .undo]) == ("", 0, 0)
+#guard st (run "abc" [.insert "d", .moveLeft false, .deleteBackward, .undo]) == ("abcd", 3, 3)
+#guard st (run "ab cd" [.insert "e", .deleteWordBackward, .undo]) == ("ab cde", 6, 6)
+#guard st (run "abc" [.selectAll, .deleteBackward, .undo]) == ("abc", 3, 0)
 #guard st (run "abc" [.selectAll, .insert "x", .insert "y", .undo]) == ("abc", 3, 0)
 #guard st (run "hello" [.setCaret 1 false, .setCaret 4 true, .cut, .undo]) == ("hello", 4, 1)
 #guard st (run "ab" [.paste "c", .paste "d", .undo]) == ("abc", 3, 3)
