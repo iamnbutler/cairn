@@ -11,7 +11,7 @@ public import Cairn.Frame.Boundary
 
 /-! # Basics: the first app on the v1 ABI
 
-A heading, a text field, an Add button, a list of items (each with a checkbox and a delete
+A heading, a wrapped paragraph of instructions, a text field, an Add button, a list of items (each with a checkbox and a delete
 button) and a footer counting the items left. Declared with the claim commands
 (docs/claims.md): `update` is `machine.update`, built from the four moves and nothing else.
 
@@ -386,6 +386,14 @@ def leftLabel (n : Nat) : String := if n = 1 then "1 item left" else s!"{n} item
 
 def heading : Node := .text { font := { size := 22, weight := 700 }, color := ink } "Basics"
 
+/-- Wrapped text (`Node.para`): Lean breaks it to the window's width, so it rewraps as the
+window resizes. -/
+def intro : Node :=
+  .para { font := { size := 13 }, color := muted } {}
+    "Type an item and press Enter or Add. Check an item off when it is done, or delete it. \
+     This paragraph is broken into lines by Lean, from Core Text's measurement of the whole \
+     string, so it rewraps as the window resizes."
+
 def inputRow (s : State) (ui : UI) : Node :=
   .box { axis := .row, width := .fill, gap := 8, align := .center } none
     [ .field { width := .fill, padding := ⟨6, 8, 6, 8⟩, background := some white, radius := 6,
@@ -423,6 +431,7 @@ def view (s : State) (ui : UI) : Node :=
   .box { width := .fill, height := .fill, padding := ⟨20, 20, 20, 20⟩, gap := 12,
          background := some bg, clip := true } none
     [ heading,
+      intro,
       inputRow s ui,
       .box { width := .fill, gap := 4 } none (s.items.map (itemRow ui)),
       .text { font := { size := 13 }, color := muted } (footer s) ]
