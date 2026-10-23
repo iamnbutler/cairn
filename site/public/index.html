@@ -60,6 +60,7 @@
      where the lede begins; in the margins the meadow runs on down the page. The header's height
      is where the text starts, and scene.js reads it. */
   body { overflow-x: clip; }
+  h1, h2, h3, .meta, .note .label, .lede em, .diagram { font-variant-ligatures: none; } /* Pixelify draws "fi" as a broken glyph */
   .scene { position: relative; height: 420px; }
   .scene canvas {
     position: absolute; top: 0; left: 50%; transform: translateX(-50%);
