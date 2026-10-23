@@ -7,6 +7,7 @@ urls:
   - https://github.com/chromium/chromium/blob/eb4f56eefdfeed72228d1436906df55c90374838/content/browser/renderer_host/text_input_client_mac.h
   - https://github.com/ghostty-org/ghostty/blob/08a9518340e1/macos/Sources/Ghostty/Surface%20View/SurfaceView_AppKit.swift
   - https://github.com/kovidgoyal/kitty/blob/3867ffa92bef/glfw/cocoa_window.m
+  - https://github.com/mozilla-firefox/firefox/blob/f536a878f58f97cdf167149b25a95848519a2199/widget/cocoa/TextInputHandler.mm
   - https://github.com/alacritty/alacritty/issues/8791
   - https://github.com/kovidgoyal/kitty/issues/3732
   - https://github.com/kovidgoyal/kitty/issues/10492
@@ -155,6 +156,24 @@ renderer process).
 - **Secure fields**: Chromium returns a nil `inputContext` for password fields: "There is also a
   privacy risk if the composition candidate window shows your password" (:2631-2650).
 
+### 4b. Firefox (`widget/cocoa/TextInputHandler.mm` @ f536a878f58f)
+
+- Korean IMEs may compose **without marked text**, rewriting the previous character through
+  `replacementRange` (:2541-2554): "Korean IME (or some other simple IME) may work without marked
+  text. For example, composing character may be inserted as committed text and it's modified with
+  aReplacementRange. When a keydown starts new composition with committing previous character,
+  InsertText() may be called twice". That's another reason `replacementRange` must reach the model.
+- Cmd-. and `cancelOperation:` (:3190-3200): if the view implements `cancelOperation:`,
+  "[ChildView keyDown:theEvent] becomes to be never called". Handle the command before the
+  superclass does.
+- Korean IMEs swallow mouse-downs (:5403-5420): "If we are inactivated during composition, active
+  Korean IME keeps consuming all mousedown events of any mouse buttons. So, we should allow Korean
+  IMEs to handle mousedown events only when there is composition string." Forward mouseDown to the
+  input context **only while composing**.
+- Secure Event Input for password fields must be released on every exit path, including widget
+  destruction without blur, or "it can stay enabled process-wide and lock other apps out of
+  keyboard input" (:4774-4780).
+
 ### 5. firstRect coordinate conversion
 
 - winit (`view.rs:367-384`) and Chromium (:2550-2555) do it the robust way: view rect →
@@ -232,8 +251,9 @@ renderer process).
   will show `marked = nil` while AppKit still thinks it's composing. On that transition call
   `inputContext?.discardMarkedText()`, and call `invalidateCharacterCoordinates()` whenever the
   caret rect changes.
-- **G — forward `mouseDown` and `flagsChanged` to `inputContext.handleEvent` while
-  `hasMarkedText`**, before sending the click to Lean.
+- **G — forward `mouseDown` and `flagsChanged` to `inputContext.handleEvent` only while
+  `hasMarkedText`** (Firefox: Korean IMEs swallow clicks otherwise), before sending the click to
+  Lean.
 - **D (text editing)**: `Field` should accept a marked selection and replacement range in scalar
   indices and treat "insertText while marked" as "replace marked range" (Chromium: "Inserting text
   will delete all marked text automatically").
