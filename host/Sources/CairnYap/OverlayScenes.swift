@@ -79,6 +79,33 @@ enum OverlayScenes {
         return try LeanRuntime.withBytes(r) { try Frame(decoding: $0) }
     }
 
+    /// With `CAIRN_BENCH=1`: for this state at rest and halfway through easing from no text,
+    /// the Lean side of an overlay frame (view, measuring, layout, encoding, decoding) and an
+    /// offscreen render of it at 2x (encode, GPU, readback), p50 and max of 300.
+    static func bench(_ s: State, _ r: Renderer) throws {
+        func stats(_ xs: [Double]) -> String {
+            let v = xs.sorted()
+            return String(format: "p50 %.3f ms, p95 %.3f ms, max %.3f ms", v[v.count / 2] * 1000, v[v.count * 95 / 100] * 1000, v.last! * 1000)
+        }
+        for (what, prev, changed) in [("rest", s.text, UInt32(0)), ("easing", "", UInt32(1000 - 17 - 75))] {
+            let (bytes, now) = scene(s, shift: 1000, prev: prev, changed: changed)
+            var lean: [Double] = [], render: [Double] = []
+            var f = try frame(bytes)
+            for _ in 0..<300 {
+                let t0 = Date()
+                f = try frame(bytes)
+                lean.append(Date().timeIntervalSince(t0))
+            }
+            let canvas = Frame(size: f.surfaces[0].canvas.size, draws: f.surfaces[0].canvas.draws)
+            for _ in 0..<300 {
+                let t0 = Date()
+                _ = try r.image(canvas, scale: 2, time: UInt64(now) * 1_000_000)
+                render.append(Date().timeIntervalSince(t0))
+            }
+            print("  \(s.name ?? "") \(what): Lean frame \(stats(lean)); render \(stats(render))")
+        }
+    }
+
     static func run(_ args: [String]) -> Int32 {
         guard args.count >= 2, let data = FileManager.default.contents(atPath: args[0]),
               let scenes = try? JSONDecoder().decode(Scenes.self, from: data) else {
@@ -112,6 +139,7 @@ enum OverlayScenes {
                     }
                     let img = try r.image(canvas, scale: 2, time: UInt64(now) * 1_000_000)
                     try img.writePNG(to: out.appendingPathComponent((s.name ?? "scene") + ".png"))
+                    if ProcessInfo.processInfo.environment["CAIRN_BENCH"] == "1" { try bench(s, r) }
                     print("\(s.name ?? ""): \(canvas.size.w)×\(canvas.size.h) pt, tape history vs harness: max \(worst)")
                 }
             } catch {
