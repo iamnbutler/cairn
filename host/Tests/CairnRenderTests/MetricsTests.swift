@@ -7,6 +7,7 @@ import Testing
 let sampleFonts: [Font] = [
     Font(), Font(weight: 700), Font(size: 11, weight: 300), Font(size: 17, weight: 600, italic: true),
     Font(family: 1), Font(family: 1, weight: 700, italic: true), Font(size: 24, weight: 800), Font(size: 40),
+    Font(size: 11, weight: 600, width: .expanded, tracking: 140), Font(size: 22, weight: 200, width: .expanded, tabular: true),
 ]
 
 let sampleStrings: [String] = [
@@ -20,7 +21,7 @@ func cMetrics(_ f: Font, _ s: String, cap: Int? = nil) -> (count: Int32, values:
     var bytes = Array(s.utf8)
     let cap = cap ?? s.unicodeScalars.count + 3
     var out = [Int32](repeating: -7, count: max(cap, 1))
-    let n = cairn_text_metrics(f.family, f.size, f.weight, f.italic ? 1 : 0, &bytes, bytes.count, &out, cap)
+    let n = cairn_text_metrics(f.family, f.size, f.weight, f.style, f.tracking, &bytes, bytes.count, &out, cap)
     return (n, Array(out.prefix(min(cap, Int(n)))))
 }
 
@@ -50,7 +51,7 @@ func cMetrics(_ f: Font, _ s: String, cap: Int? = nil) -> (count: Int32, values:
     @Test func invalidUTF8IsRepaired() {
         var bytes: [UInt8] = [0x61, 0xff, 0x62]
         var out = [Int32](repeating: 0, count: 8)
-        let n = cairn_text_metrics(0, 13, 400, 0, &bytes, 3, &out, 8)
+        let n = cairn_text_metrics(0, 13, 400, 0, 0, &bytes, 3, &out, 8)
         #expect(n == 6)  // "a\u{FFFD}b": three scalars
     }
 
@@ -146,5 +147,24 @@ func cMetrics(_ f: Font, _ s: String, cap: Int? = nil) -> (count: Int32, values:
         #expect(CTFontGetSize(Fonts.make(Font(size: 99999))) == 1024)
         let bold = Fonts.make(Font(weight: 700))
         #expect(CTFontGetSymbolicTraits(bold).contains(.traitBold))
+        let expanded = Fonts.make(Font(size: 10, weight: 600, width: .expanded))
+        #expect((CTFontCopyPostScriptName(expanded) as String).contains("Expanded"))
+    }
+
+    /// Width, tracking and tabular digits reach what is measured (and so what is painted).
+    @Test func widthTrackingTabular() {
+        let s = "WIDE 1111"
+        let plain = TextSystem.shared.shape(Font(size: 20), s).width
+        #expect(TextSystem.shared.shape(Font(size: 20, width: .expanded), s).width > plain)
+        #expect(TextSystem.shared.shape(Font(size: 20, width: .condensed), s).width < plain)
+        // Tracking widens each of the 9 scalars' advances by 2 pt.
+        let tracked = TextSystem.shared.shape(Font(size: 20, tracking: 200), s).width
+        #expect(abs(Int(tracked) - Int(plain) - 18) <= 1, "\(plain) → \(tracked)")
+        // Tabular digits: "1111" and "0000" are the same width.
+        let t = Font(size: 20, tabular: true)
+        #expect(TextSystem.shared.shape(t, "1111").width == TextSystem.shared.shape(t, "0000").width)
+        // The style byte round-trips.
+        let f = Font(size: 9, italic: true, width: .compressed, tracking: -7, tabular: true)
+        #expect(Font(family: f.family, size: f.size, weight: f.weight, style: f.style, tracking: f.tracking) == f)
     }
 }

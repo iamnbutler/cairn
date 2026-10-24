@@ -2,6 +2,7 @@ import AppKit
 import CLean
 import CairnFrame
 import CairnHost
+import CairnYapPaint
 import Metal
 import QuartzCore
 
@@ -38,6 +39,9 @@ func silentWorld() -> World {
     for k in UInt8(0)...UInt8(14) { table[k] = { _, _ in } }
     return World(handlers: Handlers(table: table), devices: .inert)
 }
+
+// The overlay's tape display: the original Yap's shader, drawn where Lean puts a `yap.tape` paint.
+YapTape.register()
 
 if args.contains("--selftest") {
     MainActor.assumeIsolated { SelfTest.run() }

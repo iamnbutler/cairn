@@ -50,7 +50,9 @@ let package = Package(
                           linkerSettings: [.unsafeFlags(["-L" + leanLib, "-lcairn_app_clock"])]),
         .executableTarget(name: "CairnTray", dependencies: ["CairnHost", "CLean", "CairnFrame", "CairnCapture"],
                           linkerSettings: [.unsafeFlags(["-L" + leanLib, "-lcairn_app_tray"])]),
-        .executableTarget(name: "CairnYap", dependencies: ["CairnHost", "CLean", "CairnFrame"],
+        // Yap's tape display: the original Yap's Overlay.metal as a painter (`paint` draws).
+        .target(name: "CairnYapPaint", dependencies: ["CairnFrame", "CairnRender"]),
+        .executableTarget(name: "CairnYap", dependencies: ["CairnHost", "CLean", "CairnFrame", "CairnYapPaint"],
                           linkerSettings: [.unsafeFlags(["-L" + leanLib, "-lcairn_app_yap"])]),
         // A Swift stand-in app with a text field, for checking the host by hand (IME, AX) before
         // a Lean app has one. Not product code.
@@ -63,7 +65,7 @@ let package = Package(
         // fuzz-trusted` runs it. Dump.swift is a symlink to CairnFrameTests' canonical dump.
         .target(name: "CairnTrustedLean", dependencies: ["CLean"], path: "Tests/CairnTrustedLean"),
         .executableTarget(name: "CairnFuzzTrusted",
-                          dependencies: ["CairnHost", "CairnFrame", "CairnRender", "CLean", "CairnTrustedLean"],
+                          dependencies: ["CairnHost", "CairnFrame", "CairnRender", "CLean", "CairnTrustedLean", "CairnYapPaint"],
                           path: "Tests/CairnFuzzTrusted",
                           swiftSettings: [.swiftLanguageMode(.v5)],
                           linkerSettings: [.unsafeFlags(["-L" + leanLib, "-lcairn_trusted_fuzz"])]),

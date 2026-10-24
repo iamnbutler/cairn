@@ -17,9 +17,20 @@ public enum DebugJSON {
              "border": opt(border) { ["width": Int($0.width), "color": color($0.color)] }]
         case let .text(origin, font, c, s):
             ["text": s, "at": point(origin),
-             "font": [Int(font.family), Int(font.size), Int(font.weight), font.italic], "color": color(c)]
+             "font": [Int(font.family), Int(font.size), Int(font.weight), font.italic,
+                      Int(font.width.rawValue), Int(font.tracking), font.tabular] as [Any],
+             "color": color(c)]
         case let .pushClip(r): ["push": rect(r)]
         case .popClip: ["pop": true]
+        case let .shape(r, fill, radius, border, corner, shadow):
+            ["shape": rect(r), "fill": opt(fill, color), "radius": Int(radius),
+             "border": opt(border) { ["width": Int($0.width), "color": color($0.color)] },
+             "continuous": corner == .continuous,
+             "shadow": opt(shadow) { ["color": color($0.color), "radius": Int($0.radius),
+                                      "offset": [Int($0.x), Int($0.y)]] }]
+        case let .paint(r, p):
+            ["paint": rect(r), "shader": p.shader, "origin": Int(p.origin),
+             "scalars": p.scalars.map { Int($0) }, "arrays": p.arrays.map { $0.map { Int($0) } }]
         }
     }
 

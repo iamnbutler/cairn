@@ -54,7 +54,7 @@ public final class TextSystem: @unchecked Sendable {
         let key = LineKey(font: font, string: string)
         lock.lock(); defer { lock.unlock() }
         if let line = lines[key] { return line }
-        let line = Self.shape(ctFontLocked(font), string)
+        let line = Self.shape(ctFontLocked(font), string, tracking: font.tracking)
         if lines.count >= Self.lineCapacity { lines.removeAll(keepingCapacity: true) }
         lines[key] = line
         return line
@@ -75,8 +75,12 @@ public final class TextSystem: @unchecked Sendable {
         return Int32(clamping: Int64(max(r, 0)))
     }
 
-    static func shape(_ ct: CTFont, _ string: String) -> ShapedLine {
-        let attr = NSAttributedString(string: string, attributes: [.font: ct])
+    /// `tracking` is in hundredths of a point (Core Text's tracking attribute, SwiftUI's
+    /// `tracking(_:)`): it widens every glyph's advance, so carets and the width include it.
+    static func shape(_ ct: CTFont, _ string: String, tracking: Int32 = 0) -> ShapedLine {
+        var attrs: [NSAttributedString.Key: Any] = [.font: ct]
+        if tracking != 0 { attrs[NSAttributedString.Key(kCTTrackingAttributeName as String)] = CGFloat(tracking) / 100 }
+        let attr = NSAttributedString(string: string, attributes: attrs)
         let line = CTLineCreateWithAttributedString(attr)
         let ctRuns = CTLineGetGlyphRuns(line) as! [CTRun]
 

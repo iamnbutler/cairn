@@ -24,10 +24,19 @@ enum Dump {
             return "rect \(rect(r)) fill=\(opt(fill, color)) radius=\(radius) border="
                 + opt(border) { "\($0.width):\(color($0.color))" }
         case let .text(o, f, c, s):
-            return "text \(o.x) \(o.y) font=\(f.family),\(f.size),\(f.weight),\(bit(f.italic)) "
-                + "color=\(color(c)) \(str(s))"
+            return "text \(o.x) \(o.y) font=\(f.family),\(f.size),\(f.weight),\(bit(f.italic)),"
+                + "\(f.width.rawValue),\(f.tracking),\(bit(f.tabular)) color=\(color(c)) \(str(s))"
         case let .pushClip(r): return "push \(rect(r))"
         case .popClip: return "pop"
+        case let .shape(r, fill, radius, border, corner, shadow):
+            return "shape \(rect(r)) fill=\(opt(fill, color)) radius=\(radius) border="
+                + opt(border) { "\($0.width):\(color($0.color))" }
+                + " corner=\(corner.rawValue) shadow="
+                + opt(shadow) { "\(color($0.color)):\($0.radius):\($0.x):\($0.y)" }
+        case let .paint(r, p):
+            func ints(_ xs: [Int32]) -> String { "[" + xs.map { "\($0)" }.joined(separator: ",") + "]" }
+            return "paint \(rect(r)) origin=\(p.origin) shader=\(str(p.shader)) scalars=\(ints(p.scalars)) arrays=["
+                + p.arrays.map(ints).joined(separator: ",") + "]"
         }
     }
 

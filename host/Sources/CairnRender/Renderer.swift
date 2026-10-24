@@ -54,10 +54,12 @@ public struct RenderStats: Equatable, Sendable {
     public var rectBatches = 0, glyphBatches = 0
     public var skipped = 0  // draws dropped by an empty clip or a zero-size rect
     public var unbalancedPops = 0
+    public var shapes = 0, paints = 0
 }
 
-/// Paints a frame's draw list with Metal: rounded, bordered rects by SDF and glyph runs from a
-/// Core Text–rasterised atlas, under a scissor clip stack, strictly in list order.
+/// Paints a frame's draw list with Metal: rounded, bordered rects by SDF, glyph runs from a
+/// Core Text–rasterised atlas, shapes (continuous corners, shadows) from Core Graphics, and
+/// host-drawn content by registered painters, under a scissor clip stack, strictly in list order.
 ///
 /// Not thread-safe: use one renderer from one thread (the render thread). Text shaping goes
 /// through `TextSystem.shared`, which is safe to share with the metrics export.
@@ -70,6 +72,8 @@ public final class Renderer {
     private let library: MTLLibrary
     private var pipelines: [MTLPixelFormat: (rect: MTLRenderPipelineState, glyph: MTLRenderPipelineState)] = [:]
     let atlas: GlyphAtlas
+    let shapes: ShapeCache
+    private var painterPipelines: [String: MTLRenderPipelineState] = [:]
     private let emptyMask: MTLTexture
     private let emptyColor: MTLTexture
 
@@ -85,7 +89,7 @@ public final class Renderer {
         var glyphs: MTLBuffer?
     }
 
-    private enum Kind { case rects, glyphs }
+    private enum Kind { case rects, glyphs, shape, paint }
     private struct Batch {
         var kind: Kind
         var start: Int
@@ -93,7 +97,11 @@ public final class Renderer {
         var clip: PixelRect
         var maskPage: Int32 = -1
         var colorPage: Int32 = -1
+        /// `.shape`: the texture in this frame's `textures`; `.paint`: the index in `paints`.
+        var item = -1
     }
+
+    private struct PaintItem { let paint: Paint; let painter: Painter; let box: PixelRect }
 
     public init(device: MTLDevice? = nil) throws {
         precondition(MemoryLayout<RectInstance>.stride == 64, "RectInstance layout drifted from the shader")
@@ -103,6 +111,7 @@ public final class Renderer {
         queue = device.makeCommandQueue()!
         library = try device.makeLibrary(source: shaderSource, options: nil)
         atlas = GlyphAtlas(device: device)
+        shapes = ShapeCache(device: device)
         emptyMask = Self.blank(device, .r8Unorm)
         emptyColor = Self.blank(device, .bgra8Unorm)
         slots = (0..<Self.framesInFlight).map { _ in Slot() }
@@ -113,10 +122,12 @@ public final class Renderer {
     /// Paints `frame` into `texture` (any size; `scale` maps logical points to its pixels),
     /// clearing it to `clearColor` first. Commits and returns the command buffer; call
     /// `waitUntilCompleted()` on it before reading the texture back.
+    /// `time` is the monotonic clock in nanoseconds that painters see (default: now).
     @discardableResult
-    public func draw(frame: Frame, into texture: MTLTexture, scale: Float) -> MTLCommandBuffer {
+    public func draw(frame: Frame, into texture: MTLTexture, scale: Float,
+                     time: UInt64 = Painters.nowNs()) -> MTLCommandBuffer {
         autoreleasepool {
-            let cmd = encode(frame: frame, into: texture, scale: scale)
+            let cmd = encode(frame: frame, into: texture, scale: scale, time: time)
             cmd.commit()
             lastCommand = cmd
             return cmd
@@ -125,9 +136,10 @@ public final class Renderer {
 
     /// Paints `frame` into a drawable and presents it. Wrapped in an autorelease pool, so a
     /// long-lived render thread doesn't keep drawables alive.
-    public func draw(frame: Frame, into drawable: CAMetalDrawable, scale: Float) {
+    public func draw(frame: Frame, into drawable: CAMetalDrawable, scale: Float,
+                     time: UInt64 = Painters.nowNs()) {
         autoreleasepool {
-            let cmd = encode(frame: frame, into: drawable.texture, scale: scale)
+            let cmd = encode(frame: frame, into: drawable.texture, scale: scale, time: time)
             cmd.present(drawable)
             cmd.commit()
             lastCommand = cmd
@@ -136,7 +148,7 @@ public final class Renderer {
 
     // MARK: Encoding
 
-    func encode(frame: Frame, into texture: MTLTexture, scale: Float) -> MTLCommandBuffer {
+    func encode(frame: Frame, into texture: MTLTexture, scale: Float, time: UInt64) -> MTLCommandBuffer {
         if atlas.pageCount > GlyphAtlas.maxPages {
             // Pages are append-only while frames are in flight; dropping them needs an idle GPU.
             lastCommand?.waitUntilCompleted()
@@ -150,10 +162,13 @@ public final class Renderer {
         var rects: [RectInstance] = []
         var glyphs: [GlyphInstance] = []
         var batches: [Batch] = []
+        var textures: [MTLTexture] = []
+        var paints: [PaintItem] = []
         var stats = RenderStats()
         build(frame.draws, scale: scale,
               bounds: PixelRect(x0: 0, y0: 0, x1: texture.width, y1: texture.height),
-              rects: &rects, glyphs: &glyphs, batches: &batches, stats: &stats)
+              rects: &rects, glyphs: &glyphs, batches: &batches, textures: &textures,
+              paints: &paints, stats: &stats)
         lastStats = stats
 
         let s = slots[slot]
@@ -172,6 +187,8 @@ public final class Renderer {
         let enc = cmd.makeRenderCommandEncoder(descriptor: pass)!
         let pipe = pipeline(texture.pixelFormat)
         var viewport = SIMD2<Float>(Float(texture.width), Float(texture.height))
+        let fullViewport = MTLViewport(originX: 0, originY: 0, width: Double(texture.width),
+                                       height: Double(texture.height), znear: 0, zfar: 1)
         enc.setVertexBytes(&viewport, length: MemoryLayout<SIMD2<Float>>.size, index: 1)
 
         var current: Kind?
@@ -187,17 +204,37 @@ public final class Renderer {
                 }
                 enc.setVertexBufferOffset(b.start * MemoryLayout<RectInstance>.stride, index: 0)
                 stats.rectBatches += 1
-            case .glyphs:
+            case .glyphs, .shape:
                 if current != .glyphs {
                     enc.setRenderPipelineState(pipe.glyph)
                     enc.setVertexBuffer(glyphBuf, offset: 0, index: 0)
                     current = .glyphs
                 }
                 enc.setVertexBufferOffset(b.start * MemoryLayout<GlyphInstance>.stride, index: 0)
-                enc.setFragmentTexture(b.maskPage >= 0 ? atlas.maskPages[Int(b.maskPage)] : emptyMask, index: 0)
-                enc.setFragmentTexture(b.colorPage >= 0 ? atlas.colorPages[Int(b.colorPage)] : emptyColor, index: 1)
-                stats.glyphBatches += 1
+                if b.kind == .shape {
+                    enc.setFragmentTexture(emptyMask, index: 0)
+                    enc.setFragmentTexture(textures[b.item], index: 1)
+                } else {
+                    enc.setFragmentTexture(b.maskPage >= 0 ? atlas.maskPages[Int(b.maskPage)] : emptyMask, index: 0)
+                    enc.setFragmentTexture(b.colorPage >= 0 ? atlas.colorPages[Int(b.colorPage)] : emptyColor, index: 1)
+                    stats.glyphBatches += 1
+                }
+            case .paint:
+                let item = paints[b.item]
+                guard let state = painterPipeline(item.paint.shader, item.painter, texture.pixelFormat) else { continue }
+                enc.setRenderPipelineState(state)
+                enc.setViewport(MTLViewport(originX: Double(item.box.x0), originY: Double(item.box.y0),
+                                            width: Double(item.box.x1 - item.box.x0),
+                                            height: Double(item.box.y1 - item.box.y0), znear: 0, zfar: 1))
+                item.painter.encode(enc, PaintContext(
+                    paint: item.paint, width: item.box.x1 - item.box.x0, height: item.box.y1 - item.box.y0,
+                    scale: scale, seconds: Painters.seconds(since: item.paint.origin, nowNs: time)))
+                enc.setViewport(fullViewport)
+                enc.setVertexBytes(&viewport, length: MemoryLayout<SIMD2<Float>>.size, index: 1)
+                current = nil
+                continue
             }
+
             enc.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4, instanceCount: b.count)
         }
         enc.endEncoding()
@@ -210,7 +247,8 @@ public final class Renderer {
     /// change of kind, clip, or atlas page starts a new one, so list order is paint order.
     private func build(_ draws: [Draw], scale: Float, bounds: PixelRect,
                        rects: inout [RectInstance], glyphs: inout [GlyphInstance],
-                       batches: inout [Batch], stats: inout RenderStats) {
+                       batches: inout [Batch], textures: inout [MTLTexture], paints: inout [PaintItem],
+                       stats: inout RenderStats) {
         var clips: [PixelRect] = [bounds]
         rects.reserveCapacity(draws.count)
         for d in draws {
@@ -244,6 +282,30 @@ public final class Renderer {
                 guard !clip.isEmpty, !string.isEmpty else { stats.skipped += 1; continue }
                 appendText(origin: origin, font: font, color: color, string: string, scale: scale,
                            clip: clip, glyphs: &glyphs, batches: &batches, stats: &stats)
+            case let .shape(r, fill, radius, border, corner, shadow):
+                let px = PixelRect.covering(r, scale: scale)
+                guard !clip.isEmpty, !px.isEmpty, fill != nil || border != nil,
+                      let e = shapes.entry(fill: fill, radius: radius, border: border, corner: corner,
+                                           shadow: fill == nil ? nil : shadow, scale: scale,
+                                           w: px.x1 - px.x0, h: px.y1 - px.y0) else {
+                    stats.skipped += 1; continue
+                }
+                textures.append(e.texture)
+                let start = glyphs.count
+                for q in ShapeCache.quads(e, px) {
+                    glyphs.append(GlyphInstance(rect: q.rect, uv: q.uv, color: SIMD4(1, 1, 1, 1),
+                                                misc: SIMD4(1, 0, 0, 0)))
+                }
+                batches.append(Batch(kind: .shape, start: start, count: glyphs.count - start, clip: clip,
+                                     item: textures.count - 1))
+                stats.shapes += 1
+            case let .paint(r, p):
+                let px = PixelRect.covering(r, scale: scale)
+                let cut = clip.intersect(px)
+                guard !cut.isEmpty, let painter = Painters.named(p.shader) else { stats.skipped += 1; continue }
+                paints.append(PaintItem(paint: p, painter: painter, box: px))
+                batches.append(Batch(kind: .paint, start: 0, count: 0, clip: cut, item: paints.count - 1))
+                stats.paints += 1
             }
         }
     }
@@ -320,6 +382,26 @@ public final class Renderer {
         let p = (make("rect_vertex", "rect_fragment"), make("glyph_vertex", "glyph_fragment"))
         pipelines[format] = p
         return p
+    }
+
+    private func painterPipeline(_ name: String, _ p: Painter, _ format: MTLPixelFormat) -> MTLRenderPipelineState? {
+        let key = "\(format.rawValue) \(name)"
+        if let s = painterPipelines[key] { return s }
+        guard let lib = try? device.makeLibrary(source: p.source, options: nil) else { return nil }
+        let d = MTLRenderPipelineDescriptor()
+        d.vertexFunction = lib.makeFunction(name: p.vertex)
+        d.fragmentFunction = lib.makeFunction(name: p.fragment)
+        let a = d.colorAttachments[0]!
+        a.pixelFormat = format
+        a.isBlendingEnabled = true
+        a.sourceRGBBlendFactor = .one
+        a.sourceAlphaBlendFactor = .one
+        a.destinationRGBBlendFactor = .oneMinusSourceAlpha
+        a.destinationAlphaBlendFactor = .oneMinusSourceAlpha
+        guard d.vertexFunction != nil, d.fragmentFunction != nil,
+              let s = try? device.makeRenderPipelineState(descriptor: d) else { return nil }
+        painterPipelines[key] = s
+        return s
     }
 
     private static func upload<T>(_ device: MTLDevice, _ items: [T], into buf: inout MTLBuffer?) -> MTLBuffer? {

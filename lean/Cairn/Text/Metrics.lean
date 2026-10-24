@@ -16,6 +16,26 @@ Grapheme clusters are not modelled in M1. A metrics measures one line; wrapped t
 
 namespace Cairn
 
+/-- A font's width axis: SwiftUI's `Font.Width` presets, which the system font's variable width
+axis implements (`NSFont.Width`: standard 0, condensed −0.2, expanded 0.2, compressed −0.4). -/
+inductive FontWidth where
+  | standard | condensed | expanded | compressed
+deriving Repr, BEq, DecidableEq, Inhabited, Hashable
+
+/-- The width's code on the wire and in the metrics ABI. -/
+def FontWidth.code : FontWidth → Nat
+  | .standard => 0 | .condensed => 1 | .expanded => 2 | .compressed => 3
+
+def FontWidth.ofCode? : Nat → Option FontWidth
+  | 0 => some .standard | 1 => some .condensed | 2 => some .expanded | 3 => some .compressed
+  | _ => none
+
+theorem FontWidth.ofCode_code (w : FontWidth) : FontWidth.ofCode? w.code = some w := by
+  cases w <;> rfl
+
+theorem FontWidth.code_lt (w : FontWidth) : w.code < 4 := by
+  cases w <;> decide
+
 structure Font where
   /-- 0 is the system UI font, 1 the system monospaced font. -/
   family : Nat := 0
@@ -24,6 +44,12 @@ structure Font where
   /-- 100–900, CSS-style. -/
   weight : Nat := 400
   italic : Bool := false
+  width : FontWidth := .standard
+  /-- Extra space after every character, in hundredths of a point (SwiftUI's `tracking`):
+  140 is 1.4 pt. Measured and painted alike. -/
+  tracking : Int := 0
+  /-- Digits all one width (SwiftUI's `monospacedDigit`), so a clock doesn't jitter. -/
+  tabular : Bool := false
 deriving Repr, BEq, DecidableEq, Inhabited, Hashable
 
 structure TextMetrics where

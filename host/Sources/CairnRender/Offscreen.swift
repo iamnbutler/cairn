@@ -60,14 +60,15 @@ public struct Image: Sendable {
 extension Renderer {
     /// Renders `frame` offscreen at `scale` (the target is `frame.size × scale`, rounded up) and
     /// reads it back. Blocks until the GPU is done.
-    public func image(_ frame: Frame, scale: Float = 2) throws -> Image {
+    /// `time` is the monotonic clock (ns) painters see.
+    public func image(_ frame: Frame, scale: Float = 2, time: UInt64 = Painters.nowNs()) throws -> Image {
         let w = max(1, Int((Float(frame.size.w) * scale).rounded(.up)))
         let h = max(1, Int((Float(frame.size.h) * scale).rounded(.up)))
         let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: w, height: h, mipmapped: false)
         d.usage = [.renderTarget, .shaderRead]
         d.storageMode = .shared
         guard let tex = device.makeTexture(descriptor: d) else { throw RenderError.textureAllocation }
-        draw(frame: frame, into: tex, scale: scale).waitUntilCompleted()
+        draw(frame: frame, into: tex, scale: scale, time: time).waitUntilCompleted()
         var bytes = [UInt8](repeating: 0, count: w * h * 4)
         tex.getBytes(&bytes, bytesPerRow: w * 4, from: MTLRegionMake2D(0, 0, w, h), mipmapLevel: 0)
         return Image(width: w, height: h, bgra: bytes)

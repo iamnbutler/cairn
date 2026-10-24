@@ -36,8 +36,14 @@ namespace Frame
 /-- Selection highlight: the macOS accent blue at 30%. -/
 def selectionColor : Color := ⟨0, 122, 255, 77⟩
 
+/-- A box's own paint: its background and border (one `rect`, or one `shape` when it has a
+shadow or continuous corners), then its host-drawn pixels. -/
 def boxDraws (r : Rect) (s : Style) : List Draw :=
-  if s.background.isSome || s.border.isSome then [.rect r s.background s.radius s.border] else []
+  (if s.shadow.isSome || (s.corner == .continuous && (s.background.isSome || s.border.isSome)) then
+    [.shape r s.background s.radius s.border s.corner s.shadow]
+   else if s.background.isSome || s.border.isSome then [.rect r s.background s.radius s.border]
+   else []) ++
+  (match s.paint with | some p => [.paint r p] | none => [])
 
 def halfAlpha (c : Color) : Color := { c with a := c.a / 2 }
 
@@ -251,6 +257,8 @@ def clipDepth : Nat → List Draw → Option Nat
   | d + 1, .popClip :: ds => clipDepth d ds
   | d, .rect .. :: ds => clipDepth d ds
   | d, .text .. :: ds => clipDepth d ds
+  | d, .shape .. :: ds => clipDepth d ds
+  | d, .paint .. :: ds => clipDepth d ds
 
 /-- Every `popClip` closes an earlier `pushClip`, and every `pushClip` is closed. -/
 def Balanced (ds : List Draw) : Prop := clipDepth 0 ds = some 0
@@ -268,12 +276,27 @@ theorem clipDepth_noClip {ds : List Draw} (h : NoClip ds) (d : Nat) (rest : List
     cases x with
     | rect r f rad b => simpa [clipDepth] using ih
     | text o f c s => simpa [clipDepth] using ih
+    | shape r f rad b c sh => simpa [clipDepth] using ih
+    | paint r p => simpa [clipDepth] using ih
     | pushClip r => exact absurd rfl (hx r).1
     | popClip => exact absurd rfl (hx ⟨0, 0, 0, 0⟩).2
 
 theorem noClip_boxDraws (r : Rect) (s : Style) : NoClip (boxDraws r s) := by
-  unfold boxDraws; split <;> simp only [NoClip, List.mem_cons, List.not_mem_nil, or_false, ne_eq,
-      forall_eq, reduceCtorEq, not_false_eq_true, and_self, implies_true, false_implies]
+  unfold boxDraws NoClip
+  intro d hd q
+  simp only [List.mem_append] at hd
+  rcases hd with hd | hd
+  · split at hd
+    · simp only [List.mem_cons, List.not_mem_nil, or_false] at hd; subst hd
+      simp only [ne_eq, reduceCtorEq, not_false_eq_true, and_self]
+    · split at hd
+      · simp only [List.mem_cons, List.not_mem_nil, or_false] at hd; subst hd
+        simp only [ne_eq, reduceCtorEq, not_false_eq_true, and_self]
+      · simp only [List.not_mem_nil] at hd
+  · split at hd
+    · simp only [List.mem_cons, List.not_mem_nil, or_false] at hd; subst hd
+      simp only [ne_eq, reduceCtorEq, not_false_eq_true, and_self]
+    · simp only [List.not_mem_nil] at hd
 
 theorem noClip_fieldDraws (focus : Option ControlRef) (ts : TextStyle) (c : Control)
     (v : FieldView) (o : Point) (caret : Rect) (sel : List Rect) :

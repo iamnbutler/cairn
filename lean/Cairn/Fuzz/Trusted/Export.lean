@@ -90,10 +90,12 @@ def fieldFrame (s : Runtime.State Text.Field) : ByteArray := Runtime.frameBytes 
 then for each line its scalar range `a, b`, Lean's width for it (`o b - o a`) and the `x, y, w`
 of the line's laid-out rect. -/
 @[export cairn_tf_wrap_lean]
-def wrap (family size weight : UInt32) (italic : UInt8) (width : UInt32) (s : String) :
+def wrap (family size weight : UInt32) (style : UInt8) (tracking width : UInt32) (s : String) :
     ByteArray :=
   let f : Font := { family := family.toNat, size := size.toNat, weight := weight.toNat,
-                    italic := italic != 0 }
+                    italic := style &&& 1 != 0, tabular := style &&& 2 != 0,
+                    width := (FontWidth.ofCode? (style >>> 2 &&& 3).toNat).getD .standard,
+                    tracking := tracking.toInt32.toInt }
   let m := TextMetrics.host
   let o := Layout.offAt (m.offsets f s)
   let ls := Text.Wrap.allLines o width.toNat s.toList

@@ -38,6 +38,8 @@ final class RenderLoop: NSObject, @unchecked Sendable {
     /// How long to hold the old picture for a frame at the new size before drawing a stale one.
     static let resizeWait = 0.1
     private var drawn = -1
+    private var animatingVersion = -1
+    private var animating = false
     private var link: CADisplayLink?
     private var thread: Thread?
     /// What this loop paints of a published frame: the whole frame (the window), or one
@@ -92,7 +94,12 @@ final class RenderLoop: NSObject, @unchecked Sendable {
         let stale = p.throughSeq < viewportSeq && hostNow() - viewportTime < Self.resizeWait && drawn >= 0
         if !stale { viewportChanged = false }
         lock.unlock()
-        guard !stale, p.version != drawn || changed else { return }
+        // A frame with host-drawn content (a `paint` draw) moves on its own: draw every tick.
+        if p.version != animatingVersion {
+            animatingVersion = p.version
+            animating = frame.draws.contains { if case .paint = $0 { true } else { false } }
+        }
+        guard !stale, p.version != drawn || changed || animating else { return }
         let pixels = vp.pixelSize
         guard pixels.width >= 1, pixels.height >= 1 else { return }
         if changed || layer.drawableSize != pixels { layer.drawableSize = pixels }

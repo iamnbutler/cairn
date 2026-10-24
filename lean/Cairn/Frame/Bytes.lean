@@ -78,6 +78,15 @@ theorem satU32_of_fits {n : Nat} (h : FitsU32 n) : satU32 n = n := by
 theorem satU32_fits (n : Nat) : FitsU32 (satU32 n) := by
   unfold satU32 FitsU32; split <;> omega
 
+/-- Clamp to the `i32` range (a text draw's tracking crosses saturating, like font fields). -/
+def satI32 (v : Int) : Int := max (-2147483648) (min v 2147483647)
+
+theorem satI32_of_fits {v : Int} (h : FitsI32 v) : satI32 v = v := by
+  unfold FitsI32 at h; unfold satI32; omega
+
+theorem satI32_fits (v : Int) : FitsI32 (satI32 v) := by
+  unfold satI32 FitsI32; omega
+
 def ofBytes (a b c d : UInt8) : Nat :=
   a.toNat + 256 * b.toNat + 65536 * c.toNat + 16777216 * d.toNat
 

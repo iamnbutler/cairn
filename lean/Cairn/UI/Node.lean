@@ -43,6 +43,33 @@ structure Border where
   color : Color
 deriving Repr, BEq, DecidableEq, Inhabited
 
+/-- How a rounded box's corners turn: a circular arc, or Apple's continuous curve (SwiftUI's
+`RoundedRectangle(style: .continuous)`), which starts further along the edge and has no jump in
+curvature. -/
+inductive Corner where
+  | circular | continuous
+deriving Repr, BEq, DecidableEq, Inhabited
+
+/-- A soft shadow under a box's shape, as SwiftUI's `shadow(color:radius:x:y:)`: the shape's
+silhouette in `color`, blurred by `radius` points and moved by `(x, y)`. With no offset it is a
+glow. -/
+structure Shadow where
+  color : Color
+  radius : Nat
+  x : Int := 0
+  y : Int := 0
+deriving Repr, BEq, DecidableEq, Inhabited
+
+/-- Pixels the host draws: the shader registered under `shader` fills the box, fed with these
+numbers (what they mean is the shader's contract) and with the host's clock, as milliseconds
+since `origin` (a time on the runtime's monotonic clock), so it can move between frames. -/
+structure Paint where
+  shader : String
+  origin : Nat := 0
+  scalars : List Int := []
+  arrays : List (List Int) := []
+deriving Repr, BEq, DecidableEq, Inhabited
+
 structure Style where
   axis : Axis := .column
   width : Sizing := .hug
@@ -58,6 +85,11 @@ structure Style where
   radius : Nat := 0
   /-- Clip children to this box. -/
   clip : Bool := false
+  corner : Corner := .circular
+  /-- Painted under the box's background. -/
+  shadow : Option Shadow := none
+  /-- Host-drawn pixels over the background, under the children. -/
+  paint : Option Paint := none
 deriving Repr, BEq, Inhabited
 
 inductive Role where
@@ -111,6 +143,8 @@ structure Wrap where
   keep : Keep := .head
   /-- Where each line sits in the width: `start` (and `stretch`) left, `center`, `finish` right. -/
   align : Align := .start
+  /-- Points between lines (SwiftUI's `lineSpacing`). -/
+  lineSpacing : Nat := 0
 deriving Repr, BEq, Inhabited
 
 inductive Node where

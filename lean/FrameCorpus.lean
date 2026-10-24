@@ -68,11 +68,48 @@ def color : Gen Color := return ⟨← byte, ← byte, ← byte, ← byte⟩
 def ref : Gen ControlRef := return ⟨← nat, ← nat⟩
 def range : Gen (Nat × Nat) := return (← nat, ← nat)
 
+def u64 : Gen Nat := do
+  if ← chance 4 then pick #[0, 1, 4294967295, 4294967296, 18446744073709551615]
+  else return (← below 4294967296) + 4294967296 * (← below 4096)
+
+def font : Gen Font := do
+  let family ← nat
+  let size ← nat
+  let weight ← nat
+  let italic ← coin
+  let width ← pick #[FontWidth.standard, .condensed, .expanded, .compressed]
+  let tracking ← int
+  let tabular ← coin
+  return { family, size, weight, italic, width, tracking, tabular }
+
+def ints : Gen (List Int) := do
+  let n ← below 6
+  let mut xs := []
+  for _ in [0:n] do xs := (← int) :: xs
+  return xs
+
 def draw : Gen Draw := do
-  match ← below 4 with
+  match ← below 6 with
   | 0 => return .rect (← rect) (← opt color) (← nat) (← opt (return ⟨← nat, ← color⟩))
-  | 1 => return .text ⟨← int, ← int⟩ ⟨← nat, ← nat, ← nat, ← coin⟩ (← color) (← str)
+  | 1 => return .text ⟨← int, ← int⟩ (← font) (← color) (← str)
   | 2 => return .pushClip (← rect)
+  | 3 =>
+    let r ← rect
+    let fill ← opt color
+    let radius ← nat
+    let border ← opt (return ⟨← nat, ← color⟩)
+    let corner ← pick #[Corner.circular, .continuous]
+    let shadow ← opt (return (⟨← color, ← nat, ← int, ← int⟩ : Shadow))
+    return .shape r fill radius border corner shadow
+  | 4 =>
+    let r ← rect
+    let shader ← str
+    let origin ← u64
+    let scalars ← ints
+    let k ← below 3
+    let mut arrays := []
+    for _ in [0:k] do arrays := (← ints) :: arrays
+    return .paint r { shader, origin, scalars, arrays }
   | _ => return .popClip
 
 def role : Gen Role :=
@@ -91,10 +128,6 @@ def array {α : Type} (n : Nat) (g : Gen α) : Gen (Array α) := do
   let mut xs := #[]
   for _ in [0:k] do xs := xs.push (← g)
   return xs
-
-def u64 : Gen Nat := do
-  if ← chance 4 then pick #[0, 1, 4294967295, 4294967296, 18446744073709551615]
-  else return (← below 4294967296) + 4294967296 * (← below 4096)
 
 def i64 : Gen Int := do
   if ← chance 4 then pick #[0, -1, 9223372036854775807, -9223372036854775808, 1700000000000]
@@ -280,8 +313,15 @@ def maxCanvas : Canvas where
   size := ⟨2147483647, -2147483648⟩
   draws := #[.rect ⟨-2147483648, 2147483647, 0, -1⟩ (some ⟨255, 255, 255, 255⟩) 4294967295
       (some ⟨4294967295, ⟨0, 0, 0, 0⟩⟩),
-    .text ⟨-2147483648, 2147483647⟩ ⟨4294967295, 4294967295, 4294967295, true⟩ ⟨0, 0, 0, 0⟩
-      "🙂👍🏽日本語한국어\x00",
+    .text ⟨-2147483648, 2147483647⟩ (Font.mk 4294967295 4294967295 4294967295 true .compressed (-2147483648) true) ⟨0, 0, 0, 0⟩ "🙂👍🏽日本語한국어\x00",
+    .text ⟨0, 0⟩ ({ width := .expanded, tracking := 2147483647 } : Font) ⟨1, 2, 3, 4⟩ "",
+    .shape ⟨-2147483648, 2147483647, 0, -1⟩ (some ⟨255, 255, 255, 255⟩) 4294967295
+      (some ⟨4294967295, ⟨0, 0, 0, 0⟩⟩) .continuous
+      (some ⟨⟨1, 2, 3, 4⟩, 4294967295, -2147483648, 2147483647⟩),
+    .shape ⟨0, 0, 0, 0⟩ none 0 none .circular none,
+    .paint ⟨-2147483648, 2147483647, 0, -1⟩ (Paint.mk "yap.tape\x00" 18446744073709551615 [-2147483648, 2147483647, 0]
+        [[], [-1], [2147483647, -2147483648]]),
+    .paint ⟨0, 0, 0, 0⟩ ({ shader := "" } : Paint),
     .pushClip ⟨0, 0, 0, 0⟩, .popClip, .popClip]
   ax := #[{ control := some ⟨4294967295, 4294967295⟩, role := .tab, rect := ⟨0, 0, 0, 0⟩,
             label := "", value := "", parent := some 4294967295, checked := some false }]

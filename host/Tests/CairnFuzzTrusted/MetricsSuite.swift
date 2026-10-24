@@ -7,7 +7,7 @@ import Foundation
 /// `cairn_text_metrics` (Core Text, through the host's C ABI) against what Lean's layout assumes,
 /// `TextMetrics.Valid`, and against Lean's own view of it (`TextMetrics.host`, whose `normalise`
 /// must be the identity on a well-behaved host). Fonts across families, sizes (0, 1, huge),
-/// weights and italic; strings with clusters, RTL, controls and invalid UTF-8.
+/// weights, italic, widths, tracking and tabular digits; strings with clusters, RTL, controls and invalid UTF-8.
 final class MetricsSuite: Suite {
     let name = "metrics"
     let crashCheck = "text.metrics"
@@ -28,12 +28,17 @@ final class MetricsSuite: Suite {
 
     struct Case {
         var family: UInt32, size: UInt32, weight: UInt32, italic: Bool
+        var width: FontWidth = .standard, tracking: Int32 = 0, tabular = false
         var text: String
         /// Raw bytes to send instead of `text`'s UTF-8 (invalid UTF-8), when set.
         var bytes: [UInt8]?
-        var font: Font { Font(family: family, size: size, weight: weight, italic: italic) }
+        var font: Font {
+            Font(family: family, size: size, weight: weight, italic: italic, width: width,
+                 tracking: tracking, tabular: tabular)
+        }
         var description: String {
-            "family \(family) size \(size) weight \(weight) italic \(italic) "
+            "family \(family) size \(size) weight \(weight) italic \(italic) width \(width) "
+                + "tracking \(tracking) tabular \(tabular) "
                 + (bytes.map { "bytes hex:" + hex($0) } ?? Dump.str(text))
         }
     }
@@ -48,6 +53,10 @@ final class MetricsSuite: Suite {
         let weight: UInt32 = g.weighted([(4, { UInt32($0.below(10) * 100) }), (2, { UInt32($0.range(0, 1000)) }),
                                           (1, { $0.elem([0, 49, 50, 949, 950, UInt32.max]) })])
         let italic = g.chance(1, 4)
+        let width: FontWidth = g.weighted([(4, { _ in .standard }), (1, { $0.elem([.condensed, .expanded, .compressed]) })])
+        let tracking: Int32 = g.weighted([(4, { _ in 0 }), (2, { Int32($0.range(-300, 600)) }),
+                                          (1, { $0.elem([-100_000, 100_000, Int32.min, Int32.max]) })])
+        let tabular = g.chance(1, 4)
         let text = g.chance(1, 10) ? TextPool.string(&g, maxParts: 80) : TextPool.string(&g)
         var bytes: [UInt8]?
         if g.chance(1, 12) {
@@ -58,7 +67,8 @@ final class MetricsSuite: Suite {
             b.insert(contentsOf: bad, at: g.range(0, b.count))
             bytes = b
         }
-        return Case(family: family, size: size, weight: weight, italic: italic, text: text, bytes: bytes)
+        return Case(family: family, size: size, weight: weight, italic: italic, width: width,
+                    tracking: tracking, tabular: tabular, text: text, bytes: bytes)
     }
 
     static func metrics(_ c: Case, cap: Int? = nil) -> (count: Int32, values: [Int32]) {
@@ -66,7 +76,7 @@ final class MetricsSuite: Suite {
         var out = [Int32](repeating: Int32.min, count: max(cap ?? bytes.count + 8, 1))
         let n = bytes.withUnsafeBufferPointer { b in
             out.withUnsafeMutableBufferPointer { o in
-                cairn_text_metrics(c.family, c.size, c.weight, c.italic ? 1 : 0, b.baseAddress, b.count,
+                cairn_text_metrics(c.family, c.size, c.weight, c.font.style, c.tracking, b.baseAddress, b.count,
                                    o.baseAddress, cap ?? o.count)
             }
         }
@@ -88,10 +98,26 @@ final class MetricsSuite: Suite {
         let size = CGFloat(min(max(f.size, 1), 1024))
         let hundred = min(max((Int(f.weight) + 50) / 100, 1), 9)
         let w: NSFont.Weight = [.ultraLight, .thin, .light, .regular, .medium, .semibold, .bold, .heavy, .black][hundred - 1]
-        let base = (f.family == 1 ? NSFont.monospacedSystemFont(ofSize: size, weight: w)
-                                  : NSFont.systemFont(ofSize: size, weight: w)) as CTFont
+        let widths: [FontWidth: NSFont.Width] = [.standard: .standard, .condensed: .condensed,
+                                                 .expanded: .expanded, .compressed: .compressed]
+        var ns = f.family == 1 ? NSFont.monospacedSystemFont(ofSize: size, weight: w)
+                               : NSFont.systemFont(ofSize: size, weight: w, width: widths[f.width]!)
+        if f.tabular {
+            let d = ns.fontDescriptor.addingAttributes([.featureSettings: [[
+                NSFontDescriptor.FeatureKey.typeIdentifier: kNumberSpacingType,
+                NSFontDescriptor.FeatureKey.selectorIdentifier: kMonospacedNumbersSelector]]])
+            ns = NSFont(descriptor: d, size: size) ?? ns
+        }
+        let base = ns as CTFont
         guard f.italic else { return base }
         return CTFontCreateCopyWithSymbolicTraits(base, 0, nil, .traitItalic, .traitItalic) ?? base
+    }
+
+    /// The attributes a line in font `f` is shaped with: the font, and its tracking.
+    static func attributes(_ f: Font) -> [NSAttributedString.Key: Any] {
+        var a: [NSAttributedString.Key: Any] = [.font: ctFont(f)]
+        if f.tracking != 0 { a[NSAttributedString.Key(kCTTrackingAttributeName as String)] = CGFloat(f.tracking) / 100 }
+        return a
     }
 
     static func round(_ x: CGFloat) -> Int32 {
@@ -125,12 +151,12 @@ final class MetricsSuite: Suite {
                      && (cap == 0 || part.count == cap),
                  "cap \(cap): count \(count2), prefix differs", repro: repro)
         let bytes = c.bytes ?? Array(c.text.utf8)
-        let count3 = bytes.withUnsafeBufferPointer { cairn_text_metrics(c.family, c.size, c.weight, c.italic ? 1 : 0, $0.baseAddress, $0.count, nil, 0) }
+        let count3 = bytes.withUnsafeBufferPointer { cairn_text_metrics(c.family, c.size, c.weight, c.font.style, c.tracking, $0.baseAddress, $0.count, nil, 0) }
         r.expect(check, count3 == count, "count with no buffer \(count3), want \(count)", repro: repro)
 
         // Lean's view: linked, and normalise is the identity (only valid UTF-8 crosses to Lean).
         if c.bytes == nil {
-            let lean = Lean.hostMetrics(family: c.family, size: c.size, weight: c.weight, italic: c.italic, c.text)
+            let lean = Lean.hostMetrics(c.font, c.text)
             r.expect(check, lean.first == 1, "Lean says no host is linked", repro: repro)
             r.expect(check, Array(lean.dropFirst()) == Array(all.prefix(n + 3)),
                      "Lean sees \(Array(lean.dropFirst()).prefix(12)), host gave \(all.prefix(12))", repro: repro)
@@ -141,7 +167,7 @@ final class MetricsSuite: Suite {
         // 1 pt + 0.15 em for kerning, fallback fonts and rounding. Core Text's own caret offsets are counted against that.
         guard !text.unicodeScalars.contains(where: Self.bidi) else { r.count("text.metrics.carets", "skippedRTL"); return }
         let carets = "text.metrics.carets"
-        let attr = NSAttributedString(string: text, attributes: [.font: Self.ctFont(c.font)])
+        let attr = NSAttributedString(string: text, attributes: Self.attributes(c.font))
         let line = CTLineCreateWithAttributedString(attr)
         var ends: [(index: Int, x: CGFloat)] = []  // where each glyph's advance ends, by string index
         for run in CTLineGetGlyphRuns(line) as! [CTRun] {

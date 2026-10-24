@@ -1,3 +1,4 @@
+import CairnFrame
 import CLean
 import CairnHost
 import CairnTrustedLean
@@ -113,9 +114,9 @@ enum Lean {
     }
 
     /// `[linked, ascent, descent, offsets…]` from `TextMetrics.host`.
-    static func hostMetrics(family: UInt32, size: UInt32, weight: UInt32, italic: Bool, _ s: String) -> [Int32] {
+    static func hostMetrics(_ f: Font, _ s: String) -> [Int32] {
         var s = s
-        let o = s.withUTF8 { cairn_tf_host_metrics(family, size, weight, italic ? 1 : 0, $0.baseAddress, $0.count) }
+        let o = s.withUTF8 { cairn_tf_host_metrics(f.family, f.size, f.weight, f.style, f.tracking, $0.baseAddress, $0.count) }
         let bytes = take(o!)
         return stride(from: 0, to: bytes.count, by: 4).map {
             Int32(bitPattern: UInt32(bytes[$0]) | UInt32(bytes[$0 + 1]) << 8 | UInt32(bytes[$0 + 2]) << 16 | UInt32(bytes[$0 + 3]) << 24)
@@ -125,9 +126,9 @@ enum Lean {
     /// One line as Lean wraps and lays it out (`cairn_tf_wrap`).
     struct WrapLine { var a: Int, b: Int, width: Int32, x: Int32, y: Int32, w: Int32 }
 
-    static func wrap(family: UInt32, size: UInt32, weight: UInt32, italic: Bool, width: UInt32, _ s: String) -> [WrapLine] {
+    static func wrap(_ f: Font, width: UInt32, _ s: String) -> [WrapLine] {
         var s = s
-        let o = s.withUTF8 { cairn_tf_wrap(family, size, weight, italic ? 1 : 0, width, $0.baseAddress, $0.count) }
+        let o = s.withUTF8 { cairn_tf_wrap(f.family, f.size, f.weight, f.style, f.tracking, width, $0.baseAddress, $0.count) }
         let bytes = take(o!)
         let v = stride(from: 0, to: bytes.count, by: 4).map {
             Int32(bitPattern: UInt32(bytes[$0]) | UInt32(bytes[$0 + 1]) << 8 | UInt32(bytes[$0 + 2]) << 16 | UInt32(bytes[$0 + 3]) << 24)

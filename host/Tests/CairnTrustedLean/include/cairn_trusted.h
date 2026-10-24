@@ -18,10 +18,11 @@ cairn_obj *cairn_tf_field_frame(cairn_obj *state);
 
 // `TextMetrics.host` as layout sees it (Cairn/Text/Host.lean, in libcairn_lean.a):
 // int32s [linked, ascent, descent, offset_0, ..., offset_n] for UTF-8 `s`.
-cairn_obj *cairn_tf_host_metrics(uint32_t family, uint32_t size, uint32_t weight, uint8_t italic,
-                                 const uint8_t *utf8, size_t len);
+// `style` and `tracking` as in cairn_text_metrics (host/Sources/CairnRender/Metrics.swift).
+cairn_obj *cairn_tf_host_metrics(uint32_t family, uint32_t size, uint32_t weight, uint8_t style,
+                                 int32_t tracking, const uint8_t *utf8, size_t len);
 
 // Where Lean wraps UTF-8 `s` at `width` with `TextMetrics.host` (Cairn/Fuzz/Trusted/Export.lean):
 // int32s [count, then per line a, b, leanWidth, x, y, w].
-cairn_obj *cairn_tf_wrap(uint32_t family, uint32_t size, uint32_t weight, uint8_t italic,
-                         uint32_t width, const uint8_t *utf8, size_t len);
+cairn_obj *cairn_tf_wrap(uint32_t family, uint32_t size, uint32_t weight, uint8_t style,
+                         int32_t tracking, uint32_t width, const uint8_t *utf8, size_t len);
