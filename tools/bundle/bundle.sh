@@ -1,5 +1,6 @@
 #!/bin/sh
-# make bundle APP=<App>: wraps the host executable Cairn<App> in build/apps/<App>.app.
+# make bundle APP=<App> [NAME=<name>]: wraps the host executable Cairn<App> in
+# build/apps/<name>.app (<App>.app by default).
 #
 # The per-app hook is host/Bundles/<App>/:
 #   Info.plist          used as the bundle's Info.plist (CFBundleExecutable is set to Cairn<App>);
@@ -9,9 +10,9 @@
 # SIGN is the codesign identity; the default `-` signs ad hoc, which is not a stable signature
 # (TCC grants such as the microphone's don't survive a rebuild). Pass a real identity for that.
 set -eu
-APP=$1; BIN=$2; SIGN=${3:--}
+APP=$1; BIN=$2; SIGN=${3:--}; NAME=${4:-$APP}
 HOOK=host/Bundles/$APP
-OUT=build/apps/$APP.app
+OUT="build/apps/$NAME.app"
 rm -rf "$OUT"
 mkdir -p "$OUT/Contents/MacOS"
 cp "$BIN/Cairn$APP" "$OUT/Contents/MacOS/Cairn$APP"

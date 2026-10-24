@@ -78,6 +78,9 @@ def request : Request → String
     s!"upload {str m} {str u} timeout={t} {headers hs} secret={opt secret sec} parts={body.length}" ++
       body.foldl (fun acc p => acc ++ s!" {part p}") ""
   | .forgetClip c => s!"forgetClip {c}"
+  | .openItem t => s!"open {str t}"
+  | .appRunning b => s!"appRunning {str b}"
+  | .readDefault d k => s!"readDefault {str d} {str k}"
 
 def effect : Effect → String
   | .setClipboard s => s!"clipboard {str s}"

@@ -130,6 +130,12 @@ enum Dump {
             return "upload \(str(m)) \(str(u)) timeout=\(t) \(headers(hs)) secret=\(secret) parts=\(body.count)"
                 + body.map { " " + part($0) }.joined()
         case let .forgetClip(c): return "forgetClip \(c)"
+        case let .openItem(t): return "open \(str(t))"
+        case let .appRunning(b): return "appRunning \(str(b))"
+        case let .readDefault(d, k): return "readDefault \(str(d)) \(str(k))"
+        case let .openItem(t): return "open \(str(t))"
+        case let .appRunning(b): return "appRunning \(str(b))"
+        case let .readDefault(d, k): return "readDefault \(str(d)) \(str(k))"
         }
     }
 

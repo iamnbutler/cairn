@@ -5,14 +5,14 @@ LEAN_PREFIX = $(shell cd lean && lean --print-prefix)
 LIB = build/lib/libcairn_lean.a
 VENDOR = host/Sources/CLean/vendor/lean
 
-.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest demo fixture clean record site site-maps map conformance fuzz fuzz-quick fuzz-yap size fuzz-trusted fuzz-trusted-quick bundle
+.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest demo fixture clean record site site-maps map conformance fuzz fuzz-quick fuzz-yap size fuzz-trusted fuzz-trusted-quick bundle yap yap-install
 
 # build/lib/libcairn_lean.a: the framework (`Cairn`) and Lean's runtime, linked by every host
 # target. Each app gets its own library on top (APPS: library → file), and each executable
 # links exactly one: v1 apps all export `cairn_app_init/step/frame` (docs/runtime.md), so two
 # in one binary would clash. The check below keeps the shared library free of app exports and
 # each app library to one set.
-APPS = Counter:counter Basics:basics Todo:todo Clock:clock Tray:tray
+APPS = Counter:counter Basics:basics Todo:todo Clock:clock Tray:tray Yap:yap
 
 lean:
 	cd lean && lake build
@@ -101,6 +101,7 @@ selftest: host
 	cd host && swift run CairnTodo --selftest
 	cd host && swift run CairnClock --selftest
 	cd host && swift run CairnTray --selftest
+	cd host && swift run CairnYap --selftest
 
 # Opens an app in a window: `make demo` (TodoMVC), or `make demo DEMO=CairnBasics`.
 DEMO ?= CairnTodo
@@ -110,7 +111,22 @@ demo: host
 # An app bundle: `make bundle APP=Tray [SIGN=identity]` writes build/apps/Tray.app. Per-app
 # Info.plist and entitlements go in host/Bundles/<App>/ (tools/bundle/bundle.sh).
 bundle: host
-	tools/bundle/bundle.sh $(APP) $$(cd host && swift build --show-bin-path) $(or $(SIGN),-)
+	tools/bundle/bundle.sh $(APP) $$(cd host && swift build --show-bin-path) $(or $(SIGN),-) "$(or $(NAME),$(APP))"
+
+# Yap on Cairn (docs/yap.md): `make yap` builds build/apps/Yap (Cairn).app, release, signed with
+# the first valid Apple Development identity (Yap's own project.yml signs with team 8S43JJMN6B's
+# "Apple Development"), so TCC grants survive rebuilds. YAP_SIGN=<identity or hash> overrides it.
+# `make yap-install` copies it to /Applications, beside (never over) the original Yap.app.
+YAP_SIGN ?= $(shell security find-identity -v -p codesigning | grep '"Apple Development' | grep -v CSSMERR | head -1 | awk '{print $$2}')
+yap: lean
+	cd host && swift build -c release --product CairnYap
+	@[ -n "$(YAP_SIGN)" ] || { echo "yap: no Apple Development identity; pass YAP_SIGN=<identity>"; exit 1; }
+	tools/bundle/bundle.sh Yap $$(cd host && swift build -c release --show-bin-path) $(YAP_SIGN) "Yap (Cairn)"
+
+yap-install: yap
+	rm -rf "/Applications/Yap (Cairn).app"
+	cp -R "build/apps/Yap (Cairn).app" "/Applications/Yap (Cairn).app"
+	@echo "installed /Applications/Yap (Cairn).app"
 
 # The Swift stand-in app with a text field, for checking IME and accessibility by hand.
 fixture: host
@@ -193,7 +209,8 @@ fuzz-quick: lean
 	cd lean && lake build yapfuzz && .lake/build/bin/yapfuzz --iterations 200 --steps 200 --out ../build/fuzz/quick
 
 # Yap's dictation machine against a random host (lean/Examples/Yap/Fuzz.lean): keys, ticks,
-# audio, replies late, failed, duplicated and out of order. `make fuzz-yap [N=5000] [SEED=0]`
+# audio, replies late, failed, duplicated and out of order; then the app itself (`receive` and
+# the menu, lean/Examples/Yap/AppFuzz.lean) against one. `make fuzz-yap [N=5000] [SEED=0]`
 # writes build/fuzz/Yap.json; the generic `make fuzz APP=Yap` drives only Yap's menu.
 fuzz-yap: lean
 	cd lean && lake build yapfuzz && .lake/build/bin/yapfuzz --seed $(or $(SEED),0) --iterations $(or $(N),5000) --steps 300 --out ../build/fuzz
@@ -202,7 +219,7 @@ fuzz-yap: lean
 # into build/size/, attributed (Lean runtime, Cairn, the app, Swift host, shaders), and checked
 # against SIZE_LIMIT bytes. No host app links `Lean` (the compiler, about 100 MB), so each is a
 # few MB; crossing the limit almost always means something imported `Lean`.
-SIZE_APPS = CairnCounter CairnBasics CairnTodo CairnClock CairnTray
+SIZE_APPS = CairnCounter CairnBasics CairnTodo CairnClock CairnTray CairnYap
 SIZE_LIMIT = 5000000
 size: lean
 	mkdir -p build/size

@@ -8,19 +8,24 @@ public import Examples.Yap.Sending
 public import Examples.Yap.Recording
 public import Examples.Yap.Once
 public import Examples.Yap.Recent
+public import Examples.Yap.App
+public import Examples.Yap.View
+public import Examples.Yap.AppProofs
 
-/-! # Yap: the dictation machine's claims
+/-! # Yap on Cairn: the app and its claims
 
-Workstream P, step 1a of M2 (GOAL.md): Yap (`~/code/yap`) as a headless model,
-`Examples.Yap.step : State → Input → State × List Cmd`, with its claims proved. No view and no
-host yet. What is modelled, what is assumed of the host, and where the model differs from
-Swift Yap are in `Examples/Yap/README.md`.
+Workstream P made Yap (`~/code/yap`) a headless machine, `Examples.Yap.step : State → Input →
+State × List Cmd`, and proved its claims of `step`. Workstream W (M2 step 3) runs that machine
+as a Cairn app: `AppState` is the machine's state, the app's own bookkeeping (`Io`: pending
+requests, the clock, the overlay) and the log of clips typed so far. The host's events arrive
+through `receive` (`Examples.Yap.App`), which turns each into at most one machine input and
+translates the machine's commands into framework effects. The menu items are moves over
+`menuStep`, the menu run the same way.
 
-The claim commands only know machines driven by `Action`s on controls, and Yap is driven by the
-host: the key, the clock, replies. So the menu items are `move`s over `menu` (their `Cmd`s, other
-than copying, are dropped until the framework has effects for them), and everything about
-dictation is an `invariant` whose `holds` quantifies over every host input (`∀ i`) or every
-sequence of host inputs (`∀ is`), so it is a statement about `step` itself.
+So the dictation claims are now statements about what reaches the host: `receive`'s effects
+and the app's state, in every state, and the ones about state are invariants of the app's
+machine, carried through the runtime by `steps_reachableAll` (`Examples.Yap.AppProofs` and the
+theorems at the end of this file).
 
 | Id | Kind | What |
 |---|---|---|
@@ -40,7 +45,12 @@ sequence of host inputs (`∀ is`), so it is a statement about `step` itself.
 | ^322 | invariant | the recent list holds five |
 | ^323 | invariant | too short, silent or nowhere to type: never sent |
 | ^330–^337 | assume | what the host does |
-| ^340, ^341 | flow | through the menu | -/
+| ^340, ^341 | flow | through the menu |
+| ^342 | move | Quit |
+| ^343 | move | grant the microphone |
+| ^344 | move | open the menu |
+| ^345 | place | the overlay panel |
+| ^346 | invariant | the key is left alone while the original Yap runs | -/
 
 @[expose] public section
 
@@ -52,93 +62,136 @@ open Cairn Cairn.Claims
 place ^301 menuBar "Menu bar menu" where
   does "Yap's menu bar menu: the status line, Copy Last Transcript, Recent Transcripts, Keep Transcripts, Press Return After Dictating, Dictate with Key, Open Transcripts Folder, Edit Dictionary, Edit Settings, and Grant Accessibility Access while it is missing."
 
-move ^302 copyLast (s : State) "Copy Last Transcript" in ^301 where
+place ^345 overlayPanel "Overlay panel" where
+  does "Yap's panel at the bottom of the screen, over every app, that never takes focus or clicks: the phase (REC, hands free, transcribing, typed, not typed), a waveform drawn from the microphone's levels and the live transcript's last four lines. Hidden 1.5 s after a transcript is typed and 4 s after one fails."
+
+move ^302 copyLast (s : AppState) "Copy Last Transcript" in ^301 where
   does "Choose Copy Last Transcript."
   sees "The newest transcript is on the clipboard, typed or not. Nothing else changes."
-  enabled := !s.recent.isEmpty
+  enabled := !s.core.recent.isEmpty
   on press
-    emit := (s, match s.recent with
+    emit := (s, match s.core.recent with
       | t :: _ => [.setClipboard t.text]
       | [] => [])
     post s' := s' = s
     sound := by intro s _; rfl
 
-move ^303 copyRecent (s : State) (k : Nat) "Recent transcript" in ^301 where
+move ^303 copyRecent (s : AppState) (k : Nat) "Recent transcript" in ^301 where
   does "Choose a transcript under Recent Transcripts (the newest first, five at most)."
   sees "That transcript is on the clipboard. Nothing else changes."
-  enabled := decide (k < s.recent.length)
+  enabled := decide (k < s.core.recent.length)
   on press
-    emit := (s, match s.recent[k]? with
+    emit := (s, match s.core.recent[k]? with
       | some t => [.setClipboard t.text]
       | none => [])
     post s' := s' = s
     sound := by intro s k _; rfl
 
-move ^304 toggleKeep (s : State) "Keep Transcripts" in ^301 where
+move ^304 toggleKeep (s : AppState) "Keep Transcripts" in ^301 where
   does "Choose Keep Transcripts."
   sees "The setting flips and is written to config.json; the recording and the recent list are untouched."
   on press
-    apply := (menu s .toggleKeep).1
-    post s' := s'.settings.keepTranscripts = !s.settings.keepTranscripts ∧
-      s'.recording = s.recording ∧ s'.recent = s.recent
+    emit := menuStep s .toggleKeep
+    post s' := s'.core.settings.keepTranscripts = !s.core.settings.keepTranscripts ∧
+      s'.core.recording = s.core.recording ∧ s'.core.recent = s.core.recent
     sound := by intro s; exact ⟨rfl, rfl, rfl⟩
 
-move ^305 toggleSubmits (s : State) "Press Return After Dictating" in ^301 where
+move ^305 toggleSubmits (s : AppState) "Press Return After Dictating" in ^301 where
   does "Choose Press Return After Dictating, available while Dictate with Key is on."
   sees "The setting flips: transcripts sent from now on end with Return instead of a space."
-  enabled := s.enabled
+  enabled := s.core.enabled
   on press
-    apply := (menu s .toggleSubmits).1
-    post s' := s'.submits = !s.submits ∧ s'.recording = s.recording
-    sound := by intro s h; simp only [enabled] at h; simp [press.post, press.apply, menu, h]
+    emit := menuStep s .toggleSubmits
+    post s' := s'.core.submits = !s.core.submits ∧ s'.core.recording = s.core.recording
+    sound := by
+      intro s h
+      simp only [enabled] at h
+      simp [press.post, press.emit, menuStep_core, menu, h]
 
-move ^306 toggleEnabled (s : State) "Dictate with Key" in ^301 where
+move ^306 toggleEnabled (s : AppState) "Dictate with Key" in ^301 where
   does "Choose Dictate with Key."
   sees "The setting flips. Turning it off cancels: the recording stops, and a transcript still on its way is kept but not typed."
   on press
-    apply := (menu s .toggleEnabled).1
-    post s' := s'.enabled = !s.enabled ∧
-      (s.enabled = true → s'.recording = none ∧ s'.turn = s.turn + 1)
-    sound := by intro s; cases h : s.enabled <;> simp [press.post, press.apply, menu, h, cancel]
+    emit := menuStep s .toggleEnabled
+    post s' := s'.core.enabled = !s.core.enabled ∧
+      (s.core.enabled = true → s'.core.recording = none ∧ s'.core.turn = s.core.turn + 1)
+    sound := by
+      intro s
+      simp only [press.post, press.emit, menuStep_core]
+      cases h : s.core.enabled <;> simp [menu, h, cancel]
 
-move ^307 openTranscripts (s : State) "Open Transcripts Folder" in ^301 where
+move ^307 openTranscripts (s : AppState) "Open Transcripts Folder" in ^301 where
   does "Choose Open Transcripts Folder."
-  sees "The folder of day files opens in the Finder. Nothing in Yap changes."
+  sees "The folder of day files opens in the Finder (made first if missing). Nothing in Yap changes."
   on press
-    apply := s
-    post s' := s' = s
+    emit := menuStep s .openTranscripts
+    post s' := s'.core = s.core
     sound := by intro s; rfl
 
-move ^308 editDictionary (s : State) "Edit Dictionary" in ^301 where
+move ^308 editDictionary (s : AppState) "Edit Dictionary" in ^301 where
   does "Choose Edit Dictionary."
-  sees "dictionary.txt opens in the default editor; Yap reads it again when it changes."
+  sees "dictionary.txt opens in the default editor (written from Yap's template first if missing); Yap reads it again when it changes."
   on press
-    apply := s
-    post s' := s' = s
+    emit := menuStep s .editDictionary
+    post s' := s'.core = s.core
     sound := by intro s; rfl
 
-move ^309 editSettings (s : State) "Edit Settings" in ^301 where
+move ^309 editSettings (s : AppState) "Edit Settings" in ^301 where
   does "Choose Edit Settings."
-  sees "config.json opens in the default editor; Yap reads it again when it changes."
+  sees "config.json opens in the default editor (written with the current settings first if missing); Yap reads it again when it changes."
   on press
-    apply := s
-    post s' := s' = s
+    emit := menuStep s .editSettings
+    post s' := s'.core = s.core
     sound := by intro s; rfl
 
-move ^310 grantAccess (s : State) "Grant Accessibility Access" in ^301 where
+move ^310 grantAccess (s : AppState) "Grant Accessibility Access" in ^301 where
   does "Choose Grant Accessibility Access, shown while Yap can't type."
   sees "System Settings opens at Accessibility."
-  enabled := !s.trusted
+  enabled := !s.core.trusted
   on press
-    apply := s
+    emit := menuStep s .grantAccess
+    post s' := s'.core = s.core
+    sound := by
+      intro s _
+      show (menu s.core .grantAccess).1 = s.core
+      simp only [menu]; split <;> rfl
+
+move ^342 quit (s : AppState) "Quit Yap (Cairn)" in ^301 where
+  does "Choose Quit Yap (Cairn), or press ⌘Q with the menu open."
+  sees "The menu bar item goes away; the app has quit, and any recording with it."
+  on press
+    emit := (s, [.quit])
     post s' := s' = s
-    sound := by intro s _; rfl
+    sound := by intro s; rfl
 
-/-- Yap's menu: its moves, from launch. The host's inputs are `step`'s, not the machine's. -/
-def machine : Machine State := { init := init, moves := moves% }
+move ^343 grantMic (s : AppState) "Grant Microphone Access" in ^301 where
+  does "Choose Grant Microphone Access, shown while the microphone is denied."
+  sees "macOS asks for the microphone if it hasn't yet; otherwise nothing changes until it is granted in System Settings. Nothing in dictation changes."
+  enabled := s.io.micGranted == some false
+  on press
+    emit :=
+      let o := s.io.ask .micAsk (.permission .microphone true)
+      ({ s with io := o.1 }, [Ask.effect o.2])
+    post s' := s'.core = s.core ∧ s'.typed = s.typed
+    sound := by intro s _; exact ⟨rfl, rfl⟩
 
-/-- What every menu item keeps, every move keeps. -/
-theorem machine_preserves {P : State → Prop} (h : ∀ s m, P s → P (menu s m).1) :
+move ^344 openMenu (s : AppState) "Open the menu" in ^301 where
+  does "Click Yap's menu bar item."
+  sees "The menu opens, and Yap checks again whether it has Accessibility and the microphone and whether the original Yap is running. Nothing in dictation changes."
+  on press
+    emit :=
+      let o := checks s.io
+      ({ s with io := o.1 }, o.2.map Ask.effect)
+    post s' := s'.core = s.core ∧ s'.typed = s.typed
+    sound := by intro s; exact ⟨rfl, rfl⟩
+
+/-- Yap on Cairn: its moves, from launch, and `receive` for everything the host reports. -/
+def machine : Machine AppState := { init := {}, moves := moves%, receive }
+
+/-- What every menu item keeps, every move keeps: the menu, Quit, and the moves that only ask
+the host something. -/
+theorem machine_preserves {P : AppState → Prop} (h : ∀ s a, P s → P (menuStep s a).1)
+    (hio : ∀ s io, P s → P { s with io }) :
     ∀ s a, P s → P (machine.update s a).1 :=
   machine.preserves <|
     Move.all_cons (copyLast.preserves _ fun _ _ hs => hs)
@@ -146,119 +199,165 @@ theorem machine_preserves {P : State → Prop} (h : ∀ s m, P s → P (menu s m
     (Move.all_cons (toggleKeep.preserves _ fun s hs => h s _ hs)
     (Move.all_cons (toggleSubmits.preserves _ fun s _ hs => h s _ hs)
     (Move.all_cons (toggleEnabled.preserves _ fun s hs => h s _ hs)
-    (Move.all_cons (openTranscripts.preserves _ fun _ hs => hs)
-    (Move.all_cons (editDictionary.preserves _ fun _ hs => hs)
-    (Move.all_cons (editSettings.preserves _ fun _ hs => hs)
-    (Move.all_cons (grantAccess.preserves _ fun _ _ hs => hs) Move.all_nil))))))))
+    (Move.all_cons (openTranscripts.preserves _ fun s hs => h s _ hs)
+    (Move.all_cons (editDictionary.preserves _ fun s hs => h s _ hs)
+    (Move.all_cons (editSettings.preserves _ fun s hs => h s _ hs)
+    (Move.all_cons (grantAccess.preserves _ fun s _ hs => h s _ hs)
+    (Move.all_cons (quit.preserves _ fun _ hs => hs)
+    (Move.all_cons (grantMic.preserves _ fun s _ hs => hio s _ hs)
+    (Move.all_cons (openMenu.preserves _ fun s hs => hio s _ hs) Move.all_nil)))))))))))
+
+/-- A property of the machine's state and the typed log, kept by `step` and the menu, is kept by
+every move and by `receive`. -/
+theorem Keeps.machine {Q : State → List Nat → Prop} (hq : Keeps Q) :
+    (∀ s a, Q s.core s.typed → Q (machine.update s a).1.core (machine.update s a).1.typed) ∧
+      ∀ s m, Q s.core s.typed → Q (machine.receive s m).1.core (machine.receive s m).1.typed :=
+  ⟨machine_preserves (P := fun s => Q s.core s.typed) (fun s a h => hq.menuStep s a h)
+      (fun _ _ h => h),
+    fun s m h => hq.receive s m h⟩
 
 /-! ## Dictation -/
 
 invariant ^311 shortcutNeverSends "A shortcut never sends" for machine where
-  does "While the dictation key is held and another key has gone down with it (a shortcut such as the key plus C), nothing the host reports sends a clip for transcription: not the key's release, not a new key in config.json, not a reply or the menu. Only the clock can, for a hands-free recording that hits its ten-minute limit (`shortcut_never_sends`)."
-  holds s := ∀ i, s.keyHeld = true → s.chorded = true → (∀ t, i ≠ .tick t) →
-    ∀ c ∈ (step s i).2, c.kind ≠ .transcribe
-  init := fun i => shortcut_never_sends _ i
-  step := fun _ _ _ i => shortcut_never_sends _ i
+  does "While the dictation key is held and another key has gone down with it (a shortcut such as the key plus C), nothing the host reports leads to a clip's upload for transcription: not the key's release, not a new key in config.json, not a reply, and never the menu. Only the clock (or a timer) can, for a hands-free recording that hits its ten-minute limit (`app_shortcut_never_sends`, `shortcut_never_sends`)."
+  holds s := (s.core.keyHeld = true → s.core.chorded = true →
+      ∀ m, (∀ t, m ≠ .clock t) → (∀ n, m ≠ .timer n) →
+      ∀ id r, Effect.request id r ∈ (receive s m).2 → r.wholeClip = none) ∧
+    ∀ a id r, Effect.request id r ∈ (menuStep s a).2 → r.machineOnly = false
+  init := ⟨fun hk hc m hcl hti _ _ h => app_shortcut_never_sends _ m hk hc hcl hti h,
+    fun a _ _ h => menuStep_no_upload _ a h⟩
+  step := fun _ _ _ => ⟨fun hk hc m hcl hti _ _ h => app_shortcut_never_sends _ m hk hc hcl hti h,
+    fun a _ _ h => menuStep_no_upload _ a h⟩
+  receive := fun _ _ _ => ⟨fun hk hc m hcl hti _ _ h => app_shortcut_never_sends _ m hk hc hcl hti h,
+    fun a _ _ h => menuStep_no_upload _ a h⟩
 
 invariant ^312 holdTapSplit "Hold to talk, tap to latch: 300 ms" for machine where
   does "Releasing the key ends a press that began a recording, not part of a shortcut: held for less than 300 ms it was a tap, and the recording goes on hands free with its deadline ten minutes on; held 300 ms or more, the recording ends and is sent (`hold_tap_split`)."
-  holds s := ∀ r t, s.recording = some r → r.latched = false → s.keyHeld = true →
-    s.chorded = false →
-    (step s (.keyUp t)).1.recording =
-      if max s.now t - s.pressedAt < tapLimit then
-        some { r with latched := true, deadline := max s.now t + latchLimit }
+  holds s := ∀ r t k mo, s.core.recording = some r → r.latched = false → s.core.keyHeld = true →
+    s.core.chorded = false →
+    (receive s (.sub (.globalKey k mo) (.keyUp t))).1.core.recording =
+      if max s.core.now t - s.core.pressedAt < tapLimit then
+        some { r with latched := true, deadline := max s.core.now t + latchLimit }
       else none
-  init := fun r t => hold_tap_split _ r t
-  step := fun _ _ _ r t => hold_tap_split _ r t
+  init := fun r t _ _ => hold_tap_split _ r t
+  step := fun _ _ _ r t _ _ => hold_tap_split _ r t
+  receive := fun _ _ _ r t _ _ => hold_tap_split _ r t
 
 invariant ^313 oneRecording "One recording at a time" for machine where
-  does "The host is asked to start a recording only when none is in progress, and always a new clip; a recording leaves the model only when the host is told to stop it, or reported that its microphone failed (`step_start`, `step_ends`)."
-  holds s := (∀ i n, Cmd.startRecording n ∈ (step s i).2 →
-      s.recording = none ∧ n = s.nextClip ∧ (step s i).1.recording.map (·.clip) = some n ∧
-        (step s i).1.nextClip = n + 1) ∧
-    (∀ i r, s.recording = some r →
-      (step s i).1.recording.map (·.clip) = some r.clip ∨
-        Cmd.stopRecording r.clip ∈ (step s i).2 ∨ ∃ e, i = .micFailed r.clip e)
-  init := ⟨fun i _ h => step_start _ i h, fun i r h => step_ends _ i r h⟩
-  step := fun _ _ _ => ⟨fun i _ h => step_start _ i h, fun i r h => step_ends _ i r h⟩
+  does "The app records exactly while the machine has a recording: one `record` subscription, for its clip. Whatever the host reports, a recording the machine didn't have is the next clip, started when there was none; the menu only ever stops one (`record_sub_iff`, `app_new_recording`, `step_new_recording`)."
+  holds s := (∀ c, Sub.record c ∈ subscriptions s ↔ s.core.recording.map (·.clip) = some c) ∧
+    (∀ m r', (receive s m).1.core.recording = some r' →
+      s.core.recording.map (·.clip) ≠ some r'.clip → s.core.recording = none ∧ r'.clip = s.core.nextClip) ∧
+    (∀ a, (menuStep s a).1.core.recording = s.core.recording ∨ (menuStep s a).1.core.recording = none)
+  init := ⟨record_sub_iff _, fun m _ h hn => app_new_recording _ m h hn, fun a => menu_recording _ a⟩
+  step := fun _ _ _ => ⟨record_sub_iff _, fun m _ h hn => app_new_recording _ m h hn,
+    fun a => menu_recording _ a⟩
+  receive := fun _ _ _ => ⟨record_sub_iff _, fun m _ h hn => app_new_recording _ m h hn,
+    fun a => menu_recording _ a⟩
 
 invariant ^314 recordingEnds "Every recording ends" for machine where
-  does "A recording is either held down or hands free with its deadline at most ten minutes away; so once the key is up and ten minutes pass (the host delivering the tick it asked for), there is no recording. A recording held down has no limit, as in Swift Yap (`step_recInv`, `recording_ends`)."
-  holds s := RecInv s ∧ ∀ t, s.now ≤ t → (run s [.keyUp t, .tick (t + latchLimit)]).recording = none
-  init := ⟨recInv_init, recording_ends _ recInv_init⟩
-  step := machine_preserves fun s m h =>
-    have h' := h.1.calm (menu_calm s m)
-    ⟨h', recording_ends _ h'⟩
+  does "A recording is either held down or hands free with its deadline at most ten minutes away; so once the key's release is heard and the clock reads ten minutes on, there is no recording. A recording held down has no limit, as in Swift Yap (`step_recInv`, `app_recording_ends`)."
+  holds s := RecInv s.core ∧ ∀ t k mo (tm : Time), s.core.now ≤ t → t + latchLimit ≤ tm.mono →
+    (receive (receive s (.sub (.globalKey k mo) (.keyUp t))).1 (.clock tm)).1.core.recording = none
+  init := ⟨recInv_init, fun t k mo tm => app_recording_ends _ recInv_init t k mo tm⟩
+  step := fun s a h =>
+    have h' := keeps_recInv.machine.1 s a h.1
+    ⟨h', fun t k mo tm => app_recording_ends _ h' t k mo tm⟩
+  receive := fun s m h =>
+    have h' := keeps_recInv.machine.2 s m h.1
+    ⟨h', fun t k mo tm => app_recording_ends _ h' t k mo tm⟩
 
 invariant ^315 keptBeforeTyped "Kept before it is typed" for machine where
-  does "When Yap types a transcript, it is already first in Recent Transcripts, marked not yet typed, and when transcripts are kept the command saving it to today's file comes before the command typing it (`saved_before_typed`). Swift Yap saves after typing; see the README."
-  holds s := ∀ i a n pid text ret, Cmd.type a n pid text ret ∈ (step s i).2 →
-    ∃ t ∈ (step s i).1.recent, t.clip = some n ∧ t.typed = false ∧
-      ∃ pre post, (step s i).2 = pre ++ Cmd.type a n pid text ret :: post ∧
-        (s.settings.keepTranscripts = true → ∃ r, Cmd.save r t ∈ pre)
-  init := fun i _ _ _ _ _ h => saved_before_typed _ i h
-  step := fun _ _ _ i _ _ _ _ _ h => saved_before_typed _ i h
+  does "When Yap types a transcript, it is already in Recent Transcripts, marked not yet typed, and when transcripts are kept the request appending it to its day file comes before the request typing it (`app_saved_before_typed`, `saved_before_typed`). Swift Yap saves after typing; see the README."
+  holds s := ∀ m id pid text ret, Effect.request id (.typeText pid text ret) ∈ (receive s m).2 →
+    ∃ t ∈ (receive s m).1.core.recent, t.typed = false ∧
+      ∃ pre post, (receive s m).2 = pre ++ Effect.request id (.typeText pid text ret) :: post ∧
+        (s.core.settings.keepTranscripts = true →
+          ∃ id' file, Effect.request id' (.appendFile file (transcriptLine t ++ "\n").toUTF8) ∈ pre)
+  init := fun m _ _ _ _ h => app_saved_before_typed _ m h
+  step := fun _ _ _ m _ _ _ _ h => app_saved_before_typed _ m h
+  receive := fun _ _ _ m _ _ _ _ h => app_saved_before_typed _ m h
 
 invariant ^316 failedTypeFlagged "A failed type is kept and flagged" for machine where
-  does "When typing fails, the transcript is first in Recent Transcripts (so Copy Last Transcript copies it), marked as never having reached its app, and the error sound plays (`failed_type_flagged`)."
-  holds s := ∀ q c t e, s.reqs.lookup q = some (.type c t) →
-    (step s (.reply q (.failed e))).1.recent.head? = some { t with typed := false } ∧
-      Cmd.play .basso ∈ (step s (.reply q (.failed e))).2
-  init := fun q c t e h => failed_type_flagged _ q c t e h
-  step := fun _ _ _ q c t e h => failed_type_flagged _ q c t e h
+  does "When typing fails, the transcript is first in Recent Transcripts (so Copy Last Transcript copies it), marked as never having reached its app, and the error sound plays (`app_failed_type_flagged`)."
+  holds s := ∀ q c t e (f : Fault), s.core.reqs.lookup q = some (.type c t) →
+    (receive s (.reply (2 * q) (.failed f e))).1.core.recent.head? = some { t with typed := false } ∧
+      ∃ id, Effect.request id (.playSound "Basso") ∈ (receive s (.reply (2 * q) (.failed f e))).2
+  init := fun q c t e f h => app_failed_type_flagged _ q c t e f h
+  step := fun _ _ _ q c t e f h => app_failed_type_flagged _ q c t e f h
+  receive := fun _ _ _ q c t e f h => app_failed_type_flagged _ q c t e f h
 
 invariant ^317 onlyLiveRepliesType "Late and cancelled replies never type" for machine where
-  does "Only a reply to a whole-clip transcription that is still in flight, and was not cancelled since it was sent, types anything; a duplicate, a reply to something else, or a reply after Dictate with Key was turned off types nothing (`late_reply_never_types`)."
-  holds s := ∀ i a n pid text ret, Cmd.type a n pid text ret ∈ (step s i).2 →
-    ∃ q x cr, i = .reply q x ∧ (q, Req.clip cr) ∈ s.reqs ∧ cr.clip = n ∧ cr.turn = s.turn
-  init := fun i _ _ _ _ _ h => late_reply_never_types _ i h
-  step := fun _ _ _ i _ _ _ _ _ h => late_reply_never_types _ i h
+  does "Only a reply to a whole-clip transcription that is still in flight, and was not cancelled since it was sent, types anything; a duplicate, a reply to something else, or a reply after Dictate with Key was turned off types nothing (`app_only_live_replies_type`, `late_reply_never_types`)."
+  holds s := ∀ m id pid text ret, Effect.request id (.typeText pid text ret) ∈ (receive s m).2 →
+    ∃ q r cr, m = .reply (2 * q) r ∧ (q, Req.clip cr) ∈ s.core.reqs ∧ cr.turn = s.core.turn
+  init := fun m _ _ _ _ h => app_only_live_replies_type _ m h
+  step := fun _ _ _ m _ _ _ _ h => app_only_live_replies_type _ m h
+  receive := fun _ _ _ m _ _ _ _ h => app_only_live_replies_type _ m h
 
 invariant ^318 typedOnce "Each clip is typed at most once" for machine where
-  does "Along every sequence of host inputs, however replies arrive (late, twice, out of order, or never), no clip's transcript is typed twice (`typed_once`, `typed_once_from`)."
-  holds s := ∀ is n, (typedClips (exec s is).2).count n ≤ 1
-  init := typed_once
-  step := machine_preserves fun s m h is n => by
-    have := h (.menu m :: is) n
-    simp only [exec, typedClips_append, List.count_append] at this
-    exact Nat.le_trans (Nat.le_add_left _ _) this
+  does "However replies arrive (late, twice, out of order, or never), and whatever else the host reports, no clip's transcript has been typed twice: the app's log of typed clips counts each at most once (`TypedInv`, `step_rel`)."
+  holds s := TypedInv s.core s.typed ∧ ∀ n, s.typed.count n ≤ 1
+  init := ⟨typedInv_init, typedInv_init.once⟩
+  step := fun s a h =>
+    have h' := keeps_typedInv.machine.1 s a h.1
+    ⟨h', h'.once⟩
+  receive := fun s m h =>
+    have h' := keeps_typedInv.machine.2 s m h.1
+    ⟨h', h'.once⟩
 
 invariant ^319 wholeWordFixes "Fixes replace whole words" for machine where
-  does "What is typed is the transcript with each dictionary fix applied to whole words only, case-insensitively, then trimmed, then a space (or Return) (`typed_text`, `replaceWord_replaces`)."
-  holds s := ∀ i a n pid text ret, Cmd.type a n pid text ret ∈ (step s i).2 →
-    ∃ q raw cr, i = .reply q (.ok raw) ∧ (q, Req.clip cr) ∈ s.reqs ∧
+  does "What is typed is the text of a successful transcription reply with each dictionary fix applied to whole words only, case-insensitively, then trimmed, then a space (or Return) (`app_typed_text`, `typed_text`, `replaceWord_replaces`)."
+  holds s := ∀ m id pid text ret, Effect.request id (.typeText pid text ret) ∈ (receive s m).2 →
+    ∃ q r raw cr, m = .reply (2 * q) r ∧ transcriptReply r = .ok raw ∧ (q, Req.clip cr) ∈ s.core.reqs ∧
       ReplacesAll cr.fixes raw.toList (applyFixes cr.fixes raw).toList ∧
       text = (if cr.submits then trimText (applyFixes cr.fixes raw)
               else trimText (applyFixes cr.fixes raw) ++ " ")
-  init := fun i _ _ _ _ _ h => typed_text _ i h
-  step := fun _ _ _ i _ _ _ _ _ h => typed_text _ i h
+  init := fun m _ _ _ _ h => app_typed_text _ m h
+  step := fun _ _ _ m _ _ _ _ h => app_typed_text _ m h
+  receive := fun _ _ _ m _ _ _ _ h => app_typed_text _ m h
 
 invariant ^320 retentionKeepsToday "Retention never deletes today" for machine where
-  does "The only day files deleted are ones the host listed that are older than today; today's is never deleted, whatever retentionDays says (`retention_never_today`)."
-  holds s := ∀ i ds, Cmd.deleteDays ds ∈ (step s i).2 →
-    ∃ today days, i = .transcriptDays today days ∧ today ∉ ds ∧ ∀ d ∈ ds, d ∈ days ∧ d < today
-  init := fun i _ h => retention_never_today _ i _ h
-  step := fun _ _ _ i _ h => retention_never_today _ i _ h
+  does "The only day files deleted are ones the host listed that are older than today by the clock; today's is never deleted, whatever retentionDays says (`app_retention_never_today`, `retention_never_today`)."
+  holds s := ∀ m id path, Effect.request id (.deleteFile path) ∈ (receive s m).2 →
+    ∃ (id' : Nat) (ns : List String) (d : Nat), m = .reply id' (.names ns) ∧ path = dayPath d ∧
+      d ∈ ns.filterMap Dates.parseDayFile ∧ d < (Dates.localDay s.io.wall s.io.zone).toNat
+  init := fun m _ _ h => app_retention_never_today _ m h
+  step := fun _ _ _ m _ _ h => app_retention_never_today _ m h
+  receive := fun _ _ _ m _ _ h => app_retention_never_today _ m h
 
 invariant ^321 first25Terms "Only the first 25 terms are sent" for machine where
-  does "Every prompt sent with a transcription, of a whole clip or a preview chunk, is the one a dictionary of just its first 25 terms would give (`step_prompt`)."
-  holds s := ∀ i c p, c ∈ (step s i).2 → c.prompt? = some p →
-    ∃ ctx, p = { s.dict with terms := s.dict.terms.take promptLimit }.promptFor ctx
-  init := fun i _ _ h hp => step_prompt _ i h hp
-  step := fun _ _ _ i _ _ h hp => step_prompt _ i h hp
+  does "Every upload is a transcription, of a whole clip or a preview chunk, whose prompt is the one a dictionary of just its first 25 terms would give (`app_prompt`, `step_prompt`)."
+  holds s := ∀ m id me url hs sec body to,
+    Effect.request id (.upload me url hs sec body to) ∈ (receive s m).2 →
+    ∃ n a b mo p ctx, Request.upload me url hs sec body to = transcription n a b mo p ∧
+      p = { s.core.dict with terms := s.core.dict.terms.take promptLimit }.promptFor ctx
+  init := fun m _ _ _ _ _ _ _ h => app_prompt _ m h
+  step := fun _ _ _ m _ _ _ _ _ _ _ h => app_prompt _ m h
+  receive := fun _ _ _ m _ _ _ _ _ _ _ h => app_prompt _ m h
 
 invariant ^322 recentFive "Recent Transcripts holds five" for machine where
-  does "The recent list never holds more than five transcripts (`step_small`)."
-  holds s := s.recent.length ≤ recentLimit
+  does "The recent list never holds more than five transcripts (`step_small`, `menu_small`)."
+  holds s := s.core.recent.length ≤ recentLimit
   init := Nat.zero_le _
-  step := machine_preserves fun s m h => menu_small s m h
+  step := keeps_small.machine.1
+  receive := keeps_small.machine.2
 
 invariant ^323 onlySendable "Too short, silent or nowhere to type: never sent" for machine where
-  does "Every whole-clip transcription asked for is of the recording in progress, at least 0.3 s long, with a sample at or above the silence peak, and with an app to type into (`step_transcribe`)."
-  holds s := ∀ i q n m p, Cmd.transcribe q n m p ∈ (step s i).2 →
-    ∃ r, s.recording = some r ∧ Sendable s.dict r n p
-  init := fun i _ _ _ _ h => step_transcribe _ i h
-  step := fun _ _ _ i _ _ _ _ h => step_transcribe _ i h
+  does "Every whole-clip upload is of the recording in progress, at least 0.3 s long, with a sample at or above the silence peak, and with an app to type into (`app_sendable`, `step_transcribe`)."
+  holds s := ∀ m id n r, Effect.request id r ∈ (receive s m).2 → r.wholeClip = some n →
+    ∃ rec mo p, s.core.recording = some rec ∧ Sendable s.core.dict rec n p ∧
+      r = transcription n 0 none mo p
+  init := fun m _ _ _ h hw => app_sendable _ m h hw
+  step := fun _ _ _ m _ _ _ h hw => app_sendable _ m h hw
+  receive := fun _ _ _ m _ _ _ h hw => app_sendable _ m h hw
+
+invariant ^346 leaveOriginal "The original Yap keeps its key" for machine where
+  does "Yap (Cairn) takes the dictation key only once it has checked that the original Yap (dev.yap.Yap) is not running: while it runs, or before the check is answered, there is no global key subscription, and the menu says so (`wantsKey`)."
+  holds s := s.io.original ≠ some false → ∀ k mo, Sub.globalKey k mo ∉ subscriptions s
+  init := fun h k mo => leave_original _ h k mo
+  step := fun _ _ _ h k mo => leave_original _ h k mo
+  receive := fun _ _ _ h k mo => leave_original _ h k mo
 
 /-! ## What the host does -/
 
@@ -291,16 +390,21 @@ assume ^337 hostDays "The host lists day files and today by the local calendar" 
 flow ^340 turnOff "Turn Dictate with Key off" for machine where
   does "Choose Dictate with Key."
   sees "Dictation is off, Press Return After Dictating is unavailable, and nothing is recording."
-  goal s := s.enabled = false ∧ toggleSubmits.enabled s = false ∧ s.recording = none
+  goal s := s.core.enabled = false ∧ toggleSubmits.enabled s = false ∧ s.core.recording = none
   witness press ^306
 
 flow ^341 keepTwice "Keep Transcripts off and on again" for machine where
   does "Choose Keep Transcripts twice."
   sees "Transcripts are kept again, after two writes of config.json."
-  goal s := s.settings.keepTranscripts = true ∧ s.reqs.length = 2
+  goal s := s.core.settings.keepTranscripts = true ∧ s.core.reqs.length = 2
   witness press ^304, press ^304
 
 /-- Every claim Yap makes. -/
 def claimInfos : List ClaimInfo := claims%
+
+/-- Yap on Cairn: the status item with Yap's menu, and the overlay. -/
+def app : App AppState :=
+  { machine.toApp [.statusItem 301 (some ∘ statusItem), .panel 345 panel] claimInfos with
+    subscriptions, initEffects }
 
 end Examples.Yap

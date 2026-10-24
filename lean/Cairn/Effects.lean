@@ -36,8 +36,9 @@ deriving Repr, DecidableEq, Inhabited
 /-- A part of an `upload` body: bytes Lean built, or audio the host holds. -/
 inductive Part where
   | bytes (b : ByteArray)
-  /-- The recording of `clip`, samples `[start, stop)` (to the end of the recording with
-  `none`), as a WAV file: 16 kHz, mono, 16-bit PCM. Lean never sees the samples. -/
+  /-- The recording of `clip`, 20 ms windows `[start, stop)` (320 samples each; to the end of
+  the recording, with any partial last window, for `none`), as a WAV file: 16 kHz, mono,
+  16-bit PCM. Lean never sees the samples. -/
   | wav (clip start : Nat) (stop : Option Nat)
 deriving Repr, BEq, Inhabited
 
@@ -81,6 +82,15 @@ inductive Request where
       (body : List Part) (timeoutMs : Nat)
   /-- The host may drop the clip's samples. -/
   | forgetClip (clip : Nat)
+  /-- Open `target` with its default app (the Finder for a folder, the default editor for a
+  text file, System Settings for its URLs): a path (`~/` is the home folder) or a URL with a
+  scheme. -/
+  | openItem (target : String)
+  /-- Whether an app with this bundle identifier is running. -/
+  | appRunning (bundleId : String)
+  /-- The value of `key` in the defaults domain `domain` (`defaults read domain key`), as UTF-8
+  text: a string as it is, a number or a boolean as its text (booleans as `1` or `0`). -/
+  | readDefault (domain key : String)
 deriving Repr, BEq, Inhabited
 
 /-- The kind of a request, without its payload: what the runtime remembers while it is
@@ -88,7 +98,7 @@ pending. -/
 inductive Request.Kind where
   | readFile | writeFile | playSound | http
   | appendFile | listDir | deleteFile | frontmostApp | permission
-  | typeText | upload | forgetClip
+  | typeText | upload | forgetClip | openItem | appRunning | readDefault
 deriving Repr, DecidableEq, Inhabited
 
 def Request.kind : Request → Request.Kind
@@ -97,11 +107,12 @@ def Request.kind : Request → Request.Kind
   | .appendFile .. => .appendFile | .listDir .. => .listDir | .deleteFile .. => .deleteFile
   | .frontmostApp => .frontmostApp | .permission .. => .permission
   | .typeText .. => .typeText | .upload .. => .upload | .forgetClip .. => .forgetClip
+  | .openItem .. => .openItem | .appRunning .. => .appRunning | .readDefault .. => .readDefault
 
 inductive Reply where
   /-- `writeFile`, `appendFile`, `deleteFile` and `playSound` succeeded. -/
   | done
-  /-- `readFile`'s contents. -/
+  /-- `readFile`'s contents, or `readDefault`'s value. -/
   | bytes (data : ByteArray)
   /-- An HTTP response, whatever its status. -/
   | http (status : Nat) (headers : List (String × String)) (body : ByteArray)
@@ -111,7 +122,7 @@ inductive Reply where
   | names (names : List String)
   /-- `frontmostApp`'s process id and name (empty when it has none). -/
   | app (pid : Nat) (name : String)
-  /-- `permission`'s answer. -/
+  /-- `permission`'s or `appRunning`'s answer. -/
   | flag (granted : Bool)
 deriving Repr, BEq, Inhabited
 
@@ -120,11 +131,12 @@ def Reply.answers : Request.Kind → Reply → Bool
   | _, .failed .. => true
   | .readFile, .bytes _ => true
   | .writeFile, .done | .playSound, .done | .appendFile, .done | .deleteFile, .done => true
-  | .typeText, .done | .forgetClip, .done => true
+  | .typeText, .done | .forgetClip, .done | .openItem, .done => true
+  | .readDefault, .bytes _ => true
   | .http, .http .. | .upload, .http .. => true
   | .listDir, .names _ => true
   | .frontmostApp, .app .. => true
-  | .permission, .flag _ => true
+  | .permission, .flag _ | .appRunning, .flag _ => true
   | _, _ => false
 
 /-- An outside input an app asks for, as data derived from its state. -/

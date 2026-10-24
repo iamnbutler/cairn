@@ -256,6 +256,11 @@ extension Frame {
                 try er.need(4)
                 req = .forgetClip(clip: er.u32(0))
                 er.i += 4
+            case 12: req = .openItem(target: try er.string())
+            case 13: req = .appRunning(bundleId: try er.string())
+            case 14:
+                let domain = try er.string()
+                req = .readDefault(domain: domain, key: try er.string())
             default: throw FrameDecodeError.badCode(kind, at: at)
             }
             return .request(id: id, req)

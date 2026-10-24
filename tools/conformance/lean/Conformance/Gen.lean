@@ -178,13 +178,34 @@ def jframe (f : Frame) : String :=
         ("cursor", jstr (cursorName f.cursor)),
         ("menus", jmenus f), ("surfaces", jsurfaces f)]
 
+/-- A request as the debug socket describes it (`DebugJSON.request` in the host): what it asks
+for, never a secret, a body or typed text. -/
+def requestKind : Request → String
+  | .readFile p => s!"readFile {p}"
+  | .writeFile p d => s!"writeFile {p} ({d.size} bytes)"
+  | .playSound n => s!"playSound {n}"
+  | .http m u _ _ _ => s!"http {m} {u}"
+  | .appendFile p d => s!"appendFile {p} ({d.size} bytes)"
+  | .listDir p => s!"listDir {p}"
+  | .deleteFile p => s!"deleteFile {p}"
+  | .frontmostApp => "frontmostApp"
+  | .permission p prompt =>
+    s!"permission {match p with | .accessibility => "accessibility" | .microphone => "microphone"}{if prompt then " prompt" else ""}"
+  | .typeText pid t ret => s!"typeText {pid} ({t.utf8ByteSize} bytes){if ret then " return" else ""}"
+  | .upload m u _ sec body _ =>
+    s!"upload {m} {u} ({body.length} parts){match sec with | some x => s!" secret {x.header}" | none => ""}"
+  | .forgetClip c => s!"forgetClip {c}"
+  | .openItem t => s!"open {t}"
+  | .appRunning b => s!"appRunning {b}"
+  | .readDefault d k => s!"readDefault {d} {k}"
+
 def jeffect : Effect → String
   | .setClipboard s => jobj [("clipboard", jstr s)]
   | .beep => jobj [("beep", "true")]
   | .focus c => jobj [("focus", jstr (refLabel c))]
   | .setTimer n ms => jobj [("setTimer", jstr n), ("ms", toString ms)]
   | .cancelTimer n => jobj [("cancelTimer", jstr n)]
-  | .request id _ => jobj [("request", toString id)]
+  | .request id r => jobj [("request", toString id), ("kind", jstr (requestKind r))]
   | .quit => jobj [("quit", "true")]
 
 def opName : TextOp → String

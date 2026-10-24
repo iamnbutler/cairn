@@ -61,11 +61,13 @@ def Request.Kind.code : Request.Kind → UInt8
   | .readFile => 0 | .writeFile => 1 | .playSound => 2 | .http => 3
   | .appendFile => 4 | .listDir => 5 | .deleteFile => 6 | .frontmostApp => 7 | .permission => 8
   | .typeText => 9 | .upload => 10 | .forgetClip => 11
+  | .openItem => 12 | .appRunning => 13 | .readDefault => 14
 
 def Request.Kind.ofCode : UInt8 → Option Request.Kind
   | 0 => some .readFile | 1 => some .writeFile | 2 => some .playSound | 3 => some .http
   | 4 => some .appendFile | 5 => some .listDir | 6 => some .deleteFile | 7 => some .frontmostApp
   | 8 => some .permission | 9 => some .typeText | 10 => some .upload | 11 => some .forgetClip
+  | 12 => some .openItem | 13 => some .appRunning | 14 => some .readDefault
   | _ => none
 
 @[simp] theorem Request.Kind.ofCode_code (k : Request.Kind) :
@@ -249,6 +251,8 @@ def fitsRequest : Request → Bool
     fs m && fs u && fitsHeaders hs && sec.all fitsSecret && fu body.length && body.all fitsPart &&
       fu t
   | .forgetClip c => fu c
+  | .openItem t | .appRunning t => fs t
+  | .readDefault d k => fs d && fs k
 
 def fitsEffect : Effect → Bool
   | .setClipboard s => fs s
@@ -369,6 +373,9 @@ def requestBody : Request → List UInt8
   | .upload m u hs sec body t =>
     u32 t ++ str m ++ str u ++ headers hs ++ optSecret sec ++ parts body
   | .forgetClip c => u32 c
+  | .openItem t => str t
+  | .appRunning b => str b
+  | .readDefault d k => str d ++ str k
 
 def effect : Effect → List UInt8
   | .setClipboard s => [0] ++ pad 3 ++ str s
@@ -588,6 +595,11 @@ def requestBody : Request.Kind → Dec Request
     let body ← parts
     return .upload m u hs sec body t
   | .forgetClip => do return .forgetClip (← u32)
+  | .openItem => do return .openItem (← str)
+  | .appRunning => do return .appRunning (← str)
+  | .readDefault => do
+    let d ← str
+    return .readDefault d (← str)
 
 def effect : Dec Effect := do
   match (← byte) with
@@ -904,6 +916,16 @@ theorem requestBody_enc {q : Request} (h : fitsRequest q = true) (r : List UInt8
   | forgetClip c =>
     simp only [fitsRequest, fu_iff] at h
     simp only [Request.kind, requestBody, Enc.requestBody, bind_apply, u32_enc h, pure_apply]
+  | openItem t =>
+    simp only [fitsRequest, fs_iff] at h
+    simp only [Request.kind, requestBody, Enc.requestBody, bind_apply, str_enc h, pure_apply]
+  | appRunning b =>
+    simp only [fitsRequest, fs_iff] at h
+    simp only [Request.kind, requestBody, Enc.requestBody, bind_apply, str_enc h, pure_apply]
+  | readDefault d k =>
+    simp only [fitsRequest, Bool.and_eq_true, fs_iff] at h
+    simp only [Request.kind, requestBody, Enc.requestBody, List.append_assoc, bind_apply,
+        str_enc h.1, str_enc h.2, pure_apply]
 
 theorem effect_enc {x : Effect} (h : fitsEffect x = true) (r : List UInt8) :
     effect (Enc.effect x ++ r) = some (x, r) := by
@@ -1118,6 +1140,8 @@ def requestBody : Request → Nat
   | .typeText _ t _ => 8 + str t
   | .upload m u hs sec body _ => 4 + str m + str u + headers hs + optSecret sec + parts body
   | .forgetClip _ => 4
+  | .openItem t | .appRunning t => str t
+  | .readDefault d k => str d + str k
 
 def effect : Effect → Nat
   | .setClipboard s => 4 + str s
@@ -1323,6 +1347,8 @@ def requestBody (b : ByteArray) : Request → ByteArray
   | .upload m u hs sec body t =>
     parts (optSecret (headers (str (str (u32 b t) m) u) hs) sec) body
   | .forgetClip c => u32 b c
+  | .openItem t | .appRunning t => str b t
+  | .readDefault d k => str (str b d) k
 
 def effect (b : ByteArray) : Effect → ByteArray
   | .setClipboard s => str (pad (b.push 0) 3) s

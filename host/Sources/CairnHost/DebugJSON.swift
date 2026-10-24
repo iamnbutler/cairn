@@ -95,6 +95,9 @@ public enum DebugJSON {
         // Never the secret's value (the host reads it only when sending) nor the body.
         case let .upload(m, u, _, s, body, _): "upload \(m) \(u) (\(body.count) parts)\(s.map { " secret \($0.header)" } ?? "")"
         case .forgetClip(let c): "forgetClip \(c)"
+        case .openItem(let t): "open \(t)"
+        case .appRunning(let b): "appRunning \(b)"
+        case let .readDefault(d, k): "readDefault \(d) \(k)"
         }
     }
 

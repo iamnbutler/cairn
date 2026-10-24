@@ -248,6 +248,9 @@ Request kinds and their fields:
 | 9 | typeText | u32 pid, `[pressReturn, 0, 0, 0]`, string text |
 | 10 | upload | u32 timeoutMs, string method, string url, headers, secret, u32 count, parts |
 | 11 | forgetClip | u32 clip |
+| 12 | openItem | string target |
+| 13 | appRunning | string bundleId |
+| 14 | readDefault | string domain, string key |
 
 An upload's `secret` is `[0, 0, 0, 0]` for none, or `[1, 0, 0, 0]` and four strings: the header
 name, the scheme written before the value (`"Bearer "`), the `KEY=value` file and the key. Only
@@ -443,6 +446,7 @@ request ID http "METHOD" "URL" timeout=MS HEADERS body=BYTES
 request ID appendFile "PATH" BYTES | request ID listDir "PATH" | request ID deleteFile "PATH"
 request ID frontmostApp | request ID permission CODE PROMPT
 request ID typeText PID RETURN "TEXT" | request ID forgetClip CLIP
+request ID open "TARGET" | request ID appRunning "ID" | request ID readDefault "DOMAIN" "KEY"
 request ID upload "METHOD" "URL" timeout=MS HEADERS secret=none|"HEADER" "SCHEME" "FILE" "NAME" parts=N PART…
 subs N
 start ID every MS | start ID watchFile "PATH" | start ID record CLIP

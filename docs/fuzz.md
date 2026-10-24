@@ -203,6 +203,25 @@ shrunk from 13 operations to 2.
 `make check` runs `make fuzz-quick`: Counter and Basics, 200 sequences of 50 steps each, about
 1 s plus linking the exe.
 
+## Yap: a random host
+
+Yap's dictation is driven by the host, not by moves, so `lake exe yapfuzz` (`make fuzz-yap`,
+and in `make fuzz-quick`) plays a random host instead, in two modes, and writes one
+`build/fuzz/Yap.json`:
+
+- **host** (`lean/Examples/Yap/Fuzz.lean`): inputs straight into the model's `step`, checking
+  ^311–^323 as the model states them. It imports the model only, so it builds against mutants.
+- **app** (`lean/Examples/Yap/AppFuzz.lean`): messages into the app's `receive` and menu items
+  into `menuStep`, as the Cairn runtime sends them. The host answers the requests the app made
+  (files there or not, config.json and dictionary.txt good and bad, OpenAI's transcripts and
+  errors, typing that fails), late, twice, out of order or never; fires the subscriptions the
+  app has on (the key, the microphone, file watches, the poll) and some it doesn't; and starts
+  and quits the original Yap. It checks ^311–^323 and ^346 as `Examples.Yap` states them over
+  `AppState` and effects. Dropping the original-Yap test from `wantsKey` is caught as ^346
+  within 50 steps and shrunk.
+
+Each claim's entry has `hostSteps` and `appSteps`; `steps` is their sum.
+
 ## Limits
 
 - It fuzzes the Lean model and runtime, not the host: no AppKit, Core Text or Metal. J's
@@ -262,6 +281,9 @@ on after it.
 | `effects.delete-file` | ^962 | `Files.delete` | `lstat` before and after; the link's target | a file, a link (the target stays), a dangling link, a directory (refused, stays), a read-only parent (refused, stays), again (`notFound`) |
 | `subs.watch-file` | ^963 | `World` (`watchFile`), `FileSignature` | the changes the case made | polls of 5–20 ms; 2–5 operations a case: write in place, atomic replace, append, delete, create, `touch`, `chmod`, nothing, a sibling written; then the stop and a write after it |
 | `effects.frontmost-app` | ^964 | `Apps.frontmost` | a stubbed source; for the live answer `NSRunningApplication` and `kill(pid, 0)` | pids 1 to `Int32.max`, 0 and −1; names from the text pool and none; no app |
+| `effects.open-item` | ^1000 | `Opening.open` | a stubbed workspace: the URLs it was asked to open | URLs with schemes, `~/` and absolute paths that exist or not, the workspace taking them or not, empty and NUL targets |
+| `effects.app-running` | ^1001 | `Opening.running` | a stubbed workspace; `NSRunningApplication` for the live Finder | 0–2 running apps; Yap's, the Finder's and random ids, empty ones; the live Finder and an id no app has |
+| `effects.read-default` | ^1002 | `Opening.readDefault` | a stubbed defaults store and the value's own text | strings from the text pool, booleans, numbers, missing, data and arrays; empty domains and keys |
 | `effects.permission` | ^965 | `Permissions.check` | a stubbed TCC: statuses and the calls made | both permissions × trusted or not × the four microphone statuses × prompt × granted or not; the live system without prompting |
 | `subs.record` | ^966 | `World` (`record`), `LevelMeter`, `Clips` | a fake microphone's delivered samples; levels computed directly from them | 0–2 s of synthetic audio (silence, square waves, noise, ±32768 extremes) split into buffers of 0–4000 samples, delivered from another thread with 0–3 ms pauses; stops and resets after 0–100 ms; failing microphones; the meter over random splits |
 | `effects.clip-wav` | ^967 | `Clips.wav`, `WAV`, `forgetClip` | the RIFF/WAVE layout written out field by field; the samples | 6 ranges a case in and past 0–6000 samples, to the end or not; clips that finish 20 ms after the ask; unknown and forgotten clips; 1–20 clips begun (at most 8 kept) |
@@ -413,7 +435,26 @@ ignores; `A~` in the verdict), and Swift agrees on every one. A `count` field of
 the Swift decoder reserve that many elements before failing; virtual memory absorbs it (no crash
 in 20,000 cases), but a cap would be cheaper.
 
-### Limits
+### Yap: a random host
+
+Yap's dictation is driven by the host, not by moves, so `lake exe yapfuzz` (`make fuzz-yap`,
+and in `make fuzz-quick`) plays a random host instead, in two modes, and writes one
+`build/fuzz/Yap.json`:
+
+- **host** (`lean/Examples/Yap/Fuzz.lean`): inputs straight into the model's `step`, checking
+  ^311–^323 as the model states them. It imports the model only, so it builds against mutants.
+- **app** (`lean/Examples/Yap/AppFuzz.lean`): messages into the app's `receive` and menu items
+  into `menuStep`, as the Cairn runtime sends them. The host answers the requests the app made
+  (files there or not, config.json and dictionary.txt good and bad, OpenAI's transcripts and
+  errors, typing that fails), late, twice, out of order or never; fires the subscriptions the
+  app has on (the key, the microphone, file watches, the poll) and some it doesn't; and starts
+  and quits the original Yap. It checks ^311–^323 and ^346 as `Examples.Yap` states them over
+  `AppState` and effects. Dropping the original-Yap test from `wantsKey` is caught as ^346
+  within 50 steps and shrunk.
+
+Each claim's entry has `hostSteps` and `appSteps`; `steps` is their sum.
+
+## Limits
 
 - A seeded loop, not coverage-guided: no libFuzzer on this toolchain. Mutations are structural
   (the frame format's length and count fields) to make up for it.

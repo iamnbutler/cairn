@@ -1,8 +1,10 @@
 # Yap: the dictation machine
 
-Step 1a of M2 (GOAL.md): Yap's dictation behaviour (`~/code/yap`,
-`App/Yap.swift`, `App/PushToTalk.swift` and `Packages/Core`) as one total, pure Lean function,
-with its claims proved and fuzzed. There is no view and no host yet.
+Yap's dictation behaviour (`~/code/yap`, `App/Yap.swift`, `App/PushToTalk.swift` and
+`Packages/Core`) as one total, pure Lean function, with its claims proved and fuzzed (M2 step
+1a), and the Cairn app built on it (step 3, docs/yap.md): `Examples.Yap.machine` over
+`AppState`, whose `receive` turns host messages into the machine's inputs and its commands into
+framework effects, with a status-item menu and an overlay panel.
 
 ```
 step : State → Input → State × List Cmd        -- Examples/Yap/Model.lean
@@ -18,18 +20,23 @@ step : State → Input → State × List Cmd        -- Examples/Yap/Model.lean
 | `Proofs.lean`, `Sending.lean`, `Recording.lean`, `Once.lean`, `Recent.lean` | the theorems the claims cite |
 | `../Yap.lean` | the claims, ^301–^341 |
 | `Tests.lean` | `#guard` scenarios replaying the README's behaviours |
-| `Fuzz.lean`, `../../YapFuzz.lean` | `lake exe yapfuzz` / `make fuzz-yap`: a random host against `step` |
+| `App.lean` | the app: `AppState`, `receive` (messages → inputs), `tr` (commands → effects), files, the upload, `subscriptions` |
+| `View.lean` | the status item's menu (^301) and the overlay panel (^345) |
+| `AppProofs.lean` | the claims through `receive` and `menuStep` (`app_*`, `Keeps`, `TypedInv`) |
+| `AppTests.lean`, `OnScreen.lean` | `#guard`s through `receive`; each invariant on screen in reachable states |
+| `Abi.lean` | the C ABI the CairnYap host links (`libcairn_app_yap`) |
+| `Fuzz.lean`, `AppFuzz.lean`, `../../YapFuzz.lean` | `lake exe yapfuzz` / `make fuzz-yap`: a random host against `step`, then against the app |
 
 ## Claims
 
-The claim commands know only machines driven by `Action`s on controls; Yap is driven by the
-host. So the menu items are `move`s (^302–^310; their commands other than copying are dropped
-until the framework has effects for them), and everything about dictation is an `invariant`
-whose `holds` quantifies over every host input (`∀ i`) or every input sequence (`∀ is`): a
-statement about `step` itself, proved for every state (or every reachable one), not just the
-menu machine's.
+The claims are stated over the app machine (`Examples/Yap.lean`): the menu items are `move`s
+(^302–^310, ^342–^344) whose effects are the app's, and everything about dictation is an
+`invariant` over `AppState` whose `holds` quantifies over every message the host can send
+(`receive`) and every menu item (`menuStep`), so `steps_reachableAll` covers runtime steps. Each
+cites an `app_*` theorem in `AppProofs.lean`, proved from the model theorem below. ^346 (the
+original Yap keeps its key) is new with the app.
 
-| Id | Claim | Proved | Fuzzed | Tested |
+| Id | Claim | Proved (model) | Fuzzed | Tested |
 |---|---|---|---|---|
 | ^311 | a shortcut never sends (only the clock can, for a latch's 10-min limit) | `shortcut_never_sends` | yes | yes |
 | ^312 | hold/tap split is exactly 300 ms | `hold_tap_split` | yes | 299 vs 300 ms |
@@ -49,7 +56,9 @@ menu machine's.
 
 All of it is closed without `sorry` or compiler-trusting tactics, on the standard three axioms (`make audit`).
 
-**Fuzzing.** `lake exe yapfuzz` plays a random host: key presses with random timings (taps,
+**Fuzzing.** `lake exe yapfuzz` plays a random host in two modes; the second (`AppFuzz.lean`)
+sends the app's `receive` messages and menu items, answers the requests it makes, and checks
+^311–^323 and ^346 as the app states them (docs/fuzz.md). The first plays it against `step`: key presses with random timings (taps,
 holds, repeats, a release that never comes), shortcuts, ticks early, late and jumping (ten
 minutes forward, seconds back), audio loud, quiet and for the wrong clip, microphone failures,
 replies slow, failed, duplicated, out of order, to nothing or never, config and dictionary
@@ -100,9 +109,8 @@ asked; type into the given process and say whether it worked; report `config.jso
   during a latch is ignored and the recording goes on, as in Swift; a key change in
   `config.json` mid-hold releases the old key.
 
-## For the framework (workstream Q)
+## On the framework
 
-`Cmd` is local. Each constructor is a request with an id answered by `Input.reply`, a timer
-(`wakeAt`), or a one-way command, so it should map onto framework effects; and the claims want
-machines driven by host inputs as well as `Action`s, so that `invariant` can state these over
-the machine's own `update` instead of quantifying over `step`.
+`Cmd` stays local to the model: `App.lean`'s `tr` sends each request as a framework request
+under id `2q` (the app's own requests use odd ids), `wakeAt` becomes a timer, and the rest are
+the app's own requests or one-way effects. See docs/yap.md for the app.

@@ -113,7 +113,7 @@ def part : Gen Part := do
   if ← coin then return .bytes (← bytes) else return .wav (← nat) (← nat) (← opt nat)
 
 def request : Gen Request := do
-  match ← below 12 with
+  match ← below 15 with
   | 0 => return .readFile (← str)
   | 1 => return .writeFile (← str) (← bytes)
   | 2 => return .playSound (← str)
@@ -127,6 +127,9 @@ def request : Gen Request := do
     let sec ← opt (do return (⟨← str, ← str, ← str, ← str⟩ : Secret))
     return .upload (← str) (← str) (← headers) sec (← array 3 part).toList (← nat)
   | 10 => return .forgetClip (← nat)
+  | 11 => return .openItem (← str)
+  | 12 => return .appRunning (← str)
+  | 13 => return .readDefault (← str) (← str)
   | _ => return .http (← str) (← str) (← headers) (← bytes) (← nat)
 
 def effect : Gen Effect := do
@@ -316,7 +319,9 @@ def maxFrame : Frame where
       (some ⟨"Authorization", "Bearer ", "~/.config/yap/secrets.env", "OPENAI_API_KEY"⟩)
       [.bytes ⟨#[45, 45]⟩, .wav 4294967295 0 none, .wav 0 4294967295 (some 4294967295),
        .bytes ByteArray.empty] 4294967295),
-    .request 10 (.upload "" "" [("", "")] none [] 0)]
+    .request 10 (.upload "" "" [("", "")] none [] 0),
+    .request 11 (.openItem "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"),
+    .request 12 (.appRunning ""), .request 13 (.readDefault "dev.yap.Yap" "日本🙂")]
   subs := #[.start 4294967295 (.every 0), .stop 0, .start 1 (.watchFile "~/a 🙂.json"),
     .start 2 (.record 4294967295), .start 3 (.globalKey 63 none), .start 4 (.globalKey 0 (some 4294967295))]
   wake := some 18446744073709551615
