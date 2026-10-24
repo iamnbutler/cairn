@@ -553,6 +553,13 @@ app showed exactly what the model says, judged through the pieces below. Each on
 - **The model's metrics.** The generator links the host's Core Text metrics (`CairnMetrics`,
   through `-force_load` over the weak fallback). Its frames are the app's only if both measure
   on the same machine with the same fonts.
+- **Yap runs silent under the socket.** `CairnYap --debug-socket` gets a world whose every
+  request handler waits forever and whose devices are inert (`silentWorld()` in
+  `host/Sources/CairnYap/main.swift`), because the model the driver compares against hears no
+  replies, ticks or subscription events. So conformance covers Yap's menu and its moves from
+  launch, not dictation; the host's devices and effects are covered by the trusted fuzz suites
+  and the self test's fakes (docs/yap.md). `World.watchPath` (identity outside the self test)
+  is how the self test moves `~/` watches into a scratch home; the real app never sets it.
 - **The comparison code.** Frames are compared through two JSON printers, `Conformance.jframe`
   in Lean and `DebugJSON.frame` in Swift. The expected AX tree is derived in the driver from the
   host's table (`expectedAx` in driver.ts). That table is written by hand, like the mirror's.

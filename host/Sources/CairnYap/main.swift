@@ -225,7 +225,15 @@ enum SelfTest {
         let view = HostView(engine: engine, renderer: NullRenderer(),
                             size: NSSize(width: CGFloat(size.w), height: CGFloat(size.h)))
         let host = SurfaceHost(engine: engine, mode: .detached) { NullRenderer() }
-        view.onApply = { host.apply($0) }
+        // Every surface update (the status item's menu and the overlay panel), timed.
+        let applies = LatencyStats(), rebuilds = LatencyStats()
+        view.onApply = { f in
+            let a = hostNow(), before = host.menu(301)?.rebuilds ?? 0
+            host.apply(f)
+            let ms = (hostNow() - a) * 1000
+            applies.record(.lean, ms: ms)
+            if (host.menu(301)?.rebuilds ?? 0) != before { rebuilds.record(.lean, ms: ms) }
+        }
         var quits = 0, clipboard: [String] = []
         view.effectHook = { e in
             if case .quit = e { quits += 1; return true }
@@ -426,6 +434,28 @@ enum SelfTest {
         menu.menuDidClose(menu.root)
         until("original quit: not listening again") { keys.listening }
 
+        // Levels at 50 Hz: a 3 s hold fed in real time, one 20 ms buffer per 20 ms, each a
+        // `record` event and a Lean step that redraws the waveform. Then a shortcut cancels it.
+        keys.send(.keyDown, f13)
+        until("levels: no microphone") { mic.live }
+        until("levels: no overlay") { overlay()?.shown == true }
+        engine.stats.reset()
+        applies.reset()
+        let v0 = engine.latest!.version, start = hostNow()
+        for i in 0..<150 {
+            let due = start + Double(i) * 0.02
+            let wait = due - hostNow()
+            if wait > 0 { usleep(UInt32(wait * 1_000_000)) }
+            mic.push(ms: 20, amplitude: Int16(2000 + (i % 25) * 300))
+            view.applyLatestFrame()
+        }
+        let levelSecs = hostNow() - start
+        let levelFrames = engine.latest!.version - v0
+        let levelLean = engine.stats.summary(.lean), levelApply = applies.summary(.lean)
+        keys.send(.keyDown, c)
+        keys.send(.keyUp, f13)
+        until("levels: the microphone stayed on") { !mic.live }
+
         // 10. The menu's other items open things (recorded, not opened) and Dictate turns off.
         choose("^308")
         choose("^309")
@@ -446,6 +476,10 @@ enum SelfTest {
         engine.stop()
         print("selftest: PASS (Yap: launch, hold, tap, shortcut, silent, failed type, copy, live reload, return, recent five, original Yap, menu items, quit)")
         print("  launch to listening: \(launchMs); key up to typed (fake OpenAI): \(holdMs)")
+        print(String(format: "  levels at 50 Hz: 150 buffers in %.2f s, %d frames published", levelSecs, levelFrames))
+        print("  Lean step+frame+decode per batch while recording: \(levelLean)")
+        print("  surface apply (menu + overlay) per frame while recording: \(levelApply)")
+        print("  menu rebuilds (item shapes changed) over the whole test: \(rebuilds.summary(.lean))")
     }
 }
 
