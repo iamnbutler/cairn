@@ -81,3 +81,32 @@ test("retired claims have no evidence and no gaps; a changed meaning is a findin
 	expect(rows[1]!.ledger).toBe("active, meaning changed");
 	expect(counts(rows).live).toBe(1);
 });
+
+test("an app's random-host fuzzer adds to the generic one, and its failures break the claim", () => {
+	const fuzz = { seed: 0, iterations: 200, stepsRun: 1, claims: { "^1": { pass: null, note: "not runnable: no Decidable instance" }, "^2": { pass: true, sequences: 200, steps: 50 } } };
+	const host = (pass: boolean | null) => ({ seed: 0, iterations: 300, stepsRun: 1, claims: { "^1": { pass, steps: 12 }, "^2": { pass: true, steps: 5 } } });
+	const rows = evaluate(inputs([claim(1, "invariant", ["good"]), claim(2, "invariant", ["good"])], { fuzz, hostFuzz: host(true) }));
+	expect(rows.map((r) => r.marks[1]!.label)).toEqual(["fuzzed 300", "fuzzed 500"]);
+	expect(rows[1]!.marks[1]!.detail).toContain("random host");
+	expect(evaluate(inputs([claim(1, "invariant", ["good"])], { fuzz, hostFuzz: host(false) }))[0]!.headline).toBe("broken");
+	expect(evaluate(inputs([claim(1, "invariant", ["good"])], { fuzz, hostFuzz: host(null) }))[0]!.marks[1]!.label).toBe("not runnable");
+});
+
+test("conformance that can't reach a claim is a gap with its reason", () => {
+	const conformance = { runs: 10, claims: { "^1": { pass: null, note: "the world is silent" } } };
+	const [r] = evaluate(inputs([claim(1, "invariant", ["good"])], { conformance }));
+	expect(r!.marks[2]).toMatchObject({ kind: "tested", state: "gap" });
+	expect(r!.marks[2]!.detail).toContain("the world is silent");
+});
+
+test("a place is seen in a shot that shows it, with how the capture drew it", () => {
+	const shot = (name: string, places?: number[]) => ({ image: `${name}.png`, pinned: `${name}.pinned.png`, width: 10, height: 10, controls: [], places });
+	const capture = {
+		size: [10, 10], scale: 2, crop: [0, 0, 10, 10], places: { "5": "The menu, as the host built it." },
+		sequences: [{ name: "start", shots: [shot("start", [5])], steps: [], strip: "s.png" }, { name: "overlay", shots: [shot("a", [5]), shot("b", [5, 6])], steps: [], strip: "o.png" }],
+	};
+	const rows = evaluate(inputs([claim(5, "place"), claim(6, "place"), claim(7, "place")], { capture }));
+	expect(rows.map((r) => r.marks[0]!.state)).toEqual(["pass", "pass", "gap"]);
+	expect(rows[0]!.marks[0]!.detail).toBe("The menu, as the host built it.");
+	expect(rows[1]!.shots.frames).toEqual(["b.pinned.png"]);
+});

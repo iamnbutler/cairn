@@ -4,7 +4,8 @@
 //       the capture script: the initial state, each flow's witness, and each move no flow presses
 //   bun tools/map/cairn-map.ts build --app Counter --dir build/map/Counter
 //       reads <dir>/claims.json (lake exe claims), <dir>/audit.json (lake exe audit --json),
-//       claims.lock, build/fuzz/<App>.json (make fuzz), build/fuzz/trusted.json (workstream M),
+//       claims.lock, build/fuzz/<App>.json (make fuzz), build/fuzz/host/<App>.json (an app's own
+//       random-host fuzzer: make fuzz-yap), build/fuzz/trusted.json (workstream M),
 //       build/conformance/<App>.json (make conformance) and <dir>/capture/ (Cairn<App>
 //       --map-capture), all but the first two optional; writes <dir>/evidence.json and the pages
 //       in <dir>/dist/.
@@ -14,7 +15,7 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
-import { captureScript, counts, evaluate, gaps, type Audit, type Capture, type Claim, type Conformance, type Fuzz, type Lock, type Trusted } from "./evidence";
+import { captureScript, counts, evaluate, gaps, type Audit, type Capture, type Claim, type Conformance, type Fuzz, type HostFuzz, type Lock, type Trusted } from "./evidence";
 import { render } from "./render";
 
 const { values: opts, positionals } = parseArgs({
@@ -48,6 +49,7 @@ function build() {
 	const at = (...p: string[]) => join(DIR, ...p);
 	const paths = {
 		fuzz: join(root, "build/fuzz", `${app}.json`),
+		hostFuzz: join(root, "build/fuzz/host", `${app}.json`),
 		trusted: join(root, "build/fuzz/trusted.json"),
 		conformance: join(root, "build/conformance", `${app}.json`),
 	};
@@ -61,6 +63,7 @@ function build() {
 			return { id: Number(id), kind: kind!, status: status!, statement: statement!, title: title.join("\t") };
 		});
 	const fuzz = maybe<Fuzz>(paths.fuzz);
+	const hostFuzz = maybe<HostFuzz>(paths.hostFuzz);
 	const trusted = maybe<Trusted>(paths.trusted);
 	const conformance = maybe<Conformance>(paths.conformance);
 	const capture = maybe<Capture>(at("capture/capture.json"));
@@ -83,13 +86,14 @@ function build() {
 	};
 
 	const conformable = existsSync(join(root, "tools/conformance/lean/Conformance/Apps", `${app}.lean`));
-	const rows = evaluate({ app, claims, audit, lock, fuzz, trusted, conformance, capture, conformable }, image);
+	const rows = evaluate({ app, claims, audit, lock, fuzz, hostFuzz, trusted, conformance, capture, conformable }, image);
 
 	// An app-less map (the trusted base's assumptions) has nothing to fuzz, run or capture.
 	const isApp = claims.some((c) => c.kind !== "assume");
 	const inputs = [
 		`Audit: ${Object.keys(audit.theorems).length.toLocaleString("en")} theorems.`,
 		!isApp ? "" : fuzz ? `Fuzz: ${fuzz.iterations.toLocaleString("en")} sequences${fuzz.mode === "model" ? " of the model" : ""}, seed ${fuzz.seed}.` : `Fuzz: not run (\`make fuzz APP=${app}\`).`,
+		!isApp || !hostFuzz ? "" : `Random host: ${hostFuzz.iterations.toLocaleString("en")} sequences of ${hostFuzz.steps ?? "?"} steps (\`make fuzz-yap\`), seed ${hostFuzz.seed}.`,
 		!isApp ? "" : conformance ? `Conformance: ${conformance.runs?.toLocaleString("en") ?? "?"} walks${conformance.commit ? ` at \`${conformance.commit}\`` : ""}.` : `Conformance: ${conformable ? "not run" : "no generator yet"}.`,
 		!isApp ? "" : capture ? `Capture: ${capture.sequences.length} sequences, headless.` : `Capture: not run.`,
 		trusted ? `Trusted base: ${Object.keys(trusted.checks ?? {}).length} checks${trusted.n ? `, ${trusted.n.toLocaleString("en")} cases a suite` : ""}${trusted.seed ? `, seed ${trusted.seed}` : ""}.` : "",
@@ -108,7 +112,7 @@ function build() {
 			{
 				app,
 				generated: new Date().toISOString(),
-				inputs: { fuzz: fuzz ? paths.fuzz : null, trusted: trusted ? paths.trusted : null, conformance: conformance ? paths.conformance : null, capture: !!capture, theoremsAudited: Object.keys(audit.theorems).length },
+				inputs: { fuzz: fuzz ? paths.fuzz : null, hostFuzz: hostFuzz ? paths.hostFuzz : null, trusted: trusted ? paths.trusted : null, conformance: conformance ? paths.conformance : null, capture: !!capture, theoremsAudited: Object.keys(audit.theorems).length },
 				counts: { kinds: n.kinds, headlines: Object.fromEntries(n.headlines) },
 				claims: rows.map((r) => ({
 					id: r.claim.id,

@@ -30,10 +30,14 @@ export type Audit = { theorems: Record<string, { ok: boolean; extraAxioms: strin
 /** One line of `claims.lock`. */
 export type Lock = { id: number; kind: string; status: string; statement: string; title: string };
 /** `build/conformance/<App>.json` (docs/conformance.md). Only `claims` is read. */
-export type Conformance = { runs?: number; commit?: string; claims: Record<string, { pass: boolean; runs?: number; note?: string; known?: Record<string, number> }> };
+export type Conformance = { runs?: number; commit?: string; claims: Record<string, { pass: boolean | null; runs?: number; note?: string; known?: Record<string, number> }> };
 /** `build/fuzz/<App>.json` (docs/fuzz.md). */
 export type FuzzClaim = { pass: boolean | null; steps?: number; sequences?: number; note?: string; checks?: Record<string, number>; failure?: { check: string; seed: number; step: number; message: string } };
 export type Fuzz = { mode?: string; seed: number; iterations: number; stepsRun: number; claims: Record<string, FuzzClaim> };
+/** An app's own random-host fuzzer (`build/fuzz/host/<App>.json`, docs/fuzz.md): Yap's
+ *  `yapfuzz`, which drives the model's `step` and the app's `receive` and menu with a random
+ *  host. Same shape; a claim's entry has no `failure` (failures are listed at the top level). */
+export type HostFuzz = Fuzz & { steps?: number; failures?: { claim: number; step: number; mode?: string; inputs?: string }[] };
 /** `build/fuzz/trusted.json` (`make fuzz-trusted`, docs/fuzz.md "Trusted base"): one entry per
  *  check of the trusted base, naming the `assume` claims it is evidence for. */
 export type TrustedCheck = {
@@ -48,10 +52,14 @@ export type TrustedCheck = {
 export type Trusted = { seed?: string; n?: number; checks: Record<string, TrustedCheck> };
 /** The headless capture (`Cairn<App> --map-capture`). */
 export type Control = { ref: string; claim: number; key: number; role: string; label: string; rect: number[] };
-export type Shot = { image: string; pinned: string; width: number; height: number; controls: Control[] };
+/** `places`: the place claims the image shows, when the capture says (an app with surfaces);
+ *  without it, a sequence's first shot is the app's one window. */
+export type Shot = { image: string; pinned: string; width: number; height: number; controls: Control[]; places?: number[] };
 export type StepResult = { step: Step; ref: string; outcome: "ok" | "absent" | "unsupported" | "inert" };
 export type Sequence = { name: string; shots: Shot[]; steps: StepResult[]; strip: string };
-export type Capture = { size: number[]; scale: number; crop: number[]; sequences: Sequence[] };
+/** `places`: per place claim, how the capture drew it (the map shows it as the place's seen
+ *  detail and caption), for a capture that isn't one window rendered by the renderer. */
+export type Capture = { size: number[]; scale: number; crop: number[]; sequences: Sequence[]; places?: Record<string, string> };
 
 export type Inputs = {
 	app: string;
@@ -59,6 +67,8 @@ export type Inputs = {
 	audit: Audit;
 	lock: Lock[];
 	fuzz: Fuzz | null;
+	/** `build/fuzz/host/<App>.json`, if the app has its own random-host fuzzer. */
+	hostFuzz?: HostFuzz | null;
 	trusted: Trusted | null;
 	conformance: Conformance | null;
 	capture: Capture | null;
@@ -89,7 +99,7 @@ export type Mark = { kind: EvidenceKind; state: "pass" | "fail" | "gap"; label: 
 export type Headline = "retired" | "broken" | EvidenceKind | "untested";
 
 export type Theorem = { role: string; theorem: string; ok: boolean | null; extraAxioms: string[] };
-export type Shots = { before?: string; after?: string; frames: string[]; strip?: string; complete?: boolean };
+export type Shots = { before?: string; after?: string; frames: string[]; strip?: string; complete?: boolean; caption?: string };
 export type Row = {
 	claim: Claim;
 	headline: Headline;
@@ -148,6 +158,11 @@ export function evaluate(inp: Inputs, image: (file: string) => string = (f) => f
 			for (const c of shot.controls) if (!moveShots.has(c.claim)) moveShots.set(c.claim, { frames: [image(shot.pinned)] });
 	}
 	const start = capture?.sequences.find((q) => q.name === "start")?.shots[0];
+	// A place's picture: the first shot that says it shows the place, else (one window) the start.
+	const placeShot = (id: number) => {
+		for (const seq of capture?.sequences || []) for (const s of seq.shots) if (s.places?.includes(id)) return s;
+		return start && !start.places ? start : undefined;
+	};
 
 	return inp.claims.map((c): Row => {
 		const findings: Row["findings"] = [];
@@ -175,19 +190,34 @@ export function evaluate(inp: Inputs, image: (file: string) => string = (f) => f
 		// Assumed: stated, never proved.
 		if (c.kind === "assume") mark("assumed", "pass", "assumed", "Recorded, never proved. Theorems that rely on it take it as a hypothesis.");
 
-		// Fuzzed: the app's fuzzer (moves, invariants) or the trusted-base fuzzer (assumptions).
+		// Fuzzed: the app's fuzzers (moves, invariants): the generic one, and the app's own
+		// random-host fuzzer if it has one; or the trusted-base fuzzer (assumptions).
 		if (c.kind === "move" || c.kind === "invariant") {
+			const host = inp.hostFuzz ?? null;
 			const f = fuzz?.claims[c.ref];
+			const h = host?.claims[c.ref];
+			const ran = (x?: FuzzClaim) => !!x && x.pass !== null;
 			const model = fuzz?.mode === "model" ? " of the model (no App yet)" : "";
-			if (!fuzz) mark("fuzzed", "gap", "not fuzzed", `No \`build/fuzz/${app}.json\`: run \`make fuzz APP=${app}\`.`);
-			else if ((!f || f.pass === null) && c.kind === "move" && fuzz.mode === "model")
-				mark("fuzzed", "gap", "not fuzzed", "The app is fuzzed at the model level only (it has no `App` yet), where a move has no checks of its own: presence and pressability need a frame.");
-			else if (!f || f.pass === null)
-				mark("fuzzed", "gap", f?.note?.startsWith("not runnable") ? "not runnable" : "not fuzzed", f?.note?.startsWith("not runnable") ? `The fuzzer can't run it: ${f.note}.` : "No fuzzed sequence exercised it.");
-			else if (f.pass) mark("fuzzed", "pass", `fuzzed ${short(f.sequences ?? fuzz.iterations)}`, `Held in ${plural(f.sequences ?? fuzz.iterations, "random sequence")}${model}, ${plural(f.steps ?? 0, "step")} checked (seed ${fuzz.seed}).${f.checks?.droppedT33 ? ` ${t33(f.checks.droppedT33)}` : ""}`);
-			else {
+			const checked = (x: FuzzClaim) => (x.checks ? ` (${Object.entries(x.checks).filter(([k]) => k !== "droppedT33").map(([k, n]) => `${k} ${n.toLocaleString("en")}`).join(", ")})` : "");
+			const held: string[] = [];
+			if (fuzz && ran(f) && f!.pass)
+				held.push(`Held in ${plural(f!.sequences ?? fuzz.iterations, "random sequence")}${model}, ${plural(f!.steps ?? 0, "step")} checked${checked(f!)} (seed ${fuzz.seed}).${f!.checks?.droppedT33 ? ` ${t33(f!.checks.droppedT33)}` : ""}`);
+			if (host && ran(h) && h!.pass)
+				held.push(`Held at every step of ${plural(host.iterations, "random sequence")} against a random host (\`make fuzz-yap\`: the model's \`step\`, then the app's \`receive\` and menu), ${plural(h!.steps ?? 0, "step")} exercising it (seed ${host.seed}).`);
+			const total = (fuzz && ran(f) ? (f!.sequences ?? fuzz.iterations) : 0) + (host && ran(h) ? host.iterations : 0);
+			if (fuzz && f?.pass === false) {
 				const x = f.failure;
 				mark("fuzzed", "fail", "fuzz fails", x ? `${x.check} failed at seed ${x.seed}, step ${x.step}: ${x.message}. Replay with \`lake exe fuzz ${app} --seed ${x.seed} --iterations 1 -v\`.` : `Fuzzing failed${f.note ? `: ${f.note}` : "."}`);
+			} else if (host && h?.pass === false) {
+				const x = host.failures?.find((y) => `^${y.claim}` === c.ref);
+				mark("fuzzed", "fail", "fuzz fails", `The random-host fuzzer found a sequence that breaks it${x ? ` (${x.mode ?? "host"} mode, step ${x.step}${x.inputs ? `: ${x.inputs}` : ""})` : ""}. Replay with \`make fuzz-yap SEED=${host.seed}\`; the shrunk inputs are in \`build/fuzz/host/${app}.json\`.`);
+			} else if (held.length) mark("fuzzed", "pass", `fuzzed ${short(total)}`, held.join(" "));
+			else if (!fuzz && !host) mark("fuzzed", "gap", "not fuzzed", `No \`build/fuzz/${app}.json\`: run \`make fuzz APP=${app}\`.`);
+			else if (c.kind === "move" && fuzz?.mode === "model")
+				mark("fuzzed", "gap", "not fuzzed", "The app is fuzzed at the model level only (it has no `App` yet), where a move has no checks of its own: presence and pressability need a frame.");
+			else {
+				const note = f?.note ?? h?.note;
+				mark("fuzzed", "gap", note?.startsWith("not runnable") ? "not runnable" : "not fuzzed", note?.startsWith("not runnable") ? `The fuzzer can't run it: ${note}.` : "No fuzzed sequence exercised it.");
 			}
 		} else if (c.kind === "assume") {
 			const checks = trusted.get(c.ref) ?? [];
@@ -212,6 +242,7 @@ export function evaluate(inp: Inputs, image: (file: string) => string = (f) => f
 			if (!conformance)
 				mark("tested", "gap", "not tested", inp.conformable === false ? `${app} has no conformance generator yet (\`tools/conformance/lean/Conformance/Apps/${app}.lean\`).` : `No \`build/conformance/${app}.json\`: run \`make conformance APP=${app}\`.`);
 			else if (!t) mark("tested", "gap", "not tested", "No conformance step exercised it.");
+			else if (t.pass === null) mark("tested", "gap", "not tested", t.note ? `Conformance ran but can't reach it: ${t.note}.` : "No conformance step exercised it.");
 			else if (t.pass) mark("tested", "pass", c.kind === "move" && t.runs ? `tested ${short(t.runs)}` : "tested", `${what(t.runs ?? 0)}, and the frame, accessibility tree, effects and pixels matched the model.${t.known?.T33 ? ` ${t33(t.known.T33)}` : ""}`);
 			else mark("tested", "fail", "test fails", `Conformance failed${t.note ? `: ${t.note}` : "."}`);
 		}
@@ -241,10 +272,12 @@ export function evaluate(inp: Inputs, image: (file: string) => string = (f) => f
 				} else mark("seen", "gap", "partly seen", `The capture can't replay step ${bad ? seq.steps.indexOf(bad) + 1 : seq.steps.length + 1} (${bad ? `${bad.step.trigger} ${bad.ref}` : "stopped early"}).`);
 			}
 		} else if (c.kind === "place") {
-			if (start) {
-				shots = { frames: [image(start.pinned)] };
-				mark("seen", "pass", "seen", "The window, rendered from the app's initial frame.");
-			} else mark("seen", "gap", "not seen", "No capture ran.");
+			const shot = placeShot(c.id);
+			const how = capture?.places?.[String(c.id)];
+			if (shot) {
+				shots = { frames: [image(shot.pinned)], caption: how };
+				mark("seen", "pass", "seen", how ?? "The window, rendered from the app's initial frame.");
+			} else mark("seen", "gap", "not seen", capture ? "No captured frame shows it." : "No capture ran.");
 		}
 
 		// The ledger.
