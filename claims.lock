@@ -41,28 +41,28 @@
 223	flow	active	36d2b8e708c4eceb	Mark all as complete, then undo it
 224	flow	active	06954be5c9e714a8	A new todo under the Completed filter
 301	place	active	-	Menu bar menu
-302	move	active	e403d98cf80e9881	Copy Last Transcript
-303	move	active	8059a050b360bad0	Recent transcript
-304	move	active	5dcc037d4a581b1c	Keep Transcripts
-305	move	active	19a4b0515a1c98a8	Press Return After Dictating
-306	move	active	0124cabb11882ac7	Dictate with Key
-307	move	active	17bf9466fe350731	Open Transcripts Folder
-308	move	active	b245d33387b2d78e	Edit Dictionary
-309	move	active	a6fd7ce24680ec93	Edit Settings
-310	move	active	b3e2e1df48707733	Grant Accessibility Access
-311	invariant	active	9309577e9e05ab79	A shortcut never sends
-312	invariant	active	47b715f8c425d620	Hold to talk, tap to latch: 300 ms
-313	invariant	active	f4a85759114de36a	One recording at a time
-314	invariant	active	b16fa05730949547	Every recording ends
-315	invariant	active	e5b1f488dcbe6dc1	Kept before it is typed
-316	invariant	active	19892eb3ce386d70	A failed type is kept and flagged
-317	invariant	active	5c3bad68609b96ca	Late and cancelled replies never type
-318	invariant	active	e21e087d3dc541a6	Each clip is typed at most once
-319	invariant	active	f2502c90e2ba080d	Fixes replace whole words
-320	invariant	active	fb1768953072d86f	Retention never deletes today
-321	invariant	active	e11086b8194dfda6	Only the first 25 terms are sent
-322	invariant	active	074086b305a36577	Recent Transcripts holds five
-323	invariant	active	6b1ded141cfc9285	Too short, silent or nowhere to type: never sent
+302	move	active	e0490fc96b72ca53	Copy Last Transcript
+303	move	active	b5a9fde72266ebd5	Recent transcript
+304	move	active	8c2fab4d78b58286	Keep Transcripts
+305	move	active	c6c077ae05ccd979	Press Return After Dictating
+306	move	active	ed59213993c9aef6	Dictate with Key
+307	move	active	38eb518eebb34d2e	Open Transcripts Folder
+308	move	active	3ae37860f0471301	Edit Dictionary
+309	move	active	bd78e8985f7ae69c	Edit Settings
+310	move	active	affcac8293e81fcf	Grant Accessibility Access
+311	invariant	active	d139a4c0005a9aa5	A shortcut never sends
+312	invariant	active	77c4daa26684fbff	Hold to talk, tap to latch: 300 ms
+313	invariant	active	65689aca8a28296f	One recording at a time
+314	invariant	active	db266c27c238daff	Every recording ends
+315	invariant	active	600be7e3a822f297	Kept before it is typed
+316	invariant	active	8daf76840fd4118d	A failed type is kept and flagged
+317	invariant	active	ad40976ea35c35df	Late and cancelled replies never type
+318	invariant	active	0875da47f052ce3d	Each clip is typed at most once
+319	invariant	active	9389e7f07346a6ce	Fixes replace whole words
+320	invariant	active	4e490ed3b16dab36	Retention never deletes today
+321	invariant	active	bcb4f9a25bf0e352	Only the first 25 terms are sent
+322	invariant	active	df82bb5021439b6f	Recent Transcripts holds five
+323	invariant	active	e6982e3bb9428b7e	Too short, silent or nowhere to type: never sent
 330	assume	active	-	The host reports the dictation key and every other key
 331	assume	active	-	The host delivers the ticks it is asked for
 332	assume	active	-	The host answers requests by id, in order of commands
@@ -71,8 +71,13 @@
 335	assume	active	-	The host types into the app it was given
 336	assume	active	-	The host reports config.json and dictionary.txt when they change
 337	assume	active	-	The host lists day files and today by the local calendar
-340	flow	active	bad8bdb6bf0aa529	Turn Dictate with Key off
-341	flow	active	d43c1efda3e84fcb	Keep Transcripts off and on again
+340	flow	active	b4b80b3cb0e6c044	Turn Dictate with Key off
+341	flow	active	9e665d6a3a8b924f	Keep Transcripts off and on again
+342	move	active	d442b5898c12ab24	Quit Yap (Cairn)
+343	move	active	a64749d31c1646a5	Grant Microphone Access
+344	move	active	9f7ae1916a6c4e2f	Open the menu
+345	place	active	-	Overlay panel
+346	invariant	active	6ebc082e7d8cd446	The original Yap keeps its key
 401	move	active	1b77afe95aa65f24	Start / Stop
 402	move	active	6750765048a4300d	Lap
 403	move	active	b3e0b25d90f70b6f	Reset
@@ -129,3 +134,6 @@
 971	assume	active	-	A secret is read from the environment or its file, and never shown
 990	assume	active	-	Wrapped lines paint as wide as Lean measured them
 991	assume	active	-	Lean breaks lines where Core Text would
+1000	assume	active	-	openItem opens exactly the URL or existing file it names
+1001	assume	active	-	appRunning answers whether an app with that bundle id runs
+1002	assume	active	-	readDefault answers the default's value as text

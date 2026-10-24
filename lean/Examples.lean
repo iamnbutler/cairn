@@ -9,6 +9,8 @@ import Examples.Todo.Proofs
 import Examples.Todo.Tests
 import Examples.Yap
 import Examples.Yap.Tests
+import Examples.Yap.AppTests
+import Examples.Yap.OnScreen
 import Examples.Clock
 import Examples.Clock.Proofs
 import Examples.Clock.Tests
