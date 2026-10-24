@@ -109,6 +109,16 @@ public struct Registry: Sendable {
         public var version: String
         public var revision: String
         public var yanked: Bool
+
+        enum Keys: String, CodingKey { case version, revision, yanked }
+
+        /// Lean's Reservoir, which the registry passes a name it lacks to, says nothing of yanking.
+        public init(from decoder: any Decoder) throws {
+            let c = try decoder.container(keyedBy: Keys.self)
+            version = try c.decode(String.self, forKey: .version)
+            revision = try c.decode(String.self, forKey: .revision)
+            yanked = try c.decodeIfPresent(Bool.self, forKey: .yanked) ?? false
+        }
     }
 
     /// Every published version of a package, yanked ones too, newest first; empty for a name

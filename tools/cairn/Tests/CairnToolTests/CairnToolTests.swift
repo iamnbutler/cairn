@@ -297,6 +297,15 @@ final class FakeRegistry: @unchecked Sendable {
         #expect(fake.requests.count == 2)
     }
 
+    /// A Reservoir answer, which the registry passes through for a name it lacks, has no `yanked`.
+    @Test func versionsFromReservoir() async throws {
+        let fake = FakeRegistry([
+            "GET /api/v1/packages/leanprover-community/batteries/versions?yanked=true": (200, #"{"schemaVersion":"1.2.0","data":[{"version":"0.0.0","revision":"130eb02e","tag":null}]}"#),
+        ])
+        let versions = try await fake.registry().versions("leanprover-community", "batteries")
+        #expect(versions.map(\.version) == ["0.0.0"] && versions.allSatisfy { !$0.yanked })
+    }
+
     @Test func ownerOfANameIsItsExactSearchMatch() async throws {
         let fake = FakeRegistry([
             "GET /api/v1/packages?q=hello&per_page=100": (200, #"{"data":{"items":[{"name":"hello_world","fullName":"zed/hello_world"},{"name":"hello","fullName":"carl/hello"}],"total":2}}"#),
