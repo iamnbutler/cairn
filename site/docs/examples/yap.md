@@ -16,8 +16,14 @@ Swift host captures audio, hears the key, makes the request, writes files and ty
 an effect Lean asked for. It reads and writes the original's files, so a person can switch between
 the two.
 
-This is the example to read for porting an existing app. It isn't a tutorial: the app is large
-(its Lean is in `lean/Examples/Yap/`), and these sections show the decisions that matter.
+This is the example to read for porting an existing app. It isn't a tutorial: the app is large,
+and these sections show the decisions that matter.
+
+Yap is also the first app that lives outside Cairn's repository. It is its own package, `yap-cairn`,
+which depends on a tagged Cairn the way any app would ([Cairn as a package](/docs/use/releases/)
+and issue #75). Its claims are `yap^301` to `yap^399`, beside Cairn's own `cairn^N`. Because its
+sources are no longer in this repository, this page can't include them yet: the parity table is
+`docs/yap-parity.md` and the claims are in `lean/Yap.lean`, both in that package.
 
 ## The original is the spec
 
@@ -37,33 +43,16 @@ Where the original leans on a system library for text (how Swift counts characte
 generated inputs, rather than against its documentation: for example 120,766 strings against
 Swift's own character counting, with no mismatches.
 
-### Dictation
-
-<!-- include docs/yap-parity.md#parity-dictation -->
-
-### The menu
-
-<!-- include docs/yap-parity.md#parity-menu -->
-
-### Counts
-
-<!-- include docs/yap-parity.md#parity-counts -->
+The table has 115 rows: 58 the same from the start, 40 fixed to match, 10 deliberate bug fixes,
+each with an issue on the original's tracker, and 7 open questions.
 
 ## Claims about dictation
 
 The behaviours a person would most hate to get wrong are invariants of the app's machine, proved
-over everything the host can report, in any order. A key held as part of a shortcut never sends:
-
-<!-- include lean/Examples/Yap.lean#yap-shortcut -->
-
-A transcript is saved before the request that types it is issued, so a failed type never loses it.
-(The original saves after typing; this is one of the bug fixes.)
-
-<!-- include lean/Examples/Yap.lean#yap-kept -->
-
-However replies arrive (late, twice, out of order, or never), no clip is typed twice:
-
-<!-- include lean/Examples/Yap.lean#yap-typed-once -->
+over everything the host can report, in any order. A key held as part of a shortcut never sends
+(`yap^311`). A transcript is saved before the request that types it is issued, so a failed type
+never loses it (`yap^315`; the original saves after typing, and this is one of the bug fixes).
+However replies arrive (late, twice, out of order, or never), no clip is typed twice (`yap^318`).
 
 ## What's not covered yet
 
@@ -71,6 +60,5 @@ However replies arrive (late, twice, out of order, or never), no clip is typed t
 - The parity table's open rows need decisions, chiefly whether the port should replace the
   original outright rather than sit beside it.
 - Apps can't yet declare host effects of their own: the effects Yap needed were added to Cairn
-  itself. Whether that changes is part of
-  [issue #75](https://github.com/iamnbutler/cairn/issues/75), which also moves Yap into its own
-  repository.
+  itself ([issue #75](https://github.com/iamnbutler/cairn/issues/75)).
+- This page can't include Yap's sources now that they live in their own package.

@@ -65,30 +65,29 @@ app can depend on. This page says what it will do and how to do each thing now.<
 <figure class="code"><pre class="px"><code class="make"><span class="cm"># Opens an app in a window: `make demo` (TodoMVC), or `make demo DEMO=CairnBasics`.</span>
 DEMO ?= CairnTodo
 <span class="kw">demo</span>: host
-	cd host &amp;&amp; swift run $(DEMO)</code></pre><figcaption><code>Makefile</code>, lines 129–132</figcaption></figure>
+	cd host &amp;&amp; swift run $(DEMO)</code></pre><figcaption><code>Makefile</code>, lines 110–113</figcaption></figure>
 <h3 id="check">Check</h3>
 <figure class="code"><pre class="px"><code class="make"><span class="cm"># Everything a PR must pass.</span>
-<span class="kw">check</span>: lint audit ledger kernel doctest test selftest fuzz-quick size fuzz-trusted-quick docs-check</code></pre><figcaption><code>Makefile</code>, lines 80–81</figcaption></figure>
+<span class="kw">check</span>: lint audit ledger kernel doctest test selftest fuzz-quick size fuzz-trusted-quick docs-check</code></pre><figcaption><code>Makefile</code>, lines 77–78</figcaption></figure>
 <figure class="code"><pre class="px"><code class="make"><span class="cm"># Drives each app headlessly through the host's real threads and accessibility mirror.</span>
 <span class="kw">selftest</span>: host
 	cd host &amp;&amp; swift run CairnCounter --selftest
 	cd host &amp;&amp; swift run CairnBasics --selftest
 	cd host &amp;&amp; swift run CairnTodo --selftest
 	cd host &amp;&amp; swift run CairnClock --selftest
-	cd host &amp;&amp; swift run CairnTray --selftest
-	cd host &amp;&amp; swift run CairnYap --selftest</code></pre><figcaption><code>Makefile</code>, lines 118–125</figcaption></figure>
+	cd host &amp;&amp; swift run CairnTray --selftest</code></pre><figcaption><code>Makefile</code>, lines 100–106</figcaption></figure>
 <h3 id="fuzz-and-conformance">Fuzz and conformance</h3>
 <figure class="code"><pre class="px"><code class="make"><span class="cm"># Claim-driven fuzzing (docs/fuzz.md): `make fuzz APP=Basics N=1000` runs N sequences from seed</span>
 <span class="cm"># SEED (default 0) and writes build/fuzz/$(APP).json, which `make map` reads.</span>
 <span class="kw">fuzz</span>: lean
-	cd lean &amp;&amp; lake build fuzz &amp;&amp; .lake/build/bin/fuzz $(APP) --seed $(or $(SEED),0) --iterations $(or $(N),200) --out ../build/fuzz</code></pre><figcaption><code>Makefile</code>, lines 293–296</figcaption></figure>
+	cd lean &amp;&amp; lake build fuzz &amp;&amp; .lake/build/bin/fuzz $(APP) --seed $(or $(SEED),0) --iterations $(or $(N),200) --out ../build/fuzz</code></pre><figcaption><code>Makefile</code>, lines 258–261</figcaption></figure>
 <figure class="code"><pre class="px"><code class="make"><span class="cm"># Conformance (docs/conformance.md): the Lean model's sequences replayed on the running app</span>
 <span class="cm"># through its debug socket. `make conformance APP=Basics [N=1000] [LEN=12] [SEED=1]` writes</span>
 <span class="cm"># build/conformance/$(APP).json (read by the map) and build/conformance/$(APP)/report.md.</span>
 <span class="cm"># Adding an app takes one file: tools/conformance/lean/Conformance/Apps/&lt;App&gt;.lean.</span>
 <span class="cm"># The generator links with system clang, not Lake: Lake's bundled lld can't read the SDK's</span>
 <span class="cm"># Swift .tbd files, and the host's Core Text metrics (CairnMetrics) must replace the weak</span>
-<span class="cm"># fallback in lean/c/text_host.c, hence -force_load.</span></code></pre><figcaption><code>Makefile</code>, lines 263–269</figcaption></figure>
+<span class="cm"># fallback in lean/c/text_host.c, hence -force_load.</span></code></pre><figcaption><code>Makefile</code>, lines 228–234</figcaption></figure>
 <h3 id="maps">Maps</h3>
 <figure class="code"><pre class="px"><code class="make"><span class="cm"># The map (docs/map.md): claims + evidence → build/map/$(APP)/dist/, Cairn's own pages, with</span>
 <span class="cm"># headless screenshots pinned from the frame's accessibility rects. `make map APP=Counter`. It</span>
@@ -103,18 +102,18 @@ MAPDIR = build/map/$(APP)
 	bun tools/map/cairn-map.ts script --claims $(MAPDIR)/claims.json &gt; $(MAPDIR)/script.json
 	rm -rf $(MAPDIR)/capture
 	cd host &amp;&amp; swift run Cairn$(APP) --map-capture ../$(MAPDIR)/script.json ../$(MAPDIR)/capture
-	bun tools/map/cairn-map.ts build --app $(APP) --dir $(MAPDIR)</code></pre><figcaption><code>Makefile</code>, lines 205–218</figcaption></figure>
+	bun tools/map/cairn-map.ts build --app $(APP) --dir $(MAPDIR)</code></pre><figcaption><code>Makefile</code>, lines 170–183</figcaption></figure>
 <h3 id="ship">Ship</h3>
 <figure class="code"><pre class="px"><code class="make"><span class="cm"># An app bundle: `make bundle APP=Tray [SIGN=identity]` writes build/apps/Tray.app. Per-app</span>
 <span class="cm"># Info.plist and entitlements go in host/Bundles/&lt;App&gt;/ (tools/bundle/bundle.sh).</span>
 <span class="kw">bundle</span>: host
-	tools/bundle/bundle.sh $(APP) $$(cd host &amp;&amp; swift build --show-bin-path) $(or $(SIGN),-) "$(or $(NAME),$(APP))"</code></pre><figcaption><code>Makefile</code>, lines 136–139</figcaption></figure>
+	tools/bundle/bundle.sh $(APP) $$(cd host &amp;&amp; swift build --show-bin-path) $(or $(SIGN),-) "$(or $(NAME),$(APP))"</code></pre><figcaption><code>Makefile</code>, lines 117–120</figcaption></figure>
 <figure class="code"><pre class="px"><code class="make"><span class="cm"># Binary size (bench/size.md): each app executable built for release with a link map, stripped</span>
 <span class="cm"># into build/size/, attributed (Lean runtime, Cairn, the app, Swift host, shaders), and checked</span>
 <span class="cm"># against SIZE_LIMIT bytes. No host app links `Lean` (the compiler, about 100 MB), so each is a</span>
 <span class="cm"># few MB; crossing the limit almost always means something imported `Lean`.</span>
-SIZE_APPS = CairnCounter CairnBasics CairnTodo CairnClock CairnTray CairnYap
-SIZE_LIMIT = 5000000</code></pre><figcaption><code>Makefile</code>, lines 315–320</figcaption></figure>
+SIZE_APPS = CairnCounter CairnBasics CairnTodo CairnClock CairnTray
+SIZE_LIMIT = 5000000</code></pre><figcaption><code>Makefile</code>, lines 273–278</figcaption></figure>
 
 </article>
 

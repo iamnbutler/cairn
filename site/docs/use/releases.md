@@ -6,8 +6,10 @@ status: todo
 lede: What changed in each version of Cairn, and what an app can rely on across versions.
 ---
 
-Cairn has no releases yet: apps live in its repository and build against whatever is on its main
-branch. This page will hold the notes for each version and say what stays compatible: the Lean
-API, the host protocol's versions, and Cairn's own claims, which will be published as a versioned
-contract with their ids. Versioning starts when an app can depend on Cairn at a pinned version,
-[issue #75](https://github.com/iamnbutler/cairn/issues/75).
+Apps outside this repository depend on Cairn at a tag, `vX.Y.Z` (pre-releases `vX.Y.Z-rc.N`), in
+both their lakefile and their `Package.swift`: one tag pins the Lean package, the Swift library
+products and Cairn's claims. The first app to do so is Yap (issue #75), at `v0.1.0-rc.1`.
+
+What a version promises: Cairn's `claims.lock` at the tag is its contract. Every `cairn^N` in it
+keeps its meaning in later versions or is retired, never renumbered or reused. The host protocol's
+versions are in the frame format. The Lean API has no stability promise before 1.0.

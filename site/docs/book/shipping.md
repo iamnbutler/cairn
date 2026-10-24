@@ -55,9 +55,10 @@ them. `make size` builds each app for release and fails past 5 MB:
 
 Yap shows a release build signed with a stable identity. Signing with the same identity every
 time matters: macOS grants permissions such as Accessibility and the microphone to the code
-signature, so a differently signed build is a new app and has to be granted again.
-
-<!-- include Makefile#make-yap -->
+signature, so a differently signed build is a new app and has to be granted again. Its package's
+`make yap` finds the first valid Apple Development identity with `security find-identity` and
+passes it to Cairn's `tools/bundle/bundle.sh`, which an app outside this repository runs from its
+Lake checkout of Cairn.
 
 ## Publish the map
 

@@ -4,7 +4,7 @@ import Cairn.Fuzz.Target
 
 /-! # `fuzz_targets%`: every fuzzable app, found at compile time
 
-Elaborates to a `List Cairn.Fuzz.Target`, one per `Machine` declared in an `Examples` module of
+Elaborates to a `List Cairn.Fuzz.Target`, one per `Machine` declared in an app module (`appModule`: `Examples`, or an app package's own) of
 the imported environment. For each machine it collects, from the claim registry and the
 environment:
 
@@ -31,13 +31,18 @@ def last (n : Name) : String := match n with
 def moduleOf (env : Environment) (n : Name) : Option Name :=
   env.getModuleIdxFor? n |>.map fun i => env.header.moduleNames[i.toNat]!
 
-/-- Constants of `Examples` modules whose type's head is `head`. -/
+/-- Modules that hold apps: anything but Cairn itself and Lean's libraries. In this repository
+that is `Examples`; in an app's package, the app's own modules (`Yap.*`). -/
+def appModule (m : Name) : Bool :=
+  ![`Cairn, `Init, `Std, `Lean, `Lake].contains m.getRoot
+
+/-- Constants of app modules (`appModule`) whose type's head is `head`. -/
 def constsOfType (env : Environment) (head : Name) : Array (Name × ConstantInfo) :=
   env.constants.fold (init := #[]) fun acc n ci =>
     if n.isInternal then acc else
     match moduleOf env n with
     | some m =>
-      if m.getRoot == `Examples && ci.type.getAppFn.constName? == some head then acc.push (n, ci)
+      if appModule m && ci.type.getAppFn.constName? == some head then acc.push (n, ci)
       else acc
     | none => acc
 

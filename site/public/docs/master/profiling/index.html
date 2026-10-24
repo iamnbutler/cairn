@@ -74,31 +74,11 @@ no frames were presented, is excluded and listed with its reason, never dropped 
 </table></div>
 <p>Power Profiler isn't available from <code>xctrace</code> on macOS.</p>
 <h2 id="running-it">Running it</h2>
-<p>Two make targets build both apps and run the suites:</p>
-<figure class="code"><pre class="px"><code class="make"><span class="cm"># Yap (Cairn) against the original Yap under Apple's Instruments (bench/yap-instruments.md).</span>
-<span class="cm"># Builds both bench apps, records each suite with xctrace and summarises the traces into</span>
-<span class="cm"># bench/out/yap-instruments/. bench-yap-overlay is the frame pacing suite alone (~15 min);</span>
-<span class="cm"># bench-yap is every suite (~2 h). Set SCREEN=1 for the second display, BUFFER_MS=100 for</span>
-<span class="cm"># coarser microphone buffers, RUNS, SECS; see tools/bench/yap-instruments.sh.</span>
-<span class="kw">bench-yap-apps</span>: lean
-	tools/bench/build-apps.sh
-
-<span class="kw">bench-yap-overlay</span>: bench-yap-apps
-	tools/bench/yap-instruments.sh overlay
-
-<span class="kw">bench-yap</span>: bench-yap-apps
-	tools/bench/yap-instruments.sh overlay hitches latency idle menu launch</code></pre><figcaption><code>Makefile</code>, lines 97–109</figcaption></figure>
-<p>The script runs one suite per template, each with the arguments that put the apps in the right
-state:</p>
-<figure class="code"><pre class="px"><code class="make"><span class="cm"># Suites and templates (xcrun xctrace record ... --launch, so Instruments starts the app and</span>
-<span class="cm"># records only that process):</span>
-<span class="cm">#   overlay   Metal System Trace + os_signpost   --bench-overlay, SECS of voice, hands free</span>
-<span class="cm">#   hitches   Animation Hitches + os_signpost    --bench-overlay, HITCH_SECS of voice</span>
-<span class="cm">#   latency   Logging                            --bench-latency, TRIALS key-up -&gt; typed</span>
-<span class="cm">#   idle      Activity Monitor                   --bench-idle for IDLE_SECS in the menu bar</span>
-<span class="cm">#   menu      Activity Monitor + os_signpost     --bench-menu: its own status menu open</span>
-<span class="cm">#   launch    App Launch + os_signpost           --bench-idle, launch to "ready"</span>
-<span class="cm">#   profile   Time Profiler + os_signpost        --bench-overlay, CPU by thread and function</span></code></pre><figcaption><code>tools/bench/yap-instruments.sh</code>, lines 7–15</figcaption></figure>
+<p>Yap's package (<code>yap-cairn</code>, which moved out of this repository in issue #75) has two make
+targets that build both apps and run the suites: <code>make bench-yap-overlay</code> for frame pacing alone,
+about 15 minutes, and <code>make bench-yap</code> for every suite, about two hours. Its
+<code>tools/bench/yap-instruments.sh</code> runs one suite per template, each with the arguments that put the
+apps in the right state.</p>
 <p>For each run it calls <code>xctrace record</code> with the suite's template, the <code>os_signpost</code> instrument, a
 time limit, <code>--no-prompt</code> and <code>--launch</code> followed by the app's binary and its bench arguments, so
 Instruments starts the app and records only that process. It then summarises the trace and

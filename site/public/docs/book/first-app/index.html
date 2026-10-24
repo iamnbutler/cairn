@@ -158,7 +158,7 @@ so that executables linking all of `Examples` (the fuzzer) don't get two `cairn_
 lean_lib Counter <span class="kw">where</span>
   roots := #[`Examples.Counter.Abi, `Examples.Counter]
   defaultFacets := #[LeanLib.staticFacet]
-  moreLinkObjs := #[claims_meta.o]</code></pre><figcaption><code>lean/lakefile.lean</code>, lines 66–72</figcaption></figure>
+  moreLinkObjs := #[claims_meta.o]</code></pre><figcaption><code>lean/lakefile.lean</code>, lines 68–74</figcaption></figure>
 <ol start="4">
 <li><strong>The Makefile's app list</strong>, which copies each app's library where the host links it:</li>
 </ol>
@@ -167,19 +167,20 @@ lean_lib Counter <span class="kw">where</span>
 <span class="cm"># links exactly one: v1 apps all export `cairn_app_init/step/frame` (docs/runtime.md), so two</span>
 <span class="cm"># in one binary would clash. The check below keeps the shared library free of app exports and</span>
 <span class="cm"># each app library to one set.</span>
-APPS = Counter:counter Basics:basics Todo:todo Clock:clock Tray:tray Yap:yap</code></pre><figcaption><code>Makefile</code>, lines 11–16</figcaption></figure>
+APPS = Counter:counter Basics:basics Todo:todo Clock:clock Tray:tray</code></pre><figcaption><code>Makefile</code>, lines 11–16</figcaption></figure>
 <ol start="5">
 <li><strong>A Swift executable</strong> in <code>host/Package.swift</code>, linking that library, and its <code>main.swift</code> as
 above:</li>
 </ol>
 <figure class="code"><pre class="px"><code class="swift">.executableTarget(name: <span class="str">"CairnCounter"</span>, dependencies: [<span class="str">"CairnHost"</span>, <span class="str">"CLean"</span>, <span class="str">"CairnFrame"</span>, <span class="str">"CairnCapture"</span>],
-                  linkerSettings: [.unsafeFlags([<span class="str">"-L"</span> + leanLib, <span class="str">"-lcairn_app_counter"</span>])]),</code></pre><figcaption><code>host/Package.swift</code>, lines 44–45</figcaption></figure>
+                  linkerSettings: [.unsafeFlags([<span class="str">"-L"</span> + leanLib, <span class="str">"-lcairn_app_counter"</span>])]),</code></pre><figcaption><code>host/Package.swift</code>, lines 48–49</figcaption></figure>
 <p>Then give your claims ids nobody has used (look in <code>claims.lock</code>), build with <code>make build</code>, record
 the new ids with <code>cd lean &amp;&amp; lake exe ledger update</code>, and commit <code>claims.lock</code> with the app. Run
 it with <code>make demo DEMO=Cairn&lt;App&gt;</code>.</p>
 <p>Pick ids in a range of their own: the examples use ^1–^7 (Counter), ^101–^109 (Basics), ^201–^224
-(TodoMVC), ^301–^399 (Yap), ^401–^409 (Clock) and ^450 onwards (Tray); the trusted base uses ^900 and up. Ids are global for now; per-package ids are
-part of issue #75.</p>
+(TodoMVC), ^401–^409 (Clock) and ^450 onwards (Tray); the trusted base uses ^900 and up, and
+^301–^399 moved with Yap to its own package. Ids are scoped per package: these are all <code>cairn^N</code>,
+and an app in its own repository has its own (<code>yap^301</code>), so it can number from ^1.</p>
 
 </article>
 <nav class="pager" aria-label="The Book"><a class="prev" rel="prev" href="/docs/book/"><small>Previous</small>The Cairn Book</a><a class="next" rel="next" href="/docs/book/moves-and-flows/"><small>Next</small>Moves and flows</a></nav>

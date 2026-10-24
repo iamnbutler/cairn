@@ -34,11 +34,12 @@
 <p class="lede">What changed in each version of Cairn, and what an app can rely on across versions.</p>
 </header>
 <article class="prose">
-<p>Cairn has no releases yet: apps live in its repository and build against whatever is on its main
-branch. This page will hold the notes for each version and say what stays compatible: the Lean
-API, the host protocol's versions, and Cairn's own claims, which will be published as a versioned
-contract with their ids. Versioning starts when an app can depend on Cairn at a pinned version,
-<a href="https://github.com/iamnbutler/cairn/issues/75">issue #75</a>.</p>
+<p>Apps outside this repository depend on Cairn at a tag, <code>vX.Y.Z</code> (pre-releases <code>vX.Y.Z-rc.N</code>), in
+both their lakefile and their <code>Package.swift</code>: one tag pins the Lean package, the Swift library
+products and Cairn's claims. The first app to do so is Yap (issue #75), at <code>v0.1.0-rc.1</code>.</p>
+<p>What a version promises: Cairn's <code>claims.lock</code> at the tag is its contract. Every <code>cairn^N</code> in it
+keeps its meaning in later versions or is retired, never renumbered or reused. The host protocol's
+versions are in the frame format. The Lean API has no stability promise before 1.0.</p>
 
 </article>
 
