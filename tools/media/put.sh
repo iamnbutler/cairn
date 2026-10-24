@@ -1,12 +1,22 @@
 #!/bin/sh
 # Encode a demo recording, upload it to R2 and add it to the site's media list.
 #
-#   tools/media/put.sh <recording.mov> <title> <caption> [--feature]
+#   tools/media/put.sh <recording.mov> <title> <caption> [--feature] [--milestone m2]
 #
-# --feature makes it the video at the top of the site. Run from the repo root,
+# --feature makes it the video at the top of the site. --milestone puts it in that
+# milestone's progress log (default m2, the current one; see GOAL.md). Run from the repo root,
 # then commit site/public/media.json and deploy the site (make site).
 set -eu
-in=$1; title=$2; caption=$3; feature=${4:-}
+in=$1; title=$2; caption=$3; shift 3
+feature=; milestone=m2
+while [ $# -gt 0 ]; do
+  case $1 in
+    --feature) feature=--feature ;;
+    --milestone) milestone=$2; shift ;;
+    *) echo "put.sh: unknown option $1" >&2; exit 2 ;;
+  esac
+  shift
+done
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
@@ -24,12 +34,12 @@ done
 size=$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "$work/v.mp4")
 duration=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$work/v.mp4")
 list=site/public/media.json
-jq --arg video "/m/$video" --arg poster "/m/$poster" --arg title "$title" --arg caption "$caption" \
+jq --arg video "/m/$video" --arg poster "/m/$poster" --arg title "$title" --arg caption "$caption" --arg milestone "$milestone" \
    --arg date "$(date +%Y-%m-%d)" --arg commit "$(git rev-parse --short HEAD)" \
    --argjson w "${size%,*}" --argjson h "${size#*,}" --argjson d "$duration" \
    --argjson feature "$([ "$feature" = --feature ] && echo true || echo false)" \
    '[{video: $video, poster: $poster, title: $title, caption: $caption, date: $date, commit: $commit,
-      width: $w, height: $h, seconds: ($d | floor), feature: $feature}]
+      width: $w, height: $h, seconds: ($d | floor), feature: $feature, milestone: $milestone}]
     + (if $feature then map(.feature = false) else . end)' "$list" > "$work/m.json"
 mv "$work/m.json" "$list"
 echo "uploaded /m/$video ($(du -h "$work/v.mp4" 2>/dev/null | cut -f1 || true))"

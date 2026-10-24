@@ -354,14 +354,14 @@
 
   <h3 class="sub">Six kinds</h3>
   <table class="kinds">
-    <thead><tr><th>Kind</th><th>What it says</th><th>In the counter</th></tr></thead>
+    <thead><tr><th>Kind</th><th>What it says</th><th>Examples</th></tr></thead>
     <tbody>
       <tr><td>move</td><td>Something a person can do, what follows, and the proof.</td><td>^1 Increment, ^2 Reset</td></tr>
       <tr><td>flow</td><td>A goal and a path of moves that reaches it. Lean checks every step is really answered.</td><td>^4 Count to three, ^5 Start over</td></tr>
-      <tr><td>invariant</td><td>A property every move keeps, so it holds in every state the app can reach.</td><td>^6 No press left in progress</td></tr>
+      <tr><td>invariant</td><td>A property every move keeps, so it holds in every state the app can reach.</td><td>^311 A shortcut never sends (Yap)</td></tr>
       <tr><td>assume</td><td>Something the proofs rely on but can't prove. Recorded, and visible in every theorem that uses it.</td><td>^7 The host reports clicks where they happen</td></tr>
       <tr><td>place</td><td>A region of the view where moves appear.</td><td>^3 Counter window</td></tr>
-      <tr><td>retire</td><td>A tombstone: the claim is gone, the id stays issued.</td><td>None yet</td></tr>
+      <tr><td>retire</td><td>A tombstone: the claim is gone, the id stays issued.</td><td>^6 No press left in progress: the runtime owns presses now</td></tr>
     </tbody>
   </table>
 
@@ -370,7 +370,7 @@
   <ul class="trail ladder">
     <li><b>Proved.</b> Lean's kernel checked the proof, using only the three standard axioms;
       <code>make check</code> audits every theorem.</li>
-    <li><b>Conformance-checked.</b><span class="soon">coming</span> The real app, driven through
+    <li><b>Conformance-checked.</b> The real app, driven through
       generated sequences of moves, agrees with the model after every step.</li>
     <li><b>Assumed.</b> Recorded, never proved. Theorems that rely on it take it as a hypothesis,
       so every use shows.</li>
@@ -380,7 +380,21 @@
     the real app, generated from the build and nothing written by hand. See the maps for the
     <a href="/map/counter/">counter</a> and for <a href="/map/basics/">Basics</a>.</p>
 
-  <h2>First milestone: a proved TodoMVC</h2>
+  <h2>Second milestone: Yap on Cairn<span class="soon">now</span></h2>
+  <p>Can claims hold up on real software someone uses every day? Yap is a small dictation app for
+    the Mac: hold a key, talk, and the transcript is typed into the app in front. Almost all of it
+    lives outside its window, so Cairn has to learn the outside world first.</p>
+  <ol class="trail">
+    <li>Effects: the clock and timers, requests the host performs and answers, and outside inputs
+      like a global key and the microphone. Each one is a recorded assumption, fuzzed.</li>
+    <li>New surfaces: a native menu bar menu built from Lean, and an overlay that never takes focus.</li>
+    <li>Proofs about dictation: a shortcut never sends, a transcript is saved before it is typed,
+      a late reply never types, every recording ends.</li>
+    <li>Yap rebuilt on Cairn, signed and installed, and used for a real day of work.</li>
+  </ol>
+  <ul id="log-m2" class="trail log"><li class="meta">Loading…</li></ul>
+
+  <h2>First milestone: a proved TodoMVC<span class="soon">done</span></h2>
   <ol class="trail">
     <li>The full TodoMVC app on the Mac, including real text fields and input methods.</li>
     <li>Every action is a claim with an id that the build refuses to let drift.</li>
@@ -389,9 +403,7 @@
     <li>The real app is driven through a thousand generated sequences and must agree with the model.</li>
     <li>A map of the app, generated from the claims, showing the evidence behind each one.</li>
   </ol>
-
-  <h2>Progress</h2>
-  <ul id="log" class="trail log"><li class="meta">Loading…</li></ul>
+  <ul id="log-m1" class="trail log"><li class="meta">Loading…</li></ul>
 </main>
 
 <footer><img src="/icon.svg" alt="">MIT licensed. Built in the open, slowly.</footer>
@@ -423,19 +435,20 @@
     return f;
   }
   fetch("/media.json").then(r => r.json()).then(list => {
-    const log = document.getElementById("log");
-    log.textContent = "";
+    const logs = [...document.querySelectorAll("[id^=log-]")];
+    for (const log of logs) log.textContent = "";
     const feature = list.find(m => m.feature) || list[0];
     if (feature) document.getElementById("feature").append(figure(feature, true));
     for (const m of list) {
+      const log = document.getElementById(`log-${m.milestone || "m1"}`) || logs[0];
       const li = document.createElement("li");
       const h = document.createElement("h3");
       h.textContent = m.title;
       li.append(h, figure(m, false));
       log.append(li);
     }
-    if (!list.length) log.innerHTML = '<li class="meta">No videos yet.</li>';
-  }).catch(() => { document.getElementById("log").innerHTML = '<li class="meta">Could not load the video list.</li>'; });
+    for (const log of logs) if (!log.children.length) log.innerHTML = '<li class="meta">No videos yet.</li>';
+  }).catch(() => { for (const log of document.querySelectorAll("[id^=log-]")) log.innerHTML = '<li class="meta">Could not load the video list.</li>'; });
 
 </script>
 <script type="module">

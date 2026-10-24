@@ -9,7 +9,8 @@
     "width": 960,
     "height": 1104,
     "seconds": 16,
-    "feature": false
+    "feature": false,
+    "milestone": "m2"
   },
   {
     "video": "/m/videos/5cf436dca2cd5034.mp4",
@@ -21,7 +22,8 @@
     "width": 1120,
     "height": 840,
     "seconds": 28,
-    "feature": true
+    "feature": true,
+    "milestone": "m1"
   },
   {
     "video": "/m/videos/c8a7c8d6ab57ac2f.mp4",
@@ -33,7 +35,8 @@
     "width": 960,
     "height": 1264,
     "seconds": 17,
-    "feature": false
+    "feature": false,
+    "milestone": "m1"
   },
   {
     "video": "/m/videos/9cb67df1092eb561.mp4",
@@ -45,7 +48,8 @@
     "width": 1040,
     "height": 904,
     "seconds": 18,
-    "feature": false
+    "feature": false,
+    "milestone": "m1"
   },
   {
     "video": "/m/videos/4dff72519883d7d3.mp4",
@@ -57,6 +61,7 @@
     "width": 960,
     "height": 704,
     "seconds": 9,
-    "feature": false
+    "feature": false,
+    "milestone": "m1"
   }
 ]
