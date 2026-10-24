@@ -264,6 +264,9 @@ public final class World: @unchecked Sendable {
     private var running_: [UInt32: () -> Void] = [:]
     /// How often `watchFile` looks at its file.
     public var watchPeriodMs = 250
+    /// The file `watchFile` looks at for a path: as given (`~/` is home). Tests that move the
+    /// file handlers to a scratch directory move this too.
+    public var watchPath: @Sendable (String) -> String = { $0 }
     /// Bumped by `reset`: replies and ticks from before it are dropped.
     private var generation = 0
     /// Where replies and ticks go (the engine's `send`).
@@ -330,7 +333,8 @@ public final class World: @unchecked Sendable {
             t.setEventHandler { [weak self] in self?.send?([.subEvent(id: id, .tick)]) }
             t.resume()
             return { t.cancel() }
-        case let .watchFile(path):
+        case let .watchFile(given):
+            let path = watchPath(given)
             var last = FileSignature.of(path)
             let t = DispatchSource.makeTimerSource(queue: queue)
             let period = DispatchTimeInterval.milliseconds(max(1, watchPeriodMs))

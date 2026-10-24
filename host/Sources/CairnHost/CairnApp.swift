@@ -21,13 +21,18 @@ public enum CairnApp {
         public var size: Size
         public var makeCore: () -> AppCore
         public var makeRenderer: () -> FrameRenderer
+        /// The world the app's effects and subscriptions reach, given whether the debug socket is
+        /// on (driven detached): an app that records or types swaps in fakes then.
+        public var makeWorld: (_ debug: Bool) -> World
 
         public init(title: String, size: Size, makeRenderer: @escaping () -> FrameRenderer = { MetalRenderer() },
+                    makeWorld: @escaping (_ debug: Bool) -> World = { _ in World() },
                     makeCore: @escaping () -> AppCore) {
             self.title = title
             self.size = size
             self.makeCore = makeCore
             self.makeRenderer = makeRenderer
+            self.makeWorld = makeWorld
         }
     }
 
@@ -86,9 +91,10 @@ public enum CairnApp {
         func applicationDidFinishLaunching(_ note: Notification) {
             let size = NSSize(width: CGFloat(config.size.w), height: CGFloat(config.size.h))
             let scale = NSScreen.main?.backingScaleFactor ?? 2
-            let engine = Engine(size: config.size, scalePercent: HostView.percent(scale), makeCore: config.makeCore)
             // Off unless CAIRN_DEBUG_SOCKET or --debug-socket asks for it (docs/conformance.md).
             debug = DebugServer.requested(title: config.title)
+            let engine = Engine(size: config.size, scalePercent: HostView.percent(scale),
+                                world: config.makeWorld(debug != nil), makeCore: config.makeCore)
             view = HostView(engine: engine, renderer: debug?.renderer ?? config.makeRenderer(), size: size)
             surfaces = SurfaceHost(engine: engine, mode: debug == nil ? .live : .detached) {
                 MetalRenderer(clearColor: Color(r: 0, g: 0, b: 0, a: 0))

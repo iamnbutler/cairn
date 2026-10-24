@@ -95,6 +95,14 @@ lean_lib Tray where
   defaultFacets := #[LeanLib.staticFacet]
   moreLinkObjs := #[claims_meta.o]
 
+/-- Yap on Cairn (workstream W, docs/yap.md): the dictation machine as a menu bar app with an
+overlay. -/
+@[default_target]
+lean_lib Yap where
+  roots := #[`Examples.Yap.Abi, `Examples.Yap]
+  defaultFacets := #[LeanLib.staticFacet]
+  moreLinkObjs := #[claims_meta.o]
+
 lean_exe bench where
   root := `Bench
 

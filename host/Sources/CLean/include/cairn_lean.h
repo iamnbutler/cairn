@@ -54,6 +54,9 @@ cairn_obj *runtime_initialize_cairn_Examples_Counter_Abi(uint8_t builtin);
 cairn_obj *runtime_initialize_cairn_Examples_Clock_Abi(uint8_t builtin);
 cairn_obj *runtime_initialize_cairn_Examples_Tray_Abi(uint8_t builtin);
 
+// libcairn_app_yap.a: lean/Examples/Yap.lean (Yap on Cairn), exports in Examples/Yap/Abi.lean.
+cairn_obj *runtime_initialize_cairn_Examples_Yap_Abi(uint8_t builtin);
+
 // libcairn_app_basics.a: lean/Examples/Basics.lean.
 cairn_obj *runtime_initialize_cairn_Examples_Basics(uint8_t builtin);
 

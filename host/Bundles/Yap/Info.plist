@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Not dev.yap.Yap: the original keeps its own identity, TCC grants and defaults. -->
+	<key>CFBundleIdentifier</key>
+	<string>dev.yap.cairn</string>
+	<key>CFBundleName</key>
+	<string>Yap (Cairn)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Yap (Cairn)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleExecutable</key>
+	<string>CairnYap</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.1</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.0</string>
+	<!-- A menu bar app: no Dock icon, even before the host's code runs. -->
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Yap (Cairn) listens while you hold or tap the dictation key.</string>
+</dict>
+</plist>
