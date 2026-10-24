@@ -1,5 +1,6 @@
 // Serves the static site, the package pages (registry.js), and /m/<key> from the cairn-media
-// R2 bucket. A static file always wins: the Worker runs only for paths that no asset matched.
+// R2 bucket. /docs/<pkg>/<version>/ is registry.js's placeholder: nothing here or there proxies
+// a registry's docs, since HTML a publisher uploaded would run as this origin. A static file always wins: the Worker runs only for paths that no asset matched.
 // Media keys are content-hashed, so they cache forever. Range and conditional
 // requests pass through to R2: video seeking needs them, and Safari won't play
 // video without range support.

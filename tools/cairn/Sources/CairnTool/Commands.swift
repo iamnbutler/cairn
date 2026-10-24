@@ -246,8 +246,9 @@ public struct Commands {
 
     // MARK: publish
 
-    /// `cairn publish [--no-docs] [--dry-run]`: send the version at tag v<version> to the
-    /// registry: its git objects, claims.lock and docs, then its build outputs for Lake's cache.
+    /// `cairn publish [--dry-run]`: send the version at tag v<version> to the registry: its git
+    /// objects and claims.lock, then its build outputs for Lake's cache. It sends no docs: the
+    /// registry will build them from the source (docs/cli.md).
     public func publish(_ args: [String]) async throws(CairnError) {
         let project = try project()
         try project.agree()
@@ -285,14 +286,6 @@ public struct Commands {
         let pack = try read(URL(filePath: "\(base)-\(sha).pack"))
         let index = try read(URL(filePath: "\(base)-\(sha).idx"))
 
-        var docs = Data()
-        if !args.contains("--no-docs") {
-            try doc([])
-            let dir = root.appending(path: "build/doc/\(m.name)")
-            let tarball = scratch.appending(path: "docs.tar.gz")
-            try shell.run(["tar", "-czf", tarball.path, "-C", dir.path, "dist", "doc.json", "claims.json"], in: root, env: ["COPYFILE_DISABLE": "1"])
-            docs = try read(tarball)
-        }
         let toolchain = (try? String(contentsOf: project.lean.appending(path: "lean-toolchain"), encoding: .utf8))?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let readme = (try? String(contentsOf: root.appending(path: "README.md"), encoding: .utf8)).map { String($0.prefix(512 * 1024)) }
@@ -301,10 +294,10 @@ public struct Commands {
             license: m.license, lean: m.lean, libs: m.libs, dependencies: Dictionary(m.dependencies.map { ($0.name, $0.range) }) { $1 },
             readme: readme)
         let claims = (try? Data(contentsOf: root.appending(path: m.claims))) ?? Data()
-        let body = try Publish.body(metadata: metadata, pack: pack, index: index, claims: claims, docs: docs)
+        let body = try Publish.body(metadata: metadata, pack: pack, index: index, claims: claims)
         let size = ByteCountFormatter.string(fromByteCount: Int64(body.count), countStyle: .file)
         if dry {
-            print("Would publish \(m.name) \(m.version) at \(revision.prefix(10)) to \(registry.url.absoluteString): \(size), \(docs.isEmpty ? "no docs" : "with docs").")
+            print("Would publish \(m.name) \(m.version) at \(revision.prefix(10)) to \(registry.url.absoluteString): \(size).")
             return
         }
         try await registry.send("PUT", "api/v1/packages/\(owner)/\(m.name)/versions/\(m.version)", body: body, type: "application/octet-stream")

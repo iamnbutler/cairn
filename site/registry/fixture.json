@@ -25,8 +25,7 @@
 						"active": 100,
 						"retired": 2,
 						"moved": 44
-					},
-					"docs": true
+					}
 				},
 				{
 					"version": "0.1.0-rc.1",
@@ -46,8 +45,7 @@
 						"active": 142,
 						"retired": 4,
 						"moved": 0
-					},
-					"docs": false
+					}
 				}
 			],
 			"claims": {
@@ -2125,8 +2123,7 @@
 						"active": 42,
 						"retired": 2,
 						"moved": 0
-					},
-					"docs": false
+					}
 				}
 			],
 			"claims": {

@@ -16,7 +16,10 @@ public enum Publish {
         public var readme: String?
     }
 
-    /// `metadata` (JSON), `pack`, `index`, `claims.lock`, `docs` (a gzipped tar, or empty for none).
+    /// `metadata` (JSON), `pack`, `index`, `claims.lock`, `docs`. The docs section is always empty:
+    /// a registry never takes docs from a publisher, since HTML served from an upload runs as the
+    /// registry's origin (nextpm#23 answers a non-empty one with 400). It will build them from
+    /// the published source instead, as docs.rs does.
     public static func frame(_ sections: [Data]) -> Data {
         var out = Data()
         for section in sections {
@@ -27,12 +30,12 @@ public enum Publish {
         return out
     }
 
-    public static func body(metadata: Metadata, pack: Data, index: Data, claims: Data, docs: Data) throws(CairnError) -> Data {
+    public static func body(metadata: Metadata, pack: Data, index: Data, claims: Data) throws(CairnError) -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
         let json: Data
         do { json = try encoder.encode(metadata) } catch { throw CairnError("couldn't encode the metadata: \(error)") }
-        return frame([json, pack, index, claims, docs])
+        return frame([json, pack, index, claims, Data()])
     }
 
     /// The artifact hashes a build-outputs map names: Lake's 16-digit content hashes. Upload
