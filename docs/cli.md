@@ -67,7 +67,15 @@ Unknown tables and keys are errors. Three names must agree, and `cairn build` an
 `cairn-link` is the one place that knows how to link Lean into the host. Cairn's Makefile
 uses it too (agreed with #75). `cairn build` adds only the cache step and the name check.
 `cairn-link` comes from the Cairn checkout that Lake fetched (`lean/.lake/packages/cairn/bin/`),
-or from the repository root when the package is Cairn itself.
+and a package with no `libs` of its own (Cairn itself) skips the link step, since Cairn's
+`make lean` writes its library.
+
+### Versions and tags
+
+Only final versions are published. A release candidate such as `v0.1.0-rc.1` is a git tag that
+consumers pin directly (`@ "v0.1.0-rc.1"` in the lakefile, `exact:` in SwiftPM), and
+`cairn.toml` keeps the version it is heading for. `cairn publish` needs the tag `v<version>` on
+HEAD, so it publishes `v0.1.0` and not the candidates before it.
 
 ### Lake and the registry
 

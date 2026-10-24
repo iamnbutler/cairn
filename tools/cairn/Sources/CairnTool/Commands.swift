@@ -190,6 +190,12 @@ public struct Commands {
         try shell.run(["lake", "build"], in: project.lean, env: env)
         let package = project.swift.appending(path: "Package.swift")
         guard FileManager.default.fileExists(atPath: package.path) else { return }
+        // No Lean libraries of its own (Cairn itself): nothing to link; Cairn's `make lean`
+        // writes its own build/lib/libcairn_lean.a, and a second copy here would only drift.
+        if project.manifest.libs.isEmpty {
+            try shell.run(["swift", "build"] + (args.contains("--release") ? ["-c", "release"] : []), in: project.swift)
+            return
+        }
         let link = project.cairn.appending(path: "bin/cairn-link")
         guard FileManager.default.isExecutableFile(atPath: link.path) else {
             throw CairnError("\(link.path) is missing: Cairn 0.1.0 or later ships it (docs/package.md)")
