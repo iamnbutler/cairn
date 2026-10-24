@@ -1,5 +1,5 @@
 // swift-tools-version: 6.0
-// The `cairn` command (docs/cli.md): new, add, build, doc, publish, and the registry login. It
+// The `cairn` command (docs/cli.md): new, add, build, doc, publish, and login. It
 // wraps lake, bin/cairn-link and swift; it has no dependencies, so it builds offline.
 import PackageDescription
 
