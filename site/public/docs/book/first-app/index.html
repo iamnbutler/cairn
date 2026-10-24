@@ -148,32 +148,29 @@ instead, with no host.</p>
 registry and prints the line for <code>Package.swift</code>. There is no public Cairn registry yet
 (<a href="https://github.com/iamnbutler/cairn/issues/97">issue #97</a>). Until there is, require Cairn from
 git at a tag, as Yap's lakefile does:</p>
-<pre><code class="language-lean">package yap where
+<figure class="code"><pre class="px"><code class="lean">package yap <span class="kw">where</span>
   leanOptions := #[⟨`autoImplicit, false⟩, ⟨`relaxedAutoImplicit, false⟩,
-    ⟨`weak.cairn.claims.scope, &quot;yap&quot;⟩]
+    ⟨`weak.cairn.claims.scope, <span class="str">"yap"</span>⟩]
 
-require cairn from git &quot;https://github.com/iamnbutler/cairn&quot; @ &quot;v0.1.1&quot; / &quot;lean&quot;
+require cairn from git <span class="str">"https://github.com/iamnbutler/cairn"</span> @ <span class="str">"v0.1.1"</span> / <span class="str">"lean"</span>
 
-@[default_target]
-lean_lib Yap where
+<span class="kw">@[default_target]</span>
+lean_lib Yap <span class="kw">where</span>
   roots := #[`Yap.Abi, `Yap]
-  defaultFacets := #[LeanLib.staticFacet]
-</code></pre>
+  defaultFacets := #[LeanLib.staticFacet]</code></pre><figcaption><code>docs/package.md</code>, lines 43–52</figcaption></figure>
 <p>Then depend on the same tag in <code>Package.swift</code>, and link the library that the build makes:</p>
-<pre><code class="language-swift">let lib = Context.packageDirectory + &quot;/.cairn/lib&quot;
-// dependencies:
-.package(url: &quot;https://github.com/iamnbutler/cairn&quot;, exact: &quot;0.1.1&quot;),
-// the app's executable:
-.executableTarget(name: &quot;CairnYap&quot;,
-    dependencies: [&quot;CYap&quot;, .product(name: &quot;CairnHost&quot;, package: &quot;cairn&quot;), /* … */],
-    linkerSettings: [.unsafeFlags([&quot;-L&quot; + lib, &quot;-lyap&quot;])]),
-</code></pre>
+<figure class="code"><pre class="px"><code class="swift"><span class="kw">let</span> lib = Context.packageDirectory + <span class="str">"/.cairn/lib"</span>
+<span class="cm">// dependencies:</span>
+.package(url: <span class="str">"https://github.com/iamnbutler/cairn"</span>, exact: <span class="str">"0.1.1"</span>),
+<span class="cm">// the app's executable:</span>
+.executableTarget(name: <span class="str">"CairnYap"</span>,
+    dependencies: [<span class="str">"CYap"</span>, .product(name: <span class="str">"CairnHost"</span>, package: <span class="str">"cairn"</span>), /* … */],
+    linkerSettings: [.unsafeFlags([<span class="str">"-L"</span> + lib, <span class="str">"-lyap"</span>])]),</code></pre><figcaption><code>docs/package.md</code>, lines 64–70</figcaption></figure>
 <p><code>cairn build</code> builds the Lean, links it with Cairn's runtime into one static library in
 <code>.cairn/lib/</code>, and builds the host. By hand, that is:</p>
-<pre><code>cd lean &amp;&amp; lake build
+<figure class="code"><pre class="px"><code class="make">cd lean &amp;&amp; lake build
 cd lean &amp;&amp; .lake/packages/cairn/bin/cairn-link --lib Yap --out ../.cairn/lib/libyap.a
-swift build
-</code></pre>
+swift build</code></pre><figcaption><code>docs/package.md</code>, lines 82–84</figcaption></figure>
 <p>The app's <code>main.swift</code> hands its three exports to the host, as Counter's does above. The app
 declares those exports in a small C target of its own. Cairn's tools (the claim ledger, the
 axiom audit, the bundle script) run from the app's Lake directory against its own modules.</p>

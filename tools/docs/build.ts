@@ -236,10 +236,10 @@ function highlight(code: string, lang: string): string {
 const langOf = (path: string) =>
 	path.endsWith(".lean") ? "lean" : path.endsWith(".swift") ? "swift" : path.endsWith(".md") ? "md" : "make";
 
-function codeBlock(path: string, r: Region): string {
+function codeBlock(path: string, r: Region, lang = langOf(path)): string {
 	const lines = r.first === r.last ? `line ${r.first}` : `lines ${r.first}–${r.last}`;
 	return (
-		`<figure class="code"><pre class="px"><code class="${langOf(path)}">${highlight(r.text, langOf(path))}</code></pre>` +
+		`<figure class="code"><pre class="px"><code class="${lang}">${highlight(r.text, lang)}</code></pre>` +
 		`<figcaption><code>${esc(path)}</code>, ${lines}</figcaption></figure>`
 	);
 }
@@ -269,7 +269,27 @@ function renderBody(page: Page): string {
 		if (!r) return;
 		if (spec.split("#")[0].endsWith(".md")) {
 			// Internal notes: their links point into the private repository, so keep only the text.
-			lines.push("", r.text.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1"), "");
+			// A fenced block in the region becomes a code figure like any other include, captioned
+			// with its own lines in the note.
+			const text = r.text.split("\n");
+			let prose: string[] = [];
+			const flush = () => {
+				if (prose.length) lines.push("", prose.join("\n").replace(/\[([^\]]+)\]\([^)]*\)/g, "$1"), "");
+				prose = [];
+			};
+			for (let k = 0; k < text.length; k++) {
+				const open = text[k].match(/^\s*```\s*(\w*)/);
+				if (!open) { prose.push(text[k]); continue; }
+				const end = text.findIndex((l, j) => j > k && /^\s*```\s*$/.test(l));
+				if (end < 0) { fail(`${where}:${i + 1}`, `${spec} has a fenced block that never closes`); break; }
+				flush();
+				const fence = open[1];
+				const lang = fence === "lean" || fence === "swift" ? fence : "make";
+				blocks.push(codeBlock(spec.split("#")[0], { text: text.slice(k + 1, end).join("\n"), first: r.first + k + 1, last: r.first + end - 1 }, lang));
+				lines.push("", `<div data-include="${blocks.length - 1}"></div>`, "");
+				k = end;
+			}
+			flush();
 		} else {
 			blocks.push(codeBlock(spec.split("#")[0], r));
 			lines.push("", `<div data-include="${blocks.length - 1}"></div>`, "");
