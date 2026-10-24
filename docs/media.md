@@ -15,6 +15,14 @@ videos. Record a video whenever something new works on screen.
   ```
 
   Drive the app during the take with real input or accessibility presses on `^N` ids.
+
+  A panel (a non-activating window above layer 0, like Yap's overlay) is taken by its window
+  id, still only if the app owns it: `--window <id> --wait 2` waits for it to come on screen,
+  and `--size WxH` (points) fixes the output for a panel that grows. Yap's overlay take:
+  `CairnYap --bench-demo` (host/Sources/CairnYap/Bench.swift) plays a synthetic dictation with
+  no microphone, key, network or typing, and prints `demo: panel window <id>`; then
+  `build/bin/record --pid <pid> --window <id> --wait 2 --size 556x214 --out take.mov --seconds 14`
+  (it stops when the panel closes).
 - `tools/media/put.sh <take.mov> <title> <caption> [--feature] [--milestone m1|m2]` encodes to H.264, uploads the video
   and a poster under content-hashed keys, and adds an entry to `media.json` (with the date and
   commit). `--feature` makes it the video at the top of the page, and `--milestone` (default `m2`, the current goal) picks which milestone's progress log it appears in. The featured video is whichever best represents the project as it is now (not simply the newest); each time a video lands, decide whether it beats the current one.

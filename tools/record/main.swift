@@ -1,6 +1,12 @@
 // Records one window, and nothing else on screen, to a .mov file.
 //
 //   record --pid <pid> [--title <substring>] --out <file.mov> [--seconds N]
+//   record --pid <pid> --window <id> [--wait S] [--size WxH] --out <file.mov> [--seconds N]
+//
+// Without --window it takes the app's first normal (layer 0) window. --window takes that one
+// window by its CGWindowID, at any layer (a non-activating panel, like Yap's overlay), and only
+// if it belongs to <pid>. --wait polls up to S seconds for it to come on screen. --size sets the
+// output in points (default: the window's size when recording starts), for a window that grows.
 //
 // Recording stops after N seconds, on SIGINT/SIGTERM, or when the window closes.
 // ScreenCaptureKit's desktop-independent window filter captures only that window's
@@ -20,6 +26,9 @@ var pid: pid_t?
 var title: String?
 var out: String?
 var seconds: Double?
+var windowID: CGWindowID?
+var waitSeconds = 0.0
+var size: CGSize?
 var args = CommandLine.arguments.dropFirst().makeIterator()
 while let arg = args.next() {
     switch arg {
@@ -27,10 +36,18 @@ while let arg = args.next() {
     case "--title": title = args.next()
     case "--out": out = args.next()
     case "--seconds": seconds = args.next().flatMap { Double($0) }
+    case "--window": windowID = args.next().flatMap { CGWindowID($0) }
+    case "--wait": waitSeconds = args.next().flatMap { Double($0) } ?? 0
+    case "--size":
+        let wh = (args.next() ?? "").split(separator: "x").compactMap { Double($0) }
+        guard wh.count == 2 else { fail("--size takes WxH in points") }
+        size = CGSize(width: wh[0], height: wh[1])
     default: fail("unknown argument \(arg)")
     }
 }
-guard let pidArg = pid, let outArg = out else { fail("usage: record --pid <pid> [--title <s>] --out <file.mov> [--seconds N]") }
+guard let pidArg = pid, let outArg = out else {
+    fail("usage: record --pid <pid> [--title <s> | --window <id> [--wait S]] [--size WxH] --out <file.mov> [--seconds N]")
+}
 
 final class Recorder: NSObject, SCStreamDelegate, SCRecordingOutputDelegate {
     let pid: pid_t
@@ -45,18 +62,31 @@ final class Recorder: NSObject, SCStreamDelegate, SCRecordingOutputDelegate {
         self.out = out
     }
 
-    func start() async throws {
+    func find() async throws -> SCWindow? {
         let content = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)
-        let windows = content.windows.filter {
-            $0.owningApplication?.processID == pid && $0.windowLayer == 0
-                && (self.title == nil || ($0.title ?? "").contains(self.title!))
+        // Always the one window, and always one that <pid> owns.
+        return content.windows.first { w in
+            guard w.owningApplication?.processID == pid else { return false }
+            if let id = windowID { return w.windowID == id }
+            return w.windowLayer == 0 && (title == nil || (w.title ?? "").contains(title!))
         }
-        guard let window = windows.first else { fail("no on-screen window for pid \(pid)") }
+    }
+
+    func start() async throws {
+        let deadline = Date(timeIntervalSinceNow: waitSeconds)
+        var found = try await find()
+        while found == nil && Date() < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+            found = try await find()
+        }
+        guard let window = found else { fail("no on-screen window for pid \(pid)") }
         let filter = SCContentFilter(desktopIndependentWindow: window)
         let config = SCStreamConfiguration()
         let scale = CGFloat(filter.pointPixelScale)
-        config.width = Int(window.frame.width * scale)
-        config.height = Int(window.frame.height * scale)
+        let points = size ?? window.frame.size
+        config.width = Int(points.width * scale)
+        config.height = Int(points.height * scale)
+        config.scalesToFit = false  // a window that grows keeps its scale (top left), not squeezed
         config.minimumFrameInterval = CMTime(value: 1, timescale: 60)
         config.showsCursor = false  // the real pointer sits wherever the person left it; it is never part of the demo
         config.capturesAudio = false
