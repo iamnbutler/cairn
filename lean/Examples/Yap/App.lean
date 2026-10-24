@@ -56,7 +56,19 @@ def microphoneSettings : String :=
   "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone"
 def transcriptionURL : String := "https://api.openai.com/v1/audio/transcriptions"
 def transcriptionTimeoutMs : Nat := 30000
-def boundary : String := "yap-cairn-boundary-7d1e5c3a"
+/-- The multipart boundary for a request: `yap-` and a version-4 UUID, as Yap's
+`"yap-\(UUID().uuidString)"`. Yap's is random; this one is mixed from the clip and its windows
+(a 64-bit linear congruential generator), so it has the same form and differs per request. -/
+def boundaryFor (clip start : Nat) (stop : Option Nat) : String :=
+  let next (x : Nat) : Nat := (x * 6364136223846793005 + 1442695040888963407) % 2 ^ 64
+  let a := next (next (clip * 1000003 + start * 7919 + (stop.map (· + 1)).getD 0 + 0x79617001))
+  let b := next a
+  let hex (x : Nat) : List Char :=
+    (List.range 16).reverse.map fun i => (Nat.toDigits 16 (x / 16 ^ i % 16)).head!.toUpper
+  let d := hex a ++ hex b
+  let d := d.set 12 '4' |>.set 16 ("89AB".toList.getD (b % 4) '8')
+  let part (i n : Nat) : String := String.ofList ((d.drop i).take n)
+  s!"yap-{part 0 8}-{part 8 4}-{part 12 4}-{part 16 4}-{part 20 12}"
 def dictionaryTemplate : String :=
   "# Yap dictionary. One term per line; only the first 25 are sent.\n# \"heard => written\" fixes a mishearing after transcription.\n"
 /-- How often the app checks its permissions and whether the original Yap is running. -/
@@ -420,17 +432,17 @@ def launchPrefs (b : Boot) : Option Prefs := do
 OpenAI's `audio/transcriptions` as Yap's `OpenAITranscription` sends it: multipart with
 `model`, `response_format=json`, the prompt if there is one, then the WAV. -/
 
-def formField (name value : String) : String :=
+def formField (boundary name value : String) : String :=
   s!"--{boundary}\r\nContent-Disposition: form-data; name=\"{name}\"\r\n\r\n{value}\r\n"
 
-def uploadHead (model : String) (prompt : Option String) : String :=
-  formField "model" model ++ formField "response_format" "json" ++
+def uploadHead (boundary model : String) (prompt : Option String) : String :=
+  formField boundary "model" model ++ formField boundary "response_format" "json" ++
     (match prompt with
-     | some p => if p.isEmpty then "" else formField "prompt" p
+     | some p => if p.isEmpty then "" else formField boundary "prompt" p
      | none => "") ++
     s!"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"speech.wav\"\r\nContent-Type: audio/wav\r\n\r\n"
 
-def uploadTail : String := s!"\r\n--{boundary}--\r\n"
+def uploadTail (boundary : String) : String := s!"\r\n--{boundary}--\r\n"
 
 def apiKey : Secret :=
   { header := "Authorization", scheme := "Bearer ", file := secretsPath, name := "OPENAI_API_KEY" }
@@ -438,9 +450,11 @@ def apiKey : Secret :=
 /-- Windows `[start, stop)` of `clip` (all of it with `none`), transcribed. -/
 def transcription (clip start : Nat) (stop : Option Nat) (model : String) (prompt : Option String) :
     Request :=
+  let boundary := boundaryFor clip start stop
   .upload "POST" transcriptionURL
     [("Content-Type", s!"multipart/form-data; boundary={boundary}")] (some apiKey)
-    [.bytes (uploadHead model prompt).toUTF8, .wav clip start stop, .bytes uploadTail.toUTF8]
+    [.bytes (uploadHead boundary model prompt).toUTF8, .wav clip start stop,
+     .bytes (uploadTail boundary).toUTF8]
     transcriptionTimeoutMs
 
 /-- An upload of a whole clip: what ^311 and ^323 are about. -/

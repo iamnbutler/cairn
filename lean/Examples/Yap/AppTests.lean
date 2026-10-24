@@ -9,6 +9,11 @@ open Examples.Yap Cairn
 
 #guard (transcription 7 0 none "m" none).wholeClip == some 7
 #guard (transcription 7 0 (some 3) "m" none).wholeClip == none
+-- Yap's boundary form, `yap-` and a version-4 UUID in capitals; one per request.
+#guard (boundaryFor 7 0 none).length == 40 && (boundaryFor 7 0 none).startsWith "yap-"
+#guard ((boundaryFor 7 0 none).toList.drop 4).all (fun c => c == '-' || c.isDigit || ('A' ≤ c && c ≤ 'F'))
+#guard ((boundaryFor 7 0 none).toList[18]?) == some '4' && "89AB".toList.contains ((boundaryFor 3 9 (some 2)).toList[23]!)
+#guard boundaryFor 7 0 none != boundaryFor 8 0 none && boundaryFor 7 0 none != boundaryFor 7 0 (some 0)
 #guard transcriptLine { clip := some 1, text := "Hi \"there\"", app := some "Notes", date := 1792749600000 }
   == "{\"app\":\"Notes\",\"date\":\"2026-10-23T10:00:00Z\",\"text\":\"Hi \\\"there\\\"\",\"typed\":false}"
 #guard (parseTranscript "{\"date\":\"2026-10-23T10:00:00Z\",\"text\":\"x\",\"typed\":true}").map (·.date) == some 1792749600000

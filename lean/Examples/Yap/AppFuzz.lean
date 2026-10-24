@@ -266,6 +266,13 @@ def heads (r : Request) : Option ByteArray :=
   | .upload _ _ _ _ (.bytes b :: _) _ => some b
   | _ => none
 
+/-- An upload's multipart boundary, from its `Content-Type`. -/
+def boundaryOf (r : Request) : Option String :=
+  match r with
+  | .upload _ _ hs _ _ _ => (hs.lookup "Content-Type").bind fun v =>
+      (v.dropPrefix? "multipart/form-data; boundary=").map (·.toString)
+  | _ => none
+
 abbrev Check := AppState → Step → AppState → List Effect → Option Bool
 
 def isClockOrTimer : Step → Bool
@@ -380,7 +387,9 @@ def a321 : Check := fun s _ _ es =>
     | some r => [none, context r.heard]
     | none => [none]
   some <| ups.all fun (_, r) => match heads r with
-    | some b => ctx.any fun c => b.toList == (uploadHead s.core.model (d.promptFor c)).toUTF8.toList
+    | some b => match boundaryOf r with
+      | some bd => ctx.any fun c => b.toList == (uploadHead bd s.core.model (d.promptFor c)).toUTF8.toList
+      | none => false
     | none => false
 
 def a322 : Check := fun _ _ s' _ => some (s'.core.recent.length ≤ recentLimit)
