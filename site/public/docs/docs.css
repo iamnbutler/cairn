@@ -1,0 +1,141 @@
+/* Cairn's developer docs (tools/docs). The site's night palette and type, as on the homepage
+   (site/public/index.html) and the maps (tools/map/style.css): Pixelify Sans for headings and
+   labels, a serif for prose, stepped corners on panels. */
+:root {
+	--bg: #161937;
+	--fg: #e6e2f6;
+	--muted: #a29fca;
+	--rule: #2d3062;
+	--ink: #0c0e26;
+	--panel: #1d2047;
+	--chip: #2a2d5e;
+	--accent: #9cc8e8;
+	--gold: #f2c46a;
+	--px: 4px;
+	--pixel: "Pixelify Sans", ui-monospace, monospace;
+	--mono: ui-monospace, "SF Mono", Menlo, monospace;
+	color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { background: var(--bg); }
+body {
+	margin: 0;
+	background: var(--bg);
+	color: var(--fg);
+	font: 17px/1.65 ui-serif, "New York", Georgia, serif;
+	-webkit-font-smoothing: antialiased;
+	overflow-x: clip;
+}
+a { color: var(--accent); text-underline-offset: 3px; }
+code { font: 0.84em var(--mono); background: var(--chip); padding: 1px 5px; border-radius: 2px; overflow-wrap: anywhere; }
+p { margin: 0 0 14px; }
+
+/* Stepped corners, as on the site. */
+.px {
+	--s: var(--px);
+	clip-path: polygon(
+		0 calc(var(--s) * 2), var(--s) calc(var(--s) * 2), var(--s) var(--s), calc(var(--s) * 2) var(--s), calc(var(--s) * 2) 0,
+		calc(100% - var(--s) * 2) 0, calc(100% - var(--s) * 2) var(--s), calc(100% - var(--s)) var(--s), calc(100% - var(--s)) calc(var(--s) * 2), 100% calc(var(--s) * 2),
+		100% calc(100% - var(--s) * 2), calc(100% - var(--s)) calc(100% - var(--s) * 2), calc(100% - var(--s)) calc(100% - var(--s)), calc(100% - var(--s) * 2) calc(100% - var(--s)), calc(100% - var(--s) * 2) 100%,
+		calc(var(--s) * 2) 100%, calc(var(--s) * 2) calc(100% - var(--s)), var(--s) calc(100% - var(--s)), var(--s) calc(100% - var(--s) * 2), 0 calc(100% - var(--s) * 2)
+	);
+}
+
+/* The bar: the site, the docs, the maps. */
+.bar { max-width: 1180px; margin: 0 auto; padding: 20px 16px 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; font: 15px/1.3 var(--pixel); }
+.bar .home { display: flex; align-items: center; gap: 8px; color: var(--fg); text-decoration: none; font-weight: 600; }
+.bar .home img { width: 22px; height: 22px; image-rendering: pixelated; }
+.bar a { color: var(--muted); text-decoration: none; }
+.bar a:hover, .bar a.on { color: var(--fg); }
+.bar a.on { box-shadow: inset 0 -3px 0 var(--gold); }
+
+/* The page: the sidebar and the text. */
+.layout { max-width: 1180px; margin: 0 auto; padding: 0 16px; display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 48px; align-items: start; }
+main { min-width: 0; padding: 8px 0 72px; }
+
+.side { position: sticky; top: 0; max-height: 100vh; overflow-y: auto; padding: 36px 0 24px; font: 15px/1.35 var(--pixel); }
+.side summary { display: none; }
+.side h2 { font: 600 13px/1 var(--pixel); color: var(--gold); letter-spacing: 0.06em; text-transform: uppercase; margin: 22px 0 8px; }
+.side h2:first-child { margin-top: 0; }
+.side ul, .side ol { list-style: none; margin: 0; padding: 0; }
+.side ol { margin: 2px 0 6px 12px; padding-left: 10px; border-left: 2px solid var(--rule); }
+.side a { display: block; padding: 4px 8px; color: var(--muted); text-decoration: none; }
+.side a:hover { color: var(--fg); }
+.side a.on { color: var(--fg); background: var(--panel); box-shadow: inset 3px 0 0 var(--gold); }
+.todo { font: 12px/1 var(--pixel); color: var(--gold); margin-left: 7px; white-space: nowrap; letter-spacing: 0.02em; }
+
+header.page { margin: 40px 0 28px; max-width: 760px; }
+.eyebrow { font: 600 14px/1.3 var(--pixel); color: var(--gold); letter-spacing: 0.04em; margin: 0 0 8px; }
+.eyebrow .todo { font-size: 13px; padding: 2px 6px; box-shadow: inset 0 0 0 2px var(--gold); margin-left: 10px; }
+.eyebrow:empty { display: none; }
+h1 { font: 700 44px/1.08 var(--pixel); margin: 0 0 14px; color: #f3efff; letter-spacing: 0.02em; text-shadow: 3px 3px 0 #2b2d6a; }
+.lede { font-size: 20px; line-height: 1.5; margin: 0; }
+
+.prose { max-width: 760px; }
+.prose h2 { font: 600 22px/1.25 var(--pixel); margin: 52px 0 14px; display: flex; align-items: center; gap: 12px; }
+.prose h2::before { content: ""; width: 20px; height: 20px; flex: none; background: url("/icon.svg") center / contain no-repeat; image-rendering: pixelated; }
+.prose h3 { font: 600 18px/1.3 var(--pixel); margin: 34px 0 10px; }
+.prose ul, .prose ol { padding-left: 24px; margin: 0 0 14px; }
+.prose li { margin-bottom: 6px; }
+.prose li > p { margin-bottom: 6px; }
+.prose blockquote { margin: 0 0 14px; padding-left: 16px; border-left: 4px solid var(--rule); color: var(--muted); }
+.prose hr { border: 0; border-top: 2px solid var(--rule); margin: 36px 0; }
+
+/* Code, included from source: a stepped panel, and where it came from. */
+figure.code { margin: 18px 0 22px; }
+figure.code pre { margin: 0; background: var(--panel); padding: 16px 18px; overflow-x: auto; font: 13.5px/1.65 var(--mono); box-shadow: inset 0 0 0 var(--px) var(--chip); }
+figure.code pre code { background: none; padding: 0; font: inherit; overflow-wrap: normal; white-space: pre; }
+figure.code figcaption { font: 13px/1.3 var(--pixel); color: var(--muted); margin-top: 6px; }
+figure.code figcaption code { font-size: 12.5px; background: none; padding: 0; color: var(--muted); }
+.kw { color: #c9a8f0; }
+.id { color: var(--gold); }
+.str { color: #9fd3b4; }
+.cm { color: #8a87b8; font-style: italic; }
+
+/* Tables scroll inside their box on a narrow screen; the page never does. */
+.wrap { overflow-x: auto; margin: 8px 0 18px; }
+table { width: 100%; border-collapse: collapse; font-size: 15.5px; line-height: 1.5; }
+th { font: 600 13px var(--pixel); color: var(--muted); text-align: left; letter-spacing: 0.04em; padding: 0 12px 6px 0; vertical-align: bottom; }
+td { padding: 8px 12px 8px 0; border-top: 2px solid var(--rule); vertical-align: top; }
+
+/* A note card: an aside the reader shouldn't miss. A gold label; "todo" for what isn't there yet. */
+.note { margin: 28px 0; filter: drop-shadow(var(--px) var(--px) 0 var(--ink)); }
+.note .card { --s: var(--px); background: var(--panel); padding: 18px 22px 18px; box-shadow: inset 0 0 0 var(--px) var(--chip); }
+.note .label { font: 600 15px/1 var(--pixel); color: var(--gold); letter-spacing: 0.04em; margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
+.note .label img { width: 16px; height: 16px; image-rendering: pixelated; }
+.note p:last-child { margin-bottom: 0; }
+
+/* The bookshelf on /docs/. */
+.shelf { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 14px 0 8px; font-family: ui-serif, "New York", Georgia, serif; }
+.shelf a { display: block; text-decoration: none; color: var(--fg); background: var(--panel); padding: 16px 18px; box-shadow: inset 0 0 0 var(--px) var(--chip); }
+.shelf a:hover { box-shadow: inset 0 0 0 var(--px) var(--gold); }
+.shelf b { display: block; font: 600 17px/1.3 var(--pixel); color: #f3efff; margin-bottom: 6px; }
+.shelf span { display: block; font-size: 15.5px; line-height: 1.45; color: var(--muted); }
+.shelf .todo { display: inline; margin-left: 6px; }
+
+/* Previous and next, within the Book. */
+.pager { max-width: 760px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 56px; padding-top: 20px; border-top: 2px solid var(--rule); font: 16px/1.3 var(--pixel); }
+.pager a { text-decoration: none; color: var(--fg); }
+.pager a:hover { color: var(--accent); }
+.pager small { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+.pager .next { text-align: right; grid-column: 2; }
+
+footer { max-width: 1180px; margin: 0 auto; padding: 0 16px 48px; font: 14px/1.4 var(--pixel); color: var(--muted); }
+footer code { font-size: 12.5px; }
+
+@media (max-width: 900px) {
+	:root { --px: 3px; }
+	.layout { grid-template-columns: minmax(0, 1fr); gap: 0; }
+	.side { position: static; max-height: none; padding: 18px 0 0; }
+	.side summary { display: block; cursor: pointer; font: 600 15px var(--pixel); color: var(--fg); padding: 10px 14px; background: var(--panel); box-shadow: inset 0 0 0 var(--px) var(--chip); }
+	.side[open] summary { margin-bottom: 14px; }
+	.side nav { padding: 0 4px 8px; }
+	header.page { margin-top: 28px; }
+	h1 { font-size: 34px; }
+	.lede { font-size: 18px; }
+	.shelf { grid-template-columns: minmax(0, 1fr); }
+	figure.code pre { font-size: 12.5px; padding: 14px; }
+}
+
+/* Pixelify draws "fi" as a broken glyph. Last, because a later `font:` shorthand would reset it. */
+h1, h2, h3, h4, .bar, .side, .side *, .eyebrow, .pager, .pager *, th, .todo, figcaption, .shelf b, .note .label, footer { font-variant-ligatures: none; }
