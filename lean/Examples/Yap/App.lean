@@ -78,6 +78,15 @@ def pollEveryMs : Nat := 2000
 `TimelineView(.periodic(from: .now, by: 0.25))`. -/
 def clockEveryMs : Nat := 250
 
+/-- When the transcript changes, the original's panel eases to its new height over 0.15 s
+(`.animation(.easeOut(duration: 0.15), value: model.text)`), starting a frame after the one
+that resizes its window (measured: 38 ms after the change on screen, against 20 ms for the
+resize). -/
+def textEaseMs : Nat := 150
+def textEaseDelayMs : Nat := 17
+/-- The eased panel is redrawn this often, about once a display frame. -/
+def easeEveryMs : Nat := 16
+
 /-- A transcript's day file: named by its local date. -/
 def dayPath (day : Int) : String := transcriptsDir ++ "/" ++ Dates.dayFile day
 
@@ -183,6 +192,10 @@ structure Overlay where
   levels : List (Nat × Nat) := []
   /-- Where the preview cut the recording (in samples), newest first, at most `maximumCuts`. -/
   marks : List Nat := []
+  /-- The text before its last change, and when it changed (monotonic ms): the panel eases
+  from one to the other (`textEaseMs`). -/
+  prev : String := ""
+  changed : Nat := 0
 deriving Repr, Inhabited
 
 /-- What launch has heard back: `none` while waiting, `some none` for nothing there. -/
@@ -536,6 +549,10 @@ def levelPpm (sumSq n : Nat) : Nat :=
 
 def Overlay.isLive (o : Overlay) : Bool := o.look == .listening || o.look == .handsFree
 
+/-- Whether the panel is still easing to its text's height at `now`. -/
+def Overlay.easing (o : Overlay) (now : Nat) : Bool :=
+  o.shown && o.prev != o.text && now < o.changed + textEaseDelayMs + textEaseMs
+
 def Overlay.apply (o : Overlay) (now c : Nat) : OverlayCmd → Overlay × List Effect
   | .begin => ({ clip := c, shown := true, since := now,
                  epoch := if o.epoch = 0 then now else o.epoch }, [])
@@ -546,7 +563,10 @@ def Overlay.apply (o : Overlay) (now c : Nat) : OverlayCmd → Overlay × List E
           | .typed => .typed | .failed => .failed }
       ({ o' with stop := if o'.isLive then o'.stop else some (o'.stop.getD now) }, [])
     else (o, [])
-  | .text t => if o.clip = c ∧ o.shown then ({ o with text := t }, []) else (o, [])
+  | .text t =>
+    if o.clip = c ∧ o.shown then
+      (if t = o.text then o else { o with text := t, prev := o.text, changed := now }, [])
+    else (o, [])
   | .mark n =>
     if o.clip = c ∧ o.shown then ({ o with marks := n :: o.marks.take (maximumCuts - 1) }, [])
     else (o, [])
@@ -919,8 +939,8 @@ def prepMsg (s : AppState) : Msg → Prep
       | some (p, io) => ownReply s p io r
       | none => { io }
   | .sub (.every n) .tick =>
-    -- The overlay's clock ticks on its own subscription (`clockEveryMs`); only the clock moves.
-    if n = clockEveryMs then { io := s.io }
+    -- The overlay's clock and its easing tick on their own subscriptions; only time moves.
+    if n = clockEveryMs ∨ n = easeEveryMs then { io := s.io }
     else let (io, as) := checks s.io; { io, asks := as }
   | .sub (.watchFile p) .changed =>
     if p = configPath then let (io, a) := s.io.ask .config (.read configPath); { io, asks := [a] }
@@ -989,6 +1009,7 @@ def wantsKey (s : AppState) : Bool :=
 def subscriptions (s : AppState) : List Sub :=
   [.every pollEveryMs] ++
   (if s.io.overlay.shown && s.io.overlay.isLive then [.every clockEveryMs] else []) ++
+  (if s.io.overlay.easing s.io.mono then [.every easeEveryMs] else []) ++
   (if s.io.launched then [.watchFile configPath, .watchFile dictionaryPath] else []) ++
   (match s.core.recording with
    | some r => [.record r.clip]

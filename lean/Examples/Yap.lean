@@ -68,7 +68,7 @@ place ^301 menuBar "Menu bar menu" where
 retire ^345 place "Overlay panel" because "The overlay is now the original's, one to one (^399): the tape display instead of a bar waveform, and the transcript's last 280 characters instead of its last four lines."
 
 place ^399 overlayPanel "Overlay panel" where
-  does "Yap's panel at the bottom of the screen, over every app, that never takes focus or clicks, drawn as the original's: the phase (REC, hands free, transcribing, typed, not typed) with a glowing dot and a clock that stops when recording does, the tape (the original's shader: the scope, the ruler, the reel and the meter, from the microphone's levels and the preview's cuts) and the live transcript's last 280 characters. Hidden 1.5 s after a transcript is typed and 4 s after one fails."
+  does "Yap's panel at the bottom of the screen, over every app, that never takes focus or clicks, drawn as the original's: the phase (REC, hands free, transcribing, typed, not typed) with a glowing dot and a clock that stops when recording does, the tape (the original's shader: the scope, the ruler, the reel and the meter, from the microphone's levels and the preview's cuts) and the live transcript's last 280 characters; when the text changes the panel eases to its new height over 0.15 s as the original's does, new text fading in and old text fading out. Hidden 1.5 s after a transcript is typed and 4 s after one fails."
 
 move ^302 copyLast (s : AppState) "Copy Last Transcript" in ^301 where
   does "Choose Copy Last Transcript."
@@ -432,7 +432,7 @@ def claimInfos : List ClaimInfo := claims%
 
 /-- Yap on Cairn: the status item with Yap's menu, and the overlay. -/
 def app : App AppState :=
-  { machine.toApp [.statusItem 301 (some ∘ statusItem), .panel 399 (fun _ => panel)] claimInfos with
+  { machine.toApp [.statusItem 301 (some ∘ statusItem), .panel 399 panel] claimInfos with
     subscriptions, initEffects }
 
 end Examples.Yap

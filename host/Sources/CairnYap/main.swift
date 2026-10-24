@@ -46,6 +46,9 @@ YapTape.register()
 if let i = args.firstIndex(of: "--overlay-scenes") {
     exit(OverlayScenes.run(Array(args[(i + 1)...])))
 }
+if let i = args.firstIndex(of: "--overlay-motion") {
+    exit(OverlayScenes.runMotion(Array(args[(i + 1)...])))
+}
 
 if args.contains("--selftest") {
     MainActor.assumeIsolated { SelfTest.run() }

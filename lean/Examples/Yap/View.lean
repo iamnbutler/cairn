@@ -1,6 +1,7 @@
 module
 
 public import Examples.Yap.App
+public import Cairn.Layout.Core
 
 /-! # Yap on Cairn: the menu and the overlay
 
@@ -162,24 +163,98 @@ def header (o : Overlay) (now : Nat) : Node :=
 so the tape (an opaque Metal view) and the rule cast it too, below the panel's edge. -/
 def panelShadow : Shadow := { color := ⟨0, 0, 0, 89⟩, radius := 14, y := 4 }
 
-def overlayView (s : AppState) : Node :=
-  let o := s.io.overlay
+/-- `c` with its alpha scaled by `p` millionths. -/
+def fade (c : Color) (p : Nat) : Color := withAlpha c (c.a.toNat * min p 1000000 / 1000000).toUInt8
+
+def black : Color := ⟨0, 0, 0, 255⟩
+
+/-- The rule above the transcript, at opacity `p` (millionths). -/
+def rule (p : Nat) : Node :=
+  .box { width := .fill, height := .fixed 1, background := some (fade edge p),
+         shadow := some { panelShadow with color := fade panelShadow.color p } } none []
+
+/-- The transcript's tail, at opacity `p` (millionths): full in TYPED, 60% before. -/
+def transcript (o : Overlay) (t : String) (p : Nat) : Node :=
+  .para { font := { size := 14 },
+          color := fade (withAlpha cream (if o.look == .typed then 255 else 153)) p }
+    { lineSpacing := 3 } (tailText t)
+
+def tapeBox (o : Overlay) : Node :=
+  .box { width := .fill, height := .fixed 58, background := some black,
+         shadow := some panelShadow, paint := some (tapePaint o) } none []
+
+/-- The panel's own box: black, continuous corners, the edge and the shadow. -/
+def panelStyle : Style :=
+  { width := .fill, padding := ⟨12, 16, 14, 16⟩, gap := 10, radius := 14,
+    corner := .continuous, background := some black, border := some ⟨1, edge⟩,
+    shadow := some panelShadow }
+
+/-- The panel at rest showing `t`: the header, the tape and, once there is text, the rule and
+the text. -/
+def restingView (o : Overlay) (now : Nat) (t : String) : Node :=
   .box { width := .fill, padding := ⟨18, 18, 18, 18⟩ } none
-    [ .box { width := .fill, padding := ⟨12, 16, 14, 16⟩, gap := 10, radius := 14,
-             corner := .continuous, background := some ⟨0, 0, 0, 255⟩, border := some ⟨1, edge⟩,
-             shadow := some panelShadow } none
-        ([ header o s.io.mono,
-           .box { width := .fill, height := .fixed 58, background := some ⟨0, 0, 0, 255⟩,
-                  shadow := some panelShadow, paint := some (tapePaint o) } none [] ] ++
-         (if o.text.isEmpty then []
-          else [ .box { width := .fill, height := .fixed 1, background := some edge,
-                        shadow := some panelShadow } none [],
-                 .para { font := { size := 14 },
-                         color := withAlpha cream (if o.look == .typed then 255 else 153) }
-                   { lineSpacing := 3 } (tailText o.text) ])) ]
+    [ .box panelStyle none
+        ([header o now, tapeBox o] ++
+         (if t.isEmpty then [] else [rule 1000000, transcript o t 1000000])) ]
+
+/-- `easeOut`'s curve, SwiftUI's `.easeOut` (the cubic Bézier through (0.58, 1)): the progress
+at time fraction `u`, both in millionths, found by bisecting the curve's parameter. -/
+def easeOut (u : Nat) : Nat :=
+  let x (t : Nat) : Nat := (174 * (1000000 - t) * t * t / 100 + t * t * t) / 1000000000000
+  let y (t : Nat) : Nat := (3 * (1000000 - t) * t * t + t * t * t) / 1000000000000
+  if u ≥ 1000000 then 1000000 else y (go x 24 0 1000000)
+where
+  go (x : Nat → Nat) : Nat → Nat → Nat → Nat
+    | 0, lo, _ => lo
+    | k + 1, lo, hi => let mid := (lo + hi) / 2
+                       if x mid < u then go x k mid hi else go x k lo mid
+
+/-- How far the panel has eased to its text's height at `now`, in millionths. -/
+def Overlay.progress (o : Overlay) (now : Nat) : Nat :=
+  let t := now - (o.changed + textEaseDelayMs)
+  if now < o.changed + textEaseDelayMs then 0
+  else easeOut (min 1000000 (t * 1000000 / textEaseMs))
+
+/-- `a + (b − a)·p`, `p` in millionths, to the nearest point. -/
+def lerp (a b : Int) (p : Nat) : Int := a + ((b - a) * p + 500000) / 1000000
+
+/-- Put `n` `y` points down from the top of a stack, 34 in from its sides (the panel's 18 and
+its 16 of padding). -/
+def placed (y : Int) (n : Node) : Node := .box { width := .fill, padding := ⟨y, 34, 0, 34⟩ } none [n]
+
+/-- The panel easing from `o.prev` to `o.text` (SwiftUI's animation of the original's stack):
+the window takes the new height at once and the panel's box eases from the old height to the
+new, centred in it; the header, the tape and anything that stays (the rule, the old text)
+move with its top; what is new (the rule and the new text) fades in where it ends up, and the
+old text fades out as it moves. `m` measures both heights. -/
+def easingView (m : TextMetrics) (o : Overlay) (now : Nat) (p : Nat) : Node :=
+  let height (t : String) : Int := (Layout.measure m 556 (restingView o now t)).size.h - 36
+  let h0 := height o.prev
+  let h1 := height o.text
+  let h := lerp h0 h1 p
+  let top := 18 + (h1 - h + 1) / 2
+  -- Under the header (26), the tape (58) and two gaps of 10, from the panel's top padding.
+  let ruleY := 12 + 26 + 10 + 58 + 10
+  let textY := ruleY + 1 + 10
+  .box { axis := .stack, width := .fill, height := .fixed (h1 + 36).toNat } none
+    ([ .box { width := .fill, padding := ⟨top, 18, 0, 18⟩ } none
+         [ .box { panelStyle with height := .fixed h.toNat, padding := {} } none [] ],
+       .box { width := .fill, padding := ⟨top + 12, 34, 0, 34⟩, gap := 10 } none
+         [header o now, tapeBox o] ] ++
+     (if o.prev.isEmpty then []
+      else [placed (top + ruleY) (rule (if o.text.isEmpty then 1000000 - p else 1000000)),
+            placed (top + textY) (transcript o o.prev (1000000 - p))]) ++
+     (if o.text.isEmpty then []
+      else (if o.prev.isEmpty then [placed (18 + ruleY) (rule p)] else []) ++
+           [placed (18 + textY) (transcript o o.text p)]))
+
+def overlayView (m : TextMetrics) (s : AppState) : Node :=
+  let o := s.io.overlay
+  if o.easing s.io.mono then easingView m o s.io.mono (o.progress s.io.mono)
+  else restingView o s.io.mono o.text
 
 /-- The panel: 520 points and 18 of room for the shadow on each side. -/
-def panel (s : AppState) : Option PanelView :=
-  if s.io.overlay.shown then some { width := 556, content := overlayView s } else none
+def panel (m : TextMetrics) (s : AppState) : Option PanelView :=
+  if s.io.overlay.shown then some { width := 556, content := overlayView m s } else none
 
 end Examples.Yap

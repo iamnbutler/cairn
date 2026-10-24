@@ -66,14 +66,20 @@ def sceneOverlay (b : ByteArray) : Overlay × Nat :=
   let levels := scenePairs b (i + 4) nl
   let j := i + 4 + 8 * nl
   let marks := (sceneWords b (j + 4) (sceneWord b j)).reverse
+  let k := j + 4 + 4 * sceneWord b j
+  -- Then, optionally, the text before its last change and when it changed.
+  let pl := sceneWord b k
+  let prev := if k + 4 ≤ b.size then (String.fromUTF8? (b.extract (k + 4) (k + 4 + pl))).getD "" else text
+  let changed := if k + 4 ≤ b.size then sceneWord b (k + 4 + pl) else 0
   ({ clip := 1, shown := true, look, text, since := sceneWord b 4, epoch := sceneWord b 8,
-     stop := if stop = 0xFFFFFFFF then none else some stop, levels, marks }, sceneWord b 12)
+     stop := if stop = 0xFFFFFFFF then none else some stop, levels, marks, prev, changed },
+   sceneWord b 12)
 
 @[export cairn_yap_overlay_frame]
 def overlayFrame (scene : ByteArray) : ByteArray :=
   let (o, now) := sceneOverlay scene
   let s : AppState := { io := { overlay := o, mono := now } }
-  match panel s with
+  match panel cfg.metrics s with
   | none => Frame.boundary.encode { surfaces := #[] }
   | some pv =>
     let (sz, l) := Runtime.layPanel cfg pv
