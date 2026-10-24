@@ -11,9 +11,18 @@ good and bad, OpenAI's transcripts and errors, typing that works or fails, the o
 starting and quitting; and replies late, twice, for nothing, or never.
 
 After every step it checks the claims as the app states them (`Examples.Yap`, over
-`AppState`, what `receive` returns), as runnable predicates: ^311, ^313–^323 and ^346. ^312 is
-an equation about one message from one state, checked when a key-up comes in the state it
-names. A failing sequence is shrunk as in the host mode. -/
+`AppState`, what `receive` returns), as runnable predicates: ^311, ^313–^323, ^346 and ^347.
+^312 is an equation about one message from one state, checked when a key-up comes in the state
+it names. A failing sequence is shrunk as in the host mode.
+
+The host keeps the day files' contents: an append, a write or a delete changes them when its
+answer says it worked, and a read of a day file gives what is there. Requests are answered in
+any order (an append can land after the read that marks its line), as a real host's run
+concurrently (docs/effects.md). So ^347 is checked twice: a mark's read never goes out while an
+append is in flight, and whenever every request is answered, each transcript typed while
+transcripts are kept, whose append worked, is `"typed":true` on disk, and no other line is.
+A mark the app gives up on must say so in the menu (`markNote`); that excuses the clips
+typed so far. -/
 
 namespace Examples.Yap.Fuzz.App
 open Examples.Yap Examples.Yap.Fuzz Cairn Cairn.Fuzz
@@ -40,11 +49,72 @@ structure Host where
   answered : List (Nat × Request) := []
   timers : List String := []
   original : Bool := false
+  /-- The day files on disk: path and contents. -/
+  files : List (String × String) := []
+  /-- Lines appended to day files whose answer said they worked. -/
+  appended : List String := []
+  /-- Transcripts typed (their lines as saved, untyped), and whether they must be marked
+  typed: transcripts were kept when the type was answered. -/
+  expect : List (String × Bool) := []
+  /-- Every transcript typed: how many lines may be marked. -/
+  typedLines : List String := []
+  /-- A request was dropped unanswered, or answered in the wrong shape: the disk check is off. -/
+  loose : Bool := false
 deriving Inhabited
 
 def Host.time (h : Host) : Time := { mono := h.mono, wall := h.wall, zone := h.zone }
 
-def Host.after (h : Host) (st : Step) (es : List Effect) : Host :=
+def replyOk : Cairn.Reply → Bool
+  | .failed .. => false
+  | _ => true
+
+def isDayFile (p : String) : Bool := p.startsWith (transcriptsDir ++ "/")
+
+def Host.file (h : Host) (p : String) : Option String := h.files.lookup p
+
+def Host.setFile (h : Host) (p : String) (c : Option String) : Host :=
+  let rest := h.files.filter (·.1 != p)
+  { h with files := match c with | some c => (p, c) :: rest | none => rest }
+
+/-- A line as the app marks it typed. -/
+def typedForm (line : String) : String :=
+  transcriptLine ({ (parseTranscript (line.dropEnd 1).toString).getD { clip := none, text := "" }
+    with typed := true })
+
+/-- What the host's answer `rep` to `r` did on disk, and what it means for the check. -/
+def Host.land (h : Host) (s s' : AppState) (id : Nat) (r : Request) (rep : Cairn.Reply) : Host :=
+  if !rep.answers r.kind then { h with loose := true } else
+  let h := if replyOk rep then
+    match r with
+    | .appendFile p d =>
+      if isDayFile p then
+        let line := utf8 d
+        { (h.setFile p (some ((h.file p).getD "" ++ line))) with appended := line :: h.appended }
+      else h
+    | .writeFile p d => if isDayFile p then h.setFile p (some (utf8 d)) else h
+    | .deleteFile p =>
+      -- Retention: lines in a deleted file can't be marked.
+      let gone := ((h.file p).getD "").splitOn "\n"
+      { (h.setFile p none) with expect := h.expect.filter fun (l, _) => !gone.contains (l.dropEnd 1).toString }
+    | _ => h
+  else h
+  match r, s.core.reqs.lookup (id / 2) with
+  | .typeText .., some (.type _ t) =>
+    if id % 2 == 0 && replyOk rep then
+      let line := transcriptLine t ++ "\n"
+      { h with expect := h.expect ++ [(line, s.core.settings.keepTranscripts)],
+               typedLines := line :: h.typedLines }
+    else h
+  | _, _ => h
+
+def Host.after (h : Host) (s s' : AppState) (st : Step) (es : List Effect) : Host :=
+  let h := match st with
+    | .msg (.reply id rep) => match h.pending.lookup id with
+      | some r => h.land s s' id r rep
+      | none => h
+    | _ => h
+  -- A mark the app gave up on, said in the menu: the clips typed so far are excused.
+  let h := if s'.io.note != s.io.note && s'.io.note.startsWith "Couldn't mark" then { h with expect := [] } else h
   let answered := match st with
     | .msg (.reply id _) => match h.pending.lookup id with
       | some r => ((id, r) :: h.answered).take 12
@@ -58,7 +128,8 @@ def Host.after (h : Host) (st : Step) (es : List Effect) : Host :=
   let (mono, wall) := match st with
     | .msg (.clock t) => (t.mono, t.wall)
     | _ => (h.mono, h.wall)
-  { h with pending := (asked ++ pending).take 40, answered, mono, wall,
+  let all := asked ++ pending
+  { h with pending := all.take 200, answered, mono, wall, loose := h.loose || all.length > 200,
            timers := (timers ++ h.timers).take 8 }
 
 def configText' : Gen String := Gen.weighted [
@@ -92,10 +163,14 @@ def dayNames (h : Host) : Gen (List String) := do
 
 /-- An answer to `r`, plausible or not. -/
 def answer (h : Host) (r : Request) : Gen Cairn.Reply := do
-  if ← Gen.chance 1 12 then
+  let dayFile := match r with
+    | .readFile p | .writeFile p _ => isDayFile p
+    | _ => false
+  if ← Gen.chance 1 (if dayFile then 30 else 12) then
     return .failed (← Gen.elem [.notFound, .denied, .timeout, .network, .invalid, .other]) "it failed"
   match r with
   | .readFile p =>
+    if let some c := h.file p then return .bytes c.toUTF8
     if p == configPath then
       Gen.weighted [(5, do return .bytes (← configText').toUTF8), (2, do return .failed .notFound "no file")]
     else if p == dictionaryPath then
@@ -145,8 +220,8 @@ def nextStep (s : AppState) (h : Host) : Gen Step := do
     (16, do match h.pending with
       | [] => return .msg (.clock h.time)
       | ps =>
-        -- Mostly in order, as a host answers; sometimes any of them.
-        let (id, r) ← if ← Gen.chance 2 3 then pure (ps.getLast?.getD default) else Gen.elem ps
+        -- Often in order; as often any of them, as the host's concurrent requests finish.
+        let (id, r) ← if ← Gen.chance 1 2 then pure (ps.getLast?.getD default) else Gen.elem ps
         return .msg (.reply id (← answer h r))),
     -- Dictation's requests (the app in front, the upload, the typing) answered soon, as a
     -- host does while the rest wait.
@@ -322,19 +397,42 @@ def a346 : Check := fun _ _ s' _ =>
   if s'.io.original == some false then (if keyed then some true else none)
   else some !keyed
 
+/-- ^347, the safety half: a mark's read goes out only when no append is in flight, counting
+this step's. -/
+def a347 (h' : Host) (s' : AppState) (es : List Effect) : Option Bool :=
+  let reads := (requests es).filter fun (id, r) => match r, s'.io.pending.lookup id with
+    | .readFile _, some (.markRead ..) => true
+    | _, _ => false
+  if reads.isEmpty then none else
+  some !(h'.pending.any fun (_, r) => match r with | .appendFile .. => true | _ => false)
+
+/-- ^347 on disk: once every request is answered, each transcript typed while transcripts were
+kept, whose append worked, is marked typed, and no more lines are marked than were typed. -/
+def a347disk (h : Host) : Option Bool :=
+  if !h.pending.isEmpty || h.loose || h.typedLines.isEmpty then none else
+  let lines := h.files.flatMap fun (_, c) => c.splitOn "\n"
+  some <| h.typedLines.all fun l =>
+    let marked := lines.count (typedForm l)
+    let need := (h.expect.filter fun (l', must) => l' == l && must && h.appended.contains l).length
+    need ≤ marked && marked ≤ h.typedLines.count l
+
+/-- The checks that need the host after the step. -/
+def hostChecks (h' : Host) (s' : AppState) (es : List Effect) : List (Nat × Option Bool) :=
+  [(347, a347 h' s' es), (347, a347disk h')]
+
 def checks : List (Nat × Check) :=
   [(311, a311), (312, a312), (313, a313), (314, a314), (315, a315), (316, a316), (317, a317),
    (318, a318), (319, a319), (320, a320), (321, a321), (322, a322), (323, a323), (346, a346)]
 
-def claimIds : List Nat := checks.map (·.1)
+def claimIds : List Nat := checks.map (·.1) ++ [347]
 
 /-! ## Running -/
 
-def stepChecks (st : Fuzz.Stats) (s : AppState) (x : Step) (s' : AppState) (es : List Effect) :
-    Fuzz.Stats × Option Nat := Id.run do
+def stepChecks (st : Fuzz.Stats) (s : AppState) (x : Step) (s' : AppState) (es : List Effect)
+    (h' : Host) : Fuzz.Stats × Option Nat := Id.run do
   let mut st := st
-  for (id, c) in checks do
-    match c s x s' es with
+  for (id, r) in checks.map (fun (id, c) => (id, c s x s' es)) ++ hostChecks h' s' es do
+    match r with
     | some true => st := st.bump id
     | some false => return (st, some id)
     | none => pure ()
@@ -346,15 +444,19 @@ def launch (h : Host) : AppState × List Effect :=
   (s, initEffects ++ es)
 
 def replay (xs : List Step) : Option (Nat × Nat) := Id.run do
-  let h : Host := {}
-  let mut s := (launch h).1
+  let mut h : Host := {}
+  let (s0, es0) := launch h
+  let mut s := s0
+  h := h.after {} s0 (.msg (.clock h.time)) es0
   let mut k := 0
   for x in xs do
     let (s', es) := x.run s
-    match (stepChecks {} s x s' es).2 with
+    let h' := h.after s s' x es
+    match (stepChecks {} s x s' es h').2 with
     | some c => return some (c, k)
     | none => pure ()
     s := s'
+    h := h'
     k := k + 1
   return none
 
@@ -368,7 +470,7 @@ def runSeq (seed n : Nat) (st : Fuzz.Stats) : Fuzz.Stats × Option Failure := Id
   let mut h : Host := {}
   let (s0, es0) := launch h
   let mut s := s0
-  h := h.after (.msg (.clock h.time)) es0
+  h := h.after {} s0 (.msg (.clock h.time)) es0
   let mut xs : Array Step := #[]
   let mut st := st
   for k in [0:n] do
@@ -380,11 +482,12 @@ def runSeq (seed n : Nat) (st : Fuzz.Stats) : Fuzz.Stats × Option Failure := Id
     g := g2
     xs := xs.push x
     let (s', es) := x.run s
-    let (st', bad) := stepChecks st s x s' es
+    let h' := h.after s s' x es
+    let (st', bad) := stepChecks st s x s' es h'
     st := { st' with steps := st'.steps + 1 }
     if let some c := bad then
       return (st, some { claim := c, step := k, steps := xs.toList })
-    h := h.after x es
+    h := h'
     s := s'
   return (st, none)
 
@@ -403,6 +506,7 @@ partial def ddmin (claim : Nat) (xs : List Step) : List Step :=
 
 def claimTitle : Nat → String
   | 346 => "The original Yap keeps its key"
+  | 347 => "A mark waits for the appends"
   | n => Fuzz.claimTitle n
 
 /-- Runs the options' sequences through the app; per claim, how many steps exercised it, and
