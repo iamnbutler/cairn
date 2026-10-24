@@ -97,5 +97,7 @@ the unstripped release binary, 4,981,536 bytes.
 
 ## Not measured yet
 
-Key-up to typed against the original Yap with the same audio, and idle CPU and memory: these
-need the real app with the microphone and OpenAI, on a day of use.
+Against the original Yap with the same synthetic audio and stubbed OpenAI and typing (key up to
+typed, idle CPU and memory, the overlay's frame pacing, launch): see
+[yap-instruments.md](yap-instruments.md). Still not measured: the real microphone and network,
+on a day of use.

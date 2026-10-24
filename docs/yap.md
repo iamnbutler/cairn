@@ -219,9 +219,11 @@ open a text editor. Record the macOS version and the result of each line.
    (^340, ^341) as in M1.
 5. **Fuzzed.** Done: the model and the app against a random host, and the host's effects in
    the trusted fuzz suites.
-6. **Measured.** Partly: app size and step costs in [bench/yap.md](../bench/yap.md). Key-up to
-   typed against the original with the same audio, and idle CPU and memory, need the real app
-   running and are not measured yet.
+6. **Measured.** App size and step costs in [bench/yap.md](../bench/yap.md); against the
+   original under Instruments (overlay frame pacing at 60 and 120 Hz, key up to typed with
+   stubbed transcription, idle CPU and memory, launch) in
+   [bench/yap-instruments.md](../bench/yap-instruments.md). Not measured: the real microphone
+   and network.
 7. **Mapped and written down.** `docs/trusted.md` lists the new assumptions. The map doesn't
    cover Yap yet: `tools/map` doesn't know surfaces (a status item's menu, a panel), only
    windows; that is open in workstream N's `map-own` lane.

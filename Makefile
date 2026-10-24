@@ -5,7 +5,7 @@ LEAN_PREFIX = $(shell cd lean && lean --print-prefix)
 LIB = build/lib/libcairn_lean.a
 VENDOR = host/Sources/CLean/vendor/lean
 
-.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest demo fixture clean record site site-maps map map-trusted conformance fuzz fuzz-quick fuzz-yap size fuzz-trusted fuzz-trusted-quick bundle yap yap-install
+.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest demo fixture clean record site site-maps map map-trusted conformance fuzz fuzz-quick fuzz-yap size fuzz-trusted fuzz-trusted-quick bundle yap yap-install bench-yap-apps bench-yap-overlay bench-yap
 
 # build/lib/libcairn_lean.a: the framework (`Cairn`) and Lean's runtime, linked by every host
 # target. Each app gets its own library on top (APPS: library → file), and each executable
@@ -88,6 +88,20 @@ bench: lean
 bench-audio: lean
 	cd lean && lake build framecorpus && .lake/build/bin/framecorpus bench-audio
 	cd host && swift build -c release --product CairnFuzzTrusted && .build/release/CairnFuzzTrusted --bench-audio
+
+# Yap (Cairn) against the original Yap under Apple's Instruments (bench/yap-instruments.md).
+# Builds both bench apps, records each suite with xctrace and summarises the traces into
+# bench/out/yap-instruments/. bench-yap-overlay is the frame pacing suite alone (~15 min);
+# bench-yap is every suite (~2 h). Set SCREEN=1 for the second display, BUFFER_MS=100 for
+# coarser microphone buffers, RUNS, SECS; see tools/bench/yap-instruments.sh.
+bench-yap-apps: lean
+	tools/bench/build-apps.sh
+
+bench-yap-overlay: bench-yap-apps
+	tools/bench/yap-instruments.sh overlay
+
+bench-yap: bench-yap-apps
+	tools/bench/yap-instruments.sh overlay hitches latency idle menu launch
 
 # Lean encode and Swift decode times for 1,000- and 10,000-node frames (bench/frame.md).
 bench-frame: lean

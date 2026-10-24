@@ -1,0 +1,13 @@
+suite,app,run,status,load1,cpu_ms_per_s,cpu_main,cpu_render,cpu_lean,cpu_other_threads,status_item_replicants_ms_per_s,HostView_applyLatestFrame_ms_per_s,StatusHost_update_ms_per_s,CA_transaction_commit_ms_per_s,RenderLoop_tick_ms_per_s,LeanCore_step_ms_per_s,ShapeCache_paintShadow_ms_per_s,vImage_blur_ms_per_s
+profile,cairnbase,0,warm-up,2.50,333.11,228.73,21.57,26.37,56.45,72.59,28.47,26.5,99.82,21.44,19.35,3.94,1.36
+profile,cairn,0,warm-up,3.22,130.86,12.32,36.35,25.26,56.93,0.0,9.24,7.52,0.25,35.12,16.88,5.67,2.46
+profile,ref,0,warm-up,4.05,54.76,30.09,0,0,24.67,0.0,0.0,0.0,8.14,0.0,0.0,0.0,0.0
+profile,ref,1,included,4.71,102.03,55.4,0,0,46.63,0.0,0.0,0.0,33.31,0.0,0.0,0.0,0.0
+profile,cairn,1,included,4.40,114.0,11.58,23.66,26.0,52.74,0.0,8.87,7.76,0.25,22.92,17.87,5.67,3.2
+profile,cairnbase,1,included,4.30,341.19,229.64,28.35,26.01,57.19,75.31,31.43,30.08,92.69,26.62,19.48,3.7,1.36
+profile,cairnbase,2,included,4.56,341.89,225.01,24.29,26.26,66.33,75.46,28.48,26.38,92.47,18.62,18.12,4.07,1.73
+profile,cairn,2,included,4.00,114.52,12.94,23.42,22.56,55.59,0.0,10.11,8.75,0.12,22.93,13.68,5.55,2.34
+profile,ref,2,included,3.96,68.3,35.5,0,0,32.78,0.0,0.0,0.0,25.03,0.0,0.0,0.0,0.0
+profile,ref,3,included,4.48,116.81,64.07,0,0,52.73,0.0,0.0,0.0,33.51,0.0,0.0,0.0,0.0
+profile,cairn,3,included,4.41,117.48,16.29,20.61,23.2,57.39,0.0,12.34,10.98,0.0,19.62,14.56,3.21,1.6
+profile,cairnbase,3,included,4.73,380.26,236.17,42.28,30.57,71.24,79.13,31.31,28.23,93.31,38.21,20.71,6.04,2.59

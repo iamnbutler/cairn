@@ -343,8 +343,13 @@ public final class PanelHost {
         }
     }
 
+    /// Benchmarks only (tools/bench/): put every panel on `NSScreen.screens[i]` whatever the
+    /// frame chose, so runs compared with each other draw on the same display.
+    public static var benchScreen: Int?
+
     /// The screen a panel shown now goes on.
     static func screen(_ choice: ScreenChoice) -> NSScreen? {
+        if let i = benchScreen, NSScreen.screens.indices.contains(i) { return NSScreen.screens[i] }
         switch choice {
         case .pointer:
             let p = NSEvent.mouseLocation
