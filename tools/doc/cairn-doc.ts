@@ -94,8 +94,10 @@ const inputs = [
 ].filter(Boolean);
 
 const links = (opts.link as string[]).map((l) => {
-	const [prefix, url] = l.split("=");
-	return [prefix!, url!] as [string, string];
+	// Split at the first `=` only: the URL is any prefix and may contain one.
+	const at = l.indexOf("=");
+	if (at < 1) fail(`--link ${l}: expected Prefix=url`);
+	return [l.slice(0, at), l.slice(at + 1)] as [string, string];
 });
 const pages = render({
 	name,
