@@ -6,6 +6,8 @@ public enum Publish {
     public struct Metadata: Encodable, Sendable {
         public var name: String
         public var version: String
+        /// `lib` or `bin`, from cairn.toml. The registry refuses a dependency on a `bin`.
+        public var kind: String
         public var revision: String
         public var toolchain: String
         public var description: String?

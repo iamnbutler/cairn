@@ -34,6 +34,7 @@ Package.swift     the Swift host (an app), linking .cairn/lib/lib<name>.a
 [package]
 name = "yap"                 # the Lake package's name and the claim scope: yap^301
 version = "0.1.0"            # strict semver; a pre-release like 0.1.0-rc.1 is fine
+kind = "bin"                 # "lib" or "bin" (default "lib"); the site calls a bin an app
 description = "Dictation for the Mac"
 license = "MIT"
 lean = "lean"                # the Lake package's directory (default "lean")
@@ -45,6 +46,11 @@ claims = "claims.lock"       # (default)
 cairn = "^0.1.0"
 ```
 
+`kind` follows Cargo: a `lib` is a library that other packages depend on, and a `bin` is an
+app, which nothing can depend on (the registry refuses a version that does). Cairn is a lib and
+Yap is a bin. The site's /packages has a Libraries tab and an Apps tab. A package may later hold
+both, as a crate can. `cairn publish` sends the kind with the metadata.
+
 Unknown tables and keys are errors. Three names must agree, and `cairn build` and
 `cairn publish` check that they do: cairn.toml's `name`, the lakefile's package name, and the
 `cairn.claims.scope` option when the lakefile sets it.
@@ -53,7 +59,7 @@ Unknown tables and keys are errors. Three names must agree, and `cairn build` an
 
 | Command | What it does |
 |---|---|
-| `cairn new <name> [--lib]` | writes `cairn.toml`, `claims.lock`, `lean/` (a lakefile.lean that sets the claim scope and requires Cairn), and for an app `Package.swift` and `Sources/` |
+| `cairn new <name> [--lib\|--bin]` | writes `cairn.toml` with its `kind`, `claims.lock`, `lean/` (a lakefile.lean that sets the claim scope and requires Cairn), and for an app (`bin`) `Package.swift` and `Sources/`. With neither flag it asks which |
 | `cairn add <name>[@<range>]` | adds the dependency to `cairn.toml` and puts `require "<owner>" / "<name>" @ "<range>"` (or a `[[require]]` with `scope` and `version`) in the lakefile, replacing a git require of it. It prints the `Package.swift` line instead of editing Swift. With no range, it uses `^` and the latest release |
 | `cairn build [--release]` | `lake cache get`, `lake build`, `cairn-link --lib <libs…> --out .cairn/lib/lib<name>.a`, `swift build` |
 | `cairn doc [--private] [--open]` | `lake exe doc --check` and `lake exe claims` on the package's libs, then `tools/doc/cairn-doc.ts` into `build/doc/<name>/`, with each dependency's modules linked to `/docs/<dep>/<version>/` |

@@ -9,6 +9,7 @@
 			"versions": [
 				{
 					"version": "0.1.0",
+					"kind": "lib",
 					"revision": "d04416c112658bf673143d4d88e3f357c43f1895",
 					"tag": "v0.1.0",
 					"date": "2026-10-24T18:00:00.000Z",
@@ -29,6 +30,7 @@
 				},
 				{
 					"version": "0.1.0-rc.1",
+					"kind": "lib",
 					"revision": "334f3c08f5c0493022f05a817a9afd51d0463429",
 					"tag": "v0.1.0-rc.1",
 					"date": "2026-10-23T18:00:00.000Z",
@@ -2105,6 +2107,7 @@
 			"versions": [
 				{
 					"version": "0.1.0",
+					"kind": "bin",
 					"revision": "9f1c2b3a4d5e6f708192a3b4c5d6e7f809a1b2c3",
 					"tag": "v0.1.0",
 					"date": "2026-10-24T19:00:00.000Z",
