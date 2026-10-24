@@ -1,5 +1,17 @@
 [
   {
+    "title": "Cairn 0.1.2: libraries and apps",
+    "text": [
+      "Cairn 0.1.2 is out. A package is now a library or an app, as in Cargo: cairn.toml has kind = \"lib\" or \"bin\", cairn new asks which, and /packages/ lists apps under their own tab (#103). Nothing can depend on an app.",
+      "cairn publish sends no docs. HTML from a publisher would run as the registry's site, so docs will be built from the source instead, as docs.rs does (#98).",
+      "The ledger now treats retiring a released claim as a breaking change: it needs a new major version, or a new minor one while at 0.x (#100). No claim changed in 0.1.2, so it is a patch release."
+    ],
+    "date": "2026-10-24",
+    "published": "2026-10-24T21:01:20Z",
+    "commit": "86b1198",
+    "milestone": "m2"
+  },
+  {
     "title": "Cairn is a package, and Yap moved out",
     "text": [
       "Cairn is now a package. An app lives in its own repository and depends on a tagged release, and one tag pins both halves: the Lean package and the Swift libraries. v0.1.0 is the first release (#80). v0.1.1 fixes cairn doc, which failed in apps because it read its stylesheet from the app (#91).",

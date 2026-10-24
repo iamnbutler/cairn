@@ -212,7 +212,7 @@ export async function packagePage(src, name, wanted) {
 		.join("\n");
 	const ledger = claims
 		.map(
-			(c) => `<tr id="${esc(c.id)}" class="${esc(c.status.split(" ")[0])}"><td><code>${esc(name)}^${esc(c.id)}</code></td><td>${esc(c.kind)}</td><td>${esc(c.status)}</td><td>${esc(c.title)}</td></tr>`,
+			(c) => `<tr id="${esc(c.id)}" class="${esc(c.status.split(/[ :]/)[0])}"><td><code>${esc(name)}^${esc(c.id)}</code></td><td>${esc(c.kind)}</td><td>${esc(c.status)}</td><td>${esc(c.title)}</td></tr>`,
 		)
 		.join("\n");
 	const body = `${sample(src)}

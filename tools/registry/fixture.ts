@@ -1,120 +1,141 @@
 // The registry fixture: what the Cairn site's /packages pages render when no package registry
-// is configured (site/registry.js). It has the shape of the nextpm
-// `cairn` kind's API (nextpm docs/adr/0005-cairn-kind.md) and is built from this repo's own
-// claims.lock: Cairn's claims, and Yap's (^300–^399), which move to the Yap package in #75.
+// is configured (site/registry.js). It has the shape of the nextpm `cairn` kind's API (nextpm
+// docs/adr/0005-cairn-kind.md).
+//
+// Cairn's versions are its real releases, the tags in RELEASES. Each one is read from git at its
+// tag: the revision and commit date, cairn.toml, lean/lean-toolchain and the claims.lock ledger.
+// Yap's entry is a sample: yap-cairn has no tags yet. Its claims are the ids Cairn's claims.lock
+// marks `moved:yap`, shown as active, and its revision is yap-cairn's main when this was written.
 // Cairn is a library (kind = "lib") and Yap an app (kind = "bin").
 //
 //   bun tools/registry/fixture.ts           write site/registry/fixture.json
 //   bun tools/registry/fixture.ts --check   fail if the committed fixture differs
 //
-// The versions and dates are samples, not releases: nothing is published yet.
+// It needs the tags: a clone without them (a shallow CI checkout) fails with a hint to run
+// `git fetch --tags`. A new release is a new line at the top of RELEASES, after it is tagged.
+import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
+// Cairn's final releases, newest first.
+const RELEASES = ["0.1.1", "0.1.0"];
+
 const ROOT = resolve(import.meta.dir, "../..");
 const OUT = join(ROOT, "site/registry/fixture.json");
-const TOOLCHAIN = readFileSync(join(ROOT, "lean/lean-toolchain"), "utf8").trim();
+
+const git = (...args: string[]) => execFileSync("git", args, { cwd: ROOT, encoding: "utf8" });
 
 type Claim = { id: number; kind: string; status: string; statement: string; title: string };
 
-const claims: Claim[] = readFileSync(join(ROOT, "claims.lock"), "utf8")
-	.split("\n")
-	.filter((line) => line.trim() && !line.startsWith("#"))
-	.map((line) => {
-		const [id, kind, status, statement, ...title] = line.split("\t");
-		return { id: Number(id), kind, status, statement, title: title.join("\t") };
-	});
+const parseClaims = (text: string): Claim[] =>
+	text
+		.split("\n")
+		.filter((line) => line.trim() && !line.startsWith("#"))
+		.map((line) => {
+			const [id, kind, status, statement, ...title] = line.split("\t");
+			return { id: Number(id), kind, status, statement, title: title.join("\t") };
+		});
 
-const isYap = (claim: Claim) => claim.id >= 300 && claim.id < 400;
+// `moved:yap` (or any other `moved:<pkg>`) counts as moved.
 const summary = (list: Claim[]) => ({
 	active: list.filter((c) => c.status === "active").length,
 	retired: list.filter((c) => c.status === "retired").length,
 	moved: list.filter((c) => c.status !== "active" && c.status !== "retired").length,
 });
 
-// Cairn's ledger at 0.1.0 marks Yap's ids as moved, as #75 does; at the release candidate
-// they were still Cairn's.
-const cairnFinal = claims.map((c) => (isYap(c) ? { ...c, status: "moved yap" } : c));
-const cairnRc = claims;
-const yap = claims.filter(isYap);
+/** A `key = "value"` line from cairn.toml's [package] table. */
+const field = (toml: string, key: string) => toml.match(new RegExp(`^${key}\\s*=\\s*"([^"]*)"`, "m"))?.[1];
+const list = (toml: string, key: string) =>
+	[...(toml.match(new RegExp(`^${key}\\s*=\\s*\\[([^\\]]*)\\]`, "m"))?.[1] ?? "").matchAll(/"([^"]*)"/g)].map((m) => m[1]);
 
-const version = (v: {
+type Version = {
 	version: string;
 	kind: "lib" | "bin";
 	revision: string;
 	date: string;
+	toolchain: string;
 	description: string;
+	license: string;
 	dependencies: Record<string, string>;
 	libs: string[];
 	claims: Claim[];
-	yanked?: boolean;
-}) => ({
+};
+
+const entry = (v: Version) => ({
 	version: v.version,
 	kind: v.kind,
 	revision: v.revision,
 	tag: `v${v.version}`,
 	date: v.date,
-	toolchain: TOOLCHAIN,
-	yanked: v.yanked ?? false,
+	toolchain: v.toolchain,
+	yanked: false,
 	publisher: "iamnbutler",
 	description: v.description,
-	license: "MIT",
+	license: v.license,
 	dependencies: v.dependencies,
 	libs: v.libs,
 	claims: summary(v.claims),
 });
 
-const CAIRN = "A Lean, Swift and Metal UI stack where everything a person can do is a claim with a durable id and machine-checked evidence.";
-const YAP = "Dictation for the Mac: hold a key, talk, and the words appear where you type.";
+function release(version: string): Version {
+	const tag = `v${version}`;
+	try {
+		git("rev-parse", "--quiet", "--verify", `refs/tags/${tag}`);
+	} catch {
+		console.error(`tools/registry/fixture.ts: tag ${tag} is missing here: run \`git fetch --tags\``);
+		process.exit(1);
+	}
+	const at = (path: string) => git("show", `${tag}:${path}`);
+	const toml = at("cairn.toml");
+	if (field(toml, "version") !== version) throw new Error(`${tag}: cairn.toml says version ${field(toml, "version")}`);
+	return {
+		version,
+		kind: field(toml, "kind") === "bin" ? "bin" : "lib",
+		revision: git("rev-list", "-n1", tag).trim(),
+		date: new Date(Number(git("log", "-1", "--format=%ct", tag).trim()) * 1000).toISOString(),
+		toolchain: at("lean/lean-toolchain").trim(),
+		description: field(toml, "description") ?? "",
+		license: field(toml, "license") ?? "",
+		dependencies: {},
+		libs: list(toml, "libs"),
+		claims: parseClaims(at("claims.lock")),
+	};
+}
+
+const cairn = RELEASES.map(release);
+const latest = cairn[0];
+
+// The sample: yap-cairn's manifest (version 0.1.0, depending on cairn ^0.1.1) at its main,
+// 97ac1a0, and the ids Cairn's latest ledger marks moved to Yap.
+const yap: Version = {
+	version: "0.1.0",
+	kind: "bin",
+	revision: "97ac1a07937344a39d0c60d1b5853f7351e0dc3f",
+	date: "2026-10-24T20:44:00.000Z",
+	toolchain: latest.toolchain,
+	description: "Hold-to-talk dictation overlay, ported one-to-one from Yap onto Cairn.",
+	license: "MIT",
+	dependencies: { cairn: "^0.1.1" },
+	libs: ["Yap"],
+	claims: latest.claims.filter((c) => c.status === "moved:yap").map((c) => ({ ...c, status: "active" })),
+};
 
 const fixture = {
-	note: "Sample data generated by tools/registry/fixture.ts. Nothing is published yet.",
+	note: "Generated by tools/registry/fixture.ts. Cairn's versions are its real releases; Yap's entry is a sample. Nothing is published to a registry yet.",
 	owner: "iamnbutler",
 	registry: "cairn.fixture",
 	packages: [
 		{
 			name: "cairn",
 			readme: null,
-			versions: [
-				version({
-					version: "0.1.0",
-					kind: "lib",
-					revision: "d04416c112658bf673143d4d88e3f357c43f1895",
-					date: "2026-10-24T18:00:00.000Z",
-					description: CAIRN,
-					dependencies: {},
-					libs: ["Cairn"],
-					claims: cairnFinal,
-				}),
-				version({
-					version: "0.1.0-rc.1",
-					kind: "lib",
-					revision: "334f3c08f5c0493022f05a817a9afd51d0463429",
-					date: "2026-10-23T18:00:00.000Z",
-					description: CAIRN,
-					dependencies: {},
-					libs: ["Cairn"],
-					claims: cairnRc,
-				}),
-			],
-			claims: { "0.1.0": cairnFinal, "0.1.0-rc.1": cairnRc },
+			versions: cairn.map(entry),
+			claims: Object.fromEntries(cairn.map((v) => [v.version, v.claims])),
 		},
 		{
 			name: "yap",
 			readme: null,
-			versions: [
-				version({
-					version: "0.1.0",
-					kind: "bin",
-					revision: "9f1c2b3a4d5e6f708192a3b4c5d6e7f809a1b2c3",
-					date: "2026-10-24T19:00:00.000Z",
-					description: YAP,
-					dependencies: { cairn: "^0.1.0" },
-					libs: ["Yap"],
-					claims: yap,
-				}),
-			],
-			claims: { "0.1.0": yap },
+			versions: [entry(yap)],
+			claims: { [yap.version]: yap.claims },
 		},
 	],
 };

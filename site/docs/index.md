@@ -16,7 +16,7 @@ it will cover and what has to land first. Every code sample is included from a s
 
 :::note What works today
 Cairn is research, and its API has no stability promise before 1.0. It is a package, though: an
-app lives in its own repository and depends on a tagged release (the latest is `v0.1.1`), and
+app lives in its own repository and depends on a tagged release (the latest is `v0.1.2`), and
 the `cairn` tool starts, builds and documents it. Yap is the first app built that way. Checking,
 fuzzing, mapping and bundling an app are still the Cairn repository's `make` targets; see
 [the cairn tool](/docs/use/cairn-tool/).

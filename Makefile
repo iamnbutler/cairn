@@ -160,8 +160,9 @@ docs-check:
 	bun tools/docs/build.ts --check
 
 # The package pages (site/registry.js) against the registry fixture and a fake registry. The
-# fixture comes from claims.lock: `bun tools/registry/fixture.ts` rewrites it, `--check` diffs it.
+# fixture comes from the release tags: `bun tools/registry/fixture.ts` rewrites it, `--check` diffs it.
 registry-check:
+	bun tools/registry/fixture.ts --check
 	bun test site/registry.test.js
 
 # Deploy the microsite (site/) to Cloudflare, once the feed is fresh (site-feed-check, below).
