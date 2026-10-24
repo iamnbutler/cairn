@@ -177,7 +177,8 @@ unsafe def main (args : List String) : IO UInt32 := do
   let core : Core.Context :=
     { fileName := "doc", fileMap := default, maxHeartbeats := 0, openDecls := [.simple `Cairn []] }
   -- Declarations, by module, with the line each starts on.
-  let mut byModule : Std.HashMap Name (Array (Nat × Name × ConstantInfo)) := {}
+  -- (the line the declaration, with its doc comment, starts on; the line of its name)
+  let mut byModule : Std.HashMap Name (Array (Nat × Nat × Name × ConstantInfo)) := {}
   for (n, ci) in env.constants.map₁.toList do
     let some idx := env.getModuleIdxFor? n | continue
     let m := env.header.moduleNames[idx.toNat]!
@@ -186,7 +187,7 @@ unsafe def main (args : List String) : IO UInt32 := do
     if n.isInternalDetail && !isPrivateName n then continue
     if let some p := privateToUserName? n then if p.isInternalDetail then continue
     let some r ← (findDeclarationRanges? n : CoreM _).toIO' core { env } | continue
-    byModule := byModule.insert m ((byModule.getD m #[]).push (r.range.pos.line, n, ci))
+    byModule := byModule.insert m ((byModule.getD m #[]).push (r.range.pos.line, r.selectionRange.pos.line, n, ci))
   let mut modules := #[]
   let mut decls := #[]
   let mut tests : Array Test := #[]
@@ -204,7 +205,7 @@ unsafe def main (args : List String) : IO UInt32 := do
         ("line", d.declarationRange.pos.line)])),
       ("imports", toJson imports)])
     let ds := (byModule.getD m #[]).qsort (fun a b => a.1 < b.1)
-    for (line, n, ci) in ds do
+    for (start, line, n, ci) in ds do
       let ns := (privateToUserName n).getPrefix
       let ctx := { core with currNamespace := ns }
       let j ← try ((declJson env m n ci line).run' {} : CoreM _).toIO' ctx { env }
@@ -214,7 +215,7 @@ unsafe def main (args : List String) : IO UInt32 := do
       decls := decls.push j
       if let some d ← findDocString? env n (includeBuiltin := false) then
         for (l, code) in leanBlocks d do
-          tests := tests.push { file, line := line + l, ns, code }
+          tests := tests.push { file, line := start + l, ns, code }
   -- Each claim's formal statement, by declaration.
   let mut statements := #[]
   for e in Cairn.Claims.allEntries env do

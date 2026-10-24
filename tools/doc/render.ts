@@ -56,6 +56,11 @@ export type Context = {
 export const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const md = (s: string) => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>");
 export const pageOf = (module: string) => `${module}.html`;
+/** A name as a URL fragment: `%` and spaces encoded (notation names like `«term_%_»` have
+ *  them). The element's id stays the name itself; browsers decode the fragment to match it. */
+const pct = (name: string) => name.replace(/%/g, "%25").replace(/ /g, "%20");
+/** The same, escaped for an attribute. */
+const frag = (name: string) => esc(pct(name));
 const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString("en")} ${n === 1 ? one : many}`;
 const lastOf = (name: string) => {
 	const parts = splitName(name);
@@ -114,15 +119,15 @@ export function render(ctx: Context): Record<string, string> {
 
 	// Where each name is documented, for links in signatures and doc comments.
 	const where = new Map<string, string>();
-	for (const d of visible) where.set(d.name, `${pageOf(d.module)}#${d.name}`);
-	for (const d of visible) for (const c of d.ctors) where.set(c.name, `${pageOf(d.module)}#${d.name}`);
-	for (const d of visible) for (const f of d.fields) where.set(`${d.name}.${f.name}`, `${pageOf(d.module)}#${d.name}`);
+	for (const d of visible) where.set(d.name, `${pageOf(d.module)}#${frag(d.name)}`);
+	for (const d of visible) for (const c of d.ctors) where.set(c.name, `${pageOf(d.module)}#${frag(c.name)}`);
+	for (const d of visible) for (const f of d.fields) where.set(`${d.name}.${f.name}`, `${pageOf(d.module)}#${frag(`${d.name}.${f.name}`)}`);
 	for (const m of doc.modules) where.set(m.name, pageOf(m.name));
 	const claimHref = new Map<number, string>();
 	for (const r of rows) claimHref.set(r.claim.id, `${pageOf(r.claim.module)}#${r.claim.id}`);
 	const external = (module: string, constant: string) => {
 		const hit = ctx.links.find(([prefix]) => module.startsWith(prefix));
-		return hit ? `${hit[1]}${pageOf(module)}#${constant}` : undefined;
+		return hit ? `${hit[1]}${pageOf(module)}${constant ? `#${frag(constant)}` : ""}` : undefined;
 	};
 	const hrefOf = (constant: string, module: string) => where.get(constant) ?? (module && !modules.has(module) ? external(module, constant) : undefined);
 
@@ -210,11 +215,11 @@ export function render(ctx: Context): Record<string, string> {
 			? `<div class="members"><b class="pix muted">Constructors</b>${d.ctors.map((c) => `<div class="member" id="${esc(c.name)}">${sigHtml(c)}${docHtml(c.doc, d.name)}</div>`).join("")}</div>`
 			: "";
 		const insts = instancesFor.get(d.name) ?? [];
-		const instHtml = insts.length && !d.instance ? `<div class="members"><b class="pix muted">Instances</b><p class="insts">${insts.map((i) => `<a href="${pageOf(i.module)}#${esc(i.name)}"><code>${esc(i.instance?.class ? lastOf(i.instance.class) : lastOf(i.name))}</code></a>`).join(" ")}</p></div>` : "";
+		const instHtml = insts.length && !d.instance ? `<div class="members"><b class="pix muted">Instances</b><p class="insts">${insts.map((i) => `<a href="${pageOf(i.module)}#${frag(i.name)}"><code>${esc(i.instance?.class ? lastOf(i.instance.class) : lastOf(i.name))}</code></a>`).join(" ")}</p></div>` : "";
 		const axioms =
 			d.axioms === null ? "" : d.axioms.length ? `<span class="m fail" title="axioms beyond propext, Classical.choice and Quot.sound">uses ${esc(d.axioms.join(", "))}</span>` : `<span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span>`;
 		return `<section class="decl${d.private ? " private" : ""}${inClaim ? " gen" : ""}" id="${esc(d.name)}" data-line="${d.line}">
-<div class="dhead"><span class="kind pix">${d.private ? "private " : ""}${d.kind}</span><h3><a href="#${esc(d.name)}"><span class="ns">${esc(ns ? `${ns}.` : "")}</span>${esc(lastOf(d.name))}</a></h3>${axioms}${src(modules.get(d.module)?.file ?? "", d.line)}</div>
+<div class="dhead"><span class="kind pix">${d.private ? "private " : ""}${d.kind}</span><h3><a href="#${frag(d.name)}"><span class="ns">${esc(ns ? `${ns}.` : "")}</span>${esc(lastOf(d.name))}</a></h3>${axioms}${src(modules.get(d.module)?.file ?? "", d.line)}</div>
 ${sigHtml(d)}${docHtml(d.doc, ns)}${fields}${ctors}${instHtml}
 </section>`;
 	};
@@ -304,7 +309,8 @@ import("/scene.js").then((m) => { const main = document.querySelector("main"); m
 	// ---- Module pages ------------------------------------------------------------------------------
 	const declsBy = Map.groupBy(loose, (d) => d.module);
 	const claimsBy = Map.groupBy(rows, (r) => r.claim.module);
-	const shown = doc.modules.filter((m) => declsBy.has(m.name) || claimsBy.has(m.name) || m.docs.length);
+	// Every module gets a page, umbrellas too (they list what they import).
+	const shown = doc.modules;
 	for (const m of shown) {
 		const ds = declsBy.get(m.name) ?? [];
 		const cs = (claimsBy.get(m.name) ?? []).toSorted((a, b) => a.claim.id - b.claim.id);
@@ -313,12 +319,12 @@ import("/scene.js").then((m) => { const main = document.querySelector("main"); m
 		const ns = m.name;
 		const toc = [
 			cs.length ? `<a href="#claims">Claims <span class="n">${cs.length}</span></a><ol>${cs.map((r) => `<li><a href="#${r.claim.id}"><span class="id">${r.claim.ref}</span> ${esc(r.claim.title)}</a></li>`).join("")}</ol>` : "",
-			...groups.map((g) => `<a href="#${g.id}">${g.title} <span class="n">${g.decls.length}</span></a><ol>${g.decls.map((d) => `<li><a href="#${esc(d.name)}">${esc(lastOf(d.name))}</a></li>`).join("")}</ol>`),
+			...groups.map((g) => `<a href="#${g.id}">${g.title} <span class="n">${g.decls.length}</span></a><ol>${g.decls.map((d) => `<li><a href="#${frag(d.name)}">${esc(lastOf(d.name))}</a></li>`).join("")}</ol>`),
 		].join("");
 		const aside = `<aside class="toc"><div class="pix muted">${esc(m.name)}</div>${toc}</aside>`;
 		const imps = [...new Set(m.imports)].filter((i) => i !== "Init");
 		const imports = imps.length
-			? `<p class="imports"><span class="pix muted">Imports</span> ${imps.map((i) => (modules.has(i) ? `<a href="${pageOf(i)}">${esc(i)}</a>` : external(i, "") ? `<a href="${external(i, "")!.replace(/#$/, "")}">${esc(i)}</a>` : `<span class="muted">${esc(i)}</span>`)).join(", ")}</p>`
+			? `<p class="imports"><span class="pix muted">Imports</span> ${imps.map((i) => (modules.has(i) ? `<a href="${pageOf(i)}">${esc(i)}</a>` : external(i, "") ? `<a href="${external(i, "")}">${esc(i)}</a>` : `<span class="muted">${esc(i)}</span>`)).join(", ")}</p>`
 			: "";
 		const sectionDocs = sections.map((s) => `<div class="mdoc" data-line="${s.line}" hidden>${docHtml(s.doc, ns)}</div>`).join("");
 		const body = `<header class="page"><div class="eyebrow">${esc(name)} · module</div><h1 class="mod">${esc(m.name)}</h1><p class="src">${esc(m.file)}</p></header>
@@ -385,7 +391,7 @@ ${rootDoc ? `<div class="lede">${docHtml(rootDoc, doc.roots[0] ?? "")}</div>` : 
 	const plain = (s: string | null) => (s ?? "").replace(/```[\s\S]*?```/g, " ").replace(/[`*_#|]/g, "").replace(/\s+/g, " ").trim().slice(0, 280);
 	const index: [string, string, string, string][] = [
 		...shown.map((m) => [m.name, "module", pageOf(m.name), plain(m.docs[0]?.doc ?? null)] as [string, string, string, string]),
-		...loose.map((d) => [d.name, d.kind, `${pageOf(d.module)}#${d.name}`, plain(d.doc)] as [string, string, string, string]),
+		...loose.map((d) => [d.name, d.kind, `${pageOf(d.module)}#${pct(d.name)}`, plain(d.doc)] as [string, string, string, string]),
 		...rows.map((r) => [`${r.claim.ref} ${r.claim.title}`, r.claim.kind, claimHref.get(r.claim.id)!, plain(`${r.claim.does} ${r.claim.sees}`)] as [string, string, string, string]),
 	];
 	out["search-index.js"] = `window.CAIRN_DOC_INDEX = ${JSON.stringify(index)};\n`;

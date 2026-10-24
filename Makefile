@@ -244,7 +244,7 @@ doc:
 	cd lean && lake build && lake build doc claims
 	cd lean && lake exe doc --check $(DOC_MODULES) > ../$(DOCDIR)/doc.json
 	cd lean && lake exe claims $(DOC_MODULES) > ../$(DOCDIR)/claims.json
-	bun tools/doc/cairn-doc.ts --name $(DOC_NAME) --dir $(DOCDIR) $(if $(APP),--app $(APP) --link Cairn.=../Cairn/) \
+	bun tools/doc/cairn-doc.ts --name $(DOC_NAME) --dir $(DOCDIR) $(if $(APP),--app $(APP) --link Cairn.=../../Cairn/dist/) \
 		$(if $(PRIVATE),--private) $(if $(OPEN),--open)
 
 # Cairn's docs as the developer docs' API reference, site/public/docs/api/ (committed; the

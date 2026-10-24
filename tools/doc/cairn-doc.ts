@@ -1,7 +1,7 @@
 // cairn-doc: a package's code and the build's evidence → its docs (docs/doc.md).
 //
 //   bun tools/doc/cairn-doc.ts --name Todo --dir build/doc/Todo [--app Todo] [--private]
-//       [--link Cairn.=../Cairn/] [--open]
+//       [--link Cairn.=../../Cairn/dist/] [--open]
 //
 // Reads <dir>/doc.json (lake exe doc), <dir>/claims.json (lake exe claims), claims.lock, and for
 // --app the same evidence the map reads: build/fuzz/<App>.json, build/fuzz/trusted.json, build/conformance/<App>.json and the
