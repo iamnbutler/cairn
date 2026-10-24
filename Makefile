@@ -5,14 +5,16 @@ LEAN_PREFIX = $(shell cd lean && lean --print-prefix)
 LIB = build/lib/libcairn_lean.a
 VENDOR = host/Sources/CLean/vendor/lean
 
-.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest demo fixture clean record site site-maps map map-trusted conformance fuzz fuzz-quick fuzz-yap size fuzz-trusted fuzz-trusted-quick bundle yap yap-install bench-yap-apps bench-yap-overlay bench-yap
+.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest demo fixture clean record site site-maps map map-trusted conformance fuzz fuzz-quick fuzz-yap size fuzz-trusted fuzz-trusted-quick bundle yap yap-install bench-yap-apps bench-yap-overlay bench-yap docs-site docs-check
 
+# region: make-apps
 # build/lib/libcairn_lean.a: the framework (`Cairn`) and Lean's runtime, linked by every host
 # target. Each app gets its own library on top (APPS: library → file), and each executable
 # links exactly one: v1 apps all export `cairn_app_init/step/frame` (docs/runtime.md), so two
 # in one binary would clash. The check below keeps the shared library free of app exports and
 # each app library to one set.
 APPS = Counter:counter Basics:basics Todo:todo Clock:clock Tray:tray Yap:yap
+# endregion: make-apps
 
 lean:
 	cd lean && lake build
@@ -74,8 +76,10 @@ corpus: lean
 	rm -rf $(CORPUS)
 	cd lean && .lake/build/bin/framecorpus gen ../$(CORPUS)
 
+# region: make-check
 # Everything a PR must pass.
-check: lint audit ledger kernel test selftest fuzz-quick size fuzz-trusted-quick
+check: lint audit ledger kernel test selftest fuzz-quick size fuzz-trusted-quick docs-check
+# endregion: make-check
 
 bench: lean
 	cd lean && lake build bench && .lake/build/bin/bench
@@ -89,6 +93,7 @@ bench-audio: lean
 	cd lean && lake build framecorpus && .lake/build/bin/framecorpus bench-audio
 	cd host && swift build -c release --product CairnFuzzTrusted && .build/release/CairnFuzzTrusted --bench-audio
 
+# region: make-bench-yap
 # Yap (Cairn) against the original Yap under Apple's Instruments (bench/yap-instruments.md).
 # Builds both bench apps, records each suite with xctrace and summarises the traces into
 # bench/out/yap-instruments/. bench-yap-overlay is the frame pacing suite alone (~15 min);
@@ -102,12 +107,14 @@ bench-yap-overlay: bench-yap-apps
 
 bench-yap: bench-yap-apps
 	tools/bench/yap-instruments.sh overlay hitches latency idle menu launch
+# endregion: make-bench-yap
 
 # Lean encode and Swift decode times for 1,000- and 10,000-node frames (bench/frame.md).
 bench-frame: lean
 	cd lean && lake build framecorpus && .lake/build/bin/framecorpus bench ../$(CORPUS)
 	cd host && CAIRN_BENCH=1 swift test -c release -Xswiftc -enable-testing --filter DecodeBench
 
+# region: make-selftest
 # Drives each app headlessly through the host's real threads and accessibility mirror.
 selftest: host
 	cd host && swift run CairnCounter --selftest
@@ -116,17 +123,23 @@ selftest: host
 	cd host && swift run CairnClock --selftest
 	cd host && swift run CairnTray --selftest
 	cd host && swift run CairnYap --selftest
+# endregion: make-selftest
 
+# region: make-demo
 # Opens an app in a window: `make demo` (TodoMVC), or `make demo DEMO=CairnBasics`.
 DEMO ?= CairnTodo
 demo: host
 	cd host && swift run $(DEMO)
+# endregion: make-demo
 
+# region: make-bundle
 # An app bundle: `make bundle APP=Tray [SIGN=identity]` writes build/apps/Tray.app. Per-app
 # Info.plist and entitlements go in host/Bundles/<App>/ (tools/bundle/bundle.sh).
 bundle: host
 	tools/bundle/bundle.sh $(APP) $$(cd host && swift build --show-bin-path) $(or $(SIGN),-) "$(or $(NAME),$(APP))"
+# endregion: make-bundle
 
+# region: make-yap
 # Yap on Cairn (docs/yap.md): `make yap` builds build/apps/Yap (Cairn).app, release, signed with
 # the first valid Apple Development identity (Yap's own project.yml signs with team 8S43JJMN6B's
 # "Apple Development"), so TCC grants survive rebuilds. YAP_SIGN=<identity or hash> overrides it.
@@ -136,6 +149,7 @@ yap: lean
 	cd host && swift build -c release --product CairnYap
 	@[ -n "$(YAP_SIGN)" ] || { echo "yap: no Apple Development identity; pass YAP_SIGN=<identity>"; exit 1; }
 	tools/bundle/bundle.sh Yap $$(cd host && swift build -c release --show-bin-path) $(YAP_SIGN) "Yap (Cairn)"
+# endregion: make-yap
 
 yap-install: yap
 	rm -rf "/Applications/Yap (Cairn).app"
@@ -171,6 +185,15 @@ site-maps:
 	@for a in $(MAP_APPS); do cp -R build/map/$$a/dist site/public/map/$$(echo $$a | tr A-Z a-z); done
 	cp -R build/map/Trusted/dist site/public/map/trusted
 
+# The developer docs: site/docs/*.md → site/public/docs/ (tools/docs/build.ts). Code is included
+# from source by region; a missing file or region fails the build. The output is committed, and
+# docs-check (part of check) fails when it is stale. site/public/docs/api/ is `cairn doc`'s.
+docs-site:
+	bun tools/docs/build.ts
+
+docs-check:
+	bun tools/docs/build.ts --check
+
 # Deploy the microsite (site/) to Cloudflare.
 site:
 	cd site && npx -y wrangler@4 deploy
@@ -178,6 +201,7 @@ site:
 clean:
 	rm -rf build lean/.lake host/.build $(VENDOR)
 
+# region: make-map
 # The map (docs/map.md): claims + evidence → build/map/$(APP)/dist/, Cairn's own pages, with
 # headless screenshots pinned from the frame's accessibility rects. `make map APP=Counter`. It
 # reads build/fuzz/ and build/conformance/ if `make fuzz` or `make conformance` ran first.
@@ -192,6 +216,7 @@ map: host
 	rm -rf $(MAPDIR)/capture
 	cd host && swift run Cairn$(APP) --map-capture ../$(MAPDIR)/script.json ../$(MAPDIR)/capture
 	bun tools/map/cairn-map.ts build --app $(APP) --dir $(MAPDIR)
+# endregion: make-map
 
 # The trusted base's assumptions (Cairn.Fuzz.Trusted.Claims) as a map of their own: no app, so
 # no capture; the evidence is build/fuzz/trusted.json from `make fuzz-trusted`.
@@ -202,6 +227,7 @@ map-trusted: lean
 	cd lean && lake env .lake/build/bin/audit --json ../build/map/Trusted/audit.json > /dev/null
 	bun tools/map/cairn-map.ts build --app Trusted --name "Trusted base" --dir build/map/Trusted
 
+# region: make-conformance
 # Conformance (docs/conformance.md): the Lean model's sequences replayed on the running app
 # through its debug socket. `make conformance APP=Basics [N=1000] [LEN=12] [SEED=1]` writes
 # build/conformance/$(APP).json (read by the map) and build/conformance/$(APP)/report.md.
@@ -209,6 +235,7 @@ map-trusted: lean
 # The generator links with system clang, not Lake: Lake's bundled lld can't read the SDK's
 # Swift .tbd files, and the host's Core Text metrics (CairnMetrics) must replace the weak
 # fallback in lean/c/text_host.c, hence -force_load.
+# endregion: make-conformance
 LEN ?= 12
 CONFDIR = build/conformance
 CONF_LIB = $(patsubst $(APP):%,%,$(filter $(APP):%,$(APPS)))
@@ -230,10 +257,12 @@ conformance: lean
 		--bin $$(cd host && swift build --show-bin-path)/Cairn$(APP) --gen $(CONFDIR)/$(APP)/gen \
 		--claims $(CONFDIR)/$(APP)/claims.json --out $(CONFDIR)
 
+# region: make-fuzz
 # Claim-driven fuzzing (docs/fuzz.md): `make fuzz APP=Basics N=1000` runs N sequences from seed
 # SEED (default 0) and writes build/fuzz/$(APP).json, which `make map` reads.
 fuzz: lean
 	cd lean && lake build fuzz && .lake/build/bin/fuzz $(APP) --seed $(or $(SEED),0) --iterations $(or $(N),200) --out ../build/fuzz
+# endregion: make-fuzz
 
 # The quick run in `make check`: every app, 200 sequences of 50 steps (about a second).
 # Written to build/fuzz/quick/ so it doesn't replace a longer run's evidence.
@@ -250,12 +279,14 @@ fuzz-quick: lean
 fuzz-yap: lean
 	cd lean && lake build yapfuzz && .lake/build/bin/yapfuzz --seed $(or $(SEED),0) --iterations $(or $(N),5000) --steps 300 --out ../build/fuzz
 
+# region: make-size
 # Binary size (bench/size.md): each app executable built for release with a link map, stripped
 # into build/size/, attributed (Lean runtime, Cairn, the app, Swift host, shaders), and checked
 # against SIZE_LIMIT bytes. No host app links `Lean` (the compiler, about 100 MB), so each is a
 # few MB; crossing the limit almost always means something imported `Lean`.
 SIZE_APPS = CairnCounter CairnBasics CairnTodo CairnClock CairnTray CairnYap
 SIZE_LIMIT = 5000000
+# endregion: make-size
 size: lean
 	mkdir -p build/size
 	cd host && for a in $(SIZE_APPS); do \

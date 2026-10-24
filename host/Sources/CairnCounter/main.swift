@@ -10,12 +10,14 @@ import QuartzCore
 //   CairnCounter               open the window (add --stats for latency, --latency N to measure)
 //   CairnCounter --selftest    drive the host headlessly through its real threads and check it
 
+// region: counter-leanapp
 let counter = LeanApp(
     module: runtime_initialize_cairn_Examples_Counter_Abi,
     initialize: { w, h, scale in cairn_app_init(w, h, scale) },
     step: { cairn_app_step($0, $1) },
     frame: { cairn_app_frame($0) },
     codec: FrameV1Codec())
+// endregion: counter-leanapp
 
 let size = Size(w: 480, h: 320)
 let args = CommandLine.arguments
@@ -76,11 +78,13 @@ enum SelfTest {
         }
 
         _ = settle(engine.lastSeq)
+        // region: counter-selftest
         if element("^2") != nil { fail("^2 present at count 0") }
         click("^1"); click("^1"); click("^1")
         if count() != 3 { fail("count \(count()) after three clicks on ^1") }
         guard let reset = element("^2") else { fail("^2 absent at count 3") }
         if reset.accessibilityRole() != .button { fail("^2 is not a button") }
+        // endregion: counter-selftest
 
         // Elements are reused across frames: the same object for ^1 after a click.
         let inc = element("^1")
@@ -125,6 +129,8 @@ final class NullRenderer: FrameRenderer {
     func draw(_ frame: Frame, to drawable: CAMetalDrawable, viewport: Viewport) {}
 }
 
+// region: counter-main
 MainActor.assumeIsolated {
     CairnApp.main(CairnApp.Config(title: "Counter", size: size) { LeanCore(counter) })
 }
+// endregion: counter-main

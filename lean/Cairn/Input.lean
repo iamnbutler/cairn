@@ -109,6 +109,7 @@ inductive TextOp where
   | undo | redo
 deriving Repr, BEq, Inhabited
 
+-- region: input-action
 /-- Runtime → app. Every action names the control it came from, so every behaviour can be
 traced to a claim. -/
 inductive Action where
@@ -119,6 +120,7 @@ inductive Action where
   | cancel (c : ControlRef)
   | blur (c : ControlRef)
 deriving Repr, BEq, Inhabited
+-- endregion: input-action
 
 def Action.control : Action → ControlRef
   | .press c | .doublePress c | .edit c _ | .submit c | .cancel c | .blur c => c
@@ -127,6 +129,7 @@ inductive Cursor where
   | arrow | pointer | text
 deriving Repr, BEq, DecidableEq, Inhabited
 
+-- region: input-effect
 /-- App → host (and runtime). -/
 inductive Effect where
   | setClipboard (s : String)
@@ -146,5 +149,6 @@ inductive Effect where
   /-- End the app. The host terminates after running the frame's other effects. -/
   | quit
 deriving Repr, BEq, Inhabited
+-- endregion: input-effect
 
 end Cairn

@@ -19,6 +19,7 @@ open Cairn
 
 /-! ## The app ABI (docs/runtime.md) -/
 
+-- region: counter-abi
 /-- Core Text metrics in the running app (the Swift host links `cairn_text_metrics`). -/
 def cfg : Runtime.Config := { metrics := TextMetrics.host }
 
@@ -32,5 +33,6 @@ def appStep (s : Runtime.State State) (events : ByteArray) : Runtime.State State
 
 @[export cairn_app_frame]
 def appFrame (s : Runtime.State State) : ByteArray := Runtime.frameBytes Frame.boundary s
+-- endregion: counter-abi
 
 end Examples.Counter

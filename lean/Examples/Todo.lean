@@ -81,6 +81,7 @@ move ^204 toggleTodo (s : State) (k : Nat) "Complete a todo" in ^201 where
       obtain ⟨h1, h2, h3, -⟩ := toggle_frame k s
       exact ⟨toggle_todos k s hk, h1, h2, h3⟩
 
+-- region: todo-start-editing
 move ^205 startEditing (s : State) (k : Nat) "Edit a todo" in ^201 where
   does "Double-click a todo's title. (T20, T25–T27)"
   sees "The todo's row becomes a field holding its title, with the caret at the end and keyboard focus in it; any other todo in edit mode is replaced. Nothing else changes."
@@ -92,6 +93,7 @@ move ^205 startEditing (s : State) (k : Nat) "Edit a todo" in ^201 where
       intro s k h
       have hk : has s k = true := has_of_shown (Bool.and_eq_true _ _ ▸ h).1
       exact startEdit_started k s hk
+-- endregion: todo-start-editing
 
 move ^206 deleteTodo (s : State) (k : Nat) "Delete a todo" in ^201 where
   does "Press a todo's delete button (×, drawn while the pointer is over the row or the button has keyboard focus). (T21, T22, T49)"
@@ -107,6 +109,7 @@ move ^206 deleteTodo (s : State) (k : Nat) "Delete a todo" in ^201 where
       obtain ⟨h1, h2, h3, -⟩ := delete_frame k s
       exact ⟨delete_todos k s hk, h1, h2, h3⟩
 
+-- region: todo-edit
 move ^207 editTodo (s : State) (k : Nat) "Edit field" in ^201 where
   does "In edit mode, type in the todo's field; then press Enter, click elsewhere or Tab away, or press Escape. (T28–T31, T50)"
   sees "Enter, a click elsewhere and Tab save: the trimmed text becomes the title, or the todo is deleted when it is blank. Escape leaves the title exactly as it was. Edit mode ends either way; after Enter or Escape keyboard focus returns to the new-todo field."
@@ -134,6 +137,7 @@ move ^207 editTodo (s : State) (k : Nat) "Edit field" in ^201 where
     post s' := s'.editing = none ∧ s'.todos = s.todos ∧ s'.left = s.left ∧
       s'.newField = s.newField ∧ s'.filter = s.filter
     sound := by intro s k _; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
+-- endregion: todo-edit
 
 move ^208 showAll (s : State) "All" in ^201 where
   does "Press the All filter. (T39–T43)"
@@ -192,16 +196,22 @@ invariant ^212 counterAndIds "Counter and ids" for machine where
       (Move.all_cons (showCompleted.preserves _ fun _ _ h => h)
       (Move.all_cons (clearDone.preserves _ fun _ _ h => clear_inv h) Move.all_nil)))))))))
 
+-- region: todo-listed-rows
 invariant ^213 listedRows "The list is the filter applied to the todos" for machine where
   does "The rows on screen are exactly the todos the selected filter accepts, in creation order, under any hover and focus, in every reachable state. (T40, T42)"
   holds s := ∀ ui, (view s ui).controls.filterMap rowKey = (visible s).map (·.id)
   init := fun ui => view_rows _ ui
   step := fun _ _ _ ui => view_rows _ ui
+-- endregion: todo-listed-rows
 
+-- region: todo-double-click
 assume ^214 doubleClick "The host reports a double click as a second click" where
   does "The host sends the second click of a double click as a pointer down with a click count of 2, at the same point, within the system's double-click interval; the runtime turns its release into a double press. (T20)"
+-- endregion: todo-double-click
 
+-- region: todo-retire
 retire ^215 move "Back through filters" because "Web only (T46): hash routes and the back button walk the filter history in a browser. The Mac app has no filter history and no Back command."
+-- endregion: todo-retire
 
 flow ^216 addAndComplete "Add two todos and complete one" for machine where
   does "Type milk and press Enter, type eggs with spaces around it and press Enter, then check milk."
@@ -217,12 +227,14 @@ flow ^217 blankAddsNothing "Blank text adds nothing" for machine where
   goal s := s.todos = [] ∧ s.newField.text = "   ".toList
   witness edit ^202 (.insert "   "), submit ^202
 
+-- region: todo-edit-flow
 flow ^218 editAndSave "Edit a todo and save with Enter" for machine where
   does "Add milk, double-click it, select all, type oat milk with spaces around it, press Enter."
   sees "The title is oat milk, trimmed, and edit mode has ended."
   goal s := s.todos.map (·.title) = ["oat milk"] ∧ s.editing = none
   witness edit ^202 (.insert "milk"), submit ^202, doublePress ^205#1,
     edit ^207#1 .selectAll, edit ^207#1 (.insert " oat milk "), submit ^207#1
+-- endregion: todo-edit-flow
 
 flow ^219 editToBlankDeletes "Saving a blank edit deletes the todo" for machine where
   does "Add milk, double-click it, delete its text, and click elsewhere."

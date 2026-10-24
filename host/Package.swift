@@ -40,8 +40,10 @@ let package = Package(
         .target(name: "CairnCapture", dependencies: ["CairnHost", "CairnFrame", "CairnRender"]),
 
         // Apps: one executable per Lean app, each linking its own app library.
+        // region: package-counter
         .executableTarget(name: "CairnCounter", dependencies: ["CairnHost", "CLean", "CairnFrame", "CairnCapture"],
                           linkerSettings: [.unsafeFlags(["-L" + leanLib, "-lcairn_app_counter"])]),
+        // endregion: package-counter
         .executableTarget(name: "CairnBasics", dependencies: ["CairnHost", "CLean", "CairnFrame", "CairnRender", "CairnCapture"],
                           linkerSettings: [.unsafeFlags(["-L" + leanLib, "-lcairn_app_basics"])]),
         .executableTarget(name: "CairnTodo", dependencies: ["CairnHost", "CLean", "CairnFrame", "CairnRender", "CairnCapture"],

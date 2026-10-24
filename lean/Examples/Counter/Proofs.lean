@@ -22,11 +22,13 @@ theorem view_refs (s : State) (ui : UI) :
   cases resetEnabled s <;>
     simp [bar, countRow, button, Node.controls, Node.controlsList, Option.toList]
 
+-- region: counter-presence
 /-- **Presence of ^2** in the view: Reset's control is there exactly when reset is enabled. -/
 theorem reset_present_iff (s : State) (ui : UI) :
     resetRef ∈ (view s ui).controls.map (·.ref) ↔ resetEnabled s = true := by
   rw [view_refs]
   cases resetEnabled s <;> simp [incrementRef, resetRef]
+-- endregion: counter-presence
 
 /-- Presence, stated against the move: ^2's control is on screen exactly when the move is
 enabled. -/
@@ -51,6 +53,7 @@ theorem reset_in_frame_iff (s : State) (ui ui' : UI) (m : TextMetrics) (w : Size
       0 < s.count := by
   rw [Frame.controls_ofLaid_layout]; exact reset_present_iff_count s ui
 
+-- region: counter-on-screen
 /-- …and in every frame the running app shows (the runtime lays out `view` with the config's
 layout, which is `layout` unless a test swaps it). -/
 theorem reset_on_screen_iff (cfg : Config) (h : cfg.layout = layout) (st : Runtime.State State)
@@ -58,6 +61,7 @@ theorem reset_on_screen_iff (cfg : Config) (h : cfg.layout = layout) (st : Runti
     resetRef ∈ (Frame.ofLaid st.ui st.laid).ax.toList.filterMap AxNode.control ↔
       0 < st.app.count := by
   rw [hl, relayout, h]; exact reset_in_frame_iff st.app ui st.ui cfg.metrics ui.size
+-- endregion: counter-on-screen
 
 /-! ## Pressable, in every state -/
 
@@ -122,6 +126,7 @@ theorem view_fitsIn (s : State) (ui : UI) {w h : Int} (hw : 480 ≤ w) (hh : 256
         ↓reduceIte]
       omega
 
+-- region: counter-pressable
 /-- **Every control is pressable at its centre, in every state**, with any text metrics and
 any window at least 480 × 256 (the default is 480 × 320): the hit test at the centre of each
 control's visible rect returns that control. -/
@@ -131,5 +136,6 @@ theorem view_pressable (m : TextMetrics) (s : State) (ui : UI) (w : Size) (hw : 
       hitTest (layout m w (view s ui)) t.visible.center = some t.control := by
   rw [view_eq]
   exact hitTest_center_of_fitsIn rfl rfl (view_eq s ui ▸ view_fitsIn s ui (by omega) (by omega))
+-- endregion: counter-pressable
 
 end Examples.Counter

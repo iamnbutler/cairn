@@ -3,6 +3,7 @@
 #
 #   tools/bench/yap-instruments.sh [SUITE...]      default: overlay latency idle launch
 #
+# region: bench-suites
 # Suites and templates (xcrun xctrace record ... --launch, so Instruments starts the app and
 # records only that process):
 #   overlay   Metal System Trace + os_signpost   --bench-overlay, SECS of voice, hands free
@@ -12,6 +13,7 @@
 #   menu      Activity Monitor + os_signpost     --bench-menu: its own status menu open
 #   launch    App Launch + os_signpost           --bench-idle, launch to "ready"
 #   profile   Time Profiler + os_signpost        --bench-overlay, CPU by thread and function
+# endregion: bench-suites
 #
 # Environment: APPS ("cairn ref"; also "refdebug", and "cairnbase" for a CairnYap build copied to
 # build/bench/YapCairn-base.app to compare a change against), RUNS (5, plus one discarded warm-up per

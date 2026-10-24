@@ -32,11 +32,13 @@ inductive Align where
   | start | center | finish | stretch
 deriving Repr, BEq, DecidableEq, Inhabited
 
+-- region: node-sizing
 /-- `fill` shares the parent's leftover main-axis space equally among `fill` children, and
 takes the parent's full cross-axis size. -/
 inductive Sizing where
   | fixed (n : Nat) | hug | fill
 deriving Repr, BEq, DecidableEq, Inhabited
+-- endregion: node-sizing
 
 structure Border where
   width : Nat
@@ -70,6 +72,7 @@ structure Paint where
   arrays : List (List Int) := []
 deriving Repr, BEq, DecidableEq, Inhabited
 
+-- region: node-style
 structure Style where
   axis : Axis := .column
   width : Sizing := .hug
@@ -91,7 +94,9 @@ structure Style where
   /-- Host-drawn pixels over the background, under the children. -/
   paint : Option Paint := none
 deriving Repr, BEq, Inhabited
+-- endregion: node-style
 
+-- region: node-control
 inductive Role where
   | group | button | checkbox | text | textField | link | list | listItem | heading | tab
 deriving Repr, BEq, DecidableEq, Inhabited
@@ -105,6 +110,7 @@ structure Control where
   checked : Option Bool := none
   selected : Bool := false
 deriving Repr, BEq, Inhabited
+-- endregion: node-control
 
 structure TextStyle where
   font : Font := {}
@@ -147,6 +153,7 @@ structure Wrap where
   lineSpacing : Nat := 0
 deriving Repr, BEq, Inhabited
 
+-- region: node-node
 inductive Node where
   | box (style : Style) (control : Option Control) (children : List Node)
   | text (style : TextStyle) (content : String)
@@ -155,6 +162,7 @@ inductive Node where
   | para (style : TextStyle) (wrap : Wrap) (content : String)
   | field (style : Style) (text : TextStyle) (control : Control) (view : FieldView)
 deriving Repr, Inhabited
+-- endregion: node-node
 
 /-- A laid-out node. `clip` is the region this node may paint in (the intersection of every
 clipping ancestor), so the visible part of a node is `rect.inter clip`. -/

@@ -46,6 +46,7 @@ def tick : String := "tick"
 /-- The tick's period: the display shows tenths. -/
 def tickMs : Nat := 100
 
+-- region: clock-state
 structure State where
   /-- The time as last heard: monotonic ms, wall ms since the epoch, and the zone's offset in
   seconds. -/
@@ -65,6 +66,7 @@ structure State where
   loading : Option Nat := some 0
   status : String := ""
 deriving Repr, DecidableEq, Inhabited
+-- endregion: clock-state
 
 /-- The stopwatch's reading. -/
 def elapsed (s : State) : Nat := s.banked + (if s.running then s.now - s.since else 0)
@@ -84,10 +86,12 @@ def resetRef : ControlRef := ⟨403, 0⟩
 def saveRef : ControlRef := ⟨404, 0⟩
 def loadRef : ControlRef := ⟨405, 0⟩
 
+-- region: clock-startstop
 /-- Start, or stop: stopping banks the run and cancels the tick. -/
 def startStop (s : State) : State × List Effect :=
   if s.running then ({ s with running := false, banked := elapsed s }, [.cancelTimer tick])
   else ({ s with running := true, since := s.now }, [.setTimer tick tickMs])
+-- endregion: clock-startstop
 
 theorem startStop_post (s : State) :
     (startStop s).1.running = !s.running ∧ elapsed (startStop s).1 = elapsed s := by
@@ -98,6 +102,7 @@ theorem startStop_post (s : State) :
 place ^406 window "Clock window" where
   does "The stopwatch's window: the reading, the time of day, Start/Stop, Lap, Reset, Save laps, Load laps, a status line and the laps."
 
+-- region: clock-startstop-move
 move ^401 startStopMove (s : State) "Start / Stop" in ^406 where
   does "Press Start (Stop while running)."
   sees "The stopwatch runs from where it was, or stops and keeps its reading."
@@ -105,7 +110,9 @@ move ^401 startStopMove (s : State) "Start / Stop" in ^406 where
     emit := startStop s
     post s' := s'.running = !s.running ∧ elapsed s' = elapsed s
     sound := by intro s; exact startStop_post s
+-- endregion: clock-startstop-move
 
+-- region: clock-lap
 move ^402 lapMove (s : State) "Lap" in ^406 where
   does "Press Lap while the stopwatch runs."
   sees "The reading is added to the laps, and a sound plays."
@@ -115,6 +122,7 @@ move ^402 lapMove (s : State) "Lap" in ^406 where
       [.request s.nextReq (.playSound "Tink")])
     post s' := s'.laps = s.laps ++ [elapsed s] ∧ s'.running = s.running
     sound := by intro s _; exact ⟨rfl, rfl⟩
+-- endregion: clock-lap
 
 move ^403 resetMove (s : State) "Reset" in ^406 where
   does "Press Reset while stopped."
@@ -129,6 +137,7 @@ move ^403 resetMove (s : State) "Reset" in ^406 where
       show 0 + (if s.running = true then s.now - s.since else 0) = 0
       rw [h]; rfl
 
+-- region: clock-save
 move ^404 saveMove (s : State) "Save laps" in ^406 where
   does "Press Save laps."
   sees "The laps are written to the laps file, replacing it; the status line says when it is done."
@@ -138,6 +147,7 @@ move ^404 saveMove (s : State) "Save laps" in ^406 where
       [.request s.nextReq (.writeFile lapsPath (lapsText s.laps).toUTF8)])
     post s' := s'.laps = s.laps ∧ s'.saving = some s.nextReq
     sound := by intro s _; exact ⟨rfl, rfl⟩
+-- endregion: clock-save
 
 move ^405 loadMove (s : State) "Load laps" in ^406 where
   does "Press Load laps."
@@ -154,6 +164,7 @@ def faultText : Fault → String
   | .notFound => "no such file" | .denied => "permission denied" | .timeout => "timed out"
   | .network => "network error" | .invalid => "invalid request" | .other => "failed"
 
+-- region: clock-receive
 /-- A reply to the pending save or load; anything else (the lap sound) is ignored. -/
 def onReply (s : State) (id : Nat) (r : Reply) : State :=
   if s.saving = some id then
@@ -179,11 +190,14 @@ def receive (s : State) : Msg → State × List Effect
   | .timer n => (s, if n = tick && s.running then [.setTimer tick tickMs] else [])
   | .reply id r => (onReply s id r, [])
   | .sub _ _ => (s, [])
+-- endregion: clock-receive
 
+-- region: clock-stopped-tick
 /-- A stopped stopwatch's tick sets nothing: after Stop no tick comes back. -/
 theorem stopped_tick (s : State) (h : s.running = false) : receive s (.timer tick) = (s, []) := by
   simp only [receive, h, Bool.and_false, ↓reduceIte, decide_true,
     Bool.false_eq_true]
+-- endregion: clock-stopped-tick
 
 /-- A reply only clears the pending save or load. -/
 theorem onReply_fields (s : State) (id : Nat) (r : Reply) :
@@ -203,8 +217,10 @@ theorem onReply_fields (s : State) (id : Nat) (r : Reply) :
         | exact ⟨rfl, Or.inr rfl, Or.inr rfl⟩
     · exact ⟨rfl, Or.inr rfl, Or.inr rfl⟩
 
+-- region: clock-machine
 /-- The stopwatch: its moves, and what the world does to it. -/
 def machine : Machine State := { init := {}, moves := moves%, receive }
+-- endregion: clock-machine
 
 invariant ^409 freshRequests "Pending requests have fresh ids" for machine where
   does "The pending save and load, if any, have ids below the next request's, so a reply to a later request is never taken for theirs."
@@ -322,10 +338,12 @@ def view (s : State) (ui : UI) : Node :=
        line 13 muted s.status ] ++
      lapLines s.laps)
 
+-- region: clock-app
 def app : App State :=
   { machine.toApp [.window 406 "Clock" view] claimInfos with
     subscriptions := fun _ => [.every 1000]
     initEffects := [.request 0 (.readFile lapsPath)] }
+-- endregion: clock-app
 
 example : claimInfos.map (·.id) = [401, 402, 403, 404, 405, 406, 407, 408, 409] := by decide
 

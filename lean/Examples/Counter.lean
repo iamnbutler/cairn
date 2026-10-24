@@ -30,6 +30,7 @@ checks in `Examples.Counter.Tests`; the v1 exports in `Examples.Counter.Abi`; th
 namespace Examples.Counter
 open Cairn Cairn.Claims
 
+-- region: counter-state
 structure State where
   count : Nat := 0
 deriving Repr, DecidableEq, Inhabited
@@ -38,10 +39,14 @@ def resetEnabled (s : State) : Bool := s.count > 0
 
 def incrementRef : ControlRef := ⟨1, 0⟩
 def resetRef : ControlRef := ⟨2, 0⟩
+-- endregion: counter-state
 
+-- region: counter-place
 place ^3 window "Counter window" where
   does "The counter's window: a bar as long as the count, Increment, and Reset when there is something to reset."
+-- endregion: counter-place
 
+-- region: counter-increment
 move ^1 increment (s : State) "Increment" in ^3 where
   does "Press Increment."
   sees "The count goes up by one."
@@ -49,7 +54,9 @@ move ^1 increment (s : State) "Increment" in ^3 where
     apply := { s with count := s.count + 1 }
     post s' := s'.count = s.count + 1
     sound := by intro s; rfl
+-- endregion: counter-increment
 
+-- region: counter-reset
 move ^2 reset (s : State) "Reset" in ^3 where
   does "Press Reset."
   sees "The count is zero, and Reset disappears."
@@ -58,10 +65,14 @@ move ^2 reset (s : State) "Reset" in ^3 where
     apply := { s with count := 0 }
     post s' := s'.count = 0 ∧ resetEnabled s' = false
     sound := by intro s _; exact ⟨rfl, rfl⟩
+-- endregion: counter-reset
 
+-- region: counter-machine
 /-- The counter's behaviour: its moves, from a zero count. -/
 def machine : Machine State := { init := {}, moves := moves% }
+-- endregion: counter-machine
 
+-- region: counter-flows
 flow ^4 countToThree "Count to three" for machine where
   does "Press Increment three times."
   sees "The count is three."
@@ -73,15 +84,23 @@ flow ^5 startOver "Start over" for machine where
   sees "The count is back to zero and Reset is gone."
   goal s := s.count = 0 ∧ resetEnabled s = false
   witness press ^1, press ^1, press ^2
+-- endregion: counter-flows
 
+-- region: counter-retire
 retire ^6 invariant "Moves never leave a press in progress" because "The runtime owns press tracking; Counter's state no longer has a pressed field, so the invariant was vacuous."
+-- endregion: counter-retire
 
+-- region: counter-assume
 assume ^7 hostClicks "The host reports clicks where they happen" where
   does "The host sends a pointer down and up at the logical point the person clicked, in order."
+-- endregion: counter-assume
 
+-- region: counter-claims
 /-- Every claim the counter makes. -/
 def claimInfos : List ClaimInfo := claims%
+-- endregion: counter-claims
 
+-- region: counter-checks
 /-- What a press on control `^n` does: whatever the move that owns ^n does, if any. -/
 def apply (s : State) (n : Nat) : State := (machine.update s (.press { claim := n })).1
 
@@ -90,7 +109,9 @@ example : (apply { count := 5 } 2).count = 0 := by decide
 example : apply {} 2 = {} := by decide
 example : apply { count := 2 } 9 = { count := 2 } := by decide
 example : claimInfos.map (·.id) = [1, 2, 3, 4, 5, 6, 7] := by decide
+-- endregion: counter-checks
 
+-- region: counter-unclaimed
 /-- The counter's control ids are exactly its moves: a press on any other claim changes
 nothing. -/
 theorem apply_unclaimed (s : State) (n : Nat) (h : n ≠ 1 ∧ n ≠ 2) : apply s n = s := by
@@ -101,6 +122,7 @@ theorem apply_unclaimed (s : State) (n : Nat) (h : n ≠ 1 ∧ n ≠ 2) : apply 
   rcases hm with rfl | rfl
   · show 1 ≠ n; omega
   · show 2 ≠ n; omega
+-- endregion: counter-unclaimed
 
 /-! ## View -/
 
@@ -119,6 +141,7 @@ def barWidth (n : Nat) : Nat := 20 * min n 20
 
 def countLabel (n : Nat) : String := s!"Count: {n}"
 
+-- region: counter-button
 /-- A 160×44 button for `r`, darker under the pointer, with a ring when it has focus. It clips
 its label, so its size never depends on the text (the view is rigid: `Cairn.Layout.FitsIn`). -/
 def button (ui : UI) (r : ControlRef) (label : String) (fill hover : Color) : Node :=
@@ -128,7 +151,9 @@ def button (ui : UI) (r : ControlRef) (label : String) (fill hover : Color) : No
          border := if ui.focus = some r then some ⟨2, focusRing⟩ else none }
     (some { ref := r, label := label })
     [.text { font := { size := 15, weight := 600 }, color := white } label]
+-- endregion: counter-button
 
+-- region: counter-view
 /-- A bar as long as the count. -/
 def bar (n : Nat) : Node :=
   .box { width := .fixed (barWidth n), height := .fixed 20, background := some blue } none []
@@ -145,7 +170,10 @@ def view (s : State) (ui : UI) : Node :=
        countRow s.count,
        button ui incrementRef "Increment" green greenDark ] ++
      (if resetEnabled s then [button ui resetRef "Reset" red redDark] else []))
+-- endregion: counter-view
 
+-- region: counter-app
 def app : App State := machine.toApp [.window 3 "Counter" view] claimInfos
+-- endregion: counter-app
 
 end Examples.Counter

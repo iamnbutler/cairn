@@ -37,6 +37,7 @@ open Cairn Cairn.Claims
 /-- The field's placeholder and accessibility label. -/
 def placeholder : String := "New item"
 
+-- region: basics-state
 structure Item where
   id : Nat
   text : String
@@ -57,6 +58,7 @@ def fieldRef : ControlRef := ⟨101, 0⟩
 def addRef : ControlRef := ⟨102, 0⟩
 def toggleRef (k : Nat) : ControlRef := ⟨103, k⟩
 def deleteRef (k : Nat) : ControlRef := ⟨104, k⟩
+-- endregion: basics-state
 
 /-! ## The model -/
 
@@ -68,6 +70,7 @@ def isBlank (c : Char) : Bool := c.isWhitespace
 def trimmed (t : List Char) : List Char :=
   ((t.dropWhile isBlank).reverse.dropWhile isBlank).reverse
 
+-- region: basics-add
 /-- Add the field's trimmed text as a new item and clear the field; nothing when it's blank. -/
 def add (s : State) : State :=
   if trimmed s.field.text = [] then s
@@ -88,6 +91,7 @@ theorem add_added (s : State) : Added s (add s) := by
   by_cases h : trimmed s.field.text = []
   · simp only [h, ↓reduceIte]
   · simp only [h, ↓reduceIte]; exact ⟨trivial, rfl⟩
+-- endregion: basics-add
 
 /-- Whether item `k` exists. -/
 def has (s : State) (k : Nat) : Bool := s.items.any (·.id == k)
@@ -289,6 +293,7 @@ theorem delete_inv (k : Nat) {s : State} (h : Inv s) : Inv (delete k s) := by
 place ^106 window "Basics window" where
   does "The window: a heading, the New item field and Add, the list of items, and the count of items left."
 
+-- region: basics-type-item
 move ^101 typeItem (s : State) "Type a new item" in ^106 where
   does "Type in the New item field, and press Enter."
   sees "The text appears in the field; Enter adds it like Add does."
@@ -301,6 +306,7 @@ move ^101 typeItem (s : State) "Type a new item" in ^106 where
     apply := add s
     post s' := Added s s'
     sound := by intro s; exact add_added s
+-- endregion: basics-type-item
 
 move ^102 addItem (s : State) "Add" in ^106 where
   does "Press Add."
@@ -310,6 +316,7 @@ move ^102 addItem (s : State) "Add" in ^106 where
     post s' := Added s s'
     sound := by intro s; exact add_added s
 
+-- region: basics-toggle
 move ^103 toggleItem (s : State) (k : Nat) "Toggle an item" in ^106 where
   does "Press an item's checkbox."
   sees "The item is marked done, or not done again, and the count of items left follows."
@@ -318,6 +325,7 @@ move ^103 toggleItem (s : State) (k : Nat) "Toggle an item" in ^106 where
     apply := toggle k s
     post s' := s'.items = s.items.map (flip k)
     sound := by intro s k h; exact toggle_items k s h
+-- endregion: basics-toggle
 
 move ^104 deleteItem (s : State) (k : Nat) "Delete an item" in ^106 where
   does "Press an item's delete button."
@@ -331,6 +339,7 @@ move ^104 deleteItem (s : State) (k : Nat) "Delete an item" in ^106 where
 /-- Basics' behaviour: its four moves, from an empty list. -/
 def machine : Machine State := { init := {}, moves := moves% }
 
+-- region: basics-invariant
 invariant ^105 itemsLeft "Items left" for machine where
   does "The footer's count equals the number of items not done, and item ids stay distinct, in every reachable state."
   holds s := Inv s
@@ -340,7 +349,9 @@ invariant ^105 itemsLeft "Items left" for machine where
       (Move.all_cons (addItem.preserves _ fun _ h => add_inv h)
       (Move.all_cons (toggleItem.preserves _ fun _ k _ h => toggle_inv k h)
       (Move.all_cons (deleteItem.preserves _ fun _ k _ h => delete_inv k h) Move.all_nil)))
+-- endregion: basics-invariant
 
+-- region: basics-flows
 flow ^107 addAndFinish "Add two items and finish one" for machine where
   does "Type milk and press Enter, type eggs and press Add, then check milk."
   sees "Two items, milk done, and one item left."
@@ -360,6 +371,7 @@ flow ^109 addThenDelete "Add an item, then delete it" for machine where
   sees "The list is empty again, and nothing is left."
   goal s := s.items = [] ∧ s.left = 0 ∧ s.nextId = 2
   witness edit ^101 (.insert "milk"), press ^102, press ^104#1
+-- endregion: basics-flows
 
 /-- Every claim Basics makes. -/
 def claimInfos : List ClaimInfo := claims%
@@ -386,6 +398,7 @@ def leftLabel (n : Nat) : String := if n = 1 then "1 item left" else s!"{n} item
 
 def heading : Node := .text { font := { size := 22, weight := 700 }, color := ink } "Basics"
 
+-- region: basics-intro
 /-- Wrapped text (`Node.para`): Lean breaks it to the window's width, so it rewraps as the
 window resizes. -/
 def intro : Node :=
@@ -393,7 +406,9 @@ def intro : Node :=
     "Type an item and press Enter or Add. Check an item off when it is done, or delete it. \
      This paragraph is broken into lines by Lean, from Core Text's measurement of the whole \
      string, so it rewraps as the window resizes."
+-- endregion: basics-intro
 
+-- region: basics-input-row
 def inputRow (s : State) (ui : UI) : Node :=
   .box { axis := .row, width := .fill, gap := 8, align := .center } none
     [ .field { width := .fill, padding := ⟨6, 8, 6, 8⟩, background := some white, radius := 6,
@@ -405,6 +420,7 @@ def inputRow (s : State) (ui : UI) : Node :=
              background := some (if ui.hover = some addRef then accentDark else accent) }
         (some { ref := addRef, label := "Add" })
         [.text { font := { body with weight := 600 }, color := white } "Add"] ]
+-- endregion: basics-input-row
 
 def itemRow (ui : UI) (it : Item) : Node :=
   .box { axis := .row, width := .fill, height := .fixed 36, gap := 10, align := .center,
@@ -427,6 +443,7 @@ def itemRow (ui : UI) (it : Item) : Node :=
 
 def footer (s : State) : String := leftLabel s.left
 
+-- region: basics-view
 def view (s : State) (ui : UI) : Node :=
   .box { width := .fill, height := .fill, padding := ⟨20, 20, 20, 20⟩, gap := 12,
          background := some bg, clip := true } none
@@ -435,6 +452,7 @@ def view (s : State) (ui : UI) : Node :=
       inputRow s ui,
       .box { width := .fill, gap := 4 } none (s.items.map (itemRow ui)),
       .text { font := { size := 13 }, color := muted } (footer s) ]
+-- endregion: basics-view
 
 def app : App State := machine.toApp [.window 106 "Basics" view] claimInfos
 

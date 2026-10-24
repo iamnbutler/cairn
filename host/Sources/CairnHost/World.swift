@@ -23,6 +23,7 @@ public enum HostClock {
 /// Runs one request and answers it through `reply`, which the host calls exactly once.
 public typealias RequestHandler = @Sendable (Request, _ reply: @escaping @Sendable (Reply) -> Void) -> Void
 
+// region: world-handlers
 /// The requests the host can run, by `Request.kindCode`. Adding a kind is one entry here (and
 /// its Lean constructor, encoding and `Reply.answers` case).
 public struct Handlers: Sendable {
@@ -49,6 +50,7 @@ public struct Handlers: Sendable {
         15: { r, reply in if case let .makeDir(p) = r { reply(Files.makeDir(p)) } },
     ])
 }
+// endregion: world-handlers
 
 /// What the host's world reaches through: the microphone, the keyboard, typing into other apps,
 /// secrets and the network. Tests swap in stubs, so `make check` never records, listens to keys,

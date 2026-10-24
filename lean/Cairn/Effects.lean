@@ -52,6 +52,7 @@ structure Secret where
   name : String
 deriving Repr, DecidableEq, Inhabited
 
+-- region: effects-request
 /-- Something the host does that answers back. Closed: adding a kind is a constructor, its
 encoding, a `Reply.answers` case and one host handler (docs/effects.md). -/
 inductive Request where
@@ -95,6 +96,7 @@ inductive Request where
   already a directory. -/
   | makeDir (path : String)
 deriving Repr, BEq, Inhabited
+-- endregion: effects-request
 
 /-- The kind of a request, without its payload: what the runtime remembers while it is
 pending. -/
@@ -113,6 +115,7 @@ def Request.kind : Request → Request.Kind
   | .openItem .. => .openItem | .appRunning .. => .appRunning | .readDefault .. => .readDefault
   | .makeDir .. => .makeDir
 
+-- region: effects-reply
 inductive Reply where
   /-- `writeFile`, `appendFile`, `deleteFile`, `makeDir` and `playSound` succeeded. -/
   | done
@@ -142,7 +145,9 @@ def Reply.answers : Request.Kind → Reply → Bool
   | .frontmostApp, .app .. => true
   | .permission, .flag _ | .appRunning, .flag _ => true
   | _, _ => false
+-- endregion: effects-reply
 
+-- region: effects-sub
 /-- An outside input an app asks for, as data derived from its state. -/
 inductive Sub where
   /-- A tick every `ms` milliseconds (at least 1), from the host. -/
@@ -158,6 +163,7 @@ inductive Sub where
   any other key pressed while it is down. Needs Accessibility. -/
   | globalKey (code : Nat) (modifier : Option Nat)
 deriving Repr, DecidableEq, Inhabited
+-- endregion: effects-sub
 
 /-- One 20 ms window of a recording (320 samples at 16 kHz), as integers. -/
 structure Level where
@@ -196,6 +202,7 @@ inductive SubCmd where
   | stop (id : Nat)
 deriving Repr, DecidableEq, Inhabited
 
+-- region: effects-msg
 /-- Runtime → app, through `App.receive`: the outside world. -/
 inductive Msg where
   /-- The current time, delivered before anything else whenever it changed. -/
@@ -207,5 +214,6 @@ inductive Msg where
   /-- An event from an active subscription. -/
   | sub (s : Sub) (e : SubEvent)
 deriving Repr, BEq, Inhabited
+-- endregion: effects-msg
 
 end Cairn

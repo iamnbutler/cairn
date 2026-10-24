@@ -24,6 +24,7 @@ structure UI where
   windowFocused : Bool := true
 deriving Repr, DecidableEq, Inhabited
 
+-- region: app-surface
 /-- One thing an app shows (docs/surfaces.md). An app declares a fixed list of them; whether
 each is shown, and what it shows, is a function of the state. `place` is the surface's place
 claim: its durable identity on the wire, in the map and in the debug socket. -/
@@ -36,6 +37,7 @@ inductive Surface (S : Type) where
   | panel (place : ClaimId) (view : TextMetrics → S → Option PanelView)
   /-- A menu bar status item and its native menu; `none` removes it from the menu bar. -/
   | statusItem (place : ClaimId) (view : S → Option StatusItem)
+-- endregion: app-surface
 
 namespace Surface
 
@@ -75,6 +77,7 @@ theorem firstWindow_comap {S T : Type} (f : T → S) (xs : List (Surface S)) :
 /-- What an app with no window lays out as its window: nothing. -/
 def emptyView : Node := .box {} none []
 
+-- region: app-app
 structure App (S : Type) where
   init : S
   /-- What the app shows: at most one window (a later window is ignored), panels and status
@@ -94,6 +97,7 @@ structure App (S : Type) where
   claims : List ClaimInfo
   /-- The control that has keyboard focus at launch, if it is focusable there. -/
   initFocus : Option ControlRef := none
+-- endregion: app-app
 
 namespace App
 
