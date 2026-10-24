@@ -3,6 +3,7 @@ import CairnFrame
 import CoreGraphics
 import Foundation
 import Metal
+import AppKit
 import SwiftUI
 import Testing
 
@@ -147,6 +148,58 @@ import Testing
             let inkTheirs = theirs.values.reduce(0, +)
             let ratio = Double(inkOurs) / Double(inkTheirs)
             #expect(abs(ratio - 1) < 0.02, "\(size) pt weight \(weight) in \(c): ink \(inkOurs) vs SwiftUI's \(inkTheirs)")
+        }
+    }
+
+    /// Glyphs land where SwiftUI puts them: Core Text's positions, each quantised to a quarter
+    /// point, rasterised at its optical size. Light text on black, a line long enough for the
+    /// positions to drift if any of that were off: at 2x every column's ink is SwiftUI's; at 1x
+    /// and 1.5x, where smoothing thickens a few percent differently, the ink's centre is.
+    @MainActor @Test func textPositionsAreSwiftUIs() throws {
+        guard FontSmoothing.enabled else { return }
+        let s = "…d feel like a little tape machine, with the reel turning while I talk"
+        for scale in [1.0, 1.5, 2.0] {
+            let r = ImageRenderer(content: SwiftUI.Text(s).font(.system(size: 14))
+                .foregroundStyle(SwiftUI.Color(red: 237 / 255, green: 232 / 255, blue: 219 / 255))
+                .fixedSize().frame(width: 520, height: 40, alignment: .topLeading).background(SwiftUI.Color.black))
+            r.scale = scale
+            let img = r.cgImage!
+            let w = img.width, h = img.height
+            var b = [UInt8](repeating: 0, count: w * h * 4)
+            let ctx = CGContext(data: &b, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+                                space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+            ctx.draw(img, in: CGRect(x: 0, y: 0, width: w, height: h))
+            // SwiftUI's baseline: the text's top plus the font's ascent, which our draw takes.
+            let ascent = Int32(NSFont.systemFont(ofSize: 14).ascender.rounded())
+            let ours = try withRenderer { r -> CairnRender.Image in
+                r.clearColor = Color(r: 0, g: 0, b: 0)
+                defer { r.clearColor = Color(r: 255, g: 255, b: 255) }
+                return try r.image(frame(520, 40, [text(0, ascent, s, font: Font(size: 14), color: Color(r: 237, g: 232, b: 219))]),
+                                   scale: Float(scale))
+            }
+            #expect(ours.width == w && ours.height == h)
+            // Columns' ink, so a baseline a pixel apart doesn't count, only where glyphs are.
+            var worst = 0
+            for x in 0..<min(w, ours.width) {
+                var a = 0, o = 0
+                for y in 0..<min(h, ours.height) {
+                    a += Int(max(b[(y * w + x) * 4], b[(y * w + x) * 4 + 1], b[(y * w + x) * 4 + 2]))
+                    o += Int(max(ours.bgra[(y * ours.width + x) * 4], ours.bgra[(y * ours.width + x) * 4 + 1], ours.bgra[(y * ours.width + x) * 4 + 2]))
+                }
+                worst = max(worst, abs(a - o))
+            }
+            // The ink's horizontal centre, for scales where smoothing thickens differently.
+            func centre(_ px: (Int, Int) -> Int) -> Double {
+                var m = 0.0, t = 0.0
+                for y in 0..<h { for x in 0..<w { let v = Double(px(x, y)); m += v * Double(x); t += v } }
+                return m / t
+            }
+            let dx = centre { x, y in Int(max(b[(y * w + x) * 4], b[(y * w + x) * 4 + 1], b[(y * w + x) * 4 + 2])) }
+                - centre { x, y in Int(max(ours.bgra[(y * w + x) * 4], ours.bgra[(y * w + x) * 4 + 1], ours.bgra[(y * w + x) * 4 + 2])) }
+            #expect(abs(dx) < 0.1, "\(scale)x: the ink's centre is \(dx) px from SwiftUI's")
+            // At 2x (Retina, where Yap's overlay is compared) every column is SwiftUI's.
+            if scale == 2 { #expect(worst <= 40, "2x: a column's ink differs from SwiftUI's by \(worst)") }
         }
     }
 

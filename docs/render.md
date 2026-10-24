@@ -75,11 +75,14 @@ a fallback (emoji, CJK, symbols). Glyphs come from an atlas:
   within 2%.
 - Colour glyphs (fonts with `traitColorGlyphs`, i.e. emoji) go to premultiplied `bgra8Unorm`
   pages and ignore the text colour (its alpha still applies).
-- **Subpixel positioning**: each glyph's device-pixel x is split into a whole pixel (the quad
-  origin) and a fraction quantised to 4 bins, baked into the bitmap. The baseline y is rounded to
-  a whole device pixel. Quads therefore sit on whole pixels and sample the atlas 1:1 with nearest
-  filtering, so text never blurs. Core Graphics' own subpixel quantisation is off. Colour glyphs
-  snap to whole pixels.
+- **Subpixel positioning**: each glyph's x is first quantised down to a quarter point, as Core
+  Graphics does for AppKit and SwiftUI (`textPositionsAreSwiftUIs`: at 2x every column of a
+  line's ink is SwiftUI's), then split in device pixels into a whole pixel (the quad origin)
+  and a fraction in eighths, baked into the bitmap (eighths hold a quarter point exactly at 1x,
+  1.5x, 2x and 3x). The baseline y is rounded to a whole device pixel. Quads therefore sit on
+  whole pixels and sample the atlas 1:1 with nearest filtering, so text never blurs. Core
+  Graphics' own subpixel quantisation is off in the atlas, since the position is already
+  quantised. Colour glyphs snap to whole pixels.
 - Cache key: (run font, glyph id, subpixel bin, scale, smoothing level). Pages are 2048² and append-only (shelf
   packing), so frames in flight never see texels change. When more than 8 pages exist at the
   start of a frame, the renderer waits for the GPU and drops the whole atlas.

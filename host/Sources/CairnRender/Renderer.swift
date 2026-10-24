@@ -321,7 +321,10 @@ public final class Renderer {
         for run in line.runs {
             for i in 0..<run.glyphs.count {
                 let p = run.positions[i]
-                let ox = (Double(origin.x) + Double(p.x)) * s
+                // Core Graphics quantises a glyph's x to a quarter point (measured against
+                // SwiftUI: exact at 2x), so text lands where AppKit and SwiftUI put it.
+                let xpt = Double(origin.x) + Double(p.x)
+                let ox = run.isColor ? xpt * s : (xpt * 4).rounded(.down) / 4 * s
                 let oy = ((Double(origin.y) - Double(p.y)) * s).rounded()
                 var bx = ox.rounded(.down)
                 var bin = 0

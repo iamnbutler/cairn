@@ -47,7 +47,7 @@ public enum FontSmoothing {
 final class GlyphAtlas {
     static let pageSize = 2048
     /// Horizontal subpixel positions per pixel. Glyphs are cached per bin; y is pixel-snapped.
-    static let subpixelBins = 4
+    static let subpixelBins = 8
     /// Beyond this many pages the renderer waits for the GPU and calls `reset`.
     static let maxPages = 8
 
