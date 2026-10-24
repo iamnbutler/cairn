@@ -1,6 +1,8 @@
-// The videos: media.json, newest first, written by tools/media/put.sh. The homepage shows the
-// featured one; /milestones/ puts each in its milestone's progress log. tools/site/build.ts reads
-// the same list for the feed, and links each video to the id that videoId gives it here.
+// The progress log: media.json, newest first. Videos are written by tools/media/put.sh; a note is
+// an entry with "text" (plain-text paragraphs) and no video, for work with nothing to show on
+// screen. The homepage shows the featured video; /milestones/ puts each entry in its milestone's
+// progress log. tools/site/build.ts reads the same list for the feed, and links each entry to the
+// id that videoId gives it here.
 
 export const list = () => fetch("/media.json").then(r => r.json());
 
@@ -32,7 +34,28 @@ export function figure(m, autoplay) {
   return f;
 }
 
-// Fill each `ul[id^=log-]` in root with its milestone's videos (`log-m2` takes milestone "m2";
+// A note: its paragraphs, and the date and commit under them, as a video's are.
+export function note(m) {
+  const d = document.createElement("div");
+  d.className = "text";
+  for (const t of m.text) {
+    const p = document.createElement("p");
+    p.textContent = t;
+    d.append(p);
+  }
+  const meta = document.createElement("div");
+  meta.className = "meta";
+  for (const [cls, text] of [["date", m.date], ["", m.commit]]) {
+    const s = document.createElement("span");
+    if (cls) s.className = cls;
+    s.textContent = text;
+    meta.append(s);
+  }
+  d.append(meta);
+  return d;
+}
+
+// Fill each `ul[id^=log-]` in root with its milestone's videos and notes (`log-m2` takes milestone "m2";
 // an entry without one goes to m1, the first log).
 export function fillLogs(root, list) {
   const logs = [...root.querySelectorAll("[id^=log-]")];
@@ -44,8 +67,8 @@ export function fillLogs(root, list) {
     const h = document.createElement("h3");
     h.id = videoId(m);
     h.textContent = m.title;
-    li.append(h, figure(m, false));
+    li.append(h, m.video ? figure(m, false) : note(m));
     log.append(li);
   }
-  for (const log of logs) if (!log.children.length) log.innerHTML = '<li class="meta">No videos yet.</li>';
+  for (const log of logs) if (!log.children.length) log.innerHTML = '<li class="meta">Nothing yet.</li>';
 }

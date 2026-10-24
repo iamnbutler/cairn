@@ -18,7 +18,7 @@
 // Markdown with their links dropped, since they point into internal notes.
 //
 // Pages are listed in site/docs/nav.json, which is the sidebar. site/public/docs/api/ belongs to
-// `cairn doc` (#74): the build never writes or deletes it, and the sidebar links to it once it
+// `cairn doc` (#77): the build never writes or deletes it, and the sidebar links to it once it
 // has an index.html. Needs only bun.
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
@@ -31,10 +31,8 @@ const API = join(OUT, "api");
 const CHECK = process.argv.includes("--check");
 
 // The only GitHub links a public page may carry: the issues that unblock its TODO pages.
-const ALLOWED_LINKS = [
-	"https://github.com/iamnbutler/cairn/issues/74",
-	"https://github.com/iamnbutler/cairn/issues/75",
-];
+// Open issues the pages point at. Keep it to issues that are open: replace one when it closes.
+const ALLOWED_LINKS = [83, 84, 92, 93, 94, 95, 96, 97, 99].map((n) => `https://github.com/iamnbutler/cairn/issues/${n}`);
 
 const errors: string[] = [];
 const fail = (where: string, message: string) => errors.push(`${where}: ${message}`);
@@ -238,10 +236,10 @@ function highlight(code: string, lang: string): string {
 const langOf = (path: string) =>
 	path.endsWith(".lean") ? "lean" : path.endsWith(".swift") ? "swift" : path.endsWith(".md") ? "md" : "make";
 
-function codeBlock(path: string, r: Region): string {
+function codeBlock(path: string, r: Region, lang = langOf(path)): string {
 	const lines = r.first === r.last ? `line ${r.first}` : `lines ${r.first}–${r.last}`;
 	return (
-		`<figure class="code"><pre class="px"><code class="${langOf(path)}">${highlight(r.text, langOf(path))}</code></pre>` +
+		`<figure class="code"><pre class="px"><code class="${lang}">${highlight(r.text, lang)}</code></pre>` +
 		`<figcaption><code>${esc(path)}</code>, ${lines}</figcaption></figure>`
 	);
 }
@@ -271,7 +269,27 @@ function renderBody(page: Page): string {
 		if (!r) return;
 		if (spec.split("#")[0].endsWith(".md")) {
 			// Internal notes: their links point into the private repository, so keep only the text.
-			lines.push("", r.text.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1"), "");
+			// A fenced block in the region becomes a code figure like any other include, captioned
+			// with its own lines in the note.
+			const text = r.text.split("\n");
+			let prose: string[] = [];
+			const flush = () => {
+				if (prose.length) lines.push("", prose.join("\n").replace(/\[([^\]]+)\]\([^)]*\)/g, "$1"), "");
+				prose = [];
+			};
+			for (let k = 0; k < text.length; k++) {
+				const open = text[k].match(/^\s*```\s*(\w*)/);
+				if (!open) { prose.push(text[k]); continue; }
+				const end = text.findIndex((l, j) => j > k && /^\s*```\s*$/.test(l));
+				if (end < 0) { fail(`${where}:${i + 1}`, `${spec} has a fenced block that never closes`); break; }
+				flush();
+				const fence = open[1];
+				const lang = fence === "lean" || fence === "swift" ? fence : "make";
+				blocks.push(codeBlock(spec.split("#")[0], { text: text.slice(k + 1, end).join("\n"), first: r.first + k + 1, last: r.first + end - 1 }, lang));
+				lines.push("", `<div data-include="${blocks.length - 1}"></div>`, "");
+				k = end;
+			}
+			flush();
 		} else {
 			blocks.push(codeBlock(spec.split("#")[0], r));
 			lines.push("", `<div data-include="${blocks.length - 1}"></div>`, "");

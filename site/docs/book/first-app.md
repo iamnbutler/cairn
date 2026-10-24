@@ -2,7 +2,7 @@
 title: Your first app
 nav: Your first app
 eyebrow: The Cairn Book · Chapter 1
-lede: What a Cairn app is made of, how to run one, and how to add your own today.
+lede: What a Cairn app is made of, how to run one, and how to start your own.
 ---
 
 ## The pieces
@@ -79,14 +79,41 @@ The Swift executable names those functions, and hands them to the generic host:
 That is the whole of the app's Swift that isn't a test. Everything else (threads, input, text
 input, accessibility, painting) is the shared host, `CairnHost`.
 
-## Adding your own app, today
+## An app in its own repository
 
-:::note Today
-An app can't yet live in its own repository and depend on Cairn: that is
-[issue #75](https://github.com/iamnbutler/cairn/issues/75), and this section will be rewritten
-around it. There is no `cairn new`. Today you add an app beside the examples, by hand, in five
-places.
-:::
+An app lives in a repository of its own and depends on a tagged release of Cairn, the way
+[Yap](/docs/examples/yap/) does. One tag pins both halves: the Lean package and the Swift
+libraries. Start one with [the cairn tool](/docs/use/cairn-tool/).
+
+`cairn new hello` makes `hello/` with a `cairn.toml`, an empty `claims.lock`, and a `lean/`
+whose lakefile sets the claim scope to `hello`, so the app's ids are `hello^1`, `hello^2`, and so
+on. It also writes a `Package.swift` for the host. `cairn new hello --lib` makes a library
+instead, with no host.
+
+`cairn add cairn` points the lakefile and `cairn.toml` at Cairn's latest release in the
+registry and prints the line for `Package.swift`. There is no public Cairn registry yet
+([issue #97](https://github.com/iamnbutler/cairn/issues/97)). Until there is, require Cairn from
+git at a tag, as Yap's lakefile does:
+
+<!-- include docs/package.md#package-lakefile -->
+
+Then depend on the same tag in `Package.swift`, and link the library that the build makes:
+
+<!-- include docs/package.md#package-manifest -->
+
+`cairn build` builds the Lean, links it with Cairn's runtime into one static library in
+`.cairn/lib/`, and builds the host. By hand, that is:
+
+<!-- include docs/package.md#package-build -->
+
+The app's `main.swift` hands its three exports to the host, as Counter's does above. The app
+declares those exports in a small C target of its own. Cairn's tools (the claim ledger, the
+axiom audit, the bundle script) run from the app's Lake directory against its own modules.
+
+## An app beside the examples
+
+To work on Cairn itself, or to try something quickly without a package, add an app to the
+Cairn repository beside the examples. It goes in five places:
 
 1. **The Lean module**, `lean/Examples/<App>.lean`, written like Counter: a `module` that
    `public import`s the runtime and only `meta import`s the claim commands, so the commands stay
@@ -114,5 +141,5 @@ it with `make demo DEMO=Cairn<App>`.
 
 Pick ids in a range of their own: the examples use ^1–^7 (Counter), ^101–^109 (Basics), ^201–^224
 (TodoMVC), ^401–^409 (Clock) and ^450 onwards (Tray); the trusted base uses ^900 and up, and
-^301–^399 moved with Yap to its own package. Ids are scoped per package: these are all `cairn^N`,
-and an app in its own repository has its own (`yap^301`), so it can number from ^1.
+^301–^399 moved with Yap to its own package. Ids are scoped per package: these are all `cairn^N`.
+An app in its own repository has its own scope (`yap^301`), so it can number from ^1.

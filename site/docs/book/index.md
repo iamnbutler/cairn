@@ -16,7 +16,7 @@ needs are one line, and the Book shows where the longer ones come from.
 ## Chapters
 
 1. [Your first app](/docs/book/first-app/): what a Cairn app is made of, running Counter, and
-   adding an app of your own today.
+   starting an app of your own.
 2. [Moves and flows](/docs/book/moves-and-flows/): declaring what a person can do, and the paths
    through it.
 3. [The view and layout](/docs/book/view-and-layout/): what the app shows, as a tree of boxes

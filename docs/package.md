@@ -38,6 +38,7 @@ scope. Cairn's own `cairn.toml` sits at this repository's root.
 
 The lakefile:
 
+<!-- region: package-lakefile -->
 ```lean
 package yap where
   leanOptions := #[⟨`autoImplicit, false⟩, ⟨`relaxedAutoImplicit, false⟩,
@@ -50,6 +51,7 @@ lean_lib Yap where
   roots := #[`Yap.Abi, `Yap]
   defaultFacets := #[LeanLib.staticFacet]
 ```
+<!-- endregion: package-lakefile -->
 
 `cairn.claims.scope` names the package the claims belong to; use the package name. It needs the
 `weak.` prefix because Lake passes it to every module, and only the modules that use the claim
@@ -57,6 +59,7 @@ commands know the option.
 
 The manifest:
 
+<!-- region: package-manifest -->
 ```swift
 let lib = Context.packageDirectory + "/.cairn/lib"
 // dependencies:
@@ -66,6 +69,7 @@ let lib = Context.packageDirectory + "/.cairn/lib"
     dependencies: ["CYap", .product(name: "CairnHost", package: "cairn"), /* … */],
     linkerSettings: [.unsafeFlags(["-L" + lib, "-lyap"])]),
 ```
+<!-- endregion: package-manifest -->
 
 `unsafeFlags` are fine here, because the app is the root package. The app declares its own Lean
 exports in a small C target (`runtime_initialize_<package>_<Module>` and anything `@[export]`ed);
@@ -73,11 +77,13 @@ Cairn's CLean declares the runtime and the v1 app ABI (`cairn_app_init`, `step`,
 
 ## Building
 
+<!-- region: package-build -->
 ```
 cd lean && lake build
 cd lean && .lake/packages/cairn/bin/cairn-link --lib Yap --out ../.cairn/lib/libyap.a
 swift build
 ```
+<!-- endregion: package-build -->
 
 `bin/cairn-link` merges into one static library: Lean's runtime (`libInit`, `libleanrt`, `libuv`,
 `libgmp`), Cairn's Lean library, `claims_meta.o` (weak stand-ins for the claim commands'

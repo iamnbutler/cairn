@@ -41,6 +41,6 @@ jq --arg video "/m/$video" --arg poster "/m/$poster" --arg title "$title" --arg 
    --argjson feature "$([ "$feature" = --feature ] && echo true || echo false)" \
    '[{video: $video, poster: $poster, title: $title, caption: $caption, date: $date, published: $published, commit: $commit,
       width: $w, height: $h, seconds: ($d | floor), feature: $feature, milestone: $milestone}]
-    + (if $feature then map(.feature = false) else . end)' "$list" > "$work/m.json"
+    + (if $feature then map(if .video then .feature = false else . end) else . end)' "$list" > "$work/m.json"
 mv "$work/m.json" "$list"
 echo "uploaded /m/$video ($(du -h "$work/v.mp4" 2>/dev/null | cut -f1 || true))"

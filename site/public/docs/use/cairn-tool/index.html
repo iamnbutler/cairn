@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The cairn tool · Cairn docs</title>
-<meta name="description" content="The command line for building, checking and shipping a Cairn app. Planned; today the repository's make targets do its work.">
+<meta name="description" content="The command line for Cairn packages. It starts a package, adds dependencies, builds, documents and publishes; checking, running and shipping are still the repository's make targets.">
 <link rel="icon" href="/favicon.ico" sizes="32x32">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -25,37 +25,59 @@
 <div class="layout">
 <details class="side" open>
 <summary>Contents</summary>
-<nav aria-label="Docs"><h2>Learn</h2><ul><li><a href="/docs/book/">The Cairn Book</a><ol><li><a href="/docs/book/first-app/">Your first app</a></li><li><a href="/docs/book/moves-and-flows/">Moves and flows</a></li><li><a href="/docs/book/view-and-layout/">The view and layout</a></li><li><a href="/docs/book/proving/">Proving a claim</a></li><li><a href="/docs/book/effects/">Effects and the host</a></li><li><a href="/docs/book/shipping/">Shipping</a></li></ol></li><li><a href="/docs/examples/">Cairn by Example</a><ol><li><a href="/docs/examples/counter/">Counter</a></li><li><a href="/docs/examples/basics/">Basics</a></li><li><a href="/docs/examples/todo/">TodoMVC</a></li><li><a href="/docs/examples/yap/">Yap</a></li></ol></li></ul><h2>Use</h2><ul><li><a href="/docs/api/">API reference</a></li><li><a href="/docs/use/cairn-tool/" class="on" aria-current="page">The cairn tool</a></li><li><a href="/docs/use/claims/">Claims reference</a></li><li><a href="/docs/use/evidence/">The evidence ladder</a></li><li><a href="/docs/use/errors/">Error index<span class="todo">to do</span></a></li><li><a href="/docs/use/releases/">Release notes<span class="todo">to do</span></a></li></ul><h2>Master</h2><ul><li><a href="/docs/master/trusted-base/">The trusted base</a></li><li><a href="/docs/master/host-protocol/">The host protocol</a></li><li><a href="/docs/master/host-effects/">Writing host effects</a></li><li><a href="/docs/master/profiling/">Profiling against a reference</a></li><li><a href="/docs/master/contributing/">Contributing</a></li></ul><h2>Evidence</h2><ul><li><a href="/docs/evidence/">The maps</a></li><li><a href="/map/counter/">Counter's map</a></li><li><a href="/map/basics/">Basics' map</a></li><li><a href="/map/todo/">TodoMVC's map</a></li><li><a href="/map/trusted/">The trusted base's map</a></li></ul></nav>
+<nav aria-label="Docs"><h2>Learn</h2><ul><li><a href="/docs/book/">The Cairn Book</a><ol><li><a href="/docs/book/first-app/">Your first app</a></li><li><a href="/docs/book/moves-and-flows/">Moves and flows</a></li><li><a href="/docs/book/view-and-layout/">The view and layout</a></li><li><a href="/docs/book/proving/">Proving a claim</a></li><li><a href="/docs/book/effects/">Effects and the host</a></li><li><a href="/docs/book/shipping/">Shipping</a></li></ol></li><li><a href="/docs/examples/">Cairn by Example</a><ol><li><a href="/docs/examples/counter/">Counter</a></li><li><a href="/docs/examples/basics/">Basics</a></li><li><a href="/docs/examples/todo/">TodoMVC</a></li><li><a href="/docs/examples/yap/">Yap</a></li></ol></li></ul><h2>Use</h2><ul><li><a href="/docs/api/">API reference</a></li><li><a href="/docs/use/cairn-tool/" class="on" aria-current="page">The cairn tool</a></li><li><a href="/docs/use/claims/">Claims reference</a></li><li><a href="/docs/use/evidence/">The evidence ladder</a></li><li><a href="/docs/use/errors/">Error index<span class="todo">to do</span></a></li><li><a href="/docs/use/releases/">Release notes</a></li></ul><h2>Master</h2><ul><li><a href="/docs/master/trusted-base/">The trusted base</a></li><li><a href="/docs/master/host-protocol/">The host protocol</a></li><li><a href="/docs/master/host-effects/">Writing host effects</a></li><li><a href="/docs/master/profiling/">Profiling against a reference</a></li><li><a href="/docs/master/contributing/">Contributing</a></li></ul><h2>Evidence</h2><ul><li><a href="/docs/evidence/">The maps</a></li><li><a href="/map/counter/">Counter's map</a></li><li><a href="/map/basics/">Basics' map</a></li><li><a href="/map/todo/">TodoMVC's map</a></li><li><a href="/map/trusted/">The trusted base's map</a></li></ul></nav>
 </details>
 <script>if (matchMedia("(max-width: 900px)").matches) document.querySelector("details.side").open = false;</script>
 <main>
 <header class="page">
 <p class="eyebrow">Use</p>
 <h1>The cairn tool</h1>
-<p class="lede">The command line for building, checking and shipping a Cairn app. Planned; today the repository's make targets do its work.</p>
+<p class="lede">The command line for Cairn packages. It starts a package, adds dependencies, builds, documents and publishes; checking, running and shipping are still the repository's make targets.</p>
 </header>
 <article class="prose">
-<aside class="note"><div class="card px"><p class="label"><img src="/icon.svg" alt="">Not built yet</p>
-<p>There is no <code>cairn</code> command today. It is planned in
-<a href="https://github.com/iamnbutler/cairn/issues/75">issue #75</a>, together with making Cairn a package an
-app can depend on. This page says what it will do and how to do each thing now.</p>
+<aside class="note"><div class="card px"><p class="label"><img src="/icon.svg" alt="">What works today</p>
+<p><code>cairn</code> has six commands: <code>new</code>, <code>add</code>, <code>build</code>, <code>doc</code>, <code>publish</code> and <code>login</code>. They have unit
+tests and have been run against a stand-in registry, but not against a deployed one, because
+there is no public Cairn registry yet (<a href="https://github.com/iamnbutler/cairn/issues/97">issue #97</a>).
+Until there is, <code>cairn add</code> and <code>cairn publish</code> have nowhere to go, and an app requires Cairn
+from git at a tag instead (<a href="/docs/book/first-app/#an-app-in-its-own-repository">how</a>). Nothing
+installs <code>cairn</code> yet; build it from a Cairn checkout.</p>
 </div></aside>
+<h2 id="building-it">Building it</h2>
+<p><code>cairn</code> is its own Swift package in Cairn's <code>tools/cairn</code>, with no dependencies:</p>
+<figure class="code"><pre class="px"><code class="make">cd tools/cairn &amp;&amp; swift build -c release   <span class="cm"># .build/release/cairn</span>
+cd tools/cairn &amp;&amp; swift test</code></pre><figcaption><code>docs/cli.md</code>, lines 11–12</figcaption></figure>
+<h2 id="commands">Commands</h2>
+<div class="wrap"><table>
+<thead>
+<tr><th>Command</th><th>What it does</th></tr>
+</thead>
+<tbody>
+<tr><td><code>cairn new &lt;name&gt; [--lib]</code></td><td>starts a package in a new directory: <code>cairn.toml</code>, an empty <code>claims.lock</code>, and <code>lean/</code> with a lakefile that sets the claim scope to <code>&lt;name&gt;</code> and requires Cairn. An app also gets <code>Package.swift</code> and <code>Sources/</code>; <code>--lib</code> makes a library without them.</td></tr>
+<tr><td><code>cairn add &lt;name&gt;[@&lt;range&gt;]</code></td><td>adds a dependency from the registry to <code>cairn.toml</code> and the lakefile, replacing a <code>require … from git</code> of it. It prints the <code>Package.swift</code> line rather than editing Swift. With no range it uses <code>^</code> and the latest release.</td></tr>
+<tr><td><code>cairn build [--release]</code></td><td><code>lake cache get</code> (prebuilt Lean from the registry, when it has it), <code>lake build</code>, Cairn's <code>cairn-link</code> to merge the Lean into one static library in <code>.cairn/lib/</code>, then <code>swift build</code>.</td></tr>
+<tr><td><code>cairn doc [--private] [--open]</code></td><td>the package's API docs, in <code>build/doc/&lt;name&gt;/</code>, the same pages as <a href="/docs/api/">Cairn's own</a>, with every claim on its module's page.</td></tr>
+<tr><td><code>cairn publish [--dry-run]</code></td><td>publishes the commit at the tag <code>v&lt;version&gt;</code>, which must be HEAD with a clean tree: its source, its <code>claims.lock</code> and its prebuilt Lean. The registry refuses a version that drops, renumbers or redefines a claim id. It takes no docs from a publisher; they will be built from the source (<a href="https://github.com/iamnbutler/cairn/issues/94">issue #94</a>).</td></tr>
+<tr><td><code>cairn login &lt;url&gt;</code></td><td>checks a registry token, read from standard input, and saves it. <code>cairn credential get</code> hands it to git for that registry's host only, so SwiftPM can clone packages.</td></tr>
+</tbody>
+</table></div>
+<p><code>cairn.toml</code> names the package, its version and the Lean libraries to link. Its <code>name</code> has to
+match the lakefile's package name and the claim scope, and <code>cairn build</code> and <code>cairn publish</code>
+check that all three agree.</p>
 <h2 id="planned-commands">Planned commands</h2>
+<p>These still run as make targets, from the root of the Cairn repository, for the apps that live
+in it:</p>
 <div class="wrap"><table>
 <thead>
 <tr><th>Command</th><th>What it will do</th><th>Today</th></tr>
 </thead>
 <tbody>
-<tr><td><code>cairn new</code></td><td>start an app in its own repository</td><td>add an app beside the examples (<a href="/docs/book/first-app/#adding-your-own-app-today">how</a>)</td></tr>
-<tr><td><code>cairn build</code></td><td>build the Lean app and its Swift host</td><td><code>make build</code></td></tr>
 <tr><td><code>cairn run</code></td><td>open the app in a window</td><td><code>make demo DEMO=Cairn&lt;App&gt;</code></td></tr>
 <tr><td><code>cairn check</code></td><td>everything a change must pass</td><td><code>make check</code></td></tr>
 <tr><td><code>cairn map</code></td><td>build the app's map</td><td><code>make map APP=&lt;App&gt;</code></td></tr>
 <tr><td><code>cairn fuzz</code></td><td>claim-driven fuzzing</td><td><code>make fuzz APP=&lt;App&gt;</code></td></tr>
 <tr><td><code>cairn conform</code></td><td>replay the model against the running app</td><td><code>make conformance APP=&lt;App&gt;</code></td></tr>
-<tr><td><code>cairn bundle --sign</code></td><td>a signed <code>.app</code></td><td><code>make bundle APP=&lt;App&gt; SIGN=&lt;identity&gt;</code></td></tr>
-<tr><td><code>cairn bench</code></td><td>the app's benchmarks</td><td><code>make bench</code> (Cairn's own)</td></tr>
-<tr><td><code>cairn doc</code></td><td>docs from the code (<a href="https://github.com/iamnbutler/cairn/issues/74">#74</a>)</td><td>none</td></tr>
+<tr><td><code>cairn bundle --sign</code></td><td>a signed <code>.app</code></td><td><code>make bundle APP=&lt;App&gt; SIGN=&lt;identity&gt;</code>, or Cairn's <code>tools/bundle/bundle.sh</code> from an app's own repository</td></tr>
 <tr><td><code>cairn doctor</code></td><td>check the toolchain</td><td>none</td></tr>
 </tbody>
 </table></div>

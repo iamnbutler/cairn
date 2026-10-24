@@ -6,9 +6,10 @@ lede: Checking an app, putting it in a signed bundle, and publishing its map.
 ---
 
 :::note Today
-Everything here runs through the Cairn repository's Makefile, for apps that live in the
-repository. The `cairn` tool that will do it for an app in its own repository is planned in
-[issue #75](https://github.com/iamnbutler/cairn/issues/75); see [the cairn tool](/docs/use/cairn-tool/).
+The checks, bundles and maps here run through the Cairn repository's Makefile, for the apps
+that live in it. An app in its own repository builds with `cairn build`, but checking, bundling
+and mapping it from the `cairn` tool are still planned; Yap's repository has its own make targets
+that call Cairn's tools. See [the cairn tool](/docs/use/cairn-tool/).
 :::
 
 ## Check it

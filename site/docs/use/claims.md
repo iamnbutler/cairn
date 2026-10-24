@@ -127,7 +127,7 @@ At compile time, in the commands:
 
 | Check | Error |
 |---|---|
-| an id is issued once among everything imported | `claim id ^N is already issued: …` |
+| an id is issued once among everything imported | `claim id cairn^N is already issued: …` |
 | a move says what the person does and what follows | `missing does "…"`, `missing sees "…"` |
 | `in ^P` names a place that exists and isn't retired | `unknown place ^P`, `^P is not a place` |
 | a move has at least one handler, at most one per trigger, each with `apply` or `emit`, `post` and `sound` | `missing sound`, and so on |
@@ -145,10 +145,25 @@ Proved once, in the framework, for every app:
 - An invariant holds in every state the running app reaches, whatever events arrive
   (`steps_reachableAll`).
 
+## Scopes
+
+Claim ids are scoped by package. Cairn's own are `cairn^N`. An app in its own repository sets
+its scope once, in its lakefile's `cairn.claims.scope` option (`cairn new` does it for you), and
+its `^311` is then `yap^311`. In code, a bare `^N` always means the module's own scope: `in ^P`
+and a flow's `witness` find only claims of that scope. Messages name claims in full, and each
+package keeps its own `claims.lock`. Frames and the running app still carry bare numbers, since
+an app's controls are always its own moves.
+
+The scope defaults to `cairn`, so an app that forgets to set it collides with Cairn's ids at
+compile time instead of shipping with them. When claims move with an app to its own package,
+the lock they left marks them `moved:<scope>` (Yap's are `moved:yap`), so the ids stay issued
+there and can't come back.
+
 ## The ledger
 
-`claims.lock`, at the root of the repository, has one line per id ever issued: its kind, `active`
-or `retired`, a hash of its formal statement, and its title. Tools write it; never edit it by
+`claims.lock`, at the root of the package, has one line per id ever issued: its kind, its status
+(`active`, `retired`, or `moved:<scope>` for an id that left with an app), a hash of its formal
+statement, and its title. Tools write it; never edit it by
 hand. `lake exe ledger check` runs in `make check`:
 
 - it **fails** when an id in the lock is gone from the code without being retired, an id is
@@ -169,5 +184,6 @@ doesn't flag the claim, and changing what it promises does.
 - **Effects in `post`.** A move's `post` constrains the state, not which effects it emits.
 - **Presence and pressability** aren't generated: they depend on the view, and each app proves
   them ([Proving a claim](/docs/book/proving/)).
-- **Ids are global only as far as imports reach.** The ledger imports every app, which is how it
-  catches two apps using the same id.
+- **Ids are unique only as far as imports reach.** Each package's ledger imports everything in
+  that package, which is how it catches two of its apps using the same id. Two packages may both
+  issue `^301`, because their scopes differ.

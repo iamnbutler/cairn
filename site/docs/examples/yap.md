@@ -20,8 +20,7 @@ This is the example to read for porting an existing app. It isn't a tutorial: th
 and these sections show the decisions that matter.
 
 Yap is also the first app that lives outside Cairn's repository. It is its own package, `yap-cairn`,
-which depends on a tagged Cairn the way any app would ([Cairn as a package](/docs/use/releases/)
-and issue #75). Its claims are `yap^301` to `yap^399`, beside Cairn's own `cairn^N`. Because its
+which depends on Cairn `v0.1.0` the way any app would ([release notes](/docs/use/releases/)). Its claims are `yap^301` to `yap^399`, beside Cairn's own `cairn^N`. Because its
 sources are no longer in this repository, this page can't include them yet: the parity table is
 `docs/yap-parity.md` and the claims are in `lean/Yap.lean`, both in that package.
 
@@ -60,5 +59,6 @@ However replies arrive (late, twice, out of order, or never), no clip is typed t
 - The parity table's open rows need decisions, chiefly whether the port should replace the
   original outright rather than sit beside it.
 - Apps can't yet declare host effects of their own: the effects Yap needed were added to Cairn
-  itself ([issue #75](https://github.com/iamnbutler/cairn/issues/75)).
-- This page can't include Yap's sources now that they live in their own package.
+  itself ([issue #84](https://github.com/iamnbutler/cairn/issues/84)).
+- This page can't include Yap's sources now that they live in their own package
+  ([issue #83](https://github.com/iamnbutler/cairn/issues/83)).
