@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cairn.Layout.Rigid · Cairn docs</title>
+<meta name="description" content="Cairn's API, generated from its code.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="doc.css">
+</head>
+<body>
+<nav class="bar"><a class="home" href="../../"><img src="icon.svg" alt="">Cairn</a><span class="sep">/</span><a href="index.html">Cairn docs</a><a href="claims.html">Claims</a><span class="search"><input id="search" type="search" placeholder="Search names, docs, ^N  ( / )" autocomplete="off" spellcheck="false"><div id="results" hidden></div></span></nav>
+<div class="layout"><aside class="toc"><div class="pix muted">Cairn.Layout.Rigid</div><a href="#inductives">Inductive types <span class="n">1</span></a><ol><li><a href="#Cairn.Layout.FitsIn">FitsIn</a></li></ol><a href="#definitions">Definitions <span class="n">19</span></a><ol><li><a href="#Cairn.Layout.nodeSizings">nodeSizings</a></li><li><a href="#Cairn.Node.isText">isText</a></li><li><a href="#Cairn.Sizing.isHug">isHug</a></li><li><a href="#Cairn.Layout.lenIn">lenIn</a></li><li><a href="#Cairn.Layout.fixedOf">fixedOf</a></li><li><a href="#Cairn.Layout.mainSz">mainSz</a></li><li><a href="#Cairn.Layout.crossSz">crossSz</a></li><li><a href="#Cairn.Layout.lineBase">lineBase</a></li><li><a href="#Cairn.Layout.lineFills">lineFills</a></li><li><a href="#Cairn.Layout.PadOk">PadOk</a></li><li><a href="#Cairn.Layout.contentW">contentW</a></li><li><a href="#Cairn.Layout.contentH">contentH</a></li><li><a href="#Cairn.Layout.mainIn">mainIn</a></li><li><a href="#Cairn.Layout.crossIn">crossIn</a></li><li><a href="#Cairn.Layout.wOf">wOf</a></li><li><a href="#Cairn.Layout.hOf">hOf</a></li><li><a href="#Cairn.Layout.NodeOk">NodeOk</a></li><li><a href="#Cairn.Layout.exampleRow">exampleRow</a></li><li><a href="#Cairn.Layout.exampleList">exampleList</a></li></ol><a href="#theorems">Theorems <span class="n">26</span></a><ol><li><a href="#Cairn.Layout.fillShare_ge">fillShare_ge</a></li><li><a href="#Cairn.Layout.le_sum_of_mem">le_sum_of_mem</a></li><li><a href="#Cairn.Layout.measure_sizings">measure_sizings</a></li><li><a href="#Cairn.Layout.measureList_eq_map">measureList_eq_map</a></li><li><a href="#Cairn.Layout.mem_arrangeList">mem_arrangeList</a></li><li><a href="#Cairn.Layout.Line.go_lens">go_lens</a></li><li><a href="#Cairn.Layout.item_sizing">item_sizing</a></li><li><a href="#Cairn.Layout.mainSize_fill">mainSize_fill</a></li><li><a href="#Cairn.Layout.mainSize_fixed">mainSize_fixed</a></li><li><a href="#Cairn.Layout.crossPlace_len">crossPlace_len</a></li><li><a href="#Cairn.Layout.baseSum_rigid">baseSum_rigid</a></li><li><a href="#Cairn.Layout.fillCount_eq">fillCount_eq</a></li><li><a href="#Cairn.Layout.mainSz_hug">mainSz_hug</a></li><li><a href="#Cairn.Layout.childRects_line">childRects_line</a></li><li><a href="#Cairn.Layout.rect_wh">rect_wh</a></li><li><a href="#Cairn.Layout.mainOf_content">mainOf_content</a></li><li><a href="#Cairn.Layout.text_ok">text_ok</a></li><li><a href="#Cairn.Layout.controlsList_nil_of">controlsList_nil_of</a></li><li><a href="#Cairn.Layout.mem_targetsList">mem_targetsList</a></li><li><a href="#Cairn.Layout.arrangeList_texts">arrangeList_texts</a></li><li><a href="#Cairn.Layout.para_ok">para_ok</a></li><li><a href="#Cairn.Layout.fitsIn_arrange">fitsIn_arrange</a></li><li><a href="#Cairn.Laid.Everywhere.imp">imp</a></li><li><a href="#Cairn.Layout.hitTest_center_of_fitsIn">hitTest_center_of_fitsIn</a></li><li><a href="#Cairn.Layout.exampleList_fitsIn">exampleList_fitsIn</a></li><li><a href="#Cairn.Layout.exampleList_pressable">exampleList_pressable</a></li></ol></aside><main>
+<header class="page"><div class="eyebrow">Cairn · module</div><h1 class="mod">Cairn.Layout.Rigid</h1><p class="src">lean/Cairn/Layout/Rigid.lean</p></header>
+<div class="doc"><h1>Rigid views: pressable at every size they fit, for every state</h1>
+<p><code>Layout/Check.lean</code> proves a view pressable by evaluating its layout, which works for one
+concrete state, window and set of metrics. An app with a list of any length needs the same
+fact for all of them. This file gives a structural condition, <code>FitsIn n w h</code>, under which a
+view laid out in a <code>w × h</code> rect satisfies every per-node condition of <a href="Cairn.Layout.Bridge.html#Cairn.Layout.Pressable"><code>Pressable</code></a> and every
+control has a nonempty rect, <strong>for all text metrics</strong>.</p>
+<p>The idea: in a <em>rigid</em> view every box and field is <code>fixed</code> or <code>fill</code> on both axes, never
+<code>hug</code>, so no rect depends on how wide a string is. Text appears only inside boxes that clip
+and hold nothing but text (<a href="Cairn.Layout.Bridge.html#Cairn.Layout.Fits"><code>Fits</code></a> exempts those: the text may overflow, the clip contains it).
+Then each child's size is known from its parent's alone:</p>
+<ul>
+<li>on the cross axis, <code>fixed n</code> gets <code>n</code> and <code>fill</code> gets the content box's length;</li>
+<li>on the main axis, <code>fixed n</code> gets <code>n</code>, and <code>fill</code> gets a share of the leftover space, at least
+<code>⌊leftover / fills⌋</code> (<a href="Cairn.Layout.Rigid.html#Cairn.Layout.fillShare_ge"><code>fillShare_ge</code></a>).</li>
+</ul>
+<p><a href="Cairn.Layout.Rigid.html#Cairn.Layout.FitsIn"><code>FitsIn</code></a> asks, node by node, that the fixed children and gaps fit, that each child fits at the
+size it will get, and that controls have positive size. <a href="Cairn.Layout.Rigid.html#Cairn.Layout.fitsIn_arrange"><code>fitsIn_arrange</code></a> proves the rest;
+<a href="Cairn.Layout.Rigid.html#Cairn.Layout.hitTest_center_of_fitsIn"><code>hitTest_center_of_fitsIn</code></a> turns it into &quot;hit testing at the centre of every control returns
+that control&quot;. Positions never appear, so a list of <code>k</code> identical rows is handled by one
+argument about one row.</p>
+</div>
+<p class="imports"><span class="pix muted">Imports</span> <a href="Cairn.Layout.Check.html">Cairn.Layout.Check</a></p>
+<div class="order"><span class="pix muted">Order</span> <button type="button" data-order="kind" class="on">by kind</button><button type="button" data-order="source">as in the source</button></div>
+<div id="items">
+
+<h2 id="inductives">Inductive types <span class="n">1</span></h2>
+<section class="decl" id="Cairn.Layout.FitsIn" data-line="91">
+<div class="dhead"><span class="kind pix">inductive</span><h3><a href="#Cairn.Layout.FitsIn"><span class="ns">Cairn.Layout.</span>FitsIn</a></h3><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:91</span></div>
+<pre class="sig"><b class="nm">FitsIn</b> : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a> → <span title="Int">Int</span> → <span title="Int">Int</span> → Prop</pre><div class="doc"><p><code>FitsIn n w h</code>: laid out in a <code>w × h</code> rect, <code>n</code> and everything below it fit, and its
+controls have positive size. Three shapes:</p>
+<ul>
+<li>wrapped text (a clipping column of lines, with no controls);</li>
+<li>a field of positive size;</li>
+<li>a box that clips and holds only text (a label: the text may overflow; the clip holds it);</li>
+<li>a row or column whose children are all <code>fixed</code> or <code>fill</code> on both axes, whose fixed
+main-axis lengths and gaps fit its content box, whose fixed cross-axis lengths fit too, and
+whose every child fits at the size it will get. A <code>fill</code> child on the main axis must fit at
+every length from <code>⌊leftover / fills⌋</code> up. A box with a control has no controls below it.</li>
+</ul>
+</div><div class="members"><b class="pix muted">Constructors</b><div class="member" id="Cairn.Layout.FitsIn.para"><pre class="sig"><b class="nm">para</b> {ts : <a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a>} {wr : <a href="Cairn.UI.Node.html#Cairn.Wrap" title="Cairn.Wrap">Wrap</a>} {s : <span title="String">String</span>} {w h : <span title="Int">Int</span>} :
+  FitsIn (Node.para ts wr s) w h</pre><div class="doc"><p>Wrapped text always fits: it is a clipping column of text with no controls.</p>
+</div></div><div class="member" id="Cairn.Layout.FitsIn.field"><pre class="sig"><b class="nm">field</b> {st : <a href="Cairn.UI.Node.html#Cairn.Style" title="Cairn.Style">Style</a>} {ts : <a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a>} {c : <a href="Cairn.UI.Node.html#Cairn.Control" title="Cairn.Control">Control</a>} {v : <a href="Cairn.UI.Node.html#Cairn.FieldView" title="Cairn.FieldView">FieldView</a>}
+  {w h : <span title="Int">Int</span>} : 0 &lt; w → 0 &lt; h → FitsIn (Node.field st ts c v) w h</pre></div><div class="member" id="Cairn.Layout.FitsIn.clipped"><pre class="sig"><b class="nm">clipped</b> {st : <a href="Cairn.UI.Node.html#Cairn.Style" title="Cairn.Style">Style</a>} {ctl : Option <a href="Cairn.UI.Node.html#Cairn.Control" title="Cairn.Control">Control</a>} {kids : List <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>}
+  {w h : <span title="Int">Int</span>} :
+  st.clip = <span title="Bool.true">true</span> →
+    (∀ (k : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>), k ∈ kids → k.isText = <span title="Bool.true">true</span>) →
+      (ctl.isSome = <span title="Bool.true">true</span> → 0 &lt; w ∧ 0 &lt; h) → FitsIn (Node.box st ctl kids) w h</pre></div><div class="member" id="Cairn.Layout.FitsIn.line"><pre class="sig"><b class="nm">line</b> {st : <a href="Cairn.UI.Node.html#Cairn.Style" title="Cairn.Style">Style</a>} {ctl : Option <a href="Cairn.UI.Node.html#Cairn.Control" title="Cairn.Control">Control</a>} {kids : List <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>}
+  {w h : <span title="Int">Int</span>} :
+  st.axis ≠ <a href="Cairn.UI.Node.html#Cairn.Axis.stack" title="Cairn.Axis.stack">Axis.stack</a> →
+    PadOk st.padding →
+      0 ≤ contentW st w →
+        0 ≤ contentH st h →
+          (ctl.isSome = <span title="Bool.true">true</span> → 0 &lt; w ∧ 0 &lt; h ∧ Node.controlsList kids = []) →
+            lineBase (Axis.horiz st.axis) st.gap kids ≤ mainIn (Axis.horiz st.axis) st w h →
+              (∀ (k : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>),
+                  k ∈ kids →
+                    (nodeSizings k).fst.isHug = <span title="Bool.false">false</span> ∧
+                      (nodeSizings k).snd.isHug = <span title="Bool.false">false</span> ∧
+                        fixedOf (crossSz (Axis.horiz st.axis) k) ≤
+                          crossIn (Axis.horiz st.axis) st w h) →
+                (∀ (k : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>),
+                    k ∈ kids →
+                      ∀ (len : <span title="Int">Int</span>),
+                        (mainSz (Axis.horiz st.axis) k = <a href="Cairn.UI.Node.html#Cairn.Sizing.fill" title="Cairn.Sizing.fill">Sizing.fill</a> →
+                            (mainIn (Axis.horiz st.axis) st w h -
+                                  lineBase (Axis.horiz st.axis) st.gap kids) /
+                                ↑(lineFills (Axis.horiz st.axis) kids) ≤
+                              len) →
+                          (∀ (n : <span title="Nat">Nat</span>),
+                              mainSz (Axis.horiz st.axis) k = Sizing.fixed n → len = ↑n) →
+                            FitsIn k
+                              (wOf (Axis.horiz st.axis) len
+                                (lenIn (crossSz (Axis.horiz st.axis) k)
+                                  (crossIn (Axis.horiz st.axis) st w h)))
+                              (hOf (Axis.horiz st.axis) len
+                                (lenIn (crossSz (Axis.horiz st.axis) k)
+                                  (crossIn (Axis.horiz st.axis) st w h)))) →
+                  FitsIn (Node.box st ctl kids) w h</pre></div></div>
+</section>
+<h2 id="definitions">Definitions <span class="n">19</span></h2>
+<section class="decl" id="Cairn.Layout.nodeSizings" data-line="32">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Layout.nodeSizings"><span class="ns">Cairn.Layout.</span>nodeSizings</a></h3><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:32</span></div>
+<pre class="sig"><b class="nm">nodeSizings</b> : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a> → <a href="Cairn.UI.Node.html#Cairn.Sizing" title="Cairn.Sizing">Sizing</a> × <a href="Cairn.UI.Node.html#Cairn.Sizing" title="Cairn.Sizing">Sizing</a></pre><div class="doc"><p>A node's sizing on each axis (text hugs).</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Node.isText" data-line="37">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Node.isText"><span class="ns">Cairn.Node.</span>isText</a></h3><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:37</span></div>
+<pre class="sig"><b class="nm">isText</b> : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a> → <span title="Bool">Bool</span></pre>
+</section>
+<section class="decl" id="Cairn.Sizing.isHug" data-line="41">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Sizing.isHug"><span class="ns">Cairn.Sizing.</span>isHug</a></h3><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:41</span></div>
+<pre class="sig"><b class="nm">isHug</b> : <a href="Cairn.UI.Node.html#Cairn.Sizing" title="Cairn.Sizing">Sizing</a> → <span title="Bool">Bool</span></pre>
+</section>
+<section class="decl" id="Cairn.Layout.lenIn" data-line="46">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Layout.lenIn"><span class="ns">Cairn.Layout.</span>lenIn</a></h3><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:46</span></div>
+<pre class="sig"><b class="nm">lenIn</b> (s : <a href="Cairn.UI.Node.html#Cairn.Sizing" title="Cairn.Sizing">Sizing</a>) (offer : <span title="Int">Int</span>) : <span title="Int">Int</span></pre><div class="doc"><p>The length a non-hug sizing gets when its parent offers <code>offer</code>.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Layout.fixedOf" data-line="52">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Layout.fixedOf"><span class="ns">Cairn.Layout.</span>fixedOf</a></h3><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:52</span></div>
+<pre class="sig"><b class="nm">fixedOf</b> (s : <a href="Cairn.UI.Node.html#Cairn.Sizing" title="Cairn.Sizing">Sizing</a>) : <span title="Int">Int</span></pre><div class="doc"><p>What a sizing asks for before leftover space is shared (<code>fill</code> asks for nothing).</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Layout.mainSz" data-line="57">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Layout.mainSz"><span class="ns">Cairn.Layout.</span>mainSz</a></h3><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:57</span></div>
+<pre class="sig"><b class="nm">mainSz</b> (horiz : <span title="Bool">Bool</span>) (k : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) : <a href="Cairn.UI.Node.html#Cairn.Sizing" title="Cairn.Sizing">Sizing</a></pre>
+</section>
+<section class="decl" id="Cairn.Layout.crossSz" data-line="58">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Layout.crossSz"><span class="ns">Cairn.Layout.</span>crossSz</a></h3><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:58</span></div>
+<pre class="sig"><b class="nm">crossSz</b> (horiz : <span title="Bool">Bool</span>) (k : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) : <a href="Cairn.UI.Node.html#Cairn.Sizing" title="Cairn.Sizing">Sizing</a></pre>
+</section>
+<section class="decl" id="Cairn.Layout.lineBase" data-line="61">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Layout.lineBase"><span class="ns">Cairn.Layout.</span>lineBase</a></h3><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:61</span></div>
+<pre class="sig"><b class="nm">lineBase</b> (horiz : <span title="Bool">Bool</span>) (gap : <span title="Nat">Nat</span>) (kids : List <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) : <span title="Int">Int</span></pre><div class="doc"><p>The fixed main-axis lengths of a line's children, plus its gaps.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Layout.lineFills" data-line="65">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Layout.lineFills"><span class="ns">Cairn.Layout.</span>lineFills</a></h3><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:65</span></div>
+<pre class="sig"><b class="nm">lineFills</b> (horiz : <span title="Bool">Bool</span>) (kids : List <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) : <span title="Nat">Nat</span></pre><div class="doc"><p>How many of a line's children fill the main axis.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Layout.PadOk" data-line="68">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Layout.PadOk"><span class="ns">Cairn.Layout.</span>PadOk</a></h3><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:68</span></div>
+<pre class="sig"><b class="nm">PadOk</b> (p : <a href="Cairn.Geometry.html#Cairn.Insets" title="Cairn.Insets">Insets</a>) : Prop</pre>
+</section>
+<section class="decl" id="Cairn.Layout.contentW" data-line="70">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Layout.contentW"><span class="ns">Cairn.Layout.</span>contentW</a></h3><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:70</span></div>
+<pre class="sig"><b class="nm">contentW</b> (st : <a href="Cairn.UI.Node.html#Cairn.Style" title="Cairn.Style">Style</a>) (w : <span title="Int">Int</span>) : <span title="Int">Int</span></pre>
+</section>
+<section class="decl" id="Cairn.Layout.contentH" data-line="71">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Layout.contentH"><span class="ns">Cairn.Layout.</span>contentH</a></h3><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:71</span></div>
+<pre class="sig"><b class="nm">contentH</b> (st : <a href="Cairn.UI.Node.html#Cairn.Style" title="Cairn.Style">Style</a>) (h : <span title="Int">Int</span>) : <span title="Int">Int</span></pre>
+</section>
+<section class="decl" id="Cairn.Layout.mainIn" data-line="72">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Layout.mainIn"><span class="ns">Cairn.Layout.</span>mainIn</a></h3><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:72</span></div>
+<pre class="sig"><b class="nm">mainIn</b> (horiz : <span title="Bool">Bool</span>) (st : <a href="Cairn.UI.Node.html#Cairn.Style" title="Cairn.Style">Style</a>) (w h : <span title="Int">Int</span>) : <span title="Int">Int</span></pre>
+</section>
+<section class="decl" id="Cairn.Layout.crossIn" data-line="74">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Layout.crossIn"><span class="ns">Cairn.Layout.</span>crossIn</a></h3><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:74</span></div>
+<pre class="sig"><b class="nm">crossIn</b> (horiz : <span title="Bool">Bool</span>) (st : <a href="Cairn.UI.Node.html#Cairn.Style" title="Cairn.Style">Style</a>) (w h : <span title="Int">Int</span>) : <span title="Int">Int</span></pre>
+</section>
+<section class="decl" id="Cairn.Layout.wOf" data-line="78">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Layout.wOf"><span class="ns">Cairn.Layout.</span>wOf</a></h3><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:78</span></div>
+<pre class="sig"><b class="nm">wOf</b> (horiz : <span title="Bool">Bool</span>) (main cross : <span title="Int">Int</span>) : <span title="Int">Int</span></pre><div class="doc"><p>Width and height from main- and cross-axis lengths.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Layout.hOf" data-line="79">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Layout.hOf"><span class="ns">Cairn.Layout.</span>hOf</a></h3><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:79</span></div>
+<pre class="sig"><b class="nm">hOf</b> (horiz : <span title="Bool">Bool</span>) (main cross : <span title="Int">Int</span>) : <span title="Int">Int</span></pre>
+</section>
+<section class="decl" id="Cairn.Layout.NodeOk" data-line="250">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Layout.NodeOk"><span class="ns">Cairn.Layout.</span>NodeOk</a></h3><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:250</span></div>
+<pre class="sig"><b class="nm">NodeOk</b> (l : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>) : Prop</pre><div class="doc"><p>What <a href="Cairn.Layout.Bridge.html#Cairn.Layout.Pressable"><code>Pressable</code></a> asks at each node.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Layout.exampleRow" data-line="532">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Layout.exampleRow"><span class="ns">Cairn.Layout.</span>exampleRow</a></h3><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:532</span></div>
+<pre class="sig"><b class="nm">exampleRow</b> (i : <span title="Nat">Nat</span>) (label : <span title="String">String</span>) : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a></pre>
+</section>
+<section class="decl" id="Cairn.Layout.exampleList" data-line="536">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Layout.exampleList"><span class="ns">Cairn.Layout.</span>exampleList</a></h3><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:536</span></div>
+<pre class="sig"><b class="nm">exampleList</b> (labels : List <span title="String">String</span>) : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a></pre>
+</section>
+<h2 id="theorems">Theorems <span class="n">26</span></h2>
+<section class="decl" id="Cairn.Layout.fillShare_ge" data-line="120">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.fillShare_ge"><span class="ns">Cairn.Layout.</span>fillShare_ge</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:120</span></div>
+<pre class="sig"><b class="nm">fillShare_ge</b> {L : <span title="Int">Int</span>} {f : <span title="Nat">Nat</span>} (hf : 0 &lt; f) (j : <span title="Nat">Nat</span>) :
+  L / ↑f ≤ fillShare L f j</pre><div class="doc"><p>Each fill share is at least the even split, rounded down.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Layout.le_sum_of_mem" data-line="142">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.le_sum_of_mem"><span class="ns">Cairn.Layout.</span>le_sum_of_mem</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:142</span></div>
+<pre class="sig"><b class="nm">le_sum_of_mem</b> {l : List <span title="Int">Int</span>} (h : ∀ (x : <span title="Int">Int</span>), x ∈ l → 0 ≤ x) {x : <span title="Int">Int</span>}
+  (hx : x ∈ l) : x ≤ l.sum</pre>
+</section>
+<section class="decl" id="Cairn.Layout.measure_sizings" data-line="153">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.measure_sizings"><span class="ns">Cairn.Layout.</span>measure_sizings</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:153</span></div>
+<pre class="sig"><b class="nm">measure_sizings</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (aw : <span title="Int">Int</span>) (n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
+  (measure m aw n).sizings = nodeSizings n</pre>
+</section>
+<section class="decl" id="Cairn.Layout.measureList_eq_map" data-line="157">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.measureList_eq_map"><span class="ns">Cairn.Layout.</span>measureList_eq_map</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:157</span></div>
+<pre class="sig"><b class="nm">measureList_eq_map</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (aw : <span title="Int">Int</span>) (ks : List <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
+  measureList m aw ks = List.map (measure m aw) ks</pre>
+</section>
+<section class="decl" id="Cairn.Layout.mem_arrangeList" data-line="163">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.mem_arrangeList"><span class="ns">Cairn.Layout.</span>mem_arrangeList</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:163</span></div>
+<pre class="sig"><b class="nm">mem_arrangeList</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (aw : <span title="Int">Int</span>) (c : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (rs : List <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>)
+  (ks : List <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
+  rs.length = ks.length →
+    ∀ (k' : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>),
+      k' ∈ arrangeList m c rs (List.map (measure m aw) ks) →
+        ∃ p, p ∈ ks.zip rs ∧ k' = arrange m c p.snd (measure m aw p.fst)</pre><div class="doc"><p>With one rect per child, each laid-out child is its node arranged in its rect.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Layout.Line.go_lens" data-line="178">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.Line.go_lens"><span class="ns">Cairn.Layout.Line.</span>go_lens</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:178</span></div>
+<pre class="sig"><b class="nm">go_lens</b> (ln : <a href="Cairn.Layout.Core.html#Cairn.Layout.Line" title="Cairn.Layout.Line">Line</a>) (its : List <a href="Cairn.Layout.Core.html#Cairn.Layout.Item" title="Cairn.Layout.Item">Item</a>) (i j : <span title="Nat">Nat</span>) (pos : <span title="Int">Int</span>)
+  (p : <a href="Cairn.Layout.Core.html#Cairn.Layout.Item" title="Cairn.Layout.Item">Item</a> × <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) :
+  p ∈ its.zip (ln.go i j pos its) →
+    (∃ j', mainOf ln.horiz p.snd = mainSize ln.horiz ln.L ln.f j' p.fst) ∧
+      crossOf ln.horiz p.snd =
+        (crossPlace ln.align ln.c0 ln.cc (Item.crossSizing ln.horiz p.fst)
+            (Item.crossPref ln.horiz p.fst) p.fst.stretch).snd</pre><div class="doc"><p>The main- and cross-axis lengths <a href="Cairn.Layout.Core.html#Cairn.Layout.Line.go"><code>Line.go</code></a> gives each item.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Layout.item_sizing" data-line="191">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.item_sizing"><span class="ns">Cairn.Layout.</span>item_sizing</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:191</span></div>
+<pre class="sig"><b class="nm">item_sizing</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (aw : <span title="Int">Int</span>) (h : <span title="Bool">Bool</span>) (k : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
+  Item.mainSizing h (measure m aw k).item = mainSz h k ∧
+    Item.crossSizing h (measure m aw k).item = crossSz h k</pre><div class="doc"><p>A rigid child's item: its sizings are its node's.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Layout.mainSize_fill" data-line="197">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.mainSize_fill"><span class="ns">Cairn.Layout.</span>mainSize_fill</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:197</span></div>
+<pre class="sig"><b class="nm">mainSize_fill</b> {h : <span title="Bool">Bool</span>} {L : <span title="Int">Int</span>} {f j : <span title="Nat">Nat</span>} {it : <a href="Cairn.Layout.Core.html#Cairn.Layout.Item" title="Cairn.Layout.Item">Item</a>}
+  (hs : Item.mainSizing h it = <a href="Cairn.UI.Node.html#Cairn.Sizing.fill" title="Cairn.Sizing.fill">Sizing.fill</a>) : mainSize h L f j it = fillShare L f j</pre>
+</section>
+<section class="decl" id="Cairn.Layout.mainSize_fixed" data-line="201">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.mainSize_fixed"><span class="ns">Cairn.Layout.</span>mainSize_fixed</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:201</span></div>
+<pre class="sig"><b class="nm">mainSize_fixed</b> {h : <span title="Bool">Bool</span>} {L : <span title="Int">Int</span>} {f j n : <span title="Nat">Nat</span>} {it : <a href="Cairn.Layout.Core.html#Cairn.Layout.Item" title="Cairn.Layout.Item">Item</a>}
+  (hs : Item.mainSizing h it = Sizing.fixed n) : mainSize h L f j it = ↑n</pre>
+</section>
+<section class="decl" id="Cairn.Layout.crossPlace_len" data-line="205">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.crossPlace_len"><span class="ns">Cairn.Layout.</span>crossPlace_len</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:205</span></div>
+<pre class="sig"><b class="nm">crossPlace_len</b> (al : <a href="Cairn.UI.Node.html#Cairn.Align" title="Cairn.Align">Align</a>) (c0 cc : <span title="Int">Int</span>) (s : <a href="Cairn.UI.Node.html#Cairn.Sizing" title="Cairn.Sizing">Sizing</a>) (p : <span title="Int">Int</span>) (b : <span title="Bool">Bool</span>)
+  (hh : s.isHug = <span title="Bool.false">false</span>) : (crossPlace al c0 cc s p b).snd = lenIn s cc</pre>
+</section>
+<section class="decl" id="Cairn.Layout.baseSum_rigid" data-line="209">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.baseSum_rigid"><span class="ns">Cairn.Layout.</span>baseSum_rigid</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:209</span></div>
+<pre class="sig"><b class="nm">baseSum_rigid</b> (h : <span title="Bool">Bool</span>) (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (aw : <span title="Int">Int</span>) (ks : List <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
+  (∀ (k : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>), k ∈ ks → (mainSz h k).isHug = <span title="Bool.false">false</span>) →
+    baseSum h (List.map (fun k =&gt; (measure m aw k).item) ks) =
+      (List.map (fun k =&gt; fixedOf (mainSz h k)) ks).sum</pre>
+</section>
+<section class="decl" id="Cairn.Layout.fillCount_eq" data-line="220">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.fillCount_eq"><span class="ns">Cairn.Layout.</span>fillCount_eq</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:220</span></div>
+<pre class="sig"><b class="nm">fillCount_eq</b> (h : <span title="Bool">Bool</span>) (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (aw : <span title="Int">Int</span>) (ks : List <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
+  fillCount h (List.map (fun k =&gt; (measure m aw k).item) ks) = lineFills h ks</pre>
+</section>
+<section class="decl" id="Cairn.Layout.mainSz_hug" data-line="228">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.mainSz_hug"><span class="ns">Cairn.Layout.</span>mainSz_hug</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:228</span></div>
+<pre class="sig"><b class="nm">mainSz_hug</b> (h : <span title="Bool">Bool</span>) (k : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) (h1 : (nodeSizings k).fst.isHug = <span title="Bool.false">false</span>)
+  (h2 : (nodeSizings k).snd.isHug = <span title="Bool.false">false</span>) :
+  (mainSz h k).isHug = <span title="Bool.false">false</span> ∧ (crossSz h k).isHug = <span title="Bool.false">false</span></pre>
+</section>
+<section class="decl" id="Cairn.Layout.childRects_line" data-line="233">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.childRects_line"><span class="ns">Cairn.Layout.</span>childRects_line</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:233</span></div>
+<pre class="sig"><b class="nm">childRects_line</b> (st : <a href="Cairn.UI.Node.html#Cairn.Style" title="Cairn.Style">Style</a>) (r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (items : List <a href="Cairn.Layout.Core.html#Cairn.Layout.Item" title="Cairn.Layout.Item">Item</a>)
+  (hax : st.axis ≠ <a href="Cairn.UI.Node.html#Cairn.Axis.stack" title="Cairn.Axis.stack">Axis.stack</a>) :
+  childRects st r items = lineRects (Axis.horiz st.axis) st (r.inset st.padding) items</pre>
+</section>
+<section class="decl" id="Cairn.Layout.rect_wh" data-line="238">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.rect_wh"><span class="ns">Cairn.Layout.</span>rect_wh</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:238</span></div>
+<pre class="sig"><b class="nm">rect_wh</b> (h : <span title="Bool">Bool</span>) (q : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) :
+  q.w = wOf h (mainOf h q) (crossOf h q) ∧ q.h = hOf h (mainOf h q) (crossOf h q)</pre>
+</section>
+<section class="decl" id="Cairn.Layout.mainOf_content" data-line="242">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.mainOf_content"><span class="ns">Cairn.Layout.</span>mainOf_content</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:242</span></div>
+<pre class="sig"><b class="nm">mainOf_content</b> (h : <span title="Bool">Bool</span>) (st : <a href="Cairn.UI.Node.html#Cairn.Style" title="Cairn.Style">Style</a>) (r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) :
+  mainOf h (r.inset st.padding) = mainIn h st r.w r.h ∧
+    crossOf h (r.inset st.padding) = crossIn h st r.w r.h</pre>
+</section>
+<section class="decl" id="Cairn.Layout.text_ok" data-line="252">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.text_ok"><span class="ns">Cairn.Layout.</span>text_ok</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:252</span></div>
+<pre class="sig"><b class="nm">text_ok</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (aw : <span title="Int">Int</span>) (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) {k : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>}
+  (hk : k.isText = <span title="Bool.true">true</span>) :
+  Laid.Everywhere <a href="Cairn.Layout.Rigid.html#Cairn.Layout.NodeOk" title="Cairn.Layout.NodeOk">NodeOk</a> (arrange m c r (measure m aw k)) ∧
+    (arrange m c r (measure m aw k)).isText = <span title="Bool.true">true</span> ∧
+      (arrange m c r (measure m aw k)).controls = []</pre>
+</section>
+<section class="decl" id="Cairn.Layout.controlsList_nil_of" data-line="264">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.controlsList_nil_of"><span class="ns">Cairn.Layout.</span>controlsList_nil_of</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:264</span></div>
+<pre class="sig"><b class="nm">controlsList_nil_of</b> {ls : List <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>}
+  (h : ∀ (l : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>), l ∈ ls → l.controls = []) : Laid.controlsList ls = []</pre>
+</section>
+<section class="decl" id="Cairn.Layout.mem_targetsList" data-line="271">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.mem_targetsList"><span class="ns">Cairn.Layout.</span>mem_targetsList</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:271</span></div>
+<pre class="sig"><b class="nm">mem_targetsList</b> {t : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>} {ls : List <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>} :
+  t ∈ Runtime.targetsList ls → ∃ l, l ∈ ls ∧ t ∈ Runtime.targetsOf l</pre>
+</section>
+<section class="decl" id="Cairn.Layout.arrangeList_texts" data-line="282">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.arrangeList_texts"><span class="ns">Cairn.Layout.</span>arrangeList_texts</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:282</span></div>
+<pre class="sig"><b class="nm">arrangeList_texts</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (c : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (rs : List <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>)
+  (ss : List <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>) :
+  (∀ (s : <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>), s ∈ ss → ∃ ts str sz, s = Sized.text ts str sz) →
+    ∀ (k : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>),
+      k ∈ arrangeList m c rs ss →
+        Laid.Everywhere <a href="Cairn.Layout.Rigid.html#Cairn.Layout.NodeOk" title="Cairn.Layout.NodeOk">NodeOk</a> k ∧ k.isText = <span title="Bool.true">true</span> ∧ k.controls = []</pre><div class="doc"><p>Arranged lines of text are text with nothing below them.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Layout.para_ok" data-line="308">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.para_ok"><span class="ns">Cairn.Layout.</span>para_ok</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:308</span></div>
+<pre class="sig"><b class="nm">para_ok</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (ts : <a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a>) (wr : <a href="Cairn.UI.Node.html#Cairn.Wrap" title="Cairn.Wrap">Wrap</a>) (s : <span title="String">String</span>) (aw : <span title="Int">Int</span>)
+  (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) :
+  Laid.Everywhere <a href="Cairn.Layout.Rigid.html#Cairn.Layout.NodeOk" title="Cairn.Layout.NodeOk">NodeOk</a> (arrange m c r (measure m aw (Node.para ts wr s))) ∧
+    ∀ (t : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>),
+      t ∈ Runtime.targetsOf (arrange m c r (measure m aw (Node.para ts wr s))) →
+        t.node.rect.nonempty</pre><div class="doc"><p>Wrapped text lays out as a clipping column of text: it meets <a href="Cairn.Layout.Bridge.html#Cairn.Layout.Pressable"><code>Pressable</code></a>'s conditions and
+has no controls.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Layout.fitsIn_arrange" data-line="333">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.fitsIn_arrange"><span class="ns">Cairn.Layout.</span>fitsIn_arrange</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:333</span></div>
+<pre class="sig"><b class="nm">fitsIn_arrange</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) {n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>} {w h : <span title="Int">Int</span>} (hf : FitsIn n w h)
+  (aw : <span title="Int">Int</span>) (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) :
+  r.w = w →
+    r.h = h →
+      Laid.Everywhere <a href="Cairn.Layout.Rigid.html#Cairn.Layout.NodeOk" title="Cairn.Layout.NodeOk">NodeOk</a> (arrange m c r (measure m aw n)) ∧
+        ∀ (t : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>),
+          t ∈ Runtime.targetsOf (arrange m c r (measure m aw n)) → t.node.rect.nonempty</pre><div class="doc"><p><strong>Rigid views lay out pressably.</strong> If <code>n</code> fits in <code>w × h</code>, then laid out in any rect of that
+size, with any clip and any text metrics, every node meets <a href="Cairn.Layout.Bridge.html#Cairn.Layout.Pressable"><code>Pressable</code></a>'s per-node conditions
+and every control's rect is nonempty.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Laid.Everywhere.imp" data-line="501">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Laid.Everywhere.imp"><span class="ns">Cairn.Laid.Everywhere.</span>imp</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:501</span></div>
+<pre class="sig"><b class="nm">imp</b> {P Q : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a> → Prop} {l : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>} (hp : Everywhere P l)
+  (f : ∀ (x : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>), P x → Q x) : Everywhere Q l</pre>
+</section>
+<section class="decl" id="Cairn.Layout.hitTest_center_of_fitsIn" data-line="508">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.hitTest_center_of_fitsIn"><span class="ns">Cairn.Layout.</span>hitTest_center_of_fitsIn</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:508</span></div>
+<pre class="sig"><b class="nm">hitTest_center_of_fitsIn</b> {m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>} {w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>} {st : <a href="Cairn.UI.Node.html#Cairn.Style" title="Cairn.Style">Style</a>}
+  {ctl : Option <a href="Cairn.UI.Node.html#Cairn.Control" title="Cairn.Control">Control</a>} {kids : List <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>} (hw : st.width = <a href="Cairn.UI.Node.html#Cairn.Sizing.fill" title="Cairn.Sizing.fill">Sizing.fill</a>)
+  (hh : st.height = <a href="Cairn.UI.Node.html#Cairn.Sizing.fill" title="Cairn.Sizing.fill">Sizing.fill</a>)
+  (hf : FitsIn (Node.box st ctl kids) (max 0 w.w) (max 0 w.h)) (t : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>) :
+  t ∈ Runtime.targets (layout m w (Node.box st ctl kids)) →
+    Runtime.hitTest (layout m w (Node.box st ctl kids)) t.visible.center = some t.control</pre><div class="doc"><p><strong>Pressable, for a rigid root.</strong> If the root fills the window and fits in it, every control
+of the laid-out view is pressable at its centre, for every text metrics.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Layout.exampleList_fitsIn" data-line="540">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.exampleList_fitsIn"><span class="ns">Cairn.Layout.</span>exampleList_fitsIn</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:540</span></div>
+<pre class="sig"><b class="nm">exampleList_fitsIn</b> (labels : List <span title="String">String</span>) {w h : <span title="Int">Int</span>} (hw : 0 &lt; w)
+  (hh : 44 * ↑labels.length ≤ h) : FitsIn (exampleList labels) w h</pre>
+</section>
+<section class="decl" id="Cairn.Layout.exampleList_pressable" data-line="579">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.exampleList_pressable"><span class="ns">Cairn.Layout.</span>exampleList_pressable</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:579</span></div>
+<pre class="sig"><b class="nm">exampleList_pressable</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (labels : List <span title="String">String</span>) (w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>)
+  (hw : 0 &lt; w.w) (hh : 44 * ↑labels.length ≤ w.h) (t : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>) :
+  t ∈ Runtime.targets (layout m w (exampleList labels)) →
+    Runtime.hitTest (layout m w (exampleList labels)) t.visible.center = some t.control</pre><div class="doc"><p>Every button in a list of any length is pressable at its centre, with any metrics.</p>
+</div>
+</section>
+<div class="mdoc" data-line="29" hidden><div class="doc"><h2>The condition</h2>
+</div></div><div class="mdoc" data-line="117" hidden><div class="doc"><h2>Arithmetic</h2>
+</div></div><div class="mdoc" data-line="151" hidden><div class="doc"><h2>Measure and arrange, for rigid children</h2>
+</div></div><div class="mdoc" data-line="247" hidden><div class="doc"><h2>The theorem</h2>
+</div></div><div class="mdoc" data-line="526" hidden><div class="doc"><h2>Example: a list of any length</h2>
+<p>A column of <code>k</code> buttons, each a clipped 44-point row holding a label. Every button is pressable
+at its centre, for every text metrics, whenever the window is wider than zero and at least
+<code>44 * k</code> tall. The proof never looks at a particular <code>k</code> or a particular label.</p>
+</div></div>
+</div>
+</main></div>
+<footer>Generated by <code>make doc APP=Counter</code> from the code and the build. Nothing here is written by hand.</footer>
+<script src="search-index.js"></script>
+<script src="search.js"></script>
+<script type="module">
+// On the site, the headings get the meadow's sprigs and a "#" that copies a link to them
+// (site/public/scene.js); elsewhere, nothing.
+import("/scene.js").then((m) => { const main = document.querySelector("main"); m.mountSprigs(main); m.mountAnchors(main); }).catch(() => {});
+</script>
+</body>
+</html>

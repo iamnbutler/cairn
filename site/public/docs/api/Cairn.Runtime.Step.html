@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cairn.Runtime.Step · Cairn docs</title>
+<meta name="description" content="Cairn's API, generated from its code.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="doc.css">
+</head>
+<body>
+<nav class="bar"><a class="home" href="../../"><img src="icon.svg" alt="">Cairn</a><span class="sep">/</span><a href="index.html">Cairn docs</a><a href="claims.html">Claims</a><span class="search"><input id="search" type="search" placeholder="Search names, docs, ^N  ( / )" autocomplete="off" spellcheck="false"><div id="results" hidden></div></span></nav>
+<div class="layout"><aside class="toc"><div class="pix muted">Cairn.Runtime.Step</div><a href="#structures">Structures <span class="n">3</span></a><ol><li><a href="#Cairn.Runtime.Config">Config</a></li><li><a href="#Cairn.Runtime.State">State</a></li><li><a href="#Cairn.Runtime.Ctx">Ctx</a></li></ol><a href="#inductives">Inductive types <span class="n">1</span></a><ol><li><a href="#Cairn.Runtime.Shown">Shown</a></li></ol><a href="#definitions">Definitions <span class="n">42</span></a><ol><li><a href="#Cairn.Runtime.Shown.place">place</a></li><li><a href="#Cairn.Runtime.Shown.windowPlace">windowPlace</a></li><li><a href="#Cairn.Runtime.Shown.statusOf">statusOf</a></li><li><a href="#Cairn.Runtime.fieldInfo">fieldInfo</a></li><li><a href="#Cairn.Runtime.nearest">nearest</a></li><li><a href="#Cairn.Runtime.nearest.go">go</a></li><li><a href="#Cairn.Runtime.caretAt">caretAt</a></li><li><a href="#Cairn.Runtime.fieldLength">fieldLength</a></li><li><a href="#Cairn.Runtime.editOps">editOps</a></li><li><a href="#Cairn.Runtime.replaceOps">replaceOps</a></li><li><a href="#Cairn.Runtime.focused">focused</a></li><li><a href="#Cairn.Runtime.leave">leave</a></li><li><a href="#Cairn.Runtime.onField">onField</a></li><li><a href="#Cairn.Runtime.keyActions">keyActions</a></li><li><a href="#Cairn.Runtime.textActions">textActions</a></li><li><a href="#Cairn.Runtime.tabOrder">tabOrder</a></li><li><a href="#Cairn.Runtime.tabTarget">tabTarget</a></li><li><a href="#Cairn.Runtime.tab">tab</a></li><li><a href="#Cairn.Runtime.withPointer">withPointer</a></li><li><a href="#Cairn.Runtime.route">route</a></li><li><a href="#Cairn.Runtime.UI.same">same</a></li><li><a href="#Cairn.Runtime.relayout">relayout</a></li><li><a href="#Cairn.Runtime.fixUI">fixUI</a></li><li><a href="#Cairn.Runtime.settle">settle</a></li><li><a href="#Cairn.Runtime.settleFuel">settleFuel</a></li><li><a href="#Cairn.Runtime.panelSize">panelSize</a></li><li><a href="#Cairn.Runtime.layPanel">layPanel</a></li><li><a href="#Cairn.Runtime.Surface.show">show</a></li><li><a href="#Cairn.Runtime.shows">shows</a></li><li><a href="#Cairn.Runtime.deliver">deliver</a></li><li><a href="#Cairn.Runtime.requestedFocus">requestedFocus</a></li><li><a href="#Cairn.Runtime.applyFocus">applyFocus</a></li><li><a href="#Cairn.Runtime.give">give</a></li><li><a href="#Cairn.Runtime.hear">hear</a></li><li><a href="#Cairn.Runtime.fire">fire</a></li><li><a href="#Cairn.Runtime.boot">boot</a></li><li><a href="#Cairn.Runtime.admit">admit</a></li><li><a href="#Cairn.Runtime.act">act</a></li><li><a href="#Cairn.Runtime.step">step</a></li><li><a href="#Cairn.Runtime.steps">steps</a></li><li><a href="#Cairn.Runtime.start">start</a></li><li><a href="#Cairn.Runtime.cursor">cursor</a></li></ol><a href="#theorems">Theorems <span class="n">1</span></a><ol><li><a href="#Cairn.Runtime.UI.same_eq">same_eq</a></li></ol><a href="#instances">Instances <span class="n">1</span></a><ol><li><a href="#Cairn.Runtime.instInhabitedShown">instInhabitedShown</a></li></ol></aside><main>
+<header class="page"><div class="eyebrow">Cairn · module</div><h1 class="mod">Cairn.Runtime.Step</h1><p class="src">lean/Cairn/Runtime/Step.lean</p></header>
+<div class="doc"><p>The interaction runtime: turns host events into the <a href="Cairn.Input.html#Cairn.Action"><code>Action</code></a>s an app's <code>update</code> sees.</p>
+<p><a href="Cairn.Runtime.Step.html#Cairn.Runtime.step"><code>step</code></a> is two halves. <a href="Cairn.Runtime.Step.html#Cairn.Runtime.route"><code>route</code></a> reads the event against the laid tree on screen and produces
+the new interaction state and a list of actions, each naming a control of that tree. <a href="Cairn.Runtime.Step.html#Cairn.Runtime.step"><code>step</code></a>
+then hands the actions to <code>app.update</code> in order, re-runs <code>view</code> and layout, and repairs focus,
+hover and press against the new tree. The semantics are written out in docs/runtime.md.</p>
+</div>
+<p class="imports"><span class="pix muted">Imports</span> <a href="Cairn.App.html">Cairn.App</a>, <a href="Cairn.Runtime.Hit.html">Cairn.Runtime.Hit</a>, <a href="Cairn.Layout.Core.html">Cairn.Layout.Core</a>, <a href="Cairn.Runtime.World.html">Cairn.Runtime.World</a></p>
+<div class="order"><span class="pix muted">Order</span> <button type="button" data-order="kind" class="on">by kind</button><button type="button" data-order="source">as in the source</button></div>
+<div id="items">
+
+<h2 id="structures">Structures <span class="n">3</span></h2>
+<section class="decl" id="Cairn.Runtime.Config" data-line="21">
+<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.Runtime.Config"><span class="ns">Cairn.Runtime.</span>Config</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:21</span></div>
+<pre class="sig"><b class="nm">Config</b> : Type</pre><div class="doc"><p>What the runtime needs besides the app: text metrics and the layout function. Layout is a
+parameter so the runtime and its theorems don't depend on one implementation.</p>
+</div><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.Runtime.Config.metrics"><pre class="sig"><b class="nm">metrics</b> : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a></pre></div><div class="member" id="Cairn.Runtime.Config.layout"><pre class="sig"><b class="nm">layout</b> : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a></pre></div><div class="member" id="Cairn.Runtime.Config.panelHeight"><pre class="sig"><b class="nm">panelHeight</b> : <span title="Int">Int</span></pre><div class="doc"><p>A panel's height for its content at a width: the content's own (hug) height, measured with that width offered (so paragraphs wrap to it).</p>
+</div></div></div>
+</section>
+<section class="decl" id="Cairn.Runtime.State" data-line="56">
+<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.Runtime.State"><span class="ns">Cairn.Runtime.</span>State</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:56</span></div>
+<pre class="sig"><b class="nm">State</b> (S : Type) : Type</pre><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.Runtime.State.app"><pre class="sig"><b class="nm">app</b> : S</pre></div><div class="member" id="Cairn.Runtime.State.ui"><pre class="sig"><b class="nm">ui</b> : <a href="Cairn.App.html#Cairn.UI" title="Cairn.UI">UI</a></pre><div class="doc"><p>Window size, hover, pressed control, focus, window focus. <code>view</code> reads this.</p>
+</div></div><div class="member" id="Cairn.Runtime.State.clicks"><pre class="sig"><b class="nm">clicks</b> : <span title="Nat">Nat</span></pre><div class="doc"><p>Click count of the pointerDown that started the current press.</p>
+</div></div><div class="member" id="Cairn.Runtime.State.pointer"><pre class="sig"><b class="nm">pointer</b> : Option <a href="Cairn.Geometry.html#Cairn.Point" title="Cairn.Point">Point</a></pre><div class="doc"><p>Last pointer position in the window, <code>none</code> after it leaves. Hover follows it.</p>
+</div></div><div class="member" id="Cairn.Runtime.State.scale"><pre class="sig"><b class="nm">scale</b> : <span title="Nat">Nat</span></pre><div class="doc"><p>Backing scale × 100.</p>
+</div></div><div class="member" id="Cairn.Runtime.State.laid"><pre class="sig"><b class="nm">laid</b> : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a></pre><div class="doc"><p>The laid tree on screen: what the person sees and what hit testing reads.</p>
+</div></div><div class="member" id="Cairn.Runtime.State.effects"><pre class="sig"><b class="nm">effects</b> : Array <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a></pre><div class="doc"><p>Effects produced by the most recent <a href="Cairn.Runtime.Abi.html#Cairn.Runtime.stepBytes"><code>stepBytes</code></a> batch; the frame carries them.</p>
+</div></div><div class="member" id="Cairn.Runtime.State.world"><pre class="sig"><b class="nm">world</b> : <a href="Cairn.Runtime.World.html" title="Cairn.Runtime.World">World</a></pre><div class="doc"><p>The clock, timers, pending requests and subscriptions (docs/effects.md).</p>
+</div></div><div class="member" id="Cairn.Runtime.State.subCmds"><pre class="sig"><b class="nm">subCmds</b> : Array <a href="Cairn.Effects.html#Cairn.SubCmd" title="Cairn.SubCmd">SubCmd</a></pre><div class="doc"><p>Subscription commands of the most recent <a href="Cairn.Runtime.Abi.html#Cairn.Runtime.stepBytes"><code>stepBytes</code></a> batch; the frame carries them.</p>
+</div></div><div class="member" id="Cairn.Runtime.State.surfaces"><pre class="sig"><b class="nm">surfaces</b> : List <a href="Cairn.Runtime.Step.html#Cairn.Runtime.Shown" title="Cairn.Runtime.Shown">Shown</a></pre><div class="doc"><p>What each of the app's surfaces shows, in the app's order.</p>
+</div></div></div>
+</section>
+<section class="decl" id="Cairn.Runtime.Ctx" data-line="338">
+<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.Runtime.Ctx"><span class="ns">Cairn.Runtime.</span>Ctx</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:338</span></div>
+<pre class="sig"><b class="nm">Ctx</b> (S : Type) : Type</pre><div class="doc"><p>An event's progress through the app: its state, the world, the effects that go on the
+frame, and whether anything was delivered.</p>
+</div><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.Runtime.Ctx.app"><pre class="sig"><b class="nm">app</b> : S</pre></div><div class="member" id="Cairn.Runtime.Ctx.world"><pre class="sig"><b class="nm">world</b> : <a href="Cairn.Runtime.World.html" title="Cairn.Runtime.World">World</a></pre></div><div class="member" id="Cairn.Runtime.Ctx.effs"><pre class="sig"><b class="nm">effs</b> : List <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a></pre></div><div class="member" id="Cairn.Runtime.Ctx.delivered"><pre class="sig"><b class="nm">delivered</b> : <span title="Bool">Bool</span></pre></div></div>
+</section>
+<h2 id="inductives">Inductive types <span class="n">1</span></h2>
+<section class="decl" id="Cairn.Runtime.Shown" data-line="30">
+<div class="dhead"><span class="kind pix">inductive</span><h3><a href="#Cairn.Runtime.Shown"><span class="ns">Cairn.Runtime.</span>Shown</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:30</span></div>
+<pre class="sig"><b class="nm">Shown</b> : Type</pre><div class="doc"><p>What one surface shows now (docs/surfaces.md). The window's content is the state's <code>ui</code> and
+<code>laid</code>; a panel's is laid out here at its width and its own height; a status item's is its
+description, which <code>menuSelect</code> is checked against.</p>
+</div><div class="members"><b class="pix muted">Constructors</b><div class="member" id="Cairn.Runtime.Shown.window"><pre class="sig"><b class="nm">window</b> (place : <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a>) (title : <span title="String">String</span>) : <a href="Cairn.Runtime.Step.html#Cairn.Runtime.Shown" title="Cairn.Runtime.Shown">Shown</a></pre></div><div class="member" id="Cairn.Runtime.Shown.panel"><pre class="sig"><b class="nm">panel</b> (place : <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a>) (shown : Option (<a href="Cairn.Surface.html#Cairn.PanelView" title="Cairn.PanelView">PanelView</a> × <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a> × <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>)) :
+  <a href="Cairn.Runtime.Step.html#Cairn.Runtime.Shown" title="Cairn.Runtime.Shown">Shown</a></pre><div class="doc"><p>A shown panel: its view, its size (its width, its content's height) and its layout.</p>
+</div></div><div class="member" id="Cairn.Runtime.Shown.status"><pre class="sig"><b class="nm">status</b> (place : <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a>) (item : Option <a href="Cairn.Surface.html#Cairn.StatusItem" title="Cairn.StatusItem">StatusItem</a>) : <a href="Cairn.Runtime.Step.html#Cairn.Runtime.Shown" title="Cairn.Runtime.Shown">Shown</a></pre></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Runtime.Step.html#Cairn.Runtime.instInhabitedShown"><code>Inhabited</code></a></p></div>
+</section>
+<h2 id="definitions">Definitions <span class="n">42</span></h2>
+<section class="decl" id="Cairn.Runtime.Shown.place" data-line="39">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.Shown.place"><span class="ns">Cairn.Runtime.Shown.</span>place</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:39</span></div>
+<pre class="sig"><b class="nm">place</b> : <a href="Cairn.Runtime.Step.html#Cairn.Runtime.Shown" title="Cairn.Runtime.Shown">Shown</a> → <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a></pre>
+</section>
+<section class="decl" id="Cairn.Runtime.Shown.windowPlace" data-line="43">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.Shown.windowPlace"><span class="ns">Cairn.Runtime.Shown.</span>windowPlace</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:43</span></div>
+<pre class="sig"><b class="nm">windowPlace</b> : List <a href="Cairn.Runtime.Step.html#Cairn.Runtime.Shown" title="Cairn.Runtime.Shown">Shown</a> → Option <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a></pre><div class="doc"><p>The first window's place: where bare local events go.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.Shown.statusOf" data-line="49">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.Shown.statusOf"><span class="ns">Cairn.Runtime.Shown.</span>statusOf</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:49</span></div>
+<pre class="sig"><b class="nm">statusOf</b> (p : <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a>) : List <a href="Cairn.Runtime.Step.html#Cairn.Runtime.Shown" title="Cairn.Runtime.Shown">Shown</a> → Option <a href="Cairn.Surface.html#Cairn.StatusItem" title="Cairn.StatusItem">StatusItem</a></pre><div class="doc"><p>What status item <code>p</code> shows, if it is shown.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.fieldInfo" data-line="80">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.fieldInfo"><span class="ns">Cairn.Runtime.</span>fieldInfo</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:80</span></div>
+<pre class="sig"><b class="nm">fieldInfo</b> (t : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a>) : Option (<a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a> × <a href="Cairn.UI.Node.html#Cairn.FieldView" title="Cairn.FieldView">FieldView</a> × <a href="Cairn.Geometry.html#Cairn.Point" title="Cairn.Point">Point</a>)</pre><div class="doc"><p>A field's font, view and text origin.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.nearest" data-line="86">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.nearest"><span class="ns">Cairn.Runtime.</span>nearest</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:86</span></div>
+<pre class="sig"><b class="nm">nearest</b> (offs : List <span title="Int">Int</span>) (x : <span title="Int">Int</span>) : <span title="Nat">Nat</span></pre><div class="doc"><p>The index of the offset nearest <code>x</code>; the earlier one on a tie.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.nearest.go" data-line="89">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.nearest.go"><span class="ns">Cairn.Runtime.nearest.</span>go</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:89</span></div>
+<pre class="sig"><b class="nm">go</b> (x : <span title="Int">Int</span>) : List <span title="Int">Int</span> → <span title="Nat">Nat</span> → Option (<span title="Nat">Nat</span> × <span title="Nat">Nat</span>) → Option <span title="Nat">Nat</span></pre>
+</section>
+<section class="decl" id="Cairn.Runtime.caretAt" data-line="99">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.caretAt"><span class="ns">Cairn.Runtime.</span>caretAt</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:99</span></div>
+<pre class="sig"><b class="nm">caretAt</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (t : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a>) (p : <a href="Cairn.Geometry.html#Cairn.Point" title="Cairn.Point">Point</a>) : <span title="Nat">Nat</span></pre><div class="doc"><p>The caret boundary a click at <code>p</code> lands on: the nearest entry of the field's caret offsets,
+measured from its <code>textOrigin</code>.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.fieldLength" data-line="104">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.fieldLength"><span class="ns">Cairn.Runtime.</span>fieldLength</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:104</span></div>
+<pre class="sig"><b class="nm">fieldLength</b> (t : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a>) : <span title="Nat">Nat</span></pre>
+</section>
+<section class="decl" id="Cairn.Runtime.editOps" data-line="111">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.editOps"><span class="ns">Cairn.Runtime.</span>editOps</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:111</span></div>
+<pre class="sig"><b class="nm">editOps</b> (k : <a href="Cairn.Input.html#Cairn.Key" title="Cairn.Key">Key</a>) (mods : <a href="Cairn.Input.html#Cairn.Mods" title="Cairn.Mods">Mods</a>) : List <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a></pre><div class="doc"><p>Editing keys on a focused field. Single-line fields: up and page up go home, down and
+page down go to the end.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.replaceOps" data-line="131">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.replaceOps"><span class="ns">Cairn.Runtime.</span>replaceOps</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:131</span></div>
+<pre class="sig"><b class="nm">replaceOps</b> (t : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a>) : Option (<span title="Nat">Nat</span> × <span title="Nat">Nat</span>) → List <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a></pre><div class="doc"><p>Select <code>[a, b)</code> (clamped to the text) before an insert or composition that replaces it.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.focused" data-line="140">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.focused"><span class="ns">Cairn.Runtime.</span>focused</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:140</span></div>
+<pre class="sig"><b class="nm">focused</b> {S : Type} (s : State S) : Option <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a></pre><div class="doc"><p>The focused control, looked up in the tree on screen.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.leave" data-line="143">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.leave"><span class="ns">Cairn.Runtime.</span>leave</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:143</span></div>
+<pre class="sig"><b class="nm">leave</b> {S : Type} (s : State S) (next : Option <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a>) : List <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a></pre><div class="doc"><p>Leaving a focused field for <code>next</code> blurs it.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.onField" data-line="149">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.onField"><span class="ns">Cairn.Runtime.</span>onField</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:149</span></div>
+<pre class="sig"><b class="nm">onField</b> {S : Type} (s : State S) (ops : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a> → List <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a>) : List <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a></pre><div class="doc"><p>Edits to the focused field, if a field is focused.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.keyActions" data-line="154">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.keyActions"><span class="ns">Cairn.Runtime.</span>keyActions</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:154</span></div>
+<pre class="sig"><b class="nm">keyActions</b> {S : Type} (s : State S) (k : <a href="Cairn.Input.html#Cairn.Key" title="Cairn.Key">Key</a>) (mods : <a href="Cairn.Input.html#Cairn.Mods" title="Cairn.Mods">Mods</a>) : List <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a></pre>
+</section>
+<section class="decl" id="Cairn.Runtime.textActions" data-line="168">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.textActions"><span class="ns">Cairn.Runtime.</span>textActions</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:168</span></div>
+<pre class="sig"><b class="nm">textActions</b> {S : Type} (s : State S) (str : <span title="String">String</span>)
+  (rep : Option (<span title="Nat">Nat</span> × <span title="Nat">Nat</span>)) : List <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a></pre>
+</section>
+<section class="decl" id="Cairn.Runtime.tabOrder" data-line="176">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.tabOrder"><span class="ns">Cairn.Runtime.</span>tabOrder</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:176</span></div>
+<pre class="sig"><b class="nm">tabOrder</b> (laid : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>) : List <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a></pre><div class="doc"><p>Focusable controls in paint order.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.tabTarget" data-line="180">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.tabTarget"><span class="ns">Cairn.Runtime.</span>tabTarget</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:180</span></div>
+<pre class="sig"><b class="nm">tabTarget</b> {S : Type} (s : State S) (back : <span title="Bool">Bool</span>) : Option <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a></pre><div class="doc"><p>The next focusable control after the focused one (or before it, going back), wrapping;
+the first (or last) when nothing is focused.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.tab" data-line="186">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.tab"><span class="ns">Cairn.Runtime.</span>tab</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:186</span></div>
+<pre class="sig"><b class="nm">tab</b> {S : Type} (s : State S) (back : <span title="Bool">Bool</span>) : State S × List <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a></pre>
+</section>
+<section class="decl" id="Cairn.Runtime.withPointer" data-line="193">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.withPointer"><span class="ns">Cairn.Runtime.</span>withPointer</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:193</span></div>
+<pre class="sig"><b class="nm">withPointer</b> {S : Type} (s : State S) (p : <a href="Cairn.Geometry.html#Cairn.Point" title="Cairn.Point">Point</a>) : State S</pre>
+</section>
+<section class="decl" id="Cairn.Runtime.route" data-line="198">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.route"><span class="ns">Cairn.Runtime.</span>route</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:198</span></div>
+<pre class="sig"><b class="nm">route</b> {S : Type} (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (s : State S) :
+  <a href="Cairn.Input.html#Cairn.Event" title="Cairn.Event">Event</a> → State S × List <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a></pre><div class="doc"><p>Read one event against the tree on screen. Returns the new interaction state (<code>app</code> and
+<code>laid</code> untouched) and the actions to deliver, in order.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.UI.same" data-line="262">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.UI.same"><span class="ns">Cairn.Runtime.UI.</span>same</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:262</span></div>
+<pre class="sig"><b class="nm">same</b> (a b : <a href="Cairn.App.html#Cairn.UI" title="Cairn.UI">UI</a>) : <span title="Bool">Bool</span></pre><div class="doc"><p>Structural equality on <a href="Cairn.App.html#Cairn.UI"><code>UI</code></a>, decided field by field (the derived <code>BEq</code> isn't lawful).</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.relayout" data-line="272">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.relayout"><span class="ns">Cairn.Runtime.</span>relayout</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:272</span></div>
+<pre class="sig"><b class="nm">relayout</b> {S : Type} (app : App S) (cfg : <a href="Cairn.Runtime.Step.html#Cairn.Runtime.Config" title="Cairn.Runtime.Config">Config</a>) (st : S) (ui : <a href="Cairn.App.html#Cairn.UI" title="Cairn.UI">UI</a>) : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a></pre>
+</section>
+<section class="decl" id="Cairn.Runtime.fixUI" data-line="277">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.fixUI"><span class="ns">Cairn.Runtime.</span>fixUI</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:277</span></div>
+<pre class="sig"><b class="nm">fixUI</b> (laid : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>) (pointer : Option <a href="Cairn.Geometry.html#Cairn.Point" title="Cairn.Point">Point</a>) (ui : <a href="Cairn.App.html#Cairn.UI" title="Cairn.UI">UI</a>) : <a href="Cairn.App.html#Cairn.UI" title="Cairn.UI">UI</a></pre><div class="doc"><p>Repair interaction state against a new tree: hover is what the pointer is over, and focus
+and press survive only if their control does.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.settle" data-line="286">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.settle"><span class="ns">Cairn.Runtime.</span>settle</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:286</span></div>
+<pre class="sig"><b class="nm">settle</b> {S : Type} (app : App S) (cfg : <a href="Cairn.Runtime.Step.html#Cairn.Runtime.Config" title="Cairn.Runtime.Config">Config</a>) (st : S)
+  (pointer : Option <a href="Cairn.Geometry.html#Cairn.Point" title="Cairn.Point">Point</a>) (ui0 : <a href="Cairn.App.html#Cairn.UI" title="Cairn.UI">UI</a>) : <span title="Nat">Nat</span> → <a href="Cairn.App.html#Cairn.UI" title="Cairn.UI">UI</a> → <a href="Cairn.App.html#Cairn.UI" title="Cairn.UI">UI</a> × <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a></pre><div class="doc"><p>View and lay out, repair <code>ui0</code> against the result, and repeat while the repair changes
+what the view saw (hover reveals, focus rings), up to <code>fuel</code> more times. The result is always
+<code>ui0</code> repaired against the tree returned with it.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.settleFuel" data-line="296">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.settleFuel"><span class="ns">Cairn.Runtime.</span>settleFuel</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:296</span></div>
+<pre class="sig"><b class="nm">settleFuel</b> : <span title="Nat">Nat</span></pre><div class="doc"><p>How many times <a href="Cairn.Runtime.Step.html#Cairn.Runtime.settle"><code>settle</code></a> may re-run the view after the first layout.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.panelSize" data-line="299">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.panelSize"><span class="ns">Cairn.Runtime.</span>panelSize</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:299</span></div>
+<pre class="sig"><b class="nm">panelSize</b> (cfg : <a href="Cairn.Runtime.Step.html#Cairn.Runtime.Config" title="Cairn.Runtime.Config">Config</a>) (v : <a href="Cairn.Surface.html#Cairn.PanelView" title="Cairn.PanelView">PanelView</a>) : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a></pre><div class="doc"><p>A shown panel's size: its width and its content's height at that width.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.layPanel" data-line="304">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.layPanel"><span class="ns">Cairn.Runtime.</span>layPanel</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:304</span></div>
+<pre class="sig"><b class="nm">layPanel</b> (cfg : <a href="Cairn.Runtime.Step.html#Cairn.Runtime.Config" title="Cairn.Runtime.Config">Config</a>) (v : <a href="Cairn.Surface.html#Cairn.PanelView" title="Cairn.PanelView">PanelView</a>) : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a> × <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a></pre><div class="doc"><p>Lay out a shown panel at its size.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.Surface.show" data-line="309">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.Surface.show"><span class="ns">Cairn.Runtime.Surface.</span>show</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:309</span></div>
+<pre class="sig"><b class="nm">show</b> {S : Type} (cfg : <a href="Cairn.Runtime.Step.html#Cairn.Runtime.Config" title="Cairn.Runtime.Config">Config</a>) (st : S) : Surface S → <a href="Cairn.Runtime.Step.html#Cairn.Runtime.Shown" title="Cairn.Runtime.Shown">Shown</a></pre><div class="doc"><p>What one surface shows in app state <code>st</code>.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.shows" data-line="315">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.shows"><span class="ns">Cairn.Runtime.</span>shows</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:315</span></div>
+<pre class="sig"><b class="nm">shows</b> {S : Type} (app : App S) (cfg : <a href="Cairn.Runtime.Step.html#Cairn.Runtime.Config" title="Cairn.Runtime.Config">Config</a>) (st : S) : List <a href="Cairn.Runtime.Step.html#Cairn.Runtime.Shown" title="Cairn.Runtime.Shown">Shown</a></pre><div class="doc"><p>What every surface shows in app state <code>st</code>.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.deliver" data-line="319">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.deliver"><span class="ns">Cairn.Runtime.</span>deliver</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:319</span></div>
+<pre class="sig"><b class="nm">deliver</b> {S : Type} (update : S → <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a> → S × List <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a>) (st : S)
+  (acts : List <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a>) : S × List <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a></pre><div class="doc"><p>Run <code>update</code> over the actions in order, collecting effects.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.requestedFocus" data-line="324">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.requestedFocus"><span class="ns">Cairn.Runtime.</span>requestedFocus</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:324</span></div>
+<pre class="sig"><b class="nm">requestedFocus</b> (effs : List <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a>) : Option <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a></pre><div class="doc"><p>The focus the effects ask for: the last <a href="Cairn.Input.html#Cairn.Effect.focus"><code>Effect.focus</code></a>, if any.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.applyFocus" data-line="329">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.applyFocus"><span class="ns">Cairn.Runtime.</span>applyFocus</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:329</span></div>
+<pre class="sig"><b class="nm">applyFocus</b> (effs : List <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a>) (ui : <a href="Cairn.App.html#Cairn.UI" title="Cairn.UI">UI</a>) : <a href="Cairn.App.html#Cairn.UI" title="Cairn.UI">UI</a></pre><div class="doc"><p>Run the focus requests in <code>effs</code> on a <a href="Cairn.App.html#Cairn.UI"><code>UI</code></a>. <a href="Cairn.Runtime.Step.html#Cairn.Runtime.settle"><code>settle</code></a> then keeps the focus only if its
+control is focusable in the new tree.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.give" data-line="345">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.give"><span class="ns">Cairn.Runtime.</span>give</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:345</span></div>
+<pre class="sig"><b class="nm">give</b> {S : Type} (app : App S) (c : Ctx S) (m : <a href="Cairn.Effects.html#Cairn.Msg" title="Cairn.Msg">Msg</a>) : Ctx S</pre><div class="doc"><p>Deliver a message to <code>receive</code> and take in its effects.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.hear" data-line="351">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.hear"><span class="ns">Cairn.Runtime.</span>hear</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:351</span></div>
+<pre class="sig"><b class="nm">hear</b> {S : Type} (app : App S) (c : Ctx S) : Ctx S</pre><div class="doc"><p>Tell the app the time, if it hasn't heard the current one.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.fire" data-line="356">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.fire"><span class="ns">Cairn.Runtime.</span>fire</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:356</span></div>
+<pre class="sig"><b class="nm">fire</b> {S : Type} (app : App S) (c : Ctx S) (n : <span title="String">String</span>) : Ctx S</pre><div class="doc"><p>Fire <code>n</code> if it is still set and due: it leaves the table, then is delivered.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.boot" data-line="360">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.boot"><span class="ns">Cairn.Runtime.</span>boot</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:360</span></div>
+<pre class="sig"><b class="nm">boot</b> {S : Type} (app : App S) (c : Ctx S) : Ctx S</pre><div class="doc"><p>On the first clock: the app hears the time, then <code>initEffects</code> run.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.admit" data-line="369">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.admit"><span class="ns">Cairn.Runtime.</span>admit</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:369</span></div>
+<pre class="sig"><b class="nm">admit</b> {S : Type} (app : App S) (s : State S) : <a href="Cairn.Input.html#Cairn.Event" title="Cairn.Event">Event</a> → Ctx S</pre><div class="doc"><p>What the world events deliver: a clock event fires due timers, a reply is delivered if its
+id is pending and it answers that kind, and a subscription event if its id is active. Other
+events deliver nothing here (their actions come from <a href="Cairn.Runtime.Step.html#Cairn.Runtime.route"><code>route</code></a>).</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.act" data-line="391">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.act"><span class="ns">Cairn.Runtime.</span>act</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:391</span></div>
+<pre class="sig"><b class="nm">act</b> {S : Type} (app : App S) (c : Ctx S) (acts : List <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a>) : Ctx S</pre><div class="doc"><p>Deliver the routed actions to <code>update</code> (after the time, if the app hasn't heard it) and take
+in their effects, in order.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.step" data-line="399">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.step"><span class="ns">Cairn.Runtime.</span>step</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:399</span></div>
+<pre class="sig"><b class="nm">step</b> {S : Type} (app : App S) (cfg : <a href="Cairn.Runtime.Step.html#Cairn.Runtime.Config" title="Cairn.Runtime.Config">Config</a>) (s : State S) (e : <a href="Cairn.Input.html#Cairn.Event" title="Cairn.Event">Event</a>) :
+  State S × List <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a></pre><div class="doc"><p>One event.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.steps" data-line="415">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.steps"><span class="ns">Cairn.Runtime.</span>steps</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:415</span></div>
+<pre class="sig"><b class="nm">steps</b> {S : Type} (app : App S) (cfg : <a href="Cairn.Runtime.Step.html#Cairn.Runtime.Config" title="Cairn.Runtime.Config">Config</a>) (s : State S)
+  (es : List <a href="Cairn.Input.html#Cairn.Event" title="Cairn.Event">Event</a>) : State S × List <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a></pre><div class="doc"><p>A batch of events, in order.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.start" data-line="420">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.start"><span class="ns">Cairn.Runtime.</span>start</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:420</span></div>
+<pre class="sig"><b class="nm">start</b> {S : Type} (app : App S) (cfg : <a href="Cairn.Runtime.Step.html#Cairn.Runtime.Config" title="Cairn.Runtime.Config">Config</a>) (size : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>)
+  (scale : <span title="Nat">Nat</span> := 100) : State S</pre><div class="doc"><p>The first state: the app's <code>init</code> at a window size, laid out, with the app's <code>initFocus</code>
+if that control is focusable.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.cursor" data-line="426">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.cursor"><span class="ns">Cairn.Runtime.</span>cursor</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:426</span></div>
+<pre class="sig"><b class="nm">cursor</b> {S : Type} (s : State S) : <a href="Cairn.Input.html#Cairn.Cursor" title="Cairn.Cursor">Cursor</a></pre><div class="doc"><p>The cursor the host shows: text over fields, a pointing hand over other controls.</p>
+</div>
+</section>
+<h2 id="theorems">Theorems <span class="n">1</span></h2>
+<section class="decl" id="Cairn.Runtime.UI.same_eq" data-line="266">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Runtime.UI.same_eq"><span class="ns">Cairn.Runtime.UI.</span>same_eq</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Runtime/Step.lean:266</span></div>
+<pre class="sig"><b class="nm">same_eq</b> {a b : <a href="Cairn.App.html#Cairn.UI" title="Cairn.UI">UI</a>} (h : same a b = <span title="Bool.true">true</span>) : a = b</pre>
+</section>
+<h2 id="instances">Instances <span class="n">1</span></h2>
+<section class="decl" id="Cairn.Runtime.instInhabitedShown" data-line="35">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.Runtime.instInhabitedShown"><span class="ns">Cairn.Runtime.</span>instInhabitedShown</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:35</span></div>
+<pre class="sig"><b class="nm">instInhabitedShown</b> : Inhabited <a href="Cairn.Runtime.Step.html#Cairn.Runtime.Shown" title="Cairn.Runtime.Shown">Shown</a></pre>
+</section>
+<div class="mdoc" data-line="77" hidden><div class="doc"><h2>Fields</h2>
+</div></div><div class="mdoc" data-line="135" hidden><div class="doc"><h2>Routing</h2>
+</div></div><div class="mdoc" data-line="259" hidden><div class="doc"><h2>Committing</h2>
+</div></div><div class="mdoc" data-line="334" hidden><div class="doc"><h2>The outside world (docs/effects.md)</h2>
+</div></div>
+</div>
+</main></div>
+<footer>Generated by <code>make doc APP=Counter</code> from the code and the build. Nothing here is written by hand.</footer>
+<script src="search-index.js"></script>
+<script src="search.js"></script>
+<script type="module">
+// On the site, the headings get the meadow's sprigs and a "#" that copies a link to them
+// (site/public/scene.js); elsewhere, nothing.
+import("/scene.js").then((m) => { const main = document.querySelector("main"); m.mountSprigs(main); m.mountAnchors(main); }).catch(() => {});
+</script>
+</body>
+</html>

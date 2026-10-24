@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cairn.Text.Field · Cairn docs</title>
+<meta name="description" content="Cairn's API, generated from its code.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="doc.css">
+</head>
+<body>
+<nav class="bar"><a class="home" href="../../"><img src="icon.svg" alt="">Cairn</a><span class="sep">/</span><a href="index.html">Cairn docs</a><a href="claims.html">Claims</a><span class="search"><input id="search" type="search" placeholder="Search names, docs, ^N  ( / )" autocomplete="off" spellcheck="false"><div id="results" hidden></div></span></nav>
+<div class="layout"><aside class="toc"><div class="pix muted">Cairn.Text.Field</div><a href="#structures">Structures <span class="n">3</span></a><ol><li><a href="#Cairn.Text.Snapshot">Snapshot</a></li><li><a href="#Cairn.Text.Field">Field</a></li><li><a href="#Cairn.Text.Field.WF">WF</a></li></ol><a href="#definitions">Definitions <span class="n">35</span></a><ol><li><a href="#Cairn.Text.isLineBreak">isLineBreak</a></li><li><a href="#Cairn.Text.SingleLine">SingleLine</a></li><li><a href="#Cairn.Text.flatten">flatten</a></li><li><a href="#Cairn.Text.clean">clean</a></li><li><a href="#Cairn.Text.isWordChar">isWordChar</a></li><li><a href="#Cairn.Text.span">span</a></li><li><a href="#Cairn.Text.wordLeft">wordLeft</a></li><li><a href="#Cairn.Text.wordRight">wordRight</a></li><li><a href="#Cairn.Text.splice">splice</a></li><li><a href="#Cairn.Text.Field.empty">empty</a></li><li><a href="#Cairn.Text.Field.ofString">ofString</a></li><li><a href="#Cairn.Text.Field.lo">lo</a></li><li><a href="#Cairn.Text.Field.hi">hi</a></li><li><a href="#Cairn.Text.Field.len">len</a></li><li><a href="#Cairn.Text.Field.selected">selected</a></li><li><a href="#Cairn.Text.Field.snapshot">snapshot</a></li><li><a href="#Cairn.Text.Field.textString">textString</a></li><li><a href="#Cairn.Text.Field.target">target</a></li><li><a href="#Cairn.Text.Field.targetOr">targetOr</a></li><li><a href="#Cairn.Text.Field.edit">edit</a></li><li><a href="#Cairn.Text.Field.moveTo">moveTo</a></li><li><a href="#Cairn.Text.Field.deleteRange">deleteRange</a></li><li><a href="#Cairn.Text.Field.deleteSelOr">deleteSelOr</a></li><li><a href="#Cairn.Text.Field.insert">insert</a></li><li><a href="#Cairn.Text.Field.paste">paste</a></li><li><a href="#Cairn.Text.Field.setMarked">setMarked</a></li><li><a href="#Cairn.Text.Field.unmark">unmark</a></li><li><a href="#Cairn.Text.Field.undo">undo</a></li><li><a href="#Cairn.Text.Field.redo">redo</a></li><li><a href="#Cairn.Text.Field.clipboard">clipboard</a></li><li><a href="#Cairn.Text.Field.apply">apply</a></li><li><a href="#Cairn.Text.Field.applyAll">applyAll</a></li><li><a href="#Cairn.Text.Field.iterate">iterate</a></li><li><a href="#Cairn.Text.Field.view">view</a></li><li><a href="#Cairn.Text.Snapshot.WF">WF</a></li></ol><a href="#instances">Instances <span class="n">8</span></a><ol><li><a href="#Cairn.Text.instReprSnapshot">instReprSnapshot</a></li><li><a href="#Cairn.Text.instBEqSnapshot">instBEqSnapshot</a></li><li><a href="#Cairn.Text.instInhabitedSnapshot">instInhabitedSnapshot</a></li><li><a href="#Cairn.Text.instDecidableEqSnapshot">instDecidableEqSnapshot</a></li><li><a href="#Cairn.Text.instDecidableEqField">instDecidableEqField</a></li><li><a href="#Cairn.Text.instReprField">instReprField</a></li><li><a href="#Cairn.Text.instInhabitedField">instInhabitedField</a></li><li><a href="#Cairn.Text.instBEqField">instBEqField</a></li></ol></aside><main>
+<header class="page"><div class="eyebrow">Cairn · module</div><h1 class="mod">Cairn.Text.Field</h1><p class="src">lean/Cairn/Text/Field.lean</p></header>
+<div class="doc"><h1>Single-line text editing</h1>
+<p><a href="Cairn.Text.Field.html"><code>Field</code></a> is the editing model behind every text field: the text, caret, anchor, IME marked range,
+undo and redo stacks, and placeholder. <a href="Cairn.Text.Field.html#Cairn.Text.Field.apply"><code>Field.apply</code></a> gives the meaning of every <a href="Cairn.Input.html#Cairn.TextOp"><code>TextOp</code></a>;
+<a href="Cairn.Text.Field.html#Cairn.Text.Field.view"><code>Field.view</code></a> turns a field into the <a href="Cairn.UI.Node.html#Cairn.FieldView"><code>FieldView</code></a> the view layer draws.</p>
+<p>The text is a <code>List Char</code>, so every index is a Unicode scalar position, the same unit as
+<code>String.length</code> and <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics.offsets"><code>TextMetrics.offsets</code></a>. Lists are used rather than <code>String</code> because every
+edit is a splice (<code>take a ++ s ++ drop b</code>), and core Lean's <code>List</code> lemmas about <code>take</code>, <code>drop</code>
+and <code>length</code> make the proofs short; <code>String</code>'s byte-indexed API would put a UTF-8 decoding step
+between every theorem and its statement. The view converts with <code>String.ofList</code>
+(<code>String.length_ofList</code> keeps the indices meaning the same thing).</p>
+<p>The behaviour is specified, op by op and against macOS's <code>NSTextView</code>, in <code>docs/text.md</code>.
+Theorems are in <a href="Cairn.Text.Proofs.html"><code>Cairn.Text.Proofs</code></a>.</p>
+</div>
+<p class="imports"><span class="pix muted">Imports</span> <a href="Cairn.Input.html">Cairn.Input</a>, <a href="Cairn.UI.Node.html">Cairn.UI.Node</a></p>
+<div class="order"><span class="pix muted">Order</span> <button type="button" data-order="kind" class="on">by kind</button><button type="button" data-order="source">as in the source</button></div>
+<div id="items">
+
+<h2 id="structures">Structures <span class="n">3</span></h2>
+<section class="decl" id="Cairn.Text.Snapshot" data-line="78">
+<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.Text.Snapshot"><span class="ns">Cairn.Text.</span>Snapshot</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:78</span></div>
+<pre class="sig"><b class="nm">Snapshot</b> : Type</pre><div class="doc"><p>What an undo step restores: the text and the selection.</p>
+</div><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.Text.Snapshot.text"><pre class="sig"><b class="nm">text</b> : List <span title="Char">Char</span></pre></div><div class="member" id="Cairn.Text.Snapshot.caret"><pre class="sig"><b class="nm">caret</b> : <span title="Nat">Nat</span></pre></div><div class="member" id="Cairn.Text.Snapshot.anchor"><pre class="sig"><b class="nm">anchor</b> : <span title="Nat">Nat</span></pre></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Text.Field.html#Cairn.Text.instReprSnapshot"><code>Repr</code></a> <a href="Cairn.Text.Field.html#Cairn.Text.instBEqSnapshot"><code>BEq</code></a> <a href="Cairn.Text.Field.html#Cairn.Text.instInhabitedSnapshot"><code>Inhabited</code></a></p></div>
+</section>
+<section class="decl" id="Cairn.Text.Field" data-line="84">
+<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.Text.Field"><span class="ns">Cairn.Text.</span>Field</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:84</span></div>
+<pre class="sig"><b class="nm">Field</b> : Type</pre><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.Text.Field.text"><pre class="sig"><b class="nm">text</b> : List <span title="Char">Char</span></pre><div class="doc"><p>Unicode scalars; never contains a line break (<a href="Cairn.Text.Field.html#Cairn.Text.SingleLine"><code>SingleLine</code></a>).</p>
+</div></div><div class="member" id="Cairn.Text.Field.caret"><pre class="sig"><b class="nm">caret</b> : <span title="Nat">Nat</span></pre><div class="doc"><p>Where the insertion point is, and the end of the selection that moves.</p>
+</div></div><div class="member" id="Cairn.Text.Field.anchor"><pre class="sig"><b class="nm">anchor</b> : <span title="Nat">Nat</span></pre><div class="doc"><p>The fixed end of the selection. The selection is <code>[min caret anchor, max caret anchor)</code>.</p>
+</div></div><div class="member" id="Cairn.Text.Field.marked"><pre class="sig"><b class="nm">marked</b> : Option (<span title="Nat">Nat</span> × <span title="Nat">Nat</span>)</pre><div class="doc"><p>IME composition in progress, <code>[start, end)</code> of <a href="Cairn.Text.Field.html#Cairn.Text.Field.text"><code>text</code></a>.</p>
+</div></div><div class="member" id="Cairn.Text.Field.undoStack"><pre class="sig"><b class="nm">undoStack</b> : List <a href="Cairn.Text.Field.html#Cairn.Text.Snapshot" title="Cairn.Text.Snapshot">Snapshot</a></pre><div class="doc"><p>Most recent first. Each entry is the state before an undoable edit.</p>
+</div></div><div class="member" id="Cairn.Text.Field.redoStack"><pre class="sig"><b class="nm">redoStack</b> : List <a href="Cairn.Text.Field.html#Cairn.Text.Snapshot" title="Cairn.Text.Snapshot">Snapshot</a></pre><div class="doc"><p>Most recent first. Cleared by every edit that changes the text.</p>
+</div></div><div class="member" id="Cairn.Text.Field.typing"><pre class="sig"><b class="nm">typing</b> : <span title="Bool">Bool</span></pre><div class="doc"><p>The last op was a typing insert; another one at a collapsed caret joins its undo step.</p>
+</div></div><div class="member" id="Cairn.Text.Field.placeholder"><pre class="sig"><b class="nm">placeholder</b> : <span title="String">String</span></pre></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Text.Field.html#Cairn.Text.instReprField"><code>Repr</code></a> <a href="Cairn.Text.Field.html#Cairn.Text.instInhabitedField"><code>Inhabited</code></a> <a href="Cairn.Text.Field.html#Cairn.Text.instBEqField"><code>BEq</code></a></p></div>
+</section>
+<section class="decl" id="Cairn.Text.Field.WF" data-line="267">
+<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.Text.Field.WF"><span class="ns">Cairn.Text.Field.</span>WF</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:267</span></div>
+<pre class="sig"><b class="nm">WF</b> (f : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a>) : Prop</pre><div class="doc"><p>Every index is a position in the text, and the text is a single line.</p>
+</div><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.Text.Field.WF.caret_le"><pre class="sig"><b class="nm">caret_le</b> : f.caret ≤ f.text.length</pre></div><div class="member" id="Cairn.Text.Field.WF.anchor_le"><pre class="sig"><b class="nm">anchor_le</b> : f.anchor ≤ f.text.length</pre></div><div class="member" id="Cairn.Text.Field.WF.marked_le"><pre class="sig"><b class="nm">marked_le</b> : a ≤ b ∧ b ≤ f.text.length</pre></div><div class="member" id="Cairn.Text.Field.WF.single"><pre class="sig"><b class="nm">single</b> : SingleLine f.text</pre></div><div class="member" id="Cairn.Text.Field.WF.undo_wf"><pre class="sig"><b class="nm">undo_wf</b> : s.WF</pre></div><div class="member" id="Cairn.Text.Field.WF.redo_wf"><pre class="sig"><b class="nm">redo_wf</b> : s.WF</pre></div></div>
+</section>
+<h2 id="definitions">Definitions <span class="n">35</span></h2>
+<section class="decl" id="Cairn.Text.isLineBreak" data-line="30">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.isLineBreak"><span class="ns">Cairn.Text.</span>isLineBreak</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:30</span></div>
+<pre class="sig"><b class="nm">isLineBreak</b> (c : <span title="Char">Char</span>) : <span title="Bool">Bool</span></pre><div class="doc"><p>Scalars that would start a new line. A single-line field never contains them: inserted and
+pasted text has each one replaced by a space, as <code>NSTextField</code> does in single-line mode.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.SingleLine" data-line="35">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.SingleLine"><span class="ns">Cairn.Text.</span>SingleLine</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:35</span></div>
+<pre class="sig"><b class="nm">SingleLine</b> (t : List <span title="Char">Char</span>) : Prop</pre><div class="doc"><p>The text a field may contain: no line breaks.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.flatten" data-line="38">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.flatten"><span class="ns">Cairn.Text.</span>flatten</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:38</span></div>
+<pre class="sig"><b class="nm">flatten</b> (c : <span title="Char">Char</span>) : <span title="Char">Char</span></pre><div class="doc"><p>One scalar as a single-line field stores it: a line break becomes a space.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.clean" data-line="41">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.clean"><span class="ns">Cairn.Text.</span>clean</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:41</span></div>
+<pre class="sig"><b class="nm">clean</b> (s : <span title="String">String</span>) : List <span title="Char">Char</span></pre><div class="doc"><p><code>s</code> as scalars, each line break replaced by a space. Same length as <code>s</code>.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.isWordChar" data-line="47">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.isWordChar"><span class="ns">Cairn.Text.</span>isWordChar</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:47</span></div>
+<pre class="sig"><b class="nm">isWordChar</b> (c : <span title="Char">Char</span>) : <span title="Bool">Bool</span></pre><div class="doc"><p>A word is a maximal run of word characters: ASCII letters, digits and <code>_</code>, and every non-ASCII
+scalar except the Unicode spaces below. Everything else (ASCII punctuation and spaces) separates
+words. This is deliberately simpler than <code>NSTextView</code>, which uses ICU word boundaries and a
+dictionary for scripts without spaces; see <code>docs/text.md</code>.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.span" data-line="53">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.span"><span class="ns">Cairn.Text.</span>span</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:53</span></div>
+<pre class="sig"><b class="nm">span</b> (p : <span title="Char">Char</span> → <span title="Bool">Bool</span>) : List <span title="Char">Char</span> → <span title="Nat">Nat</span></pre><div class="doc"><p>The length of the longest prefix of <code>l</code> whose scalars satisfy <code>p</code>.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.wordLeft" data-line="58">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.wordLeft"><span class="ns">Cairn.Text.</span>wordLeft</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:58</span></div>
+<pre class="sig"><b class="nm">wordLeft</b> (t : List <span title="Char">Char</span>) (i : <span title="Nat">Nat</span>) : <span title="Nat">Nat</span></pre><div class="doc"><p>Where Option-Left goes from <code>i</code>: back over separators, then back over a word.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.wordRight" data-line="65">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.wordRight"><span class="ns">Cairn.Text.</span>wordRight</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:65</span></div>
+<pre class="sig"><b class="nm">wordRight</b> (t : List <span title="Char">Char</span>) (i : <span title="Nat">Nat</span>) : <span title="Nat">Nat</span></pre><div class="doc"><p>Where Option-Right goes from <code>i</code>: forward over separators, then forward over a word.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.splice" data-line="72">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.splice"><span class="ns">Cairn.Text.</span>splice</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:72</span></div>
+<pre class="sig"><b class="nm">splice</b> (t : List <span title="Char">Char</span>) (a b : <span title="Nat">Nat</span>) (s : List <span title="Char">Char</span>) : List <span title="Char">Char</span></pre><div class="doc"><p><code>t</code> with <code>[a, b)</code> replaced by <code>s</code>.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Field.empty" data-line="105">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Field.empty"><span class="ns">Cairn.Text.Field.</span>empty</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:105</span></div>
+<pre class="sig"><b class="nm">empty</b> (placeholder : <span title="String">String</span> := &quot;&quot;) : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a></pre><div class="doc"><p>An empty field.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Field.ofString" data-line="108">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Field.ofString"><span class="ns">Cairn.Text.Field.</span>ofString</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:108</span></div>
+<pre class="sig"><b class="nm">ofString</b> (s : <span title="String">String</span>) (placeholder : <span title="String">String</span> := &quot;&quot;) : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a></pre><div class="doc"><p>A field holding <code>s</code> (line breaks removed) with the caret at the end.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Field.lo" data-line="112">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Field.lo"><span class="ns">Cairn.Text.Field.</span>lo</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:112</span></div>
+<pre class="sig"><b class="nm">lo</b> (f : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a>) : <span title="Nat">Nat</span></pre>
+</section>
+<section class="decl" id="Cairn.Text.Field.hi" data-line="113">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Field.hi"><span class="ns">Cairn.Text.Field.</span>hi</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:113</span></div>
+<pre class="sig"><b class="nm">hi</b> (f : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a>) : <span title="Nat">Nat</span></pre>
+</section>
+<section class="decl" id="Cairn.Text.Field.len" data-line="114">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Field.len"><span class="ns">Cairn.Text.Field.</span>len</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:114</span></div>
+<pre class="sig"><b class="nm">len</b> (f : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a>) : <span title="Nat">Nat</span></pre>
+</section>
+<section class="decl" id="Cairn.Text.Field.selected" data-line="117">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Field.selected"><span class="ns">Cairn.Text.Field.</span>selected</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:117</span></div>
+<pre class="sig"><b class="nm">selected</b> (f : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a>) : List <span title="Char">Char</span></pre><div class="doc"><p>The selected scalars, <code>[lo, hi)</code>.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Field.snapshot" data-line="119">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Field.snapshot"><span class="ns">Cairn.Text.Field.</span>snapshot</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:119</span></div>
+<pre class="sig"><b class="nm">snapshot</b> (f : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a>) : <a href="Cairn.Text.Field.html#Cairn.Text.Snapshot" title="Cairn.Text.Snapshot">Snapshot</a></pre>
+</section>
+<section class="decl" id="Cairn.Text.Field.textString" data-line="121">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Field.textString"><span class="ns">Cairn.Text.Field.</span>textString</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:121</span></div>
+<pre class="sig"><b class="nm">textString</b> (f : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a>) : <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Text.Field.target" data-line="125">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Field.target"><span class="ns">Cairn.Text.Field.</span>target</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:125</span></div>
+<pre class="sig"><b class="nm">target</b> (f : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a>) : <span title="Nat">Nat</span> × <span title="Nat">Nat</span></pre><div class="doc"><p>The range an insertion or composition replaces: the marked text if there is any, else the
+selection.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Field.targetOr" data-line="130">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Field.targetOr"><span class="ns">Cairn.Text.Field.</span>targetOr</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:130</span></div>
+<pre class="sig"><b class="nm">targetOr</b> (f : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a>) : Option (<span title="Nat">Nat</span> × <span title="Nat">Nat</span>) → <span title="Nat">Nat</span> × <span title="Nat">Nat</span></pre><div class="doc"><p>The range an input-method edit replaces: the explicit <code>replace</code> range when the input system
+gives one (press-and-hold accents, reconversion, Korean IMEs that rewrite the last syllable),
+clamped into the text, else <a href="Cairn.Text.Field.html#Cairn.Text.Field.target"><code>target</code></a>.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Field.edit" data-line="139">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Field.edit"><span class="ns">Cairn.Text.Field.</span>edit</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:139</span></div>
+<pre class="sig"><b class="nm">edit</b> (f : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a>) (text : List <span title="Char">Char</span>) (caret anchor : <span title="Nat">Nat</span>)
+  (push typing : <span title="Bool">Bool</span>) : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a></pre><div class="doc"><p>Set the text and selection after an edit. When the text really changes, the old state is
+pushed for undo (if <code>push</code>) and redo is cleared; when it doesn't, only the selection moves and
+nothing is recorded.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Field.moveTo" data-line="148">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Field.moveTo"><span class="ns">Cairn.Text.Field.</span>moveTo</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:148</span></div>
+<pre class="sig"><b class="nm">moveTo</b> (f : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a>) (i : <span title="Nat">Nat</span>) (extend : <span title="Bool">Bool</span>) : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a></pre><div class="doc"><p>Move the caret to <code>i</code>, keeping the anchor when extending. Ends any composition.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Field.deleteRange" data-line="153">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Field.deleteRange"><span class="ns">Cairn.Text.Field.</span>deleteRange</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:153</span></div>
+<pre class="sig"><b class="nm">deleteRange</b> (f : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a>) (a b : <span title="Nat">Nat</span>) (coalesce : <span title="Bool">Bool</span> := <span title="Bool.false">false</span>) : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a></pre><div class="doc"><p>Delete <code>[a, b)</code>. With <code>coalesce</code>, the deletion joins an open typing step and keeps it open
+(Backspace while typing); otherwise it is its own undo step.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Field.deleteSelOr" data-line="157">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Field.deleteSelOr"><span class="ns">Cairn.Text.Field.</span>deleteSelOr</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:157</span></div>
+<pre class="sig"><b class="nm">deleteSelOr</b> (f : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a>) (a b : <span title="Nat">Nat</span>) (coalesce : <span title="Bool">Bool</span> := <span title="Bool.false">false</span>) : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a></pre><div class="doc"><p>Delete the selection if there is one (its own undo step), else <code>[a, b)</code>.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Field.insert" data-line="165">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Field.insert"><span class="ns">Cairn.Text.Field.</span>insert</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:165</span></div>
+<pre class="sig"><b class="nm">insert</b> (f : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a>) (s : <span title="String">String</span>) (replace : Option (<span title="Nat">Nat</span> × <span title="Nat">Nat</span>) := none) :
+  <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a></pre><div class="doc"><p>Typed or committed text replaces the marked text, else the selection. Consecutive typing at
+a collapsed caret is one undo step; committing a composition joins the step its first
+<a href="Cairn.Text.Field.html#Cairn.Text.Field.setMarked"><code>setMarked</code></a> opened. <code>replace</code> is the input system's replacement range (see <a href="Cairn.Text.Field.html#Cairn.Text.Field.targetOr"><code>targetOr</code></a>).</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Field.paste" data-line="173">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Field.paste"><span class="ns">Cairn.Text.Field.</span>paste</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:173</span></div>
+<pre class="sig"><b class="nm">paste</b> (f : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a>) (s : <span title="String">String</span>) : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a></pre><div class="doc"><p>Like <a href="Cairn.Text.Field.html#Cairn.Text.Field.insert"><code>insert</code></a>, but always its own undo step (unless it commits a composition).</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Field.setMarked" data-line="183">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Field.setMarked"><span class="ns">Cairn.Text.Field.</span>setMarked</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:183</span></div>
+<pre class="sig"><b class="nm">setMarked</b> (f : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a>) (s : <span title="String">String</span>) (selStart selLen : <span title="Nat">Nat</span>)
+  (replace : Option (<span title="Nat">Nat</span> × <span title="Nat">Nat</span>) := none) : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a></pre><div class="doc"><p>IME composition: replace the marked text (or, when composition starts, the selection) with
+<code>s</code>, mark it, and put the selection at <code>[selStart, selStart + selLen)</code> within it, clamped.
+Starting a composition opens an undo step; the whole composition, through its commit, is that
+one step. An empty composition ends it. <code>replace</code> is as for <a href="Cairn.Text.Field.html#Cairn.Text.Field.insert"><code>insert</code></a>.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Field.unmark" data-line="200">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Field.unmark"><span class="ns">Cairn.Text.Field.</span>unmark</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:200</span></div>
+<pre class="sig"><b class="nm">unmark</b> (f : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a>) : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a></pre><div class="doc"><p>Commit the composition as it stands; the text and selection stay.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Field.undo" data-line="202">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Field.undo"><span class="ns">Cairn.Text.Field.</span>undo</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:202</span></div>
+<pre class="sig"><b class="nm">undo</b> (f : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a>) : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a> × List <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a></pre>
+</section>
+<section class="decl" id="Cairn.Text.Field.redo" data-line="209">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Field.redo"><span class="ns">Cairn.Text.Field.</span>redo</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:209</span></div>
+<pre class="sig"><b class="nm">redo</b> (f : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a>) : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a> × List <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a></pre>
+</section>
+<section class="decl" id="Cairn.Text.Field.clipboard" data-line="216">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Field.clipboard"><span class="ns">Cairn.Text.Field.</span>clipboard</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:216</span></div>
+<pre class="sig"><b class="nm">clipboard</b> (f : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a>) : List <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a></pre>
+</section>
+<section class="decl" id="Cairn.Text.Field.apply" data-line="220">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Field.apply"><span class="ns">Cairn.Text.Field.</span>apply</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:220</span></div>
+<pre class="sig"><b class="nm">apply</b> : <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a> → <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a> → <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a> × List <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a></pre><div class="doc"><p>The meaning of every <a href="Cairn.Input.html#Cairn.TextOp"><code>TextOp</code></a>. See <code>docs/text.md</code>.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Field.applyAll" data-line="248">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Field.applyAll"><span class="ns">Cairn.Text.Field.</span>applyAll</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:248</span></div>
+<pre class="sig"><b class="nm">applyAll</b> (f : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a>) (ops : List <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a>) : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a></pre><div class="doc"><p>Apply ops in order, dropping effects.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Field.iterate" data-line="252">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Field.iterate"><span class="ns">Cairn.Text.Field.</span>iterate</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:252</span></div>
+<pre class="sig"><b class="nm">iterate</b> (op : <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a>) : <span title="Nat">Nat</span> → <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a> → <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a></pre><div class="doc"><p>Apply <code>op</code> <code>n</code> times.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Field.view" data-line="257">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Field.view"><span class="ns">Cairn.Text.Field.</span>view</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:257</span></div>
+<pre class="sig"><b class="nm">view</b> (f : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a>) (focused : <span title="Bool">Bool</span>) : <a href="Cairn.UI.Node.html#Cairn.FieldView" title="Cairn.FieldView">FieldView</a></pre><div class="doc"><p>What the view layer draws.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Snapshot.WF" data-line="263">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Snapshot.WF"><span class="ns">Cairn.Text.Snapshot.</span>WF</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:263</span></div>
+<pre class="sig"><b class="nm">WF</b> (s : <a href="Cairn.Text.Field.html#Cairn.Text.Snapshot" title="Cairn.Text.Snapshot">Snapshot</a>) : Prop</pre>
+</section>
+<h2 id="instances">Instances <span class="n">8</span></h2>
+<section class="decl" id="Cairn.Text.instReprSnapshot" data-line="82">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.Text.instReprSnapshot"><span class="ns">Cairn.Text.</span>instReprSnapshot</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:82</span></div>
+<pre class="sig"><b class="nm">instReprSnapshot</b> : Repr <a href="Cairn.Text.Field.html#Cairn.Text.Snapshot" title="Cairn.Text.Snapshot">Snapshot</a></pre>
+</section>
+<section class="decl" id="Cairn.Text.instBEqSnapshot" data-line="82">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.Text.instBEqSnapshot"><span class="ns">Cairn.Text.</span>instBEqSnapshot</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:82</span></div>
+<pre class="sig"><b class="nm">instBEqSnapshot</b> : BEq <a href="Cairn.Text.Field.html#Cairn.Text.Snapshot" title="Cairn.Text.Snapshot">Snapshot</a></pre>
+</section>
+<section class="decl" id="Cairn.Text.instInhabitedSnapshot" data-line="82">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.Text.instInhabitedSnapshot"><span class="ns">Cairn.Text.</span>instInhabitedSnapshot</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:82</span></div>
+<pre class="sig"><b class="nm">instInhabitedSnapshot</b> : Inhabited <a href="Cairn.Text.Field.html#Cairn.Text.Snapshot" title="Cairn.Text.Snapshot">Snapshot</a></pre>
+</section>
+<section class="decl" id="Cairn.Text.instDecidableEqSnapshot" data-line="82">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.Text.instDecidableEqSnapshot"><span class="ns">Cairn.Text.</span>instDecidableEqSnapshot</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:82</span></div>
+<pre class="sig"><b class="nm">instDecidableEqSnapshot</b> : DecidableEq <a href="Cairn.Text.Field.html#Cairn.Text.Snapshot" title="Cairn.Text.Snapshot">Snapshot</a></pre>
+</section>
+<section class="decl" id="Cairn.Text.instDecidableEqField" data-line="100">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.Text.instDecidableEqField"><span class="ns">Cairn.Text.</span>instDecidableEqField</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:100</span></div>
+<pre class="sig"><b class="nm">instDecidableEqField</b> : DecidableEq <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a></pre>
+</section>
+<section class="decl" id="Cairn.Text.instReprField" data-line="100">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.Text.instReprField"><span class="ns">Cairn.Text.</span>instReprField</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:100</span></div>
+<pre class="sig"><b class="nm">instReprField</b> : Repr <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a></pre>
+</section>
+<section class="decl" id="Cairn.Text.instInhabitedField" data-line="100">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.Text.instInhabitedField"><span class="ns">Cairn.Text.</span>instInhabitedField</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:100</span></div>
+<pre class="sig"><b class="nm">instInhabitedField</b> : Inhabited <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a></pre>
+</section>
+<section class="decl" id="Cairn.Text.instBEqField" data-line="100">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.Text.instBEqField"><span class="ns">Cairn.Text.</span>instBEqField</a></h3><span class="src" title="source">lean/Cairn/Text/Field.lean:100</span></div>
+<pre class="sig"><b class="nm">instBEqField</b> : BEq <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Field</a></pre>
+</section>
+<div class="mdoc" data-line="26" hidden><div class="doc"><h2>Characters</h2>
+</div></div><div class="mdoc" data-line="75" hidden><div class="doc"><h2>State</h2>
+</div></div><div class="mdoc" data-line="134" hidden><div class="doc"><h2>Primitive transitions</h2>
+</div></div><div class="mdoc" data-line="160" hidden><div class="doc"><h2>Ops</h2>
+</div></div><div class="mdoc" data-line="261" hidden><div class="doc"><h2>Well-formedness</h2>
+</div></div>
+</div>
+</main></div>
+<footer>Generated by <code>make doc APP=Counter</code> from the code and the build. Nothing here is written by hand.</footer>
+<script src="search-index.js"></script>
+<script src="search.js"></script>
+<script type="module">
+// On the site, the headings get the meadow's sprigs and a "#" that copies a link to them
+// (site/public/scene.js); elsewhere, nothing.
+import("/scene.js").then((m) => { const main = document.querySelector("main"); m.mountSprigs(main); m.mountAnchors(main); }).catch(() => {});
+</script>
+</body>
+</html>

@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cairn.Fuzz.Shrink · Cairn docs</title>
+<meta name="description" content="Cairn's API, generated from its code.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="doc.css">
+</head>
+<body>
+<nav class="bar"><a class="home" href="../../"><img src="icon.svg" alt="">Cairn</a><span class="sep">/</span><a href="index.html">Cairn docs</a><a href="claims.html">Claims</a><span class="search"><input id="search" type="search" placeholder="Search names, docs, ^N  ( / )" autocomplete="off" spellcheck="false"><div id="results" hidden></div></span></nav>
+<div class="layout"><aside class="toc"><div class="pix muted">Cairn.Fuzz.Shrink</div><a href="#structures">Structures <span class="n">1</span></a><ol><li><a href="#Cairn.Fuzz.Traced">Traced</a></li></ol><a href="#definitions">Definitions <span class="n">7</span></a><ol><li><a href="#Cairn.Fuzz.stillFails">stillFails</a></li><li><a href="#Cairn.Fuzz.without">without</a></li><li><a href="#Cairn.Fuzz.shrink">shrink</a></li><li><a href="#Cairn.Fuzz.trace">trace</a></li><li><a href="#Cairn.Fuzz.capitalize">capitalize</a></li><li><a href="#Cairn.Fuzz.lockMax">lockMax</a></li><li><a href="#Cairn.Fuzz.flowSource">flowSource</a></li></ol></aside><main>
+<header class="page"><div class="eyebrow">Cairn · module</div><h1 class="mod">Cairn.Fuzz.Shrink</h1><p class="src">lean/Cairn/Fuzz/Shrink.lean</p></header>
+<div class="doc"><h1>Shrinking, and what a failure is printed as</h1>
+<p>Delta debugging (Zeller and Hildebrandt's ddmin) over a failing sequence's operations: remove
+chunks while the shorter sequence still fails the same check on the same claim, halving the
+chunk size down to single operations. Operations are self-contained, so a subsequence replays
+from the same setup without the seed.</p>
+<p>The shrunk sequence becomes a ready-to-paste <code>flow</code> (with the next free id), whose witness is
+the actions the runtime delivered while replaying it, minus those no move accepts (no-ops in
+the model), so the witness is live.</p>
+</div>
+<p class="imports"><span class="pix muted">Imports</span> <a href="Cairn.Fuzz.Walk.html">Cairn.Fuzz.Walk</a></p>
+<div class="order"><span class="pix muted">Order</span> <button type="button" data-order="kind" class="on">by kind</button><button type="button" data-order="source">as in the source</button></div>
+<div id="items">
+
+<h2 id="structures">Structures <span class="n">1</span></h2>
+<section class="decl" id="Cairn.Fuzz.Traced" data-line="66">
+<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.Fuzz.Traced"><span class="ns">Cairn.Fuzz.</span>Traced</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Shrink.lean:66</span></div>
+<pre class="sig"><b class="nm">Traced</b> : Type</pre><div class="doc"><p>One replayed operation: the operation, the control a pointer operation hit (in the model),
+and the delivered actions some move accepts.</p>
+</div><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.Fuzz.Traced.op"><pre class="sig"><b class="nm">op</b> : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Op" title="Cairn.Fuzz.Op">Op</a></pre></div><div class="member" id="Cairn.Fuzz.Traced.hit"><pre class="sig"><b class="nm">hit</b> : Option <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a></pre></div><div class="member" id="Cairn.Fuzz.Traced.accepted"><pre class="sig"><b class="nm">accepted</b> : List <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a></pre></div></div>
+</section>
+<h2 id="definitions">Definitions <span class="n">7</span></h2>
+<section class="decl" id="Cairn.Fuzz.stillFails" data-line="18">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.stillFails"><span class="ns">Cairn.Fuzz.</span>stillFails</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Shrink.lean:18</span></div>
+<pre class="sig"><b class="nm">stillFails</b> (t : <a href="Cairn.Fuzz.Target.html" title="Cairn.Fuzz.Target">Target</a>) (setup : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Setup" title="Cairn.Fuzz.Setup">Setup</a>) (target : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Failure" title="Cairn.Fuzz.Failure">Failure</a>) (ops : Array <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Op" title="Cairn.Fuzz.Op">Op</a>) :
+  IO <span title="Bool">Bool</span></pre><div class="doc"><p>Whether replaying <code>ops</code> from <code>setup</code> fails the same check on the same claim.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Fuzz.without" data-line="22">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.without"><span class="ns">Cairn.Fuzz.</span>without</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Shrink.lean:22</span></div>
+<pre class="sig"><b class="nm">without</b> (xs : Array <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Op" title="Cairn.Fuzz.Op">Op</a>) (lo hi : <span title="Nat">Nat</span>) : Array <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Op" title="Cairn.Fuzz.Op">Op</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.shrink" data-line="26">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.shrink"><span class="ns">Cairn.Fuzz.</span>shrink</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Shrink.lean:26</span></div>
+<pre class="sig"><b class="nm">shrink</b> (t : <a href="Cairn.Fuzz.Target.html" title="Cairn.Fuzz.Target">Target</a>) (setup : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Setup" title="Cairn.Fuzz.Setup">Setup</a>) (target : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Failure" title="Cairn.Fuzz.Failure">Failure</a>) (ops : Array <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Op" title="Cairn.Fuzz.Op">Op</a>) :
+  IO (Array <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Op" title="Cairn.Fuzz.Op">Op</a> × <span title="Nat">Nat</span>)</pre><div class="doc"><p>ddmin over complements, then a pass removing single operations. Returns the shrunk
+operations and how many replays it took.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Fuzz.trace" data-line="72">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.trace"><span class="ns">Cairn.Fuzz.</span>trace</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Shrink.lean:72</span></div>
+<pre class="sig"><b class="nm">trace</b> (t : <a href="Cairn.Fuzz.Target.html" title="Cairn.Fuzz.Target">Target</a>) (setup : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Setup" title="Cairn.Fuzz.Setup">Setup</a>) (ops : Array <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Op" title="Cairn.Fuzz.Op">Op</a>) : IO (Array <a href="Cairn.Fuzz.Shrink.html#Cairn.Fuzz.Traced" title="Cairn.Fuzz.Traced">Traced</a>)</pre><div class="doc"><p>Replay operations, recording what each did.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Fuzz.capitalize" data-line="90">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.capitalize"><span class="ns">Cairn.Fuzz.</span>capitalize</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Shrink.lean:90</span></div>
+<pre class="sig"><b class="nm">capitalize</b> (s : <span title="String">String</span>) : <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.lockMax" data-line="96">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.lockMax"><span class="ns">Cairn.Fuzz.</span>lockMax</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Shrink.lean:96</span></div>
+<pre class="sig"><b class="nm">lockMax</b> (path : <span title="System.FilePath">System.FilePath</span>) : IO (Option <span title="Nat">Nat</span>)</pre><div class="doc"><p>The largest id in <code>claims.lock</code>, if it can be read.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Fuzz.flowSource" data-line="107">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.flowSource"><span class="ns">Cairn.Fuzz.</span>flowSource</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Shrink.lean:107</span></div>
+<pre class="sig"><b class="nm">flowSource</b> (t : <a href="Cairn.Fuzz.Target.html" title="Cairn.Fuzz.Target">Target</a>) (setup : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Setup" title="Cairn.Fuzz.Setup">Setup</a>) (f : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Failure" title="Cairn.Fuzz.Failure">Failure</a>) (traced : Array <a href="Cairn.Fuzz.Shrink.html#Cairn.Fuzz.Traced" title="Cairn.Fuzz.Traced">Traced</a>)
+  (id : <span title="Nat">Nat</span>) : <span title="String">String</span></pre><div class="doc"><p>A ready-to-paste <code>flow</code> for a shrunk failure, and for presence and pressability failures a
+theorem to put beside the app's proofs. A flow's goal can only talk about the state (claims are
+declared before the view), so the flow pins the state the failure needs, with a durable id,
+and the theorem states what the view must do in it.</p>
+</div>
+</section>
+<div class="mdoc" data-line="88" hidden><div class="doc"><h2>As Lean source</h2>
+</div></div>
+</div>
+</main></div>
+<footer>Generated by <code>make doc APP=Counter</code> from the code and the build. Nothing here is written by hand.</footer>
+<script src="search-index.js"></script>
+<script src="search.js"></script>
+<script type="module">
+// On the site, the headings get the meadow's sprigs and a "#" that copies a link to them
+// (site/public/scene.js); elsewhere, nothing.
+import("/scene.js").then((m) => { const main = document.querySelector("main"); m.mountSprigs(main); m.mountAnchors(main); }).catch(() => {});
+</script>
+</body>
+</html>

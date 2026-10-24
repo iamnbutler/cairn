@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cairn.Surface · Cairn docs</title>
+<meta name="description" content="Cairn's API, generated from its code.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="doc.css">
+</head>
+<body>
+<nav class="bar"><a class="home" href="../../"><img src="icon.svg" alt="">Cairn</a><span class="sep">/</span><a href="index.html">Cairn docs</a><a href="claims.html">Claims</a><span class="search"><input id="search" type="search" placeholder="Search names, docs, ^N  ( / )" autocomplete="off" spellcheck="false"><div id="results" hidden></div></span></nav>
+<div class="layout"><aside class="toc"><div class="pix muted">Cairn.Surface</div><a href="#structures">Structures <span class="n">3</span></a><ol><li><a href="#Cairn.Shortcut">Shortcut</a></li><li><a href="#Cairn.StatusItem">StatusItem</a></li><li><a href="#Cairn.PanelView">PanelView</a></li></ol><a href="#inductives">Inductive types <span class="n">3</span></a><ol><li><a href="#Cairn.MenuItem">MenuItem</a></li><li><a href="#Cairn.Anchor">Anchor</a></li><li><a href="#Cairn.ScreenChoice">ScreenChoice</a></li></ol><a href="#definitions">Definitions <span class="n">11</span></a><ol><li><a href="#Cairn.MenuItem.button">button</a></li><li><a href="#Cairn.MenuItem.check">check</a></li><li><a href="#Cairn.MenuItem.refsOf">refsOf</a></li><li><a href="#Cairn.MenuItem.refs">refs</a></li><li><a href="#Cairn.MenuItem.enabledRefsOf">enabledRefsOf</a></li><li><a href="#Cairn.MenuItem.enabledRefs">enabledRefs</a></li><li><a href="#Cairn.MenuItem.findOf">findOf</a></li><li><a href="#Cairn.MenuItem.find">find</a></li><li><a href="#Cairn.MenuItem.enabledOf">enabledOf</a></li><li><a href="#Cairn.MenuItem.checkedOf">checkedOf</a></li><li><a href="#Cairn.Anchor.offset">offset</a></li></ol><a href="#theorems">Theorems <span class="n">5</span></a><ol><li><a href="#Cairn.MenuItem.enabledRefsOf_sub">enabledRefsOf_sub</a></li><li><a href="#Cairn.MenuItem.enabledRefs_sub">enabledRefs_sub</a></li><li><a href="#Cairn.MenuItem.refs_append">refs_append</a></li><li><a href="#Cairn.MenuItem.enabledRefs_append">enabledRefs_append</a></li><li><a href="#Cairn.MenuItem.mem_refs_of_enabled">mem_refs_of_enabled</a></li></ol><a href="#instances">Instances <span class="n">15</span></a><ol><li><a href="#Cairn.instInhabitedShortcut">instInhabitedShortcut</a></li><li><a href="#Cairn.instDecidableEqShortcut">instDecidableEqShortcut</a></li><li><a href="#Cairn.instReprShortcut">instReprShortcut</a></li><li><a href="#Cairn.instInhabitedMenuItem">instInhabitedMenuItem</a></li><li><a href="#Cairn.instReprMenuItem">instReprMenuItem</a></li><li><a href="#Cairn.instReprStatusItem">instReprStatusItem</a></li><li><a href="#Cairn.instInhabitedStatusItem">instInhabitedStatusItem</a></li><li><a href="#Cairn.instDecidableEqAnchor">instDecidableEqAnchor</a></li><li><a href="#Cairn.instInhabitedAnchor">instInhabitedAnchor</a></li><li><a href="#Cairn.instReprAnchor">instReprAnchor</a></li><li><a href="#Cairn.instInhabitedScreenChoice">instInhabitedScreenChoice</a></li><li><a href="#Cairn.instReprScreenChoice">instReprScreenChoice</a></li><li><a href="#Cairn.instDecidableEqScreenChoice">instDecidableEqScreenChoice</a></li><li><a href="#Cairn.instInhabitedPanelView">instInhabitedPanelView</a></li><li><a href="#Cairn.instReprPanelView">instReprPanelView</a></li></ol></aside><main>
+<header class="page"><div class="eyebrow">Cairn · module</div><h1 class="mod">Cairn.Surface</h1><p class="src">lean/Cairn/Surface.lean</p></header>
+<div class="doc"><p>What an app shows besides a window (docs/surfaces.md): a menu bar status item with its
+native menu, and a non-activating, click-through overlay panel, both as data. <a href="Cairn.App.html"><code>Cairn.App</code></a>
+collects an app's surfaces; the runtime keeps what each one shows (<a href="Cairn.Runtime.Step.html#Cairn.Runtime.Shown"><code>Cairn.Runtime.Shown</code></a>) and
+the frame carries it (docs/frame.md, surface records).</p>
+<p>The menu is a description, not a laid tree: the host builds a real <code>NSMenu</code> from it, and every
+actionable item is a <a href="Cairn.UI.Node.html#Cairn.Control"><code>Control</code></a> naming a move, so presence, enablement and checkmarks are facts
+about this value (<code>refs</code>, <code>enabledOf</code>, <code>checkedOf</code>) with no layout in between.</p>
+<p><a href="Cairn.Surface.html#Cairn.MenuItem"><code>MenuItem</code></a> is a nested inductive, so every function over it is a structural pair (<code>f</code> on one
+item, <code>fs</code> on a list), per AGENTS.md.</p>
+</div>
+<p class="imports"><span class="pix muted">Imports</span> <a href="Cairn.UI.Node.html">Cairn.UI.Node</a>, <a href="Cairn.Input.html">Cairn.Input</a></p>
+<div class="order"><span class="pix muted">Order</span> <button type="button" data-order="kind" class="on">by kind</button><button type="button" data-order="source">as in the source</button></div>
+<div id="items">
+
+<h2 id="structures">Structures <span class="n">3</span></h2>
+<section class="decl" id="Cairn.Shortcut" data-line="24">
+<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.Shortcut"><span class="ns">Cairn.</span>Shortcut</a></h3><span class="src" title="source">lean/Cairn/Surface.lean:24</span></div>
+<pre class="sig"><b class="nm">Shortcut</b> : Type</pre><div class="doc"><p>A keyboard shortcut shown on a menu item (⌘Q). Honoured by AppKit only while the menu is
+open: an accessory app has no main menu.</p>
+</div><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.Shortcut.key"><pre class="sig"><b class="nm">key</b> : <a href="Cairn.Input.html#Cairn.Key" title="Cairn.Key">Key</a></pre></div><div class="member" id="Cairn.Shortcut.mods"><pre class="sig"><b class="nm">mods</b> : <a href="Cairn.Input.html#Cairn.Mods" title="Cairn.Mods">Mods</a></pre></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Surface.html#Cairn.instInhabitedShortcut"><code>Inhabited</code></a> <a href="Cairn.Surface.html#Cairn.instReprShortcut"><code>Repr</code></a></p></div>
+</section>
+<section class="decl" id="Cairn.StatusItem" data-line="143">
+<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.StatusItem"><span class="ns">Cairn.</span>StatusItem</a></h3><span class="src" title="source">lean/Cairn/Surface.lean:143</span></div>
+<pre class="sig"><b class="nm">StatusItem</b> : Type</pre><div class="doc"><p>A menu bar status item and its menu.</p>
+</div><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.StatusItem.symbol"><pre class="sig"><b class="nm">symbol</b> : <span title="String">String</span></pre><div class="doc"><p>An SF Symbol name, drawn as a template image so it follows the menu bar's appearance.</p>
+</div></div><div class="member" id="Cairn.StatusItem.title"><pre class="sig"><b class="nm">title</b> : <span title="String">String</span></pre><div class="doc"><p>Optional text beside the symbol.</p>
+</div></div><div class="member" id="Cairn.StatusItem.label"><pre class="sig"><b class="nm">label</b> : <span title="String">String</span></pre><div class="doc"><p>What VoiceOver says for the button.</p>
+</div></div><div class="member" id="Cairn.StatusItem.control"><pre class="sig"><b class="nm">control</b> : <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a></pre><div class="doc"><p>Opening the menu is a press on this control.</p>
+</div></div><div class="member" id="Cairn.StatusItem.menu"><pre class="sig"><b class="nm">menu</b> : List <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a></pre></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Surface.html#Cairn.instReprStatusItem"><code>Repr</code></a> <a href="Cairn.Surface.html#Cairn.instInhabitedStatusItem"><code>Inhabited</code></a></p></div>
+</section>
+<section class="decl" id="Cairn.PanelView" data-line="175">
+<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.PanelView"><span class="ns">Cairn.</span>PanelView</a></h3><span class="src" title="source">lean/Cairn/Surface.lean:175</span></div>
+<pre class="sig"><b class="nm">PanelView</b> : Type</pre><div class="doc"><p>What a shown panel holds. The panel's window behaviour (never key, click-through, on every
+Space) is fixed by the host, not chosen here (docs/surfaces.md, docs/trusted.md).</p>
+</div><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.PanelView.width"><pre class="sig"><b class="nm">width</b> : <span title="Nat">Nat</span></pre><div class="doc"><p>Width in points; the height is the laid-out content's.</p>
+</div></div><div class="member" id="Cairn.PanelView.anchor"><pre class="sig"><b class="nm">anchor</b> : <a href="Cairn.Surface.html#Cairn.Anchor" title="Cairn.Anchor">Anchor</a></pre></div><div class="member" id="Cairn.PanelView.screen"><pre class="sig"><b class="nm">screen</b> : <a href="Cairn.Surface.html#Cairn.ScreenChoice" title="Cairn.ScreenChoice">ScreenChoice</a></pre></div><div class="member" id="Cairn.PanelView.content"><pre class="sig"><b class="nm">content</b> : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a></pre></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Surface.html#Cairn.instInhabitedPanelView"><code>Inhabited</code></a> <a href="Cairn.Surface.html#Cairn.instReprPanelView"><code>Repr</code></a></p></div>
+</section>
+<h2 id="inductives">Inductive types <span class="n">3</span></h2>
+<section class="decl" id="Cairn.MenuItem" data-line="29">
+<div class="dhead"><span class="kind pix">inductive</span><h3><a href="#Cairn.MenuItem"><span class="ns">Cairn.</span>MenuItem</a></h3><span class="src" title="source">lean/Cairn/Surface.lean:29</span></div>
+<pre class="sig"><b class="nm">MenuItem</b> : Type</pre><div class="members"><b class="pix muted">Constructors</b><div class="member" id="Cairn.MenuItem.item"><pre class="sig"><b class="nm">item</b> (control : <a href="Cairn.UI.Node.html#Cairn.Control" title="Cairn.Control">Control</a>) (enabled : <span title="Bool">Bool</span> := <span title="Bool.true">true</span>)
+  (shortcut : Option <a href="Cairn.Surface.html#Cairn.Shortcut" title="Cairn.Shortcut">Shortcut</a> := none) : <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a></pre><div class="doc"><p>An item that performs a move. <code>control.checked = some b</code> makes it a checkbox item;
+<code>enabled = false</code> greys it out (it stays in the menu, with its control).</p>
+</div></div><div class="member" id="Cairn.MenuItem.info"><pre class="sig"><b class="nm">info</b> (label : <span title="String">String</span>) : <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a></pre><div class="doc"><p>A line of text that does nothing: a status line, &quot;None yet&quot;. Shown disabled.</p>
+</div></div><div class="member" id="Cairn.MenuItem.submenu"><pre class="sig"><b class="nm">submenu</b> (label : <span title="String">String</span>) (place : Option <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a>) (items : List <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a>) :
+  <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a></pre><div class="doc"><p>A submenu. <code>place</code> is the place claim it is, if it has one.</p>
+</div></div><div class="member" id="Cairn.MenuItem.separator"><pre class="sig"><b class="nm">separator</b> : <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a></pre></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Surface.html#Cairn.instInhabitedMenuItem"><code>Inhabited</code></a> <a href="Cairn.Surface.html#Cairn.instReprMenuItem"><code>Repr</code></a></p></div>
+</section>
+<section class="decl" id="Cairn.Anchor" data-line="156">
+<div class="dhead"><span class="kind pix">inductive</span><h3><a href="#Cairn.Anchor"><span class="ns">Cairn.</span>Anchor</a></h3><span class="src" title="source">lean/Cairn/Surface.lean:156</span></div>
+<pre class="sig"><b class="nm">Anchor</b> : Type</pre><div class="doc"><p>Where the host puts a panel on its screen.</p>
+</div><div class="members"><b class="pix muted">Constructors</b><div class="member" id="Cairn.Anchor.bottomCenter"><pre class="sig"><b class="nm">bottomCenter</b> (offset : <span title="Nat">Nat</span>) : <a href="Cairn.Surface.html#Cairn.Anchor" title="Cairn.Anchor">Anchor</a></pre><div class="doc"><p>Horizontally centred, <a href="Cairn.Surface.html#Cairn.Anchor.offset"><code>offset</code></a> points above the bottom of the screen's visible frame
+(above the Dock).</p>
+</div></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Surface.html#Cairn.instInhabitedAnchor"><code>Inhabited</code></a> <a href="Cairn.Surface.html#Cairn.instReprAnchor"><code>Repr</code></a></p></div>
+</section>
+<section class="decl" id="Cairn.ScreenChoice" data-line="167">
+<div class="dhead"><span class="kind pix">inductive</span><h3><a href="#Cairn.ScreenChoice"><span class="ns">Cairn.</span>ScreenChoice</a></h3><span class="src" title="source">lean/Cairn/Surface.lean:167</span></div>
+<pre class="sig"><b class="nm">ScreenChoice</b> : Type</pre><div class="doc"><p>Which screen a panel is shown on.</p>
+</div><div class="members"><b class="pix muted">Constructors</b><div class="member" id="Cairn.ScreenChoice.pointer"><pre class="sig"><b class="nm">pointer</b> : <a href="Cairn.Surface.html#Cairn.ScreenChoice" title="Cairn.ScreenChoice">ScreenChoice</a></pre><div class="doc"><p>The screen the pointer is on when the panel is shown; it stays there until hidden.</p>
+</div></div><div class="member" id="Cairn.ScreenChoice.main"><pre class="sig"><b class="nm">main</b> : <a href="Cairn.Surface.html#Cairn.ScreenChoice" title="Cairn.ScreenChoice">ScreenChoice</a></pre></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Surface.html#Cairn.instInhabitedScreenChoice"><code>Inhabited</code></a> <a href="Cairn.Surface.html#Cairn.instReprScreenChoice"><code>Repr</code></a></p></div>
+</section>
+<h2 id="definitions">Definitions <span class="n">11</span></h2>
+<section class="decl" id="Cairn.MenuItem.button" data-line="43">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.MenuItem.button"><span class="ns">Cairn.MenuItem.</span>button</a></h3><span class="src" title="source">lean/Cairn/Surface.lean:43</span></div>
+<pre class="sig"><b class="nm">button</b> (r : <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a>) (label : <span title="String">String</span>) (enabled : <span title="Bool">Bool</span> := <span title="Bool.true">true</span>)
+  (shortcut : Option <a href="Cairn.Surface.html#Cairn.Shortcut" title="Cairn.Shortcut">Shortcut</a> := none) : <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a></pre><div class="doc"><p>A plain item for <code>r</code>.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.MenuItem.check" data-line="48">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.MenuItem.check"><span class="ns">Cairn.MenuItem.</span>check</a></h3><span class="src" title="source">lean/Cairn/Surface.lean:48</span></div>
+<pre class="sig"><b class="nm">check</b> (r : <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a>) (label : <span title="String">String</span>) (on : <span title="Bool">Bool</span>)
+  (enabled : <span title="Bool">Bool</span> := <span title="Bool.true">true</span>) : <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a></pre><div class="doc"><p>A checkbox item for <code>r</code>, ticked when <code>on</code>.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.MenuItem.refsOf" data-line="53">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.MenuItem.refsOf"><span class="ns">Cairn.MenuItem.</span>refsOf</a></h3><span class="src" title="source">lean/Cairn/Surface.lean:53</span></div>
+<pre class="sig"><b class="nm">refsOf</b> : <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a> → List <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a></pre><div class="doc"><p>The refs of an item's actionable items, depth first, in menu order.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.MenuItem.refs" data-line="59">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.MenuItem.refs"><span class="ns">Cairn.MenuItem.</span>refs</a></h3><span class="src" title="source">lean/Cairn/Surface.lean:59</span></div>
+<pre class="sig"><b class="nm">refs</b> : List <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a> → List <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a></pre><div class="doc"><p>The refs of every actionable item in a menu, depth first, in menu order.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.MenuItem.enabledRefsOf" data-line="66">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.MenuItem.enabledRefsOf"><span class="ns">Cairn.MenuItem.</span>enabledRefsOf</a></h3><span class="src" title="source">lean/Cairn/Surface.lean:66</span></div>
+<pre class="sig"><b class="nm">enabledRefsOf</b> : <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a> → List <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a></pre><div class="doc"><p>The refs of an item's enabled actionable items.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.MenuItem.enabledRefs" data-line="73">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.MenuItem.enabledRefs"><span class="ns">Cairn.MenuItem.</span>enabledRefs</a></h3><span class="src" title="source">lean/Cairn/Surface.lean:73</span></div>
+<pre class="sig"><b class="nm">enabledRefs</b> : List <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a> → List <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a></pre><div class="doc"><p>The refs of every enabled actionable item in a menu, in any submenu: what a selection may
+press (<a href="Cairn.Runtime.Step.html#Cairn.Runtime.route"><code>Cairn.Runtime.route</code></a>, <code>menuSelect</code>).</p>
+</div>
+</section>
+<section class="decl" id="Cairn.MenuItem.findOf" data-line="80">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.MenuItem.findOf"><span class="ns">Cairn.MenuItem.</span>findOf</a></h3><span class="src" title="source">lean/Cairn/Surface.lean:80</span></div>
+<pre class="sig"><b class="nm">findOf</b> (r : <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a>) : <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a> → Option (<a href="Cairn.UI.Node.html#Cairn.Control" title="Cairn.Control">Control</a> × <span title="Bool">Bool</span>)</pre><div class="doc"><p>The first actionable item with ref <code>r</code> in an item: its control and whether it is enabled.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.MenuItem.find" data-line="86">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.MenuItem.find"><span class="ns">Cairn.MenuItem.</span>find</a></h3><span class="src" title="source">lean/Cairn/Surface.lean:86</span></div>
+<pre class="sig"><b class="nm">find</b> (r : <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a>) : List <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a> → Option (<a href="Cairn.UI.Node.html#Cairn.Control" title="Cairn.Control">Control</a> × <span title="Bool">Bool</span>)</pre><div class="doc"><p>The first actionable item with ref <code>r</code> in a menu.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.MenuItem.enabledOf" data-line="95">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.MenuItem.enabledOf"><span class="ns">Cairn.MenuItem.</span>enabledOf</a></h3><span class="src" title="source">lean/Cairn/Surface.lean:95</span></div>
+<pre class="sig"><b class="nm">enabledOf</b> (items : List <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a>) (r : <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a>) : Option <span title="Bool">Bool</span></pre><div class="doc"><p>Whether the item for <code>r</code> is enabled; <code>none</code> when the menu has no item for <code>r</code>.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.MenuItem.checkedOf" data-line="98">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.MenuItem.checkedOf"><span class="ns">Cairn.MenuItem.</span>checkedOf</a></h3><span class="src" title="source">lean/Cairn/Surface.lean:98</span></div>
+<pre class="sig"><b class="nm">checkedOf</b> (items : List <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a>) (r : <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a>) : Option (Option <span title="Bool">Bool</span>)</pre><div class="doc"><p>The item for <code>r</code>'s checkmark (<code>some none</code>: not a checkbox); <code>none</code> when there is no item.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Anchor.offset" data-line="163">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Anchor.offset"><span class="ns">Cairn.Anchor.</span>offset</a></h3><span class="src" title="source">lean/Cairn/Surface.lean:163</span></div>
+<pre class="sig"><b class="nm">offset</b> : <a href="Cairn.Surface.html#Cairn.Anchor" title="Cairn.Anchor">Anchor</a> → <span title="Nat">Nat</span></pre><div class="doc"><p>The anchor's distance in points.</p>
+</div>
+</section>
+<h2 id="theorems">Theorems <span class="n">5</span></h2>
+<section class="decl" id="Cairn.MenuItem.enabledRefsOf_sub" data-line="102">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.MenuItem.enabledRefsOf_sub"><span class="ns">Cairn.MenuItem.</span>enabledRefsOf_sub</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Surface.lean:102</span></div>
+<pre class="sig"><b class="nm">enabledRefsOf_sub</b> (m : <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a>) (r : <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a>) :
+  r ∈ m.enabledRefsOf → r ∈ m.refsOf</pre>
+</section>
+<section class="decl" id="Cairn.MenuItem.enabledRefs_sub" data-line="114">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.MenuItem.enabledRefs_sub"><span class="ns">Cairn.MenuItem.</span>enabledRefs_sub</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Surface.lean:114</span></div>
+<pre class="sig"><b class="nm">enabledRefs_sub</b> (ms : List <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a>) (r : <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a>) :
+  r ∈ enabledRefs ms → r ∈ refs ms</pre>
+</section>
+<section class="decl" id="Cairn.MenuItem.refs_append" data-line="125">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.MenuItem.refs_append"><span class="ns">Cairn.MenuItem.</span>refs_append</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Surface.lean:125</span></div>
+<pre class="sig"><b class="nm">refs_append</b> (xs ys : List <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a>) : refs (xs ++ ys) = refs xs ++ refs ys</pre>
+</section>
+<section class="decl" id="Cairn.MenuItem.enabledRefs_append" data-line="130">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.MenuItem.enabledRefs_append"><span class="ns">Cairn.MenuItem.</span>enabledRefs_append</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Surface.lean:130</span></div>
+<pre class="sig"><b class="nm">enabledRefs_append</b> (xs ys : List <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a>) :
+  enabledRefs (xs ++ ys) = enabledRefs xs ++ enabledRefs ys</pre>
+</section>
+<section class="decl" id="Cairn.MenuItem.mem_refs_of_enabled" data-line="137">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.MenuItem.mem_refs_of_enabled"><span class="ns">Cairn.MenuItem.</span>mem_refs_of_enabled</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Surface.lean:137</span></div>
+<pre class="sig"><b class="nm">mem_refs_of_enabled</b> {ms : List <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a>} {r : <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a>}
+  (h : r ∈ enabledRefs ms) : r ∈ refs ms</pre><div class="doc"><p>An enabled item is an item.</p>
+</div>
+</section>
+<h2 id="instances">Instances <span class="n">15</span></h2>
+<section class="decl" id="Cairn.instInhabitedShortcut" data-line="27">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedShortcut"><span class="ns">Cairn.</span>instInhabitedShortcut</a></h3><span class="src" title="source">lean/Cairn/Surface.lean:27</span></div>
+<pre class="sig"><b class="nm">instInhabitedShortcut</b> : Inhabited <a href="Cairn.Surface.html#Cairn.Shortcut" title="Cairn.Shortcut">Shortcut</a></pre>
+</section>
+<section class="decl" id="Cairn.instDecidableEqShortcut" data-line="27">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instDecidableEqShortcut"><span class="ns">Cairn.</span>instDecidableEqShortcut</a></h3><span class="src" title="source">lean/Cairn/Surface.lean:27</span></div>
+<pre class="sig"><b class="nm">instDecidableEqShortcut</b> : DecidableEq <a href="Cairn.Surface.html#Cairn.Shortcut" title="Cairn.Shortcut">Shortcut</a></pre>
+</section>
+<section class="decl" id="Cairn.instReprShortcut" data-line="27">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprShortcut"><span class="ns">Cairn.</span>instReprShortcut</a></h3><span class="src" title="source">lean/Cairn/Surface.lean:27</span></div>
+<pre class="sig"><b class="nm">instReprShortcut</b> : Repr <a href="Cairn.Surface.html#Cairn.Shortcut" title="Cairn.Shortcut">Shortcut</a></pre>
+</section>
+<section class="decl" id="Cairn.instInhabitedMenuItem" data-line="38">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedMenuItem"><span class="ns">Cairn.</span>instInhabitedMenuItem</a></h3><span class="src" title="source">lean/Cairn/Surface.lean:38</span></div>
+<pre class="sig"><b class="nm">instInhabitedMenuItem</b> : Inhabited <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a></pre>
+</section>
+<section class="decl" id="Cairn.instReprMenuItem" data-line="38">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprMenuItem"><span class="ns">Cairn.</span>instReprMenuItem</a></h3><span class="src" title="source">lean/Cairn/Surface.lean:38</span></div>
+<pre class="sig"><b class="nm">instReprMenuItem</b> : Repr <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a></pre>
+</section>
+<section class="decl" id="Cairn.instReprStatusItem" data-line="153">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprStatusItem"><span class="ns">Cairn.</span>instReprStatusItem</a></h3><span class="src" title="source">lean/Cairn/Surface.lean:153</span></div>
+<pre class="sig"><b class="nm">instReprStatusItem</b> : Repr <a href="Cairn.Surface.html#Cairn.StatusItem" title="Cairn.StatusItem">StatusItem</a></pre>
+</section>
+<section class="decl" id="Cairn.instInhabitedStatusItem" data-line="153">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedStatusItem"><span class="ns">Cairn.</span>instInhabitedStatusItem</a></h3><span class="src" title="source">lean/Cairn/Surface.lean:153</span></div>
+<pre class="sig"><b class="nm">instInhabitedStatusItem</b> : Inhabited <a href="Cairn.Surface.html#Cairn.StatusItem" title="Cairn.StatusItem">StatusItem</a></pre>
+</section>
+<section class="decl" id="Cairn.instDecidableEqAnchor" data-line="160">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instDecidableEqAnchor"><span class="ns">Cairn.</span>instDecidableEqAnchor</a></h3><span class="src" title="source">lean/Cairn/Surface.lean:160</span></div>
+<pre class="sig"><b class="nm">instDecidableEqAnchor</b> : DecidableEq <a href="Cairn.Surface.html#Cairn.Anchor" title="Cairn.Anchor">Anchor</a></pre>
+</section>
+<section class="decl" id="Cairn.instInhabitedAnchor" data-line="160">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedAnchor"><span class="ns">Cairn.</span>instInhabitedAnchor</a></h3><span class="src" title="source">lean/Cairn/Surface.lean:160</span></div>
+<pre class="sig"><b class="nm">instInhabitedAnchor</b> : Inhabited <a href="Cairn.Surface.html#Cairn.Anchor" title="Cairn.Anchor">Anchor</a></pre>
+</section>
+<section class="decl" id="Cairn.instReprAnchor" data-line="160">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprAnchor"><span class="ns">Cairn.</span>instReprAnchor</a></h3><span class="src" title="source">lean/Cairn/Surface.lean:160</span></div>
+<pre class="sig"><b class="nm">instReprAnchor</b> : Repr <a href="Cairn.Surface.html#Cairn.Anchor" title="Cairn.Anchor">Anchor</a></pre>
+</section>
+<section class="decl" id="Cairn.instInhabitedScreenChoice" data-line="171">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedScreenChoice"><span class="ns">Cairn.</span>instInhabitedScreenChoice</a></h3><span class="src" title="source">lean/Cairn/Surface.lean:171</span></div>
+<pre class="sig"><b class="nm">instInhabitedScreenChoice</b> : Inhabited <a href="Cairn.Surface.html#Cairn.ScreenChoice" title="Cairn.ScreenChoice">ScreenChoice</a></pre>
+</section>
+<section class="decl" id="Cairn.instReprScreenChoice" data-line="171">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprScreenChoice"><span class="ns">Cairn.</span>instReprScreenChoice</a></h3><span class="src" title="source">lean/Cairn/Surface.lean:171</span></div>
+<pre class="sig"><b class="nm">instReprScreenChoice</b> : Repr <a href="Cairn.Surface.html#Cairn.ScreenChoice" title="Cairn.ScreenChoice">ScreenChoice</a></pre>
+</section>
+<section class="decl" id="Cairn.instDecidableEqScreenChoice" data-line="171">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instDecidableEqScreenChoice"><span class="ns">Cairn.</span>instDecidableEqScreenChoice</a></h3><span class="src" title="source">lean/Cairn/Surface.lean:171</span></div>
+<pre class="sig"><b class="nm">instDecidableEqScreenChoice</b> : DecidableEq <a href="Cairn.Surface.html#Cairn.ScreenChoice" title="Cairn.ScreenChoice">ScreenChoice</a></pre>
+</section>
+<section class="decl" id="Cairn.instInhabitedPanelView" data-line="181">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedPanelView"><span class="ns">Cairn.</span>instInhabitedPanelView</a></h3><span class="src" title="source">lean/Cairn/Surface.lean:181</span></div>
+<pre class="sig"><b class="nm">instInhabitedPanelView</b> : Inhabited <a href="Cairn.Surface.html#Cairn.PanelView" title="Cairn.PanelView">PanelView</a></pre>
+</section>
+<section class="decl" id="Cairn.instReprPanelView" data-line="181">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprPanelView"><span class="ns">Cairn.</span>instReprPanelView</a></h3><span class="src" title="source">lean/Cairn/Surface.lean:181</span></div>
+<pre class="sig"><b class="nm">instReprPanelView</b> : Repr <a href="Cairn.Surface.html#Cairn.PanelView" title="Cairn.PanelView">PanelView</a></pre>
+</section>
+
+</div>
+</main></div>
+<footer>Generated by <code>make doc APP=Counter</code> from the code and the build. Nothing here is written by hand.</footer>
+<script src="search-index.js"></script>
+<script src="search.js"></script>
+<script type="module">
+// On the site, the headings get the meadow's sprigs and a "#" that copies a link to them
+// (site/public/scene.js); elsewhere, nothing.
+import("/scene.js").then((m) => { const main = document.querySelector("main"); m.mountSprigs(main); m.mountAnchors(main); }).catch(() => {});
+</script>
+</body>
+</html>

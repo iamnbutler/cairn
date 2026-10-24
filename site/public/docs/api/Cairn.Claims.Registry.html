@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cairn.Claims.Registry · Cairn docs</title>
+<meta name="description" content="Cairn's API, generated from its code.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="doc.css">
+</head>
+<body>
+<nav class="bar"><a class="home" href="../../"><img src="icon.svg" alt="">Cairn</a><span class="sep">/</span><a href="index.html">Cairn docs</a><a href="claims.html">Claims</a><span class="search"><input id="search" type="search" placeholder="Search names, docs, ^N  ( / )" autocomplete="off" spellcheck="false"><div id="results" hidden></div></span></nav>
+<div class="layout"><aside class="toc"><div class="pix muted">Cairn.Claims.Registry</div><a href="#structures">Structures <span class="n">2</span></a><ol><li><a href="#Cairn.Claims.Entry">Entry</a></li><li><a href="#Cairn.Claims.State">State</a></li></ol><a href="#definitions">Definitions <span class="n">10</span></a><ol><li><a href="#Cairn.ClaimKind.name">name</a></li><li><a href="#Cairn.ClaimKind.ofName?">ofName?</a></li><li><a href="#Cairn.Claims.Entry.label">label</a></li><li><a href="#Cairn.Claims.State.add">add</a></li><li><a href="#Cairn.Claims.registry">registry</a></li><li><a href="#Cairn.Claims.sealedExt">sealedExt</a></li><li><a href="#Cairn.Claims.entries">entries</a></li><li><a href="#Cairn.Claims.lookup?">lookup?</a></li><li><a href="#Cairn.Claims.clashes">clashes</a></li><li><a href="#Cairn.Claims.allEntries">allEntries</a></li></ol><a href="#instances">Instances <span class="n">2</span></a><ol><li><a href="#Cairn.Claims.instInhabitedEntry">instInhabitedEntry</a></li><li><a href="#Cairn.Claims.instInhabitedState">instInhabitedState</a></li></ol></aside><main>
+<header class="page"><div class="eyebrow">Cairn · module</div><h1 class="mod">Cairn.Claims.Registry</h1><p class="src">lean/Cairn/Claims/Registry.lean</p></header>
+<div class="doc"><p>The claim registry: an environment extension holding one entry per claim declared by the
+claim commands, in this module and every module it imports. The commands consult it for the
+compile-time checks; <code>lake exe ledger</code> and <code>lake exe claims</code> read it from the imported
+environment.</p>
+<p>Compile time only (imports <code>Lean</code>); see <a href="Cairn.Claims.html"><code>Cairn.Claims</code></a> for why that matters.</p>
+</div>
+<p class="imports"><span class="pix muted">Imports</span> <span class="muted">Lean</span>, <a href="Cairn.Claim.html">Cairn.Claim</a></p>
+<div class="order"><span class="pix muted">Order</span> <button type="button" data-order="kind" class="on">by kind</button><button type="button" data-order="source">as in the source</button></div>
+<div id="items">
+
+<h2 id="structures">Structures <span class="n">2</span></h2>
+<section class="decl" id="Cairn.Claims.Entry" data-line="28">
+<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.Claims.Entry"><span class="ns">Cairn.Claims.</span>Entry</a></h3><span class="src" title="source">lean/Cairn/Claims/Registry.lean:28</span></div>
+<pre class="sig"><b class="nm">Entry</b> : Type</pre><div class="doc"><p>One claim as the registry records it.</p>
+</div><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.Claims.Entry.info"><pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre></div><div class="member" id="Cairn.Claims.Entry.ns"><pre class="sig"><b class="nm">ns</b> : <span title="Lean.Name">Lean.Name</span></pre><div class="doc"><p>The namespace the claim was declared in; <code>claims%</code> and <code>moves%</code> collect by it.</p>
+</div></div><div class="member" id="Cairn.Claims.Entry.decl"><pre class="sig"><b class="nm">decl</b> : <span title="Lean.Name">Lean.Name</span></pre><div class="doc"><p>The declaration holding the claim (a <a href="Cairn.Claims.Move.html"><code>Move</code></a>, <a href="Cairn.Claims.Machine.html#Cairn.Claims.Flow"><code>Flow</code></a>, <a href="Cairn.Claims.Machine.html#Cairn.Claims.Invariant"><code>Invariant</code></a>, <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption"><code>Assumption</code></a>, <a href="Cairn.Claims.Machine.html#Cairn.Claims.Place"><code>Place</code></a>,
+or a bare <a href="Cairn.Claim.html#Cairn.ClaimInfo"><code>ClaimInfo</code></a> for a retired id).</p>
+</div></div><div class="member" id="Cairn.Claims.Entry.infoDecl"><pre class="sig"><b class="nm">infoDecl</b> : <span title="Lean.Name">Lean.Name</span></pre><div class="doc"><p>The <a href="Cairn.Claim.html#Cairn.ClaimInfo"><code>ClaimInfo</code></a> constant.</p>
+</div></div><div class="member" id="Cairn.Claims.Entry.module"><pre class="sig"><b class="nm">module</b> : <span title="Lean.Name">Lean.Name</span></pre></div><div class="member" id="Cairn.Claims.Entry.statement"><pre class="sig"><b class="nm">statement</b> : Array <span title="Lean.Name">Lean.Name</span></pre><div class="doc"><p>Declarations whose definitions are the claim's formal statement. The ledger hashes them
+(and what they unfold to in Cairn's own modules) to notice a change of meaning.</p>
+</div></div><div class="member" id="Cairn.Claims.Entry.evidence"><pre class="sig"><b class="nm">evidence</b> : Array (<span title="String">String</span> × <span title="Lean.Name">Lean.Name</span>)</pre><div class="doc"><p>The evidence: a role (<code>sound press</code>, <code>reaches</code>, <code>step</code>, …) and the theorem proving it.</p>
+</div></div><div class="member" id="Cairn.Claims.Entry.triggers"><pre class="sig"><b class="nm">triggers</b> : Array <span title="String">String</span></pre><div class="doc"><p>Moves: the triggers answered, and whether controls are keyed.</p>
+</div></div><div class="member" id="Cairn.Claims.Entry.keyed"><pre class="sig"><b class="nm">keyed</b> : <span title="Bool">Bool</span></pre></div><div class="member" id="Cairn.Claims.Entry.passes"><pre class="sig"><b class="nm">passes</b> : Array <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a></pre><div class="doc"><p>Flows: the claim ids of the moves the witness passes through, in order.</p>
+</div></div><div class="member" id="Cairn.Claims.Entry.machine"><pre class="sig"><b class="nm">machine</b> : Option <span title="Lean.Name">Lean.Name</span></pre><div class="doc"><p>Flows and invariants: the machine they are stated against.</p>
+</div></div><div class="member" id="Cairn.Claims.Entry.check"><pre class="sig"><b class="nm">check</b> : Option <span title="String">String</span></pre><div class="doc"><p>Assumptions: the runnable check that gathers evidence for it (a check name in the trusted
+fuzzer's report, <code>build/fuzz/trusted.json</code>; docs/fuzz.md, &quot;Trusted base&quot;).</p>
+</div></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Claims.Registry.html#Cairn.Claims.instInhabitedEntry"><code>Inhabited</code></a></p></div>
+</section>
+<section class="decl" id="Cairn.Claims.State" data-line="58">
+<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.Claims.State"><span class="ns">Cairn.Claims.</span>State</a></h3><span class="src" title="source">lean/Cairn/Claims/Registry.lean:58</span></div>
+<pre class="sig"><b class="nm">State</b> : Type</pre><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.Claims.State.byId"><pre class="sig"><b class="nm">byId</b> : Std.HashMap <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a> <a href="Cairn.Claims.Registry.html#Cairn.Claims.Entry" title="Cairn.Claims.Entry">Entry</a></pre></div><div class="member" id="Cairn.Claims.State.clashes"><pre class="sig"><b class="nm">clashes</b> : Array (<a href="Cairn.Claims.Registry.html#Cairn.Claims.Entry" title="Cairn.Claims.Entry">Entry</a> × <a href="Cairn.Claims.Registry.html#Cairn.Claims.Entry" title="Cairn.Claims.Entry">Entry</a>)</pre><div class="doc"><p>Pairs of imported claims with the same id (modules that never import each other).</p>
+</div></div><div class="member" id="Cairn.Claims.State.here"><pre class="sig"><b class="nm">here</b> : Array <a href="Cairn.Claims.Registry.html#Cairn.Claims.Entry" title="Cairn.Claims.Entry">Entry</a></pre><div class="doc"><p>Entries declared in this module, in order.</p>
+</div></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Claims.Registry.html#Cairn.Claims.instInhabitedState"><code>Inhabited</code></a></p></div>
+</section>
+<h2 id="definitions">Definitions <span class="n">10</span></h2>
+<section class="decl" id="Cairn.ClaimKind.name" data-line="18">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.ClaimKind.name"><span class="ns">Cairn.ClaimKind.</span>name</a></h3><span class="src" title="source">lean/Cairn/Claims/Registry.lean:18</span></div>
+<pre class="sig"><b class="nm">name</b> : <a href="Cairn.Claim.html#Cairn.ClaimKind" title="Cairn.ClaimKind">ClaimKind</a> → <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.ClaimKind.ofName?" data-line="22">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.ClaimKind.ofName?"><span class="ns">Cairn.ClaimKind.</span>ofName?</a></h3><span class="src" title="source">lean/Cairn/Claims/Registry.lean:22</span></div>
+<pre class="sig"><b class="nm">ofName?</b> : <span title="String">String</span> → Option <a href="Cairn.Claim.html#Cairn.ClaimKind" title="Cairn.ClaimKind">ClaimKind</a></pre>
+</section>
+<section class="decl" id="Cairn.Claims.Entry.label" data-line="55">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.Entry.label"><span class="ns">Cairn.Claims.Entry.</span>label</a></h3><span class="src" title="source">lean/Cairn/Claims/Registry.lean:55</span></div>
+<pre class="sig"><b class="nm">label</b> (e : <a href="Cairn.Claims.Registry.html#Cairn.Claims.Entry" title="Cairn.Claims.Entry">Entry</a>) : <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Claims.State.add" data-line="66">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.State.add"><span class="ns">Cairn.Claims.State.</span>add</a></h3><span class="src" title="source">lean/Cairn/Claims/Registry.lean:66</span></div>
+<pre class="sig"><b class="nm">add</b> (st : <a href="Cairn.Claims.Registry.html#Cairn.Claims.State" title="Cairn.Claims.State">State</a>) (e : <a href="Cairn.Claims.Registry.html#Cairn.Claims.Entry" title="Cairn.Claims.Entry">Entry</a>) : <a href="Cairn.Claims.Registry.html#Cairn.Claims.State" title="Cairn.Claims.State">State</a></pre>
+</section>
+<section class="decl" id="Cairn.Claims.registry" data-line="71">
+<div class="dhead"><span class="kind pix">opaque</span><h3><a href="#Cairn.Claims.registry"><span class="ns">Cairn.Claims.</span>registry</a></h3><span class="src" title="source">lean/Cairn/Claims/Registry.lean:71</span></div>
+<pre class="sig"><b class="nm">registry</b> : Lean.SimplePersistentEnvExtension <a href="Cairn.Claims.Registry.html#Cairn.Claims.Entry" title="Cairn.Claims.Entry">Entry</a> <a href="Cairn.Claims.Registry.html#Cairn.Claims.State" title="Cairn.Claims.State">State</a></pre>
+</section>
+<section class="decl" id="Cairn.Claims.sealedExt" data-line="80">
+<div class="dhead"><span class="kind pix">opaque</span><h3><a href="#Cairn.Claims.sealedExt"><span class="ns">Cairn.Claims.</span>sealedExt</a></h3><span class="src" title="source">lean/Cairn/Claims/Registry.lean:80</span></div>
+<pre class="sig"><b class="nm">sealedExt</b> : Lean.EnvExtension (<span title="Lean.NameSet">Lean.NameSet</span> × <span title="Lean.NameSet">Lean.NameSet</span>)</pre><div class="doc"><p>Namespaces collected in this module by <code>moves%</code> (first) and <code>claims%</code> (second). A move
+declared in the first afterwards would never be dispatched, and a claim declared in the second
+would be missing from the app's claims, so the commands refuse both.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Claims.entries" data-line="82">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.entries"><span class="ns">Cairn.Claims.</span>entries</a></h3><span class="src" title="source">lean/Cairn/Claims/Registry.lean:82</span></div>
+<pre class="sig"><b class="nm">entries</b> (env : <span title="Lean.Environment">Lean.Environment</span>) : Array <a href="Cairn.Claims.Registry.html#Cairn.Claims.Entry" title="Cairn.Claims.Entry">Entry</a></pre>
+</section>
+<section class="decl" id="Cairn.Claims.lookup?" data-line="86">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.lookup?"><span class="ns">Cairn.Claims.</span>lookup?</a></h3><span class="src" title="source">lean/Cairn/Claims/Registry.lean:86</span></div>
+<pre class="sig"><b class="nm">lookup?</b> (env : <span title="Lean.Environment">Lean.Environment</span>) (id : <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a>) : Option <a href="Cairn.Claims.Registry.html#Cairn.Claims.Entry" title="Cairn.Claims.Entry">Entry</a></pre>
+</section>
+<section class="decl" id="Cairn.Claims.clashes" data-line="89">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.clashes"><span class="ns">Cairn.Claims.</span>clashes</a></h3><span class="src" title="source">lean/Cairn/Claims/Registry.lean:89</span></div>
+<pre class="sig"><b class="nm">clashes</b> (env : <span title="Lean.Environment">Lean.Environment</span>) : Array (<a href="Cairn.Claims.Registry.html#Cairn.Claims.Entry" title="Cairn.Claims.Entry">Entry</a> × <a href="Cairn.Claims.Registry.html#Cairn.Claims.Entry" title="Cairn.Claims.Entry">Entry</a>)</pre>
+</section>
+<section class="decl" id="Cairn.Claims.allEntries" data-line="92">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.allEntries"><span class="ns">Cairn.Claims.</span>allEntries</a></h3><span class="src" title="source">lean/Cairn/Claims/Registry.lean:92</span></div>
+<pre class="sig"><b class="nm">allEntries</b> (env : <span title="Lean.Environment">Lean.Environment</span>) : Array <a href="Cairn.Claims.Registry.html#Cairn.Claims.Entry" title="Cairn.Claims.Entry">Entry</a></pre><div class="doc"><p>Every entry, including both sides of any clash, for tools that report on the whole set.</p>
+</div>
+</section>
+<h2 id="instances">Instances <span class="n">2</span></h2>
+<section class="decl" id="Cairn.Claims.instInhabitedEntry" data-line="53">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.Claims.instInhabitedEntry"><span class="ns">Cairn.Claims.</span>instInhabitedEntry</a></h3><span class="src" title="source">lean/Cairn/Claims/Registry.lean:53</span></div>
+<pre class="sig"><b class="nm">instInhabitedEntry</b> : Inhabited <a href="Cairn.Claims.Registry.html#Cairn.Claims.Entry" title="Cairn.Claims.Entry">Entry</a></pre>
+</section>
+<section class="decl" id="Cairn.Claims.instInhabitedState" data-line="64">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.Claims.instInhabitedState"><span class="ns">Cairn.Claims.</span>instInhabitedState</a></h3><span class="src" title="source">lean/Cairn/Claims/Registry.lean:64</span></div>
+<pre class="sig"><b class="nm">instInhabitedState</b> : Inhabited <a href="Cairn.Claims.Registry.html#Cairn.Claims.State" title="Cairn.Claims.State">State</a></pre>
+</section>
+
+</div>
+</main></div>
+<footer>Generated by <code>make doc APP=Counter</code> from the code and the build. Nothing here is written by hand.</footer>
+<script src="search-index.js"></script>
+<script src="search.js"></script>
+<script type="module">
+// On the site, the headings get the meadow's sprigs and a "#" that copies a link to them
+// (site/public/scene.js); elsewhere, nothing.
+import("/scene.js").then((m) => { const main = document.querySelector("main"); m.mountSprigs(main); m.mountAnchors(main); }).catch(() => {});
+</script>
+</body>
+</html>

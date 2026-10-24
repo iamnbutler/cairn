@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cairn.Fuzz.Walk · Cairn docs</title>
+<meta name="description" content="Cairn's API, generated from its code.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="doc.css">
+</head>
+<body>
+<nav class="bar"><a class="home" href="../../"><img src="icon.svg" alt="">Cairn</a><span class="sep">/</span><a href="index.html">Cairn docs</a><a href="claims.html">Claims</a><span class="search"><input id="search" type="search" placeholder="Search names, docs, ^N  ( / )" autocomplete="off" spellcheck="false"><div id="results" hidden></div></span></nav>
+<div class="layout"><aside class="toc"><div class="pix muted">Cairn.Fuzz.Walk</div><a href="#structures">Structures <span class="n">6</span></a><ol><li><a href="#Cairn.Fuzz.Failure">Failure</a></li><li><a href="#Cairn.Fuzz.Setup">Setup</a></li><li><a href="#Cairn.Fuzz.World">World</a></li><li><a href="#Cairn.Fuzz.Performed">Performed</a></li><li><a href="#Cairn.Fuzz.ClaimStat">ClaimStat</a></li><li><a href="#Cairn.Fuzz.Outcome">Outcome</a></li></ol><a href="#inductives">Inductive types <span class="n">2</span></a><ol><li><a href="#Cairn.Fuzz.Op">Op</a></li><li><a href="#Cairn.Fuzz.Source">Source</a></li></ol><a href="#definitions">Definitions <span class="n">37</span></a><ol><li><a href="#Cairn.Fuzz.refLean">refLean</a></li><li><a href="#Cairn.Fuzz.opLean">opLean</a></li><li><a href="#Cairn.Fuzz.actionLean">actionLean</a></li><li><a href="#Cairn.Fuzz.keyText">keyText</a></li><li><a href="#Cairn.Fuzz.opText">opText</a></li><li><a href="#Cairn.Fuzz.mkFail">mkFail</a></li><li><a href="#Cairn.Fuzz.Failure.same">same</a></li><li><a href="#Cairn.Fuzz.Ran">Ran</a></li><li><a href="#Cairn.Fuzz.cfgOf">cfgOf</a></li><li><a href="#Cairn.Fuzz.Target.runApp">runApp</a></li><li><a href="#Cairn.Fuzz.Target.move?">move?</a></li><li><a href="#Cairn.Fuzz.Target.isKeyed">isKeyed</a></li><li><a href="#Cairn.Fuzz.Target.budgetNs">budgetNs</a></li><li><a href="#Cairn.Fuzz.Target.minSize">minSize</a></li><li><a href="#Cairn.Fuzz.World.start">start</a></li><li><a href="#Cairn.Fuzz.opEvents">opEvents</a></li><li><a href="#Cairn.Fuzz.clickEvents">clickEvents</a></li><li><a href="#Cairn.Fuzz.opToEvents">opToEvents</a></li><li><a href="#Cairn.Fuzz.perform">perform</a></li><li><a href="#Cairn.Fuzz.probeKeys">probeKeys</a></li><li><a href="#Cairn.Fuzz.World.noteSeen">noteSeen</a></li><li><a href="#Cairn.Fuzz.isPointer">isPointer</a></li><li><a href="#Cairn.Fuzz.firstBad">firstBad</a></li><li><a href="#Cairn.Fuzz.firstBadList">firstBadList</a></li><li><a href="#Cairn.Fuzz.droppedCheck">droppedCheck</a></li><li><a href="#Cairn.Fuzz.checks">checks</a></li><li><a href="#Cairn.Fuzz.candidates">candidates</a></li><li><a href="#Cairn.Fuzz.textScript">textScript</a></li><li><a href="#Cairn.Fuzz.genAct">genAct</a></li><li><a href="#Cairn.Fuzz.genPoint">genPoint</a></li><li><a href="#Cairn.Fuzz.genSize">genSize</a></li><li><a href="#Cairn.Fuzz.genNoise">genNoise</a></li><li><a href="#Cairn.Fuzz.genOps">genOps</a></li><li><a href="#Cairn.Fuzz.genSetup">genSetup</a></li><li><a href="#Cairn.Fuzz.Stats">Stats</a></li><li><a href="#Cairn.Fuzz.Stats.record">record</a></li><li><a href="#Cairn.Fuzz.runSeq">runSeq</a></li></ol><a href="#instances">Instances <span class="n">8</span></a><ol><li><a href="#Cairn.Fuzz.instBEqOp">instBEqOp</a></li><li><a href="#Cairn.Fuzz.instInhabitedOp">instInhabitedOp</a></li><li><a href="#Cairn.Fuzz.instReprOp">instReprOp</a></li><li><a href="#Cairn.Fuzz.instInhabitedFailure">instInhabitedFailure</a></li><li><a href="#Cairn.Fuzz.instReprFailure">instReprFailure</a></li><li><a href="#Cairn.Fuzz.instReprSetup">instReprSetup</a></li><li><a href="#Cairn.Fuzz.instInhabitedSetup">instInhabitedSetup</a></li><li><a href="#Cairn.Fuzz.instInhabitedClaimStat">instInhabitedClaimStat</a></li></ol></aside><main>
+<header class="page"><div class="eyebrow">Cairn · module</div><h1 class="mod">Cairn.Fuzz.Walk</h1><p class="src">lean/Cairn/Fuzz/Walk.lean</p></header>
+<div class="doc"><h1>The walk</h1>
+<p>One sequence: a window size, text metrics, and operations generated from the current state
+(or replayed from a list), each checked against the app's claims (docs/fuzz.md).</p>
+<p>An app with an <a href="Cairn.App.html"><code>App</code></a> is driven through the real runtime (<a href="Cairn.Runtime.Step.html#Cairn.Runtime.route"><code>Runtime.route</code></a> and <a href="Cairn.Runtime.Step.html#Cairn.Runtime.step"><code>Runtime.step</code></a>):
+an action is performed as the pointer and key events a person would use, so hit testing, focus
+and routing are exercised along with the app. A machine without an <a href="Cairn.App.html"><code>App</code></a> gets its actions
+directly (<code>machine.update</code>).</p>
+</div>
+<p class="imports"><span class="pix muted">Imports</span> <a href="Cairn.Fuzz.Target.html">Cairn.Fuzz.Target</a>, <a href="Cairn.Fuzz.Text.html">Cairn.Fuzz.Text</a>, <a href="Cairn.Fuzz.Metrics.html">Cairn.Fuzz.Metrics</a>, <a href="Cairn.Runtime.html">Cairn.Runtime</a>, <a href="Cairn.Layout.Check.html">Cairn.Layout.Check</a>, <span class="muted">Std.Data.HashMap</span>, <span class="muted">Std.Data.HashSet</span></p>
+<div class="order"><span class="pix muted">Order</span> <button type="button" data-order="kind" class="on">by kind</button><button type="button" data-order="source">as in the source</button></div>
+<div id="items">
+
+<h2 id="structures">Structures <span class="n">6</span></h2>
+<section class="decl" id="Cairn.Fuzz.Failure" data-line="92">
+<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.Fuzz.Failure"><span class="ns">Cairn.Fuzz.</span>Failure</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:92</span></div>
+<pre class="sig"><b class="nm">Failure</b> : Type</pre><div class="doc"><p>A failed check: which check, on which claim and key, after which operation.</p>
+</div><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.Fuzz.Failure.check"><pre class="sig"><b class="nm">check</b> : <span title="String">String</span></pre></div><div class="member" id="Cairn.Fuzz.Failure.claim"><pre class="sig"><b class="nm">claim</b> : <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a></pre></div><div class="member" id="Cairn.Fuzz.Failure.key"><pre class="sig"><b class="nm">key</b> : <span title="Nat">Nat</span></pre></div><div class="member" id="Cairn.Fuzz.Failure.step"><pre class="sig"><b class="nm">step</b> : <span title="Nat">Nat</span></pre></div><div class="member" id="Cairn.Fuzz.Failure.message"><pre class="sig"><b class="nm">message</b> : <span title="String">String</span></pre></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.instInhabitedFailure"><code>Inhabited</code></a> <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.instReprFailure"><code>Repr</code></a></p></div>
+</section>
+<section class="decl" id="Cairn.Fuzz.Setup" data-line="109">
+<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.Fuzz.Setup"><span class="ns">Cairn.Fuzz.</span>Setup</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:109</span></div>
+<pre class="sig"><b class="nm">Setup</b> : Type</pre><div class="doc"><p>How a sequence starts.</p>
+</div><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.Fuzz.Setup.seed"><pre class="sig"><b class="nm">seed</b> : <span title="Nat">Nat</span></pre></div><div class="member" id="Cairn.Fuzz.Setup.size"><pre class="sig"><b class="nm">size</b> : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a></pre></div><div class="member" id="Cairn.Fuzz.Setup.metrics"><pre class="sig"><b class="nm">metrics</b> : <a href="Cairn.Fuzz.Metrics.html#Cairn.Fuzz.MetricsChoice" title="Cairn.Fuzz.MetricsChoice">MetricsChoice</a></pre></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.instReprSetup"><code>Repr</code></a> <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.instInhabitedSetup"><code>Inhabited</code></a></p></div>
+</section>
+<section class="decl" id="Cairn.Fuzz.World" data-line="144">
+<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.Fuzz.World"><span class="ns">Cairn.Fuzz.</span>World</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:144</span></div>
+<pre class="sig"><b class="nm">World</b> (S : Type) : Type</pre><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.Fuzz.World.rt"><pre class="sig"><b class="nm">rt</b> : Runtime.State S</pre></div><div class="member" id="Cairn.Fuzz.World.seen"><pre class="sig"><b class="nm">seen</b> : Std.HashMap <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a> <span title="Nat">Nat</span></pre><div class="doc"><p>The largest key seen on screen per keyed move, so &quot;enabled but missing&quot; can be probed.</p>
+</div></div></div>
+</section>
+<section class="decl" id="Cairn.Fuzz.Performed" data-line="206">
+<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.Fuzz.Performed"><span class="ns">Cairn.Fuzz.</span>Performed</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:206</span></div>
+<pre class="sig"><b class="nm">Performed</b> (S : Type) : Type</pre><div class="doc"><p>The result of performing one operation.</p>
+</div><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.Fuzz.Performed.world"><pre class="sig"><b class="nm">world</b> : World S</pre></div><div class="member" id="Cairn.Fuzz.Performed.acts"><pre class="sig"><b class="nm">acts</b> : List <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a></pre><div class="doc"><p>The actions delivered to <code>update</code>, in order.</p>
+</div></div><div class="member" id="Cairn.Fuzz.Performed.ran"><pre class="sig"><b class="nm">ran</b> : <span title="Bool">Bool</span></pre><div class="doc"><p>Whether the operation ran at all (an <code>act</code> whose control is missing is skipped).</p>
+</div></div><div class="member" id="Cairn.Fuzz.Performed.maxNs"><pre class="sig"><b class="nm">maxNs</b> : <span title="Nat">Nat</span></pre><div class="doc"><p>The slowest event's <a href="Cairn.Runtime.Step.html#Cairn.Runtime.step"><code>Runtime.step</code></a> (update, view, layout, settle), in nanoseconds.</p>
+</div></div><div class="member" id="Cairn.Fuzz.Performed.dropped"><pre class="sig"><b class="nm">dropped</b> : <span title="Bool">Bool</span></pre><div class="doc"><p>A press or double press the runtime dropped by design: its pointerDown delivered a <code>blur</code>,
+and after that step the pressed control is no longer at the point, so the release lands
+elsewhere and presses nothing (docs/runtime.md; TodoMVC decision T33 in docs/plan.md: the
+edit saves first, and if saving moved what was clicked, the click is dropped). This is
+exactly where <a href="Cairn.Runtime.Proofs.html#Cairn.Runtime.click_presses"><code>Runtime.click_presses</code></a>'s hypothesis fails, so &quot;performed&quot; does not apply.</p>
+</div></div></div>
+</section>
+<section class="decl" id="Cairn.Fuzz.ClaimStat" data-line="448">
+<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.Fuzz.ClaimStat"><span class="ns">Cairn.Fuzz.</span>ClaimStat</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:448</span></div>
+<pre class="sig"><b class="nm">ClaimStat</b> : Type</pre><div class="doc"><p>Counters for one claim.</p>
+</div><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.Fuzz.ClaimStat.steps"><pre class="sig"><b class="nm">steps</b> : <span title="Nat">Nat</span></pre></div><div class="member" id="Cairn.Fuzz.ClaimStat.checks"><pre class="sig"><b class="nm">checks</b> : Std.HashMap <span title="String">String</span> <span title="Nat">Nat</span></pre></div><div class="member" id="Cairn.Fuzz.ClaimStat.sequences"><pre class="sig"><b class="nm">sequences</b> : <span title="Nat">Nat</span></pre></div><div class="member" id="Cairn.Fuzz.ClaimStat.lastSeq"><pre class="sig"><b class="nm">lastSeq</b> : Option <span title="Nat">Nat</span></pre><div class="doc"><p>The last sequence that touched it, so <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.ClaimStat.sequences"><code>sequences</code></a> counts each once.</p>
+</div></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.instInhabitedClaimStat"><code>Inhabited</code></a></p></div>
+</section>
+<section class="decl" id="Cairn.Fuzz.Outcome" data-line="474">
+<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.Fuzz.Outcome"><span class="ns">Cairn.Fuzz.</span>Outcome</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:474</span></div>
+<pre class="sig"><b class="nm">Outcome</b> : Type</pre><div class="doc"><p>What one sequence did.</p>
+</div><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.Fuzz.Outcome.setup"><pre class="sig"><b class="nm">setup</b> : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Setup" title="Cairn.Fuzz.Setup">Setup</a></pre></div><div class="member" id="Cairn.Fuzz.Outcome.ops"><pre class="sig"><b class="nm">ops</b> : Array <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Op" title="Cairn.Fuzz.Op">Op</a></pre></div><div class="member" id="Cairn.Fuzz.Outcome.failure"><pre class="sig"><b class="nm">failure</b> : Option <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Failure" title="Cairn.Fuzz.Failure">Failure</a></pre></div><div class="member" id="Cairn.Fuzz.Outcome.stats"><pre class="sig"><b class="nm">stats</b> : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Stats" title="Cairn.Fuzz.Stats">Stats</a></pre></div><div class="member" id="Cairn.Fuzz.Outcome.steps"><pre class="sig"><b class="nm">steps</b> : <span title="Nat">Nat</span></pre></div><div class="member" id="Cairn.Fuzz.Outcome.over"><pre class="sig"><b class="nm">over</b> : Array (<span title="Nat">Nat</span> × <span title="Nat">Nat</span>)</pre><div class="doc"><p>Steps over the frame budget: (step, nanoseconds).</p>
+</div></div><div class="member" id="Cairn.Fuzz.Outcome.maxNs"><pre class="sig"><b class="nm">maxNs</b> : <span title="Nat">Nat</span></pre></div><div class="member" id="Cairn.Fuzz.Outcome.skipped"><pre class="sig"><b class="nm">skipped</b> : <span title="Nat">Nat</span></pre><div class="doc"><p>Steps where pressability was skipped because the window was below the minimum.</p>
+</div></div></div>
+</section>
+<h2 id="inductives">Inductive types <span class="n">2</span></h2>
+<section class="decl" id="Cairn.Fuzz.Op" data-line="23">
+<div class="dhead"><span class="kind pix">inductive</span><h3><a href="#Cairn.Fuzz.Op"><span class="ns">Cairn.Fuzz.</span>Op</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:23</span></div>
+<pre class="sig"><b class="nm">Op</b> : Type</pre><div class="doc"><p>One operation of a sequence. Self-contained, so a subsequence replays without the seed.</p>
+</div><div class="members"><b class="pix muted">Constructors</b><div class="member" id="Cairn.Fuzz.Op.act"><pre class="sig"><b class="nm">act</b> (a : <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a>) : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Op" title="Cairn.Fuzz.Op">Op</a></pre><div class="doc"><p>An action of a move, performed through the UI (or delivered, without an <a href="Cairn.App.html"><code>App</code></a>).</p>
+</div></div><div class="member" id="Cairn.Fuzz.Op.click"><pre class="sig"><b class="nm">click</b> (p : <a href="Cairn.Geometry.html#Cairn.Point" title="Cairn.Point">Point</a>) (clicks : <span title="Nat">Nat</span>) : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Op" title="Cairn.Fuzz.Op">Op</a></pre></div><div class="member" id="Cairn.Fuzz.Op.move"><pre class="sig"><b class="nm">move</b> (p : <a href="Cairn.Geometry.html#Cairn.Point" title="Cairn.Point">Point</a>) : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Op" title="Cairn.Fuzz.Op">Op</a></pre></div><div class="member" id="Cairn.Fuzz.Op.tab"><pre class="sig"><b class="nm">tab</b> (back : <span title="Bool">Bool</span>) : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Op" title="Cairn.Fuzz.Op">Op</a></pre></div><div class="member" id="Cairn.Fuzz.Op.key"><pre class="sig"><b class="nm">key</b> (k : <a href="Cairn.Input.html#Cairn.Key" title="Cairn.Key">Key</a>) (mods : <a href="Cairn.Input.html#Cairn.Mods" title="Cairn.Mods">Mods</a>) : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Op" title="Cairn.Fuzz.Op">Op</a></pre></div><div class="member" id="Cairn.Fuzz.Op.resize"><pre class="sig"><b class="nm">resize</b> (size : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Op" title="Cairn.Fuzz.Op">Op</a></pre></div><div class="member" id="Cairn.Fuzz.Op.exit"><pre class="sig"><b class="nm">exit</b> : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Op" title="Cairn.Fuzz.Op">Op</a></pre></div><div class="member" id="Cairn.Fuzz.Op.windowFocus"><pre class="sig"><b class="nm">windowFocus</b> (b : <span title="Bool">Bool</span>) : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Op" title="Cairn.Fuzz.Op">Op</a></pre></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.instBEqOp"><code>BEq</code></a> <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.instInhabitedOp"><code>Inhabited</code></a> <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.instReprOp"><code>Repr</code></a></p></div>
+</section>
+<section class="decl" id="Cairn.Fuzz.Source" data-line="487">
+<div class="dhead"><span class="kind pix">inductive</span><h3><a href="#Cairn.Fuzz.Source"><span class="ns">Cairn.Fuzz.</span>Source</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:487</span></div>
+<pre class="sig"><b class="nm">Source</b> : Type</pre><div class="doc"><p>Where a sequence's operations come from: the generator, or a fixed list (replay).</p>
+</div><div class="members"><b class="pix muted">Constructors</b><div class="member" id="Cairn.Fuzz.Source.gen"><pre class="sig"><b class="nm">gen</b> (rng : <a href="Cairn.Fuzz.Rng.html" title="Cairn.Fuzz.Rng">Rng</a>) (steps : <span title="Nat">Nat</span>) : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Source" title="Cairn.Fuzz.Source">Source</a></pre></div><div class="member" id="Cairn.Fuzz.Source.replay"><pre class="sig"><b class="nm">replay</b> (ops : Array <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Op" title="Cairn.Fuzz.Op">Op</a>) : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Source" title="Cairn.Fuzz.Source">Source</a></pre></div></div>
+</section>
+<h2 id="definitions">Definitions <span class="n">37</span></h2>
+<section class="decl" id="Cairn.Fuzz.refLean" data-line="37">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.refLean"><span class="ns">Cairn.Fuzz.</span>refLean</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:37</span></div>
+<pre class="sig"><b class="nm">refLean</b> (c : <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a>) : <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.opLean" data-line="40">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.opLean"><span class="ns">Cairn.Fuzz.</span>opLean</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:40</span></div>
+<pre class="sig"><b class="nm">opLean</b> : <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a> → <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.actionLean" data-line="62">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.actionLean"><span class="ns">Cairn.Fuzz.</span>actionLean</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:62</span></div>
+<pre class="sig"><b class="nm">actionLean</b> : <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a> → <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.keyText" data-line="70">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.keyText"><span class="ns">Cairn.Fuzz.</span>keyText</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:70</span></div>
+<pre class="sig"><b class="nm">keyText</b> (k : <a href="Cairn.Input.html#Cairn.Key" title="Cairn.Key">Key</a>) (m : <a href="Cairn.Input.html#Cairn.Mods" title="Cairn.Mods">Mods</a>) : <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.opText" data-line="80">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.opText"><span class="ns">Cairn.Fuzz.</span>opText</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:80</span></div>
+<pre class="sig"><b class="nm">opText</b> : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Op" title="Cairn.Fuzz.Op">Op</a> → <span title="String">String</span></pre><div class="doc"><p>An operation, as a person would say it.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Fuzz.mkFail" data-line="100">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.mkFail"><span class="ns">Cairn.Fuzz.</span>mkFail</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:100</span></div>
+<pre class="sig"><b class="nm">mkFail</b> (check : <span title="String">String</span>) (r : <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a>) (step : <span title="Nat">Nat</span>) (message : <span title="String">String</span>) :
+  <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Failure" title="Cairn.Fuzz.Failure">Failure</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Failure.same" data-line="103">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Failure.same"><span class="ns">Cairn.Fuzz.Failure.</span>same</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:103</span></div>
+<pre class="sig"><b class="nm">same</b> (a b : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Failure" title="Cairn.Fuzz.Failure">Failure</a>) : <span title="Bool">Bool</span></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Ran" data-line="106">
+<div class="dhead"><span class="kind pix">abbrev</span><h3><a href="#Cairn.Fuzz.Ran"><span class="ns">Cairn.Fuzz.</span>Ran</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:106</span></div>
+<pre class="sig"><b class="nm">Ran</b> : Type</pre><div class="doc"><p>A check that ran on a claim: <code>(claim, check kind)</code>.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Fuzz.cfgOf" data-line="118">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.cfgOf"><span class="ns">Cairn.Fuzz.</span>cfgOf</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:118</span></div>
+<pre class="sig"><b class="nm">cfgOf</b> (m : <a href="Cairn.Fuzz.Metrics.html#Cairn.Fuzz.MetricsChoice" title="Cairn.Fuzz.MetricsChoice">MetricsChoice</a>) : <a href="Cairn.Runtime.Step.html#Cairn.Runtime.Config" title="Cairn.Runtime.Config">Runtime.Config</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Target.runApp" data-line="121">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Target.runApp"><span class="ns">Cairn.Fuzz.Target.</span>runApp</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:121</span></div>
+<pre class="sig"><b class="nm">runApp</b> (t : <a href="Cairn.Fuzz.Target.html" title="Cairn.Fuzz.Target">Target</a>) : App t.S</pre><div class="doc"><p>The app, or a stand-in with an empty view for a machine without one.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Fuzz.Target.move?" data-line="125">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Target.move?"><span class="ns">Cairn.Fuzz.Target.</span>move?</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:125</span></div>
+<pre class="sig"><b class="nm">move?</b> (t : <a href="Cairn.Fuzz.Target.html" title="Cairn.Fuzz.Target">Target</a>) (id : <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a>) : Option (Claims.Move t.S)</pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Target.isKeyed" data-line="127">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Target.isKeyed"><span class="ns">Cairn.Fuzz.Target.</span>isKeyed</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:127</span></div>
+<pre class="sig"><b class="nm">isKeyed</b> (t : <a href="Cairn.Fuzz.Target.html" title="Cairn.Fuzz.Target">Target</a>) (id : <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a>) : <span title="Bool">Bool</span></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Target.budgetNs" data-line="129">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Target.budgetNs"><span class="ns">Cairn.Fuzz.Target.</span>budgetNs</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:129</span></div>
+<pre class="sig"><b class="nm">budgetNs</b> (t : <a href="Cairn.Fuzz.Target.html" title="Cairn.Fuzz.Target">Target</a>) : <span title="Nat">Nat</span></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Target.minSize" data-line="132">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Target.minSize"><span class="ns">Cairn.Fuzz.Target.</span>minSize</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:132</span></div>
+<pre class="sig"><b class="nm">minSize</b> (t : <a href="Cairn.Fuzz.Target.html" title="Cairn.Fuzz.Target">Target</a>) (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (s : t.S) (ui : <a href="Cairn.App.html#Cairn.UI" title="Cairn.UI">UI</a>) : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a></pre><div class="doc"><p>The smallest window for a state: the app's, or the view's preferred size.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Fuzz.World.start" data-line="149">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.World.start"><span class="ns">Cairn.Fuzz.World.</span>start</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:149</span></div>
+<pre class="sig"><b class="nm">start</b> (t : <a href="Cairn.Fuzz.Target.html" title="Cairn.Fuzz.Target">Target</a>) (setup : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Setup" title="Cairn.Fuzz.Setup">Setup</a>) : World t.S</pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.opEvents" data-line="153">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.opEvents"><span class="ns">Cairn.Fuzz.</span>opEvents</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:153</span></div>
+<pre class="sig"><b class="nm">opEvents</b> : <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a> → List <a href="Cairn.Input.html#Cairn.Event" title="Cairn.Event">Event</a></pre><div class="doc"><p>The events a text operation arrives as. <code>setCaret</code> has none (it comes from clicks).</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Fuzz.clickEvents" data-line="175">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.clickEvents"><span class="ns">Cairn.Fuzz.</span>clickEvents</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:175</span></div>
+<pre class="sig"><b class="nm">clickEvents</b> (p : <a href="Cairn.Geometry.html#Cairn.Point" title="Cairn.Point">Point</a>) (clicks : <span title="Nat">Nat</span>) : List <a href="Cairn.Input.html#Cairn.Event" title="Cairn.Event">Event</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.opToEvents" data-line="181">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.opToEvents"><span class="ns">Cairn.Fuzz.</span>opToEvents</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:181</span></div>
+<pre class="sig"><b class="nm">opToEvents</b> {S : Type} (rt : Runtime.State S) : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Op" title="Cairn.Fuzz.Op">Op</a> → Option (List <a href="Cairn.Input.html#Cairn.Event" title="Cairn.Event">Event</a>)</pre><div class="doc"><p>The events that perform an operation in the current state; <code>none</code> when an action's control
+isn't on screen (or can't take that action), so the operation is skipped.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Fuzz.perform" data-line="222">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.perform"><span class="ns">Cairn.Fuzz.</span>perform</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:222</span></div>
+<pre class="sig"><b class="nm">perform</b> (t : <a href="Cairn.Fuzz.Target.html" title="Cairn.Fuzz.Target">Target</a>) (setup : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Setup" title="Cairn.Fuzz.Setup">Setup</a>) (w : World t.S) (op : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Op" title="Cairn.Fuzz.Op">Op</a>) :
+  IO (Performed t.S)</pre><div class="doc"><p>Perform an operation: through the runtime with an <a href="Cairn.App.html"><code>App</code></a>, or straight into the machine.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Fuzz.probeKeys" data-line="262">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.probeKeys"><span class="ns">Cairn.Fuzz.</span>probeKeys</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:262</span></div>
+<pre class="sig"><b class="nm">probeKeys</b> (t : <a href="Cairn.Fuzz.Target.html" title="Cairn.Fuzz.Target">Target</a>) (w : World t.S) (id : <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a>) : List <span title="Nat">Nat</span></pre><div class="doc"><p>Keys to probe for a move: those on screen, the largest seen so far, and one past it.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Fuzz.World.noteSeen" data-line="269">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.World.noteSeen"><span class="ns">Cairn.Fuzz.World.</span>noteSeen</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:269</span></div>
+<pre class="sig"><b class="nm">noteSeen</b> {S : Type} (w : World S) (laid : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>) : World S</pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.isPointer" data-line="272">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.isPointer"><span class="ns">Cairn.Fuzz.</span>isPointer</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:272</span></div>
+<pre class="sig"><b class="nm">isPointer</b> {S : Type} (m : Claims.Move S) : <span title="Bool">Bool</span></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.firstBad" data-line="276">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.firstBad"><span class="ns">Cairn.Fuzz.</span>firstBad</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:276</span></div>
+<pre class="sig"><b class="nm">firstBad</b> (l : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>) : Option (<span title="String">String</span> × <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>)</pre><div class="doc"><p>The first node, in paint order, that breaks one of <code>Pressable</code>'s conditions, and which.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Fuzz.firstBadList" data-line="283">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.firstBadList"><span class="ns">Cairn.Fuzz.</span>firstBadList</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:283</span></div>
+<pre class="sig"><b class="nm">firstBadList</b> : List <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a> → Option (<span title="String">String</span> × <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>)</pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.droppedCheck" data-line="289">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.droppedCheck"><span class="ns">Cairn.Fuzz.</span>droppedCheck</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:289</span></div>
+<pre class="sig"><b class="nm">droppedCheck</b> : <span title="String">String</span></pre><div class="doc"><p>The check name a dropped click is counted under (<a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Performed.dropped"><code>Performed.dropped</code></a>).</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Fuzz.checks" data-line="293">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.checks"><span class="ns">Cairn.Fuzz.</span>checks</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:293</span></div>
+<pre class="sig"><b class="nm">checks</b> (t : <a href="Cairn.Fuzz.Target.html" title="Cairn.Fuzz.Target">Target</a>) (setup : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Setup" title="Cairn.Fuzz.Setup">Setup</a>) (w : World t.S) (act? : Option <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a>)
+  (acts : List <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a>) (stepIx : <span title="Nat">Nat</span>) (dropped : <span title="Bool">Bool</span> := <span title="Bool.false">false</span>) : List <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Ran" title="Cairn.Fuzz.Ran">Ran</a> × List <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Failure" title="Cairn.Fuzz.Failure">Failure</a></pre><div class="doc"><p>Every check after an operation: the checks that ran and the failures. <code>act?</code> is the
+action the operation meant to perform, if it ran.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Fuzz.candidates" data-line="366">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.candidates"><span class="ns">Cairn.Fuzz.</span>candidates</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:366</span></div>
+<pre class="sig"><b class="nm">candidates</b> (t : <a href="Cairn.Fuzz.Target.html" title="Cairn.Fuzz.Target">Target</a>) (w : World t.S) : List (<a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a> × <a href="Cairn.Claims.Move.html#Cairn.Trigger" title="Cairn.Trigger">Trigger</a> × <span title="Bool">Bool</span>)</pre><div class="doc"><p>The actions available now: for each control on screen whose move is enabled, each trigger
+it can take there. Without an <a href="Cairn.App.html"><code>App</code></a>, each enabled move and probed key.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Fuzz.textScript" data-line="385">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.textScript"><span class="ns">Cairn.Fuzz.</span>textScript</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:385</span></div>
+<pre class="sig"><b class="nm">textScript</b> (t : <a href="Cairn.Fuzz.Target.html" title="Cairn.Fuzz.Target">Target</a>) (s : t.S) (id : <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a>) : Gen (List <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a>)</pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.genAct" data-line="388">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.genAct"><span class="ns">Cairn.Fuzz.</span>genAct</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:388</span></div>
+<pre class="sig"><b class="nm">genAct</b> (t : <a href="Cairn.Fuzz.Target.html" title="Cairn.Fuzz.Target">Target</a>) (w : World t.S) : Gen (Option (List <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Op" title="Cairn.Fuzz.Op">Op</a>))</pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.genPoint" data-line="402">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.genPoint"><span class="ns">Cairn.Fuzz.</span>genPoint</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:402</span></div>
+<pre class="sig"><b class="nm">genPoint</b> {S : Type} (w : World S) : Gen <a href="Cairn.Geometry.html#Cairn.Point" title="Cairn.Point">Point</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.genSize" data-line="412">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.genSize"><span class="ns">Cairn.Fuzz.</span>genSize</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:412</span></div>
+<pre class="sig"><b class="nm">genSize</b> (min : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) : Gen <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a></pre><div class="doc"><p>A window size at or above the minimum, or (one in twenty) below it.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Fuzz.genNoise" data-line="417">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.genNoise"><span class="ns">Cairn.Fuzz.</span>genNoise</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:417</span></div>
+<pre class="sig"><b class="nm">genNoise</b> (t : <a href="Cairn.Fuzz.Target.html" title="Cairn.Fuzz.Target">Target</a>) (setup : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Setup" title="Cairn.Fuzz.Setup">Setup</a>) (w : World t.S) : Gen (List <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Op" title="Cairn.Fuzz.Op">Op</a>)</pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.genOps" data-line="430">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.genOps"><span class="ns">Cairn.Fuzz.</span>genOps</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:430</span></div>
+<pre class="sig"><b class="nm">genOps</b> (t : <a href="Cairn.Fuzz.Target.html" title="Cairn.Fuzz.Target">Target</a>) (setup : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Setup" title="Cairn.Fuzz.Setup">Setup</a>) (w : World t.S) : Gen (List <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Op" title="Cairn.Fuzz.Op">Op</a>)</pre><div class="doc"><p>The next operations: mostly an enabled action, otherwise pointer, key or window noise.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Fuzz.genSetup" data-line="436">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.genSetup"><span class="ns">Cairn.Fuzz.</span>genSetup</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:436</span></div>
+<pre class="sig"><b class="nm">genSetup</b> (t : <a href="Cairn.Fuzz.Target.html" title="Cairn.Fuzz.Target">Target</a>) (seed : <span title="Nat">Nat</span>) : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Setup" title="Cairn.Fuzz.Setup">Setup</a> × <a href="Cairn.Fuzz.Rng.html" title="Cairn.Fuzz.Rng">Rng</a></pre><div class="doc"><p>A sequence's setup from its seed: metrics, then a window at or above the initial minimum.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Fuzz.Stats" data-line="456">
+<div class="dhead"><span class="kind pix">abbrev</span><h3><a href="#Cairn.Fuzz.Stats"><span class="ns">Cairn.Fuzz.</span>Stats</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:456</span></div>
+<pre class="sig"><b class="nm">Stats</b> : Type</pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Stats.record" data-line="458">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Stats.record"><span class="ns">Cairn.Fuzz.Stats.</span>record</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:458</span></div>
+<pre class="sig"><b class="nm">record</b> (st : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Stats" title="Cairn.Fuzz.Stats">Stats</a>) (seq : <span title="Nat">Nat</span>) (ran : List <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Ran" title="Cairn.Fuzz.Ran">Ran</a>) : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Stats" title="Cairn.Fuzz.Stats">Stats</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.runSeq" data-line="492">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.runSeq"><span class="ns">Cairn.Fuzz.</span>runSeq</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:492</span></div>
+<pre class="sig"><b class="nm">runSeq</b> (t : <a href="Cairn.Fuzz.Target.html" title="Cairn.Fuzz.Target">Target</a>) (setup : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Setup" title="Cairn.Fuzz.Setup">Setup</a>) (src : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Source" title="Cairn.Fuzz.Source">Source</a>) (stats : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Stats" title="Cairn.Fuzz.Stats">Stats</a> := ∅)
+  (verbose : <span title="Bool">Bool</span> := <span title="Bool.false">false</span>) : IO <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Outcome" title="Cairn.Fuzz.Outcome">Outcome</a></pre><div class="doc"><p>Run one sequence, stopping at the first failure. Verbose prints each step.</p>
+</div>
+</section>
+<h2 id="instances">Instances <span class="n">8</span></h2>
+<section class="decl" id="Cairn.Fuzz.instBEqOp" data-line="33">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.Fuzz.instBEqOp"><span class="ns">Cairn.Fuzz.</span>instBEqOp</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:33</span></div>
+<pre class="sig"><b class="nm">instBEqOp</b> : BEq <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Op" title="Cairn.Fuzz.Op">Op</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.instInhabitedOp" data-line="33">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.Fuzz.instInhabitedOp"><span class="ns">Cairn.Fuzz.</span>instInhabitedOp</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:33</span></div>
+<pre class="sig"><b class="nm">instInhabitedOp</b> : Inhabited <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Op" title="Cairn.Fuzz.Op">Op</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.instReprOp" data-line="33">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.Fuzz.instReprOp"><span class="ns">Cairn.Fuzz.</span>instReprOp</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:33</span></div>
+<pre class="sig"><b class="nm">instReprOp</b> : Repr <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Op" title="Cairn.Fuzz.Op">Op</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.instInhabitedFailure" data-line="98">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.Fuzz.instInhabitedFailure"><span class="ns">Cairn.Fuzz.</span>instInhabitedFailure</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:98</span></div>
+<pre class="sig"><b class="nm">instInhabitedFailure</b> : Inhabited <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Failure" title="Cairn.Fuzz.Failure">Failure</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.instReprFailure" data-line="98">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.Fuzz.instReprFailure"><span class="ns">Cairn.Fuzz.</span>instReprFailure</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:98</span></div>
+<pre class="sig"><b class="nm">instReprFailure</b> : Repr <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Failure" title="Cairn.Fuzz.Failure">Failure</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.instReprSetup" data-line="113">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.Fuzz.instReprSetup"><span class="ns">Cairn.Fuzz.</span>instReprSetup</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:113</span></div>
+<pre class="sig"><b class="nm">instReprSetup</b> : Repr <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Setup" title="Cairn.Fuzz.Setup">Setup</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.instInhabitedSetup" data-line="113">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.Fuzz.instInhabitedSetup"><span class="ns">Cairn.Fuzz.</span>instInhabitedSetup</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:113</span></div>
+<pre class="sig"><b class="nm">instInhabitedSetup</b> : Inhabited <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Setup" title="Cairn.Fuzz.Setup">Setup</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.instInhabitedClaimStat" data-line="454">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.Fuzz.instInhabitedClaimStat"><span class="ns">Cairn.Fuzz.</span>instInhabitedClaimStat</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Walk.lean:454</span></div>
+<pre class="sig"><b class="nm">instInhabitedClaimStat</b> : Inhabited <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.ClaimStat" title="Cairn.Fuzz.ClaimStat">ClaimStat</a></pre>
+</section>
+<div class="mdoc" data-line="35" hidden><div class="doc"><h3>As text: flow witness syntax for actions</h3>
+</div></div><div class="mdoc" data-line="140" hidden><div class="doc"><h2>The world a sequence runs in</h2>
+</div></div><div class="mdoc" data-line="259" hidden><div class="doc"><h2>Checks</h2>
+</div></div><div class="mdoc" data-line="362" hidden><div class="doc"><h2>Generating operations</h2>
+</div></div><div class="mdoc" data-line="445" hidden><div class="doc"><h2>Running a sequence</h2>
+</div></div>
+</div>
+</main></div>
+<footer>Generated by <code>make doc APP=Counter</code> from the code and the build. Nothing here is written by hand.</footer>
+<script src="search-index.js"></script>
+<script src="search.js"></script>
+<script type="module">
+// On the site, the headings get the meadow's sprigs and a "#" that copies a link to them
+// (site/public/scene.js); elsewhere, nothing.
+import("/scene.js").then((m) => { const main = document.querySelector("main"); m.mountSprigs(main); m.mountAnchors(main); }).catch(() => {});
+</script>
+</body>
+</html>

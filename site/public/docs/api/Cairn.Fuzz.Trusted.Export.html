@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cairn.Fuzz.Trusted.Export · Cairn docs</title>
+<meta name="description" content="Cairn's API, generated from its code.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="doc.css">
+</head>
+<body>
+<nav class="bar"><a class="home" href="../../"><img src="icon.svg" alt="">Cairn</a><span class="sep">/</span><a href="index.html">Cairn docs</a><a href="claims.html">Claims</a><span class="search"><input id="search" type="search" placeholder="Search names, docs, ^N  ( / )" autocomplete="off" spellcheck="false"><div id="results" hidden></div></span></nav>
+<div class="layout"><aside class="toc"><div class="pix muted">Cairn.Fuzz.Trusted.Export</div><a href="#definitions">Definitions <span class="n">13</span></a><ol><li><a href="#Cairn.Fuzz.Trusted.verdict">verdict</a></li><li><a href="#Cairn.Fuzz.Trusted.genFrame">genFrame</a></li><li><a href="#Cairn.Fuzz.Trusted.decodeFrameVerdict">decodeFrameVerdict</a></li><li><a href="#Cairn.Fuzz.Trusted.decodeEventsVerdict">decodeEventsVerdict</a></li><li><a href="#Cairn.Fuzz.Trusted.fieldRef">fieldRef</a></li><li><a href="#Cairn.Fuzz.Trusted.fieldView">fieldView</a></li><li><a href="#Cairn.Fuzz.Trusted.fieldUpdate">fieldUpdate</a></li><li><a href="#Cairn.Fuzz.Trusted.fieldApp">fieldApp</a></li><li><a href="#Cairn.Fuzz.Trusted.fieldCfg">fieldCfg</a></li><li><a href="#Cairn.Fuzz.Trusted.fieldInit">fieldInit</a></li><li><a href="#Cairn.Fuzz.Trusted.fieldStep">fieldStep</a></li><li><a href="#Cairn.Fuzz.Trusted.fieldFrame">fieldFrame</a></li><li><a href="#Cairn.Fuzz.Trusted.wrap">wrap</a></li></ol></aside><main>
+<header class="page"><div class="eyebrow">Cairn · module</div><h1 class="mod">Cairn.Fuzz.Trusted.Export</h1><p class="src">lean/Cairn/Fuzz/Trusted/Export.lean</p></header>
+<div class="doc"><h1>Lean's side of the trusted-base fuzzer</h1>
+<p>C exports for <code>cairn-fuzz-trusted</code> (host/Tests/CairnFuzzTrusted), the Swift executable that
+links this library next to the Swift host, so both sides of each trusted boundary run in one
+process (docs/fuzz.md, &quot;Trusted base&quot;). No <code>import Lean</code>: this links into a Swift binary.</p>
+<ul>
+<li><code>cairn_tf_gen_frame seed</code>: a random frame (<code>Gen.frame</code>), encoded.</li>
+<li><code>cairn_tf_decode_frame bytes</code> and <code>cairn_tf_decode_events bytes</code>: Lean's proved decoders'
+verdict on any bytes. The reply is <code>&quot;R&quot;</code> (rejected), or <code>&quot;A=&quot;</code> / <code>&quot;A~&quot;</code> (accepted; <code>=</code> when
+re-encoding the value gives the same bytes back) followed by the canonical dump
+(<code>Cairn.Dump</code>), which the Swift side compares with its own dump.</li>
+<li><code>cairn_tf_field_init/step/frame</code>: an app that is one text field, on the real runtime and
+boundary (<a href="Cairn.Runtime.Abi.html#Cairn.Runtime.stepBytes"><code>Runtime.stepBytes</code></a>, <a href="Cairn.Frame.Boundary.html#Cairn.Frame.boundary"><code>Frame.boundary</code></a>, <a href="Cairn.Text.Host.html#Cairn.TextMetrics.host"><code>TextMetrics.host</code></a>), so the host's
+<code>NSTextInputClient</code> and its shadow of the field can be checked against <code>Field.apply</code>.
+The same ABI as <code>cairn_app_*</code> (docs/runtime.md), under other names so it can't clash.</li>
+<li><code>cairn_tf_wrap</code>: where Lean breaks a string into lines at a width with <a href="Cairn.Text.Host.html#Cairn.TextMetrics.host"><code>TextMetrics.host</code></a>,
+and where layout puts each line, so the Swift side can shape each line as the renderer will
+and compare with Core Text's own line breaking.</li>
+</ul>
+</div>
+<p class="imports"><span class="pix muted">Imports</span> <a href="Cairn.Fuzz.Trusted.Gen.html">Cairn.Fuzz.Trusted.Gen</a>, <a href="Cairn.Frame.Dump.html">Cairn.Frame.Dump</a>, <a href="Cairn.Frame.Boundary.html">Cairn.Frame.Boundary</a>, <a href="Cairn.Runtime.Abi.html">Cairn.Runtime.Abi</a>, <a href="Cairn.Text.Host.html">Cairn.Text.Host</a>, <a href="Cairn.Text.Field.html">Cairn.Text.Field</a>, <a href="Cairn.Layout.Core.html">Cairn.Layout.Core</a></p>
+<div class="order"><span class="pix muted">Order</span> <button type="button" data-order="kind" class="on">by kind</button><button type="button" data-order="source">as in the source</button></div>
+<div id="items">
+
+<h2 id="definitions">Definitions <span class="n">13</span></h2>
+<section class="decl" id="Cairn.Fuzz.Trusted.verdict" data-line="32">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.verdict"><span class="ns">Cairn.Fuzz.Trusted.</span>verdict</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Export.lean:32</span></div>
+<pre class="sig"><b class="nm">verdict</b> {α : Type} (decoded : Option α) (reencode : α → <span title="ByteArray">ByteArray</span>)
+  (dump : α → <span title="String">String</span>) (b : <span title="ByteArray">ByteArray</span>) : <span title="ByteArray">ByteArray</span></pre><div class="doc"><p><code>&quot;A=&quot;</code>, <code>&quot;A~&quot;</code> or <code>&quot;R&quot;</code>, then the dump.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.genFrame" data-line="41">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.genFrame"><span class="ns">Cairn.Fuzz.Trusted.</span>genFrame</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Export.lean:41</span></div>
+<pre class="sig"><b class="nm">genFrame</b> (seed : <span title="UInt64">UInt64</span>) : <span title="ByteArray">ByteArray</span></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.decodeFrameVerdict" data-line="44">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.decodeFrameVerdict"><span class="ns">Cairn.Fuzz.Trusted.</span>decodeFrameVerdict</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Export.lean:44</span></div>
+<pre class="sig"><b class="nm">decodeFrameVerdict</b> (b : <span title="ByteArray">ByteArray</span>) : <span title="ByteArray">ByteArray</span></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.decodeEventsVerdict" data-line="48">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.decodeEventsVerdict"><span class="ns">Cairn.Fuzz.Trusted.</span>decodeEventsVerdict</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Export.lean:48</span></div>
+<pre class="sig"><b class="nm">decodeEventsVerdict</b> (b : <span title="ByteArray">ByteArray</span>) : <span title="ByteArray">ByteArray</span></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.fieldRef" data-line="53">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.fieldRef"><span class="ns">Cairn.Fuzz.Trusted.</span>fieldRef</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Export.lean:53</span></div>
+<pre class="sig"><b class="nm">fieldRef</b> : <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.fieldView" data-line="57">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.fieldView"><span class="ns">Cairn.Fuzz.Trusted.</span>fieldView</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Export.lean:57</span></div>
+<pre class="sig"><b class="nm">fieldView</b> (f : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Text.Field</a>) (ui : <a href="Cairn.App.html#Cairn.UI" title="Cairn.UI">UI</a>) : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a></pre><div class="doc"><p>One text field across the window, with a little padding so the field's text is inset and
+long text scrolls.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.fieldUpdate" data-line="63">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.fieldUpdate"><span class="ns">Cairn.Fuzz.Trusted.</span>fieldUpdate</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Export.lean:63</span></div>
+<pre class="sig"><b class="nm">fieldUpdate</b> (f : <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Text.Field</a>) : <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a> → <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Text.Field</a> × List <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.fieldApp" data-line="67">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.fieldApp"><span class="ns">Cairn.Fuzz.Trusted.</span>fieldApp</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Export.lean:67</span></div>
+<pre class="sig"><b class="nm">fieldApp</b> : App <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Text.Field</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.fieldCfg" data-line="74">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.fieldCfg"><span class="ns">Cairn.Fuzz.Trusted.</span>fieldCfg</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Export.lean:74</span></div>
+<pre class="sig"><b class="nm">fieldCfg</b> : <a href="Cairn.Runtime.Step.html#Cairn.Runtime.Config" title="Cairn.Runtime.Config">Runtime.Config</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.fieldInit" data-line="77">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.fieldInit"><span class="ns">Cairn.Fuzz.Trusted.</span>fieldInit</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Export.lean:77</span></div>
+<pre class="sig"><b class="nm">fieldInit</b> (w h scalePercent : <span title="UInt32">UInt32</span>) : Runtime.State <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Text.Field</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.fieldStep" data-line="81">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.fieldStep"><span class="ns">Cairn.Fuzz.Trusted.</span>fieldStep</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Export.lean:81</span></div>
+<pre class="sig"><b class="nm">fieldStep</b> (s : Runtime.State <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Text.Field</a>) (events : <span title="ByteArray">ByteArray</span>) :
+  Runtime.State <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Text.Field</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.fieldFrame" data-line="85">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.fieldFrame"><span class="ns">Cairn.Fuzz.Trusted.</span>fieldFrame</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Export.lean:85</span></div>
+<pre class="sig"><b class="nm">fieldFrame</b> (s : Runtime.State <a href="Cairn.Text.Field.html" title="Cairn.Text.Field">Text.Field</a>) : <span title="ByteArray">ByteArray</span></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.wrap" data-line="93">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.wrap"><span class="ns">Cairn.Fuzz.Trusted.</span>wrap</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Export.lean:93</span></div>
+<pre class="sig"><b class="nm">wrap</b> (family size weight : <span title="UInt32">UInt32</span>) (style : <span title="UInt8">UInt8</span>)
+  (tracking width : <span title="UInt32">UInt32</span>) (s : <span title="String">String</span>) : <span title="ByteArray">ByteArray</span></pre><div class="doc"><p>A string wrapped at <code>width</code> (a para filling a window that wide), as int32s: the line count,
+then for each line its scalar range <code>a, b</code>, Lean's width for it (<code>o b - o a</code>) and the <code>x, y, w</code>
+of the line's laid-out rect.</p>
+</div>
+</section>
+<div class="mdoc" data-line="51" hidden><div class="doc"><h2>One field</h2>
+</div></div><div class="mdoc" data-line="87" hidden><div class="doc"><h2>Wrapped text</h2>
+</div></div>
+</div>
+</main></div>
+<footer>Generated by <code>make doc APP=Counter</code> from the code and the build. Nothing here is written by hand.</footer>
+<script src="search-index.js"></script>
+<script src="search.js"></script>
+<script type="module">
+// On the site, the headings get the meadow's sprigs and a "#" that copies a link to them
+// (site/public/scene.js); elsewhere, nothing.
+import("/scene.js").then((m) => { const main = document.querySelector("main"); m.mountSprigs(main); m.mountAnchors(main); }).catch(() => {});
+</script>
+</body>
+</html>

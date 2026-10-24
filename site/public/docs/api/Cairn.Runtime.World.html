@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cairn.Runtime.World · Cairn docs</title>
+<meta name="description" content="Cairn's API, generated from its code.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="doc.css">
+</head>
+<body>
+<nav class="bar"><a class="home" href="../../"><img src="icon.svg" alt="">Cairn</a><span class="sep">/</span><a href="index.html">Cairn docs</a><a href="claims.html">Claims</a><span class="search"><input id="search" type="search" placeholder="Search names, docs, ^N  ( / )" autocomplete="off" spellcheck="false"><div id="results" hidden></div></span></nav>
+<div class="layout"><aside class="toc"><div class="pix muted">Cairn.Runtime.World</div><a href="#structures">Structures <span class="n">1</span></a><ol><li><a href="#Cairn.Runtime.World">World</a></li></ol><a href="#definitions">Definitions <span class="n">15</span></a><ol><li><a href="#Cairn.Runtime.World.tick">tick</a></li><li><a href="#Cairn.Runtime.World.timerNames">timerNames</a></li><li><a href="#Cairn.Runtime.World.setTimer">setTimer</a></li><li><a href="#Cairn.Runtime.World.cancelTimer">cancelTimer</a></li><li><a href="#Cairn.Runtime.World.dueNow">dueNow</a></li><li><a href="#Cairn.Runtime.World.dueNames">dueNames</a></li><li><a href="#Cairn.Runtime.World.wake">wake</a></li><li><a href="#Cairn.Runtime.World.isPending">isPending</a></li><li><a href="#Cairn.Runtime.World.absorb1">absorb1</a></li><li><a href="#Cairn.Runtime.World.absorb">absorb</a></li><li><a href="#Cairn.Runtime.World.takeReply">takeReply</a></li><li><a href="#Cairn.Runtime.World.subOf">subOf</a></li><li><a href="#Cairn.Runtime.number">number</a></li><li><a href="#Cairn.Runtime.freshSubs">freshSubs</a></li><li><a href="#Cairn.Runtime.diffSubs">diffSubs</a></li></ol><a href="#instances">Instances <span class="n">2</span></a><ol><li><a href="#Cairn.Runtime.instInhabitedWorld">instInhabitedWorld</a></li><li><a href="#Cairn.Runtime.instReprWorld">instReprWorld</a></li></ol></aside><main>
+<header class="page"><div class="eyebrow">Cairn · module</div><h1 class="mod">Cairn.Runtime.World</h1><p class="src">lean/Cairn/Runtime/World.lean</p></header>
+<div class="doc"><p>The runtime's view of the outside world (docs/effects.md): the clock, the app's timers, its
+pending requests and its active subscriptions. Pure tables and the functions that update them;
+<a href="Cairn.Runtime.Step.html"><code>Cairn.Runtime.Step</code></a> decides when they run, and <a href="Cairn.Runtime.WorldProofs.html"><code>Cairn.Runtime.WorldProofs</code></a> says what they
+guarantee.</p>
+</div>
+<p class="imports"><span class="pix muted">Imports</span> <a href="Cairn.Input.html">Cairn.Input</a></p>
+<div class="order"><span class="pix muted">Order</span> <button type="button" data-order="kind" class="on">by kind</button><button type="button" data-order="source">as in the source</button></div>
+<div id="items">
+
+<h2 id="structures">Structures <span class="n">1</span></h2>
+<section class="decl" id="Cairn.Runtime.World" data-line="14">
+<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.Runtime.World"><span class="ns">Cairn.Runtime.</span>World</a></h3><span class="src" title="source">lean/Cairn/Runtime/World.lean:14</span></div>
+<pre class="sig"><b class="nm">World</b> : Type</pre><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.Runtime.World.clock"><pre class="sig"><b class="nm">clock</b> : <a href="Cairn.Effects.html#Cairn.Time" title="Cairn.Time">Time</a></pre><div class="doc"><p>The host's latest time; <code>mono</code> never decreases (<a href="Cairn.Runtime.World.html#Cairn.Runtime.World.tick"><code>tick</code></a>).</p>
+</div></div><div class="member" id="Cairn.Runtime.World.heard"><pre class="sig"><b class="nm">heard</b> : Option <a href="Cairn.Effects.html#Cairn.Time" title="Cairn.Time">Time</a></pre><div class="doc"><p>The time the app last heard as <a href="Cairn.Effects.html#Cairn.Msg.clock"><code>Msg.clock</code></a>.</p>
+</div></div><div class="member" id="Cairn.Runtime.World.booted"><pre class="sig"><b class="nm">booted</b> : <span title="Bool">Bool</span></pre><div class="doc"><p>Whether the first clock event has arrived (and <a href="Cairn.App.html#Cairn.App.initEffects"><code>App.initEffects</code></a> run).</p>
+</div></div><div class="member" id="Cairn.Runtime.World.timers"><pre class="sig"><b class="nm">timers</b> : List (<span title="String">String</span> × <span title="Nat">Nat</span>)</pre><div class="doc"><p>Timers: name and due time (monotonic ms), in the order they were set.</p>
+</div></div><div class="member" id="Cairn.Runtime.World.pending"><pre class="sig"><b class="nm">pending</b> : List (<span title="Nat">Nat</span> × <a href="Cairn.Effects.html#Cairn.Request.Kind" title="Cairn.Request.Kind">Request.Kind</a>)</pre><div class="doc"><p>Requests sent and not yet answered: id and kind.</p>
+</div></div><div class="member" id="Cairn.Runtime.World.subs"><pre class="sig"><b class="nm">subs</b> : List (<span title="Nat">Nat</span> × <a href="Cairn.Effects.html#Cairn.Sub" title="Cairn.Sub">Sub</a>)</pre><div class="doc"><p>Active subscriptions under the ids the host knows them by.</p>
+</div></div><div class="member" id="Cairn.Runtime.World.nextSub"><pre class="sig"><b class="nm">nextSub</b> : <span title="Nat">Nat</span></pre><div class="doc"><p>The id the next new subscription gets.</p>
+</div></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Runtime.World.html#Cairn.Runtime.instInhabitedWorld"><code>Inhabited</code></a> <a href="Cairn.Runtime.World.html#Cairn.Runtime.instReprWorld"><code>Repr</code></a></p></div>
+</section>
+<h2 id="definitions">Definitions <span class="n">15</span></h2>
+<section class="decl" id="Cairn.Runtime.World.tick" data-line="34">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.World.tick"><span class="ns">Cairn.Runtime.World.</span>tick</a></h3><span class="src" title="source">lean/Cairn/Runtime/World.lean:34</span></div>
+<pre class="sig"><b class="nm">tick</b> (w : <a href="Cairn.Runtime.World.html" title="Cairn.Runtime.World">World</a>) (t : <a href="Cairn.Effects.html#Cairn.Time" title="Cairn.Time">Time</a>) : <a href="Cairn.Runtime.World.html" title="Cairn.Runtime.World">World</a></pre><div class="doc"><p>A new time from the host. The monotonic part never goes back.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.World.timerNames" data-line="37">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.World.timerNames"><span class="ns">Cairn.Runtime.World.</span>timerNames</a></h3><span class="src" title="source">lean/Cairn/Runtime/World.lean:37</span></div>
+<pre class="sig"><b class="nm">timerNames</b> (w : <a href="Cairn.Runtime.World.html" title="Cairn.Runtime.World">World</a>) : List <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Runtime.World.setTimer" data-line="40">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.World.setTimer"><span class="ns">Cairn.Runtime.World.</span>setTimer</a></h3><span class="src" title="source">lean/Cairn/Runtime/World.lean:40</span></div>
+<pre class="sig"><b class="nm">setTimer</b> (w : <a href="Cairn.Runtime.World.html" title="Cairn.Runtime.World">World</a>) (n : <span title="String">String</span>) (ms : <span title="Nat">Nat</span>) : <a href="Cairn.Runtime.World.html" title="Cairn.Runtime.World">World</a></pre><div class="doc"><p>(Re)start <code>n</code>, due <code>ms</code> from now; it goes to the end of the order.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.World.cancelTimer" data-line="43">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.World.cancelTimer"><span class="ns">Cairn.Runtime.World.</span>cancelTimer</a></h3><span class="src" title="source">lean/Cairn/Runtime/World.lean:43</span></div>
+<pre class="sig"><b class="nm">cancelTimer</b> (w : <a href="Cairn.Runtime.World.html" title="Cairn.Runtime.World">World</a>) (n : <span title="String">String</span>) : <a href="Cairn.Runtime.World.html" title="Cairn.Runtime.World">World</a></pre>
+</section>
+<section class="decl" id="Cairn.Runtime.World.dueNow" data-line="47">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.World.dueNow"><span class="ns">Cairn.Runtime.World.</span>dueNow</a></h3><span class="src" title="source">lean/Cairn/Runtime/World.lean:47</span></div>
+<pre class="sig"><b class="nm">dueNow</b> (w : <a href="Cairn.Runtime.World.html" title="Cairn.Runtime.World">World</a>) (n : <span title="String">String</span>) : <span title="Bool">Bool</span></pre><div class="doc"><p><code>n</code> is set and due at the current time.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.World.dueNames" data-line="52">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.World.dueNames"><span class="ns">Cairn.Runtime.World.</span>dueNames</a></h3><span class="src" title="source">lean/Cairn/Runtime/World.lean:52</span></div>
+<pre class="sig"><b class="nm">dueNames</b> (w : <a href="Cairn.Runtime.World.html" title="Cairn.Runtime.World">World</a>) : List <span title="String">String</span></pre><div class="doc"><p>The timers due now, earliest first; ties in the order they were set (<code>mergeSort</code> is
+stable).</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.World.wake" data-line="57">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.World.wake"><span class="ns">Cairn.Runtime.World.</span>wake</a></h3><span class="src" title="source">lean/Cairn/Runtime/World.lean:57</span></div>
+<pre class="sig"><b class="nm">wake</b> (w : <a href="Cairn.Runtime.World.html" title="Cairn.Runtime.World">World</a>) : Option <span title="Nat">Nat</span></pre><div class="doc"><p>The earliest deadline, if any timer is set: the frame's <a href="Cairn.Runtime.World.html#Cairn.Runtime.World.wake"><code>wake</code></a>.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.World.isPending" data-line="60">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.World.isPending"><span class="ns">Cairn.Runtime.World.</span>isPending</a></h3><span class="src" title="source">lean/Cairn/Runtime/World.lean:60</span></div>
+<pre class="sig"><b class="nm">isPending</b> (w : <a href="Cairn.Runtime.World.html" title="Cairn.Runtime.World">World</a>) (id : <span title="Nat">Nat</span>) : <span title="Bool">Bool</span></pre>
+</section>
+<section class="decl" id="Cairn.Runtime.World.absorb1" data-line="64">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.World.absorb1"><span class="ns">Cairn.Runtime.World.</span>absorb1</a></h3><span class="src" title="source">lean/Cairn/Runtime/World.lean:64</span></div>
+<pre class="sig"><b class="nm">absorb1</b> (w : <a href="Cairn.Runtime.World.html" title="Cairn.Runtime.World">World</a>) : <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a> → <a href="Cairn.Runtime.World.html" title="Cairn.Runtime.World">World</a> × <span title="Bool">Bool</span></pre><div class="doc"><p>Take in one effect of a delivery. Returns whether it goes on the frame: a request whose id
+is already pending is refused (never sent, never answered); everything else goes.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.World.absorb" data-line="72">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.World.absorb"><span class="ns">Cairn.Runtime.World.</span>absorb</a></h3><span class="src" title="source">lean/Cairn/Runtime/World.lean:72</span></div>
+<pre class="sig"><b class="nm">absorb</b> (w : <a href="Cairn.Runtime.World.html" title="Cairn.Runtime.World">World</a>) : List <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a> → <a href="Cairn.Runtime.World.html" title="Cairn.Runtime.World">World</a> × List <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a></pre><div class="doc"><p>Take in a delivery's effects, in order; returns the ones that go on the frame.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.World.takeReply" data-line="80">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.World.takeReply"><span class="ns">Cairn.Runtime.World.</span>takeReply</a></h3><span class="src" title="source">lean/Cairn/Runtime/World.lean:80</span></div>
+<pre class="sig"><b class="nm">takeReply</b> (w : <a href="Cairn.Runtime.World.html" title="Cairn.Runtime.World">World</a>) (id : <span title="Nat">Nat</span>) (r : <a href="Cairn.Effects.html#Cairn.Reply" title="Cairn.Reply">Reply</a>) : Option <a href="Cairn.Runtime.World.html" title="Cairn.Runtime.World">World</a></pre><div class="doc"><p>A reply to <code>id</code>: when <code>id</code> is pending and <code>r</code> answers its kind, the world without it.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.World.subOf" data-line="86">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.World.subOf"><span class="ns">Cairn.Runtime.World.</span>subOf</a></h3><span class="src" title="source">lean/Cairn/Runtime/World.lean:86</span></div>
+<pre class="sig"><b class="nm">subOf</b> (w : <a href="Cairn.Runtime.World.html" title="Cairn.Runtime.World">World</a>) (id : <span title="Nat">Nat</span>) : Option <a href="Cairn.Effects.html#Cairn.Sub" title="Cairn.Sub">Sub</a></pre><div class="doc"><p>The active subscription with this id.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.number" data-line="93">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.number"><span class="ns">Cairn.Runtime.</span>number</a></h3><span class="src" title="source">lean/Cairn/Runtime/World.lean:93</span></div>
+<pre class="sig"><b class="nm">number</b> : <span title="Nat">Nat</span> → List <a href="Cairn.Effects.html#Cairn.Sub" title="Cairn.Sub">Sub</a> → List (<span title="Nat">Nat</span> × <a href="Cairn.Effects.html#Cairn.Sub" title="Cairn.Sub">Sub</a>)</pre><div class="doc"><p>Number subscriptions from <code>next</code>.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.freshSubs" data-line="98">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.freshSubs"><span class="ns">Cairn.Runtime.</span>freshSubs</a></h3><span class="src" title="source">lean/Cairn/Runtime/World.lean:98</span></div>
+<pre class="sig"><b class="nm">freshSubs</b> (seen : List <a href="Cairn.Effects.html#Cairn.Sub" title="Cairn.Sub">Sub</a>) : List <a href="Cairn.Effects.html#Cairn.Sub" title="Cairn.Sub">Sub</a> → List <a href="Cairn.Effects.html#Cairn.Sub" title="Cairn.Sub">Sub</a></pre><div class="doc"><p>The subscriptions in <code>want</code> that are not among <code>seen</code>, without repeats, in order.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.diffSubs" data-line="104">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.diffSubs"><span class="ns">Cairn.Runtime.</span>diffSubs</a></h3><span class="src" title="source">lean/Cairn/Runtime/World.lean:104</span></div>
+<pre class="sig"><b class="nm">diffSubs</b> (active : List (<span title="Nat">Nat</span> × <a href="Cairn.Effects.html#Cairn.Sub" title="Cairn.Sub">Sub</a>)) (want : List <a href="Cairn.Effects.html#Cairn.Sub" title="Cairn.Sub">Sub</a>) (next : <span title="Nat">Nat</span>) :
+  List (<span title="Nat">Nat</span> × <a href="Cairn.Effects.html#Cairn.Sub" title="Cairn.Sub">Sub</a>) × List <a href="Cairn.Effects.html#Cairn.SubCmd" title="Cairn.SubCmd">SubCmd</a> × <span title="Nat">Nat</span></pre><div class="doc"><p>Diff the active subscriptions against what the app asks for now. Returns the new active
+set, the commands for the host (stops first, then starts), and the next free id.</p>
+</div>
+</section>
+<h2 id="instances">Instances <span class="n">2</span></h2>
+<section class="decl" id="Cairn.Runtime.instInhabitedWorld" data-line="29">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.Runtime.instInhabitedWorld"><span class="ns">Cairn.Runtime.</span>instInhabitedWorld</a></h3><span class="src" title="source">lean/Cairn/Runtime/World.lean:29</span></div>
+<pre class="sig"><b class="nm">instInhabitedWorld</b> : Inhabited <a href="Cairn.Runtime.World.html" title="Cairn.Runtime.World">World</a></pre>
+</section>
+<section class="decl" id="Cairn.Runtime.instReprWorld" data-line="29">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.Runtime.instReprWorld"><span class="ns">Cairn.Runtime.</span>instReprWorld</a></h3><span class="src" title="source">lean/Cairn/Runtime/World.lean:29</span></div>
+<pre class="sig"><b class="nm">instReprWorld</b> : Repr <a href="Cairn.Runtime.World.html" title="Cairn.Runtime.World">World</a></pre>
+</section>
+<div class="mdoc" data-line="90" hidden><div class="doc"><h2>Subscriptions</h2>
+</div></div>
+</div>
+</main></div>
+<footer>Generated by <code>make doc APP=Counter</code> from the code and the build. Nothing here is written by hand.</footer>
+<script src="search-index.js"></script>
+<script src="search.js"></script>
+<script type="module">
+// On the site, the headings get the meadow's sprigs and a "#" that copies a link to them
+// (site/public/scene.js); elsewhere, nothing.
+import("/scene.js").then((m) => { const main = document.querySelector("main"); m.mountSprigs(main); m.mountAnchors(main); }).catch(() => {});
+</script>
+</body>
+</html>

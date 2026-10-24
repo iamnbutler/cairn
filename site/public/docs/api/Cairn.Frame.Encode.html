@@ -1,0 +1,1268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cairn.Frame.Encode · Cairn docs</title>
+<meta name="description" content="Cairn's API, generated from its code.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="doc.css">
+</head>
+<body>
+<nav class="bar"><a class="home" href="../../"><img src="icon.svg" alt="">Cairn</a><span class="sep">/</span><a href="index.html">Cairn docs</a><a href="claims.html">Claims</a><span class="search"><input id="search" type="search" placeholder="Search names, docs, ^N  ( / )" autocomplete="off" spellcheck="false"><div id="results" hidden></div></span></nav>
+<div class="layout"><aside class="toc"><div class="pix muted">Cairn.Frame.Encode</div><a href="#definitions">Definitions <span class="n">171</span></a><ol><li><a href="#Cairn.Wire.Role.code">code</a></li><li><a href="#Cairn.Wire.Role.ofCode">ofCode</a></li><li><a href="#Cairn.Wire.Cursor.code">code</a></li><li><a href="#Cairn.Wire.Cursor.ofCode">ofCode</a></li><li><a href="#Cairn.Wire.FontWidth.wire">wire</a></li><li><a href="#Cairn.Wire.FontWidth.ofWire">ofWire</a></li><li><a href="#Cairn.Wire.Corner.code">code</a></li><li><a href="#Cairn.Wire.Corner.ofCode">ofCode</a></li><li><a href="#Cairn.Wire.checkedCode">checkedCode</a></li><li><a href="#Cairn.Wire.checkedOfCode">checkedOfCode</a></li><li><a href="#Cairn.Wire.Request.Kind.code">code</a></li><li><a href="#Cairn.Wire.Request.Kind.ofCode">ofCode</a></li><li><a href="#Cairn.Wire.Permission.code">code</a></li><li><a href="#Cairn.Wire.Permission.ofCode">ofCode</a></li><li><a href="#Cairn.Wire.Sub.code">code</a></li><li><a href="#Cairn.Wire.Key.code">code</a></li><li><a href="#Cairn.Wire.Key.scalar">scalar</a></li><li><a href="#Cairn.Wire.Key.ofCode">ofCode</a></li><li><a href="#Cairn.Wire.Mods.code">code</a></li><li><a href="#Cairn.Wire.Mods.ofCode">ofCode</a></li><li><a href="#Cairn.Wire.SurfaceKind.code">code</a></li><li><a href="#Cairn.Wire.SurfaceKind.ofCode">ofCode</a></li><li><a href="#Cairn.Wire.MenuKind.code">code</a></li><li><a href="#Cairn.Wire.MenuKind.ofCode">ofCode</a></li><li><a href="#Cairn.Wire.ScreenChoice.code">code</a></li><li><a href="#Cairn.Wire.ScreenChoice.ofCode">ofCode</a></li><li><a href="#Cairn.Wire.Anchor.code">code</a></li><li><a href="#Cairn.Wire.Anchor.ofCode">ofCode</a></li><li><a href="#Cairn.Wire.noShortcut">noShortcut</a></li><li><a href="#Cairn.Wire.fu">fu</a></li><li><a href="#Cairn.Wire.fi">fi</a></li><li><a href="#Cairn.Wire.fs">fs</a></li><li><a href="#Cairn.Wire.fitsRect">fitsRect</a></li><li><a href="#Cairn.Wire.fitsRef">fitsRef</a></li><li><a href="#Cairn.Wire.fitsRange">fitsRange</a></li><li><a href="#Cairn.Wire.fitsInts">fitsInts</a></li><li><a href="#Cairn.Wire.fitsPaint">fitsPaint</a></li><li><a href="#Cairn.Wire.fitsShadow">fitsShadow</a></li><li><a href="#Cairn.Wire.fitsDraw">fitsDraw</a></li><li><a href="#Cairn.Wire.fitsAx">fitsAx</a></li><li><a href="#Cairn.Wire.fitsTextInput">fitsTextInput</a></li><li><a href="#Cairn.Wire.fu64">fu64</a></li><li><a href="#Cairn.Wire.fi64">fi64</a></li><li><a href="#Cairn.Wire.fb">fb</a></li><li><a href="#Cairn.Wire.fitsHeaders">fitsHeaders</a></li><li><a href="#Cairn.Wire.fitsPart">fitsPart</a></li><li><a href="#Cairn.Wire.fitsSecret">fitsSecret</a></li><li><a href="#Cairn.Wire.fitsRequest">fitsRequest</a></li><li><a href="#Cairn.Wire.fitsEffect">fitsEffect</a></li><li><a href="#Cairn.Wire.fitsSub">fitsSub</a></li><li><a href="#Cairn.Wire.fitsSubCmd">fitsSubCmd</a></li><li><a href="#Cairn.Wire.fitsCanvas">fitsCanvas</a></li><li><a href="#Cairn.Wire.fitsMenuRecord">fitsMenuRecord</a></li><li><a href="#Cairn.Wire.fitsStatus">fitsStatus</a></li><li><a href="#Cairn.Wire.fitsSurface">fitsSurface</a></li><li><a href="#Cairn.Wire.fitsFrame">fitsFrame</a></li><li><a href="#Cairn.Wire.Enc.rect">rect</a></li><li><a href="#Cairn.Wire.Enc.point">point</a></li><li><a href="#Cairn.Wire.Enc.size">size</a></li><li><a href="#Cairn.Wire.Enc.color">color</a></li><li><a href="#Cairn.Wire.Enc.ref">ref</a></li><li><a href="#Cairn.Wire.Enc.range">range</a></li><li><a href="#Cairn.Wire.Enc.noColor">noColor</a></li><li><a href="#Cairn.Wire.Enc.list">list</a></li><li><a href="#Cairn.Wire.Enc.ints">ints</a></li><li><a href="#Cairn.Wire.Enc.intLists">intLists</a></li><li><a href="#Cairn.Wire.Enc.draw">draw</a></li><li><a href="#Cairn.Wire.Enc.ax">ax</a></li><li><a href="#Cairn.Wire.Enc.textInput">textInput</a></li><li><a href="#Cairn.Wire.Enc.cursor">cursor</a></li><li><a href="#Cairn.Wire.Enc.header1">header1</a></li><li><a href="#Cairn.Wire.Enc.headers">headers</a></li><li><a href="#Cairn.Wire.Enc.part">part</a></li><li><a href="#Cairn.Wire.Enc.secret">secret</a></li><li><a href="#Cairn.Wire.Enc.optSecret">optSecret</a></li><li><a href="#Cairn.Wire.Enc.parts">parts</a></li><li><a href="#Cairn.Wire.Enc.requestBody">requestBody</a></li><li><a href="#Cairn.Wire.Enc.effect">effect</a></li><li><a href="#Cairn.Wire.Enc.subBody">subBody</a></li><li><a href="#Cairn.Wire.Enc.subCmd">subCmd</a></li><li><a href="#Cairn.Wire.Enc.wake">wake</a></li><li><a href="#Cairn.Wire.Enc.magic">magic</a></li><li><a href="#Cairn.Wire.Enc.canvas">canvas</a></li><li><a href="#Cairn.Wire.Enc.menuRecord">menuRecord</a></li><li><a href="#Cairn.Wire.Enc.status">status</a></li><li><a href="#Cairn.Wire.Enc.surface">surface</a></li><li><a href="#Cairn.Wire.Enc.header">header</a></li><li><a href="#Cairn.Wire.Enc.frame">frame</a></li><li><a href="#Cairn.Wire.Dec.expect">expect</a></li><li><a href="#Cairn.Wire.Dec.rect">rect</a></li><li><a href="#Cairn.Wire.Dec.point">point</a></li><li><a href="#Cairn.Wire.Dec.size">size</a></li><li><a href="#Cairn.Wire.Dec.color">color</a></li><li><a href="#Cairn.Wire.Dec.ref">ref</a></li><li><a href="#Cairn.Wire.Dec.range">range</a></li><li><a href="#Cairn.Wire.Dec.list">list</a></li><li><a href="#Cairn.Wire.Dec.ints">ints</a></li><li><a href="#Cairn.Wire.Dec.intLists">intLists</a></li><li><a href="#Cairn.Wire.Dec.draw">draw</a></li><li><a href="#Cairn.Wire.Dec.ax">ax</a></li><li><a href="#Cairn.Wire.Dec.textInput">textInput</a></li><li><a href="#Cairn.Wire.Dec.cursor">cursor</a></li><li><a href="#Cairn.Wire.Dec.header1">header1</a></li><li><a href="#Cairn.Wire.Dec.headers">headers</a></li><li><a href="#Cairn.Wire.Dec.part">part</a></li><li><a href="#Cairn.Wire.Dec.secret">secret</a></li><li><a href="#Cairn.Wire.Dec.optSecret">optSecret</a></li><li><a href="#Cairn.Wire.Dec.parts">parts</a></li><li><a href="#Cairn.Wire.Dec.requestBody">requestBody</a></li><li><a href="#Cairn.Wire.Dec.effect">effect</a></li><li><a href="#Cairn.Wire.Dec.subBody">subBody</a></li><li><a href="#Cairn.Wire.Dec.subCmd">subCmd</a></li><li><a href="#Cairn.Wire.Dec.wake">wake</a></li><li><a href="#Cairn.Wire.Dec.canvas">canvas</a></li><li><a href="#Cairn.Wire.Dec.shortcut">shortcut</a></li><li><a href="#Cairn.Wire.Dec.menuRecord">menuRecord</a></li><li><a href="#Cairn.Wire.Dec.status">status</a></li><li><a href="#Cairn.Wire.Dec.surface">surface</a></li><li><a href="#Cairn.Wire.Dec.frame">frame</a></li><li><a href="#Cairn.Wire.Dec.SizeOk">SizeOk</a></li><li><a href="#Cairn.Wire.Len.str">str</a></li><li><a href="#Cairn.Wire.Len.ints">ints</a></li><li><a href="#Cairn.Wire.Len.intLists">intLists</a></li><li><a href="#Cairn.Wire.Len.draw">draw</a></li><li><a href="#Cairn.Wire.Len.ax">ax</a></li><li><a href="#Cairn.Wire.Len.bytes">bytes</a></li><li><a href="#Cairn.Wire.Len.headers">headers</a></li><li><a href="#Cairn.Wire.Len.part">part</a></li><li><a href="#Cairn.Wire.Len.parts">parts</a></li><li><a href="#Cairn.Wire.Len.secret">secret</a></li><li><a href="#Cairn.Wire.Len.optSecret">optSecret</a></li><li><a href="#Cairn.Wire.Len.requestBody">requestBody</a></li><li><a href="#Cairn.Wire.Len.effect">effect</a></li><li><a href="#Cairn.Wire.Len.subBody">subBody</a></li><li><a href="#Cairn.Wire.Len.subCmd">subCmd</a></li><li><a href="#Cairn.Wire.Len.textInput">textInput</a></li><li><a href="#Cairn.Wire.Len.list">list</a></li><li><a href="#Cairn.Wire.Len.canvas">canvas</a></li><li><a href="#Cairn.Wire.Len.menuRecord">menuRecord</a></li><li><a href="#Cairn.Wire.Len.status">status</a></li><li><a href="#Cairn.Wire.Len.surface">surface</a></li><li><a href="#Cairn.Wire.Put.rect">rect</a></li><li><a href="#Cairn.Wire.Put.point">point</a></li><li><a href="#Cairn.Wire.Put.color">color</a></li><li><a href="#Cairn.Wire.Put.ref">ref</a></li><li><a href="#Cairn.Wire.Put.range">range</a></li><li><a href="#Cairn.Wire.Put.ints">ints</a></li><li><a href="#Cairn.Wire.Put.intLists">intLists</a></li><li><a href="#Cairn.Wire.Put.draw">draw</a></li><li><a href="#Cairn.Wire.Put.ax">ax</a></li><li><a href="#Cairn.Wire.Put.textInput">textInput</a></li><li><a href="#Cairn.Wire.Put.cursor">cursor</a></li><li><a href="#Cairn.Wire.Put.header1">header1</a></li><li><a href="#Cairn.Wire.Put.headers">headers</a></li><li><a href="#Cairn.Wire.Put.part">part</a></li><li><a href="#Cairn.Wire.Put.parts">parts</a></li><li><a href="#Cairn.Wire.Put.secret">secret</a></li><li><a href="#Cairn.Wire.Put.optSecret">optSecret</a></li><li><a href="#Cairn.Wire.Put.requestBody">requestBody</a></li><li><a href="#Cairn.Wire.Put.effect">effect</a></li><li><a href="#Cairn.Wire.Put.subBody">subBody</a></li><li><a href="#Cairn.Wire.Put.subCmd">subCmd</a></li><li><a href="#Cairn.Wire.Put.wake">wake</a></li><li><a href="#Cairn.Wire.Put.list">list</a></li><li><a href="#Cairn.Wire.Put.canvas">canvas</a></li><li><a href="#Cairn.Wire.Put.menuRecord">menuRecord</a></li><li><a href="#Cairn.Wire.Put.status">status</a></li><li><a href="#Cairn.Wire.Put.surface">surface</a></li><li><a href="#Cairn.Wire.Put.frame">frame</a></li><li><a href="#Cairn.encodeFrame">encodeFrame</a></li><li><a href="#Cairn.decodeFrame">decodeFrame</a></li></ol><a href="#theorems">Theorems <span class="n">104</span></a><ol><li><a href="#Cairn.Wire.Role.ofCode_code">ofCode_code</a></li><li><a href="#Cairn.Wire.Cursor.ofCode_code">ofCode_code</a></li><li><a href="#Cairn.Wire.FontWidth.ofWire_wire">ofWire_wire</a></li><li><a href="#Cairn.Wire.Corner.ofCode_code">ofCode_code</a></li><li><a href="#Cairn.Wire.checkedOfCode_code">checkedOfCode_code</a></li><li><a href="#Cairn.Wire.Request.Kind.ofCode_code">ofCode_code</a></li><li><a href="#Cairn.Wire.Permission.ofCode_code">ofCode_code</a></li><li><a href="#Cairn.Wire.Key.ofCode_code">ofCode_code</a></li><li><a href="#Cairn.Wire.Key.scalar_fits">scalar_fits</a></li><li><a href="#Cairn.Wire.Mods.ofCode_code">ofCode_code</a></li><li><a href="#Cairn.Wire.SurfaceKind.ofCode_code">ofCode_code</a></li><li><a href="#Cairn.Wire.MenuKind.ofCode_code">ofCode_code</a></li><li><a href="#Cairn.Wire.ScreenChoice.ofCode_code">ofCode_code</a></li><li><a href="#Cairn.Wire.Anchor.ofCode_code">ofCode_code</a></li><li><a href="#Cairn.Wire.fu_iff">fu_iff</a></li><li><a href="#Cairn.Wire.fi_iff">fi_iff</a></li><li><a href="#Cairn.Wire.fs_iff">fs_iff</a></li><li><a href="#Cairn.Wire.fitsRef_zero">fitsRef_zero</a></li><li><a href="#Cairn.Wire.fitsRange_zero">fitsRange_zero</a></li><li><a href="#Cairn.Wire.fu64_iff">fu64_iff</a></li><li><a href="#Cairn.Wire.fi64_iff">fi64_iff</a></li><li><a href="#Cairn.Wire.fb_iff">fb_iff</a></li><li><a href="#Cairn.Wire.Dec.expect_enc">expect_enc</a></li><li><a href="#Cairn.Wire.Dec.rect_enc">rect_enc</a></li><li><a href="#Cairn.Wire.Dec.point_enc">point_enc</a></li><li><a href="#Cairn.Wire.Dec.size_enc">size_enc</a></li><li><a href="#Cairn.Wire.Dec.color_enc">color_enc</a></li><li><a href="#Cairn.Wire.Dec.ref_enc">ref_enc</a></li><li><a href="#Cairn.Wire.Dec.range_enc">range_enc</a></li><li><a href="#Cairn.Wire.Dec.list_enc">list_enc</a></li><li><a href="#Cairn.Wire.Dec.ints_enc">ints_enc</a></li><li><a href="#Cairn.Wire.Dec.intLists_enc">intLists_enc</a></li><li><a href="#Cairn.Wire.Dec.draw_enc">draw_enc</a></li><li><a href="#Cairn.Wire.Dec.ax_enc">ax_enc</a></li><li><a href="#Cairn.Wire.Dec.textInput_enc">textInput_enc</a></li><li><a href="#Cairn.Wire.Dec.cursor_enc">cursor_enc</a></li><li><a href="#Cairn.Wire.Dec.header1_enc">header1_enc</a></li><li><a href="#Cairn.Wire.Dec.headers_enc">headers_enc</a></li><li><a href="#Cairn.Wire.Dec.part_enc">part_enc</a></li><li><a href="#Cairn.Wire.Dec.secret_enc">secret_enc</a></li><li><a href="#Cairn.Wire.Dec.optSecret_enc">optSecret_enc</a></li><li><a href="#Cairn.Wire.Dec.parts_enc">parts_enc</a></li><li><a href="#Cairn.Wire.Dec.requestBody_enc">requestBody_enc</a></li><li><a href="#Cairn.Wire.Dec.effect_enc">effect_enc</a></li><li><a href="#Cairn.Wire.Dec.subCmd_enc">subCmd_enc</a></li><li><a href="#Cairn.Wire.Dec.wake_enc">wake_enc</a></li><li><a href="#Cairn.Wire.Dec.length_le_flatMap">length_le_flatMap</a></li><li><a href="#Cairn.Wire.Dec.canvas_enc">canvas_enc</a></li><li><a href="#Cairn.Wire.Dec.menuRecord_enc">menuRecord_enc</a></li><li><a href="#Cairn.Wire.Dec.status_enc">status_enc</a></li><li><a href="#Cairn.Wire.Dec.surface_enc">surface_enc</a></li><li><a href="#Cairn.Wire.Dec.frame_enc">frame_enc</a></li><li><a href="#Cairn.Wire.Len.foldl_add">foldl_add</a></li><li><a href="#Cairn.Wire.Len.str_eq">str_eq</a></li><li><a href="#Cairn.Wire.Len.length_flatMap_i32">length_flatMap_i32</a></li><li><a href="#Cairn.Wire.Len.ints_eq">ints_eq</a></li><li><a href="#Cairn.Wire.Len.intLists_eq">intLists_eq</a></li><li><a href="#Cairn.Wire.Len.draw_eq">draw_eq</a></li><li><a href="#Cairn.Wire.Len.ax_eq">ax_eq</a></li><li><a href="#Cairn.Wire.Len.bytes_eq">bytes_eq</a></li><li><a href="#Cairn.Wire.Len.headers_eq">headers_eq</a></li><li><a href="#Cairn.Wire.Len.part_eq">part_eq</a></li><li><a href="#Cairn.Wire.Len.parts_eq">parts_eq</a></li><li><a href="#Cairn.Wire.Len.optSecret_eq">optSecret_eq</a></li><li><a href="#Cairn.Wire.Len.requestBody_eq">requestBody_eq</a></li><li><a href="#Cairn.Wire.Len.effect_eq">effect_eq</a></li><li><a href="#Cairn.Wire.Len.subCmd_eq">subCmd_eq</a></li><li><a href="#Cairn.Wire.Len.textInput_eq">textInput_eq</a></li><li><a href="#Cairn.Wire.Len.list_eq">list_eq</a></li><li><a href="#Cairn.Wire.Len.canvas_eq">canvas_eq</a></li><li><a href="#Cairn.Wire.Len.menuRecord_eq">menuRecord_eq</a></li><li><a href="#Cairn.Wire.Len.status_eq">status_eq</a></li><li><a href="#Cairn.Wire.Len.surface_eq">surface_eq</a></li><li><a href="#Cairn.Wire.Put.rect_data">rect_data</a></li><li><a href="#Cairn.Wire.Put.point_data">point_data</a></li><li><a href="#Cairn.Wire.Put.color_data">color_data</a></li><li><a href="#Cairn.Wire.Put.ref_data">ref_data</a></li><li><a href="#Cairn.Wire.Put.range_data">range_data</a></li><li><a href="#Cairn.Wire.Put.foldl_data'">foldl_data'</a></li><li><a href="#Cairn.Wire.Put.ints_data">ints_data</a></li><li><a href="#Cairn.Wire.Put.intLists_data">intLists_data</a></li><li><a href="#Cairn.Wire.Put.draw_data">draw_data</a></li><li><a href="#Cairn.Wire.Put.ax_data">ax_data</a></li><li><a href="#Cairn.Wire.Put.textInput_data">textInput_data</a></li><li><a href="#Cairn.Wire.Put.cursor_data">cursor_data</a></li><li><a href="#Cairn.Wire.Put.header1_data">header1_data</a></li><li><a href="#Cairn.Wire.Put.headers_data">headers_data</a></li><li><a href="#Cairn.Wire.Put.part_data">part_data</a></li><li><a href="#Cairn.Wire.Put.parts_data">parts_data</a></li><li><a href="#Cairn.Wire.Put.secret_data">secret_data</a></li><li><a href="#Cairn.Wire.Put.optSecret_data">optSecret_data</a></li><li><a href="#Cairn.Wire.Put.requestBody_data">requestBody_data</a></li><li><a href="#Cairn.Wire.Put.subCmd_data">subCmd_data</a></li><li><a href="#Cairn.Wire.Put.wake_data">wake_data</a></li><li><a href="#Cairn.Wire.Put.effect_data">effect_data</a></li><li><a href="#Cairn.Wire.Put.foldl_data">foldl_data</a></li><li><a href="#Cairn.Wire.Put.list_data">list_data</a></li><li><a href="#Cairn.Wire.Put.canvas_data">canvas_data</a></li><li><a href="#Cairn.Wire.Put.menuRecord_data">menuRecord_data</a></li><li><a href="#Cairn.Wire.Put.status_data">status_data</a></li><li><a href="#Cairn.Wire.Put.surface_data">surface_data</a></li><li><a href="#Cairn.Wire.Put.frame_data">frame_data</a></li><li><a href="#Cairn.encodeFrame_eq_put">encodeFrame_eq_put</a></li><li><a href="#Cairn.decodeFrame_encodeFrame">decodeFrame_encodeFrame</a></li></ol></aside><main>
+<header class="page"><div class="eyebrow">Cairn · module</div><h1 class="mod">Cairn.Frame.Encode</h1><p class="src">lean/Cairn/Frame/Encode.lean</p></header>
+<div class="doc"><p>Frame byte format v1 (docs/frame.md): specification encoder <a href="Cairn.Frame.Encode.html#Cairn.Wire.Enc.frame"><code>Wire.Enc.frame</code></a>, decoder
+<a href="Cairn.Frame.Encode.html#Cairn.Wire.Dec.frame"><code>Wire.Dec.frame</code></a>, the executable encoder <a href="Cairn.Frame.Encode.html#Cairn.encodeFrame"><code>encodeFrame</code></a> (proved equal to the specification and
+installed with <code>@[csimp]</code>), and the round trip <a href="Cairn.Frame.Encode.html#Cairn.decodeFrame_encodeFrame"><code>decodeFrame_encodeFrame</code></a>.</p>
+<p>Layout, all little-endian:</p>
+<pre><code>header     &quot;CAFR&quot; u16 version=1 u16 flags=0 i32 w i32 h                       16 bytes
+draws      u32 count u32 byteLength, then count records
+ax         u32 count u32 byteLength, then count records
+textInput  4 bytes [present, hasMarked, 0, 0], then the rest of the record when present
+cursor     4 bytes [cursor, 0, 0, 0]
+effects    u32 count u32 byteLength, then count records
+</code></pre>
+<p>Records start with a 4-byte head whose first byte is the tag, followed by fixed-size fields and
+at most two strings, each <code>u32</code> byte length + UTF-8.</p>
+</div>
+<p class="imports"><span class="pix muted">Imports</span> <a href="Cairn.Frame.html">Cairn.Frame</a>, <a href="Cairn.Frame.Bytes.html">Cairn.Frame.Bytes</a></p>
+<div class="order"><span class="pix muted">Order</span> <button type="button" data-order="kind" class="on">by kind</button><button type="button" data-order="source">as in the source</button></div>
+<div id="items">
+
+<h2 id="definitions">Definitions <span class="n">171</span></h2>
+<section class="decl" id="Cairn.Wire.Role.code" data-line="30">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Role.code"><span class="ns">Cairn.Wire.Role.</span>code</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:30</span></div>
+<pre class="sig"><b class="nm">code</b> : <a href="Cairn.UI.Node.html#Cairn.Role" title="Cairn.Role">Role</a> → <span title="UInt8">UInt8</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Role.ofCode" data-line="34">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Role.ofCode"><span class="ns">Cairn.Wire.Role.</span>ofCode</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:34</span></div>
+<pre class="sig"><b class="nm">ofCode</b> : <span title="UInt8">UInt8</span> → Option <a href="Cairn.UI.Node.html#Cairn.Role" title="Cairn.Role">Role</a></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Cursor.code" data-line="42">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Cursor.code"><span class="ns">Cairn.Wire.Cursor.</span>code</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:42</span></div>
+<pre class="sig"><b class="nm">code</b> : <a href="Cairn.Input.html#Cairn.Cursor" title="Cairn.Cursor">Cursor</a> → <span title="UInt8">UInt8</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Cursor.ofCode" data-line="45">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Cursor.ofCode"><span class="ns">Cairn.Wire.Cursor.</span>ofCode</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:45</span></div>
+<pre class="sig"><b class="nm">ofCode</b> : <span title="UInt8">UInt8</span> → Option <a href="Cairn.Input.html#Cairn.Cursor" title="Cairn.Cursor">Cursor</a></pre>
+</section>
+<section class="decl" id="Cairn.Wire.FontWidth.wire" data-line="51">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.FontWidth.wire"><span class="ns">Cairn.Wire.FontWidth.</span>wire</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:51</span></div>
+<pre class="sig"><b class="nm">wire</b> : <a href="Cairn.Text.Metrics.html#Cairn.FontWidth" title="Cairn.FontWidth">FontWidth</a> → <span title="UInt8">UInt8</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.FontWidth.ofWire" data-line="54">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.FontWidth.ofWire"><span class="ns">Cairn.Wire.FontWidth.</span>ofWire</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:54</span></div>
+<pre class="sig"><b class="nm">ofWire</b> : <span title="UInt8">UInt8</span> → Option <a href="Cairn.Text.Metrics.html#Cairn.FontWidth" title="Cairn.FontWidth">FontWidth</a></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Corner.code" data-line="61">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Corner.code"><span class="ns">Cairn.Wire.Corner.</span>code</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:61</span></div>
+<pre class="sig"><b class="nm">code</b> : <a href="Cairn.UI.Node.html#Cairn.Corner" title="Cairn.Corner">Corner</a> → <span title="UInt8">UInt8</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Corner.ofCode" data-line="64">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Corner.ofCode"><span class="ns">Cairn.Wire.Corner.</span>ofCode</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:64</span></div>
+<pre class="sig"><b class="nm">ofCode</b> : <span title="UInt8">UInt8</span> → Option <a href="Cairn.UI.Node.html#Cairn.Corner" title="Cairn.Corner">Corner</a></pre>
+</section>
+<section class="decl" id="Cairn.Wire.checkedCode" data-line="70">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.checkedCode"><span class="ns">Cairn.Wire.</span>checkedCode</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:70</span></div>
+<pre class="sig"><b class="nm">checkedCode</b> : Option <span title="Bool">Bool</span> → <span title="UInt8">UInt8</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.checkedOfCode" data-line="73">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.checkedOfCode"><span class="ns">Cairn.Wire.</span>checkedOfCode</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:73</span></div>
+<pre class="sig"><b class="nm">checkedOfCode</b> : <span title="UInt8">UInt8</span> → Option (Option <span title="Bool">Bool</span>)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Request.Kind.code" data-line="79">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Request.Kind.code"><span class="ns">Cairn.Wire.Request.Kind.</span>code</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:79</span></div>
+<pre class="sig"><b class="nm">code</b> : <a href="Cairn.Effects.html#Cairn.Request.Kind" title="Cairn.Request.Kind">Request.Kind</a> → <span title="UInt8">UInt8</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Request.Kind.ofCode" data-line="85">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Request.Kind.ofCode"><span class="ns">Cairn.Wire.Request.Kind.</span>ofCode</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:85</span></div>
+<pre class="sig"><b class="nm">ofCode</b> : <span title="UInt8">UInt8</span> → Option <a href="Cairn.Effects.html#Cairn.Request.Kind" title="Cairn.Request.Kind">Request.Kind</a></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Permission.code" data-line="96">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Permission.code"><span class="ns">Cairn.Wire.Permission.</span>code</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:96</span></div>
+<pre class="sig"><b class="nm">code</b> : <a href="Cairn.Effects.html#Cairn.Permission" title="Cairn.Permission">Permission</a> → <span title="UInt8">UInt8</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Permission.ofCode" data-line="99">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Permission.ofCode"><span class="ns">Cairn.Wire.Permission.</span>ofCode</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:99</span></div>
+<pre class="sig"><b class="nm">ofCode</b> : <span title="UInt8">UInt8</span> → Option <a href="Cairn.Effects.html#Cairn.Permission" title="Cairn.Permission">Permission</a></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Sub.code" data-line="107">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Sub.code"><span class="ns">Cairn.Wire.Sub.</span>code</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:107</span></div>
+<pre class="sig"><b class="nm">code</b> : <a href="Cairn.Effects.html#Cairn.Sub" title="Cairn.Sub">Sub</a> → <span title="UInt8">UInt8</span></pre><div class="doc"><p><code>every</code> 0, <code>watchFile</code> 1, <code>record</code> 2, <code>globalKey</code> 3.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Wire.Key.code" data-line="111">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Key.code"><span class="ns">Cairn.Wire.Key.</span>code</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:111</span></div>
+<pre class="sig"><b class="nm">code</b> : <a href="Cairn.Input.html#Cairn.Key" title="Cairn.Key">Key</a> → <span title="UInt8">UInt8</span></pre><div class="doc"><p><code>char</code> is 13 and carries its scalar in the record's <code>u32</code> field.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Wire.Key.scalar" data-line="116">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Key.scalar"><span class="ns">Cairn.Wire.Key.</span>scalar</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:116</span></div>
+<pre class="sig"><b class="nm">scalar</b> : <a href="Cairn.Input.html#Cairn.Key" title="Cairn.Key">Key</a> → <span title="Nat">Nat</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Key.ofCode" data-line="120">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Key.ofCode"><span class="ns">Cairn.Wire.Key.</span>ofCode</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:120</span></div>
+<pre class="sig"><b class="nm">ofCode</b> (code : <span title="UInt8">UInt8</span>) (scalar : <span title="Nat">Nat</span>) : Option <a href="Cairn.Input.html#Cairn.Key" title="Cairn.Key">Key</a></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Mods.code" data-line="143">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Mods.code"><span class="ns">Cairn.Wire.Mods.</span>code</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:143</span></div>
+<pre class="sig"><b class="nm">code</b> (m : <a href="Cairn.Input.html#Cairn.Mods" title="Cairn.Mods">Mods</a>) : <span title="UInt8">UInt8</span></pre><div class="doc"><p>Bit 0 shift, 1 command, 2 option, 3 control.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Wire.Mods.ofCode" data-line="147">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Mods.ofCode"><span class="ns">Cairn.Wire.Mods.</span>ofCode</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:147</span></div>
+<pre class="sig"><b class="nm">ofCode</b> (b : <span title="UInt8">UInt8</span>) : Option <a href="Cairn.Input.html#Cairn.Mods" title="Cairn.Mods">Mods</a></pre>
+</section>
+<section class="decl" id="Cairn.Wire.SurfaceKind.code" data-line="157">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.SurfaceKind.code"><span class="ns">Cairn.Wire.SurfaceKind.</span>code</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:157</span></div>
+<pre class="sig"><b class="nm">code</b> : <a href="Cairn.Frame.html#Cairn.SurfaceKind" title="Cairn.SurfaceKind">SurfaceKind</a> → <span title="UInt8">UInt8</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.SurfaceKind.ofCode" data-line="160">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.SurfaceKind.ofCode"><span class="ns">Cairn.Wire.SurfaceKind.</span>ofCode</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:160</span></div>
+<pre class="sig"><b class="nm">ofCode</b> : <span title="UInt8">UInt8</span> → Option <a href="Cairn.Frame.html#Cairn.SurfaceKind" title="Cairn.SurfaceKind">SurfaceKind</a></pre>
+</section>
+<section class="decl" id="Cairn.Wire.MenuKind.code" data-line="167">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.MenuKind.code"><span class="ns">Cairn.Wire.MenuKind.</span>code</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:167</span></div>
+<pre class="sig"><b class="nm">code</b> : <a href="Cairn.Frame.html#Cairn.MenuKind" title="Cairn.MenuKind">MenuKind</a> → <span title="UInt8">UInt8</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.MenuKind.ofCode" data-line="170">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.MenuKind.ofCode"><span class="ns">Cairn.Wire.MenuKind.</span>ofCode</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:170</span></div>
+<pre class="sig"><b class="nm">ofCode</b> : <span title="UInt8">UInt8</span> → Option <a href="Cairn.Frame.html#Cairn.MenuKind" title="Cairn.MenuKind">MenuKind</a></pre>
+</section>
+<section class="decl" id="Cairn.Wire.ScreenChoice.code" data-line="176">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.ScreenChoice.code"><span class="ns">Cairn.Wire.ScreenChoice.</span>code</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:176</span></div>
+<pre class="sig"><b class="nm">code</b> : <a href="Cairn.Surface.html#Cairn.ScreenChoice" title="Cairn.ScreenChoice">ScreenChoice</a> → <span title="UInt8">UInt8</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.ScreenChoice.ofCode" data-line="179">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.ScreenChoice.ofCode"><span class="ns">Cairn.Wire.ScreenChoice.</span>ofCode</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:179</span></div>
+<pre class="sig"><b class="nm">ofCode</b> : <span title="UInt8">UInt8</span> → Option <a href="Cairn.Surface.html#Cairn.ScreenChoice" title="Cairn.ScreenChoice">ScreenChoice</a></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Anchor.code" data-line="187">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Anchor.code"><span class="ns">Cairn.Wire.Anchor.</span>code</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:187</span></div>
+<pre class="sig"><b class="nm">code</b> : <a href="Cairn.Surface.html#Cairn.Anchor" title="Cairn.Anchor">Anchor</a> → <span title="UInt8">UInt8</span></pre><div class="doc"><p><code>bottomCenter</code> is 0; its offset goes in the record's <code>u32</code> field.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Wire.Anchor.ofCode" data-line="190">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Anchor.ofCode"><span class="ns">Cairn.Wire.Anchor.</span>ofCode</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:190</span></div>
+<pre class="sig"><b class="nm">ofCode</b> (code : <span title="UInt8">UInt8</span>) (offset : <span title="Nat">Nat</span>) : Option <a href="Cairn.Surface.html#Cairn.Anchor" title="Cairn.Anchor">Anchor</a></pre>
+</section>
+<section class="decl" id="Cairn.Wire.noShortcut" data-line="199">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.noShortcut"><span class="ns">Cairn.Wire.</span>noShortcut</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:199</span></div>
+<pre class="sig"><b class="nm">noShortcut</b> : <a href="Cairn.Surface.html#Cairn.Shortcut" title="Cairn.Shortcut">Shortcut</a></pre><div class="doc"><p>The shortcut fields of a menu record without one.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Wire.fu" data-line="206">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.fu"><span class="ns">Cairn.Wire.</span>fu</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:206</span></div>
+<pre class="sig"><b class="nm">fu</b> (n : <span title="Nat">Nat</span>) : <span title="Bool">Bool</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.fi" data-line="207">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.fi"><span class="ns">Cairn.Wire.</span>fi</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:207</span></div>
+<pre class="sig"><b class="nm">fi</b> (v : <span title="Int">Int</span>) : <span title="Bool">Bool</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.fs" data-line="208">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.fs"><span class="ns">Cairn.Wire.</span>fs</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:208</span></div>
+<pre class="sig"><b class="nm">fs</b> (s : <span title="String">String</span>) : <span title="Bool">Bool</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.fitsRect" data-line="215">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.fitsRect"><span class="ns">Cairn.Wire.</span>fitsRect</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:215</span></div>
+<pre class="sig"><b class="nm">fitsRect</b> (r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) : <span title="Bool">Bool</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.fitsRef" data-line="216">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.fitsRef"><span class="ns">Cairn.Wire.</span>fitsRef</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:216</span></div>
+<pre class="sig"><b class="nm">fitsRef</b> (c : <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a>) : <span title="Bool">Bool</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.fitsRange" data-line="217">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.fitsRange"><span class="ns">Cairn.Wire.</span>fitsRange</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:217</span></div>
+<pre class="sig"><b class="nm">fitsRange</b> (p : <span title="Nat">Nat</span> × <span title="Nat">Nat</span>) : <span title="Bool">Bool</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.fitsInts" data-line="226">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.fitsInts"><span class="ns">Cairn.Wire.</span>fitsInts</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:226</span></div>
+<pre class="sig"><b class="nm">fitsInts</b> (xs : List <span title="Int">Int</span>) : <span title="Bool">Bool</span></pre><div class="doc"><p>Font fields are clamped, not wrapped, so out-of-range fonts still name the font layout
+measured with (<a href="Cairn.Text.Host.html#Cairn.Text.Host.sat"><code>Cairn.Text.Host.sat</code></a>); the round trip is exact when they fit.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Wire.fitsPaint" data-line="228">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.fitsPaint"><span class="ns">Cairn.Wire.</span>fitsPaint</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:228</span></div>
+<pre class="sig"><b class="nm">fitsPaint</b> (p : <a href="Cairn.UI.Node.html#Cairn.Paint" title="Cairn.Paint">Paint</a>) : <span title="Bool">Bool</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.fitsShadow" data-line="232">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.fitsShadow"><span class="ns">Cairn.Wire.</span>fitsShadow</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:232</span></div>
+<pre class="sig"><b class="nm">fitsShadow</b> (s : <a href="Cairn.UI.Node.html#Cairn.Shadow" title="Cairn.Shadow">Shadow</a>) : <span title="Bool">Bool</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.fitsDraw" data-line="234">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.fitsDraw"><span class="ns">Cairn.Wire.</span>fitsDraw</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:234</span></div>
+<pre class="sig"><b class="nm">fitsDraw</b> : <a href="Cairn.Frame.html#Cairn.Draw" title="Cairn.Draw">Draw</a> → <span title="Bool">Bool</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.fitsAx" data-line="245">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.fitsAx"><span class="ns">Cairn.Wire.</span>fitsAx</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:245</span></div>
+<pre class="sig"><b class="nm">fitsAx</b> (n : <a href="Cairn.Frame.html#Cairn.AxNode" title="Cairn.AxNode">AxNode</a>) : <span title="Bool">Bool</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.fitsTextInput" data-line="248">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.fitsTextInput"><span class="ns">Cairn.Wire.</span>fitsTextInput</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:248</span></div>
+<pre class="sig"><b class="nm">fitsTextInput</b> (t : <a href="Cairn.Frame.html#Cairn.TextInput" title="Cairn.TextInput">TextInput</a>) : <span title="Bool">Bool</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.fu64" data-line="252">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.fu64"><span class="ns">Cairn.Wire.</span>fu64</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:252</span></div>
+<pre class="sig"><b class="nm">fu64</b> (n : <span title="Nat">Nat</span>) : <span title="Bool">Bool</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.fi64" data-line="253">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.fi64"><span class="ns">Cairn.Wire.</span>fi64</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:253</span></div>
+<pre class="sig"><b class="nm">fi64</b> (v : <span title="Int">Int</span>) : <span title="Bool">Bool</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.fb" data-line="254">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.fb"><span class="ns">Cairn.Wire.</span>fb</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:254</span></div>
+<pre class="sig"><b class="nm">fb</b> (b : <span title="ByteArray">ByteArray</span>) : <span title="Bool">Bool</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.fitsHeaders" data-line="263">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.fitsHeaders"><span class="ns">Cairn.Wire.</span>fitsHeaders</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:263</span></div>
+<pre class="sig"><b class="nm">fitsHeaders</b> (hs : List (<span title="String">String</span> × <span title="String">String</span>)) : <span title="Bool">Bool</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.fitsPart" data-line="266">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.fitsPart"><span class="ns">Cairn.Wire.</span>fitsPart</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:266</span></div>
+<pre class="sig"><b class="nm">fitsPart</b> : <a href="Cairn.Effects.html#Cairn.Part" title="Cairn.Part">Part</a> → <span title="Bool">Bool</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.fitsSecret" data-line="270">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.fitsSecret"><span class="ns">Cairn.Wire.</span>fitsSecret</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:270</span></div>
+<pre class="sig"><b class="nm">fitsSecret</b> (s : <a href="Cairn.Effects.html#Cairn.Secret" title="Cairn.Secret">Secret</a>) : <span title="Bool">Bool</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.fitsRequest" data-line="272">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.fitsRequest"><span class="ns">Cairn.Wire.</span>fitsRequest</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:272</span></div>
+<pre class="sig"><b class="nm">fitsRequest</b> : <a href="Cairn.Effects.html#Cairn.Request" title="Cairn.Request">Request</a> → <span title="Bool">Bool</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.fitsEffect" data-line="288">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.fitsEffect"><span class="ns">Cairn.Wire.</span>fitsEffect</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:288</span></div>
+<pre class="sig"><b class="nm">fitsEffect</b> : <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a> → <span title="Bool">Bool</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.fitsSub" data-line="297">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.fitsSub"><span class="ns">Cairn.Wire.</span>fitsSub</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:297</span></div>
+<pre class="sig"><b class="nm">fitsSub</b> : <a href="Cairn.Effects.html#Cairn.Sub" title="Cairn.Sub">Sub</a> → <span title="Bool">Bool</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.fitsSubCmd" data-line="303">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.fitsSubCmd"><span class="ns">Cairn.Wire.</span>fitsSubCmd</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:303</span></div>
+<pre class="sig"><b class="nm">fitsSubCmd</b> : <a href="Cairn.Effects.html#Cairn.SubCmd" title="Cairn.SubCmd">SubCmd</a> → <span title="Bool">Bool</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.fitsCanvas" data-line="309">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.fitsCanvas"><span class="ns">Cairn.Wire.</span>fitsCanvas</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:309</span></div>
+<pre class="sig"><b class="nm">fitsCanvas</b> (c : <a href="Cairn.Frame.html#Cairn.Canvas" title="Cairn.Canvas">Canvas</a>) : <span title="Bool">Bool</span></pre><div class="doc"><p>Every value fits its field. The other condition of the round trip is that the encoding is
+under 4 GiB (each section's byte length is a <code>u32</code>).</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Wire.fitsMenuRecord" data-line="315">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.fitsMenuRecord"><span class="ns">Cairn.Wire.</span>fitsMenuRecord</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:315</span></div>
+<pre class="sig"><b class="nm">fitsMenuRecord</b> (m : <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a>) : <span title="Bool">Bool</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.fitsStatus" data-line="318">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.fitsStatus"><span class="ns">Cairn.Wire.</span>fitsStatus</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:318</span></div>
+<pre class="sig"><b class="nm">fitsStatus</b> (s : <a href="Cairn.Frame.html#Cairn.StatusFrame" title="Cairn.StatusFrame">StatusFrame</a>) : <span title="Bool">Bool</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.fitsSurface" data-line="322">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.fitsSurface"><span class="ns">Cairn.Wire.</span>fitsSurface</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:322</span></div>
+<pre class="sig"><b class="nm">fitsSurface</b> (s : <a href="Cairn.Frame.html#Cairn.SurfaceFrame" title="Cairn.SurfaceFrame">SurfaceFrame</a>) : <span title="Bool">Bool</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.fitsFrame" data-line="325">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.fitsFrame"><span class="ns">Cairn.Wire.</span>fitsFrame</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:325</span></div>
+<pre class="sig"><b class="nm">fitsFrame</b> (f : <a href="Cairn.Frame.html" title="Cairn.Frame">Frame</a>) : <span title="Bool">Bool</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Enc.rect" data-line="334">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Enc.rect"><span class="ns">Cairn.Wire.Enc.</span>rect</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:334</span></div>
+<pre class="sig"><b class="nm">rect</b> (r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) : List <span title="UInt8">UInt8</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Enc.point" data-line="335">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Enc.point"><span class="ns">Cairn.Wire.Enc.</span>point</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:335</span></div>
+<pre class="sig"><b class="nm">point</b> (p : <a href="Cairn.Geometry.html#Cairn.Point" title="Cairn.Point">Point</a>) : List <span title="UInt8">UInt8</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Enc.size" data-line="336">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Enc.size"><span class="ns">Cairn.Wire.Enc.</span>size</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:336</span></div>
+<pre class="sig"><b class="nm">size</b> (s : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) : List <span title="UInt8">UInt8</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Enc.color" data-line="337">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Enc.color"><span class="ns">Cairn.Wire.Enc.</span>color</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:337</span></div>
+<pre class="sig"><b class="nm">color</b> (c : <a href="Cairn.UI.Node.html#Cairn.Color" title="Cairn.Color">Color</a>) : List <span title="UInt8">UInt8</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Enc.ref" data-line="338">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Enc.ref"><span class="ns">Cairn.Wire.Enc.</span>ref</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:338</span></div>
+<pre class="sig"><b class="nm">ref</b> (c : <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a>) : List <span title="UInt8">UInt8</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Enc.range" data-line="339">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Enc.range"><span class="ns">Cairn.Wire.Enc.</span>range</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:339</span></div>
+<pre class="sig"><b class="nm">range</b> (p : <span title="Nat">Nat</span> × <span title="Nat">Nat</span>) : List <span title="UInt8">UInt8</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Enc.noColor" data-line="341">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Enc.noColor"><span class="ns">Cairn.Wire.Enc.</span>noColor</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:341</span></div>
+<pre class="sig"><b class="nm">noColor</b> : <a href="Cairn.UI.Node.html#Cairn.Color" title="Cairn.Color">Color</a></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Enc.list" data-line="344">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Enc.list"><span class="ns">Cairn.Wire.Enc.</span>list</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:344</span></div>
+<pre class="sig"><b class="nm">list</b> {α : Type} (e : α → List <span title="UInt8">UInt8</span>) (xs : List α) : List <span title="UInt8">UInt8</span></pre><div class="doc"><p>A list: <a href="Cairn.Frame.Bytes.html#Cairn.Wire.Enc.u32"><code>u32</code></a> count, then the records as a sized section.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Wire.Enc.ints" data-line="348">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Enc.ints"><span class="ns">Cairn.Wire.Enc.</span>ints</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:348</span></div>
+<pre class="sig"><b class="nm">ints</b> (xs : List <span title="Int">Int</span>) : List <span title="UInt8">UInt8</span></pre><div class="doc"><p>A <a href="Cairn.Frame.Bytes.html#Cairn.Wire.Enc.u32"><code>u32</code></a> count, then each as an <a href="Cairn.Frame.Bytes.html#Cairn.Wire.Enc.i32"><code>i32</code></a>.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Wire.Enc.intLists" data-line="351">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Enc.intLists"><span class="ns">Cairn.Wire.Enc.</span>intLists</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:351</span></div>
+<pre class="sig"><b class="nm">intLists</b> (xss : List (List <span title="Int">Int</span>)) : List <span title="UInt8">UInt8</span></pre><div class="doc"><p>A <a href="Cairn.Frame.Bytes.html#Cairn.Wire.Enc.u32"><code>u32</code></a> count, then each list as <a href="Cairn.Frame.Encode.html#Cairn.Wire.Enc.ints"><code>ints</code></a>.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Wire.Enc.draw" data-line="353">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Enc.draw"><span class="ns">Cairn.Wire.Enc.</span>draw</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:353</span></div>
+<pre class="sig"><b class="nm">draw</b> : <a href="Cairn.Frame.html#Cairn.Draw" title="Cairn.Draw">Draw</a> → List <span title="UInt8">UInt8</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Enc.ax" data-line="373">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Enc.ax"><span class="ns">Cairn.Wire.Enc.</span>ax</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:373</span></div>
+<pre class="sig"><b class="nm">ax</b> (n : <a href="Cairn.Frame.html#Cairn.AxNode" title="Cairn.AxNode">AxNode</a>) : List <span title="UInt8">UInt8</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Enc.textInput" data-line="379">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Enc.textInput"><span class="ns">Cairn.Wire.Enc.</span>textInput</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:379</span></div>
+<pre class="sig"><b class="nm">textInput</b> : Option <a href="Cairn.Frame.html#Cairn.TextInput" title="Cairn.TextInput">TextInput</a> → List <span title="UInt8">UInt8</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Enc.cursor" data-line="385">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Enc.cursor"><span class="ns">Cairn.Wire.Enc.</span>cursor</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:385</span></div>
+<pre class="sig"><b class="nm">cursor</b> (c : <a href="Cairn.Input.html#Cairn.Cursor" title="Cairn.Cursor">Cursor</a>) : List <span title="UInt8">UInt8</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Enc.header1" data-line="387">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Enc.header1"><span class="ns">Cairn.Wire.Enc.</span>header1</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:387</span></div>
+<pre class="sig"><b class="nm">header1</b> (kv : <span title="String">String</span> × <span title="String">String</span>) : List <span title="UInt8">UInt8</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Enc.headers" data-line="390">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Enc.headers"><span class="ns">Cairn.Wire.Enc.</span>headers</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:390</span></div>
+<pre class="sig"><b class="nm">headers</b> (hs : List (<span title="String">String</span> × <span title="String">String</span>)) : List <span title="UInt8">UInt8</span></pre><div class="doc"><p>A <a href="Cairn.Frame.Bytes.html#Cairn.Wire.Enc.u32"><code>u32</code></a> count, then each name and value.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Wire.Enc.part" data-line="393">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Enc.part"><span class="ns">Cairn.Wire.Enc.</span>part</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:393</span></div>
+<pre class="sig"><b class="nm">part</b> : <a href="Cairn.Effects.html#Cairn.Part" title="Cairn.Part">Part</a> → List <span title="UInt8">UInt8</span></pre><div class="doc"><p><code>[0, 0, 0, 0]</code> and bytes, or <code>[1, hasStop, 0, 0]</code>, clip, start and stop.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Wire.Enc.secret" data-line="397">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Enc.secret"><span class="ns">Cairn.Wire.Enc.</span>secret</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:397</span></div>
+<pre class="sig"><b class="nm">secret</b> (s : <a href="Cairn.Effects.html#Cairn.Secret" title="Cairn.Secret">Secret</a>) : List <span title="UInt8">UInt8</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Enc.optSecret" data-line="399">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Enc.optSecret"><span class="ns">Cairn.Wire.Enc.</span>optSecret</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:399</span></div>
+<pre class="sig"><b class="nm">optSecret</b> : Option <a href="Cairn.Effects.html#Cairn.Secret" title="Cairn.Secret">Secret</a> → List <span title="UInt8">UInt8</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Enc.parts" data-line="404">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Enc.parts"><span class="ns">Cairn.Wire.Enc.</span>parts</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:404</span></div>
+<pre class="sig"><b class="nm">parts</b> (ps : List <a href="Cairn.Effects.html#Cairn.Part" title="Cairn.Part">Part</a>) : List <span title="UInt8">UInt8</span></pre><div class="doc"><p>A <a href="Cairn.Frame.Bytes.html#Cairn.Wire.Enc.u32"><code>u32</code></a> count, then each part.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Wire.Enc.requestBody" data-line="407">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Enc.requestBody"><span class="ns">Cairn.Wire.Enc.</span>requestBody</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:407</span></div>
+<pre class="sig"><b class="nm">requestBody</b> : <a href="Cairn.Effects.html#Cairn.Request" title="Cairn.Request">Request</a> → List <span title="UInt8">UInt8</span></pre><div class="doc"><p>A request's fields after its record head and id.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Wire.Enc.effect" data-line="426">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Enc.effect"><span class="ns">Cairn.Wire.Enc.</span>effect</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:426</span></div>
+<pre class="sig"><b class="nm">effect</b> : <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a> → List <span title="UInt8">UInt8</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Enc.subBody" data-line="436">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Enc.subBody"><span class="ns">Cairn.Wire.Enc.</span>subBody</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:436</span></div>
+<pre class="sig"><b class="nm">subBody</b> : <a href="Cairn.Effects.html#Cairn.Sub" title="Cairn.Sub">Sub</a> → List <span title="UInt8">UInt8</span></pre><div class="doc"><p>A subscription's fields after its record head and id.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Wire.Enc.subCmd" data-line="442">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Enc.subCmd"><span class="ns">Cairn.Wire.Enc.</span>subCmd</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:442</span></div>
+<pre class="sig"><b class="nm">subCmd</b> : <a href="Cairn.Effects.html#Cairn.SubCmd" title="Cairn.SubCmd">SubCmd</a> → List <span title="UInt8">UInt8</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Enc.wake" data-line="447">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Enc.wake"><span class="ns">Cairn.Wire.Enc.</span>wake</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:447</span></div>
+<pre class="sig"><b class="nm">wake</b> (w : Option <span title="Nat">Nat</span>) : List <span title="UInt8">UInt8</span></pre><div class="doc"><p><code>[hasWake, 0, 0, 0]</code>, then the deadline as a <a href="Cairn.Frame.Bytes.html#Cairn.Wire.Enc.u64"><code>u64</code></a> (0 when there is none).</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Wire.Enc.magic" data-line="449">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Enc.magic"><span class="ns">Cairn.Wire.Enc.</span>magic</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:449</span></div>
+<pre class="sig"><b class="nm">magic</b> : List <span title="UInt8">UInt8</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Enc.canvas" data-line="452">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Enc.canvas"><span class="ns">Cairn.Wire.Enc.</span>canvas</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:452</span></div>
+<pre class="sig"><b class="nm">canvas</b> (c : <a href="Cairn.Frame.html#Cairn.Canvas" title="Cairn.Canvas">Canvas</a>) : List <span title="UInt8">UInt8</span></pre><div class="doc"><p>A Metal surface's content: size, draws, accessibility nodes, text input, cursor.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Wire.Enc.menuRecord" data-line="457">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Enc.menuRecord"><span class="ns">Cairn.Wire.Enc.</span>menuRecord</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:457</span></div>
+<pre class="sig"><b class="nm">menuRecord</b> (m : <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a>) : List <span title="UInt8">UInt8</span></pre><div class="doc"><p>32 bytes, then the label. A field the record doesn't have is written as zero.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Wire.Enc.status" data-line="464">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Enc.status"><span class="ns">Cairn.Wire.Enc.</span>status</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:464</span></div>
+<pre class="sig"><b class="nm">status</b> (s : <a href="Cairn.Frame.html#Cairn.StatusFrame" title="Cairn.StatusFrame">StatusFrame</a>) : List <span title="UInt8">UInt8</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Enc.surface" data-line="468">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Enc.surface"><span class="ns">Cairn.Wire.Enc.</span>surface</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:468</span></div>
+<pre class="sig"><b class="nm">surface</b> (s : <a href="Cairn.Frame.html#Cairn.SurfaceFrame" title="Cairn.SurfaceFrame">SurfaceFrame</a>) : List <span title="UInt8">UInt8</span></pre><div class="doc"><p><code>[kind, shown, anchor, screen]</code>, place, anchor offset, title, canvas, status.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Wire.Enc.header" data-line="473">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Enc.header"><span class="ns">Cairn.Wire.Enc.</span>header</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:473</span></div>
+<pre class="sig"><b class="nm">header</b> : List <span title="UInt8">UInt8</span></pre><div class="doc"><p>Magic, version 4, flags 0.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Wire.Enc.frame" data-line="475">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Enc.frame"><span class="ns">Cairn.Wire.Enc.</span>frame</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:475</span></div>
+<pre class="sig"><b class="nm">frame</b> (f : <a href="Cairn.Frame.html" title="Cairn.Frame">Frame</a>) : List <span title="UInt8">UInt8</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.expect" data-line="485">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Dec.expect"><span class="ns">Cairn.Wire.Dec.</span>expect</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:485</span></div>
+<pre class="sig"><b class="nm">expect</b> (bs : List <span title="UInt8">UInt8</span>) : Dec <span title="Unit">Unit</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.rect" data-line="488">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Dec.rect"><span class="ns">Cairn.Wire.Dec.</span>rect</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:488</span></div>
+<pre class="sig"><b class="nm">rect</b> : Dec <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.point" data-line="489">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Dec.point"><span class="ns">Cairn.Wire.Dec.</span>point</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:489</span></div>
+<pre class="sig"><b class="nm">point</b> : Dec <a href="Cairn.Geometry.html#Cairn.Point" title="Cairn.Point">Point</a></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.size" data-line="490">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Dec.size"><span class="ns">Cairn.Wire.Dec.</span>size</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:490</span></div>
+<pre class="sig"><b class="nm">size</b> : Dec <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.color" data-line="491">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Dec.color"><span class="ns">Cairn.Wire.Dec.</span>color</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:491</span></div>
+<pre class="sig"><b class="nm">color</b> : Dec <a href="Cairn.UI.Node.html#Cairn.Color" title="Cairn.Color">Color</a></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.ref" data-line="492">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Dec.ref"><span class="ns">Cairn.Wire.Dec.</span>ref</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:492</span></div>
+<pre class="sig"><b class="nm">ref</b> : Dec <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.range" data-line="493">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Dec.range"><span class="ns">Cairn.Wire.Dec.</span>range</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:493</span></div>
+<pre class="sig"><b class="nm">range</b> : Dec (<span title="Nat">Nat</span> × <span title="Nat">Nat</span>)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.list" data-line="495">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Dec.list"><span class="ns">Cairn.Wire.Dec.</span>list</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:495</span></div>
+<pre class="sig"><b class="nm">list</b> {α : Type} (d : Dec α) : Dec (List α)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.ints" data-line="499">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Dec.ints"><span class="ns">Cairn.Wire.Dec.</span>ints</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:499</span></div>
+<pre class="sig"><b class="nm">ints</b> : Dec (List <span title="Int">Int</span>)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.intLists" data-line="503">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Dec.intLists"><span class="ns">Cairn.Wire.Dec.</span>intLists</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:503</span></div>
+<pre class="sig"><b class="nm">intLists</b> : Dec (List (List <span title="Int">Int</span>))</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.draw" data-line="507">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Dec.draw"><span class="ns">Cairn.Wire.Dec.</span>draw</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:507</span></div>
+<pre class="sig"><b class="nm">draw</b> : Dec <a href="Cairn.Frame.html#Cairn.Draw" title="Cairn.Draw">Draw</a></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.ax" data-line="566">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Dec.ax"><span class="ns">Cairn.Wire.Dec.</span>ax</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:566</span></div>
+<pre class="sig"><b class="nm">ax</b> : Dec <a href="Cairn.Frame.html#Cairn.AxNode" title="Cairn.AxNode">AxNode</a></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.textInput" data-line="582">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Dec.textInput"><span class="ns">Cairn.Wire.Dec.</span>textInput</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:582</span></div>
+<pre class="sig"><b class="nm">textInput</b> : Dec (Option <a href="Cairn.Frame.html#Cairn.TextInput" title="Cairn.TextInput">TextInput</a>)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.cursor" data-line="601">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Dec.cursor"><span class="ns">Cairn.Wire.Dec.</span>cursor</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:601</span></div>
+<pre class="sig"><b class="nm">cursor</b> : Dec <a href="Cairn.Input.html#Cairn.Cursor" title="Cairn.Cursor">Cursor</a></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.header1" data-line="606">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Dec.header1"><span class="ns">Cairn.Wire.Dec.</span>header1</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:606</span></div>
+<pre class="sig"><b class="nm">header1</b> : Dec (<span title="String">String</span> × <span title="String">String</span>)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.headers" data-line="608">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Dec.headers"><span class="ns">Cairn.Wire.Dec.</span>headers</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:608</span></div>
+<pre class="sig"><b class="nm">headers</b> : Dec (List (<span title="String">String</span> × <span title="String">String</span>))</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.part" data-line="612">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Dec.part"><span class="ns">Cairn.Wire.Dec.</span>part</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:612</span></div>
+<pre class="sig"><b class="nm">part</b> : Dec <a href="Cairn.Effects.html#Cairn.Part" title="Cairn.Part">Part</a></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.secret" data-line="626">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Dec.secret"><span class="ns">Cairn.Wire.Dec.</span>secret</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:626</span></div>
+<pre class="sig"><b class="nm">secret</b> : Dec <a href="Cairn.Effects.html#Cairn.Secret" title="Cairn.Secret">Secret</a></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.optSecret" data-line="628">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Dec.optSecret"><span class="ns">Cairn.Wire.Dec.</span>optSecret</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:628</span></div>
+<pre class="sig"><b class="nm">optSecret</b> : Dec (Option <a href="Cairn.Effects.html#Cairn.Secret" title="Cairn.Secret">Secret</a>)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.parts" data-line="638">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Dec.parts"><span class="ns">Cairn.Wire.Dec.</span>parts</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:638</span></div>
+<pre class="sig"><b class="nm">parts</b> : Dec (List <a href="Cairn.Effects.html#Cairn.Part" title="Cairn.Part">Part</a>)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.requestBody" data-line="642">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Dec.requestBody"><span class="ns">Cairn.Wire.Dec.</span>requestBody</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:642</span></div>
+<pre class="sig"><b class="nm">requestBody</b> : <a href="Cairn.Effects.html#Cairn.Request.Kind" title="Cairn.Request.Kind">Request.Kind</a> → Dec <a href="Cairn.Effects.html#Cairn.Request" title="Cairn.Request">Request</a></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.effect" data-line="687">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Dec.effect"><span class="ns">Cairn.Wire.Dec.</span>effect</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:687</span></div>
+<pre class="sig"><b class="nm">effect</b> : Dec <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.subBody" data-line="715">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Dec.subBody"><span class="ns">Cairn.Wire.Dec.</span>subBody</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:715</span></div>
+<pre class="sig"><b class="nm">subBody</b> : <span title="UInt8">UInt8</span> → Dec <a href="Cairn.Effects.html#Cairn.Sub" title="Cairn.Sub">Sub</a></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.subCmd" data-line="727">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Dec.subCmd"><span class="ns">Cairn.Wire.Dec.</span>subCmd</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:727</span></div>
+<pre class="sig"><b class="nm">subCmd</b> : Dec <a href="Cairn.Effects.html#Cairn.SubCmd" title="Cairn.SubCmd">SubCmd</a></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.wake" data-line="739">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Dec.wake"><span class="ns">Cairn.Wire.Dec.</span>wake</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:739</span></div>
+<pre class="sig"><b class="nm">wake</b> : Dec (Option <span title="Nat">Nat</span>)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.canvas" data-line="745">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Dec.canvas"><span class="ns">Cairn.Wire.Dec.</span>canvas</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:745</span></div>
+<pre class="sig"><b class="nm">canvas</b> : Dec <a href="Cairn.Frame.html#Cairn.Canvas" title="Cairn.Canvas">Canvas</a></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.shortcut" data-line="753">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Dec.shortcut"><span class="ns">Cairn.Wire.Dec.</span>shortcut</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:753</span></div>
+<pre class="sig"><b class="nm">shortcut</b> (has : <span title="Bool">Bool</span>) (key : <span title="UInt8">UInt8</span>) (scalar : <span title="Nat">Nat</span>) (mods : <span title="UInt8">UInt8</span>) :
+  Dec (Option <a href="Cairn.Surface.html#Cairn.Shortcut" title="Cairn.Shortcut">Shortcut</a>)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.menuRecord" data-line="760">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Dec.menuRecord"><span class="ns">Cairn.Wire.Dec.</span>menuRecord</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:760</span></div>
+<pre class="sig"><b class="nm">menuRecord</b> : Dec <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.status" data-line="781">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Dec.status"><span class="ns">Cairn.Wire.Dec.</span>status</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:781</span></div>
+<pre class="sig"><b class="nm">status</b> : Dec <a href="Cairn.Frame.html#Cairn.StatusFrame" title="Cairn.StatusFrame">StatusFrame</a></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.surface" data-line="789">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Dec.surface"><span class="ns">Cairn.Wire.Dec.</span>surface</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:789</span></div>
+<pre class="sig"><b class="nm">surface</b> : Dec <a href="Cairn.Frame.html#Cairn.SurfaceFrame" title="Cairn.SurfaceFrame">SurfaceFrame</a></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.frame" data-line="802">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Dec.frame"><span class="ns">Cairn.Wire.Dec.</span>frame</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:802</span></div>
+<pre class="sig"><b class="nm">frame</b> : Dec <a href="Cairn.Frame.html" title="Cairn.Frame">Frame</a></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.SizeOk" data-line="1201">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Dec.SizeOk"><span class="ns">Cairn.Wire.Dec.</span>SizeOk</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1201</span></div>
+<pre class="sig"><b class="nm">SizeOk</b> (f : <a href="Cairn.Frame.html" title="Cairn.Frame">Frame</a>) : Prop</pre><div class="doc"><p>Sections of a frame whose encoding is under 4 GiB have <a href="Cairn.Frame.Bytes.html#Cairn.Wire.Dec.u32"><code>u32</code></a> byte lengths.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Wire.Len.str" data-line="1230">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Len.str"><span class="ns">Cairn.Wire.Len.</span>str</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1230</span></div>
+<pre class="sig"><b class="nm">str</b> (s : <span title="String">String</span>) : <span title="Nat">Nat</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.ints" data-line="1232">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Len.ints"><span class="ns">Cairn.Wire.Len.</span>ints</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1232</span></div>
+<pre class="sig"><b class="nm">ints</b> (xs : List <span title="Int">Int</span>) : <span title="Nat">Nat</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.intLists" data-line="1234">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Len.intLists"><span class="ns">Cairn.Wire.Len.</span>intLists</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1234</span></div>
+<pre class="sig"><b class="nm">intLists</b> (xss : List (List <span title="Int">Int</span>)) : <span title="Nat">Nat</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.draw" data-line="1236">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Len.draw"><span class="ns">Cairn.Wire.Len.</span>draw</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1236</span></div>
+<pre class="sig"><b class="nm">draw</b> : <a href="Cairn.Frame.html#Cairn.Draw" title="Cairn.Draw">Draw</a> → <span title="Nat">Nat</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.ax" data-line="1244">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Len.ax"><span class="ns">Cairn.Wire.Len.</span>ax</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1244</span></div>
+<pre class="sig"><b class="nm">ax</b> (n : <a href="Cairn.Frame.html#Cairn.AxNode" title="Cairn.AxNode">AxNode</a>) : <span title="Nat">Nat</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.bytes" data-line="1246">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Len.bytes"><span class="ns">Cairn.Wire.Len.</span>bytes</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1246</span></div>
+<pre class="sig"><b class="nm">bytes</b> (b : <span title="ByteArray">ByteArray</span>) : <span title="Nat">Nat</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.headers" data-line="1248">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Len.headers"><span class="ns">Cairn.Wire.Len.</span>headers</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1248</span></div>
+<pre class="sig"><b class="nm">headers</b> (hs : List (<span title="String">String</span> × <span title="String">String</span>)) : <span title="Nat">Nat</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.part" data-line="1251">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Len.part"><span class="ns">Cairn.Wire.Len.</span>part</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1251</span></div>
+<pre class="sig"><b class="nm">part</b> : <a href="Cairn.Effects.html#Cairn.Part" title="Cairn.Part">Part</a> → <span title="Nat">Nat</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.parts" data-line="1255">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Len.parts"><span class="ns">Cairn.Wire.Len.</span>parts</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1255</span></div>
+<pre class="sig"><b class="nm">parts</b> (ps : List <a href="Cairn.Effects.html#Cairn.Part" title="Cairn.Part">Part</a>) : <span title="Nat">Nat</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.secret" data-line="1257">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Len.secret"><span class="ns">Cairn.Wire.Len.</span>secret</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1257</span></div>
+<pre class="sig"><b class="nm">secret</b> (s : <a href="Cairn.Effects.html#Cairn.Secret" title="Cairn.Secret">Secret</a>) : <span title="Nat">Nat</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.optSecret" data-line="1259">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Len.optSecret"><span class="ns">Cairn.Wire.Len.</span>optSecret</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1259</span></div>
+<pre class="sig"><b class="nm">optSecret</b> : Option <a href="Cairn.Effects.html#Cairn.Secret" title="Cairn.Secret">Secret</a> → <span title="Nat">Nat</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.requestBody" data-line="1263">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Len.requestBody"><span class="ns">Cairn.Wire.Len.</span>requestBody</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1263</span></div>
+<pre class="sig"><b class="nm">requestBody</b> : <a href="Cairn.Effects.html#Cairn.Request" title="Cairn.Request">Request</a> → <span title="Nat">Nat</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.effect" data-line="1278">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Len.effect"><span class="ns">Cairn.Wire.Len.</span>effect</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1278</span></div>
+<pre class="sig"><b class="nm">effect</b> : <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a> → <span title="Nat">Nat</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.subBody" data-line="1287">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Len.subBody"><span class="ns">Cairn.Wire.Len.</span>subBody</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1287</span></div>
+<pre class="sig"><b class="nm">subBody</b> : <a href="Cairn.Effects.html#Cairn.Sub" title="Cairn.Sub">Sub</a> → <span title="Nat">Nat</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.subCmd" data-line="1293">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Len.subCmd"><span class="ns">Cairn.Wire.Len.</span>subCmd</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1293</span></div>
+<pre class="sig"><b class="nm">subCmd</b> : <a href="Cairn.Effects.html#Cairn.SubCmd" title="Cairn.SubCmd">SubCmd</a> → <span title="Nat">Nat</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.textInput" data-line="1297">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Len.textInput"><span class="ns">Cairn.Wire.Len.</span>textInput</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1297</span></div>
+<pre class="sig"><b class="nm">textInput</b> : Option <a href="Cairn.Frame.html#Cairn.TextInput" title="Cairn.TextInput">TextInput</a> → <span title="Nat">Nat</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.list" data-line="1301">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Len.list"><span class="ns">Cairn.Wire.Len.</span>list</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1301</span></div>
+<pre class="sig"><b class="nm">list</b> {α : Type} (len : α → <span title="Nat">Nat</span>) (xs : Array α) : <span title="Nat">Nat</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.canvas" data-line="1303">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Len.canvas"><span class="ns">Cairn.Wire.Len.</span>canvas</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1303</span></div>
+<pre class="sig"><b class="nm">canvas</b> (c : <a href="Cairn.Frame.html#Cairn.Canvas" title="Cairn.Canvas">Canvas</a>) : <span title="Nat">Nat</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.menuRecord" data-line="1306">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Len.menuRecord"><span class="ns">Cairn.Wire.Len.</span>menuRecord</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1306</span></div>
+<pre class="sig"><b class="nm">menuRecord</b> (m : <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a>) : <span title="Nat">Nat</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.status" data-line="1308">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Len.status"><span class="ns">Cairn.Wire.Len.</span>status</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1308</span></div>
+<pre class="sig"><b class="nm">status</b> (s : <a href="Cairn.Frame.html#Cairn.StatusFrame" title="Cairn.StatusFrame">StatusFrame</a>) : <span title="Nat">Nat</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.surface" data-line="1311">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Len.surface"><span class="ns">Cairn.Wire.Len.</span>surface</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1311</span></div>
+<pre class="sig"><b class="nm">surface</b> (s : <a href="Cairn.Frame.html#Cairn.SurfaceFrame" title="Cairn.SurfaceFrame">SurfaceFrame</a>) : <span title="Nat">Nat</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.rect" data-line="1434">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Put.rect"><span class="ns">Cairn.Wire.Put.</span>rect</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1434</span></div>
+<pre class="sig"><b class="nm">rect</b> (b : <span title="ByteArray">ByteArray</span>) (r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) : <span title="ByteArray">ByteArray</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.point" data-line="1435">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Put.point"><span class="ns">Cairn.Wire.Put.</span>point</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1435</span></div>
+<pre class="sig"><b class="nm">point</b> (b : <span title="ByteArray">ByteArray</span>) (p : <a href="Cairn.Geometry.html#Cairn.Point" title="Cairn.Point">Point</a>) : <span title="ByteArray">ByteArray</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.color" data-line="1436">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Put.color"><span class="ns">Cairn.Wire.Put.</span>color</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1436</span></div>
+<pre class="sig"><b class="nm">color</b> (b : <span title="ByteArray">ByteArray</span>) (c : <a href="Cairn.UI.Node.html#Cairn.Color" title="Cairn.Color">Color</a>) : <span title="ByteArray">ByteArray</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.ref" data-line="1437">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Put.ref"><span class="ns">Cairn.Wire.Put.</span>ref</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1437</span></div>
+<pre class="sig"><b class="nm">ref</b> (b : <span title="ByteArray">ByteArray</span>) (c : <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a>) : <span title="ByteArray">ByteArray</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.range" data-line="1438">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Put.range"><span class="ns">Cairn.Wire.Put.</span>range</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1438</span></div>
+<pre class="sig"><b class="nm">range</b> (b : <span title="ByteArray">ByteArray</span>) (p : <span title="Nat">Nat</span> × <span title="Nat">Nat</span>) : <span title="ByteArray">ByteArray</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.ints" data-line="1440">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Put.ints"><span class="ns">Cairn.Wire.Put.</span>ints</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1440</span></div>
+<pre class="sig"><b class="nm">ints</b> (b : <span title="ByteArray">ByteArray</span>) (xs : List <span title="Int">Int</span>) : <span title="ByteArray">ByteArray</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.intLists" data-line="1442">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Put.intLists"><span class="ns">Cairn.Wire.Put.</span>intLists</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1442</span></div>
+<pre class="sig"><b class="nm">intLists</b> (b : <span title="ByteArray">ByteArray</span>) (xss : List (List <span title="Int">Int</span>)) : <span title="ByteArray">ByteArray</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.draw" data-line="1445">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Put.draw"><span class="ns">Cairn.Wire.Put.</span>draw</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1445</span></div>
+<pre class="sig"><b class="nm">draw</b> (b : <span title="ByteArray">ByteArray</span>) : <a href="Cairn.Frame.html#Cairn.Draw" title="Cairn.Draw">Draw</a> → <span title="ByteArray">ByteArray</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.ax" data-line="1467">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Put.ax"><span class="ns">Cairn.Wire.Put.</span>ax</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1467</span></div>
+<pre class="sig"><b class="nm">ax</b> (b : <span title="ByteArray">ByteArray</span>) (n : <a href="Cairn.Frame.html#Cairn.AxNode" title="Cairn.AxNode">AxNode</a>) : <span title="ByteArray">ByteArray</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.textInput" data-line="1473">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Put.textInput"><span class="ns">Cairn.Wire.Put.</span>textInput</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1473</span></div>
+<pre class="sig"><b class="nm">textInput</b> (b : <span title="ByteArray">ByteArray</span>) : Option <a href="Cairn.Frame.html#Cairn.TextInput" title="Cairn.TextInput">TextInput</a> → <span title="ByteArray">ByteArray</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.cursor" data-line="1480">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Put.cursor"><span class="ns">Cairn.Wire.Put.</span>cursor</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1480</span></div>
+<pre class="sig"><b class="nm">cursor</b> (b : <span title="ByteArray">ByteArray</span>) (c : <a href="Cairn.Input.html#Cairn.Cursor" title="Cairn.Cursor">Cursor</a>) : <span title="ByteArray">ByteArray</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.header1" data-line="1482">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Put.header1"><span class="ns">Cairn.Wire.Put.</span>header1</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1482</span></div>
+<pre class="sig"><b class="nm">header1</b> (b : <span title="ByteArray">ByteArray</span>) (kv : <span title="String">String</span> × <span title="String">String</span>) : <span title="ByteArray">ByteArray</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.headers" data-line="1484">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Put.headers"><span class="ns">Cairn.Wire.Put.</span>headers</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1484</span></div>
+<pre class="sig"><b class="nm">headers</b> (b : <span title="ByteArray">ByteArray</span>) (hs : List (<span title="String">String</span> × <span title="String">String</span>)) : <span title="ByteArray">ByteArray</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.part" data-line="1487">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Put.part"><span class="ns">Cairn.Wire.Put.</span>part</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1487</span></div>
+<pre class="sig"><b class="nm">part</b> (b : <span title="ByteArray">ByteArray</span>) : <a href="Cairn.Effects.html#Cairn.Part" title="Cairn.Part">Part</a> → <span title="ByteArray">ByteArray</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.parts" data-line="1491">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Put.parts"><span class="ns">Cairn.Wire.Put.</span>parts</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1491</span></div>
+<pre class="sig"><b class="nm">parts</b> (b : <span title="ByteArray">ByteArray</span>) (ps : List <a href="Cairn.Effects.html#Cairn.Part" title="Cairn.Part">Part</a>) : <span title="ByteArray">ByteArray</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.secret" data-line="1493">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Put.secret"><span class="ns">Cairn.Wire.Put.</span>secret</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1493</span></div>
+<pre class="sig"><b class="nm">secret</b> (b : <span title="ByteArray">ByteArray</span>) (s : <a href="Cairn.Effects.html#Cairn.Secret" title="Cairn.Secret">Secret</a>) : <span title="ByteArray">ByteArray</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.optSecret" data-line="1495">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Put.optSecret"><span class="ns">Cairn.Wire.Put.</span>optSecret</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1495</span></div>
+<pre class="sig"><b class="nm">optSecret</b> (b : <span title="ByteArray">ByteArray</span>) : Option <a href="Cairn.Effects.html#Cairn.Secret" title="Cairn.Secret">Secret</a> → <span title="ByteArray">ByteArray</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.requestBody" data-line="1499">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Put.requestBody"><span class="ns">Cairn.Wire.Put.</span>requestBody</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1499</span></div>
+<pre class="sig"><b class="nm">requestBody</b> (b : <span title="ByteArray">ByteArray</span>) : <a href="Cairn.Effects.html#Cairn.Request" title="Cairn.Request">Request</a> → <span title="ByteArray">ByteArray</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.effect" data-line="1515">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Put.effect"><span class="ns">Cairn.Wire.Put.</span>effect</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1515</span></div>
+<pre class="sig"><b class="nm">effect</b> (b : <span title="ByteArray">ByteArray</span>) : <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a> → <span title="ByteArray">ByteArray</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.subBody" data-line="1524">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Put.subBody"><span class="ns">Cairn.Wire.Put.</span>subBody</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1524</span></div>
+<pre class="sig"><b class="nm">subBody</b> (b : <span title="ByteArray">ByteArray</span>) : <a href="Cairn.Effects.html#Cairn.Sub" title="Cairn.Sub">Sub</a> → <span title="ByteArray">ByteArray</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.subCmd" data-line="1530">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Put.subCmd"><span class="ns">Cairn.Wire.Put.</span>subCmd</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1530</span></div>
+<pre class="sig"><b class="nm">subCmd</b> (b : <span title="ByteArray">ByteArray</span>) : <a href="Cairn.Effects.html#Cairn.SubCmd" title="Cairn.SubCmd">SubCmd</a> → <span title="ByteArray">ByteArray</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.wake" data-line="1534">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Put.wake"><span class="ns">Cairn.Wire.Put.</span>wake</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1534</span></div>
+<pre class="sig"><b class="nm">wake</b> (b : <span title="ByteArray">ByteArray</span>) (w : Option <span title="Nat">Nat</span>) : <span title="ByteArray">ByteArray</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.list" data-line="1536">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Put.list"><span class="ns">Cairn.Wire.Put.</span>list</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1536</span></div>
+<pre class="sig"><b class="nm">list</b> {α : Type} (put : <span title="ByteArray">ByteArray</span> → α → <span title="ByteArray">ByteArray</span>) (len : α → <span title="Nat">Nat</span>)
+  (b : <span title="ByteArray">ByteArray</span>) (xs : Array α) : <span title="ByteArray">ByteArray</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.canvas" data-line="1540">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Put.canvas"><span class="ns">Cairn.Wire.Put.</span>canvas</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1540</span></div>
+<pre class="sig"><b class="nm">canvas</b> (b : <span title="ByteArray">ByteArray</span>) (c : <a href="Cairn.Frame.html#Cairn.Canvas" title="Cairn.Canvas">Canvas</a>) : <span title="ByteArray">ByteArray</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.menuRecord" data-line="1545">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Put.menuRecord"><span class="ns">Cairn.Wire.Put.</span>menuRecord</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1545</span></div>
+<pre class="sig"><b class="nm">menuRecord</b> (b : <span title="ByteArray">ByteArray</span>) (m : <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a>) : <span title="ByteArray">ByteArray</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.status" data-line="1554">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Put.status"><span class="ns">Cairn.Wire.Put.</span>status</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1554</span></div>
+<pre class="sig"><b class="nm">status</b> (b : <span title="ByteArray">ByteArray</span>) (s : <a href="Cairn.Frame.html#Cairn.StatusFrame" title="Cairn.StatusFrame">StatusFrame</a>) : <span title="ByteArray">ByteArray</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.surface" data-line="1557">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Put.surface"><span class="ns">Cairn.Wire.Put.</span>surface</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1557</span></div>
+<pre class="sig"><b class="nm">surface</b> (b : <span title="ByteArray">ByteArray</span>) (s : <a href="Cairn.Frame.html#Cairn.SurfaceFrame" title="Cairn.SurfaceFrame">SurfaceFrame</a>) : <span title="ByteArray">ByteArray</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.frame" data-line="1563">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Put.frame"><span class="ns">Cairn.Wire.Put.</span>frame</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1563</span></div>
+<pre class="sig"><b class="nm">frame</b> (f : <a href="Cairn.Frame.html" title="Cairn.Frame">Frame</a>) : <span title="ByteArray">ByteArray</span></pre>
+</section>
+<section class="decl" id="Cairn.encodeFrame" data-line="1729">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.encodeFrame"><span class="ns">Cairn.</span>encodeFrame</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1729</span></div>
+<pre class="sig"><b class="nm">encodeFrame</b> (f : <a href="Cairn.Frame.html" title="Cairn.Frame">Frame</a>) : <span title="ByteArray">ByteArray</span></pre><div class="doc"><p>The frame's bytes (docs/frame.md). Defined by the specification; compiled as <code>Put.frame</code>.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.decodeFrame" data-line="1731">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.decodeFrame"><span class="ns">Cairn.</span>decodeFrame</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1731</span></div>
+<pre class="sig"><b class="nm">decodeFrame</b> (b : <span title="ByteArray">ByteArray</span>) : Option <a href="Cairn.Frame.html" title="Cairn.Frame">Frame</a></pre>
+</section>
+<h2 id="theorems">Theorems <span class="n">104</span></h2>
+<section class="decl" id="Cairn.Wire.Role.ofCode_code" data-line="39">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Role.ofCode_code"><span class="ns">Cairn.Wire.Role.</span>ofCode_code</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:39</span></div>
+<pre class="sig"><b class="nm">ofCode_code</b> (r : <a href="Cairn.UI.Node.html#Cairn.Role" title="Cairn.Role">Role</a>) : ofCode (code r) = some r</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Cursor.ofCode_code" data-line="48">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Cursor.ofCode_code"><span class="ns">Cairn.Wire.Cursor.</span>ofCode_code</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:48</span></div>
+<pre class="sig"><b class="nm">ofCode_code</b> (c : <a href="Cairn.Input.html#Cairn.Cursor" title="Cairn.Cursor">Cursor</a>) : ofCode (code c) = some c</pre>
+</section>
+<section class="decl" id="Cairn.Wire.FontWidth.ofWire_wire" data-line="58">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.FontWidth.ofWire_wire"><span class="ns">Cairn.Wire.FontWidth.</span>ofWire_wire</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:58</span></div>
+<pre class="sig"><b class="nm">ofWire_wire</b> (w : <a href="Cairn.Text.Metrics.html#Cairn.FontWidth" title="Cairn.FontWidth">FontWidth</a>) : ofWire (wire w) = some w</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Corner.ofCode_code" data-line="67">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Corner.ofCode_code"><span class="ns">Cairn.Wire.Corner.</span>ofCode_code</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:67</span></div>
+<pre class="sig"><b class="nm">ofCode_code</b> (c : <a href="Cairn.UI.Node.html#Cairn.Corner" title="Cairn.Corner">Corner</a>) : ofCode (code c) = some c</pre>
+</section>
+<section class="decl" id="Cairn.Wire.checkedOfCode_code" data-line="76">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.checkedOfCode_code"><span class="ns">Cairn.Wire.</span>checkedOfCode_code</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:76</span></div>
+<pre class="sig"><b class="nm">checkedOfCode_code</b> (c : Option <span title="Bool">Bool</span>) : checkedOfCode (checkedCode c) = some c</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Request.Kind.ofCode_code" data-line="92">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Request.Kind.ofCode_code"><span class="ns">Cairn.Wire.Request.Kind.</span>ofCode_code</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:92</span></div>
+<pre class="sig"><b class="nm">ofCode_code</b> (k : <a href="Cairn.Effects.html#Cairn.Request.Kind" title="Cairn.Request.Kind">Request.Kind</a>) : ofCode (code k) = some k</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Permission.ofCode_code" data-line="102">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Permission.ofCode_code"><span class="ns">Cairn.Wire.Permission.</span>ofCode_code</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:102</span></div>
+<pre class="sig"><b class="nm">ofCode_code</b> (p : <a href="Cairn.Effects.html#Cairn.Permission" title="Cairn.Permission">Permission</a>) : ofCode (code p) = some p</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Key.ofCode_code" data-line="128">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Key.ofCode_code"><span class="ns">Cairn.Wire.Key.</span>ofCode_code</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:128</span></div>
+<pre class="sig"><b class="nm">ofCode_code</b> (k : <a href="Cairn.Input.html#Cairn.Key" title="Cairn.Key">Key</a>) : ofCode (code k) (scalar k) = some k</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Key.scalar_fits" data-line="135">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Key.scalar_fits"><span class="ns">Cairn.Wire.Key.</span>scalar_fits</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:135</span></div>
+<pre class="sig"><b class="nm">scalar_fits</b> (k : <a href="Cairn.Input.html#Cairn.Key" title="Cairn.Key">Key</a>) : FitsU32 (scalar k)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Mods.ofCode_code" data-line="153">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Mods.ofCode_code"><span class="ns">Cairn.Wire.Mods.</span>ofCode_code</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:153</span></div>
+<pre class="sig"><b class="nm">ofCode_code</b> (m : <a href="Cairn.Input.html#Cairn.Mods" title="Cairn.Mods">Mods</a>) : ofCode (code m) = some m</pre>
+</section>
+<section class="decl" id="Cairn.Wire.SurfaceKind.ofCode_code" data-line="163">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.SurfaceKind.ofCode_code"><span class="ns">Cairn.Wire.SurfaceKind.</span>ofCode_code</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:163</span></div>
+<pre class="sig"><b class="nm">ofCode_code</b> (k : <a href="Cairn.Frame.html#Cairn.SurfaceKind" title="Cairn.SurfaceKind">SurfaceKind</a>) : ofCode (code k) = some k</pre>
+</section>
+<section class="decl" id="Cairn.Wire.MenuKind.ofCode_code" data-line="173">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.MenuKind.ofCode_code"><span class="ns">Cairn.Wire.MenuKind.</span>ofCode_code</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:173</span></div>
+<pre class="sig"><b class="nm">ofCode_code</b> (k : <a href="Cairn.Frame.html#Cairn.MenuKind" title="Cairn.MenuKind">MenuKind</a>) : ofCode (code k) = some k</pre>
+</section>
+<section class="decl" id="Cairn.Wire.ScreenChoice.ofCode_code" data-line="182">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.ScreenChoice.ofCode_code"><span class="ns">Cairn.Wire.ScreenChoice.</span>ofCode_code</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:182</span></div>
+<pre class="sig"><b class="nm">ofCode_code</b> (c : <a href="Cairn.Surface.html#Cairn.ScreenChoice" title="Cairn.ScreenChoice">ScreenChoice</a>) : ofCode (code c) = some c</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Anchor.ofCode_code" data-line="195">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Anchor.ofCode_code"><span class="ns">Cairn.Wire.Anchor.</span>ofCode_code</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:195</span></div>
+<pre class="sig"><b class="nm">ofCode_code</b> (a : <a href="Cairn.Surface.html#Cairn.Anchor" title="Cairn.Anchor">Anchor</a>) : ofCode (code a) a.offset = some a</pre>
+</section>
+<section class="decl" id="Cairn.Wire.fu_iff" data-line="210">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.fu_iff"><span class="ns">Cairn.Wire.</span>fu_iff</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:210</span></div>
+<pre class="sig"><b class="nm">fu_iff</b> (n : <span title="Nat">Nat</span>) : fu n = <span title="Bool.true">true</span> ↔ FitsU32 n</pre>
+</section>
+<section class="decl" id="Cairn.Wire.fi_iff" data-line="211">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.fi_iff"><span class="ns">Cairn.Wire.</span>fi_iff</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:211</span></div>
+<pre class="sig"><b class="nm">fi_iff</b> (v : <span title="Int">Int</span>) : fi v = <span title="Bool.true">true</span> ↔ FitsI32 v</pre>
+</section>
+<section class="decl" id="Cairn.Wire.fs_iff" data-line="212">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.fs_iff"><span class="ns">Cairn.Wire.</span>fs_iff</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:212</span></div>
+<pre class="sig"><b class="nm">fs_iff</b> (s : <span title="String">String</span>) : fs s = <span title="Bool.true">true</span> ↔ FitsStr s</pre>
+</section>
+<section class="decl" id="Cairn.Wire.fitsRef_zero" data-line="219">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.fitsRef_zero"><span class="ns">Cairn.Wire.</span>fitsRef_zero</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:219</span></div>
+<pre class="sig"><b class="nm">fitsRef_zero</b> : fitsRef { claim := 0 } = <span title="Bool.true">true</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.fitsRange_zero" data-line="221">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.fitsRange_zero"><span class="ns">Cairn.Wire.</span>fitsRange_zero</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:221</span></div>
+<pre class="sig"><b class="nm">fitsRange_zero</b> : fitsRange (0, 0) = <span title="Bool.true">true</span></pre>
+</section>
+<section class="decl" id="Cairn.Wire.fu64_iff" data-line="256">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.fu64_iff"><span class="ns">Cairn.Wire.</span>fu64_iff</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:256</span></div>
+<pre class="sig"><b class="nm">fu64_iff</b> (n : <span title="Nat">Nat</span>) : fu64 n = <span title="Bool.true">true</span> ↔ FitsU64 n</pre>
+</section>
+<section class="decl" id="Cairn.Wire.fi64_iff" data-line="258">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.fi64_iff"><span class="ns">Cairn.Wire.</span>fi64_iff</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:258</span></div>
+<pre class="sig"><b class="nm">fi64_iff</b> (v : <span title="Int">Int</span>) : fi64 v = <span title="Bool.true">true</span> ↔ FitsI64 v</pre>
+</section>
+<section class="decl" id="Cairn.Wire.fb_iff" data-line="260">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.fb_iff"><span class="ns">Cairn.Wire.</span>fb_iff</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:260</span></div>
+<pre class="sig"><b class="nm">fb_iff</b> (b : <span title="ByteArray">ByteArray</span>) : fb b = <span title="Bool.true">true</span> ↔ FitsBytes b</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.expect_enc" data-line="812">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Dec.expect_enc"><span class="ns">Cairn.Wire.Dec.</span>expect_enc</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:812</span></div>
+<pre class="sig"><b class="nm">expect_enc</b> (bs r : List <span title="UInt8">UInt8</span>) : expect bs (bs ++ r) = some (<span title="Unit.unit">()</span>, r)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.rect_enc" data-line="815">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Dec.rect_enc"><span class="ns">Cairn.Wire.Dec.</span>rect_enc</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:815</span></div>
+<pre class="sig"><b class="nm">rect_enc</b> {x : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>} (h : fitsRect x = <span title="Bool.true">true</span>) (r : List <span title="UInt8">UInt8</span>) :
+  rect (Enc.rect x ++ r) = some (x, r)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.point_enc" data-line="821">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Dec.point_enc"><span class="ns">Cairn.Wire.Dec.</span>point_enc</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:821</span></div>
+<pre class="sig"><b class="nm">point_enc</b> {p : <a href="Cairn.Geometry.html#Cairn.Point" title="Cairn.Point">Point</a>} (h1 : FitsI32 p.x) (h2 : FitsI32 p.y)
+  (r : List <span title="UInt8">UInt8</span>) : point (Enc.point p ++ r) = some (p, r)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.size_enc" data-line="825">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Dec.size_enc"><span class="ns">Cairn.Wire.Dec.</span>size_enc</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:825</span></div>
+<pre class="sig"><b class="nm">size_enc</b> {s : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>} (h1 : FitsI32 s.w) (h2 : FitsI32 s.h) (r : List <span title="UInt8">UInt8</span>) :
+  size (Enc.size s ++ r) = some (s, r)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.color_enc" data-line="829">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Dec.color_enc"><span class="ns">Cairn.Wire.Dec.</span>color_enc</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:829</span></div>
+<pre class="sig"><b class="nm">color_enc</b> (c : <a href="Cairn.UI.Node.html#Cairn.Color" title="Cairn.Color">Color</a>) (r : List <span title="UInt8">UInt8</span>) :
+  color (Enc.color c ++ r) = some (c, r)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.ref_enc" data-line="832">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Dec.ref_enc"><span class="ns">Cairn.Wire.Dec.</span>ref_enc</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:832</span></div>
+<pre class="sig"><b class="nm">ref_enc</b> {c : <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a>} (h : fitsRef c = <span title="Bool.true">true</span>) (r : List <span title="UInt8">UInt8</span>) :
+  ref (Enc.ref c ++ r) = some (c, r)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.range_enc" data-line="837">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Dec.range_enc"><span class="ns">Cairn.Wire.Dec.</span>range_enc</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:837</span></div>
+<pre class="sig"><b class="nm">range_enc</b> {p : <span title="Nat">Nat</span> × <span title="Nat">Nat</span>} (h : fitsRange p = <span title="Bool.true">true</span>) (r : List <span title="UInt8">UInt8</span>) :
+  range (Enc.range p ++ r) = some (p, r)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.list_enc" data-line="842">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Dec.list_enc"><span class="ns">Cairn.Wire.Dec.</span>list_enc</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:842</span></div>
+<pre class="sig"><b class="nm">list_enc</b> {α : Type} {d : Dec α} {e : α → List <span title="UInt8">UInt8</span>} (xs : List α)
+  (h : ∀ (x : α), x ∈ xs → ∀ (r : List <span title="UInt8">UInt8</span>), d (e x ++ r) = some (x, r))
+  (hn : FitsU32 xs.length) (hb : FitsU32 (List.flatMap e xs).length) (r : List <span title="UInt8">UInt8</span>) :
+  d.list (Enc.list e xs ++ r) = some (xs, r)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.ints_enc" data-line="849">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Dec.ints_enc"><span class="ns">Cairn.Wire.Dec.</span>ints_enc</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:849</span></div>
+<pre class="sig"><b class="nm">ints_enc</b> {xs : List <span title="Int">Int</span>} (h : fitsInts xs = <span title="Bool.true">true</span>) (r : List <span title="UInt8">UInt8</span>) :
+  ints (Enc.ints xs ++ r) = some (xs, r)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.intLists_enc" data-line="855">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Dec.intLists_enc"><span class="ns">Cairn.Wire.Dec.</span>intLists_enc</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:855</span></div>
+<pre class="sig"><b class="nm">intLists_enc</b> {xss : List (List <span title="Int">Int</span>)} (hn : FitsU32 xss.length)
+  (h : ∀ (xs : List <span title="Int">Int</span>), xs ∈ xss → fitsInts xs = <span title="Bool.true">true</span>) (r : List <span title="UInt8">UInt8</span>) :
+  intLists (Enc.intLists xss ++ r) = some (xss, r)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.draw_enc" data-line="861">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Dec.draw_enc"><span class="ns">Cairn.Wire.Dec.</span>draw_enc</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:861</span></div>
+<pre class="sig"><b class="nm">draw_enc</b> {x : <a href="Cairn.Frame.html#Cairn.Draw" title="Cairn.Draw">Draw</a>} (h : fitsDraw x = <span title="Bool.true">true</span>) (r : List <span title="UInt8">UInt8</span>) :
+  draw (Enc.draw x ++ r) = some (x, r)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.ax_enc" data-line="914">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Dec.ax_enc"><span class="ns">Cairn.Wire.Dec.</span>ax_enc</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:914</span></div>
+<pre class="sig"><b class="nm">ax_enc</b> {x : <a href="Cairn.Frame.html#Cairn.AxNode" title="Cairn.AxNode">AxNode</a>} (h : fitsAx x = <span title="Bool.true">true</span>) (r : List <span title="UInt8">UInt8</span>) :
+  ax (Enc.ax x ++ r) = some (x, r)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.textInput_enc" data-line="926">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Dec.textInput_enc"><span class="ns">Cairn.Wire.Dec.</span>textInput_enc</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:926</span></div>
+<pre class="sig"><b class="nm">textInput_enc</b> {x : Option <a href="Cairn.Frame.html#Cairn.TextInput" title="Cairn.TextInput">TextInput</a>} (h : Option.all <a href="Cairn.Frame.Encode.html#Cairn.Wire.fitsTextInput" title="Cairn.Wire.fitsTextInput">fitsTextInput</a> x = <span title="Bool.true">true</span>)
+  (r : List <span title="UInt8">UInt8</span>) : textInput (Enc.textInput x ++ r) = some (x, r)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.cursor_enc" data-line="942">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Dec.cursor_enc"><span class="ns">Cairn.Wire.Dec.</span>cursor_enc</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:942</span></div>
+<pre class="sig"><b class="nm">cursor_enc</b> (c : <a href="Cairn.Input.html#Cairn.Cursor" title="Cairn.Cursor">Cursor</a>) (r : List <span title="UInt8">UInt8</span>) :
+  cursor (Enc.cursor c ++ r) = some (c, r)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.header1_enc" data-line="946">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Dec.header1_enc"><span class="ns">Cairn.Wire.Dec.</span>header1_enc</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:946</span></div>
+<pre class="sig"><b class="nm">header1_enc</b> {kv : <span title="String">String</span> × <span title="String">String</span>} (h : (fs kv.fst &amp;&amp; fs kv.snd) = <span title="Bool.true">true</span>)
+  (r : List <span title="UInt8">UInt8</span>) : header1 (Enc.header1 kv ++ r) = some (kv, r)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.headers_enc" data-line="952">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Dec.headers_enc"><span class="ns">Cairn.Wire.Dec.</span>headers_enc</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:952</span></div>
+<pre class="sig"><b class="nm">headers_enc</b> {hs : List (<span title="String">String</span> × <span title="String">String</span>)} (h : fitsHeaders hs = <span title="Bool.true">true</span>)
+  (r : List <span title="UInt8">UInt8</span>) : headers (Enc.headers hs ++ r) = some (hs, r)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.part_enc" data-line="958">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Dec.part_enc"><span class="ns">Cairn.Wire.Dec.</span>part_enc</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:958</span></div>
+<pre class="sig"><b class="nm">part_enc</b> {x : <a href="Cairn.Effects.html#Cairn.Part" title="Cairn.Part">Part</a>} (h : fitsPart x = <span title="Bool.true">true</span>) (r : List <span title="UInt8">UInt8</span>) :
+  part (Enc.part x ++ r) = some (x, r)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.secret_enc" data-line="974">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Dec.secret_enc"><span class="ns">Cairn.Wire.Dec.</span>secret_enc</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:974</span></div>
+<pre class="sig"><b class="nm">secret_enc</b> {s : <a href="Cairn.Effects.html#Cairn.Secret" title="Cairn.Secret">Secret</a>} (h : fitsSecret s = <span title="Bool.true">true</span>) (r : List <span title="UInt8">UInt8</span>) :
+  secret (Enc.secret s ++ r) = some (s, r)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.optSecret_enc" data-line="981">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Dec.optSecret_enc"><span class="ns">Cairn.Wire.Dec.</span>optSecret_enc</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:981</span></div>
+<pre class="sig"><b class="nm">optSecret_enc</b> {s : Option <a href="Cairn.Effects.html#Cairn.Secret" title="Cairn.Secret">Secret</a>} (h : Option.all <a href="Cairn.Frame.Encode.html#Cairn.Wire.fitsSecret" title="Cairn.Wire.fitsSecret">fitsSecret</a> s = <span title="Bool.true">true</span>)
+  (r : List <span title="UInt8">UInt8</span>) : optSecret (Enc.optSecret s ++ r) = some (s, r)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.parts_enc" data-line="991">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Dec.parts_enc"><span class="ns">Cairn.Wire.Dec.</span>parts_enc</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:991</span></div>
+<pre class="sig"><b class="nm">parts_enc</b> {ps : List <a href="Cairn.Effects.html#Cairn.Part" title="Cairn.Part">Part</a>} (hn : FitsU32 ps.length)
+  (h : ∀ (p : <a href="Cairn.Effects.html#Cairn.Part" title="Cairn.Part">Part</a>), p ∈ ps → fitsPart p = <span title="Bool.true">true</span>) (r : List <span title="UInt8">UInt8</span>) :
+  parts (Enc.parts ps ++ r) = some (ps, r)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.requestBody_enc" data-line="996">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Dec.requestBody_enc"><span class="ns">Cairn.Wire.Dec.</span>requestBody_enc</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:996</span></div>
+<pre class="sig"><b class="nm">requestBody_enc</b> {q : <a href="Cairn.Effects.html#Cairn.Request" title="Cairn.Request">Request</a>} (h : fitsRequest q = <span title="Bool.true">true</span>) (r : List <span title="UInt8">UInt8</span>) :
+  requestBody q.kind (Enc.requestBody q ++ r) = some (q, r)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.effect_enc" data-line="1056">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Dec.effect_enc"><span class="ns">Cairn.Wire.Dec.</span>effect_enc</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1056</span></div>
+<pre class="sig"><b class="nm">effect_enc</b> {x : <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a>} (h : fitsEffect x = <span title="Bool.true">true</span>) (r : List <span title="UInt8">UInt8</span>) :
+  effect (Enc.effect x ++ r) = some (x, r)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.subCmd_enc" data-line="1085">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Dec.subCmd_enc"><span class="ns">Cairn.Wire.Dec.</span>subCmd_enc</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1085</span></div>
+<pre class="sig"><b class="nm">subCmd_enc</b> {x : <a href="Cairn.Effects.html#Cairn.SubCmd" title="Cairn.SubCmd">SubCmd</a>} (h : fitsSubCmd x = <span title="Bool.true">true</span>) (r : List <span title="UInt8">UInt8</span>) :
+  subCmd (Enc.subCmd x ++ r) = some (x, r)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.wake_enc" data-line="1119">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Dec.wake_enc"><span class="ns">Cairn.Wire.Dec.</span>wake_enc</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1119</span></div>
+<pre class="sig"><b class="nm">wake_enc</b> {w : Option <span title="Nat">Nat</span>} (h : Option.all <a href="Cairn.Frame.Encode.html#Cairn.Wire.fu64" title="Cairn.Wire.fu64">fu64</a> w = <span title="Bool.true">true</span>) (r : List <span title="UInt8">UInt8</span>) :
+  wake (Enc.wake w ++ r) = some (w, r)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.length_le_flatMap" data-line="1131">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Dec.length_le_flatMap"><span class="ns">Cairn.Wire.Dec.</span>length_le_flatMap</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1131</span></div>
+<pre class="sig"><b class="nm">length_le_flatMap</b> {α : Type} (e : α → List <span title="UInt8">UInt8</span>) {xs : List α} {x : α}
+  (h : x ∈ xs) : (e x).length ≤ (List.flatMap e xs).length</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.canvas_enc" data-line="1141">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Dec.canvas_enc"><span class="ns">Cairn.Wire.Dec.</span>canvas_enc</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1141</span></div>
+<pre class="sig"><b class="nm">canvas_enc</b> {c : <a href="Cairn.Frame.html#Cairn.Canvas" title="Cairn.Canvas">Canvas</a>} (h : fitsCanvas c = <span title="Bool.true">true</span>)
+  (hs : (Enc.canvas c).length &lt; 4294967296) (r : List <span title="UInt8">UInt8</span>) :
+  canvas (Enc.canvas c ++ r) = some (c, r)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.menuRecord_enc" data-line="1158">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Dec.menuRecord_enc"><span class="ns">Cairn.Wire.Dec.</span>menuRecord_enc</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1158</span></div>
+<pre class="sig"><b class="nm">menuRecord_enc</b> {m : <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a>} (h : fitsMenuRecord m = <span title="Bool.true">true</span>)
+  (r : List <span title="UInt8">UInt8</span>) : menuRecord (Enc.menuRecord m ++ r) = some (m, r)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.status_enc" data-line="1172">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Dec.status_enc"><span class="ns">Cairn.Wire.Dec.</span>status_enc</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1172</span></div>
+<pre class="sig"><b class="nm">status_enc</b> {s : <a href="Cairn.Frame.html#Cairn.StatusFrame" title="Cairn.StatusFrame">StatusFrame</a>} (h : fitsStatus s = <span title="Bool.true">true</span>)
+  (hs : (Enc.status s).length &lt; 4294967296) (r : List <span title="UInt8">UInt8</span>) :
+  status (Enc.status s ++ r) = some (s, r)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.surface_enc" data-line="1185">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Dec.surface_enc"><span class="ns">Cairn.Wire.Dec.</span>surface_enc</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1185</span></div>
+<pre class="sig"><b class="nm">surface_enc</b> {s : <a href="Cairn.Frame.html#Cairn.SurfaceFrame" title="Cairn.SurfaceFrame">SurfaceFrame</a>} (h : fitsSurface s = <span title="Bool.true">true</span>)
+  (hs : (Enc.surface s).length &lt; 4294967296) (r : List <span title="UInt8">UInt8</span>) :
+  surface (Enc.surface s ++ r) = some (s, r)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Dec.frame_enc" data-line="1203">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Dec.frame_enc"><span class="ns">Cairn.Wire.Dec.</span>frame_enc</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1203</span></div>
+<pre class="sig"><b class="nm">frame_enc</b> {f : <a href="Cairn.Frame.html" title="Cairn.Frame">Frame</a>} (h : fitsFrame f = <span title="Bool.true">true</span>) (hs : SizeOk f)
+  (r : List <span title="UInt8">UInt8</span>) : frame (Enc.frame f ++ r) = some (f, r)</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.foldl_add" data-line="1313">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Len.foldl_add"><span class="ns">Cairn.Wire.Len.</span>foldl_add</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1313</span></div>
+<pre class="sig"><b class="nm">foldl_add</b> {α : Type} (len : α → <span title="Nat">Nat</span>) (xs : List α) (n : <span title="Nat">Nat</span>) :
+  List.foldl (fun n x =&gt; n + len x) n xs = n + (List.map len xs).sum</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.str_eq" data-line="1319">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Len.str_eq"><span class="ns">Cairn.Wire.Len.</span>str_eq</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1319</span></div>
+<pre class="sig"><b class="nm">str_eq</b> (s : <span title="String">String</span>) : str s = (Enc.str s).length</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.length_flatMap_i32" data-line="1323">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Len.length_flatMap_i32"><span class="ns">Cairn.Wire.Len.</span>length_flatMap_i32</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1323</span></div>
+<pre class="sig"><b class="nm">length_flatMap_i32</b> (xs : List <span title="Int">Int</span>) :
+  (List.flatMap <a href="Cairn.Frame.Bytes.html#Cairn.Wire.Enc.i32" title="Cairn.Wire.Enc.i32">Enc.i32</a> xs).length = 4 * xs.length</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.ints_eq" data-line="1330">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Len.ints_eq"><span class="ns">Cairn.Wire.Len.</span>ints_eq</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1330</span></div>
+<pre class="sig"><b class="nm">ints_eq</b> (xs : List <span title="Int">Int</span>) : ints xs = (Enc.ints xs).length</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.intLists_eq" data-line="1333">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Len.intLists_eq"><span class="ns">Cairn.Wire.Len.</span>intLists_eq</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1333</span></div>
+<pre class="sig"><b class="nm">intLists_eq</b> (xss : List (List <span title="Int">Int</span>)) :
+  intLists xss = (Enc.intLists xss).length</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.draw_eq" data-line="1338">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Len.draw_eq"><span class="ns">Cairn.Wire.Len.</span>draw_eq</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1338</span></div>
+<pre class="sig"><b class="nm">draw_eq</b> (d : <a href="Cairn.Frame.html#Cairn.Draw" title="Cairn.Draw">Draw</a>) : draw d = (Enc.draw d).length</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.ax_eq" data-line="1345">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Len.ax_eq"><span class="ns">Cairn.Wire.Len.</span>ax_eq</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1345</span></div>
+<pre class="sig"><b class="nm">ax_eq</b> (n : <a href="Cairn.Frame.html#Cairn.AxNode" title="Cairn.AxNode">AxNode</a>) : ax n = (Enc.ax n).length</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.bytes_eq" data-line="1351">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Len.bytes_eq"><span class="ns">Cairn.Wire.Len.</span>bytes_eq</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1351</span></div>
+<pre class="sig"><b class="nm">bytes_eq</b> (b : <span title="ByteArray">ByteArray</span>) : bytes b = (Enc.bytes b).length</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.headers_eq" data-line="1355">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Len.headers_eq"><span class="ns">Cairn.Wire.Len.</span>headers_eq</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1355</span></div>
+<pre class="sig"><b class="nm">headers_eq</b> (hs : List (<span title="String">String</span> × <span title="String">String</span>)) :
+  headers hs = (Enc.headers hs).length</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.part_eq" data-line="1360">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Len.part_eq"><span class="ns">Cairn.Wire.Len.</span>part_eq</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1360</span></div>
+<pre class="sig"><b class="nm">part_eq</b> (p : <a href="Cairn.Effects.html#Cairn.Part" title="Cairn.Part">Part</a>) : part p = (Enc.part p).length</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.parts_eq" data-line="1364">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Len.parts_eq"><span class="ns">Cairn.Wire.Len.</span>parts_eq</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1364</span></div>
+<pre class="sig"><b class="nm">parts_eq</b> (ps : List <a href="Cairn.Effects.html#Cairn.Part" title="Cairn.Part">Part</a>) : parts ps = (Enc.parts ps).length</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.optSecret_eq" data-line="1369">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Len.optSecret_eq"><span class="ns">Cairn.Wire.Len.</span>optSecret_eq</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1369</span></div>
+<pre class="sig"><b class="nm">optSecret_eq</b> (s : Option <a href="Cairn.Effects.html#Cairn.Secret" title="Cairn.Secret">Secret</a>) : optSecret s = (Enc.optSecret s).length</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.requestBody_eq" data-line="1374">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Len.requestBody_eq"><span class="ns">Cairn.Wire.Len.</span>requestBody_eq</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1374</span></div>
+<pre class="sig"><b class="nm">requestBody_eq</b> (r : <a href="Cairn.Effects.html#Cairn.Request" title="Cairn.Request">Request</a>) : requestBody r = (Enc.requestBody r).length</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.effect_eq" data-line="1379">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Len.effect_eq"><span class="ns">Cairn.Wire.Len.</span>effect_eq</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1379</span></div>
+<pre class="sig"><b class="nm">effect_eq</b> (e : <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a>) : effect e = (Enc.effect e).length</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.subCmd_eq" data-line="1386">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Len.subCmd_eq"><span class="ns">Cairn.Wire.Len.</span>subCmd_eq</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1386</span></div>
+<pre class="sig"><b class="nm">subCmd_eq</b> (c : <a href="Cairn.Effects.html#Cairn.SubCmd" title="Cairn.SubCmd">SubCmd</a>) : subCmd c = (Enc.subCmd c).length</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.textInput_eq" data-line="1391">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Len.textInput_eq"><span class="ns">Cairn.Wire.Len.</span>textInput_eq</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1391</span></div>
+<pre class="sig"><b class="nm">textInput_eq</b> (t : Option <a href="Cairn.Frame.html#Cairn.TextInput" title="Cairn.TextInput">TextInput</a>) : textInput t = (Enc.textInput t).length</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.list_eq" data-line="1398">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Len.list_eq"><span class="ns">Cairn.Wire.Len.</span>list_eq</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1398</span></div>
+<pre class="sig"><b class="nm">list_eq</b> {α : Type} (len : α → <span title="Nat">Nat</span>) (e : α → List <span title="UInt8">UInt8</span>)
+  (h : ∀ (x : α), len x = (e x).length) (xs : Array α) :
+  list len xs = (List.flatMap e xs.toList).length</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.canvas_eq" data-line="1406">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Len.canvas_eq"><span class="ns">Cairn.Wire.Len.</span>canvas_eq</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1406</span></div>
+<pre class="sig"><b class="nm">canvas_eq</b> (c : <a href="Cairn.Frame.html#Cairn.Canvas" title="Cairn.Canvas">Canvas</a>) : canvas c = (Enc.canvas c).length</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.menuRecord_eq" data-line="1413">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Len.menuRecord_eq"><span class="ns">Cairn.Wire.Len.</span>menuRecord_eq</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1413</span></div>
+<pre class="sig"><b class="nm">menuRecord_eq</b> (m : <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a>) : menuRecord m = (Enc.menuRecord m).length</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.status_eq" data-line="1419">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Len.status_eq"><span class="ns">Cairn.Wire.Len.</span>status_eq</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1419</span></div>
+<pre class="sig"><b class="nm">status_eq</b> (s : <a href="Cairn.Frame.html#Cairn.StatusFrame" title="Cairn.StatusFrame">StatusFrame</a>) : status s = (Enc.status s).length</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Len.surface_eq" data-line="1424">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Len.surface_eq"><span class="ns">Cairn.Wire.Len.</span>surface_eq</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1424</span></div>
+<pre class="sig"><b class="nm">surface_eq</b> (s : <a href="Cairn.Frame.html#Cairn.SurfaceFrame" title="Cairn.SurfaceFrame">SurfaceFrame</a>) : surface s = (Enc.surface s).length</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.rect_data" data-line="1571">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Put.rect_data"><span class="ns">Cairn.Wire.Put.</span>rect_data</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1571</span></div>
+<pre class="sig"><b class="nm">rect_data</b> (b : <span title="ByteArray">ByteArray</span>) (r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) :
+  (rect b r).data.toList = b.data.toList ++ Enc.rect r</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.point_data" data-line="1574">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Put.point_data"><span class="ns">Cairn.Wire.Put.</span>point_data</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1574</span></div>
+<pre class="sig"><b class="nm">point_data</b> (b : <span title="ByteArray">ByteArray</span>) (p : <a href="Cairn.Geometry.html#Cairn.Point" title="Cairn.Point">Point</a>) :
+  (point b p).data.toList = b.data.toList ++ Enc.point p</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.color_data" data-line="1577">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Put.color_data"><span class="ns">Cairn.Wire.Put.</span>color_data</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1577</span></div>
+<pre class="sig"><b class="nm">color_data</b> (b : <span title="ByteArray">ByteArray</span>) (c : <a href="Cairn.UI.Node.html#Cairn.Color" title="Cairn.Color">Color</a>) :
+  (color b c).data.toList = b.data.toList ++ Enc.color c</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.ref_data" data-line="1581">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Put.ref_data"><span class="ns">Cairn.Wire.Put.</span>ref_data</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1581</span></div>
+<pre class="sig"><b class="nm">ref_data</b> (b : <span title="ByteArray">ByteArray</span>) (c : <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a>) :
+  (ref b c).data.toList = b.data.toList ++ Enc.ref c</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.range_data" data-line="1584">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Put.range_data"><span class="ns">Cairn.Wire.Put.</span>range_data</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1584</span></div>
+<pre class="sig"><b class="nm">range_data</b> (b : <span title="ByteArray">ByteArray</span>) (p : <span title="Nat">Nat</span> × <span title="Nat">Nat</span>) :
+  (range b p).data.toList = b.data.toList ++ Enc.range p</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.foldl_data'" data-line="1588">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Put.foldl_data'"><span class="ns">Cairn.Wire.Put.</span>foldl_data'</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1588</span></div>
+<pre class="sig"><b class="nm">foldl_data'</b> {α : Type} (put : <span title="ByteArray">ByteArray</span> → α → <span title="ByteArray">ByteArray</span>) (e : α → List <span title="UInt8">UInt8</span>)
+  (h : ∀ (b : <span title="ByteArray">ByteArray</span>) (x : α), (put b x).data.toList = b.data.toList ++ e x)
+  (xs : List α) (b : <span title="ByteArray">ByteArray</span>) :
+  (List.foldl put b xs).data.toList = b.data.toList ++ List.flatMap e xs</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.ints_data" data-line="1595">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Put.ints_data"><span class="ns">Cairn.Wire.Put.</span>ints_data</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1595</span></div>
+<pre class="sig"><b class="nm">ints_data</b> (b : <span title="ByteArray">ByteArray</span>) (xs : List <span title="Int">Int</span>) :
+  (ints b xs).data.toList = b.data.toList ++ Enc.ints xs</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.intLists_data" data-line="1599">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Put.intLists_data"><span class="ns">Cairn.Wire.Put.</span>intLists_data</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1599</span></div>
+<pre class="sig"><b class="nm">intLists_data</b> (b : <span title="ByteArray">ByteArray</span>) (xss : List (List <span title="Int">Int</span>)) :
+  (intLists b xss).data.toList = b.data.toList ++ Enc.intLists xss</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.draw_data" data-line="1604">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Put.draw_data"><span class="ns">Cairn.Wire.Put.</span>draw_data</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1604</span></div>
+<pre class="sig"><b class="nm">draw_data</b> (b : <span title="ByteArray">ByteArray</span>) (d : <a href="Cairn.Frame.html#Cairn.Draw" title="Cairn.Draw">Draw</a>) :
+  (draw b d).data.toList = b.data.toList ++ Enc.draw d</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.ax_data" data-line="1610">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Put.ax_data"><span class="ns">Cairn.Wire.Put.</span>ax_data</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1610</span></div>
+<pre class="sig"><b class="nm">ax_data</b> (b : <span title="ByteArray">ByteArray</span>) (n : <a href="Cairn.Frame.html#Cairn.AxNode" title="Cairn.AxNode">AxNode</a>) :
+  (ax b n).data.toList = b.data.toList ++ Enc.ax n</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.textInput_data" data-line="1615">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Put.textInput_data"><span class="ns">Cairn.Wire.Put.</span>textInput_data</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1615</span></div>
+<pre class="sig"><b class="nm">textInput_data</b> (b : <span title="ByteArray">ByteArray</span>) (t : Option <a href="Cairn.Frame.html#Cairn.TextInput" title="Cairn.TextInput">TextInput</a>) :
+  (textInput b t).data.toList = b.data.toList ++ Enc.textInput t</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.cursor_data" data-line="1621">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Put.cursor_data"><span class="ns">Cairn.Wire.Put.</span>cursor_data</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1621</span></div>
+<pre class="sig"><b class="nm">cursor_data</b> (b : <span title="ByteArray">ByteArray</span>) (c : <a href="Cairn.Input.html#Cairn.Cursor" title="Cairn.Cursor">Cursor</a>) :
+  (cursor b c).data.toList = b.data.toList ++ Enc.cursor c</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.header1_data" data-line="1626">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Put.header1_data"><span class="ns">Cairn.Wire.Put.</span>header1_data</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1626</span></div>
+<pre class="sig"><b class="nm">header1_data</b> (b : <span title="ByteArray">ByteArray</span>) (kv : <span title="String">String</span> × <span title="String">String</span>) :
+  (header1 b kv).data.toList = b.data.toList ++ Enc.header1 kv</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.headers_data" data-line="1630">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Put.headers_data"><span class="ns">Cairn.Wire.Put.</span>headers_data</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1630</span></div>
+<pre class="sig"><b class="nm">headers_data</b> (b : <span title="ByteArray">ByteArray</span>) (hs : List (<span title="String">String</span> × <span title="String">String</span>)) :
+  (headers b hs).data.toList = b.data.toList ++ Enc.headers hs</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.part_data" data-line="1635">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Put.part_data"><span class="ns">Cairn.Wire.Put.</span>part_data</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1635</span></div>
+<pre class="sig"><b class="nm">part_data</b> (b : <span title="ByteArray">ByteArray</span>) (p : <a href="Cairn.Effects.html#Cairn.Part" title="Cairn.Part">Part</a>) :
+  (part b p).data.toList = b.data.toList ++ Enc.part p</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.parts_data" data-line="1640">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Put.parts_data"><span class="ns">Cairn.Wire.Put.</span>parts_data</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1640</span></div>
+<pre class="sig"><b class="nm">parts_data</b> (b : <span title="ByteArray">ByteArray</span>) (ps : List <a href="Cairn.Effects.html#Cairn.Part" title="Cairn.Part">Part</a>) :
+  (parts b ps).data.toList = b.data.toList ++ Enc.parts ps</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.secret_data" data-line="1644">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Put.secret_data"><span class="ns">Cairn.Wire.Put.</span>secret_data</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1644</span></div>
+<pre class="sig"><b class="nm">secret_data</b> (b : <span title="ByteArray">ByteArray</span>) (s : <a href="Cairn.Effects.html#Cairn.Secret" title="Cairn.Secret">Secret</a>) :
+  (secret b s).data.toList = b.data.toList ++ Enc.secret s</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.optSecret_data" data-line="1648">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Put.optSecret_data"><span class="ns">Cairn.Wire.Put.</span>optSecret_data</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1648</span></div>
+<pre class="sig"><b class="nm">optSecret_data</b> (b : <span title="ByteArray">ByteArray</span>) (s : Option <a href="Cairn.Effects.html#Cairn.Secret" title="Cairn.Secret">Secret</a>) :
+  (optSecret b s).data.toList = b.data.toList ++ Enc.optSecret s</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.requestBody_data" data-line="1653">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Put.requestBody_data"><span class="ns">Cairn.Wire.Put.</span>requestBody_data</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1653</span></div>
+<pre class="sig"><b class="nm">requestBody_data</b> (b : <span title="ByteArray">ByteArray</span>) (r : <a href="Cairn.Effects.html#Cairn.Request" title="Cairn.Request">Request</a>) :
+  (requestBody b r).data.toList = b.data.toList ++ Enc.requestBody r</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.subCmd_data" data-line="1660">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Put.subCmd_data"><span class="ns">Cairn.Wire.Put.</span>subCmd_data</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1660</span></div>
+<pre class="sig"><b class="nm">subCmd_data</b> (b : <span title="ByteArray">ByteArray</span>) (c : <a href="Cairn.Effects.html#Cairn.SubCmd" title="Cairn.SubCmd">SubCmd</a>) :
+  (subCmd b c).data.toList = b.data.toList ++ Enc.subCmd c</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.wake_data" data-line="1666">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Put.wake_data"><span class="ns">Cairn.Wire.Put.</span>wake_data</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1666</span></div>
+<pre class="sig"><b class="nm">wake_data</b> (b : <span title="ByteArray">ByteArray</span>) (w : Option <span title="Nat">Nat</span>) :
+  (wake b w).data.toList = b.data.toList ++ Enc.wake w</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.effect_data" data-line="1670">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Put.effect_data"><span class="ns">Cairn.Wire.Put.</span>effect_data</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1670</span></div>
+<pre class="sig"><b class="nm">effect_data</b> (b : <span title="ByteArray">ByteArray</span>) (e : <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a>) :
+  (effect b e).data.toList = b.data.toList ++ Enc.effect e</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.foldl_data" data-line="1675">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Put.foldl_data"><span class="ns">Cairn.Wire.Put.</span>foldl_data</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1675</span></div>
+<pre class="sig"><b class="nm">foldl_data</b> {α : Type} (put : <span title="ByteArray">ByteArray</span> → α → <span title="ByteArray">ByteArray</span>) (e : α → List <span title="UInt8">UInt8</span>)
+  (h : ∀ (b : <span title="ByteArray">ByteArray</span>) (x : α), (put b x).data.toList = b.data.toList ++ e x)
+  (xs : List α) (b : <span title="ByteArray">ByteArray</span>) :
+  (List.foldl put b xs).data.toList = b.data.toList ++ List.flatMap e xs</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.list_data" data-line="1682">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Put.list_data"><span class="ns">Cairn.Wire.Put.</span>list_data</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1682</span></div>
+<pre class="sig"><b class="nm">list_data</b> {α : Type} (put : <span title="ByteArray">ByteArray</span> → α → <span title="ByteArray">ByteArray</span>) (len : α → <span title="Nat">Nat</span>)
+  (e : α → List <span title="UInt8">UInt8</span>)
+  (h : ∀ (b : <span title="ByteArray">ByteArray</span>) (x : α), (put b x).data.toList = b.data.toList ++ e x)
+  (hl : ∀ (x : α), len x = (e x).length) (b : <span title="ByteArray">ByteArray</span>) (xs : Array α) :
+  (list put len b xs).data.toList = b.data.toList ++ Enc.list e xs.toList</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.canvas_data" data-line="1690">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Put.canvas_data"><span class="ns">Cairn.Wire.Put.</span>canvas_data</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1690</span></div>
+<pre class="sig"><b class="nm">canvas_data</b> (b : <span title="ByteArray">ByteArray</span>) (c : <a href="Cairn.Frame.html#Cairn.Canvas" title="Cairn.Canvas">Canvas</a>) :
+  (canvas b c).data.toList = b.data.toList ++ Enc.canvas c</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.menuRecord_data" data-line="1695">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Put.menuRecord_data"><span class="ns">Cairn.Wire.Put.</span>menuRecord_data</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1695</span></div>
+<pre class="sig"><b class="nm">menuRecord_data</b> (b : <span title="ByteArray">ByteArray</span>) (m : <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a>) :
+  (menuRecord b m).data.toList = b.data.toList ++ Enc.menuRecord m</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.status_data" data-line="1700">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Put.status_data"><span class="ns">Cairn.Wire.Put.</span>status_data</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1700</span></div>
+<pre class="sig"><b class="nm">status_data</b> (b : <span title="ByteArray">ByteArray</span>) (s : <a href="Cairn.Frame.html#Cairn.StatusFrame" title="Cairn.StatusFrame">StatusFrame</a>) :
+  (status b s).data.toList = b.data.toList ++ Enc.status s</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.surface_data" data-line="1705">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Put.surface_data"><span class="ns">Cairn.Wire.Put.</span>surface_data</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1705</span></div>
+<pre class="sig"><b class="nm">surface_data</b> (b : <span title="ByteArray">ByteArray</span>) (s : <a href="Cairn.Frame.html#Cairn.SurfaceFrame" title="Cairn.SurfaceFrame">SurfaceFrame</a>) :
+  (surface b s).data.toList = b.data.toList ++ Enc.surface s</pre>
+</section>
+<section class="decl" id="Cairn.Wire.Put.frame_data" data-line="1711">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Put.frame_data"><span class="ns">Cairn.Wire.Put.</span>frame_data</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1711</span></div>
+<pre class="sig"><b class="nm">frame_data</b> (f : <a href="Cairn.Frame.html" title="Cairn.Frame">Frame</a>) : (frame f).data.toList = Enc.frame f</pre>
+</section>
+<section class="decl" id="Cairn.encodeFrame_eq_put" data-line="1733">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.encodeFrame_eq_put"><span class="ns">Cairn.</span>encodeFrame_eq_put</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1733</span></div>
+<pre class="sig"><b class="nm">encodeFrame_eq_put</b> : <a href="Cairn.Frame.Encode.html#Cairn.encodeFrame" title="Cairn.encodeFrame">encodeFrame</a> = <a href="Cairn.Frame.Encode.html#Cairn.Wire.Put.frame" title="Cairn.Wire.Put.frame">Wire.Put.frame</a></pre>
+</section>
+<section class="decl" id="Cairn.decodeFrame_encodeFrame" data-line="1740">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.decodeFrame_encodeFrame"><span class="ns">Cairn.</span>decodeFrame_encodeFrame</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:1740</span></div>
+<pre class="sig"><b class="nm">decodeFrame_encodeFrame</b> (f : <a href="Cairn.Frame.html" title="Cairn.Frame">Frame</a>) (h : Wire.fitsFrame f = <span title="Bool.true">true</span>)
+  (hs : (encodeFrame f).size &lt; 4294967296) : decodeFrame (encodeFrame f) = some f</pre><div class="doc"><p><strong>Round trip.</strong> Every frame whose values fit the wire's fields (<code>fitsFrame</code>, executable)
+and whose encoding is under 4 GiB decodes to itself.</p>
+</div>
+</section>
+<div class="mdoc" data-line="28" hidden><div class="doc"><h2>Codes</h2>
+</div></div><div class="mdoc" data-line="201" hidden><div class="doc"><h2>What fits</h2>
+<p>The round trip holds for frames whose integers fit the wire's 32-bit fields and whose strings
+are shorter than 4 GiB. These are checks, not conventions: <code>fitsFrame</code> is executable.</p>
+</div></div><div class="mdoc" data-line="330" hidden><div class="doc"><h2>Encoding (specification)</h2>
+</div></div><div class="mdoc" data-line="481" hidden><div class="doc"><h2>Decoding</h2>
+</div></div><div class="mdoc" data-line="810" hidden><div class="doc"><h3>Round trips</h3>
+</div></div><div class="mdoc" data-line="1222" hidden><div class="doc"><h2>Executable encoder</h2>
+<p><code>Put.*</code> writes the same bytes as <code>Enc.*</code> straight into a <code>ByteArray</code>. Section byte lengths are
+computed up front by <code>Len.*</code> (proved equal to the encoded lengths), so nothing is copied or
+patched afterwards.</p>
+</div></div>
+</div>
+</main></div>
+<footer>Generated by <code>make doc APP=Counter</code> from the code and the build. Nothing here is written by hand.</footer>
+<script src="search-index.js"></script>
+<script src="search.js"></script>
+<script type="module">
+// On the site, the headings get the meadow's sprigs and a "#" that copies a link to them
+// (site/public/scene.js); elsewhere, nothing.
+import("/scene.js").then((m) => { const main = document.querySelector("main"); m.mountSprigs(main); m.mountAnchors(main); }).catch(() => {});
+</script>
+</body>
+</html>

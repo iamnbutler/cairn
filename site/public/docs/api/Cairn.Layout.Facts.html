@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cairn.Layout.Facts · Cairn docs</title>
+<meta name="description" content="Cairn's API, generated from its code.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="doc.css">
+</head>
+<body>
+<nav class="bar"><a class="home" href="../../"><img src="icon.svg" alt="">Cairn</a><span class="sep">/</span><a href="index.html">Cairn docs</a><a href="claims.html">Claims</a><span class="search"><input id="search" type="search" placeholder="Search names, docs, ^N  ( / )" autocomplete="off" spellcheck="false"><div id="results" hidden></div></span></nav>
+<div class="layout"><aside class="toc"><div class="pix muted">Cairn.Layout.Facts</div><a href="#structures">Structures <span class="n">1</span></a><ol><li><a href="#Cairn.Layout.Facts">Facts</a></li></ol><a href="#inductives">Inductive types <span class="n">1</span></a><ol><li><a href="#Cairn.Laid.Everywhere">Everywhere</a></li></ol><a href="#definitions">Definitions <span class="n">16</span></a><ol><li><a href="#Cairn.Node.controls">controls</a></li><li><a href="#Cairn.Node.controlsList">controlsList</a></li><li><a href="#Cairn.Laid.controls">controls</a></li><li><a href="#Cairn.Laid.controlsList">controlsList</a></li><li><a href="#Cairn.Laid.children">children</a></li><li><a href="#Cairn.Laid.sizings">sizings</a></li><li><a href="#Cairn.Laid.innerClip">innerClip</a></li><li><a href="#Cairn.Layout.ChildClips">ChildClips</a></li><li><a href="#Cairn.Layout.ClipInside">ClipInside</a></li><li><a href="#Cairn.Layout.RectNonneg">RectNonneg</a></li><li><a href="#Cairn.Layout.SiblingsDisjoint">SiblingsDisjoint</a></li><li><a href="#Cairn.Layout.Axis.horiz">horiz</a></li><li><a href="#Cairn.Layout.padMain">padMain</a></li><li><a href="#Cairn.Layout.FillExact">FillExact</a></li><li><a href="#Cairn.Layout.ChildrenInside">ChildrenInside</a></li><li><a href="#Cairn.Layout.CaretPlaced">CaretPlaced</a></li></ol><a href="#theorems">Theorems <span class="n">2</span></a><ol><li><a href="#Cairn.Laid.Everywhere.here">here</a></li><li><a href="#Cairn.Laid.Everywhere.child">child</a></li></ol></aside><main>
+<header class="page"><div class="eyebrow">Cairn · module</div><h1 class="mod">Cairn.Layout.Facts</h1><p class="src">lean/Cairn/Layout/Facts.lean</p></header>
+<div class="doc"><h1>What layout guarantees</h1>
+<p>The vocabulary for the layout theorems: controls of a tree, a predicate holding at every node
+(<a href="Cairn.Layout.Facts.html#Cairn.Laid.Everywhere"><code>Laid.Everywhere</code></a>), the local facts layout establishes at each node, and <a href="Cairn.Layout.Facts.html"><code>Facts</code></a>, the package
+the runtime's pressability proof consumes. The theorems are in <a href="Cairn.Layout.Proofs.html"><code>Cairn.Layout.Proofs</code></a>.</p>
+</div>
+<p class="imports"><span class="pix muted">Imports</span> <a href="Cairn.Layout.Core.html">Cairn.Layout.Core</a></p>
+<div class="order"><span class="pix muted">Order</span> <button type="button" data-order="kind" class="on">by kind</button><button type="button" data-order="source">as in the source</button></div>
+<div id="items">
+
+<h2 id="structures">Structures <span class="n">1</span></h2>
+<section class="decl" id="Cairn.Layout.Facts" data-line="143">
+<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.Layout.Facts"><span class="ns">Cairn.Layout.</span>Facts</a></h3><span class="src" title="source">lean/Cairn/Layout/Facts.lean:143</span></div>
+<pre class="sig"><b class="nm">Facts</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (window : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) (n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) (l : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>) : Prop</pre><div class="doc"><p>Everything <code>layout m window n</code> guarantees about its result <code>l</code>. The runtime's pressability
+theorem takes these as hypotheses; <a href="Cairn.Layout.Proofs.html#Cairn.Layout.facts"><code>Cairn.Layout.facts</code></a> proves them for every view, window and
+valid metrics.</p>
+</div><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.Layout.Facts.controls"><pre class="sig"><b class="nm">controls</b> : l.controls = n.controls</pre><div class="doc"><p>No control is lost, invented or reordered.</p>
+</div></div><div class="member" id="Cairn.Layout.Facts.rootClip"><pre class="sig"><b class="nm">rootClip</b> : l.clip = windowRect window</pre><div class="doc"><p>The root paints within the window.</p>
+</div></div><div class="member" id="Cairn.Layout.Facts.rootOrigin"><pre class="sig"><b class="nm">rootOrigin</b> : l.rect.x = 0 ∧ l.rect.y = 0</pre><div class="doc"><p>The root sits at the origin.</p>
+</div></div><div class="member" id="Cairn.Layout.Facts.childClips"><pre class="sig"><b class="nm">childClips</b> : Laid.Everywhere <a href="Cairn.Layout.Facts.html#Cairn.Layout.ChildClips" title="Cairn.Layout.ChildClips">ChildClips</a> l</pre></div><div class="member" id="Cairn.Layout.Facts.clipInside"><pre class="sig"><b class="nm">clipInside</b> : Laid.Everywhere <a href="Cairn.Layout.Facts.html#Cairn.Layout.ClipInside" title="Cairn.Layout.ClipInside">ClipInside</a> l</pre></div><div class="member" id="Cairn.Layout.Facts.rectNonneg"><pre class="sig"><b class="nm">rectNonneg</b> : Laid.Everywhere <a href="Cairn.Layout.Facts.html#Cairn.Layout.RectNonneg" title="Cairn.Layout.RectNonneg">RectNonneg</a> l</pre></div><div class="member" id="Cairn.Layout.Facts.siblingsDisjoint"><pre class="sig"><b class="nm">siblingsDisjoint</b> : Laid.Everywhere <a href="Cairn.Layout.Facts.html#Cairn.Layout.SiblingsDisjoint" title="Cairn.Layout.SiblingsDisjoint">SiblingsDisjoint</a> l</pre></div><div class="member" id="Cairn.Layout.Facts.fillExact"><pre class="sig"><b class="nm">fillExact</b> : Laid.Everywhere <a href="Cairn.Layout.Facts.html#Cairn.Layout.FillExact" title="Cairn.Layout.FillExact">FillExact</a> l</pre></div><div class="member" id="Cairn.Layout.Facts.childrenInside"><pre class="sig"><b class="nm">childrenInside</b> : Laid.Everywhere <a href="Cairn.Layout.Facts.html#Cairn.Layout.ChildrenInside" title="Cairn.Layout.ChildrenInside">ChildrenInside</a> l</pre></div><div class="member" id="Cairn.Layout.Facts.caretPlaced"><pre class="sig"><b class="nm">caretPlaced</b> : Laid.Everywhere (CaretPlaced m) l</pre></div></div>
+</section>
+<h2 id="inductives">Inductive types <span class="n">1</span></h2>
+<section class="decl" id="Cairn.Laid.Everywhere" data-line="49">
+<div class="dhead"><span class="kind pix">inductive</span><h3><a href="#Cairn.Laid.Everywhere"><span class="ns">Cairn.Laid.</span>Everywhere</a></h3><span class="src" title="source">lean/Cairn/Layout/Facts.lean:49</span></div>
+<pre class="sig"><b class="nm">Everywhere</b> (P : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a> → Prop) : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a> → Prop</pre><div class="doc"><p><code>P</code> holds at <code>l</code> and at every node below it.</p>
+</div><div class="members"><b class="pix muted">Constructors</b><div class="member" id="Cairn.Laid.Everywhere.intro"><pre class="sig"><b class="nm">intro</b> {P : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a> → Prop} {l : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>} :
+  P l → (∀ (k : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>), k ∈ l.children → Everywhere P k) → Everywhere P l</pre></div></div>
+</section>
+<h2 id="definitions">Definitions <span class="n">16</span></h2>
+<section class="decl" id="Cairn.Node.controls" data-line="17">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Node.controls"><span class="ns">Cairn.Node.</span>controls</a></h3><span class="src" title="source">lean/Cairn/Layout/Facts.lean:17</span></div>
+<pre class="sig"><b class="nm">controls</b> : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a> → List <a href="Cairn.UI.Node.html#Cairn.Control" title="Cairn.Control">Control</a></pre><div class="doc"><p>The controls of a view, in paint order (a node before its children, children in order).</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Node.controlsList" data-line="21">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Node.controlsList"><span class="ns">Cairn.Node.</span>controlsList</a></h3><span class="src" title="source">lean/Cairn/Layout/Facts.lean:21</span></div>
+<pre class="sig"><b class="nm">controlsList</b> : List <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a> → List <a href="Cairn.UI.Node.html#Cairn.Control" title="Cairn.Control">Control</a></pre>
+</section>
+<section class="decl" id="Cairn.Laid.controls" data-line="28">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Laid.controls"><span class="ns">Cairn.Laid.</span>controls</a></h3><span class="src" title="source">lean/Cairn/Layout/Facts.lean:28</span></div>
+<pre class="sig"><b class="nm">controls</b> : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a> → List <a href="Cairn.UI.Node.html#Cairn.Control" title="Cairn.Control">Control</a></pre><div class="doc"><p>The controls of a laid-out tree, in paint order.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Laid.controlsList" data-line="32">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Laid.controlsList"><span class="ns">Cairn.Laid.</span>controlsList</a></h3><span class="src" title="source">lean/Cairn/Layout/Facts.lean:32</span></div>
+<pre class="sig"><b class="nm">controlsList</b> : List <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a> → List <a href="Cairn.UI.Node.html#Cairn.Control" title="Cairn.Control">Control</a></pre>
+</section>
+<section class="decl" id="Cairn.Laid.children" data-line="39">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Laid.children"><span class="ns">Cairn.Laid.</span>children</a></h3><span class="src" title="source">lean/Cairn/Layout/Facts.lean:39</span></div>
+<pre class="sig"><b class="nm">children</b> : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a> → List <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a></pre>
+</section>
+<section class="decl" id="Cairn.Laid.sizings" data-line="44">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Laid.sizings"><span class="ns">Cairn.Laid.</span>sizings</a></h3><span class="src" title="source">lean/Cairn/Layout/Facts.lean:44</span></div>
+<pre class="sig"><b class="nm">sizings</b> : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a> → <a href="Cairn.UI.Node.html#Cairn.Sizing" title="Cairn.Sizing">Sizing</a> × <a href="Cairn.UI.Node.html#Cairn.Sizing" title="Cairn.Sizing">Sizing</a></pre><div class="doc"><p>Sizing on each axis (text always hugs).</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Laid.innerClip" data-line="60">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Laid.innerClip"><span class="ns">Cairn.Laid.</span>innerClip</a></h3><span class="src" title="source">lean/Cairn/Layout/Facts.lean:60</span></div>
+<pre class="sig"><b class="nm">innerClip</b> : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a> → <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a></pre><div class="doc"><p>The clip a node hands its children: its own, cut down to its rect if it clips.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Layout.ChildClips" data-line="72">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Layout.ChildClips"><span class="ns">Cairn.Layout.</span>ChildClips</a></h3><span class="src" title="source">lean/Cairn/Layout/Facts.lean:72</span></div>
+<pre class="sig"><b class="nm">ChildClips</b> (l : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>) : Prop</pre><div class="doc"><p>Each child's clip is exactly the clip its parent hands down: the parent's clip, intersected
+with the parent's rect when the parent clips.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Layout.ClipInside" data-line="75">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Layout.ClipInside"><span class="ns">Cairn.Layout.</span>ClipInside</a></h3><span class="src" title="source">lean/Cairn/Layout/Facts.lean:75</span></div>
+<pre class="sig"><b class="nm">ClipInside</b> (l : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>) : Prop</pre><div class="doc"><p>The node's clip has non-negative size and contains each child's clip.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Layout.RectNonneg" data-line="79">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Layout.RectNonneg"><span class="ns">Cairn.Layout.</span>RectNonneg</a></h3><span class="src" title="source">lean/Cairn/Layout/Facts.lean:79</span></div>
+<pre class="sig"><b class="nm">RectNonneg</b> (l : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>) : Prop</pre><div class="doc"><p>The node's rect has non-negative size.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Layout.SiblingsDisjoint" data-line="83">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Layout.SiblingsDisjoint"><span class="ns">Cairn.Layout.</span>SiblingsDisjoint</a></h3><span class="src" title="source">lean/Cairn/Layout/Facts.lean:83</span></div>
+<pre class="sig"><b class="nm">SiblingsDisjoint</b> : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a> → Prop</pre><div class="doc"><p>In a row or column, earlier children end before later ones begin on the main axis, so
+distinct children's rects are disjoint.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Layout.Axis.horiz" data-line="88">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Layout.Axis.horiz"><span class="ns">Cairn.Layout.Axis.</span>horiz</a></h3><span class="src" title="source">lean/Cairn/Layout/Facts.lean:88</span></div>
+<pre class="sig"><b class="nm">horiz</b> : <a href="Cairn.UI.Node.html#Cairn.Axis" title="Cairn.Axis">Axis</a> → <span title="Bool">Bool</span></pre><div class="doc"><p>Whether an axis runs horizontally (rows) or vertically (columns).</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Layout.padMain" data-line="93">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Layout.padMain"><span class="ns">Cairn.Layout.</span>padMain</a></h3><span class="src" title="source">lean/Cairn/Layout/Facts.lean:93</span></div>
+<pre class="sig"><b class="nm">padMain</b> (horiz : <span title="Bool">Bool</span>) (p : <a href="Cairn.Geometry.html#Cairn.Insets" title="Cairn.Insets">Insets</a>) : <span title="Int">Int</span></pre><div class="doc"><p>Padding along the main axis.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Layout.FillExact" data-line="98">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Layout.FillExact"><span class="ns">Cairn.Layout.</span>FillExact</a></h3><span class="src" title="source">lean/Cairn/Layout/Facts.lean:98</span></div>
+<pre class="sig"><b class="nm">FillExact</b> : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a> → Prop</pre><div class="doc"><p>Fill exactness: in a row or column, if some child fills the main axis and the other
+children, gaps and padding fit, then children, gaps and padding span the parent exactly. Each
+child is described by its main-axis sizing and length.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Layout.ChildrenInside" data-line="112">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Layout.ChildrenInside"><span class="ns">Cairn.Layout.</span>ChildrenInside</a></h3><span class="src" title="source">lean/Cairn/Layout/Facts.lean:112</span></div>
+<pre class="sig"><b class="nm">ChildrenInside</b> : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a> → Prop</pre><div class="doc"><p>Children that fit stay inside: if every child's rect is no larger than the content box and,
+in a row or column, the children plus gaps fit along the main axis, then every child's rect is
+inside the content box. Together with <a href="Cairn.Layout.Facts.html#Cairn.Layout.SiblingsDisjoint"><code>SiblingsDisjoint</code></a>, this means nothing in one child's
+subtree can cover another child, as long as the view fits.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Layout.CaretPlaced" data-line="126">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Layout.CaretPlaced"><span class="ns">Cairn.Layout.</span>CaretPlaced</a></h3><span class="src" title="source">lean/Cairn/Layout/Facts.lean:126</span></div>
+<pre class="sig"><b class="nm">CaretPlaced</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a> → Prop</pre><div class="doc"><p>Field geometry: the caret sits at the text origin plus the caret's offset, within the
+text's extent, is one point wide and a line high, and is inside the content box horizontally
+whenever the content box is at least one point wide (the text scrolls to keep it there). The
+selection is empty when collapsed and otherwise runs between the offsets of its ends.</p>
+</div>
+</section>
+<h2 id="theorems">Theorems <span class="n">2</span></h2>
+<section class="decl" id="Cairn.Laid.Everywhere.here" data-line="52">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Laid.Everywhere.here"><span class="ns">Cairn.Laid.Everywhere.</span>here</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Facts.lean:52</span></div>
+<pre class="sig"><b class="nm">here</b> {P : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a> → Prop} {l : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>} : Everywhere P l → P l</pre>
+</section>
+<section class="decl" id="Cairn.Laid.Everywhere.child" data-line="55">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Laid.Everywhere.child"><span class="ns">Cairn.Laid.Everywhere.</span>child</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Facts.lean:55</span></div>
+<pre class="sig"><b class="nm">child</b> {P : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a> → Prop} {l k : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>} :
+  Everywhere P l → k ∈ l.children → Everywhere P k</pre>
+</section>
+<div class="mdoc" data-line="68" hidden><div class="doc"><h2>Local facts, one per node</h2>
+</div></div>
+</div>
+</main></div>
+<footer>Generated by <code>make doc APP=Counter</code> from the code and the build. Nothing here is written by hand.</footer>
+<script src="search-index.js"></script>
+<script src="search.js"></script>
+<script type="module">
+// On the site, the headings get the meadow's sprigs and a "#" that copies a link to them
+// (site/public/scene.js); elsewhere, nothing.
+import("/scene.js").then((m) => { const main = document.querySelector("main"); m.mountSprigs(main); m.mountAnchors(main); }).catch(() => {});
+</script>
+</body>
+</html>

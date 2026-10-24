@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cairn.Frame.Menu · Cairn docs</title>
+<meta name="description" content="Cairn's API, generated from its code.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="doc.css">
+</head>
+<body>
+<nav class="bar"><a class="home" href="../../"><img src="icon.svg" alt="">Cairn</a><span class="sep">/</span><a href="index.html">Cairn docs</a><a href="claims.html">Claims</a><span class="search"><input id="search" type="search" placeholder="Search names, docs, ^N  ( / )" autocomplete="off" spellcheck="false"><div id="results" hidden></div></span></nav>
+<div class="layout"><aside class="toc"><div class="pix muted">Cairn.Frame.Menu</div><a href="#definitions">Definitions <span class="n">9</span></a><ol><li><a href="#Cairn.Frame.menuRecord">menuRecord</a></li><li><a href="#Cairn.Frame.menuOf">menuOf</a></li><li><a href="#Cairn.Frame.menuAll">menuAll</a></li><li><a href="#Cairn.Frame.ofMenu">ofMenu</a></li><li><a href="#Cairn.Frame.ofStatus">ofStatus</a></li><li><a href="#Cairn.Frame.MenuRecord.ctl">ctl</a></li><li><a href="#Cairn.Frame.MenuRecord.enabledCtl">enabledCtl</a></li><li><a href="#Cairn.Frame.MenuParentsOk">MenuParentsOk</a></li><li><a href="#Cairn.Frame.MenuParentBelow">MenuParentBelow</a></li></ol><a href="#theorems">Theorems <span class="n">14</span></a><ol><li><a href="#Cairn.Frame.menuOf_controls">menuOf_controls</a></li><li><a href="#Cairn.Frame.menuAll_controls">menuAll_controls</a></li><li><a href="#Cairn.Frame.controls_ofMenu">controls_ofMenu</a></li><li><a href="#Cairn.Frame.menuOf_enabled">menuOf_enabled</a></li><li><a href="#Cairn.Frame.menuAll_enabled">menuAll_enabled</a></li><li><a href="#Cairn.Frame.enabled_ofMenu">enabled_ofMenu</a></li><li><a href="#Cairn.Frame.MenuParentBelow.push">push</a></li><li><a href="#Cairn.Frame.MenuParentsOk.push">push</a></li><li><a href="#Cairn.Frame.menuOf_prefix">menuOf_prefix</a></li><li><a href="#Cairn.Frame.menuAll_prefix">menuAll_prefix</a></li><li><a href="#Cairn.Frame.MenuParentBelow.mono">mono</a></li><li><a href="#Cairn.Frame.menuOf_parents">menuOf_parents</a></li><li><a href="#Cairn.Frame.menuAll_parents">menuAll_parents</a></li><li><a href="#Cairn.Frame.parent_lt_ofMenu">parent_lt_ofMenu</a></li></ol></aside><main>
+<header class="page"><div class="eyebrow">Cairn · module</div><h1 class="mod">Cairn.Frame.Menu</h1><p class="src">lean/Cairn/Frame/Menu.lean</p></header>
+<div class="doc"><p><a href="Cairn.Frame.Menu.html#Cairn.Frame.ofMenu"><code>Frame.ofMenu</code></a>: a status item's menu description becomes the flat list of menu records the
+frame carries (docs/frame.md, &quot;Menu records&quot;), parents before children, as the accessibility
+list is.</p>
+<p>Theorems: <a href="Cairn.Frame.Menu.html#Cairn.Frame.controls_ofMenu"><code>controls_ofMenu</code></a> (the records' controls are exactly the description's actionable
+items, in order: what the host's <code>NSMenu</code> is built from is what the presence and enablement
+proofs are about), <a href="Cairn.Frame.Menu.html#Cairn.Frame.enabled_ofMenu"><code>enabled_ofMenu</code></a> (likewise for the enabled ones) and <a href="Cairn.Frame.Menu.html#Cairn.Frame.parent_lt_ofMenu"><code>parent_lt_ofMenu</code></a>
+(every parent index points at an earlier record, and at a submenu).</p>
+</div>
+<p class="imports"><span class="pix muted">Imports</span> <a href="Cairn.Frame.html">Cairn.Frame</a></p>
+<div class="order"><span class="pix muted">Order</span> <button type="button" data-order="kind" class="on">by kind</button><button type="button" data-order="source">as in the source</button></div>
+<div id="items">
+
+<h2 id="definitions">Definitions <span class="n">9</span></h2>
+<section class="decl" id="Cairn.Frame.menuRecord" data-line="21">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Frame.menuRecord"><span class="ns">Cairn.Frame.</span>menuRecord</a></h3><span class="src" title="source">lean/Cairn/Frame/Menu.lean:21</span></div>
+<pre class="sig"><b class="nm">menuRecord</b> (parent : Option <span title="Nat">Nat</span>) : <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a> → <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a></pre><div class="doc"><p>The record for one item, without its children.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Frame.menuOf" data-line="31">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Frame.menuOf"><span class="ns">Cairn.Frame.</span>menuOf</a></h3><span class="src" title="source">lean/Cairn/Frame/Menu.lean:31</span></div>
+<pre class="sig"><b class="nm">menuOf</b> (parent : Option <span title="Nat">Nat</span>) (acc : Array <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a>) :
+  <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a> → Array <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a></pre><div class="doc"><p>Append the records of an item (and, for a submenu, its children) to <code>acc</code>.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Frame.menuAll" data-line="36">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Frame.menuAll"><span class="ns">Cairn.Frame.</span>menuAll</a></h3><span class="src" title="source">lean/Cairn/Frame/Menu.lean:36</span></div>
+<pre class="sig"><b class="nm">menuAll</b> (parent : Option <span title="Nat">Nat</span>) (acc : Array <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a>) :
+  List <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a> → Array <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a></pre>
+</section>
+<section class="decl" id="Cairn.Frame.ofMenu" data-line="42">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Frame.ofMenu"><span class="ns">Cairn.Frame.</span>ofMenu</a></h3><span class="src" title="source">lean/Cairn/Frame/Menu.lean:42</span></div>
+<pre class="sig"><b class="nm">ofMenu</b> (items : List <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a>) : Array <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a></pre><div class="doc"><p>A menu description, flattened.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Frame.ofStatus" data-line="45">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Frame.ofStatus"><span class="ns">Cairn.Frame.</span>ofStatus</a></h3><span class="src" title="source">lean/Cairn/Frame/Menu.lean:45</span></div>
+<pre class="sig"><b class="nm">ofStatus</b> (it : <a href="Cairn.Surface.html#Cairn.StatusItem" title="Cairn.StatusItem">StatusItem</a>) : <a href="Cairn.Frame.html#Cairn.StatusFrame" title="Cairn.StatusFrame">StatusFrame</a></pre><div class="doc"><p>What a status item puts on the frame.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Frame.MenuRecord.ctl" data-line="50">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Frame.MenuRecord.ctl"><span class="ns">Cairn.Frame.MenuRecord.</span>ctl</a></h3><span class="src" title="source">lean/Cairn/Frame/Menu.lean:50</span></div>
+<pre class="sig"><b class="nm">ctl</b> (r : <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a>) : Option <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a></pre><div class="doc"><p>The control of an actionable record.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Frame.MenuRecord.enabledCtl" data-line="53">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Frame.MenuRecord.enabledCtl"><span class="ns">Cairn.Frame.MenuRecord.</span>enabledCtl</a></h3><span class="src" title="source">lean/Cairn/Frame/Menu.lean:53</span></div>
+<pre class="sig"><b class="nm">enabledCtl</b> (r : <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a>) : Option <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a></pre><div class="doc"><p>The control of an enabled actionable record.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Frame.MenuParentsOk" data-line="136">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Frame.MenuParentsOk"><span class="ns">Cairn.Frame.</span>MenuParentsOk</a></h3><span class="src" title="source">lean/Cairn/Frame/Menu.lean:136</span></div>
+<pre class="sig"><b class="nm">MenuParentsOk</b> (ms : Array <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a>) : Prop</pre><div class="doc"><p>Every record's parent is an earlier record, and a submenu.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Frame.MenuParentBelow" data-line="139">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Frame.MenuParentBelow"><span class="ns">Cairn.Frame.</span>MenuParentBelow</a></h3><span class="src" title="source">lean/Cairn/Frame/Menu.lean:139</span></div>
+<pre class="sig"><b class="nm">MenuParentBelow</b> (ms : Array <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a>) (parent : Option <span title="Nat">Nat</span>) : Prop</pre>
+</section>
+<h2 id="theorems">Theorems <span class="n">14</span></h2>
+<section class="decl" id="Cairn.Frame.menuOf_controls" data-line="59">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Frame.menuOf_controls"><span class="ns">Cairn.Frame.</span>menuOf_controls</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Menu.lean:59</span></div>
+<pre class="sig"><b class="nm">menuOf_controls</b> (parent : Option <span title="Nat">Nat</span>) (acc : Array <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a>) (m : <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a>) :
+  List.filterMap <a href="Cairn.Frame.Menu.html#Cairn.Frame.MenuRecord.ctl" title="Cairn.Frame.MenuRecord.ctl">MenuRecord.ctl</a> (menuOf parent acc m).toList =
+    List.filterMap <a href="Cairn.Frame.Menu.html#Cairn.Frame.MenuRecord.ctl" title="Cairn.Frame.MenuRecord.ctl">MenuRecord.ctl</a> acc.toList ++ m.refsOf</pre>
+</section>
+<section class="decl" id="Cairn.Frame.menuAll_controls" data-line="77">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Frame.menuAll_controls"><span class="ns">Cairn.Frame.</span>menuAll_controls</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Menu.lean:77</span></div>
+<pre class="sig"><b class="nm">menuAll_controls</b> (parent : Option <span title="Nat">Nat</span>) (acc : Array <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a>)
+  (ms : List <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a>) :
+  List.filterMap <a href="Cairn.Frame.Menu.html#Cairn.Frame.MenuRecord.ctl" title="Cairn.Frame.MenuRecord.ctl">MenuRecord.ctl</a> (menuAll parent acc ms).toList =
+    List.filterMap <a href="Cairn.Frame.Menu.html#Cairn.Frame.MenuRecord.ctl" title="Cairn.Frame.MenuRecord.ctl">MenuRecord.ctl</a> acc.toList ++ MenuItem.refs ms</pre>
+</section>
+<section class="decl" id="Cairn.Frame.controls_ofMenu" data-line="89">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Frame.controls_ofMenu"><span class="ns">Cairn.Frame.</span>controls_ofMenu</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Menu.lean:89</span></div>
+<pre class="sig"><b class="nm">controls_ofMenu</b> (items : List <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a>) :
+  List.filterMap <a href="Cairn.Frame.Menu.html#Cairn.Frame.MenuRecord.ctl" title="Cairn.Frame.MenuRecord.ctl">MenuRecord.ctl</a> (ofMenu items).toList = MenuItem.refs items</pre><div class="doc"><p><strong>The menu on the frame is the menu described.</strong> The controls of the frame's menu records
+are exactly the description's actionable items, in order.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Frame.menuOf_enabled" data-line="94">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Frame.menuOf_enabled"><span class="ns">Cairn.Frame.</span>menuOf_enabled</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Menu.lean:94</span></div>
+<pre class="sig"><b class="nm">menuOf_enabled</b> (parent : Option <span title="Nat">Nat</span>) (acc : Array <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a>) (m : <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a>) :
+  List.filterMap <a href="Cairn.Frame.Menu.html#Cairn.Frame.MenuRecord.enabledCtl" title="Cairn.Frame.MenuRecord.enabledCtl">MenuRecord.enabledCtl</a> (menuOf parent acc m).toList =
+    List.filterMap <a href="Cairn.Frame.Menu.html#Cairn.Frame.MenuRecord.enabledCtl" title="Cairn.Frame.MenuRecord.enabledCtl">MenuRecord.enabledCtl</a> acc.toList ++ m.enabledRefsOf</pre>
+</section>
+<section class="decl" id="Cairn.Frame.menuAll_enabled" data-line="117">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Frame.menuAll_enabled"><span class="ns">Cairn.Frame.</span>menuAll_enabled</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Menu.lean:117</span></div>
+<pre class="sig"><b class="nm">menuAll_enabled</b> (parent : Option <span title="Nat">Nat</span>) (acc : Array <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a>)
+  (ms : List <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a>) :
+  List.filterMap <a href="Cairn.Frame.Menu.html#Cairn.Frame.MenuRecord.enabledCtl" title="Cairn.Frame.MenuRecord.enabledCtl">MenuRecord.enabledCtl</a> (menuAll parent acc ms).toList =
+    List.filterMap <a href="Cairn.Frame.Menu.html#Cairn.Frame.MenuRecord.enabledCtl" title="Cairn.Frame.MenuRecord.enabledCtl">MenuRecord.enabledCtl</a> acc.toList ++ MenuItem.enabledRefs ms</pre>
+</section>
+<section class="decl" id="Cairn.Frame.enabled_ofMenu" data-line="129">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Frame.enabled_ofMenu"><span class="ns">Cairn.Frame.</span>enabled_ofMenu</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Menu.lean:129</span></div>
+<pre class="sig"><b class="nm">enabled_ofMenu</b> (items : List <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a>) :
+  List.filterMap <a href="Cairn.Frame.Menu.html#Cairn.Frame.MenuRecord.enabledCtl" title="Cairn.Frame.MenuRecord.enabledCtl">MenuRecord.enabledCtl</a> (ofMenu items).toList = MenuItem.enabledRefs items</pre><div class="doc"><p>The enabled records' controls are exactly the description's enabled items: what the host
+greys out is what Lean will refuse (<a href="Cairn.Runtime.Proofs.html#Cairn.Runtime.menu_select_stale"><code>Runtime.menu_select_stale</code></a>).</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Frame.MenuParentBelow.push" data-line="142">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Frame.MenuParentBelow.push"><span class="ns">Cairn.Frame.MenuParentBelow.</span>push</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Menu.lean:142</span></div>
+<pre class="sig"><b class="nm">push</b> {ms : Array <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a>} {parent : Option <span title="Nat">Nat</span>}
+  (h : MenuParentBelow ms parent) (x : <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a>) : MenuParentBelow (ms.push x) parent</pre>
+</section>
+<section class="decl" id="Cairn.Frame.MenuParentsOk.push" data-line="148">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Frame.MenuParentsOk.push"><span class="ns">Cairn.Frame.MenuParentsOk.</span>push</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Menu.lean:148</span></div>
+<pre class="sig"><b class="nm">push</b> {ms : Array <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a>} {x : <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a>}
+  (h : MenuParentsOk ms) (hx : MenuParentBelow ms x.parent) : MenuParentsOk (ms.push x)</pre>
+</section>
+<section class="decl" id="Cairn.Frame.menuOf_prefix" data-line="164">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Frame.menuOf_prefix"><span class="ns">Cairn.Frame.</span>menuOf_prefix</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Menu.lean:164</span></div>
+<pre class="sig"><b class="nm">menuOf_prefix</b> (parent : Option <span title="Nat">Nat</span>) (acc : Array <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a>) (m : <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a>) :
+  ∃ hs, ∀ (i : <span title="Nat">Nat</span>) (hi : i &lt; acc.size), (menuOf parent acc m)[i] = acc[i]</pre>
+</section>
+<section class="decl" id="Cairn.Frame.menuAll_prefix" data-line="178">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Frame.menuAll_prefix"><span class="ns">Cairn.Frame.</span>menuAll_prefix</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Menu.lean:178</span></div>
+<pre class="sig"><b class="nm">menuAll_prefix</b> (parent : Option <span title="Nat">Nat</span>) (acc : Array <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a>)
+  (ms : List <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a>) :
+  ∃ hs, ∀ (i : <span title="Nat">Nat</span>) (hi : i &lt; acc.size), (menuAll parent acc ms)[i] = acc[i]</pre>
+</section>
+<section class="decl" id="Cairn.Frame.MenuParentBelow.mono" data-line="191">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Frame.MenuParentBelow.mono"><span class="ns">Cairn.Frame.MenuParentBelow.</span>mono</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Menu.lean:191</span></div>
+<pre class="sig"><b class="nm">mono</b> {ms ms' : Array <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a>} {parent : Option <span title="Nat">Nat</span>}
+  (h : MenuParentBelow ms parent) (hs : ms.size ≤ ms'.size)
+  (he : ∀ (i : <span title="Nat">Nat</span>) (hi : i &lt; ms.size), ms'[i] = ms[i]) : MenuParentBelow ms' parent</pre>
+</section>
+<section class="decl" id="Cairn.Frame.menuOf_parents" data-line="200">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Frame.menuOf_parents"><span class="ns">Cairn.Frame.</span>menuOf_parents</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Menu.lean:200</span></div>
+<pre class="sig"><b class="nm">menuOf_parents</b> (parent : Option <span title="Nat">Nat</span>) (acc : Array <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a>) (m : <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a>)
+  (h : MenuParentsOk acc) (hp : MenuParentBelow acc parent) :
+  MenuParentsOk (menuOf parent acc m)</pre>
+</section>
+<section class="decl" id="Cairn.Frame.menuAll_parents" data-line="217">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Frame.menuAll_parents"><span class="ns">Cairn.Frame.</span>menuAll_parents</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Menu.lean:217</span></div>
+<pre class="sig"><b class="nm">menuAll_parents</b> (parent : Option <span title="Nat">Nat</span>) (acc : Array <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a>)
+  (ms : List <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a>) (h : MenuParentsOk acc) (hp : MenuParentBelow acc parent) :
+  MenuParentsOk (menuAll parent acc ms)</pre>
+</section>
+<section class="decl" id="Cairn.Frame.parent_lt_ofMenu" data-line="230">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Frame.parent_lt_ofMenu"><span class="ns">Cairn.Frame.</span>parent_lt_ofMenu</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Menu.lean:230</span></div>
+<pre class="sig"><b class="nm">parent_lt_ofMenu</b> (items : List <a href="Cairn.Surface.html#Cairn.MenuItem" title="Cairn.MenuItem">MenuItem</a>) : MenuParentsOk (ofMenu items)</pre><div class="doc"><p><strong>Parents first.</strong> Every menu record's parent is an earlier record and a submenu, so the
+host builds the <code>NSMenu</code> tree in one pass.</p>
+</div>
+</section>
+<div class="mdoc" data-line="56" hidden><div class="doc"><h2>The records' controls are the description's</h2>
+</div></div><div class="mdoc" data-line="133" hidden><div class="doc"><h2>Parents point backwards, at submenus</h2>
+</div></div>
+</div>
+</main></div>
+<footer>Generated by <code>make doc APP=Counter</code> from the code and the build. Nothing here is written by hand.</footer>
+<script src="search-index.js"></script>
+<script src="search.js"></script>
+<script type="module">
+// On the site, the headings get the meadow's sprigs and a "#" that copies a link to them
+// (site/public/scene.js); elsewhere, nothing.
+import("/scene.js").then((m) => { const main = document.querySelector("main"); m.mountSprigs(main); m.mountAnchors(main); }).catch(() => {});
+</script>
+</body>
+</html>

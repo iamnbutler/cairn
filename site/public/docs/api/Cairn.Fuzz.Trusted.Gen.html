@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cairn.Fuzz.Trusted.Gen · Cairn docs</title>
+<meta name="description" content="Cairn's API, generated from its code.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="doc.css">
+</head>
+<body>
+<nav class="bar"><a class="home" href="../../"><img src="icon.svg" alt="">Cairn</a><span class="sep">/</span><a href="index.html">Cairn docs</a><a href="claims.html">Claims</a><span class="search"><input id="search" type="search" placeholder="Search names, docs, ^N  ( / )" autocomplete="off" spellcheck="false"><div id="results" hidden></div></span></nav>
+<div class="layout"><aside class="toc"><div class="pix muted">Cairn.Fuzz.Trusted.Gen</div><a href="#definitions">Definitions <span class="n">35</span></a><ol><li><a href="#Cairn.Fuzz.Trusted.edgeScalars">edgeScalars</a></li><li><a href="#Cairn.Fuzz.Trusted.edgeStrings">edgeStrings</a></li><li><a href="#Cairn.Fuzz.Trusted.scalar">scalar</a></li><li><a href="#Cairn.Fuzz.Trusted.str">str</a></li><li><a href="#Cairn.Fuzz.Trusted.i32">i32</a></li><li><a href="#Cairn.Fuzz.Trusted.u32">u32</a></li><li><a href="#Cairn.Fuzz.Trusted.byte">byte</a></li><li><a href="#Cairn.Fuzz.Trusted.opt">opt</a></li><li><a href="#Cairn.Fuzz.Trusted.rect">rect</a></li><li><a href="#Cairn.Fuzz.Trusted.color">color</a></li><li><a href="#Cairn.Fuzz.Trusted.ref">ref</a></li><li><a href="#Cairn.Fuzz.Trusted.range">range</a></li><li><a href="#Cairn.Fuzz.Trusted.font">font</a></li><li><a href="#Cairn.Fuzz.Trusted.ints">ints</a></li><li><a href="#Cairn.Fuzz.Trusted.draw">draw</a></li><li><a href="#Cairn.Fuzz.Trusted.role">role</a></li><li><a href="#Cairn.Fuzz.Trusted.axNode">axNode</a></li><li><a href="#Cairn.Fuzz.Trusted.textInput">textInput</a></li><li><a href="#Cairn.Fuzz.Trusted.array">array</a></li><li><a href="#Cairn.Fuzz.Trusted.u64">u64</a></li><li><a href="#Cairn.Fuzz.Trusted.bytes">bytes</a></li><li><a href="#Cairn.Fuzz.Trusted.headers">headers</a></li><li><a href="#Cairn.Fuzz.Trusted.part">part</a></li><li><a href="#Cairn.Fuzz.Trusted.secret">secret</a></li><li><a href="#Cairn.Fuzz.Trusted.request">request</a></li><li><a href="#Cairn.Fuzz.Trusted.effect">effect</a></li><li><a href="#Cairn.Fuzz.Trusted.subCmd">subCmd</a></li><li><a href="#Cairn.Fuzz.Trusted.canvas">canvas</a></li><li><a href="#Cairn.Fuzz.Trusted.key">key</a></li><li><a href="#Cairn.Fuzz.Trusted.mods">mods</a></li><li><a href="#Cairn.Fuzz.Trusted.menuRecord">menuRecord</a></li><li><a href="#Cairn.Fuzz.Trusted.status">status</a></li><li><a href="#Cairn.Fuzz.Trusted.surface">surface</a></li><li><a href="#Cairn.Fuzz.Trusted.frame">frame</a></li><li><a href="#Cairn.Fuzz.Trusted.frameOf">frameOf</a></li></ol></aside><main>
+<header class="page"><div class="eyebrow">Cairn · module</div><h1 class="mod">Cairn.Fuzz.Trusted.Gen</h1><p class="src">lean/Cairn/Fuzz/Trusted/Gen.lean</p></header>
+<div class="doc"><h1>Generators for the trusted-base fuzzer</h1>
+<p>Random frames for differential fuzzing of the Swift frame decoder (docs/fuzz.md, &quot;Trusted
+base&quot;). Built on workstream L's SplitMix64 (<a href="Cairn.Fuzz.Rng.html#Cairn.Fuzz.Gen"><code>Cairn.Fuzz.Gen</code></a>), so a seed replays exactly.</p>
+<p>Every generated frame fits the wire (<code>fitsFrame</code>): integers are drawn inside <a href="Cairn.Fuzz.Trusted.Gen.html#Cairn.Fuzz.Trusted.i32"><code>i32</code></a>/<a href="Cairn.Fuzz.Trusted.Gen.html#Cairn.Fuzz.Trusted.u32"><code>u32</code></a>, with a
+bias toward the edges (0, ±1, the extremes), because that is where a hand-written decoder slips.
+Strings lean on what breaks text code: astral scalars (surrogate pairs in UTF-16), the last
+scalar before and after the surrogate block, U+10FFFF, NUL, combining marks, ZWJ sequences, skin
+tones, flags, CJK, right-to-left scripts, line breaks and the BOM.</p>
+</div>
+<p class="imports"><span class="pix muted">Imports</span> <a href="Cairn.Fuzz.Rng.html">Cairn.Fuzz.Rng</a>, <a href="Cairn.Frame.Encode.html">Cairn.Frame.Encode</a>, <a href="Cairn.Frame.Events.html">Cairn.Frame.Events</a></p>
+<div class="order"><span class="pix muted">Order</span> <button type="button" data-order="kind" class="on">by kind</button><button type="button" data-order="source">as in the source</button></div>
+<div id="items">
+
+<h2 id="definitions">Definitions <span class="n">35</span></h2>
+<section class="decl" id="Cairn.Fuzz.Trusted.edgeScalars" data-line="20">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.edgeScalars"><span class="ns">Cairn.Fuzz.Trusted.</span>edgeScalars</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Gen.lean:20</span></div>
+<pre class="sig"><b class="nm">edgeScalars</b> : Array <span title="Nat">Nat</span></pre><div class="doc"><p>Scalars at the edges of UTF-8 and UTF-16 encodings, and ones text code mishandles.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.edgeStrings" data-line="28">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.edgeStrings"><span class="ns">Cairn.Fuzz.Trusted.</span>edgeStrings</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Gen.lean:28</span></div>
+<pre class="sig"><b class="nm">edgeStrings</b> : Array <span title="String">String</span></pre><div class="doc"><p>Whole strings that are hard to measure or index: ZWJ families, skin tones, flags, combining
+stacks, mixed bidi.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.scalar" data-line="33">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.scalar"><span class="ns">Cairn.Fuzz.Trusted.</span>scalar</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Gen.lean:33</span></div>
+<pre class="sig"><b class="nm">scalar</b> : Gen <span title="Char">Char</span></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.str" data-line="42">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.str"><span class="ns">Cairn.Fuzz.Trusted.</span>str</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Gen.lean:42</span></div>
+<pre class="sig"><b class="nm">str</b> : Gen <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.i32" data-line="55">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.i32"><span class="ns">Cairn.Fuzz.Trusted.</span>i32</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Gen.lean:55</span></div>
+<pre class="sig"><b class="nm">i32</b> : Gen <span title="Int">Int</span></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.u32" data-line="61">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.u32"><span class="ns">Cairn.Fuzz.Trusted.</span>u32</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Gen.lean:61</span></div>
+<pre class="sig"><b class="nm">u32</b> : Gen <span title="Nat">Nat</span></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.byte" data-line="67">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.byte"><span class="ns">Cairn.Fuzz.Trusted.</span>byte</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Gen.lean:67</span></div>
+<pre class="sig"><b class="nm">byte</b> : Gen <span title="UInt8">UInt8</span></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.opt" data-line="68">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.opt"><span class="ns">Cairn.Fuzz.Trusted.</span>opt</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Gen.lean:68</span></div>
+<pre class="sig"><b class="nm">opt</b> {α : Type} (g : Gen α) : Gen (Option α)</pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.rect" data-line="71">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.rect"><span class="ns">Cairn.Fuzz.Trusted.</span>rect</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Gen.lean:71</span></div>
+<pre class="sig"><b class="nm">rect</b> : Gen <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.color" data-line="72">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.color"><span class="ns">Cairn.Fuzz.Trusted.</span>color</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Gen.lean:72</span></div>
+<pre class="sig"><b class="nm">color</b> : Gen <a href="Cairn.UI.Node.html#Cairn.Color" title="Cairn.Color">Color</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.ref" data-line="73">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.ref"><span class="ns">Cairn.Fuzz.Trusted.</span>ref</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Gen.lean:73</span></div>
+<pre class="sig"><b class="nm">ref</b> : Gen <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.range" data-line="74">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.range"><span class="ns">Cairn.Fuzz.Trusted.</span>range</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Gen.lean:74</span></div>
+<pre class="sig"><b class="nm">range</b> : Gen (<span title="Nat">Nat</span> × <span title="Nat">Nat</span>)</pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.font" data-line="76">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.font"><span class="ns">Cairn.Fuzz.Trusted.</span>font</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Gen.lean:76</span></div>
+<pre class="sig"><b class="nm">font</b> : Gen <a href="Cairn.Text.Metrics.html#Cairn.Font" title="Cairn.Font">Font</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.ints" data-line="82">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.ints"><span class="ns">Cairn.Fuzz.Trusted.</span>ints</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Gen.lean:82</span></div>
+<pre class="sig"><b class="nm">ints</b> : Gen (List <span title="Int">Int</span>)</pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.draw" data-line="86">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.draw"><span class="ns">Cairn.Fuzz.Trusted.</span>draw</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Gen.lean:86</span></div>
+<pre class="sig"><b class="nm">draw</b> : Gen <a href="Cairn.Frame.html#Cairn.Draw" title="Cairn.Draw">Draw</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.role" data-line="109">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.role"><span class="ns">Cairn.Fuzz.Trusted.</span>role</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Gen.lean:109</span></div>
+<pre class="sig"><b class="nm">role</b> : Gen <a href="Cairn.UI.Node.html#Cairn.Role" title="Cairn.Role">Role</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.axNode" data-line="112">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.axNode"><span class="ns">Cairn.Fuzz.Trusted.</span>axNode</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Gen.lean:112</span></div>
+<pre class="sig"><b class="nm">axNode</b> : Gen <a href="Cairn.Frame.html#Cairn.AxNode" title="Cairn.AxNode">AxNode</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.textInput" data-line="117">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.textInput"><span class="ns">Cairn.Fuzz.Trusted.</span>textInput</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Gen.lean:117</span></div>
+<pre class="sig"><b class="nm">textInput</b> : Gen <a href="Cairn.Frame.html#Cairn.TextInput" title="Cairn.TextInput">TextInput</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.array" data-line="121">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.array"><span class="ns">Cairn.Fuzz.Trusted.</span>array</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Gen.lean:121</span></div>
+<pre class="sig"><b class="nm">array</b> {α : Type} (n : <span title="Nat">Nat</span>) (g : Gen α) : Gen (Array α)</pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.u64" data-line="128">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.u64"><span class="ns">Cairn.Fuzz.Trusted.</span>u64</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Gen.lean:128</span></div>
+<pre class="sig"><b class="nm">u64</b> : Gen <span title="Nat">Nat</span></pre><div class="doc"><p>A <a href="Cairn.Fuzz.Trusted.Gen.html#Cairn.Fuzz.Trusted.u64"><code>u64</code></a>, edges first: around 2³² (where the two words split) and the top.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.bytes" data-line="134">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.bytes"><span class="ns">Cairn.Fuzz.Trusted.</span>bytes</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Gen.lean:134</span></div>
+<pre class="sig"><b class="nm">bytes</b> : Gen <span title="ByteArray">ByteArray</span></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.headers" data-line="140">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.headers"><span class="ns">Cairn.Fuzz.Trusted.</span>headers</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Gen.lean:140</span></div>
+<pre class="sig"><b class="nm">headers</b> : Gen (List (<span title="String">String</span> × <span title="String">String</span>))</pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.part" data-line="142">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.part"><span class="ns">Cairn.Fuzz.Trusted.</span>part</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Gen.lean:142</span></div>
+<pre class="sig"><b class="nm">part</b> : Gen <a href="Cairn.Effects.html#Cairn.Part" title="Cairn.Part">Part</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.secret" data-line="146">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.secret"><span class="ns">Cairn.Fuzz.Trusted.</span>secret</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Gen.lean:146</span></div>
+<pre class="sig"><b class="nm">secret</b> : Gen <a href="Cairn.Effects.html#Cairn.Secret" title="Cairn.Secret">Secret</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.request" data-line="148">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.request"><span class="ns">Cairn.Fuzz.Trusted.</span>request</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Gen.lean:148</span></div>
+<pre class="sig"><b class="nm">request</b> : Gen <a href="Cairn.Effects.html#Cairn.Request" title="Cairn.Request">Request</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.effect" data-line="167">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.effect"><span class="ns">Cairn.Fuzz.Trusted.</span>effect</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Gen.lean:167</span></div>
+<pre class="sig"><b class="nm">effect</b> : Gen <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.subCmd" data-line="177">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.subCmd"><span class="ns">Cairn.Fuzz.Trusted.</span>subCmd</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Gen.lean:177</span></div>
+<pre class="sig"><b class="nm">subCmd</b> : Gen <a href="Cairn.Effects.html#Cairn.SubCmd" title="Cairn.SubCmd">SubCmd</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.canvas" data-line="185">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.canvas"><span class="ns">Cairn.Fuzz.Trusted.</span>canvas</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Gen.lean:185</span></div>
+<pre class="sig"><b class="nm">canvas</b> (big : <span title="Bool">Bool</span>) : Gen <a href="Cairn.Frame.html#Cairn.Canvas" title="Cairn.Canvas">Canvas</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.key" data-line="190">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.key"><span class="ns">Cairn.Fuzz.Trusted.</span>key</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Gen.lean:190</span></div>
+<pre class="sig"><b class="nm">key</b> : Gen <a href="Cairn.Input.html#Cairn.Key" title="Cairn.Key">Key</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.mods" data-line="198">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.mods"><span class="ns">Cairn.Fuzz.Trusted.</span>mods</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Gen.lean:198</span></div>
+<pre class="sig"><b class="nm">mods</b> : Gen <a href="Cairn.Input.html#Cairn.Mods" title="Cairn.Mods">Mods</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.menuRecord" data-line="200">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.menuRecord"><span class="ns">Cairn.Fuzz.Trusted.</span>menuRecord</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Gen.lean:200</span></div>
+<pre class="sig"><b class="nm">menuRecord</b> : Gen <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.status" data-line="206">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.status"><span class="ns">Cairn.Fuzz.Trusted.</span>status</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Gen.lean:206</span></div>
+<pre class="sig"><b class="nm">status</b> (big : <span title="Bool">Bool</span>) : Gen <a href="Cairn.Frame.html#Cairn.StatusFrame" title="Cairn.StatusFrame">StatusFrame</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.surface" data-line="210">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.surface"><span class="ns">Cairn.Fuzz.Trusted.</span>surface</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Gen.lean:210</span></div>
+<pre class="sig"><b class="nm">surface</b> (big : <span title="Bool">Bool</span>) : Gen <a href="Cairn.Frame.html#Cairn.SurfaceFrame" title="Cairn.SurfaceFrame">SurfaceFrame</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.frame" data-line="215">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.frame"><span class="ns">Cairn.Fuzz.Trusted.</span>frame</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Gen.lean:215</span></div>
+<pre class="sig"><b class="nm">frame</b> : Gen <a href="Cairn.Frame.html" title="Cairn.Frame">Frame</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Trusted.frameOf" data-line="221">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.frameOf"><span class="ns">Cairn.Fuzz.Trusted.</span>frameOf</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Gen.lean:221</span></div>
+<pre class="sig"><b class="nm">frameOf</b> (seed : <span title="UInt64">UInt64</span>) : <a href="Cairn.Frame.html" title="Cairn.Frame">Frame</a></pre><div class="doc"><p>The frame for a seed.</p>
+</div>
+</section>
+
+</div>
+</main></div>
+<footer>Generated by <code>make doc APP=Counter</code> from the code and the build. Nothing here is written by hand.</footer>
+<script src="search-index.js"></script>
+<script src="search.js"></script>
+<script type="module">
+// On the site, the headings get the meadow's sprigs and a "#" that copies a link to them
+// (site/public/scene.js); elsewhere, nothing.
+import("/scene.js").then((m) => { const main = document.querySelector("main"); m.mountSprigs(main); m.mountAnchors(main); }).catch(() => {});
+</script>
+</body>
+</html>

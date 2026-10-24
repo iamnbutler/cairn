@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cairn.Frame · Cairn docs</title>
+<meta name="description" content="Cairn's API, generated from its code.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="doc.css">
+</head>
+<body>
+<nav class="bar"><a class="home" href="../../"><img src="icon.svg" alt="">Cairn</a><span class="sep">/</span><a href="index.html">Cairn docs</a><a href="claims.html">Claims</a><span class="search"><input id="search" type="search" placeholder="Search names, docs, ^N  ( / )" autocomplete="off" spellcheck="false"><div id="results" hidden></div></span></nav>
+<div class="layout"><aside class="toc"><div class="pix muted">Cairn.Frame</div><a href="#structures">Structures <span class="n">7</span></a><ol><li><a href="#Cairn.AxNode">AxNode</a></li><li><a href="#Cairn.TextInput">TextInput</a></li><li><a href="#Cairn.Canvas">Canvas</a></li><li><a href="#Cairn.MenuRecord">MenuRecord</a></li><li><a href="#Cairn.StatusFrame">StatusFrame</a></li><li><a href="#Cairn.SurfaceFrame">SurfaceFrame</a></li><li><a href="#Cairn.Frame">Frame</a></li></ol><a href="#inductives">Inductive types <span class="n">3</span></a><ol><li><a href="#Cairn.Draw">Draw</a></li><li><a href="#Cairn.MenuKind">MenuKind</a></li><li><a href="#Cairn.SurfaceKind">SurfaceKind</a></li></ol><a href="#definitions">Definitions <span class="n">8</span></a><ol><li><a href="#Cairn.Canvas.empty">empty</a></li><li><a href="#Cairn.Frame.single">single</a></li><li><a href="#Cairn.Frame.window">window</a></li><li><a href="#Cairn.Frame.size">size</a></li><li><a href="#Cairn.Frame.draws">draws</a></li><li><a href="#Cairn.Frame.ax">ax</a></li><li><a href="#Cairn.Frame.textInput">textInput</a></li><li><a href="#Cairn.Frame.cursor">cursor</a></li></ol><a href="#instances">Instances <span class="n">25</span></a><ol><li><a href="#Cairn.instReprDraw">instReprDraw</a></li><li><a href="#Cairn.instBEqDraw">instBEqDraw</a></li><li><a href="#Cairn.instInhabitedDraw">instInhabitedDraw</a></li><li><a href="#Cairn.instBEqAxNode">instBEqAxNode</a></li><li><a href="#Cairn.instReprAxNode">instReprAxNode</a></li><li><a href="#Cairn.instInhabitedAxNode">instInhabitedAxNode</a></li><li><a href="#Cairn.instInhabitedTextInput">instInhabitedTextInput</a></li><li><a href="#Cairn.instReprTextInput">instReprTextInput</a></li><li><a href="#Cairn.instBEqTextInput">instBEqTextInput</a></li><li><a href="#Cairn.instReprCanvas">instReprCanvas</a></li><li><a href="#Cairn.instInhabitedCanvas">instInhabitedCanvas</a></li><li><a href="#Cairn.instDecidableEqMenuKind">instDecidableEqMenuKind</a></li><li><a href="#Cairn.instInhabitedMenuKind">instInhabitedMenuKind</a></li><li><a href="#Cairn.instReprMenuKind">instReprMenuKind</a></li><li><a href="#Cairn.instInhabitedMenuRecord">instInhabitedMenuRecord</a></li><li><a href="#Cairn.instReprMenuRecord">instReprMenuRecord</a></li><li><a href="#Cairn.instInhabitedStatusFrame">instInhabitedStatusFrame</a></li><li><a href="#Cairn.instReprStatusFrame">instReprStatusFrame</a></li><li><a href="#Cairn.instInhabitedSurfaceKind">instInhabitedSurfaceKind</a></li><li><a href="#Cairn.instDecidableEqSurfaceKind">instDecidableEqSurfaceKind</a></li><li><a href="#Cairn.instReprSurfaceKind">instReprSurfaceKind</a></li><li><a href="#Cairn.instInhabitedSurfaceFrame">instInhabitedSurfaceFrame</a></li><li><a href="#Cairn.instReprSurfaceFrame">instReprSurfaceFrame</a></li><li><a href="#Cairn.instReprFrame">instReprFrame</a></li><li><a href="#Cairn.instInhabitedFrame">instInhabitedFrame</a></li></ol></aside><main>
+<header class="page"><div class="eyebrow">Cairn · module</div><h1 class="mod">Cairn.Frame</h1><p class="src">lean/Cairn/Frame.lean</p></header>
+<div class="doc"><p>What crosses the boundary each frame, before encoding. <a href="Cairn.Frame.Encode.html"><code>Cairn.Frame.Encode</code></a> turns it into
+bytes (see docs/frame.md).</p>
+</div>
+<p class="imports"><span class="pix muted">Imports</span> <a href="Cairn.UI.Node.html">Cairn.UI.Node</a>, <a href="Cairn.Input.html">Cairn.Input</a>, <a href="Cairn.Surface.html">Cairn.Surface</a></p>
+<div class="order"><span class="pix muted">Order</span> <button type="button" data-order="kind" class="on">by kind</button><button type="button" data-order="source">as in the source</button></div>
+<div id="items">
+
+<h2 id="structures">Structures <span class="n">7</span></h2>
+<section class="decl" id="Cairn.AxNode" data-line="28">
+<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.AxNode"><span class="ns">Cairn.</span>AxNode</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:28</span></div>
+<pre class="sig"><b class="nm">AxNode</b> : Type</pre><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.AxNode.control"><pre class="sig"><b class="nm">control</b> : Option <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a></pre></div><div class="member" id="Cairn.AxNode.role"><pre class="sig"><b class="nm">role</b> : <a href="Cairn.UI.Node.html#Cairn.Role" title="Cairn.Role">Role</a></pre></div><div class="member" id="Cairn.AxNode.rect"><pre class="sig"><b class="nm">rect</b> : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a></pre></div><div class="member" id="Cairn.AxNode.label"><pre class="sig"><b class="nm">label</b> : <span title="String">String</span></pre></div><div class="member" id="Cairn.AxNode.value"><pre class="sig"><b class="nm">value</b> : <span title="String">String</span></pre></div><div class="member" id="Cairn.AxNode.parent"><pre class="sig"><b class="nm">parent</b> : Option <span title="Nat">Nat</span></pre><div class="doc"><p>Index of the parent in the frame's <code>ax</code> array; roots have none.</p>
+</div></div><div class="member" id="Cairn.AxNode.focused"><pre class="sig"><b class="nm">focused</b> : <span title="Bool">Bool</span></pre></div><div class="member" id="Cairn.AxNode.selected"><pre class="sig"><b class="nm">selected</b> : <span title="Bool">Bool</span></pre></div><div class="member" id="Cairn.AxNode.checked"><pre class="sig"><b class="nm">checked</b> : Option <span title="Bool">Bool</span></pre></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Frame.html#Cairn.instBEqAxNode"><code>BEq</code></a> <a href="Cairn.Frame.html#Cairn.instReprAxNode"><code>Repr</code></a> <a href="Cairn.Frame.html#Cairn.instInhabitedAxNode"><code>Inhabited</code></a></p></div>
+</section>
+<section class="decl" id="Cairn.TextInput" data-line="42">
+<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.TextInput"><span class="ns">Cairn.</span>TextInput</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:42</span></div>
+<pre class="sig"><b class="nm">TextInput</b> : Type</pre><div class="doc"><p>Everything <code>NSTextInputClient</code> may ask about the focused field, answered without Lean.</p>
+</div><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.TextInput.control"><pre class="sig"><b class="nm">control</b> : <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a></pre></div><div class="member" id="Cairn.TextInput.rect"><pre class="sig"><b class="nm">rect</b> : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a></pre></div><div class="member" id="Cairn.TextInput.caret"><pre class="sig"><b class="nm">caret</b> : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a></pre></div><div class="member" id="Cairn.TextInput.text"><pre class="sig"><b class="nm">text</b> : <span title="String">String</span></pre></div><div class="member" id="Cairn.TextInput.selection"><pre class="sig"><b class="nm">selection</b> : <span title="Nat">Nat</span> × <span title="Nat">Nat</span></pre></div><div class="member" id="Cairn.TextInput.marked"><pre class="sig"><b class="nm">marked</b> : Option (<span title="Nat">Nat</span> × <span title="Nat">Nat</span>)</pre></div><div class="member" id="Cairn.TextInput.textOrigin"><pre class="sig"><b class="nm">textOrigin</b> : <a href="Cairn.Geometry.html#Cairn.Point" title="Cairn.Point">Point</a></pre><div class="doc"><p>The left end of the text's baseline, in window coordinates, after any horizontal
+scroll: where scalar 0 starts.</p>
+</div></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Frame.html#Cairn.instInhabitedTextInput"><code>Inhabited</code></a> <a href="Cairn.Frame.html#Cairn.instReprTextInput"><code>Repr</code></a> <a href="Cairn.Frame.html#Cairn.instBEqTextInput"><code>BEq</code></a></p></div>
+</section>
+<section class="decl" id="Cairn.Canvas" data-line="55">
+<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.Canvas"><span class="ns">Cairn.</span>Canvas</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:55</span></div>
+<pre class="sig"><b class="nm">Canvas</b> : Type</pre><div class="doc"><p>What one Metal surface (the window, a panel) shows: M1's frame without the app-wide parts.</p>
+</div><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.Canvas.size"><pre class="sig"><b class="nm">size</b> : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a></pre></div><div class="member" id="Cairn.Canvas.draws"><pre class="sig"><b class="nm">draws</b> : Array <a href="Cairn.Frame.html#Cairn.Draw" title="Cairn.Draw">Draw</a></pre></div><div class="member" id="Cairn.Canvas.ax"><pre class="sig"><b class="nm">ax</b> : Array <a href="Cairn.Frame.html#Cairn.AxNode" title="Cairn.AxNode">AxNode</a></pre></div><div class="member" id="Cairn.Canvas.textInput"><pre class="sig"><b class="nm">textInput</b> : Option <a href="Cairn.Frame.html#Cairn.TextInput" title="Cairn.TextInput">TextInput</a></pre></div><div class="member" id="Cairn.Canvas.cursor"><pre class="sig"><b class="nm">cursor</b> : <a href="Cairn.Input.html#Cairn.Cursor" title="Cairn.Cursor">Cursor</a></pre></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Frame.html#Cairn.instReprCanvas"><code>Repr</code></a> <a href="Cairn.Frame.html#Cairn.instInhabitedCanvas"><code>Inhabited</code></a></p></div>
+</section>
+<section class="decl" id="Cairn.MenuRecord" data-line="72">
+<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.MenuRecord"><span class="ns">Cairn.</span>MenuRecord</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:72</span></div>
+<pre class="sig"><b class="nm">MenuRecord</b> : Type</pre><div class="doc"><p>One <a href="Cairn.Surface.html#Cairn.MenuItem"><code>MenuItem</code></a>, flattened (<a href="Cairn.Frame.Menu.html#Cairn.Frame.ofMenu"><code>Frame.ofMenu</code></a>): parents come before their children, and
+<code>parent</code> is the index of the enclosing submenu's record.</p>
+</div><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.MenuRecord.kind"><pre class="sig"><b class="nm">kind</b> : <a href="Cairn.Frame.html#Cairn.MenuKind" title="Cairn.MenuKind">MenuKind</a></pre></div><div class="member" id="Cairn.MenuRecord.label"><pre class="sig"><b class="nm">label</b> : <span title="String">String</span></pre></div><div class="member" id="Cairn.MenuRecord.control"><pre class="sig"><b class="nm">control</b> : Option <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a></pre><div class="doc"><p>The item's control (<code>item</code> only).</p>
+</div></div><div class="member" id="Cairn.MenuRecord.place"><pre class="sig"><b class="nm">place</b> : Option <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a></pre><div class="doc"><p>The submenu's place claim (<code>submenu</code> only, when it has one).</p>
+</div></div><div class="member" id="Cairn.MenuRecord.parent"><pre class="sig"><b class="nm">parent</b> : Option <span title="Nat">Nat</span></pre></div><div class="member" id="Cairn.MenuRecord.enabled"><pre class="sig"><b class="nm">enabled</b> : <span title="Bool">Bool</span></pre></div><div class="member" id="Cairn.MenuRecord.checked"><pre class="sig"><b class="nm">checked</b> : Option <span title="Bool">Bool</span></pre></div><div class="member" id="Cairn.MenuRecord.shortcut"><pre class="sig"><b class="nm">shortcut</b> : Option <a href="Cairn.Surface.html#Cairn.Shortcut" title="Cairn.Shortcut">Shortcut</a></pre></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Frame.html#Cairn.instInhabitedMenuRecord"><code>Inhabited</code></a> <a href="Cairn.Frame.html#Cairn.instReprMenuRecord"><code>Repr</code></a></p></div>
+</section>
+<section class="decl" id="Cairn.StatusFrame" data-line="86">
+<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.StatusFrame"><span class="ns">Cairn.</span>StatusFrame</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:86</span></div>
+<pre class="sig"><b class="nm">StatusFrame</b> : Type</pre><div class="doc"><p>What a status item shows: its button and its menu.</p>
+</div><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.StatusFrame.control"><pre class="sig"><b class="nm">control</b> : <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a></pre></div><div class="member" id="Cairn.StatusFrame.symbol"><pre class="sig"><b class="nm">symbol</b> : <span title="String">String</span></pre></div><div class="member" id="Cairn.StatusFrame.title"><pre class="sig"><b class="nm">title</b> : <span title="String">String</span></pre></div><div class="member" id="Cairn.StatusFrame.label"><pre class="sig"><b class="nm">label</b> : <span title="String">String</span></pre></div><div class="member" id="Cairn.StatusFrame.menu"><pre class="sig"><b class="nm">menu</b> : Array <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a></pre></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Frame.html#Cairn.instInhabitedStatusFrame"><code>Inhabited</code></a> <a href="Cairn.Frame.html#Cairn.instReprStatusFrame"><code>Repr</code></a></p></div>
+</section>
+<section class="decl" id="Cairn.SurfaceFrame" data-line="100">
+<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.SurfaceFrame"><span class="ns">Cairn.</span>SurfaceFrame</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:100</span></div>
+<pre class="sig"><b class="nm">SurfaceFrame</b> : Type</pre><div class="doc"><p>One surface's record. Fields a kind doesn't use stay at their defaults: a window has no
+anchor or status, a status item no canvas, a hidden surface neither.</p>
+</div><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.SurfaceFrame.kind"><pre class="sig"><b class="nm">kind</b> : <a href="Cairn.Frame.html#Cairn.SurfaceKind" title="Cairn.SurfaceKind">SurfaceKind</a></pre></div><div class="member" id="Cairn.SurfaceFrame.place"><pre class="sig"><b class="nm">place</b> : <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a></pre></div><div class="member" id="Cairn.SurfaceFrame.shown"><pre class="sig"><b class="nm">shown</b> : <span title="Bool">Bool</span></pre></div><div class="member" id="Cairn.SurfaceFrame.title"><pre class="sig"><b class="nm">title</b> : <span title="String">String</span></pre><div class="doc"><p>The window's title.</p>
+</div></div><div class="member" id="Cairn.SurfaceFrame.anchor"><pre class="sig"><b class="nm">anchor</b> : <a href="Cairn.Surface.html#Cairn.Anchor" title="Cairn.Anchor">Anchor</a></pre><div class="doc"><p>A panel's placement.</p>
+</div></div><div class="member" id="Cairn.SurfaceFrame.screen"><pre class="sig"><b class="nm">screen</b> : <a href="Cairn.Surface.html#Cairn.ScreenChoice" title="Cairn.ScreenChoice">ScreenChoice</a></pre></div><div class="member" id="Cairn.SurfaceFrame.canvas"><pre class="sig"><b class="nm">canvas</b> : <a href="Cairn.Frame.html#Cairn.Canvas" title="Cairn.Canvas">Canvas</a></pre><div class="doc"><p>A window's or panel's content. A panel's <code>size</code> is Lean's: its width and laid-out
+height.</p>
+</div></div><div class="member" id="Cairn.SurfaceFrame.status"><pre class="sig"><b class="nm">status</b> : <a href="Cairn.Frame.html#Cairn.StatusFrame" title="Cairn.StatusFrame">StatusFrame</a></pre><div class="doc"><p>A status item's button and menu.</p>
+</div></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Frame.html#Cairn.instInhabitedSurfaceFrame"><code>Inhabited</code></a> <a href="Cairn.Frame.html#Cairn.instReprSurfaceFrame"><code>Repr</code></a></p></div>
+</section>
+<section class="decl" id="Cairn.Frame" data-line="118">
+<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.Frame"><span class="ns">Cairn.</span>Frame</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:118</span></div>
+<pre class="sig"><b class="nm">Frame</b> : Type</pre><div class="doc"><p>One frame: every surface of the app, in the app's order, then what is the app's as a whole.</p>
+</div><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.Frame.surfaces"><pre class="sig"><b class="nm">surfaces</b> : Array <a href="Cairn.Frame.html#Cairn.SurfaceFrame" title="Cairn.SurfaceFrame">SurfaceFrame</a></pre></div><div class="member" id="Cairn.Frame.effects"><pre class="sig"><b class="nm">effects</b> : Array <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a></pre></div><div class="member" id="Cairn.Frame.subs"><pre class="sig"><b class="nm">subs</b> : Array <a href="Cairn.Effects.html#Cairn.SubCmd" title="Cairn.SubCmd">SubCmd</a></pre><div class="doc"><p>Subscriptions to start and stop, in order (docs/effects.md).</p>
+</div></div><div class="member" id="Cairn.Frame.wake"><pre class="sig"><b class="nm">wake</b> : Option <span title="Nat">Nat</span></pre><div class="doc"><p>The earliest timer deadline, in the host's monotonic milliseconds: the host sends a
+<code>clock</code> event no later than this.</p>
+</div></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Frame.html#Cairn.instReprFrame"><code>Repr</code></a> <a href="Cairn.Frame.html#Cairn.instInhabitedFrame"><code>Inhabited</code></a></p></div>
+</section>
+<h2 id="inductives">Inductive types <span class="n">3</span></h2>
+<section class="decl" id="Cairn.Draw" data-line="14">
+<div class="dhead"><span class="kind pix">inductive</span><h3><a href="#Cairn.Draw"><span class="ns">Cairn.</span>Draw</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:14</span></div>
+<pre class="sig"><b class="nm">Draw</b> : Type</pre><div class="members"><b class="pix muted">Constructors</b><div class="member" id="Cairn.Draw.rect"><pre class="sig"><b class="nm">rect</b> (r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (fill : Option <a href="Cairn.UI.Node.html#Cairn.Color" title="Cairn.Color">Color</a>) (radius : <span title="Nat">Nat</span>) (border : Option <a href="Cairn.UI.Node.html#Cairn.Border" title="Cairn.Border">Border</a>) :
+  <a href="Cairn.Frame.html#Cairn.Draw" title="Cairn.Draw">Draw</a></pre></div><div class="member" id="Cairn.Draw.text"><pre class="sig"><b class="nm">text</b> (origin : <a href="Cairn.Geometry.html#Cairn.Point" title="Cairn.Point">Point</a>) (font : <a href="Cairn.Text.Metrics.html#Cairn.Font" title="Cairn.Font">Font</a>) (color : <a href="Cairn.UI.Node.html#Cairn.Color" title="Cairn.Color">Color</a>) (s : <span title="String">String</span>) : <a href="Cairn.Frame.html#Cairn.Draw" title="Cairn.Draw">Draw</a></pre><div class="doc"><p><code>origin</code> is the left end of the baseline.</p>
+</div></div><div class="member" id="Cairn.Draw.pushClip"><pre class="sig"><b class="nm">pushClip</b> (r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) : <a href="Cairn.Frame.html#Cairn.Draw" title="Cairn.Draw">Draw</a></pre></div><div class="member" id="Cairn.Draw.popClip"><pre class="sig"><b class="nm">popClip</b> : <a href="Cairn.Frame.html#Cairn.Draw" title="Cairn.Draw">Draw</a></pre></div><div class="member" id="Cairn.Draw.shape"><pre class="sig"><b class="nm">shape</b> (r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (fill : Option <a href="Cairn.UI.Node.html#Cairn.Color" title="Cairn.Color">Color</a>) (radius : <span title="Nat">Nat</span>) (border : Option <a href="Cairn.UI.Node.html#Cairn.Border" title="Cairn.Border">Border</a>)
+  (corner : <a href="Cairn.UI.Node.html#Cairn.Corner" title="Cairn.Corner">Corner</a>) (shadow : Option <a href="Cairn.UI.Node.html#Cairn.Shadow" title="Cairn.Shadow">Shadow</a>) : <a href="Cairn.Frame.html#Cairn.Draw" title="Cairn.Draw">Draw</a></pre><div class="doc"><p>A rounded rect with what <a href="Cairn.Frame.html#Cairn.Draw.rect"><code>rect</code></a> lacks: continuous corners and a soft shadow painted under
+it (<a href="Cairn.UI.Node.html#Cairn.Style.corner"><code>Style.corner</code></a>, <a href="Cairn.UI.Node.html#Cairn.Style.shadow"><code>Style.shadow</code></a>).</p>
+</div></div><div class="member" id="Cairn.Draw.paint"><pre class="sig"><b class="nm">paint</b> (r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (p : <a href="Cairn.UI.Node.html#Cairn.Paint" title="Cairn.Paint">Paint</a>) : <a href="Cairn.Frame.html#Cairn.Draw" title="Cairn.Draw">Draw</a></pre><div class="doc"><p>Host-drawn pixels inside <code>r</code> (<a href="Cairn.UI.Node.html#Cairn.Style.paint"><code>Style.paint</code></a>).</p>
+</div></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Frame.html#Cairn.instReprDraw"><code>Repr</code></a> <a href="Cairn.Frame.html#Cairn.instBEqDraw"><code>BEq</code></a> <a href="Cairn.Frame.html#Cairn.instInhabitedDraw"><code>Inhabited</code></a></p></div>
+</section>
+<section class="decl" id="Cairn.MenuKind" data-line="66">
+<div class="dhead"><span class="kind pix">inductive</span><h3><a href="#Cairn.MenuKind"><span class="ns">Cairn.</span>MenuKind</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:66</span></div>
+<pre class="sig"><b class="nm">MenuKind</b> : Type</pre><div class="doc"><p>The kind of a menu record: <a href="Cairn.Surface.html#Cairn.MenuItem"><code>MenuItem</code></a>'s constructors.</p>
+</div><div class="members"><b class="pix muted">Constructors</b><div class="member" id="Cairn.MenuKind.item"><pre class="sig"><b class="nm">item</b> : <a href="Cairn.Frame.html#Cairn.MenuKind" title="Cairn.MenuKind">MenuKind</a></pre></div><div class="member" id="Cairn.MenuKind.info"><pre class="sig"><b class="nm">info</b> : <a href="Cairn.Frame.html#Cairn.MenuKind" title="Cairn.MenuKind">MenuKind</a></pre></div><div class="member" id="Cairn.MenuKind.submenu"><pre class="sig"><b class="nm">submenu</b> : <a href="Cairn.Frame.html#Cairn.MenuKind" title="Cairn.MenuKind">MenuKind</a></pre></div><div class="member" id="Cairn.MenuKind.separator"><pre class="sig"><b class="nm">separator</b> : <a href="Cairn.Frame.html#Cairn.MenuKind" title="Cairn.MenuKind">MenuKind</a></pre></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Frame.html#Cairn.instInhabitedMenuKind"><code>Inhabited</code></a> <a href="Cairn.Frame.html#Cairn.instReprMenuKind"><code>Repr</code></a></p></div>
+</section>
+<section class="decl" id="Cairn.SurfaceKind" data-line="94">
+<div class="dhead"><span class="kind pix">inductive</span><h3><a href="#Cairn.SurfaceKind"><span class="ns">Cairn.</span>SurfaceKind</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:94</span></div>
+<pre class="sig"><b class="nm">SurfaceKind</b> : Type</pre><div class="members"><b class="pix muted">Constructors</b><div class="member" id="Cairn.SurfaceKind.window"><pre class="sig"><b class="nm">window</b> : <a href="Cairn.Frame.html#Cairn.SurfaceKind" title="Cairn.SurfaceKind">SurfaceKind</a></pre></div><div class="member" id="Cairn.SurfaceKind.panel"><pre class="sig"><b class="nm">panel</b> : <a href="Cairn.Frame.html#Cairn.SurfaceKind" title="Cairn.SurfaceKind">SurfaceKind</a></pre></div><div class="member" id="Cairn.SurfaceKind.statusItem"><pre class="sig"><b class="nm">statusItem</b> : <a href="Cairn.Frame.html#Cairn.SurfaceKind" title="Cairn.SurfaceKind">SurfaceKind</a></pre></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Frame.html#Cairn.instInhabitedSurfaceKind"><code>Inhabited</code></a> <a href="Cairn.Frame.html#Cairn.instReprSurfaceKind"><code>Repr</code></a></p></div>
+</section>
+<h2 id="definitions">Definitions <span class="n">8</span></h2>
+<section class="decl" id="Cairn.Canvas.empty" data-line="63">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Canvas.empty"><span class="ns">Cairn.Canvas.</span>empty</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:63</span></div>
+<pre class="sig"><b class="nm">empty</b> : <a href="Cairn.Frame.html#Cairn.Canvas" title="Cairn.Canvas">Canvas</a></pre>
+</section>
+<section class="decl" id="Cairn.Frame.single" data-line="131">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Frame.single"><span class="ns">Cairn.Frame.</span>single</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:131</span></div>
+<pre class="sig"><b class="nm">single</b> (c : <a href="Cairn.Frame.html#Cairn.Canvas" title="Cairn.Canvas">Canvas</a>) (effects : Array <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a> := #[]) (subs : Array <a href="Cairn.Effects.html#Cairn.SubCmd" title="Cairn.SubCmd">SubCmd</a> := #[])
+  (wake : Option <span title="Nat">Nat</span> := none) : <a href="Cairn.Frame.html" title="Cairn.Frame">Frame</a></pre><div class="doc"><p>A frame with one window (place 0) showing <code>c</code>: M1's frame.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Frame.window" data-line="136">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Frame.window"><span class="ns">Cairn.Frame.</span>window</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:136</span></div>
+<pre class="sig"><b class="nm">window</b> (f : <a href="Cairn.Frame.html" title="Cairn.Frame">Frame</a>) : <a href="Cairn.Frame.html#Cairn.Canvas" title="Cairn.Canvas">Canvas</a></pre><div class="doc"><p>The first window's canvas; empty when the frame has no window.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Frame.size" data-line="139">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Frame.size"><span class="ns">Cairn.Frame.</span>size</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:139</span></div>
+<pre class="sig"><b class="nm">size</b> (f : <a href="Cairn.Frame.html" title="Cairn.Frame">Frame</a>) : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a></pre>
+</section>
+<section class="decl" id="Cairn.Frame.draws" data-line="140">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Frame.draws"><span class="ns">Cairn.Frame.</span>draws</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:140</span></div>
+<pre class="sig"><b class="nm">draws</b> (f : <a href="Cairn.Frame.html" title="Cairn.Frame">Frame</a>) : Array <a href="Cairn.Frame.html#Cairn.Draw" title="Cairn.Draw">Draw</a></pre>
+</section>
+<section class="decl" id="Cairn.Frame.ax" data-line="141">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Frame.ax"><span class="ns">Cairn.Frame.</span>ax</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:141</span></div>
+<pre class="sig"><b class="nm">ax</b> (f : <a href="Cairn.Frame.html" title="Cairn.Frame">Frame</a>) : Array <a href="Cairn.Frame.html#Cairn.AxNode" title="Cairn.AxNode">AxNode</a></pre>
+</section>
+<section class="decl" id="Cairn.Frame.textInput" data-line="142">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Frame.textInput"><span class="ns">Cairn.Frame.</span>textInput</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:142</span></div>
+<pre class="sig"><b class="nm">textInput</b> (f : <a href="Cairn.Frame.html" title="Cairn.Frame">Frame</a>) : Option <a href="Cairn.Frame.html#Cairn.TextInput" title="Cairn.TextInput">TextInput</a></pre>
+</section>
+<section class="decl" id="Cairn.Frame.cursor" data-line="143">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Frame.cursor"><span class="ns">Cairn.Frame.</span>cursor</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:143</span></div>
+<pre class="sig"><b class="nm">cursor</b> (f : <a href="Cairn.Frame.html" title="Cairn.Frame">Frame</a>) : <a href="Cairn.Input.html#Cairn.Cursor" title="Cairn.Cursor">Cursor</a></pre>
+</section>
+<h2 id="instances">Instances <span class="n">25</span></h2>
+<section class="decl" id="Cairn.instReprDraw" data-line="26">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprDraw"><span class="ns">Cairn.</span>instReprDraw</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:26</span></div>
+<pre class="sig"><b class="nm">instReprDraw</b> : Repr <a href="Cairn.Frame.html#Cairn.Draw" title="Cairn.Draw">Draw</a></pre>
+</section>
+<section class="decl" id="Cairn.instBEqDraw" data-line="26">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instBEqDraw"><span class="ns">Cairn.</span>instBEqDraw</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:26</span></div>
+<pre class="sig"><b class="nm">instBEqDraw</b> : BEq <a href="Cairn.Frame.html#Cairn.Draw" title="Cairn.Draw">Draw</a></pre>
+</section>
+<section class="decl" id="Cairn.instInhabitedDraw" data-line="26">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedDraw"><span class="ns">Cairn.</span>instInhabitedDraw</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:26</span></div>
+<pre class="sig"><b class="nm">instInhabitedDraw</b> : Inhabited <a href="Cairn.Frame.html#Cairn.Draw" title="Cairn.Draw">Draw</a></pre>
+</section>
+<section class="decl" id="Cairn.instBEqAxNode" data-line="39">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instBEqAxNode"><span class="ns">Cairn.</span>instBEqAxNode</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:39</span></div>
+<pre class="sig"><b class="nm">instBEqAxNode</b> : BEq <a href="Cairn.Frame.html#Cairn.AxNode" title="Cairn.AxNode">AxNode</a></pre>
+</section>
+<section class="decl" id="Cairn.instReprAxNode" data-line="39">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprAxNode"><span class="ns">Cairn.</span>instReprAxNode</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:39</span></div>
+<pre class="sig"><b class="nm">instReprAxNode</b> : Repr <a href="Cairn.Frame.html#Cairn.AxNode" title="Cairn.AxNode">AxNode</a></pre>
+</section>
+<section class="decl" id="Cairn.instInhabitedAxNode" data-line="39">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedAxNode"><span class="ns">Cairn.</span>instInhabitedAxNode</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:39</span></div>
+<pre class="sig"><b class="nm">instInhabitedAxNode</b> : Inhabited <a href="Cairn.Frame.html#Cairn.AxNode" title="Cairn.AxNode">AxNode</a></pre>
+</section>
+<section class="decl" id="Cairn.instInhabitedTextInput" data-line="52">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedTextInput"><span class="ns">Cairn.</span>instInhabitedTextInput</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:52</span></div>
+<pre class="sig"><b class="nm">instInhabitedTextInput</b> : Inhabited <a href="Cairn.Frame.html#Cairn.TextInput" title="Cairn.TextInput">TextInput</a></pre>
+</section>
+<section class="decl" id="Cairn.instReprTextInput" data-line="52">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprTextInput"><span class="ns">Cairn.</span>instReprTextInput</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:52</span></div>
+<pre class="sig"><b class="nm">instReprTextInput</b> : Repr <a href="Cairn.Frame.html#Cairn.TextInput" title="Cairn.TextInput">TextInput</a></pre>
+</section>
+<section class="decl" id="Cairn.instBEqTextInput" data-line="52">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instBEqTextInput"><span class="ns">Cairn.</span>instBEqTextInput</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:52</span></div>
+<pre class="sig"><b class="nm">instBEqTextInput</b> : BEq <a href="Cairn.Frame.html#Cairn.TextInput" title="Cairn.TextInput">TextInput</a></pre>
+</section>
+<section class="decl" id="Cairn.instReprCanvas" data-line="61">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprCanvas"><span class="ns">Cairn.</span>instReprCanvas</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:61</span></div>
+<pre class="sig"><b class="nm">instReprCanvas</b> : Repr <a href="Cairn.Frame.html#Cairn.Canvas" title="Cairn.Canvas">Canvas</a></pre>
+</section>
+<section class="decl" id="Cairn.instInhabitedCanvas" data-line="61">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedCanvas"><span class="ns">Cairn.</span>instInhabitedCanvas</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:61</span></div>
+<pre class="sig"><b class="nm">instInhabitedCanvas</b> : Inhabited <a href="Cairn.Frame.html#Cairn.Canvas" title="Cairn.Canvas">Canvas</a></pre>
+</section>
+<section class="decl" id="Cairn.instDecidableEqMenuKind" data-line="68">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instDecidableEqMenuKind"><span class="ns">Cairn.</span>instDecidableEqMenuKind</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:68</span></div>
+<pre class="sig"><b class="nm">instDecidableEqMenuKind</b> : DecidableEq <a href="Cairn.Frame.html#Cairn.MenuKind" title="Cairn.MenuKind">MenuKind</a></pre>
+</section>
+<section class="decl" id="Cairn.instInhabitedMenuKind" data-line="68">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedMenuKind"><span class="ns">Cairn.</span>instInhabitedMenuKind</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:68</span></div>
+<pre class="sig"><b class="nm">instInhabitedMenuKind</b> : Inhabited <a href="Cairn.Frame.html#Cairn.MenuKind" title="Cairn.MenuKind">MenuKind</a></pre>
+</section>
+<section class="decl" id="Cairn.instReprMenuKind" data-line="68">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprMenuKind"><span class="ns">Cairn.</span>instReprMenuKind</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:68</span></div>
+<pre class="sig"><b class="nm">instReprMenuKind</b> : Repr <a href="Cairn.Frame.html#Cairn.MenuKind" title="Cairn.MenuKind">MenuKind</a></pre>
+</section>
+<section class="decl" id="Cairn.instInhabitedMenuRecord" data-line="83">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedMenuRecord"><span class="ns">Cairn.</span>instInhabitedMenuRecord</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:83</span></div>
+<pre class="sig"><b class="nm">instInhabitedMenuRecord</b> : Inhabited <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a></pre>
+</section>
+<section class="decl" id="Cairn.instReprMenuRecord" data-line="83">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprMenuRecord"><span class="ns">Cairn.</span>instReprMenuRecord</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:83</span></div>
+<pre class="sig"><b class="nm">instReprMenuRecord</b> : Repr <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a></pre>
+</section>
+<section class="decl" id="Cairn.instInhabitedStatusFrame" data-line="92">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedStatusFrame"><span class="ns">Cairn.</span>instInhabitedStatusFrame</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:92</span></div>
+<pre class="sig"><b class="nm">instInhabitedStatusFrame</b> : Inhabited <a href="Cairn.Frame.html#Cairn.StatusFrame" title="Cairn.StatusFrame">StatusFrame</a></pre>
+</section>
+<section class="decl" id="Cairn.instReprStatusFrame" data-line="92">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprStatusFrame"><span class="ns">Cairn.</span>instReprStatusFrame</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:92</span></div>
+<pre class="sig"><b class="nm">instReprStatusFrame</b> : Repr <a href="Cairn.Frame.html#Cairn.StatusFrame" title="Cairn.StatusFrame">StatusFrame</a></pre>
+</section>
+<section class="decl" id="Cairn.instInhabitedSurfaceKind" data-line="96">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedSurfaceKind"><span class="ns">Cairn.</span>instInhabitedSurfaceKind</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:96</span></div>
+<pre class="sig"><b class="nm">instInhabitedSurfaceKind</b> : Inhabited <a href="Cairn.Frame.html#Cairn.SurfaceKind" title="Cairn.SurfaceKind">SurfaceKind</a></pre>
+</section>
+<section class="decl" id="Cairn.instDecidableEqSurfaceKind" data-line="96">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instDecidableEqSurfaceKind"><span class="ns">Cairn.</span>instDecidableEqSurfaceKind</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:96</span></div>
+<pre class="sig"><b class="nm">instDecidableEqSurfaceKind</b> : DecidableEq <a href="Cairn.Frame.html#Cairn.SurfaceKind" title="Cairn.SurfaceKind">SurfaceKind</a></pre>
+</section>
+<section class="decl" id="Cairn.instReprSurfaceKind" data-line="96">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprSurfaceKind"><span class="ns">Cairn.</span>instReprSurfaceKind</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:96</span></div>
+<pre class="sig"><b class="nm">instReprSurfaceKind</b> : Repr <a href="Cairn.Frame.html#Cairn.SurfaceKind" title="Cairn.SurfaceKind">SurfaceKind</a></pre>
+</section>
+<section class="decl" id="Cairn.instInhabitedSurfaceFrame" data-line="114">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedSurfaceFrame"><span class="ns">Cairn.</span>instInhabitedSurfaceFrame</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:114</span></div>
+<pre class="sig"><b class="nm">instInhabitedSurfaceFrame</b> : Inhabited <a href="Cairn.Frame.html#Cairn.SurfaceFrame" title="Cairn.SurfaceFrame">SurfaceFrame</a></pre>
+</section>
+<section class="decl" id="Cairn.instReprSurfaceFrame" data-line="114">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprSurfaceFrame"><span class="ns">Cairn.</span>instReprSurfaceFrame</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:114</span></div>
+<pre class="sig"><b class="nm">instReprSurfaceFrame</b> : Repr <a href="Cairn.Frame.html#Cairn.SurfaceFrame" title="Cairn.SurfaceFrame">SurfaceFrame</a></pre>
+</section>
+<section class="decl" id="Cairn.instReprFrame" data-line="126">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprFrame"><span class="ns">Cairn.</span>instReprFrame</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:126</span></div>
+<pre class="sig"><b class="nm">instReprFrame</b> : Repr <a href="Cairn.Frame.html" title="Cairn.Frame">Frame</a></pre>
+</section>
+<section class="decl" id="Cairn.instInhabitedFrame" data-line="126">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedFrame"><span class="ns">Cairn.</span>instInhabitedFrame</a></h3><span class="src" title="source">lean/Cairn/Frame.lean:126</span></div>
+<pre class="sig"><b class="nm">instInhabitedFrame</b> : Inhabited <a href="Cairn.Frame.html" title="Cairn.Frame">Frame</a></pre>
+</section>
+
+</div>
+</main></div>
+<footer>Generated by <code>make doc APP=Counter</code> from the code and the build. Nothing here is written by hand.</footer>
+<script src="search-index.js"></script>
+<script src="search.js"></script>
+<script type="module">
+// On the site, the headings get the meadow's sprigs and a "#" that copies a link to them
+// (site/public/scene.js); elsewhere, nothing.
+import("/scene.js").then((m) => { const main = document.querySelector("main"); m.mountSprigs(main); m.mountAnchors(main); }).catch(() => {});
+</script>
+</body>
+</html>

@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cairn.App · Cairn docs</title>
+<meta name="description" content="Cairn's API, generated from its code.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="doc.css">
+</head>
+<body>
+<nav class="bar"><a class="home" href="../../"><img src="icon.svg" alt="">Cairn</a><span class="sep">/</span><a href="index.html">Cairn docs</a><a href="claims.html">Claims</a><span class="search"><input id="search" type="search" placeholder="Search names, docs, ^N  ( / )" autocomplete="off" spellcheck="false"><div id="results" hidden></div></span></nav>
+<div class="layout"><aside class="toc"><div class="pix muted">Cairn.App</div><a href="#structures">Structures <span class="n">2</span></a><ol><li><a href="#Cairn.UI">UI</a></li><li><a href="#Cairn.App">App</a></li></ol><a href="#inductives">Inductive types <span class="n">1</span></a><ol><li><a href="#Cairn.Surface">Surface</a></li></ol><a href="#definitions">Definitions <span class="n">7</span></a><ol><li><a href="#Cairn.Surface.place">place</a></li><li><a href="#Cairn.Surface.comap">comap</a></li><li><a href="#Cairn.firstWindow">firstWindow</a></li><li><a href="#Cairn.emptyView">emptyView</a></li><li><a href="#Cairn.App.view">view</a></li><li><a href="#Cairn.App.windowPlace">windowPlace</a></li><li><a href="#Cairn.App.accessory">accessory</a></li></ol><a href="#theorems">Theorems <span class="n">3</span></a><ol><li><a href="#Cairn.Surface.place_comap">place_comap</a></li><li><a href="#Cairn.firstWindow_comap">firstWindow_comap</a></li><li><a href="#Cairn.App.view_comap">view_comap</a></li></ol><a href="#instances">Instances <span class="n">3</span></a><ol><li><a href="#Cairn.instReprUI">instReprUI</a></li><li><a href="#Cairn.instInhabitedUI">instInhabitedUI</a></li><li><a href="#Cairn.instDecidableEqUI">instDecidableEqUI</a></li></ol></aside><main>
+<header class="page"><div class="eyebrow">Cairn · module</div><h1 class="mod">Cairn.App</h1><p class="src">lean/Cairn/App.lean</p></header>
+<div class="doc"><p>An app is its state, its surfaces, and its moves. The runtime (<a href="Cairn.Runtime.html"><code>Cairn.Runtime</code></a>) owns
+interaction state (hover, press, focus, window size), turns events into actions by hit testing
+the laid-out frame or checking the menu, and calls <a href="Cairn.App.html#Cairn.App.update"><code>update</code></a>.</p>
+</div>
+<p class="imports"><span class="pix muted">Imports</span> <a href="Cairn.UI.Node.html">Cairn.UI.Node</a>, <a href="Cairn.Input.html">Cairn.Input</a>, <a href="Cairn.Claim.html">Cairn.Claim</a>, <a href="Cairn.Surface.html">Cairn.Surface</a>, <a href="Cairn.Text.Metrics.html">Cairn.Text.Metrics</a></p>
+<div class="order"><span class="pix muted">Order</span> <button type="button" data-order="kind" class="on">by kind</button><button type="button" data-order="source">as in the source</button></div>
+<div id="items">
+
+<h2 id="structures">Structures <span class="n">2</span></h2>
+<section class="decl" id="Cairn.UI" data-line="19">
+<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.UI"><span class="ns">Cairn.</span>UI</a></h3><span class="src" title="source">lean/Cairn/App.lean:19</span></div>
+<pre class="sig"><b class="nm">UI</b> : Type</pre><div class="doc"><p>Interaction state the runtime owns and the view may read (hover reveals, focus rings).</p>
+</div><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.UI.size"><pre class="sig"><b class="nm">size</b> : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a></pre></div><div class="member" id="Cairn.UI.hover"><pre class="sig"><b class="nm">hover</b> : Option <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a></pre></div><div class="member" id="Cairn.UI.pressed"><pre class="sig"><b class="nm">pressed</b> : Option <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a></pre></div><div class="member" id="Cairn.UI.focus"><pre class="sig"><b class="nm">focus</b> : Option <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a></pre></div><div class="member" id="Cairn.UI.windowFocused"><pre class="sig"><b class="nm">windowFocused</b> : <span title="Bool">Bool</span></pre></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.App.html#Cairn.instReprUI"><code>Repr</code></a> <a href="Cairn.App.html#Cairn.instInhabitedUI"><code>Inhabited</code></a></p></div>
+</section>
+<section class="decl" id="Cairn.App" data-line="78">
+<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.App"><span class="ns">Cairn.</span>App</a></h3><span class="src" title="source">lean/Cairn/App.lean:78</span></div>
+<pre class="sig"><b class="nm">App</b> (S : Type) : Type</pre><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.App.init"><pre class="sig"><b class="nm">init</b> : S</pre></div><div class="member" id="Cairn.App.surfaces"><pre class="sig"><b class="nm">surfaces</b> : List (Surface S)</pre><div class="doc"><p>What the app shows: at most one window (a later window is ignored), panels and status
+items. An app with no window is an accessory app (no Dock icon, no main menu).</p>
+</div></div><div class="member" id="Cairn.App.update"><pre class="sig"><b class="nm">update</b> : S × List <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a></pre><div class="doc"><p>A person's moves: every action names a control on screen.</p>
+</div></div><div class="member" id="Cairn.App.receive"><pre class="sig"><b class="nm">receive</b> : S × List <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a></pre><div class="doc"><p>The outside world: the clock, timers, replies and subscription events
+(docs/effects.md). Ignored by default.</p>
+</div></div><div class="member" id="Cairn.App.subscriptions"><pre class="sig"><b class="nm">subscriptions</b> : List <a href="Cairn.Effects.html#Cairn.Sub" title="Cairn.Sub">Sub</a></pre><div class="doc"><p>The outside inputs the app wants in this state. The runtime diffs them after every
+delivery and starts and stops subscriptions to match.</p>
+</div></div><div class="member" id="Cairn.App.initEffects"><pre class="sig"><b class="nm">initEffects</b> : List <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a></pre><div class="doc"><p>Effects to run once, when the first clock arrives (so timers start from a real time).</p>
+</div></div><div class="member" id="Cairn.App.claims"><pre class="sig"><b class="nm">claims</b> : List <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>Every claim the app makes, from the claim commands.</p>
+</div></div><div class="member" id="Cairn.App.initFocus"><pre class="sig"><b class="nm">initFocus</b> : Option <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a></pre><div class="doc"><p>The control that has keyboard focus at launch, if it is focusable there.</p>
+</div></div></div>
+</section>
+<h2 id="inductives">Inductive types <span class="n">1</span></h2>
+<section class="decl" id="Cairn.Surface" data-line="30">
+<div class="dhead"><span class="kind pix">inductive</span><h3><a href="#Cairn.Surface"><span class="ns">Cairn.</span>Surface</a></h3><span class="src" title="source">lean/Cairn/App.lean:30</span></div>
+<pre class="sig"><b class="nm">Surface</b> (S : Type) : Type</pre><div class="doc"><p>One thing an app shows (docs/surfaces.md). An app declares a fixed list of them; whether
+each is shown, and what it shows, is a function of the state. <code>place</code> is the surface's place
+claim: its durable identity on the wire, in the map and in the debug socket.</p>
+</div><div class="members"><b class="pix muted">Constructors</b><div class="member" id="Cairn.Surface.window"><pre class="sig"><b class="nm">window</b> {S : Type} (place : <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a>) (title : <span title="String">String</span>) (view : S → <a href="Cairn.App.html#Cairn.UI" title="Cairn.UI">UI</a> → <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
+  Surface S</pre><div class="doc"><p>M1's window: Metal content laid out at the window's size, with input.</p>
+</div></div><div class="member" id="Cairn.Surface.panel"><pre class="sig"><b class="nm">panel</b> {S : Type} (place : <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a>)
+  (view : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a> → S → Option <a href="Cairn.Surface.html#Cairn.PanelView" title="Cairn.PanelView">PanelView</a>) : Surface S</pre><div class="doc"><p>A non-activating, click-through overlay panel; <code>none</code> hides it. It takes no input, so its
+view doesn't read <a href="Cairn.App.html#Cairn.UI"><code>UI</code></a>. The view is given the text metrics the panel is laid out with, so it
+can measure content (<a href="Cairn.Layout.Core.html#Cairn.Layout.measure"><code>Cairn.Layout.measure</code></a>), for instance to animate between two heights.</p>
+</div></div><div class="member" id="Cairn.Surface.statusItem"><pre class="sig"><b class="nm">statusItem</b> {S : Type} (place : <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a>) (view : S → Option <a href="Cairn.Surface.html#Cairn.StatusItem" title="Cairn.StatusItem">StatusItem</a>) :
+  Surface S</pre><div class="doc"><p>A menu bar status item and its native menu; <code>none</code> removes it from the menu bar.</p>
+</div></div></div>
+</section>
+<h2 id="definitions">Definitions <span class="n">7</span></h2>
+<section class="decl" id="Cairn.Surface.place" data-line="44">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Surface.place"><span class="ns">Cairn.Surface.</span>place</a></h3><span class="src" title="source">lean/Cairn/App.lean:44</span></div>
+<pre class="sig"><b class="nm">place</b> {S : Type} : Surface S → <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a></pre>
+</section>
+<section class="decl" id="Cairn.Surface.comap" data-line="48">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Surface.comap"><span class="ns">Cairn.Surface.</span>comap</a></h3><span class="src" title="source">lean/Cairn/App.lean:48</span></div>
+<pre class="sig"><b class="nm">comap</b> {S T : Type} (f : T → S) : Surface S → Surface T</pre><div class="doc"><p>The same surface over a bigger state (<a href="Cairn.Runtime.WorldProofs.html#Cairn.Runtime.logged"><code>Cairn.Runtime.logged</code></a> wraps an app's state).</p>
+</div>
+</section>
+<section class="decl" id="Cairn.firstWindow" data-line="59">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.firstWindow"><span class="ns">Cairn.</span>firstWindow</a></h3><span class="src" title="source">lean/Cairn/App.lean:59</span></div>
+<pre class="sig"><b class="nm">firstWindow</b> {S : Type} :
+  List (Surface S) → Option (<a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a> × <span title="String">String</span> × (S → <a href="Cairn.App.html#Cairn.UI" title="Cairn.UI">UI</a> → <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>))</pre><div class="doc"><p>The first window in a surface list: its place, title and view.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.emptyView" data-line="76">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.emptyView"><span class="ns">Cairn.</span>emptyView</a></h3><span class="src" title="source">lean/Cairn/App.lean:76</span></div>
+<pre class="sig"><b class="nm">emptyView</b> : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a></pre><div class="doc"><p>What an app with no window lays out as its window: nothing.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.App.view" data-line="104">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.App.view"><span class="ns">Cairn.App.</span>view</a></h3><span class="src" title="source">lean/Cairn/App.lean:104</span></div>
+<pre class="sig"><b class="nm">view</b> {S : Type} (app : App S) : S → <a href="Cairn.App.html#Cairn.UI" title="Cairn.UI">UI</a> → <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a></pre><div class="doc"><p>The window's view, as M1's <a href="Cairn.App.html#Cairn.App.view"><code>App.view</code></a> was; an empty box when there is no window. Every M1
+theorem about <a href="Cairn.App.html#Cairn.App.view"><code>view</code></a> is about this.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.App.windowPlace" data-line="111">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.App.windowPlace"><span class="ns">Cairn.App.</span>windowPlace</a></h3><span class="src" title="source">lean/Cairn/App.lean:111</span></div>
+<pre class="sig"><b class="nm">windowPlace</b> {S : Type} (app : App S) : Option <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a></pre><div class="doc"><p>The window's place claim, if the app has a window. Bare surface-local events (M1's) go to
+this window.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.App.accessory" data-line="122">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.App.accessory"><span class="ns">Cairn.App.</span>accessory</a></h3><span class="src" title="source">lean/Cairn/App.lean:122</span></div>
+<pre class="sig"><b class="nm">accessory</b> {S : Type} (app : App S) : <span title="Bool">Bool</span></pre><div class="doc"><p>An app with no window runs as an accessory (docs/surfaces.md, section 3).</p>
+</div>
+</section>
+<h2 id="theorems">Theorems <span class="n">3</span></h2>
+<section class="decl" id="Cairn.Surface.place_comap" data-line="53">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Surface.place_comap"><span class="ns">Cairn.Surface.</span>place_comap</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/App.lean:53</span></div>
+<pre class="sig"><b class="nm">place_comap</b> {S T : Type} (f : T → S) (x : Surface S) :
+  (comap f x).place = x.place</pre>
+</section>
+<section class="decl" id="Cairn.firstWindow_comap" data-line="64">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.firstWindow_comap"><span class="ns">Cairn.</span>firstWindow_comap</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/App.lean:64</span></div>
+<pre class="sig"><b class="nm">firstWindow_comap</b> {S T : Type} (f : T → S) (xs : List (Surface S)) :
+  firstWindow (List.map (Surface.comap f) xs) =
+    Option.map
+      (fun x =&gt;
+        match x with
+        | (p, t, v) =&gt; (p, t, fun s ui =&gt; v (f s) ui))
+      (firstWindow xs)</pre>
+</section>
+<section class="decl" id="Cairn.App.view_comap" data-line="114">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.App.view_comap"><span class="ns">Cairn.App.</span>view_comap</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/App.lean:114</span></div>
+<pre class="sig"><b class="nm">view_comap</b> {S : Type} (app : App S) {T : Type} (f : T → S) (b : App T)
+  (h : b.surfaces = List.map (Surface.comap f) app.surfaces) (s : T) (ui : <a href="Cairn.App.html#Cairn.UI" title="Cairn.UI">UI</a>) :
+  b.view s ui = app.view (f s) ui</pre><div class="doc"><p>The view of an app whose surfaces are <code>app</code>'s over a bigger state reads the smaller one.</p>
+</div>
+</section>
+<h2 id="instances">Instances <span class="n">3</span></h2>
+<section class="decl" id="Cairn.instReprUI" data-line="25">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprUI"><span class="ns">Cairn.</span>instReprUI</a></h3><span class="src" title="source">lean/Cairn/App.lean:25</span></div>
+<pre class="sig"><b class="nm">instReprUI</b> : Repr <a href="Cairn.App.html#Cairn.UI" title="Cairn.UI">UI</a></pre>
+</section>
+<section class="decl" id="Cairn.instInhabitedUI" data-line="25">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedUI"><span class="ns">Cairn.</span>instInhabitedUI</a></h3><span class="src" title="source">lean/Cairn/App.lean:25</span></div>
+<pre class="sig"><b class="nm">instInhabitedUI</b> : Inhabited <a href="Cairn.App.html#Cairn.UI" title="Cairn.UI">UI</a></pre>
+</section>
+<section class="decl" id="Cairn.instDecidableEqUI" data-line="25">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instDecidableEqUI"><span class="ns">Cairn.</span>instDecidableEqUI</a></h3><span class="src" title="source">lean/Cairn/App.lean:25</span></div>
+<pre class="sig"><b class="nm">instDecidableEqUI</b> : DecidableEq <a href="Cairn.App.html#Cairn.UI" title="Cairn.UI">UI</a></pre>
+</section>
+
+</div>
+</main></div>
+<footer>Generated by <code>make doc APP=Counter</code> from the code and the build. Nothing here is written by hand.</footer>
+<script src="search-index.js"></script>
+<script src="search.js"></script>
+<script type="module">
+// On the site, the headings get the meadow's sprigs and a "#" that copies a link to them
+// (site/public/scene.js); elsewhere, nothing.
+import("/scene.js").then((m) => { const main = document.querySelector("main"); m.mountSprigs(main); m.mountAnchors(main); }).catch(() => {});
+</script>
+</body>
+</html>
