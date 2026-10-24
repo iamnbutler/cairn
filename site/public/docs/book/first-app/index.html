@@ -145,8 +145,8 @@ whose lakefile sets the claim scope to <code>hello</code>, so the app's ids are 
 on. It also writes a <code>Package.swift</code> for the host. <code>cairn new hello --lib</code> makes a library
 instead, with no host.</p>
 <p><code>cairn add cairn</code> points the lakefile and <code>cairn.toml</code> at Cairn's latest release in the
-registry and prints the line for <code>Package.swift</code>. There is no public Cairn registry yet
-(<a href="https://github.com/iamnbutler/cairn/issues/97">issue #97</a>). Until there is, require Cairn from
+registry and prints the line for <code>Package.swift</code>. The public Cairn registry isn't live yet
+(<a href="https://github.com/iamnbutler/cairn/issues/97">issue #97</a>). Until it is, require Cairn from
 git at a tag, as Yap's lakefile does:</p>
 <figure class="code"><pre class="px"><code class="lean">package yap <span class="kw">where</span>
   leanOptions := #[⟨`autoImplicit, false⟩, ⟨`relaxedAutoImplicit, false⟩,

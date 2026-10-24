@@ -56,11 +56,13 @@ public struct Commands {
 
     func project() throws(CairnError) -> Project { try Project.find(from: cwd) }
 
-    /// The environment Lake runs in: the artifact cache on, and the registry if there is one.
-    func lakeEnv(_ registry: Registry?) -> [String: String] {
-        var env = ["LAKE_ARTIFACT_CACHE": "true"]
-        if let registry { env["RESERVOIR_API_URL"] = registry.reservoir }
-        return env
+    /// The registry: CAIRN_REGISTRY or the public one, with a token only for writes.
+    public var registry: () -> Registry = { Registry.current() }
+
+    /// The environment Lake runs in: the artifact cache on, and the registry as Reservoir, which
+    /// Lake reads with no credential.
+    func lakeEnv(_ registry: Registry) -> [String: String] {
+        ["LAKE_ARTIFACT_CACHE": "true", "RESERVOIR_API_URL": registry.reservoir]
     }
 
     // MARK: new
@@ -146,7 +148,7 @@ public struct Commands {
             }
         } catch { throw CairnError("couldn't write \(name)/: \(error.localizedDescription)") }
         _ = try? shell.capture(["git", "init", "-q"], in: dir, check: false)
-        print("Created \(name)/. Next: `cd \(name) && cairn add cairn`, which points the lakefile and Package.swift at your registry, then `cairn build`.")
+        print("Created \(name)/. Next: `cd \(name) && cairn add cairn`, which points the lakefile at the registry, then `cairn build`.")
     }
 
     /// Ask whether a new package is a library or an app, until the answer is one of them.
@@ -165,15 +167,20 @@ public struct Commands {
 
     // MARK: add
 
-    /// `cairn add <name>[@<range>]`: record the dependency in cairn.toml and require it in the
-    /// lakefile from the registry. Package.swift is the author's to edit; this prints its line.
+    /// `cairn add [<owner>/]<name>[@<range>]`: record the dependency in cairn.toml and require it
+    /// in the lakefile from the registry. Package.swift is the author's to edit; this prints its
+    /// line. It needs no login. Lake asks for `<owner>/<name>`, so with no owner it looks the
+    /// name up: a name has one owner in the registry.
     public func add(_ args: [String]) async throws(CairnError) {
-        guard let spec = args.first else { throw CairnError("usage: cairn add <name>[@<range>]") }
+        guard let spec = args.first else { throw CairnError("usage: cairn add [<owner>/]<name>[@<range>]") }
         let parts = spec.split(separator: "@", maxSplits: 1).map(String.init)
-        let dep = parts[0]
+        let path = parts[0].split(separator: "/", maxSplits: 1).map(String.init)
+        let dep = path.last ?? ""
         guard Names.valid(dep) else { throw CairnError("`\(dep)` isn't a package name") }
-        guard let registry = Registry.current() else { throw CairnError("no registry: `cairn login <url>` first") }
-        let owner = try await registry.owner()
+        let registry = self.registry()
+        let found: String?
+        if path.count == 2 { found = path[0] } else { found = try await registry.owner(of: dep) }
+        guard let owner = found, !owner.isEmpty else { throw CairnError("\(dep) isn't in \(registry.url.absoluteString)") }
         var range = parts.count > 1 ? parts[1] : ""
         if range.isEmpty {
             let versions = try await registry.versions(owner, dep)
@@ -200,15 +207,12 @@ public struct Commands {
     public func build(_ args: [String]) throws(CairnError) {
         let project = try project()
         try project.agree()
-        let registry = Registry.current()
-        let env = lakeEnv(registry)
+        let env = lakeEnv(registry())
         guard shell.has("lake") else { throw CairnError("lake isn't on PATH; install elan (AGENTS.md, Toolchain)") }
-        if registry != nil {
-            // Prebuilt Lean for every dependency (and this package, for a published commit). A
-            // miss only means building locally, so it never fails the build.
-            if (try? shell.capture(["lake", "cache", "get"], in: project.lean, env: env, check: false))?.status != 0 {
-                FileHandle.standardError.write(Data("cairn: the build cache had nothing; building locally\n".utf8))
-            }
+        // Prebuilt Lean for every dependency (and this package, for a published commit). A miss
+        // only means building locally, so it never fails the build.
+        if (try? shell.capture(["lake", "cache", "get"], in: project.lean, env: env, check: false))?.status != 0 {
+            FileHandle.standardError.write(Data("cairn: the build cache had nothing; building locally\n".utf8))
         }
         try shell.run(["lake", "build"], in: project.lean, env: env)
         let package = project.swift.appending(path: "Package.swift")
@@ -238,7 +242,7 @@ public struct Commands {
         let dir = project.root.appending(path: "build/doc/\(name)")
         // With the artifact cache on, Lake keeps .olean files in the cache, not in the build
         // directory, and the doc and claims tools import modules from the build directory.
-        var env = lakeEnv(Registry.current())
+        var env = lakeEnv(registry())
         env["LAKE_ARTIFACT_CACHE"] = "false"
         let modules = name == "cairn"
             ? ["Cairn", "Cairn.Claims", "Cairn.Fuzz", "Cairn.Fuzz.Trusted.Claims", "Cairn.Fuzz.Trusted.Export"]
@@ -269,15 +273,24 @@ public struct Commands {
 
     // MARK: publish
 
-    /// `cairn publish [--dry-run]`: send the version at tag v<version> to the registry: its git
-    /// objects and claims.lock, then its build outputs for Lake's cache. It sends no docs: the
-    /// registry will build them from the source (docs/cli.md).
+    /// `cairn publish [--owner <login>] [--dry-run]`: send the version at tag v<version> to the
+    /// registry: its git objects and claims.lock, then its build outputs for Lake's cache. It
+    /// sends no docs: the registry will build them from the source (docs/cli.md). It publishes
+    /// under `--owner`, else under the login the token belongs to (`GET /-/whoami`).
     public func publish(_ args: [String]) async throws(CairnError) {
         let project = try project()
         try project.agree()
         let m = project.manifest
         let dry = args.contains("--dry-run")
-        guard let registry = Registry.current() else { throw CairnError("no registry: `cairn login <url>` first") }
+        var flagged: String?
+        if let at = args.firstIndex(of: "--owner") {
+            guard args.indices.contains(at + 1), !args[at + 1].hasPrefix("-") else { throw CairnError("usage: cairn publish [--owner <login>] [--dry-run]") }
+            flagged = args[at + 1]
+        }
+        let registry = self.registry()
+        guard registry.token != nil else {
+            throw CairnError("publishing needs a token: `cairn login` with a nexthub token that has package:write, or set CAIRN_TOKEN")
+        }
         let root = project.root
         let tag = "v\(m.version)"
         guard let revision = try? shell.capture(["git", "rev-parse", "--verify", "\(tag)^{commit}"], in: root).text else {
@@ -288,7 +301,8 @@ public struct Commands {
         let dirty = try shell.capture(["git", "status", "--porcelain", "--untracked-files=no"], in: root).text
         guard dirty.isEmpty else { throw CairnError("the working tree has uncommitted changes; publish exactly what \(tag) holds") }
 
-        let owner = try await registry.owner()
+        let owner: String
+        if let flagged { owner = flagged } else { owner = try await registry.whoami() }
         let published = try await registry.versions(owner, m.name)
         guard !published.contains(where: { $0.version == m.version }) else { throw CairnError("\(m.name) \(m.version) is already published") }
 
@@ -320,11 +334,11 @@ public struct Commands {
         let body = try Publish.body(metadata: metadata, pack: pack, index: index, claims: claims)
         let size = ByteCountFormatter.string(fromByteCount: Int64(body.count), countStyle: .file)
         if dry {
-            print("Would publish \(m.name) \(m.version) at \(revision.prefix(10)) to \(registry.url.absoluteString): \(size).")
+            print("Would publish \(owner)/\(m.name) \(m.version) at \(revision.prefix(10)) to \(registry.url.absoluteString): \(size).")
             return
         }
-        try await registry.send("PUT", "api/v1/packages/\(owner)/\(m.name)/versions/\(m.version)", body: body, type: "application/octet-stream")
-        print("Published \(m.name) \(m.version) (\(size)).")
+        try await registry.send("PUT", "api/v1/packages/\(owner)/\(m.name)/versions/\(m.version)", body: body, type: "application/octet-stream", write: true)
+        print("Published \(owner)/\(m.name) \(m.version) (\(size)).")
         try await outputs(project, registry, owner, revision, toolchain)
     }
 
@@ -347,45 +361,32 @@ public struct Commands {
         for file in files {
             let hash = String(file.prefix { $0 != "." })
             guard wanted.contains(hash), let data = try? Data(contentsOf: dir.appending(path: file)) else { continue }
-            try await registry.send("PUT", "api/v1/packages/\(owner)/\(project.manifest.name)/artifacts/\(hash).art", body: data, type: "application/vnd.reservoir.artifact")
+            try await registry.send("PUT", "api/v1/packages/\(owner)/\(project.manifest.name)/artifacts/\(hash).art", body: data, type: "application/vnd.reservoir.artifact", write: true)
             sent += 1
         }
         var query = URLComponents()
         query.queryItems = [.init(name: "rev", value: revision), .init(name: "platform", value: platform), .init(name: "toolchain", value: toolchain)]
         try await registry.send("PUT", "api/v1/packages/\(owner)/\(project.manifest.name)/build-outputs?\(query.percentEncodedQuery ?? "")",
-                                body: Data(text.utf8), type: "application/vnd.reservoir.outputs+json-lines")
+                                body: Data(text.utf8), type: "application/vnd.reservoir.outputs+json-lines", write: true)
         print("Uploaded \(sent) build artifacts for \(platform).")
     }
 
-    // MARK: login, credential
+    // MARK: login
 
-    /// `cairn login <url>`: read a registry token from stdin and save it for this user.
+    /// `cairn login`: read a token from stdin, check it with the registry, and save it for this
+    /// user. Only `cairn publish` uses it; reading the registry needs none.
     public func login(_ args: [String]) async throws(CairnError) {
-        guard let raw = args.first, let url = URL(string: raw), url.scheme == "https" || url.host == "localhost" || url.host == "127.0.0.1" else {
-            throw CairnError("usage: cairn login https://<registry> (then paste a token)")
-        }
-        FileHandle.standardError.write(Data("Token for \(url.absoluteString): ".utf8))
+        guard args.isEmpty else { throw CairnError("usage: cairn login (then paste a token); CAIRN_REGISTRY picks another registry") }
+        var registry = self.registry()
+        FileHandle.standardError.write(Data("Token for \(registry.url.absoluteString) (a nexthub token with package:write): ".utf8))
         guard let token = readLine(strippingNewline: true)?.trimmingCharacters(in: .whitespaces), !token.isEmpty else {
             throw CairnError("no token given")
         }
-        let registry = Registry(url: url, token: token)
-        let owner = try await registry.owner()
+        registry.token = token
+        _ = try await registry.config()
+        let login = try await registry.whoami()
         try registry.save()
-        print("Logged in to \(owner)'s registry; saved to \(Registry.file.path).")
-        print("For git, so SwiftPM can fetch packages: git config --global credential.\(url.absoluteString).helper '!cairn credential'")
-    }
-
-    /// `cairn credential get`: git's credential-helper protocol, answering for the registry's host.
-    public func credential(_ args: [String]) throws(CairnError) {
-        guard args.first == "get" else { return } // store and erase: the token is cairn's to keep
-        var fields: [String: String] = [:]
-        while let line = readLine(strippingNewline: true), !line.isEmpty {
-            let kv = line.split(separator: "=", maxSplits: 1).map(String.init)
-            if kv.count == 2 { fields[kv[0]] = kv[1] }
-        }
-        guard let registry = Registry.current(), fields["host"] == registry.url.host(percentEncoded: false).map({ host in
-            registry.url.port.map { "\(host):\($0)" } ?? host
-        }) else { return }
-        print("username=cairn\npassword=\(registry.token)\n")
+        print("Logged in to \(registry.url.absoluteString) as \(login); saved to \(Registry.file.path).")
+        print("`cairn publish` publishes under \(login), or under an Org you can write to with --owner.")
     }
 }

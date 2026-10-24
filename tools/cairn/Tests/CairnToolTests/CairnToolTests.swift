@@ -165,11 +165,6 @@ import Testing
         #expect(Publish.platform("Lean (version 4.35.0, arm64-apple-darwin24.6.0, commit abc, Release)") == "arm64-apple-darwin24.6.0")
     }
 
-    @Test func reservoirCarriesToken() {
-        let r = Registry(url: URL(string: "https://x.cairn.example.dev")!, token: "nx_t")
-        #expect(r.reservoir == "https://cairn:nx_t@x.cairn.example.dev/api/v1")
-        #expect(r.git("carl", "hello") == "https://x.cairn.example.dev/git/carl/hello.git")
-    }
 
     @Test(arguments: [("0.1.0", true), ("0.1.0-rc.1", true), ("01.0.0", false), ("0.1", false), ("0.1.0+b", false)])
     func versions(_ text: String, _ ok: Bool) {
@@ -221,5 +216,174 @@ import Testing
             (error as? CairnError)?.description.contains("--lib") == true
         }
         #expect(!FileManager.default.fileExists(atPath: dir.appending(path: "quiet").path))
+    }
+}
+
+/// A stand-in for the public registry: answers by path and records each request.
+final class FakeRegistry: @unchecked Sendable {
+    struct Seen { var method: String; var path: String; var authorization: String? }
+    let lock = NSLock()
+    var seen: [Seen] = []
+    var answers: [String: (Int, String)]
+
+    init(_ answers: [String: (Int, String)]) { self.answers = answers }
+
+    var transport: Registry.Transport {
+        { [self] request in
+            let url = request.url!
+            let path = url.path(percentEncoded: false) + (url.query.map { "?\($0)" } ?? "")
+            let (status, body) = lock.withLock {
+                seen.append(Seen(method: request.httpMethod ?? "GET", path: path, authorization: request.value(forHTTPHeaderField: "authorization")))
+                return answers["\(request.httpMethod ?? "GET") \(path)"] ?? (404, #"{"error":{"status":404,"message":"Not found"}}"#)
+            }
+            return (Data(body.utf8), HTTPURLResponse(url: url, statusCode: status, httpVersion: nil, headerFields: nil)!)
+        }
+    }
+
+    func registry(token: String? = nil) -> Registry {
+        Registry(url: URL(string: "https://reg.test")!, token: token, transport: transport)
+    }
+
+    var requests: [Seen] { lock.withLock { seen } }
+}
+
+/// One public registry that anyone reads; only writes carry the token.
+@Suite struct RegistryTests {
+    func scratch() throws -> URL {
+        let dir = FileManager.default.temporaryDirectory.appending(path: "cairn-reg-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
+
+    @Test func publicByDefaultAndReservoirHasNoCredential() {
+        let r = Registry.current([:], saved: URL(filePath: "/nonexistent/credentials"))
+        #expect(r.url.absoluteString == "https://cairn.registry.nexthub.sh")
+        #expect(r.token == nil)
+        #expect(r.reservoir == "https://cairn.registry.nexthub.sh/api/v1")
+        #expect(r.git("carl", "hello") == "https://cairn.registry.nexthub.sh/git/carl/hello.git")
+        let local = Registry.current(["CAIRN_REGISTRY": "http://cairn.registry.nexthub.localhost:9876"], saved: URL(filePath: "/nonexistent"))
+        #expect(local.reservoir == "http://cairn.registry.nexthub.localhost:9876/api/v1")
+        #expect(Registry(url: local.url, token: "nx_t").reservoir == local.reservoir)
+    }
+
+    /// A saved token goes only to the registry it was saved for; CAIRN_TOKEN overrides it.
+    @Test func savedTokenStaysWithItsRegistry() throws {
+        let dir = try scratch()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let file = dir.appending(path: "credentials")
+        try Registry(token: "nx_saved").save(to: file)
+        let attributes = try FileManager.default.attributesOfItem(atPath: file.path)
+        #expect((attributes[.posixPermissions] as? Int) == 0o600)
+        #expect(Registry.current([:], saved: file).token == "nx_saved")
+        #expect(Registry.current(["CAIRN_REGISTRY": "https://cairn.registry.nexthub.sh/"], saved: file).token == "nx_saved")
+        #expect(Registry.current(["CAIRN_REGISTRY": "https://other.test"], saved: file).token == nil)
+        #expect(Registry.current(["CAIRN_TOKEN": "nx_ci"], saved: file).token == "nx_ci")
+    }
+
+    @Test func readsSendNoTokenAndWritesNeedOne() async throws {
+        let fake = FakeRegistry([
+            "GET /config.json": (200, #"{"kind":"cairn","api":"https://reg.test/api/v1","git":"https://reg.test/git","registry":"r1"}"#),
+            "GET /-/whoami": (200, #"{"username":"carl"}"#),
+        ])
+        let reader = fake.registry(token: "nx_t")
+        #expect(try await reader.config().kind == "cairn")
+        #expect(try await reader.whoami() == "carl")
+        #expect(fake.requests.map(\.authorization) == [nil, "Bearer nx_t"])
+        await #expect {
+            try await fake.registry().send("PUT", "api/v1/packages/carl/hello/versions/1.0.0", write: true)
+        } throws: { error in
+            (error as? CairnError)?.description.contains("cairn login") == true
+        }
+        #expect(fake.requests.count == 2)
+    }
+
+    /// A Reservoir answer, which the registry passes through for a name it lacks, has no `yanked`.
+    @Test func versionsFromReservoir() async throws {
+        let fake = FakeRegistry([
+            "GET /api/v1/packages/leanprover-community/batteries/versions?yanked=true": (200, #"{"schemaVersion":"1.2.0","data":[{"version":"0.0.0","revision":"130eb02e","tag":null}]}"#),
+        ])
+        let versions = try await fake.registry().versions("leanprover-community", "batteries")
+        #expect(versions.map(\.version) == ["0.0.0"] && versions.allSatisfy { !$0.yanked })
+    }
+
+    @Test func ownerOfANameIsItsExactSearchMatch() async throws {
+        let fake = FakeRegistry([
+            "GET /api/v1/packages?q=hello&per_page=100": (200, #"{"data":{"items":[{"name":"hello_world","fullName":"zed/hello_world"},{"name":"hello","fullName":"carl/hello"}],"total":2}}"#),
+            "GET /api/v1/packages?q=nope&per_page=100": (200, #"{"data":{"items":[],"total":0}}"#),
+        ])
+        #expect(try await fake.registry().owner(of: "hello") == "carl")
+        #expect(try await fake.registry().owner(of: "nope") == nil)
+    }
+
+    /// `cairn add` and `cairn publish` against the stand-in, in a package `cairn new` made.
+    func package() throws -> (URL, Commands) {
+        let dir = try scratch()
+        var commands = Commands()
+        commands.shell.echo = false
+        commands.cwd = dir
+        try commands.new(["kit", "--lib"])
+        commands.cwd = dir.appending(path: "kit")
+        return (dir, commands)
+    }
+
+    @Test func addNeedsNoLogin() async throws {
+        let (dir, base) = try package()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let fake = FakeRegistry([
+            "GET /api/v1/packages?q=hello&per_page=100": (200, #"{"data":{"items":[{"name":"hello","fullName":"carl/hello"}],"total":1}}"#),
+            "GET /api/v1/packages/carl/hello/versions?yanked=true": (200, #"{"data":[{"version":"1.3.0-rc.1","revision":"b","yanked":false},{"version":"1.2.0","revision":"a","yanked":false}]}"#),
+            "GET /api/v1/packages/acme/wave/versions?yanked=true": (200, #"{"data":[{"version":"0.3.0","revision":"c","yanked":false}]}"#),
+            "GET /api/v1/packages?q=nope&per_page=100": (200, #"{"data":{"items":[],"total":0}}"#),
+        ])
+        var commands = base
+        commands.registry = { fake.registry() }
+        try await commands.add(["hello"])
+        try await commands.add(["acme/wave"])
+        let lakefile = try String(contentsOf: commands.cwd.appending(path: "lean/lakefile.lean"), encoding: .utf8)
+        #expect(lakefile.contains("require \"carl\" / \"hello\" @ \"^1.2.0\""))
+        #expect(lakefile.contains("require \"acme\" / \"wave\" @ \"^0.3.0\""))
+        #expect(fake.requests.allSatisfy { $0.authorization == nil })
+        #expect(!fake.requests.contains { $0.path.hasPrefix("/api/v1/packages?q=wave") })
+        await #expect {
+            try await commands.add(["nope"])
+        } throws: { error in
+            (error as? CairnError)?.description == "nope isn't in https://reg.test"
+        }
+    }
+
+    func tagged(_ commands: Commands) throws {
+        let git = ["git", "-c", "user.name=t", "-c", "user.email=t@t.test", "-c", "commit.gpgsign=false", "-c", "tag.gpgsign=false"]
+        try commands.shell.run(["git", "add", "-A"], in: commands.cwd)
+        try commands.shell.run(git + ["commit", "-qm", "kit"], in: commands.cwd)
+        try commands.shell.run(git + ["tag", "v0.1.0"], in: commands.cwd)
+    }
+
+    /// The owner is --owner, else the token's login; a publish with no token stops first.
+    @Test func publishOwnerIsTheTokensLoginOrTheFlag() async throws {
+        let (dir, base) = try package()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try tagged(base)
+        let fake = FakeRegistry(["GET /-/whoami": (200, #"{"username":"carl"}"#)])
+        var commands = base
+        commands.registry = { fake.registry() }
+        await #expect {
+            try await commands.publish(["--dry-run"])
+        } throws: { error in
+            (error as? CairnError)?.description.contains("`cairn login`") == true
+        }
+        #expect(fake.requests.isEmpty)
+
+        commands.registry = { fake.registry(token: "nx_t") }
+        try await commands.publish(["--dry-run"])
+        #expect(fake.requests.map { "\($0.method) \($0.path) \($0.authorization ?? "-")" } == [
+            "GET /-/whoami Bearer nx_t",
+            "GET /api/v1/packages/carl/kit/versions?yanked=true -",
+        ])
+
+        let flagged = FakeRegistry([:])
+        commands.registry = { flagged.registry(token: "nx_t") }
+        try await commands.publish(["--owner", "acme", "--dry-run"])
+        #expect(flagged.requests.map(\.path) == ["/api/v1/packages/acme/kit/versions?yanked=true"])
+        await #expect(throws: CairnError.self) { try await commands.publish(["--owner"]) }
     }
 }

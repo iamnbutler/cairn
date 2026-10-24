@@ -91,8 +91,8 @@ on. It also writes a `Package.swift` for the host. `cairn new hello --lib` makes
 instead, with no host.
 
 `cairn add cairn` points the lakefile and `cairn.toml` at Cairn's latest release in the
-registry and prints the line for `Package.swift`. There is no public Cairn registry yet
-([issue #97](https://github.com/iamnbutler/cairn/issues/97)). Until there is, require Cairn from
+registry and prints the line for `Package.swift`. The public Cairn registry isn't live yet
+([issue #97](https://github.com/iamnbutler/cairn/issues/97)). Until it is, require Cairn from
 git at a tag, as Yap's lakefile does:
 
 <!-- include docs/package.md#package-lakefile -->

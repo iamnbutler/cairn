@@ -2,9 +2,10 @@
 
 `cairn` builds, documents and publishes Cairn packages. It's a thin wrapper: Lake builds the
 Lean, `bin/cairn-link` (docs/package.md) links it, SwiftPM builds the host, `tools/doc` writes
-the docs, and a Cairn package registry stores what you publish. That registry is nextpm's
-`cairn` kind (nextpm `docs/adr/0005-cairn-kind.md`). It is its own SwiftPM package in
-`tools/cairn`, with no dependencies:
+the docs, and the Cairn package registry stores what you publish. There is one public registry,
+as crates.io is for Rust: `https://cairn.registry.nexthub.sh`, served by nextpm's `cairn` kind
+(nextpm `docs/adr/0005-cairn-kind.md`). Anyone reads it with no login; only publishing needs a
+token. `cairn` is its own SwiftPM package in `tools/cairn`, with no dependencies:
 
 <!-- region: cli-install -->
 ```
@@ -13,9 +14,9 @@ cd tools/cairn && swift test
 ```
 <!-- endregion: cli-install -->
 
-Status: started. `new`, `add`, `build`, `doc`, `publish`, `login` and `credential` work, with
-unit tests, and `add` and `publish --dry-run` have been run against a stand-in registry. Not
-yet: a run against a deployed registry, `cairn run`, `check`, `map`, `fuzz` and the rest of the
+Status: started. `new`, `add`, `build`, `doc`, `publish` and `login` work, with unit tests,
+and `add` and `publish --dry-run` have been run against a stand-in registry. Not yet: a run
+against the public registry, whose host isn't live yet (its DNS is pending), `cairn run`, `check`, `map`, `fuzz` and the rest of the
 planned commands in site/docs/use/cairn-tool.md, and installing it (a release binary or
 `mint`/Homebrew).
 
@@ -60,14 +61,26 @@ Unknown tables and keys are errors. Three names must agree, and `cairn build` an
 | Command | What it does |
 |---|---|
 | `cairn new <name> [--lib\|--bin]` | writes `cairn.toml` with its `kind`, `claims.lock`, `lean/` (a lakefile.lean that sets the claim scope and requires Cairn), and for an app (`bin`) `Package.swift` and `Sources/`. With neither flag it asks which |
-| `cairn add <name>[@<range>]` | adds the dependency to `cairn.toml` and puts `require "<owner>" / "<name>" @ "<range>"` (or a `[[require]]` with `scope` and `version`) in the lakefile, replacing a git require of it. It prints the `Package.swift` line instead of editing Swift. With no range, it uses `^` and the latest release |
+| `cairn add [<owner>/]<name>[@<range>]` | adds the dependency to `cairn.toml` and puts `require "<owner>" / "<name>" @ "<range>"` (or a `[[require]]` with `scope` and `version`) in the lakefile, replacing a git require of it. It prints the `Package.swift` line instead of editing Swift. With no range, it uses `^` and the latest release. With no owner, it finds the name's owner with the registry's search. It needs no login |
 | `cairn build [--release]` | `lake cache get`, `lake build`, `cairn-link --lib <libs…> --out .cairn/lib/lib<name>.a`, `swift build` |
 | `cairn doc [--private] [--open]` | `lake exe doc --check` and `lake exe claims` on the package's libs, then `tools/doc/cairn-doc.ts` into `build/doc/<name>/`, with each dependency's modules linked to `/docs/<dep>/<version>/` |
-| `cairn publish [--dry-run]` | publishes the commit at tag `v<version>`, which must be HEAD with a clean tree. It sends no docs. See below |
-| `cairn login <url>` | checks a token (read from stdin) against the registry and saves it to `~/.config/cairn/credentials`, mode 0600 |
-| `cairn credential get` | a git credential helper that gives the token to git for the registry's host only, so SwiftPM can clone packages |
+| `cairn publish [--owner <login>] [--dry-run]` | publishes the commit at tag `v<version>`, which must be HEAD with a clean tree, under `--owner` or else the login the token belongs to. It sends no docs. See below |
+| `cairn login` | reads a nexthub token with `package:write` from stdin, checks it with the registry (`GET /-/whoami`), and saves it with the registry's URL to `~/.config/cairn/credentials`, mode 0600. Only `cairn publish` uses it |
 
-`CAIRN_REGISTRY` and `CAIRN_TOKEN` override the saved login, as CI needs.
+`CAIRN_REGISTRY` overrides the registry, for a local nextpm
+(`http://cairn.registry.nexthub.localhost:9876`) or a stand-in. A saved token is sent only to the
+registry it was saved for. `CAIRN_TOKEN` overrides the saved token, as CI needs.
+
+### Owners
+
+A package's name is unique in the registry, and its first publish fixes its owner: an account's
+own login, or an Org the account can write to. Lake asks for `<owner>/<name>`, and git URLs
+carry the owner too, so `cairn add` writes the owner into the lakefile.
+
+`cairn publish` publishes under the login the token belongs to, which it asks the registry for
+(`GET /-/whoami`; an Org token answers the Org). `--owner <org>` publishes under an Org
+instead. The registry refuses (403) a name that another owner holds, and a token that can't
+write to the owner.
 
 ### One build entry point
 
@@ -88,19 +101,23 @@ HEAD, so it publishes `v0.1.0` and not the candidates before it.
 ### Lake and the registry
 
 Lake reads the registry as if it were Reservoir. `cairn` sets
-`RESERVOIR_API_URL=https://cairn:<token>@<registry>/api/v1`, because Lake sends no credentials
-of its own, and the userinfo becomes Basic auth. It also sets `LAKE_ARTIFACT_CACHE=true`.
-`lake cache get` then downloads prebuilt Lean for every dependency at its resolved commit. A
-miss isn't an error; Lake builds locally.
+`RESERVOIR_API_URL=https://cairn.registry.nexthub.sh/api/v1`, with no credential: Lake, git and
+the build cache read the registry as anyone can. The registry passes a package it doesn't hold
+to Lean's Reservoir, so one index answers Cairn packages and public Lean ones. `cairn` also
+sets `LAKE_ARTIFACT_CACHE=true`. `lake cache get` then downloads prebuilt Lean for every
+dependency at its resolved commit. A miss isn't an error; Lake builds locally. SwiftPM clones
+`https://cairn.registry.nexthub.sh/git/<owner>/<name>.git` with no credential.
 
 ### Publishing
 
 1. Check that the names agree, that the tag `v<version>` is HEAD, and that the tree is clean.
-2. Ask the registry for the versions it has, and refuse a version it already holds.
+2. Find the owner (`--owner`, else `GET /-/whoami` with the token). Ask the registry for the
+   versions it has, and refuse a version it already holds.
 3. `git pack-objects --revs` from the tag's commit, excluding every published commit this clone
    has. The registry serves all of a package's packs over git's dumb HTTP protocol, so a clone
    gets the whole history.
-4. `PUT /api/v1/packages/<owner>/<name>/versions/<version>`. The body is five sections, each a
+4. `PUT /api/v1/packages/<owner>/<name>/versions/<version>` with `Authorization: Bearer
+   <token>`, as every write below. The body is five sections, each a
    little-endian u32 length and its bytes: metadata JSON, pack, pack index, `claims.lock`, and
    docs, which is always empty. The registry checks that the pack holds the commit and that the
    ledger keeps every earlier version's ids, and answers 400 to a non-empty docs section.
@@ -123,5 +140,5 @@ docs only.
 - Prebuilt Lean is per platform (`arm64-apple-darwin24.6.0`), and the publisher uploads its own.
   CI that publishes for each macOS version, or trusted publishing from CI, would cover the rest.
 - `cairn new` writes placeholder registry lines (`"owner"`, `CAIRN_GIT_URL`) until `cairn add
-  cairn` fills them in. It could fill them in itself when a login exists.
+  cairn` fills them in. It could fill them in itself, since reading the registry needs no login.
 - Whether `cairn` should edit `Package.swift`. Today it prints the line.

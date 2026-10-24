@@ -3,26 +3,30 @@ import Foundation
 import FoundationNetworking
 #endif
 
-/// A Cairn package registry: a nextpm `cairn` registry (nextpm docs/adr/0005-cairn-kind.md).
-/// One token serves all of it: Bearer for the API, the password of Basic auth for Lake (in
-/// RESERVOIR_API_URL) and git (through `cairn credential`).
+/// The Cairn package registry: one public registry, as crates.io is for Rust, served by nextpm's
+/// `cairn` kind (nextpm docs/adr/0005-cairn-kind.md). Anyone reads it with no credential: the API,
+/// the Reservoir index Lake reads, git, and the build cache. Only a write (publish, artifact
+/// upload, yank) sends a token, as `Authorization: Bearer`.
 public struct Registry: Sendable {
-    public var url: URL
-    public var token: String
+    /// The public registry. CAIRN_REGISTRY overrides it, for a local nextpm or a stand-in.
+    public static let standard = URL(string: "https://cairn.registry.nexthub.sh")!
 
-    public init(url: URL, token: String) {
+    /// Send a request and return its body and response; URLSession unless a test swaps it.
+    public typealias Transport = @Sendable (URLRequest) async throws -> (Data, URLResponse)
+
+    public var url: URL
+    /// The token `cairn login` saved for this registry, or CAIRN_TOKEN. Only writes send it.
+    public var token: String?
+    public var transport: Transport
+
+    public init(url: URL = Registry.standard, token: String? = nil, transport: @escaping Transport = { try await URLSession.shared.data(for: $0) }) {
         self.url = url
         self.token = token
+        self.transport = transport
     }
 
-    /// The API base Lake reads as RESERVOIR_API_URL, with the token as its password, since Lake
-    /// sends no other credential.
-    public var reservoir: String {
-        var parts = URLComponents(url: url.appending(path: "api/v1"), resolvingAgainstBaseURL: false)!
-        parts.user = "cairn"
-        parts.password = token
-        return parts.string!
-    }
+    /// The API base Lake reads as RESERVOIR_API_URL. No userinfo: reads need no credential.
+    public var reservoir: String { url.appending(path: "api/v1").absoluteString }
 
     public func git(_ owner: String, _ name: String) -> String {
         url.appending(path: "git/\(owner)/\(name).git").absoluteString
@@ -37,52 +41,88 @@ public struct Registry: Sendable {
         return base.appending(path: "cairn/credentials")
     }
 
-    /// The registry from CAIRN_REGISTRY and CAIRN_TOKEN, else from `cairn login`, else none.
-    public static func current(_ env: [String: String] = ProcessInfo.processInfo.environment) -> Registry? {
-        if let url = env["CAIRN_REGISTRY"].flatMap(URL.init(string:)), let token = env["CAIRN_TOKEN"] {
-            return Registry(url: url, token: token)
-        }
-        guard let text = try? String(contentsOf: file, encoding: .utf8), let doc = try? Toml.parse(text),
-              case .string(let url)? = doc["registry"]?["url"], case .string(let token)? = doc["registry"]?["token"],
-              let parsed = URL(string: url)
-        else { return nil }
-        return Registry(url: parsed, token: token)
+    /// The registry: CAIRN_REGISTRY, else the public one. Its token is CAIRN_TOKEN, else the one
+    /// `cairn login` saved for this same registry, else none; a token saved for another registry
+    /// is never sent here.
+    public static func current(_ env: [String: String] = ProcessInfo.processInfo.environment, saved: URL = Registry.file) -> Registry {
+        let url = env["CAIRN_REGISTRY"].flatMap { $0.isEmpty ? nil : URL(string: $0) } ?? standard
+        if let token = env["CAIRN_TOKEN"], !token.isEmpty { return Registry(url: url, token: token) }
+        guard let text = try? String(contentsOf: saved, encoding: .utf8), let doc = try? Toml.parse(text),
+              case .string(let at)? = doc["registry"]?["url"], case .string(let token)? = doc["registry"]?["token"],
+              same(URL(string: at), url)
+        else { return Registry(url: url) }
+        return Registry(url: url, token: token)
     }
 
-    public func save() throws(CairnError) {
+    static func same(_ a: URL?, _ b: URL) -> Bool {
+        let trim = { (u: URL) in u.absoluteString.hasSuffix("/") ? String(u.absoluteString.dropLast()) : u.absoluteString }
+        return a.map(trim) == trim(b)
+    }
+
+    public func save(to file: URL = Registry.file) throws(CairnError) {
+        guard let token else { throw CairnError("no token to save") }
         let text = "[registry]\nurl = \(Toml.quote(url.absoluteString))\ntoken = \(Toml.quote(token))\n"
         let fm = FileManager.default
         do {
-            try fm.createDirectory(at: Self.file.deletingLastPathComponent(), withIntermediateDirectories: true)
-            fm.createFile(atPath: Self.file.path, contents: nil, attributes: [.posixPermissions: 0o600])
-            try text.write(to: Self.file, atomically: false, encoding: .utf8)
-            try fm.setAttributes([.posixPermissions: 0o600], ofItemAtPath: Self.file.path)
-        } catch { throw CairnError("couldn't write \(Self.file.path): \(error.localizedDescription)") }
+            try fm.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+            fm.createFile(atPath: file.path, contents: nil, attributes: [.posixPermissions: 0o600])
+            try text.write(to: file, atomically: false, encoding: .utf8)
+            try fm.setAttributes([.posixPermissions: 0o600], ofItemAtPath: file.path)
+        } catch { throw CairnError("couldn't write \(file.path): \(error.localizedDescription)") }
     }
 
     // MARK: API
 
-    public struct Config: Decodable, Sendable { public var kind: String; public var owner: String?; public var registry: String }
+    /// `config.json`: `{kind, api, git, registry}`.
+    public struct Config: Decodable, Sendable { public var kind: String; public var registry: String }
 
+    /// Check that the URL is a Cairn registry.
     public func config() async throws(CairnError) -> Config {
         let (data, _) = try await send("GET", "config.json")
-        do { return try JSONDecoder().decode(Config.self, from: data) } catch { throw CairnError("\(url) isn't a Cairn registry") }
+        guard let config = try? JSONDecoder().decode(Config.self, from: data) else { throw CairnError("\(url.absoluteString) isn't a Cairn registry") }
+        guard config.kind == "cairn" else { throw CairnError("\(url.absoluteString) is a \(config.kind) registry, not a Cairn one") }
+        return config
     }
 
-    public func owner() async throws(CairnError) -> String {
-        let config = try await config()
-        guard config.kind == "cairn" else { throw CairnError("\(url) is a \(config.kind) registry, not a Cairn one") }
-        guard let owner = config.owner else { throw CairnError("\(url) has no owner") }
-        return owner
+    /// The login the token belongs to (nextpm's `GET /-/whoami`): a user's name, or an Org's for
+    /// an Org token. `cairn publish` publishes under it unless `--owner` says otherwise.
+    public func whoami() async throws(CairnError) -> String {
+        struct Answer: Decodable { var username: String }
+        let (data, status) = try await send("GET", "-/whoami", write: true, allow: [401])
+        if status == 401 { throw CairnError("\(url.absoluteString) doesn't accept this token; `cairn login` with a nexthub token that has package:write") }
+        guard let answer = try? JSONDecoder().decode(Answer.self, from: data) else { throw CairnError("the registry's whoami answer doesn't parse") }
+        return answer.username
+    }
+
+    /// The owner of a package, which its first publish fixed. The API reads a package only by
+    /// `<owner>/<name>`, so this searches for the name and takes the exact match.
+    public func owner(of name: String) async throws(CairnError) -> String? {
+        struct Item: Decodable { var name: String; var fullName: String }
+        struct Answer: Decodable { struct Found: Decodable { var items: [Item] }; var data: Found }
+        let (data, _) = try await send("GET", "api/v1/packages?q=\(name)&per_page=100")
+        guard let answer = try? JSONDecoder().decode(Answer.self, from: data) else { throw CairnError("the registry's search answer doesn't parse") }
+        guard let item = answer.data.items.first(where: { $0.name == name }), let slash = item.fullName.firstIndex(of: "/") else { return nil }
+        return String(item.fullName[..<slash])
     }
 
     public struct Version: Decodable, Sendable {
         public var version: String
         public var revision: String
         public var yanked: Bool
+
+        enum Keys: String, CodingKey { case version, revision, yanked }
+
+        /// Lean's Reservoir, which the registry passes a name it lacks to, says nothing of yanking.
+        public init(from decoder: any Decoder) throws {
+            let c = try decoder.container(keyedBy: Keys.self)
+            version = try c.decode(String.self, forKey: .version)
+            revision = try c.decode(String.self, forKey: .revision)
+            yanked = try c.decodeIfPresent(Bool.self, forKey: .yanked) ?? false
+        }
     }
 
-    /// Every published version of a package, yanked ones too, newest first; empty for a new package.
+    /// Every published version of a package, yanked ones too, newest first; empty for a name
+    /// nobody holds under `owner`.
     public func versions(_ owner: String, _ name: String) async throws(CairnError) -> [Version] {
         struct Answer: Decodable { var data: [Version] }
         let (data, status) = try await send("GET", "api/v1/packages/\(owner)/\(name)/versions?yanked=true", allow: [404])
@@ -90,19 +130,23 @@ public struct Registry: Sendable {
         do { return try JSONDecoder().decode(Answer.self, from: data).data } catch { throw CairnError("the registry's versions of \(name) don't parse") }
     }
 
-    /// Send a request with the token; fail with the registry's own message on an unexpected status.
+    /// Send a request; fail with the registry's own message on an unexpected status. Only a
+    /// `write` sends the token, and a write with no token fails before it is sent.
     @discardableResult
-    public func send(_ method: String, _ path: String, body: Data? = nil, type: String? = nil, allow: Set<Int> = []) async throws(CairnError) -> (Data, Int) {
+    public func send(_ method: String, _ path: String, body: Data? = nil, type: String? = nil, write: Bool = false, allow: Set<Int> = []) async throws(CairnError) -> (Data, Int) {
         guard let target = URL(string: path, relativeTo: url.absoluteString.hasSuffix("/") ? url : url.appending(path: "")) else {
             throw CairnError("bad registry path \(path)")
         }
         var request = URLRequest(url: target)
         request.httpMethod = method
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "authorization")
+        if write {
+            guard let token else { throw CairnError("publishing needs a token: `cairn login` with a nexthub token that has package:write, or set CAIRN_TOKEN") }
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "authorization")
+        }
         if let type { request.setValue(type, forHTTPHeaderField: "content-type") }
         request.httpBody = body
         let data: Data, response: URLResponse
-        do { (data, response) = try await URLSession.shared.data(for: request) } catch {
+        do { (data, response) = try await transport(request) } catch {
             throw CairnError("\(method) \(target.absoluteString): \(error.localizedDescription)")
         }
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
