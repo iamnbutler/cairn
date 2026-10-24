@@ -7,9 +7,11 @@
 //
 // Nothing is written twice by hand. The posts are the `article.post`s in
 // site/public/milestones/index.html, each an h2 with a permanent id and a <time datetime>; the
-// videos are site/public/media.json, written by tools/media/put.sh. From them this writes
+// progress log is site/public/media.json: videos, written by tools/media/put.sh, and notes, entries
+// with a "text" (a list of plain-text paragraphs) and no video, written by hand for work that
+// has nothing to show on screen. From them this writes
 //
-//   - feed.xml: an RSS 2.0 item per milestone and per video, newest first, with full HTML and
+//   - feed.xml: an RSS 2.0 item per milestone and per log entry, newest first, with full HTML and
 //     every URL absolute;
 //   - the homepage's "latest milestone" panel, between <!-- latest-milestone --> markers;
 //   - the homepage's list of ids that moved to /milestones/, between /* moved-ids */ markers, so
@@ -52,13 +54,17 @@ function absolute(html: string, page: string): string {
 
 // --- Sources ------------------------------------------------------------------------------------
 
+// A log entry is a video or a note: a note has "text" (plain-text paragraphs) instead of a video.
 type Video = { video: string; poster: string; title: string; caption: string; date: string; published?: string; commit: string; width: number; height: number; seconds: number; milestone?: string };
+type Note = { text: string[]; title: string; date: string; published?: string; commit: string; milestone?: string };
+type Entry = Video | Note;
+const isNote = (e: Entry): e is Note => !("video" in e);
 type Post = { id: string; title: string; html: string; first: string; date: Date; milestone?: string; ids: string[] };
 type Item = { title: string; link: string; guid: string; permalink: boolean; date: Date; html: string };
 
 const MILESTONES = "site/public/milestones/index.html";
 const milestonesHtml = readFileSync(join(ROOT, MILESTONES), "utf8");
-const videos: Video[] = JSON.parse(readFileSync(join(PUBLIC, "media.json"), "utf8"));
+const videos: Entry[] = JSON.parse(readFileSync(join(PUBLIC, "media.json"), "utf8"));
 
 const posts: Post[] = [];
 for (const [, body] of milestonesHtml.matchAll(/<article class="post">([\s\S]*?)<\/article>/g)) {
@@ -87,17 +93,27 @@ for (const v of videos) {
 	const date = new Date(v.published ?? NaN);
 	if (!v.published || isNaN(+date)) { fail(where, `needs "published", the time it went up (tools/media/put.sh writes it)`); continue; }
 	const post = posts.find((p) => p.milestone === (v.milestone || "m1"));
+	const inLog = post ? ` in the progress log of <a href="${PAGE}#${post.id}">${esc(post.title)}</a>` : "";
+	if (isNote(v)) {
+		if (!Array.isArray(v.text) || !v.text.length || v.text.some((t) => typeof t !== "string" || !t.trim())) {
+			fail(where, `a note needs "text", a list of paragraphs`);
+			continue;
+		}
+		const html = v.text.map((t) => `<p>${esc(t)}</p>`).join("") + `<p>As of commit ${esc(v.commit)}${post ? "," : ""}${inLog}.</p>`;
+		items.push({ title: v.title, link: permalink(slug(v.title)), guid: permalink(slug(v.title)), permalink: true, date, html: absolute(html, PAGE) });
+		continue;
+	}
 	const html =
 		`<figure><a href="${esc(v.video)}"><img src="${esc(v.poster)}" width="${v.width}" height="${v.height}" alt="${esc(v.title)}"></a>` +
 		`<figcaption>${esc(v.caption)}</figcaption></figure>` +
 		`<p><a href="${esc(v.video)}">Watch the video</a> (${v.seconds} s), recorded at commit ${esc(v.commit)}` +
-		(post ? `, in the progress log of <a href="${PAGE}#${post.id}">${esc(post.title)}</a>.` : ".") + "</p>";
+		(post ? `,${inLog}.` : ".") + "</p>";
 	// The guid is the video's content-hashed key, which never changes; the link is its heading.
 	items.push({ title: v.title, link: permalink(slug(v.title)), guid: `${ORIGIN}${v.video}`, permalink: false, date, html: absolute(html, PAGE) });
 }
 for (const p of posts) {
-	// The progress log is filled in by the page's script; in the feed it lists the videos, which
-	// are items of their own.
+	// The progress log is filled in by the page's script; in the feed it lists the videos and
+	// notes, which are items of their own.
 	const log = videos.filter((v) => (v.milestone || "m1") === p.milestone);
 	const html = p.html.replace(/<ul id="log-[^"]+"[^>]*>[\s\S]*?<\/ul>/, () =>
 		log.length
@@ -154,7 +170,7 @@ if (latest) {
 	if (!re.test(home)) fail(HOME, "has no <!-- latest-milestone --> … <!-- /latest-milestone --> markers");
 	home = home.replace(re, () => block);
 }
-// Every id that lives on /milestones/: the posts' headings and the videos' (media.js's videoId).
+// Every id that lives on /milestones/: the posts' headings and the log entries' (media.js's videoId).
 const moved = [...posts.flatMap((p) => p.ids), ...videos.map((v) => slug(v.title))];
 const movedRe = /\/\* moved-ids \*\/[\s\S]*?\/\* \/moved-ids \*\//;
 if (!movedRe.test(home)) fail(HOME, "has no /* moved-ids */ … /* /moved-ids */ markers");
