@@ -289,7 +289,7 @@ check that touches nothing outside a scratch directory and prompts no one.
 | `appendFile path data` | `done` | `open(O_APPEND\|O_CREAT, 0600)` after creating parent directories (mode 700), then `write` until every byte is out; a failure says what Foundation says for that errno | ^960 `effects.append-file` |
 | `listDir path` | `names` | `readdir`, without `.`, `..` and names that aren't UTF-8, sorted by UTF-8 bytes | ^961 `effects.list-dir` |
 | `deleteFile path` | `done` | `lstat`, then `unlink`; a directory is `failed invalid` and stays | ^962 `effects.delete-file` |
-| `Sub.watchFile path` | `changed` events | polls `stat` every 2 s on the world's queue (250 ms after a look that saw a change) | ^963 `subs.watch-file` |
+| `Sub.watchFile path` | `changed` events | polls `stat` every 2 s on the world's queue (50 ms after a look that saw a change) | ^963 `subs.watch-file` |
 | `frontmostApp` | `app pid name` | `NSWorkspace.frontmostApplication` | ^964 `effects.frontmost-app` |
 | `permission p prompt` | `flag granted` | `AXIsProcessTrustedWithOptions`; `AVCaptureDevice.authorizationStatus`/`requestAccess` | ^965 `effects.permission` |
 | `openItem target` | `done` | `NSWorkspace.open`: a URL with a scheme as it is, a path (`~/` expanded) only when it exists | ^1000 `effects.open-item` |
@@ -328,8 +328,13 @@ Decisions, and why:
   one `changed` (a save is several system calls, and macOS moves a new file's change time
   again a moment later when it attaches its provenance attribute), and Lean doesn't hear about
   a write half done (truncated, not yet written). The look after one that saw the file move
-  comes 250 ms later (`World.watchSettleMs`), not a whole period, so a save is heard 0.25 to
-  2.25 s after it lands, against Yap's 0 to 2 s; Lean reads the file again on `changed`, so
+  comes 50 ms later (`World.watchSettleMs`), not a whole period, so a save is heard 0.05 to
+  2.05 s after it lands, against Yap's 0 to 2 s (Yap reads the file at the look that sees the
+  new date, with no second look). The second look can't go: without it a save that lands as
+  several changes (a new file's change time moves again when macOS attaches its provenance
+  attribute) is reported more than once and Lean can read a write half done, and ^963's check
+  allows one `changed` per change. A save that takes longer than 50 ms can still be heard
+  twice, which costs one more read; Lean reads the file again on `changed`, so
   nothing is lost. Each look's timer has a tenth of its wait as leeway, so the two files Yap
   watches wake the process once.
   The first poll's state is taken when the subscription starts, with no event: an app reads

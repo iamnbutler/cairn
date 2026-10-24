@@ -348,7 +348,7 @@ in a scratch directory and never prompts.
   `done`; a second delete is `notFound`; a directory is `invalid` and stays; a read-only
   parent is `denied` and the file stays.
 - **Fuzzed** (^963 `subs.watch-file`): with polls of 5–20 ms (and, in half the cases, a
-  shorter look after one that saw a change, as the live world's 2 s and 250 ms), every write in place, atomic
+  shorter look after one that saw a change, as the live world's 2 s and 50 ms), every write in place, atomic
   replacement, append, deletion, creation, `touch` and `chmod` is followed by one `changed`
   (two only when the operation's own system calls, such as truncate then write, land a whole
   poll apart: the host reports a state once it has held for a poll) within a few polls, an untouched file or
