@@ -234,7 +234,7 @@
   <p class="lede">Research into user interfaces where everything a person can do is a <em>claim</em>
     with a durable id, and every claim carries machine-checked evidence.</p>
 
-  <h2>The idea</h2>
+  <h2 id="the-idea">The idea</h2>
   <p>A cairn is a stack of stones that marks a trail: placed by hand, built to last, and trusted by
     whoever comes next. Here the trails are a product's flows, and the stones are claims about them:
     “pressing <code>^12</code> clears the completed items”, “<code>^12</code>'s button is visible
@@ -312,7 +312,7 @@
       the host, is written down in one place.</p>
   </div></aside>
 
-  <h2>What a claim is</h2>
+  <h2 id="what-a-claim-is">What a claim is</h2>
   <p>A claim is one statement about the app, in two halves, and both live in the app's source under
     one id. The human half says what a person does and what follows. The formal half is a Lean
     statement about the code that runs, and the proof that it holds. Here is the whole of the
@@ -344,7 +344,7 @@
     (<code>update_unclaimed</code>), and every effect the app does ask for comes from a move
     (<code>update_effect</code>).</p>
 
-  <h3 class="sub">Ids are the contract</h3>
+  <h3 class="sub" id="ids-are-the-contract">Ids are the contract</h3>
   <p><code>^2</code> means Reset for as long as the counter exists. Ids are never renumbered or
     reused: a claim that goes away is retired with a reason, and its id stays issued.
     <code>claims.lock</code> records every id ever issued with a hash of its formal statement. The
@@ -352,7 +352,7 @@
     and it warns when a statement's meaning changes, because a new meaning needs a new id. A control
     that repeats once per item carries a key: <code>^5#12</code> is <code>^5</code> for item 12.</p>
 
-  <h3 class="sub">Six kinds</h3>
+  <h3 class="sub" id="six-kinds">Six kinds</h3>
   <table class="kinds">
     <thead><tr><th>Kind</th><th>What it says</th><th>Examples</th></tr></thead>
     <tbody>
@@ -365,7 +365,7 @@
     </tbody>
   </table>
 
-  <h3 class="sub">How sure we are</h3>
+  <h3 class="sub" id="how-sure-we-are">How sure we are</h3>
   <p>Every claim carries its evidence, and the map shows which kind. Strongest first:</p>
   <ul class="trail ladder">
     <li><b>Proved.</b> Lean's kernel checked the proof, using only the three standard axioms;
@@ -381,7 +381,7 @@
     <a href="/map/counter/">counter</a>, <a href="/map/basics/">Basics</a>,
     <a href="/map/todo/">TodoMVC</a> and the <a href="/map/trusted/">trusted base</a>.</p>
 
-  <h2>Second milestone: Yap on Cairn<span class="soon">now</span></h2>
+  <h2 id="second-milestone-yap-on-cairn">Second milestone: Yap on Cairn<span class="soon">now</span></h2>
   <p>Can claims hold up on real software someone uses every day? Yap is a small dictation app for
     the Mac: hold a key, talk, and the transcript is typed into the app in front. Almost all of it
     lives outside its window, so Cairn has to learn the outside world first.</p>
@@ -395,7 +395,7 @@
   </ol>
   <ul id="log-m2" class="trail log"><li class="meta">Loading…</li></ul>
 
-  <h2>First milestone: a proved TodoMVC<span class="soon">done</span></h2>
+  <h2 id="first-milestone-a-proved-todomvc">First milestone: a proved TodoMVC<span class="soon">done</span></h2>
   <ol class="trail">
     <li>The full TodoMVC app on the Mac, including real text fields and input methods.</li>
     <li>Every action is a claim with an id that the build refuses to let drift.</li>
@@ -453,9 +453,10 @@
 
 </script>
 <script type="module">
-  import { mountScene, mountFrames, mountSprigs } from "/scene.js";
+  import { mountScene, mountFrames, mountSprigs, mountAnchors } from "/scene.js";
   mountFrames(document.querySelector("main"));
   mountSprigs(document.querySelector("main"));
+  mountAnchors(document.querySelector("main"));
   mountScene(document.getElementById("scene"), { feature: document.getElementById("feature") });
 </script>
 </body>
