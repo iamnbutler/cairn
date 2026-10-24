@@ -1,12 +1,12 @@
 {
   "app": "Todo",
-  "generated": "2026-10-23T17:31:31.080Z",
+  "generated": "2026-10-24T00:03:47.456Z",
   "inputs": {
     "fuzz": "/Users/natebutler/code/cairn/.lane/trees/map-own/build/fuzz/Todo.json",
-    "trusted": null,
+    "trusted": "/Users/natebutler/code/cairn/.lane/trees/map-own/build/fuzz/trusted.json",
     "conformance": "/Users/natebutler/code/cairn/.lane/trees/map-own/build/conformance/Todo.json",
     "capture": true,
-    "theoremsAudited": 1613
+    "theoremsAudited": 3295
   },
   "counts": {
     "kinds": [
@@ -612,7 +612,7 @@
           "kind": "proved",
           "state": "pass",
           "label": "proved",
-          "detail": "3 theorems (init, step, reachable), standard axioms only."
+          "detail": "5 theorems (init, step, receive, reachable, reachableAll), standard axioms only."
         },
         {
           "kind": "fuzzed",
@@ -641,8 +641,20 @@
           "extraAxioms": []
         },
         {
+          "role": "receive",
+          "theorem": "Examples.Todo.counterAndIds.receive",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
           "role": "reachable",
           "theorem": "Examples.Todo.counterAndIds.reachable",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachableAll",
+          "theorem": "Examples.Todo.counterAndIds.reachableAll",
           "ok": true,
           "extraAxioms": []
         }
@@ -664,7 +676,7 @@
           "kind": "proved",
           "state": "pass",
           "label": "proved",
-          "detail": "3 theorems (init, step, reachable), standard axioms only."
+          "detail": "5 theorems (init, step, receive, reachable, reachableAll), standard axioms only."
         },
         {
           "kind": "fuzzed",
@@ -693,8 +705,20 @@
           "extraAxioms": []
         },
         {
+          "role": "receive",
+          "theorem": "Examples.Todo.listedRows.receive",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
           "role": "reachable",
           "theorem": "Examples.Todo.listedRows.reachable",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachableAll",
+          "theorem": "Examples.Todo.listedRows.reachableAll",
           "ok": true,
           "extraAxioms": []
         }
@@ -722,7 +746,7 @@
           "kind": "fuzzed",
           "state": "gap",
           "label": "unchecked",
-          "detail": "Nothing checks it: no `build/fuzz/trusted.json`."
+          "detail": "No check of the trusted-base fuzzer names it."
         }
       ],
       "theorems": [],
@@ -1279,7 +1303,7 @@
     {
       "ref": "^214",
       "what": "unchecked",
-      "detail": "Nothing checks it: no `build/fuzz/trusted.json`.",
+      "detail": "No check of the trusted-base fuzzer names it.",
       "broken": false
     },
     {
@@ -1288,6 +1312,5 @@
       "detail": "The capture can't replay step 6 (blur ^207#1).",
       "broken": false
     }
-  ],
-  "retiredElsewhere": []
+  ]
 }

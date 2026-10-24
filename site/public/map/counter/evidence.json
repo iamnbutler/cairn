@@ -1,32 +1,32 @@
 {
   "app": "Counter",
-  "generated": "2026-10-23T17:31:26.230Z",
+  "generated": "2026-10-24T00:01:10.502Z",
   "inputs": {
     "fuzz": "/Users/natebutler/code/cairn/.lane/trees/map-own/build/fuzz/Counter.json",
-    "trusted": null,
-    "conformance": null,
+    "trusted": "/Users/natebutler/code/cairn/.lane/trees/map-own/build/fuzz/trusted.json",
+    "conformance": "/Users/natebutler/code/cairn/.lane/trees/map-own/build/conformance/Counter.json",
     "capture": true,
-    "theoremsAudited": 1613
+    "theoremsAudited": 3295
   },
   "counts": {
     "kinds": [
       {
         "kind": "proved",
-        "have": 5,
-        "fail": 0,
-        "of": 5
-      },
-      {
-        "kind": "fuzzed",
-        "have": 1,
+        "have": 4,
         "fail": 0,
         "of": 4
       },
       {
-        "kind": "tested",
-        "have": 0,
+        "kind": "fuzzed",
+        "have": 2,
         "fail": 0,
-        "of": 5
+        "of": 3
+      },
+      {
+        "kind": "tested",
+        "have": 4,
+        "fail": 0,
+        "of": 4
       },
       {
         "kind": "seen",
@@ -42,8 +42,9 @@
       }
     ],
     "headlines": {
-      "proved": 5,
+      "proved": 4,
       "seen": 1,
+      "retired": 1,
       "assumed": 1
     }
   },
@@ -63,15 +64,15 @@
         },
         {
           "kind": "fuzzed",
-          "state": "gap",
-          "label": "not fuzzed",
-          "detail": "The app is fuzzed at the model level only (it has no `App` yet), where a move has no checks of its own: presence and pressability need a frame."
+          "state": "pass",
+          "label": "fuzzed 1k",
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (seed 0)."
         },
         {
           "kind": "tested",
-          "state": "gap",
-          "label": "not tested",
-          "detail": "Counter has no conformance generator yet (`tools/conformance/lean/Conformance/Apps/Counter.lean`)."
+          "state": "pass",
+          "label": "tested 4.9k",
+          "detail": "4,886 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
         },
         {
           "kind": "seen",
@@ -114,15 +115,15 @@
         },
         {
           "kind": "fuzzed",
-          "state": "gap",
-          "label": "not fuzzed",
-          "detail": "The app is fuzzed at the model level only (it has no `App` yet), where a move has no checks of its own: presence and pressability need a frame."
+          "state": "pass",
+          "label": "fuzzed 1k",
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (seed 0)."
         },
         {
           "kind": "tested",
-          "state": "gap",
-          "label": "not tested",
-          "detail": "Counter has no conformance generator yet (`tools/conformance/lean/Conformance/Apps/Counter.lean`)."
+          "state": "pass",
+          "label": "tested 2.1k",
+          "detail": "2,118 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
         },
         {
           "kind": "seen",
@@ -188,9 +189,9 @@
         },
         {
           "kind": "tested",
-          "state": "gap",
-          "label": "not tested",
-          "detail": "Counter has no conformance generator yet (`tools/conformance/lean/Conformance/Apps/Counter.lean`)."
+          "state": "pass",
+          "label": "tested",
+          "detail": "Its witness replayed on the running app, and the frame, accessibility tree, effects and pixels matched the model."
         },
         {
           "kind": "seen",
@@ -241,9 +242,9 @@
         },
         {
           "kind": "tested",
-          "state": "gap",
-          "label": "not tested",
-          "detail": "Counter has no conformance generator yet (`tools/conformance/lean/Conformance/Apps/Counter.lean`)."
+          "state": "pass",
+          "label": "tested",
+          "detail": "Its witness replayed on the running app, and the frame, accessibility tree, effects and pixels matched the model."
         },
         {
           "kind": "seen",
@@ -284,48 +285,10 @@
       "ref": "^6",
       "kind": "invariant",
       "title": "Moves never leave a press in progress",
-      "headline": "proved",
-      "evidence": [
-        {
-          "kind": "proved",
-          "state": "pass",
-          "label": "proved",
-          "detail": "3 theorems (init, step, reachable), standard axioms only."
-        },
-        {
-          "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 1k",
-          "detail": "Held in 1,000 random sequences of the model (no App yet), 51,000 steps checked (seed 0)."
-        },
-        {
-          "kind": "tested",
-          "state": "gap",
-          "label": "not tested",
-          "detail": "Counter has no conformance generator yet (`tools/conformance/lean/Conformance/Apps/Counter.lean`)."
-        }
-      ],
-      "theorems": [
-        {
-          "role": "init",
-          "theorem": "Examples.Counter.noPressLeft.init",
-          "ok": true,
-          "extraAxioms": []
-        },
-        {
-          "role": "step",
-          "theorem": "Examples.Counter.noPressLeft.step",
-          "ok": true,
-          "extraAxioms": []
-        },
-        {
-          "role": "reachable",
-          "theorem": "Examples.Counter.noPressLeft.reachable",
-          "ok": true,
-          "extraAxioms": []
-        }
-      ],
-      "ledger": "active",
+      "headline": "retired",
+      "evidence": [],
+      "theorems": [],
+      "ledger": "retired",
       "findings": [],
       "shots": {
         "frames": []
@@ -348,7 +311,7 @@
           "kind": "fuzzed",
           "state": "gap",
           "label": "unchecked",
-          "detail": "Nothing checks it: no `build/fuzz/trusted.json`."
+          "detail": "No check of the trusted-base fuzzer names it."
         }
       ],
       "theorems": [],
@@ -361,61 +324,10 @@
   ],
   "gaps": [
     {
-      "ref": "^1",
-      "what": "not fuzzed",
-      "detail": "The app is fuzzed at the model level only (it has no `App` yet), where a move has no checks of its own: presence and pressability need a frame.",
-      "broken": false
-    },
-    {
-      "ref": "^1",
-      "what": "not tested",
-      "detail": "Counter has no conformance generator yet (`tools/conformance/lean/Conformance/Apps/Counter.lean`).",
-      "broken": false
-    },
-    {
-      "ref": "^2",
-      "what": "not fuzzed",
-      "detail": "The app is fuzzed at the model level only (it has no `App` yet), where a move has no checks of its own: presence and pressability need a frame.",
-      "broken": false
-    },
-    {
-      "ref": "^2",
-      "what": "not tested",
-      "detail": "Counter has no conformance generator yet (`tools/conformance/lean/Conformance/Apps/Counter.lean`).",
-      "broken": false
-    },
-    {
-      "ref": "^4",
-      "what": "not tested",
-      "detail": "Counter has no conformance generator yet (`tools/conformance/lean/Conformance/Apps/Counter.lean`).",
-      "broken": false
-    },
-    {
-      "ref": "^5",
-      "what": "not tested",
-      "detail": "Counter has no conformance generator yet (`tools/conformance/lean/Conformance/Apps/Counter.lean`).",
-      "broken": false
-    },
-    {
-      "ref": "^6",
-      "what": "not tested",
-      "detail": "Counter has no conformance generator yet (`tools/conformance/lean/Conformance/Apps/Counter.lean`).",
-      "broken": false
-    },
-    {
       "ref": "^7",
       "what": "unchecked",
-      "detail": "Nothing checks it: no `build/fuzz/trusted.json`.",
+      "detail": "No check of the trusted-base fuzzer names it.",
       "broken": false
-    }
-  ],
-  "retiredElsewhere": [
-    {
-      "id": 215,
-      "kind": "move",
-      "status": "retired",
-      "statement": "-",
-      "title": "Back through filters"
     }
   ]
 }

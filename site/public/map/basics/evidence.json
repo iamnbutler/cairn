@@ -1,12 +1,12 @@
 {
   "app": "Basics",
-  "generated": "2026-10-23T17:31:27.283Z",
+  "generated": "2026-10-24T00:02:17.395Z",
   "inputs": {
     "fuzz": "/Users/natebutler/code/cairn/.lane/trees/map-own/build/fuzz/Basics.json",
-    "trusted": null,
+    "trusted": "/Users/natebutler/code/cairn/.lane/trees/map-own/build/fuzz/trusted.json",
     "conformance": "/Users/natebutler/code/cairn/.lane/trees/map-own/build/conformance/Basics.json",
     "capture": true,
-    "theoremsAudited": 1613
+    "theoremsAudited": 3295
   },
   "counts": {
     "kinds": [
@@ -268,7 +268,7 @@
           "kind": "proved",
           "state": "pass",
           "label": "proved",
-          "detail": "3 theorems (init, step, reachable), standard axioms only."
+          "detail": "5 theorems (init, step, receive, reachable, reachableAll), standard axioms only."
         },
         {
           "kind": "fuzzed",
@@ -297,8 +297,20 @@
           "extraAxioms": []
         },
         {
+          "role": "receive",
+          "theorem": "Examples.Basics.itemsLeft.receive",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
           "role": "reachable",
           "theorem": "Examples.Basics.itemsLeft.reachable",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachableAll",
+          "theorem": "Examples.Basics.itemsLeft.reachableAll",
           "ok": true,
           "extraAxioms": []
         }
@@ -494,14 +506,5 @@
       }
     }
   ],
-  "gaps": [],
-  "retiredElsewhere": [
-    {
-      "id": 215,
-      "kind": "move",
-      "status": "retired",
-      "statement": "-",
-      "title": "Back through filters"
-    }
-  ]
+  "gaps": []
 }
