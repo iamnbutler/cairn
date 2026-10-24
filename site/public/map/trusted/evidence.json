@@ -1,9 +1,10 @@
 {
   "app": "Trusted",
-  "generated": "2026-10-24T06:59:46.125Z",
+  "generated": "2026-10-24T13:15:01.033Z",
   "inputs": {
-    "fuzz": "/Users/natebutler/code/cairn/build/fuzz/Trusted.json",
-    "trusted": "/Users/natebutler/code/cairn/build/fuzz/trusted.json",
+    "fuzz": "/Users/natebutler/code/cairn/.lane/trees/yap-map/build/fuzz/Trusted.json",
+    "hostFuzz": null,
+    "trusted": "/Users/natebutler/code/cairn/.lane/trees/yap-map/build/fuzz/trusted.json",
     "conformance": null,
     "capture": false,
     "theoremsAudited": 3848

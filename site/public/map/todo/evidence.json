@@ -1,10 +1,11 @@
 {
   "app": "Todo",
-  "generated": "2026-10-24T04:56:17.569Z",
+  "generated": "2026-10-24T12:40:10.167Z",
   "inputs": {
-    "fuzz": "/Users/natebutler/code/cairn/build/fuzz/Todo.json",
-    "trusted": null,
-    "conformance": "/Users/natebutler/code/cairn/build/conformance/Todo.json",
+    "fuzz": "/Users/natebutler/code/cairn/.lane/trees/yap-map/build/fuzz/Todo.json",
+    "hostFuzz": null,
+    "trusted": "/Users/natebutler/code/cairn/.lane/trees/yap-map/build/fuzz/trusted.json",
+    "conformance": "/Users/natebutler/code/cairn/.lane/trees/yap-map/build/conformance/Todo.json",
     "capture": true,
     "theoremsAudited": 3848
   },
@@ -89,7 +90,7 @@
           "kind": "fuzzed",
           "state": "pass",
           "label": "fuzzed 1k",
-          "detail": "Held in 1,000 random sequences, 51,000 steps checked (seed 0)."
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (presence 51,000, performed 20,882) (seed 0)."
         },
         {
           "kind": "tested",
@@ -146,7 +147,7 @@
           "kind": "fuzzed",
           "state": "pass",
           "label": "fuzzed 1k",
-          "detail": "Held in 1,000 random sequences, 51,000 steps checked (seed 0). 2 clicks ended an edit and were dropped by design: the blur saved the edit, which moved or removed the control (T33, an open decision in docs/plan.md)."
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (pressable 21,407, presence 51,000, performed 1,708) (seed 0). 2 clicks ended an edit and were dropped by design: the blur saved the edit, which moved or removed the control (T33, an open decision in docs/plan.md)."
         },
         {
           "kind": "tested",
@@ -197,7 +198,7 @@
           "kind": "fuzzed",
           "state": "pass",
           "label": "fuzzed 1k",
-          "detail": "Held in 1,000 random sequences, 51,000 steps checked (seed 0). 9 clicks ended an edit and were dropped by design: the blur saved the edit, which moved or removed the control (T33, an open decision in docs/plan.md)."
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (pressable 14,947, presence 51,000, performed 1,057) (seed 0). 9 clicks ended an edit and were dropped by design: the blur saved the edit, which moved or removed the control (T33, an open decision in docs/plan.md)."
         },
         {
           "kind": "tested",
@@ -248,7 +249,7 @@
           "kind": "fuzzed",
           "state": "pass",
           "label": "fuzzed 1k",
-          "detail": "Held in 1,000 random sequences, 51,000 steps checked (seed 0). 9 clicks ended an edit and were dropped by design: the blur saved the edit, which moved or removed the control (T33, an open decision in docs/plan.md)."
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (pressable 14,947, presence 51,000, performed 1,052) (seed 0). 9 clicks ended an edit and were dropped by design: the blur saved the edit, which moved or removed the control (T33, an open decision in docs/plan.md)."
         },
         {
           "kind": "tested",
@@ -299,7 +300,7 @@
           "kind": "fuzzed",
           "state": "pass",
           "label": "fuzzed 1k",
-          "detail": "Held in 1,000 random sequences, 51,000 steps checked (seed 0). 6 clicks ended an edit and were dropped by design: the blur saved the edit, which moved or removed the control (T33, an open decision in docs/plan.md)."
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (pressable 14,947, presence 51,000, performed 1,178) (seed 0). 6 clicks ended an edit and were dropped by design: the blur saved the edit, which moved or removed the control (T33, an open decision in docs/plan.md)."
         },
         {
           "kind": "tested",
@@ -347,7 +348,7 @@
           "kind": "fuzzed",
           "state": "pass",
           "label": "fuzzed 1k",
-          "detail": "Held in 1,000 random sequences, 51,000 steps checked (seed 0)."
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (presence 51,000, performed 396) (seed 0)."
         },
         {
           "kind": "tested",
@@ -416,7 +417,7 @@
           "kind": "fuzzed",
           "state": "pass",
           "label": "fuzzed 1k",
-          "detail": "Held in 1,000 random sequences, 51,000 steps checked (seed 0). 18 clicks ended an edit and were dropped by design: the blur saved the edit, which moved or removed the control (T33, an open decision in docs/plan.md)."
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (pressable 21,407, presence 51,000, performed 1,669) (seed 0). 18 clicks ended an edit and were dropped by design: the blur saved the edit, which moved or removed the control (T33, an open decision in docs/plan.md)."
         },
         {
           "kind": "tested",
@@ -464,7 +465,7 @@
           "kind": "fuzzed",
           "state": "pass",
           "label": "fuzzed 1k",
-          "detail": "Held in 1,000 random sequences, 51,000 steps checked (seed 0). 17 clicks ended an edit and were dropped by design: the blur saved the edit, which moved or removed the control (T33, an open decision in docs/plan.md)."
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (pressable 21,407, presence 51,000, performed 1,636) (seed 0). 17 clicks ended an edit and were dropped by design: the blur saved the edit, which moved or removed the control (T33, an open decision in docs/plan.md)."
         },
         {
           "kind": "tested",
@@ -515,7 +516,7 @@
           "kind": "fuzzed",
           "state": "pass",
           "label": "fuzzed 1k",
-          "detail": "Held in 1,000 random sequences, 51,000 steps checked (seed 0). 21 clicks ended an edit and were dropped by design: the blur saved the edit, which moved or removed the control (T33, an open decision in docs/plan.md)."
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (pressable 21,407, presence 51,000, performed 1,879) (seed 0). 21 clicks ended an edit and were dropped by design: the blur saved the edit, which moved or removed the control (T33, an open decision in docs/plan.md)."
         },
         {
           "kind": "tested",
@@ -566,7 +567,7 @@
           "kind": "fuzzed",
           "state": "pass",
           "label": "fuzzed 1k",
-          "detail": "Held in 1,000 random sequences, 51,000 steps checked (seed 0). 3 clicks ended an edit and were dropped by design: the blur saved the edit, which moved or removed the control (T33, an open decision in docs/plan.md)."
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (pressable 7,524, presence 51,000, performed 638) (seed 0). 3 clicks ended an edit and were dropped by design: the blur saved the edit, which moved or removed the control (T33, an open decision in docs/plan.md)."
         },
         {
           "kind": "tested",
@@ -617,7 +618,7 @@
           "kind": "fuzzed",
           "state": "pass",
           "label": "fuzzed 1k",
-          "detail": "Held in 1,000 random sequences, 51,000 steps checked (seed 0)."
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (invariant 51,000) (seed 0)."
         },
         {
           "kind": "tested",
@@ -745,7 +746,7 @@
           "kind": "fuzzed",
           "state": "gap",
           "label": "unchecked",
-          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
+          "detail": "No check of the trusted-base fuzzer names it."
         }
       ],
       "theorems": [],
@@ -1278,7 +1279,7 @@
     {
       "ref": "^214",
       "what": "unchecked",
-      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "detail": "No check of the trusted-base fuzzer names it.",
       "broken": false
     },
     {

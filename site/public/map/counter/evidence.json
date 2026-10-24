@@ -1,10 +1,11 @@
 {
   "app": "Counter",
-  "generated": "2026-10-24T04:47:45.448Z",
+  "generated": "2026-10-24T12:34:07.056Z",
   "inputs": {
-    "fuzz": "/Users/natebutler/code/cairn/build/fuzz/Counter.json",
-    "trusted": null,
-    "conformance": "/Users/natebutler/code/cairn/build/conformance/Counter.json",
+    "fuzz": "/Users/natebutler/code/cairn/.lane/trees/yap-map/build/fuzz/Counter.json",
+    "hostFuzz": null,
+    "trusted": "/Users/natebutler/code/cairn/.lane/trees/yap-map/build/fuzz/trusted.json",
+    "conformance": "/Users/natebutler/code/cairn/.lane/trees/yap-map/build/conformance/Counter.json",
     "capture": true,
     "theoremsAudited": 3848
   },
@@ -66,7 +67,7 @@
           "kind": "fuzzed",
           "state": "pass",
           "label": "fuzzed 1k",
-          "detail": "Held in 1,000 random sequences, 51,000 steps checked (seed 0)."
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (pressable 46,728, presence 51,000, performed 20,775) (seed 0)."
         },
         {
           "kind": "tested",
@@ -117,7 +118,7 @@
           "kind": "fuzzed",
           "state": "pass",
           "label": "fuzzed 1k",
-          "detail": "Held in 1,000 random sequences, 51,000 steps checked (seed 0)."
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (pressable 29,571, presence 51,000, performed 11,024) (seed 0)."
         },
         {
           "kind": "tested",
@@ -311,7 +312,7 @@
           "kind": "fuzzed",
           "state": "gap",
           "label": "unchecked",
-          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
+          "detail": "No check of the trusted-base fuzzer names it."
         }
       ],
       "theorems": [],
@@ -326,7 +327,7 @@
     {
       "ref": "^7",
       "what": "unchecked",
-      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "detail": "No check of the trusted-base fuzzer names it.",
       "broken": false
     }
   ]

@@ -1,0 +1,2162 @@
+{
+  "app": "Yap",
+  "generated": "2026-10-24T12:53:02.738Z",
+  "inputs": {
+    "fuzz": "/Users/natebutler/code/cairn/.lane/trees/yap-map/build/fuzz/Yap.json",
+    "hostFuzz": "/Users/natebutler/code/cairn/.lane/trees/yap-map/build/fuzz/host/Yap.json",
+    "trusted": "/Users/natebutler/code/cairn/.lane/trees/yap-map/build/fuzz/trusted.json",
+    "conformance": "/Users/natebutler/code/cairn/.lane/trees/yap-map/build/conformance/Yap.json",
+    "capture": true,
+    "theoremsAudited": 3848
+  },
+  "counts": {
+    "kinds": [
+      {
+        "kind": "proved",
+        "have": 29,
+        "fail": 0,
+        "of": 29
+      },
+      {
+        "kind": "fuzzed",
+        "have": 27,
+        "fail": 0,
+        "of": 35
+      },
+      {
+        "kind": "tested",
+        "have": 11,
+        "fail": 0,
+        "of": 29
+      },
+      {
+        "kind": "seen",
+        "have": 16,
+        "fail": 0,
+        "of": 16
+      },
+      {
+        "kind": "assumed",
+        "have": 8,
+        "fail": 0,
+        "of": 8
+      }
+    ],
+    "headlines": {
+      "seen": 2,
+      "proved": 29,
+      "assumed": 8,
+      "retired": 1
+    }
+  },
+  "claims": [
+    {
+      "id": 301,
+      "ref": "^301",
+      "kind": "place",
+      "title": "Menu bar menu",
+      "headline": "seen",
+      "evidence": [
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "The status item and its menu as the host built them from the app's frame, drawn by the capture from that `NSMenu` (titles, greyed items, checkmarks, shortcuts, submenus cascaded open), with a fake world after launch. Not a screenshot of AppKit's menu."
+        }
+      ],
+      "theorems": [],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": [
+          "img/start-0.pinned.webp"
+        ],
+        "caption": "The status item and its menu as the host built them from the app's frame, drawn by the capture from that `NSMenu` (titles, greyed items, checkmarks, shortcuts, submenus cascaded open), with a fake world after launch. Not a screenshot of AppKit's menu."
+      }
+    },
+    {
+      "id": 302,
+      "ref": "^302",
+      "kind": "move",
+      "title": "Copy Last Transcript",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "1 theorem (sound press), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 1k",
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (presence 51,000) (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "gap",
+          "label": "not tested",
+          "detail": "No conformance step exercised it."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Pressed in the capture: before and after."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "sound press",
+          "theorem": "Examples.Yap.copyLast.press.sound",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "before": "move-302-0.pinned.webp",
+        "after": "move-302-1.pinned.webp",
+        "frames": [
+          "img/move-302-0.pinned.webp",
+          "img/move-302-1.pinned.webp"
+        ]
+      }
+    },
+    {
+      "id": 303,
+      "ref": "^303",
+      "kind": "move",
+      "title": "Recent transcript",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "1 theorem (sound press), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 1k",
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (presence 51,000) (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "gap",
+          "label": "not tested",
+          "detail": "No conformance step exercised it."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Its control is in a captured frame; no capture performed it."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "sound press",
+          "theorem": "Examples.Yap.copyRecent.press.sound",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": [
+          "img/start-0.pinned.webp"
+        ]
+      }
+    },
+    {
+      "id": 304,
+      "ref": "^304",
+      "kind": "move",
+      "title": "Keep Transcripts",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "1 theorem (sound press), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 1k",
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (presence 51,000, performed 4,070) (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested 1.3k",
+          "detail": "1,275 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Pressed in the capture: before and after."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "sound press",
+          "theorem": "Examples.Yap.toggleKeep.press.sound",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "before": "flow-341-0.pinned.webp",
+        "after": "flow-341-1.pinned.webp",
+        "frames": [
+          "img/flow-341-0.pinned.webp",
+          "img/flow-341-1.pinned.webp"
+        ]
+      }
+    },
+    {
+      "id": 305,
+      "ref": "^305",
+      "kind": "move",
+      "title": "Press Return After Dictating",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "1 theorem (sound press), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 1k",
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (presence 51,000, performed 2,292) (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested 844",
+          "detail": "844 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Pressed in the capture: before and after."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "sound press",
+          "theorem": "Examples.Yap.toggleSubmits.press.sound",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "before": "move-305-0.pinned.webp",
+        "after": "move-305-1.pinned.webp",
+        "frames": [
+          "img/move-305-0.pinned.webp",
+          "img/move-305-1.pinned.webp"
+        ]
+      }
+    },
+    {
+      "id": 306,
+      "ref": "^306",
+      "kind": "move",
+      "title": "Dictate with Key",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "1 theorem (sound press), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 1k",
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (presence 51,000, performed 4,096) (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested 1.2k",
+          "detail": "1,210 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Pressed in the capture: before and after."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "sound press",
+          "theorem": "Examples.Yap.toggleEnabled.press.sound",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "before": "flow-340-0.pinned.webp",
+        "after": "flow-340-1.pinned.webp",
+        "frames": [
+          "img/flow-340-0.pinned.webp",
+          "img/flow-340-1.pinned.webp"
+        ]
+      }
+    },
+    {
+      "id": 307,
+      "ref": "^307",
+      "kind": "move",
+      "title": "Open Transcripts Folder",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "1 theorem (sound press), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 1k",
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (presence 51,000, performed 4,056) (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested 1.2k",
+          "detail": "1,237 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Performed in the capture; the frame didn't change."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "sound press",
+          "theorem": "Examples.Yap.openTranscripts.press.sound",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "before": "move-307-0.pinned.webp",
+        "after": "move-307-1.pinned.webp",
+        "frames": [
+          "img/move-307-0.pinned.webp",
+          "img/move-307-1.pinned.webp"
+        ]
+      }
+    },
+    {
+      "id": 308,
+      "ref": "^308",
+      "kind": "move",
+      "title": "Edit Dictionary",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "1 theorem (sound press), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 1k",
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (presence 51,000, performed 4,166) (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested 1.2k",
+          "detail": "1,229 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Performed in the capture; the frame didn't change."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "sound press",
+          "theorem": "Examples.Yap.editDictionary.press.sound",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "before": "move-308-0.pinned.webp",
+        "after": "move-308-1.pinned.webp",
+        "frames": [
+          "img/move-308-0.pinned.webp",
+          "img/move-308-1.pinned.webp"
+        ]
+      }
+    },
+    {
+      "id": 309,
+      "ref": "^309",
+      "kind": "move",
+      "title": "Edit Settings",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "1 theorem (sound press), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 1k",
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (presence 51,000, performed 4,073) (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested 1.3k",
+          "detail": "1,261 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Performed in the capture; the frame didn't change."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "sound press",
+          "theorem": "Examples.Yap.editSettings.press.sound",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "before": "move-309-0.pinned.webp",
+        "after": "move-309-1.pinned.webp",
+        "frames": [
+          "img/move-309-0.pinned.webp",
+          "img/move-309-1.pinned.webp"
+        ]
+      }
+    },
+    {
+      "id": 310,
+      "ref": "^310",
+      "kind": "move",
+      "title": "Grant Accessibility Access",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "1 theorem (sound press), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 1k",
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (presence 51,000, performed 4,024) (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested 1.2k",
+          "detail": "1,232 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Performed in the capture; the frame didn't change."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "sound press",
+          "theorem": "Examples.Yap.grantAccess.press.sound",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "before": "move-310-0.pinned.webp",
+        "after": "move-310-1.pinned.webp",
+        "frames": [
+          "img/move-310-0.pinned.webp",
+          "img/move-310-1.pinned.webp"
+        ]
+      }
+    },
+    {
+      "id": 311,
+      "ref": "^311",
+      "kind": "invariant",
+      "title": "A shortcut never sends",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "5 theorems (init, step, receive, reachable, reachableAll), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 5k",
+          "detail": "Held at every step of 5,000 random sequences against a random host (`make fuzz-yap`: the model's `step`, then the app's `receive` and menu), 306,551 steps exercising it (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "gap",
+          "label": "not tested",
+          "detail": "Conformance ran but can't reach it: under the debug socket Yap's world is silent (no key, microphone or reply reaches it), so every walk stays in the menu and no state reached exercises a dictation invariant; the invariants are checked by the proofs, `make fuzz-yap` and `CairnYap --selftest`."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "init",
+          "theorem": "Examples.Yap.shortcutNeverSends.init",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "step",
+          "theorem": "Examples.Yap.shortcutNeverSends.step",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "receive",
+          "theorem": "Examples.Yap.shortcutNeverSends.receive",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachable",
+          "theorem": "Examples.Yap.shortcutNeverSends.reachable",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachableAll",
+          "theorem": "Examples.Yap.shortcutNeverSends.reachableAll",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": []
+      }
+    },
+    {
+      "id": 312,
+      "ref": "^312",
+      "kind": "invariant",
+      "title": "Hold to talk, tap to latch: 300 ms",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "5 theorems (init, step, receive, reachable, reachableAll), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 5k",
+          "detail": "Held at every step of 5,000 random sequences against a random host (`make fuzz-yap`: the model's `step`, then the app's `receive` and menu), 43,229 steps exercising it (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "gap",
+          "label": "not tested",
+          "detail": "Conformance ran but can't reach it: under the debug socket Yap's world is silent (no key, microphone or reply reaches it), so every walk stays in the menu and no state reached exercises a dictation invariant; the invariants are checked by the proofs, `make fuzz-yap` and `CairnYap --selftest`."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "init",
+          "theorem": "Examples.Yap.holdTapSplit.init",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "step",
+          "theorem": "Examples.Yap.holdTapSplit.step",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "receive",
+          "theorem": "Examples.Yap.holdTapSplit.receive",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachable",
+          "theorem": "Examples.Yap.holdTapSplit.reachable",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachableAll",
+          "theorem": "Examples.Yap.holdTapSplit.reachableAll",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": []
+      }
+    },
+    {
+      "id": 313,
+      "ref": "^313",
+      "kind": "invariant",
+      "title": "One recording at a time",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "5 theorems (init, step, receive, reachable, reachableAll), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 5k",
+          "detail": "Held at every step of 5,000 random sequences against a random host (`make fuzz-yap`: the model's `step`, then the app's `receive` and menu), 764,710 steps exercising it (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "gap",
+          "label": "not tested",
+          "detail": "Conformance ran but can't reach it: under the debug socket Yap's world is silent (no key, microphone or reply reaches it), so every walk stays in the menu and no state reached exercises a dictation invariant; the invariants are checked by the proofs, `make fuzz-yap` and `CairnYap --selftest`."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "init",
+          "theorem": "Examples.Yap.oneRecording.init",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "step",
+          "theorem": "Examples.Yap.oneRecording.step",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "receive",
+          "theorem": "Examples.Yap.oneRecording.receive",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachable",
+          "theorem": "Examples.Yap.oneRecording.reachable",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachableAll",
+          "theorem": "Examples.Yap.oneRecording.reachableAll",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": []
+      }
+    },
+    {
+      "id": 314,
+      "ref": "^314",
+      "kind": "invariant",
+      "title": "Every recording ends",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "5 theorems (init, step, receive, reachable, reachableAll), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 5k",
+          "detail": "Held at every step of 5,000 random sequences against a random host (`make fuzz-yap`: the model's `step`, then the app's `receive` and menu), 692,606 steps exercising it (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "gap",
+          "label": "not tested",
+          "detail": "Conformance ran but can't reach it: under the debug socket Yap's world is silent (no key, microphone or reply reaches it), so every walk stays in the menu and no state reached exercises a dictation invariant; the invariants are checked by the proofs, `make fuzz-yap` and `CairnYap --selftest`."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "init",
+          "theorem": "Examples.Yap.recordingEnds.init",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "step",
+          "theorem": "Examples.Yap.recordingEnds.step",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "receive",
+          "theorem": "Examples.Yap.recordingEnds.receive",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachable",
+          "theorem": "Examples.Yap.recordingEnds.reachable",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachableAll",
+          "theorem": "Examples.Yap.recordingEnds.reachableAll",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": []
+      }
+    },
+    {
+      "id": 315,
+      "ref": "^315",
+      "kind": "invariant",
+      "title": "Kept before it is typed",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "5 theorems (init, step, receive, reachable, reachableAll), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 5k",
+          "detail": "Held at every step of 5,000 random sequences against a random host (`make fuzz-yap`: the model's `step`, then the app's `receive` and menu), 6,038 steps exercising it (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "gap",
+          "label": "not tested",
+          "detail": "Conformance ran but can't reach it: under the debug socket Yap's world is silent (no key, microphone or reply reaches it), so every walk stays in the menu and no state reached exercises a dictation invariant; the invariants are checked by the proofs, `make fuzz-yap` and `CairnYap --selftest`."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "init",
+          "theorem": "Examples.Yap.keptBeforeTyped.init",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "step",
+          "theorem": "Examples.Yap.keptBeforeTyped.step",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "receive",
+          "theorem": "Examples.Yap.keptBeforeTyped.receive",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachable",
+          "theorem": "Examples.Yap.keptBeforeTyped.reachable",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachableAll",
+          "theorem": "Examples.Yap.keptBeforeTyped.reachableAll",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": []
+      }
+    },
+    {
+      "id": 316,
+      "ref": "^316",
+      "kind": "invariant",
+      "title": "A failed type is kept and flagged",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "5 theorems (init, step, receive, reachable, reachableAll), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 5k",
+          "detail": "Held at every step of 5,000 random sequences against a random host (`make fuzz-yap`: the model's `step`, then the app's `receive` and menu), 1,800 steps exercising it (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "gap",
+          "label": "not tested",
+          "detail": "Conformance ran but can't reach it: under the debug socket Yap's world is silent (no key, microphone or reply reaches it), so every walk stays in the menu and no state reached exercises a dictation invariant; the invariants are checked by the proofs, `make fuzz-yap` and `CairnYap --selftest`."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "init",
+          "theorem": "Examples.Yap.failedTypeFlagged.init",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "step",
+          "theorem": "Examples.Yap.failedTypeFlagged.step",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "receive",
+          "theorem": "Examples.Yap.failedTypeFlagged.receive",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachable",
+          "theorem": "Examples.Yap.failedTypeFlagged.reachable",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachableAll",
+          "theorem": "Examples.Yap.failedTypeFlagged.reachableAll",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": []
+      }
+    },
+    {
+      "id": 317,
+      "ref": "^317",
+      "kind": "invariant",
+      "title": "Late and cancelled replies never type",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "5 theorems (init, step, receive, reachable, reachableAll), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 5k",
+          "detail": "Held at every step of 5,000 random sequences against a random host (`make fuzz-yap`: the model's `step`, then the app's `receive` and menu), 6,038 steps exercising it (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "gap",
+          "label": "not tested",
+          "detail": "Conformance ran but can't reach it: under the debug socket Yap's world is silent (no key, microphone or reply reaches it), so every walk stays in the menu and no state reached exercises a dictation invariant; the invariants are checked by the proofs, `make fuzz-yap` and `CairnYap --selftest`."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "init",
+          "theorem": "Examples.Yap.onlyLiveRepliesType.init",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "step",
+          "theorem": "Examples.Yap.onlyLiveRepliesType.step",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "receive",
+          "theorem": "Examples.Yap.onlyLiveRepliesType.receive",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachable",
+          "theorem": "Examples.Yap.onlyLiveRepliesType.reachable",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachableAll",
+          "theorem": "Examples.Yap.onlyLiveRepliesType.reachableAll",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": []
+      }
+    },
+    {
+      "id": 318,
+      "ref": "^318",
+      "kind": "invariant",
+      "title": "Each clip is typed at most once",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "5 theorems (init, step, receive, reachable, reachableAll), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 5k",
+          "detail": "Held at every step of 5,000 random sequences against a random host (`make fuzz-yap`: the model's `step`, then the app's `receive` and menu), 6,038 steps exercising it (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "gap",
+          "label": "not tested",
+          "detail": "Conformance ran but can't reach it: under the debug socket Yap's world is silent (no key, microphone or reply reaches it), so every walk stays in the menu and no state reached exercises a dictation invariant; the invariants are checked by the proofs, `make fuzz-yap` and `CairnYap --selftest`."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "init",
+          "theorem": "Examples.Yap.typedOnce.init",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "step",
+          "theorem": "Examples.Yap.typedOnce.step",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "receive",
+          "theorem": "Examples.Yap.typedOnce.receive",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachable",
+          "theorem": "Examples.Yap.typedOnce.reachable",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachableAll",
+          "theorem": "Examples.Yap.typedOnce.reachableAll",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": []
+      }
+    },
+    {
+      "id": 319,
+      "ref": "^319",
+      "kind": "invariant",
+      "title": "Fixes replace whole words",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "5 theorems (init, step, receive, reachable, reachableAll), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 5k",
+          "detail": "Held at every step of 5,000 random sequences against a random host (`make fuzz-yap`: the model's `step`, then the app's `receive` and menu), 6,038 steps exercising it (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "gap",
+          "label": "not tested",
+          "detail": "Conformance ran but can't reach it: under the debug socket Yap's world is silent (no key, microphone or reply reaches it), so every walk stays in the menu and no state reached exercises a dictation invariant; the invariants are checked by the proofs, `make fuzz-yap` and `CairnYap --selftest`."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "init",
+          "theorem": "Examples.Yap.wholeWordFixes.init",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "step",
+          "theorem": "Examples.Yap.wholeWordFixes.step",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "receive",
+          "theorem": "Examples.Yap.wholeWordFixes.receive",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachable",
+          "theorem": "Examples.Yap.wholeWordFixes.reachable",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachableAll",
+          "theorem": "Examples.Yap.wholeWordFixes.reachableAll",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": []
+      }
+    },
+    {
+      "id": 320,
+      "ref": "^320",
+      "kind": "invariant",
+      "title": "Retention never deletes today",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "5 theorems (init, step, receive, reachable, reachableAll), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 5k",
+          "detail": "Held at every step of 5,000 random sequences against a random host (`make fuzz-yap`: the model's `step`, then the app's `receive` and menu), 12,949 steps exercising it (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "gap",
+          "label": "not tested",
+          "detail": "Conformance ran but can't reach it: under the debug socket Yap's world is silent (no key, microphone or reply reaches it), so every walk stays in the menu and no state reached exercises a dictation invariant; the invariants are checked by the proofs, `make fuzz-yap` and `CairnYap --selftest`."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "init",
+          "theorem": "Examples.Yap.retentionKeepsToday.init",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "step",
+          "theorem": "Examples.Yap.retentionKeepsToday.step",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "receive",
+          "theorem": "Examples.Yap.retentionKeepsToday.receive",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachable",
+          "theorem": "Examples.Yap.retentionKeepsToday.reachable",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachableAll",
+          "theorem": "Examples.Yap.retentionKeepsToday.reachableAll",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": []
+      }
+    },
+    {
+      "id": 321,
+      "ref": "^321",
+      "kind": "invariant",
+      "title": "Only the first 25 terms are sent",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "5 theorems (init, step, receive, reachable, reachableAll), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 5k",
+          "detail": "Held at every step of 5,000 random sequences against a random host (`make fuzz-yap`: the model's `step`, then the app's `receive` and menu), 12,739 steps exercising it (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "gap",
+          "label": "not tested",
+          "detail": "Conformance ran but can't reach it: under the debug socket Yap's world is silent (no key, microphone or reply reaches it), so every walk stays in the menu and no state reached exercises a dictation invariant; the invariants are checked by the proofs, `make fuzz-yap` and `CairnYap --selftest`."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "init",
+          "theorem": "Examples.Yap.first25Terms.init",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "step",
+          "theorem": "Examples.Yap.first25Terms.step",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "receive",
+          "theorem": "Examples.Yap.first25Terms.receive",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachable",
+          "theorem": "Examples.Yap.first25Terms.reachable",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachableAll",
+          "theorem": "Examples.Yap.first25Terms.reachableAll",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": []
+      }
+    },
+    {
+      "id": 322,
+      "ref": "^322",
+      "kind": "invariant",
+      "title": "Recent Transcripts holds five",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "5 theorems (init, step, receive, reachable, reachableAll), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 6k",
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (invariant 51,000) (seed 0). Held at every step of 5,000 random sequences against a random host (`make fuzz-yap`: the model's `step`, then the app's `receive` and menu), 3,017,440 steps exercising it (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "gap",
+          "label": "not tested",
+          "detail": "Conformance ran but can't reach it: under the debug socket Yap's world is silent (no key, microphone or reply reaches it), so every walk stays in the menu and no state reached exercises a dictation invariant; the invariants are checked by the proofs, `make fuzz-yap` and `CairnYap --selftest`."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "init",
+          "theorem": "Examples.Yap.recentFive.init",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "step",
+          "theorem": "Examples.Yap.recentFive.step",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "receive",
+          "theorem": "Examples.Yap.recentFive.receive",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachable",
+          "theorem": "Examples.Yap.recentFive.reachable",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachableAll",
+          "theorem": "Examples.Yap.recentFive.reachableAll",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": []
+      }
+    },
+    {
+      "id": 323,
+      "ref": "^323",
+      "kind": "invariant",
+      "title": "Too short, silent or nowhere to type: never sent",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "5 theorems (init, step, receive, reachable, reachableAll), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 5k",
+          "detail": "Held at every step of 5,000 random sequences against a random host (`make fuzz-yap`: the model's `step`, then the app's `receive` and menu), 12,732 steps exercising it (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "gap",
+          "label": "not tested",
+          "detail": "Conformance ran but can't reach it: under the debug socket Yap's world is silent (no key, microphone or reply reaches it), so every walk stays in the menu and no state reached exercises a dictation invariant; the invariants are checked by the proofs, `make fuzz-yap` and `CairnYap --selftest`."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "init",
+          "theorem": "Examples.Yap.onlySendable.init",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "step",
+          "theorem": "Examples.Yap.onlySendable.step",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "receive",
+          "theorem": "Examples.Yap.onlySendable.receive",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachable",
+          "theorem": "Examples.Yap.onlySendable.reachable",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachableAll",
+          "theorem": "Examples.Yap.onlySendable.reachableAll",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": []
+      }
+    },
+    {
+      "id": 330,
+      "ref": "^330",
+      "kind": "assume",
+      "title": "The host reports the dictation key and every other key",
+      "headline": "assumed",
+      "evidence": [
+        {
+          "kind": "assumed",
+          "state": "pass",
+          "label": "assumed",
+          "detail": "Recorded, never proved. Theorems that rely on it take it as a hypothesis."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "No check of the trusted-base fuzzer names it."
+        }
+      ],
+      "theorems": [],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": []
+      }
+    },
+    {
+      "id": 331,
+      "ref": "^331",
+      "kind": "assume",
+      "title": "The host delivers the ticks it is asked for",
+      "headline": "assumed",
+      "evidence": [
+        {
+          "kind": "assumed",
+          "state": "pass",
+          "label": "assumed",
+          "detail": "Recorded, never proved. Theorems that rely on it take it as a hypothesis."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "No check of the trusted-base fuzzer names it."
+        }
+      ],
+      "theorems": [],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": []
+      }
+    },
+    {
+      "id": 332,
+      "ref": "^332",
+      "kind": "assume",
+      "title": "The host answers requests by id, in order of commands",
+      "headline": "assumed",
+      "evidence": [
+        {
+          "kind": "assumed",
+          "state": "pass",
+          "label": "assumed",
+          "detail": "Recorded, never proved. Theorems that rely on it take it as a hypothesis."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "No check of the trusted-base fuzzer names it."
+        }
+      ],
+      "theorems": [],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": []
+      }
+    },
+    {
+      "id": 333,
+      "ref": "^333",
+      "kind": "assume",
+      "title": "The host reports the microphone faithfully",
+      "headline": "assumed",
+      "evidence": [
+        {
+          "kind": "assumed",
+          "state": "pass",
+          "label": "assumed",
+          "detail": "Recorded, never proved. Theorems that rely on it take it as a hypothesis."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "No check of the trusted-base fuzzer names it."
+        }
+      ],
+      "theorems": [],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": []
+      }
+    },
+    {
+      "id": 334,
+      "ref": "^334",
+      "kind": "assume",
+      "title": "The host transcribes the samples it was asked for",
+      "headline": "assumed",
+      "evidence": [
+        {
+          "kind": "assumed",
+          "state": "pass",
+          "label": "assumed",
+          "detail": "Recorded, never proved. Theorems that rely on it take it as a hypothesis."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "No check of the trusted-base fuzzer names it."
+        }
+      ],
+      "theorems": [],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": []
+      }
+    },
+    {
+      "id": 335,
+      "ref": "^335",
+      "kind": "assume",
+      "title": "The host types into the app it was given",
+      "headline": "assumed",
+      "evidence": [
+        {
+          "kind": "assumed",
+          "state": "pass",
+          "label": "assumed",
+          "detail": "Recorded, never proved. Theorems that rely on it take it as a hypothesis."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "No check of the trusted-base fuzzer names it."
+        }
+      ],
+      "theorems": [],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": []
+      }
+    },
+    {
+      "id": 336,
+      "ref": "^336",
+      "kind": "assume",
+      "title": "The host reports config.json and dictionary.txt when they change",
+      "headline": "assumed",
+      "evidence": [
+        {
+          "kind": "assumed",
+          "state": "pass",
+          "label": "assumed",
+          "detail": "Recorded, never proved. Theorems that rely on it take it as a hypothesis."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "No check of the trusted-base fuzzer names it."
+        }
+      ],
+      "theorems": [],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": []
+      }
+    },
+    {
+      "id": 337,
+      "ref": "^337",
+      "kind": "assume",
+      "title": "The host lists day files and today by the local calendar",
+      "headline": "assumed",
+      "evidence": [
+        {
+          "kind": "assumed",
+          "state": "pass",
+          "label": "assumed",
+          "detail": "Recorded, never proved. Theorems that rely on it take it as a hypothesis."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "No check of the trusted-base fuzzer names it."
+        }
+      ],
+      "theorems": [],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": []
+      }
+    },
+    {
+      "id": 340,
+      "ref": "^340",
+      "kind": "flow",
+      "title": "Turn Dictate with Key off",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "2 theorems (live, reaches), standard axioms only."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested",
+          "detail": "Its witness replayed on the running app, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Its 1 step replayed in the capture, each on the control it names."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "live",
+          "theorem": "Examples.Yap.turnOff.live",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reaches",
+          "theorem": "Examples.Yap.turnOff.reaches",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": [
+          "img/flow-340-0.pinned.webp",
+          "img/flow-340-1.pinned.webp"
+        ],
+        "strip": "flow-340.strip.webp",
+        "complete": true
+      }
+    },
+    {
+      "id": 341,
+      "ref": "^341",
+      "kind": "flow",
+      "title": "Keep Transcripts off and on again",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "2 theorems (live, reaches), standard axioms only."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested",
+          "detail": "Its witness replayed on the running app, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Its 2 steps replayed in the capture, each on the control it names."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "live",
+          "theorem": "Examples.Yap.keepTwice.live",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reaches",
+          "theorem": "Examples.Yap.keepTwice.reaches",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": [
+          "img/flow-341-0.pinned.webp",
+          "img/flow-341-1.pinned.webp",
+          "img/flow-341-2.pinned.webp"
+        ],
+        "strip": "flow-341.strip.webp",
+        "complete": true
+      }
+    },
+    {
+      "id": 342,
+      "ref": "^342",
+      "kind": "move",
+      "title": "Quit Yap (Cairn)",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "1 theorem (sound press), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 1k",
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (presence 51,000, performed 4,145) (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested 1.3k",
+          "detail": "1,264 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Pressed in the capture: before and after."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "sound press",
+          "theorem": "Examples.Yap.quit.press.sound",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "before": "move-342-0.pinned.webp",
+        "after": "move-342-1.pinned.webp",
+        "frames": [
+          "img/move-342-0.pinned.webp",
+          "img/move-342-1.pinned.webp"
+        ]
+      }
+    },
+    {
+      "id": 343,
+      "ref": "^343",
+      "kind": "move",
+      "title": "Grant Microphone Access",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "1 theorem (sound press), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 1k",
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (presence 51,000) (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "gap",
+          "label": "not tested",
+          "detail": "No conformance step exercised it."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Pressed in the capture: before and after."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "sound press",
+          "theorem": "Examples.Yap.grantMic.press.sound",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "before": "move-343-0.pinned.webp",
+        "after": "move-343-1.pinned.webp",
+        "frames": [
+          "img/move-343-0.pinned.webp",
+          "img/move-343-1.pinned.webp"
+        ]
+      }
+    },
+    {
+      "id": 344,
+      "ref": "^344",
+      "kind": "move",
+      "title": "Open the menu",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "1 theorem (sound press), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 1k",
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (presence 51,000, performed 3,973) (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested 1.2k",
+          "detail": "1,183 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Performed in the capture; the frame didn't change."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "sound press",
+          "theorem": "Examples.Yap.openMenu.press.sound",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "before": "move-344-0.pinned.webp",
+        "after": "move-344-1.pinned.webp",
+        "frames": [
+          "img/move-344-0.pinned.webp",
+          "img/move-344-1.pinned.webp"
+        ]
+      }
+    },
+    {
+      "id": 345,
+      "ref": "^345",
+      "kind": "place",
+      "title": "Overlay panel",
+      "headline": "retired",
+      "evidence": [],
+      "theorems": [],
+      "ledger": "retired",
+      "findings": [],
+      "shots": {
+        "frames": []
+      }
+    },
+    {
+      "id": 346,
+      "ref": "^346",
+      "kind": "invariant",
+      "title": "The original Yap keeps its key",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "5 theorems (init, step, receive, reachable, reachableAll), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 5k",
+          "detail": "Held at every step of 5,000 random sequences against a random host (`make fuzz-yap`: the model's `step`, then the app's `receive` and menu), 957,809 steps exercising it (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "gap",
+          "label": "not tested",
+          "detail": "Conformance ran but can't reach it: under the debug socket Yap's world is silent (no key, microphone or reply reaches it), so every walk stays in the menu and no state reached exercises a dictation invariant; the invariants are checked by the proofs, `make fuzz-yap` and `CairnYap --selftest`."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "init",
+          "theorem": "Examples.Yap.leaveOriginal.init",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "step",
+          "theorem": "Examples.Yap.leaveOriginal.step",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "receive",
+          "theorem": "Examples.Yap.leaveOriginal.receive",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachable",
+          "theorem": "Examples.Yap.leaveOriginal.reachable",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachableAll",
+          "theorem": "Examples.Yap.leaveOriginal.reachableAll",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": []
+      }
+    },
+    {
+      "id": 347,
+      "ref": "^347",
+      "kind": "invariant",
+      "title": "A mark waits for the appends",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "5 theorems (init, step, receive, reachable, reachableAll), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 5k",
+          "detail": "Held at every step of 5,000 random sequences against a random host (`make fuzz-yap`: the model's `step`, then the app's `receive` and menu), 24,194 steps exercising it (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "gap",
+          "label": "not tested",
+          "detail": "Conformance ran but can't reach it: under the debug socket Yap's world is silent (no key, microphone or reply reaches it), so every walk stays in the menu and no state reached exercises a dictation invariant; the invariants are checked by the proofs, `make fuzz-yap` and `CairnYap --selftest`."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "init",
+          "theorem": "Examples.Yap.markAfterAppend.init",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "step",
+          "theorem": "Examples.Yap.markAfterAppend.step",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "receive",
+          "theorem": "Examples.Yap.markAfterAppend.receive",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachable",
+          "theorem": "Examples.Yap.markAfterAppend.reachable",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachableAll",
+          "theorem": "Examples.Yap.markAfterAppend.reachableAll",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": []
+      }
+    },
+    {
+      "id": 399,
+      "ref": "^399",
+      "kind": "place",
+      "title": "Overlay panel",
+      "headline": "seen",
+      "evidence": [
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "The panel rendered offscreen by the app's renderer from its frame, while a fake key and microphone hold a dictation (no real key, audio or typing)."
+        }
+      ],
+      "theorems": [],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": [
+          "img/overlay-1.pinned.webp"
+        ],
+        "caption": "The panel rendered offscreen by the app's renderer from its frame, while a fake key and microphone hold a dictation (no real key, audio or typing)."
+      }
+    }
+  ],
+  "gaps": [
+    {
+      "ref": "^302",
+      "what": "not tested",
+      "detail": "No conformance step exercised it.",
+      "broken": false
+    },
+    {
+      "ref": "^303",
+      "what": "not tested",
+      "detail": "No conformance step exercised it.",
+      "broken": false
+    },
+    {
+      "ref": "^311",
+      "what": "not tested",
+      "detail": "Conformance ran but can't reach it: under the debug socket Yap's world is silent (no key, microphone or reply reaches it), so every walk stays in the menu and no state reached exercises a dictation invariant; the invariants are checked by the proofs, `make fuzz-yap` and `CairnYap --selftest`.",
+      "broken": false
+    },
+    {
+      "ref": "^312",
+      "what": "not tested",
+      "detail": "Conformance ran but can't reach it: under the debug socket Yap's world is silent (no key, microphone or reply reaches it), so every walk stays in the menu and no state reached exercises a dictation invariant; the invariants are checked by the proofs, `make fuzz-yap` and `CairnYap --selftest`.",
+      "broken": false
+    },
+    {
+      "ref": "^313",
+      "what": "not tested",
+      "detail": "Conformance ran but can't reach it: under the debug socket Yap's world is silent (no key, microphone or reply reaches it), so every walk stays in the menu and no state reached exercises a dictation invariant; the invariants are checked by the proofs, `make fuzz-yap` and `CairnYap --selftest`.",
+      "broken": false
+    },
+    {
+      "ref": "^314",
+      "what": "not tested",
+      "detail": "Conformance ran but can't reach it: under the debug socket Yap's world is silent (no key, microphone or reply reaches it), so every walk stays in the menu and no state reached exercises a dictation invariant; the invariants are checked by the proofs, `make fuzz-yap` and `CairnYap --selftest`.",
+      "broken": false
+    },
+    {
+      "ref": "^315",
+      "what": "not tested",
+      "detail": "Conformance ran but can't reach it: under the debug socket Yap's world is silent (no key, microphone or reply reaches it), so every walk stays in the menu and no state reached exercises a dictation invariant; the invariants are checked by the proofs, `make fuzz-yap` and `CairnYap --selftest`.",
+      "broken": false
+    },
+    {
+      "ref": "^316",
+      "what": "not tested",
+      "detail": "Conformance ran but can't reach it: under the debug socket Yap's world is silent (no key, microphone or reply reaches it), so every walk stays in the menu and no state reached exercises a dictation invariant; the invariants are checked by the proofs, `make fuzz-yap` and `CairnYap --selftest`.",
+      "broken": false
+    },
+    {
+      "ref": "^317",
+      "what": "not tested",
+      "detail": "Conformance ran but can't reach it: under the debug socket Yap's world is silent (no key, microphone or reply reaches it), so every walk stays in the menu and no state reached exercises a dictation invariant; the invariants are checked by the proofs, `make fuzz-yap` and `CairnYap --selftest`.",
+      "broken": false
+    },
+    {
+      "ref": "^318",
+      "what": "not tested",
+      "detail": "Conformance ran but can't reach it: under the debug socket Yap's world is silent (no key, microphone or reply reaches it), so every walk stays in the menu and no state reached exercises a dictation invariant; the invariants are checked by the proofs, `make fuzz-yap` and `CairnYap --selftest`.",
+      "broken": false
+    },
+    {
+      "ref": "^319",
+      "what": "not tested",
+      "detail": "Conformance ran but can't reach it: under the debug socket Yap's world is silent (no key, microphone or reply reaches it), so every walk stays in the menu and no state reached exercises a dictation invariant; the invariants are checked by the proofs, `make fuzz-yap` and `CairnYap --selftest`.",
+      "broken": false
+    },
+    {
+      "ref": "^320",
+      "what": "not tested",
+      "detail": "Conformance ran but can't reach it: under the debug socket Yap's world is silent (no key, microphone or reply reaches it), so every walk stays in the menu and no state reached exercises a dictation invariant; the invariants are checked by the proofs, `make fuzz-yap` and `CairnYap --selftest`.",
+      "broken": false
+    },
+    {
+      "ref": "^321",
+      "what": "not tested",
+      "detail": "Conformance ran but can't reach it: under the debug socket Yap's world is silent (no key, microphone or reply reaches it), so every walk stays in the menu and no state reached exercises a dictation invariant; the invariants are checked by the proofs, `make fuzz-yap` and `CairnYap --selftest`.",
+      "broken": false
+    },
+    {
+      "ref": "^322",
+      "what": "not tested",
+      "detail": "Conformance ran but can't reach it: under the debug socket Yap's world is silent (no key, microphone or reply reaches it), so every walk stays in the menu and no state reached exercises a dictation invariant; the invariants are checked by the proofs, `make fuzz-yap` and `CairnYap --selftest`.",
+      "broken": false
+    },
+    {
+      "ref": "^323",
+      "what": "not tested",
+      "detail": "Conformance ran but can't reach it: under the debug socket Yap's world is silent (no key, microphone or reply reaches it), so every walk stays in the menu and no state reached exercises a dictation invariant; the invariants are checked by the proofs, `make fuzz-yap` and `CairnYap --selftest`.",
+      "broken": false
+    },
+    {
+      "ref": "^330",
+      "what": "unchecked",
+      "detail": "No check of the trusted-base fuzzer names it.",
+      "broken": false
+    },
+    {
+      "ref": "^331",
+      "what": "unchecked",
+      "detail": "No check of the trusted-base fuzzer names it.",
+      "broken": false
+    },
+    {
+      "ref": "^332",
+      "what": "unchecked",
+      "detail": "No check of the trusted-base fuzzer names it.",
+      "broken": false
+    },
+    {
+      "ref": "^333",
+      "what": "unchecked",
+      "detail": "No check of the trusted-base fuzzer names it.",
+      "broken": false
+    },
+    {
+      "ref": "^334",
+      "what": "unchecked",
+      "detail": "No check of the trusted-base fuzzer names it.",
+      "broken": false
+    },
+    {
+      "ref": "^335",
+      "what": "unchecked",
+      "detail": "No check of the trusted-base fuzzer names it.",
+      "broken": false
+    },
+    {
+      "ref": "^336",
+      "what": "unchecked",
+      "detail": "No check of the trusted-base fuzzer names it.",
+      "broken": false
+    },
+    {
+      "ref": "^337",
+      "what": "unchecked",
+      "detail": "No check of the trusted-base fuzzer names it.",
+      "broken": false
+    },
+    {
+      "ref": "^343",
+      "what": "not tested",
+      "detail": "No conformance step exercised it.",
+      "broken": false
+    },
+    {
+      "ref": "^346",
+      "what": "not tested",
+      "detail": "Conformance ran but can't reach it: under the debug socket Yap's world is silent (no key, microphone or reply reaches it), so every walk stays in the menu and no state reached exercises a dictation invariant; the invariants are checked by the proofs, `make fuzz-yap` and `CairnYap --selftest`.",
+      "broken": false
+    },
+    {
+      "ref": "^347",
+      "what": "not tested",
+      "detail": "Conformance ran but can't reach it: under the debug socket Yap's world is silent (no key, microphone or reply reaches it), so every walk stays in the menu and no state reached exercises a dictation invariant; the invariants are checked by the proofs, `make fuzz-yap` and `CairnYap --selftest`.",
+      "broken": false
+    }
+  ]
+}
