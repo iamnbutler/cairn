@@ -87,6 +87,9 @@ public final class TextSystem: @unchecked Sendable {
         var runs: [GlyphRun] = []
         // Where each glyph starts, by the UTF-16 index of the text it draws (for `caret` below).
         var glyphStarts: [(index: Int, x: CGFloat)] = []
+        // Where the pen is after each glyph (its position plus its advance, tracking included),
+        // by the same index: the carets of a tracked line (below).
+        var penEnds: [(index: Int, x: CGFloat)] = []
         for r in ctRuns {
             let n = CTRunGetGlyphCount(r)
             guard n > 0 else { continue }
@@ -101,7 +104,10 @@ public final class TextSystem: @unchecked Sendable {
             CTRunGetAdvances(r, all, &adv)
             var indices = [CFIndex](repeating: 0, count: n)
             CTRunGetStringIndices(r, all, &indices)
-            for k in 0..<n { glyphStarts.append((indices[k], pos[k].x)) }
+            for k in 0..<n {
+                glyphStarts.append((indices[k], pos[k].x))
+                penEnds.append((indices[k], pos[k].x + adv[k].width))
+            }
             let color = CTFontGetSymbolicTraits(runFont).contains(.traitColorGlyphs)
             runs.append(GlyphRun(font: FontKey(font: runFont), isColor: color,
                                  glyphs: glyphs, positions: pos, advances: adv))
@@ -129,12 +135,33 @@ public final class TextSystem: @unchecked Sendable {
         // a line with a right-to-left run still ask CTLineGetOffsetForStringIndex.
         let utf16Count = string.utf16.count
         var leading = [CGFloat?](repeating: nil, count: utf16Count + 1)
-        if !ctRuns.contains(where: { CTRunGetStatus($0).contains(.rightToLeft) }) {
+        if tracking == 0, !ctRuns.contains(where: { CTRunGetStatus($0).contains(.rightToLeft) }) {
             CTLineEnumerateCaretOffsets(line) { off, idx, isLeading, _ in
                 if isLeading, idx >= 0, idx <= utf16Count, leading[idx] == nil { leading[idx] = off }
             }
         }
+        // A tracked line's carets don't come from Core Text. It puts each caret half the tracking
+        // short of the next glyph (the middle of the gap tracking adds: "abc" at 20 pt with
+        // tracking 5 has glyphs at 0, 17.4 and 34.7 and carets 14.9, 32.2 and 47.1), and next to a
+        // control character it is simply wrong: after a tab or newline whose glyph advance is the
+        // (negative) tracking, the caret after the next letter lands in that letter's middle, and
+        // the one before the control after it ("ab\there", 312 pt, tracking -1.56: after the h
+        // 1226, the h painted to 1322). Found by text.metrics.carets (^907). There the caret is
+        // where the pen is after every glyph drawn for the text before it: the furthest
+        // position + advance among glyphs whose index is below u, so the caret is right of
+        // everything painted before it even when large negative tracking runs glyphs backwards.
+        // Untracked lines keep Core Text's carets.
+        penEnds.sort { $0.index < $1.index }
+        var penMax: [CGFloat] = []  // penMax[i]: the furthest pen end among penEnds[0...i]
+        penMax.reserveCapacity(penEnds.count)
+        for e in penEnds { penMax.append(max(penMax.last ?? 0, e.x)) }
+        func pen(_ u: Int) -> CGFloat {
+            var lo = 0, hi = penEnds.count  // the first glyph whose index is ≥ u
+            while lo < hi { let m = (lo + hi) / 2; if penEnds[m].index < u { lo = m + 1 } else { hi = m } }
+            return lo > 0 ? penMax[lo - 1] : 0
+        }
         func caret(_ u: Int) -> CGFloat {
+            if tracking != 0 { return pen(u) }
             let x = leading[u] ?? CTLineGetOffsetForStringIndex(line, u, nil)
             guard x == 0, u > 0 else { return x }
             var lo = 0, hi = glyphStarts.count  // the first glyph whose index is ≥ u

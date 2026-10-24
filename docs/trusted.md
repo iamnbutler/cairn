@@ -21,7 +21,9 @@ See docs/render.md for the design.
 `Draw.text`: the glyphs of a text draw at baseline origin `o` lie within
 `[o.x, o.x + width] × [o.y − ascent, o.y + descent]`, where `width` is the last offset, and the
 caret offset at scalar boundary `i` is Core Text's primary caret offset there, rounded up to a
-whole point.
+whole point. On a tracked line it is instead the furthest pen position (glyph position plus
+advance, tracking included) among the glyphs drawn for the text before `i`, because Core Text's
+tracked carets sit inside glyphs (fuzz.md, finding 11).
 
 **Scope.** Text is left-to-right in M1; a text draw is one line (wrapped text is several draws, below). Right-to-left and bidirectional text are
 out of scope: their offsets are made nondecreasing by a running max and are not meaningful
@@ -55,7 +57,8 @@ rounding), `Fonts.swift` (Font → CTFont), `Metrics.swift` (the C export),
 - **Fuzzed** (^907 `text.metrics.carets`): on left-to-right text, the caret after each grapheme
   is at or right of the glyphs painted before it. This found Core Text answering 0 for real
   caret positions (before a trailing control, and after some fallback runs); `TextSystem` now
-  takes those from the glyph runs. Core Text's own caret can still sit inside a LastResort or
+  takes those from the glyph runs; and wrong carets on every tracked line, which now come from
+  the pen positions (finding 11). Core Text's own caret can still sit inside a LastResort or
   contextually spaced CJK glyph (fuzz.md, finding 5): that part of the statement holds only up
   to such glyphs.
 - To do (workstream G/J): log every measurement in the running app and replay the log against a
