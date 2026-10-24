@@ -8,7 +8,7 @@ public import Cairn.Frame.Menu
 three exported functions; each app file defines them by applying these generic functions to
 its `App`, a `Config` and a `Boundary`:
 
-```lean
+```lean ignore
 @[export cairn_app_init]
 def appInit (w h scalePercent : UInt32) : Runtime.State MyApp.State :=
   Runtime.initState MyApp.app cfg w h scalePercent
