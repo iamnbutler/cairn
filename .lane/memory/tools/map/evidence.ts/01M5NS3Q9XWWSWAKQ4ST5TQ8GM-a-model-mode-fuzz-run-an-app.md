@@ -4,8 +4,9 @@ anchor: function evaluate
 created: 2026-10-24T01:41:23Z
 norm: '1'
 sig: 8c45d9a82d1603d7
-body_hash: e3a01e5ecdb0ea55
-raw_hash: 91f50d5bbea5201c
+body_hash: f7ba59184dd7d209
+raw_hash: 1c7d855ee137cb22
+vouched: 2026-10-24T07:22:00Z
 lines: 124-268
 supersedes: 01M5MW48P751BSHQFC7W98X654
 ---
