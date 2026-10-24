@@ -13,6 +13,10 @@ public enum Publish {
         public var description: String?
         public var license: String?
         public var lean: String
+        /// Whether the tagged commit has the package's Package.swift (cairn.toml's `swift`
+        /// directory), so the registry and the site know it has a Swift side. A pure-Lean
+        /// package has none.
+        public var swift = false
         public var libs: [String]
         public var dependencies: [String: String]
         public var readme: String?
@@ -44,6 +48,12 @@ public enum Publish {
     /// only these, not the whole cache, which holds every package's artifacts.
     public static func artifacts(_ outputs: String) -> Set<String> {
         Set(outputs.matches(of: /"([0-9a-f]{16})(?:\.[a-z0-9.]+)?"/).map { String($0.1) })
+    }
+
+    /// The path of Package.swift in the repository, for cairn.toml's `swift` directory.
+    public static func swiftManifest(_ swift: String) -> String {
+        let dir = swift.trimmingPrefix("./").trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        return dir.isEmpty || dir == "." ? "Package.swift" : "\(dir)/Package.swift"
     }
 
     /// Lake's platform, the second field of `lean --version`:

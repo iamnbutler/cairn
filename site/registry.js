@@ -42,14 +42,12 @@ function remote(base) {
 		return res;
 	};
 	const data = async (path) => (await (await get(path))?.json())?.data;
-	// The API reads a package only as <owner>/<name>, and a name has one owner, so find it by
-	// searching for the name. A source lives for one request, so this caches no longer.
+	// The API reads a package only as <owner>/<name>, and a name has one owner, which
+	// /api/v1/names/<name> answers (404 for a name the registry doesn't hold). A source lives for
+	// one request, so this caches no longer.
 	const owners = new Map();
 	const ownerOf = async (name) => {
-		if (!owners.has(name)) {
-			const found = await data(`/api/v1/packages?q=${encodeURIComponent(name)}&per_page=100`);
-			owners.set(name, ownerIn(found?.items?.find((one) => one.name === name)?.fullName));
-		}
+		if (!owners.has(name)) owners.set(name, (await data(`/api/v1/names/${encodeURIComponent(name)}`))?.owner ?? "");
 		return owners.get(name);
 	};
 	const at = (who, name) => `/api/v1/packages/${encodeURIComponent(who)}/${name}`;
@@ -256,14 +254,20 @@ cd ${esc(name)} &amp;&amp; git checkout ${esc(shown.tag ?? `v${shown.version}`)}
 		: `<h2 id="use">Use it</h2>
 <p>With the <code>cairn</code> tool:</p>
 <figure class="code"><pre><code>cairn add ${esc(name)}@${esc(range)}</code></pre></figure>
-<p>Which writes <code>cairn.toml</code>, and the lakefile and SwiftPM lines that it keeps in step:</p>
+<p>Which writes <code>cairn.toml</code>, and the lakefile ${shown.swift === true ? "and SwiftPM lines" : "line"} that it keeps in step:</p>
 <figure class="code"><pre><code>[dependencies]
 ${esc(name)} = "${esc(range)}"</code></pre><figcaption><code>cairn.toml</code></figcaption></figure>
 <figure class="code"><pre><code>[[require]]
 name = "${esc(name)}"
 scope = "${esc(pkg.owner)}"
-version = "${esc(range)}"</code></pre><figcaption><code>lean/lakefile.toml</code></figcaption></figure>
+version = "${esc(range)}"</code></pre><figcaption><code>lean/lakefile.toml</code></figcaption></figure>${
+	// Only a version with a SwiftPM package (`swift: true`) has a Package.swift line: a pure-Lean
+	// package has no Swift side, and a registry from before the field says none.
+	shown.swift === true
+		? `
 <figure class="code"><pre><code>.package(url: "${esc(src.git(pkg.owner, name))}", from: "${esc(shown.version.replace(/-.*$/, ""))}")</code></pre><figcaption><code>Package.swift</code></figcaption></figure>`
+		: ""
+}`
 }
 ${deps.length ? `<h2 id="deps">Depends on</h2><ul>${deps.map(([dep, r]) => `<li><a href="/packages/${esc(dep)}/"><code>${esc(dep)}</code></a> <code>${esc(r)}</code></li>`).join("")}</ul>` : ""}
 <h2 id="versions">Versions</h2>

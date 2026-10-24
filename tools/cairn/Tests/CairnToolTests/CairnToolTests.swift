@@ -154,6 +154,23 @@ import Testing
         let size = Int(body[0]) | Int(body[1]) << 8 | Int(body[2]) << 16 | Int(body[3]) << 24
         let json = String(decoding: body[4..<4 + size], as: UTF8.self)
         #expect(json.contains("\"kind\":\"bin\""))
+        #expect(json.contains("\"swift\":false"))
+    }
+
+    /// The metadata says whether the version has a Swift package, so the site prints a
+    /// Package.swift line only for one that does.
+    @Test func metadataSendsSwift() throws {
+        var metadata = Publish.Metadata(
+            name: "cairn", version: "0.2.0", kind: "lib", revision: String(repeating: "a", count: 40), toolchain: "t",
+            description: nil, license: nil, lean: "lean", libs: ["Cairn"], dependencies: [:], readme: nil)
+        metadata.swift = true
+        let body = try Publish.body(metadata: metadata, pack: Data(), index: Data(), claims: Data())
+        let size = Int(body[0]) | Int(body[1]) << 8 | Int(body[2]) << 16 | Int(body[3]) << 24
+        #expect(String(decoding: body[4..<4 + size], as: UTF8.self).contains("\"swift\":true"))
+        #expect(Publish.swiftManifest(".") == "Package.swift")
+        #expect(Publish.swiftManifest("./") == "Package.swift")
+        #expect(Publish.swiftManifest("app") == "app/Package.swift")
+        #expect(Publish.swiftManifest("./app/") == "app/Package.swift")
     }
 
     @Test func artifactsFromOutputs() {
@@ -306,13 +323,18 @@ final class FakeRegistry: @unchecked Sendable {
         #expect(versions.map(\.version) == ["0.0.0"] && versions.allSatisfy { !$0.yanked })
     }
 
-    @Test func ownerOfANameIsItsExactSearchMatch() async throws {
+    /// A name has one owner, which `GET /api/v1/names/<name>` answers; a 404 is no owner.
+    @Test func ownerOfANameFromTheNamesRoute() async throws {
         let fake = FakeRegistry([
-            "GET /api/v1/packages?q=hello&per_page=100": (200, #"{"data":{"items":[{"name":"hello_world","fullName":"zed/hello_world"},{"name":"hello","fullName":"carl/hello"}],"total":2}}"#),
-            "GET /api/v1/packages?q=nope&per_page=100": (200, #"{"data":{"items":[],"total":0}}"#),
+            "GET /api/v1/names/hello": (200, #"{"data":{"owner":"carl","name":"hello"}}"#),
         ])
         #expect(try await fake.registry().owner(of: "hello") == "carl")
         #expect(try await fake.registry().owner(of: "nope") == nil)
+        #expect(try await fake.registry().owner(of: "Bad/name") == nil)
+        #expect(fake.requests.map(\.path) == ["/api/v1/names/hello", "/api/v1/names/nope"])
+        #expect(fake.requests.allSatisfy { $0.authorization == nil })
+        let broken = FakeRegistry(["GET /api/v1/names/hello": (500, #"{"error":{"status":500,"message":"down"}}"#)])
+        await #expect(throws: CairnError.self) { try await broken.registry().owner(of: "hello") }
     }
 
     /// `cairn add` and `cairn publish` against the stand-in, in a package `cairn new` made.
@@ -330,10 +352,9 @@ final class FakeRegistry: @unchecked Sendable {
         let (dir, base) = try package()
         defer { try? FileManager.default.removeItem(at: dir) }
         let fake = FakeRegistry([
-            "GET /api/v1/packages?q=hello&per_page=100": (200, #"{"data":{"items":[{"name":"hello","fullName":"carl/hello"}],"total":1}}"#),
+            "GET /api/v1/names/hello": (200, #"{"data":{"owner":"carl","name":"hello"}}"#),
             "GET /api/v1/packages/carl/hello/versions?yanked=true": (200, #"{"data":[{"version":"1.3.0-rc.1","revision":"b","yanked":false},{"version":"1.2.0","revision":"a","yanked":false}]}"#),
             "GET /api/v1/packages/acme/wave/versions?yanked=true": (200, #"{"data":[{"version":"0.3.0","revision":"c","yanked":false}]}"#),
-            "GET /api/v1/packages?q=nope&per_page=100": (200, #"{"data":{"items":[],"total":0}}"#),
         ])
         var commands = base
         commands.registry = { fake.registry() }
@@ -343,7 +364,8 @@ final class FakeRegistry: @unchecked Sendable {
         #expect(lakefile.contains("require \"carl\" / \"hello\" @ \"^1.2.0\""))
         #expect(lakefile.contains("require \"acme\" / \"wave\" @ \"^0.3.0\""))
         #expect(fake.requests.allSatisfy { $0.authorization == nil })
-        #expect(!fake.requests.contains { $0.path.hasPrefix("/api/v1/packages?q=wave") })
+        #expect(!fake.requests.contains { $0.path.hasPrefix("/api/v1/names/wave") })
+        #expect(!fake.requests.contains { $0.path.contains("?q=") })
         await #expect {
             try await commands.add(["nope"])
         } throws: { error in

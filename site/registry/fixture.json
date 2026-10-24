@@ -10,6 +10,7 @@
 				{
 					"version": "0.1.2",
 					"kind": "lib",
+					"swift": true,
 					"revision": "597dea82d51f588209a73183535818e0c276c690",
 					"tag": "v0.1.2",
 					"date": "2026-10-24T21:11:09.000Z",
@@ -29,6 +30,7 @@
 				{
 					"version": "0.1.1",
 					"kind": "lib",
+					"swift": true,
 					"revision": "ea72e75d65f0ffaa1b643fbe1aff2858cca13a60",
 					"tag": "v0.1.1",
 					"date": "2026-10-24T19:35:06.000Z",
@@ -48,6 +50,7 @@
 				{
 					"version": "0.1.0",
 					"kind": "lib",
+					"swift": true,
 					"revision": "13ddd6cee7e5cf0b8577762dfb99f667265fb1b9",
 					"tag": "v0.1.0",
 					"date": "2026-10-24T19:15:58.000Z",
@@ -3147,6 +3150,7 @@
 				{
 					"version": "0.1.0",
 					"kind": "bin",
+					"swift": true,
 					"revision": "97ac1a07937344a39d0c60d1b5853f7351e0dc3f",
 					"tag": "v0.1.0",
 					"date": "2026-10-24T20:44:00.000Z",
