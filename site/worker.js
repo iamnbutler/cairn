@@ -1,10 +1,22 @@
-// Serves the static site, and /m/<key> from the cairn-media R2 bucket.
+// Serves the static site, the package pages (registry.js), and /m/<key> from the cairn-media
+// R2 bucket. A static file always wins: the Worker runs only for paths that no asset matched.
 // Media keys are content-hashed, so they cache forever. Range and conditional
 // requests pass through to R2: video seeking needs them, and Safari won't play
 // video without range support.
+import { route } from "./registry.js";
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname === "/packages" || url.pathname.startsWith("/packages/") || url.pathname.startsWith("/docs/")) {
+      if (request.method !== "GET" && request.method !== "HEAD") return env.ASSETS.fetch(request);
+      try {
+        return (await route(request, env)) ?? env.ASSETS.fetch(request);
+      } catch (err) {
+        console.error(err);
+        return new Response("The package registry didn't answer. Try again in a minute.", { status: 502 });
+      }
+    }
     if (!url.pathname.startsWith("/m/")) return env.ASSETS.fetch(request);
     if (request.method !== "GET" && request.method !== "HEAD") {
       return new Response("method not allowed", { status: 405 });
