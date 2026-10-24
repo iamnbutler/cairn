@@ -39,8 +39,8 @@ secret never reaches Lean, a frame or a log: <code>header: scheme ++ value</code
 environment variable <code>name</code>, or else <code>name</code>'s line in the <code>KEY=value</code> file <code>file</code>.</p>
 </div><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.Secret.header"><pre class="sig"><b class="nm">header</b> : <span title="String">String</span></pre></div><div class="member" id="Cairn.Secret.scheme"><pre class="sig"><b class="nm">scheme</b> : <span title="String">String</span></pre></div><div class="member" id="Cairn.Secret.file"><pre class="sig"><b class="nm">file</b> : <span title="String">String</span></pre></div><div class="member" id="Cairn.Secret.name"><pre class="sig"><b class="nm">name</b> : <span title="String">String</span></pre></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Effects.html#Cairn.instReprSecret"><code>Repr</code></a> <a href="Cairn.Effects.html#Cairn.instInhabitedSecret"><code>Inhabited</code></a></p></div>
 </section>
-<section class="decl" id="Cairn.Level" data-line="163">
-<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.Level"><span class="ns">Cairn.</span>Level</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:163</span></div>
+<section class="decl" id="Cairn.Level" data-line="169">
+<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.Level"><span class="ns">Cairn.</span>Level</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:169</span></div>
 <pre class="sig"><b class="nm">Level</b> : Type</pre><div class="doc"><p>One 20 ms window of a recording (320 samples at 16 kHz), as integers.</p>
 </div><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.Level.sumSq"><pre class="sig"><b class="nm">sumSq</b> : <span title="Nat">Nat</span></pre><div class="doc"><p>The sum of its samples' squares.</p>
 </div></div><div class="member" id="Cairn.Level.peak"><pre class="sig"><b class="nm">peak</b> : <span title="Nat">Nat</span></pre><div class="doc"><p>Its largest absolute sample (<code>Int16.min</code> counts as <code>Int16.max</code>).</p>
@@ -67,8 +67,8 @@ the recording, with any partial last window, for <code>none</code>), as a WAV fi
 16-bit PCM. Lean never sees the samples.</p>
 </div></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Effects.html#Cairn.instReprPart"><code>Repr</code></a> <a href="Cairn.Effects.html#Cairn.instInhabitedPart"><code>Inhabited</code></a> <a href="Cairn.Effects.html#Cairn.instBEqPart"><code>BEq</code></a></p></div>
 </section>
-<section class="decl" id="Cairn.Request" data-line="57">
-<div class="dhead"><span class="kind pix">inductive</span><h3><a href="#Cairn.Request"><span class="ns">Cairn.</span>Request</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:57</span></div>
+<section class="decl" id="Cairn.Request" data-line="58">
+<div class="dhead"><span class="kind pix">inductive</span><h3><a href="#Cairn.Request"><span class="ns">Cairn.</span>Request</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:58</span></div>
 <pre class="sig"><b class="nm">Request</b> : Type</pre><div class="doc"><p>Something the host does that answers back. Closed: adding a kind is a constructor, its
 encoding, a <a href="Cairn.Effects.html#Cairn.Reply.answers"><code>Reply.answers</code></a> case and one host handler (docs/effects.md).</p>
 </div><div class="members"><b class="pix muted">Constructors</b><div class="member" id="Cairn.Request.readFile"><pre class="sig"><b class="nm">readFile</b> (path : <span title="String">String</span>) : <a href="Cairn.Effects.html#Cairn.Request" title="Cairn.Request">Request</a></pre></div><div class="member" id="Cairn.Request.writeFile"><pre class="sig"><b class="nm">writeFile</b> (path : <span title="String">String</span>) (data : <span title="ByteArray">ByteArray</span>) : <a href="Cairn.Effects.html#Cairn.Request" title="Cairn.Request">Request</a></pre><div class="doc"><p>Replace the file atomically, creating missing parent directories.</p>
@@ -96,14 +96,14 @@ text: a string as it is, a number or a boolean as its text (booleans as <code>1<
 already a directory.</p>
 </div></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Effects.html#Cairn.instBEqRequest"><code>BEq</code></a> <a href="Cairn.Effects.html#Cairn.instInhabitedRequest"><code>Inhabited</code></a> <a href="Cairn.Effects.html#Cairn.instReprRequest"><code>Repr</code></a></p></div>
 </section>
-<section class="decl" id="Cairn.Request.Kind" data-line="101">
-<div class="dhead"><span class="kind pix">inductive</span><h3><a href="#Cairn.Request.Kind"><span class="ns">Cairn.Request.</span>Kind</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:101</span></div>
+<section class="decl" id="Cairn.Request.Kind" data-line="103">
+<div class="dhead"><span class="kind pix">inductive</span><h3><a href="#Cairn.Request.Kind"><span class="ns">Cairn.Request.</span>Kind</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:103</span></div>
 <pre class="sig"><b class="nm">Kind</b> : Type</pre><div class="doc"><p>The kind of a request, without its payload: what the runtime remembers while it is
 pending.</p>
 </div><div class="members"><b class="pix muted">Constructors</b><div class="member" id="Cairn.Request.Kind.readFile"><pre class="sig"><b class="nm">readFile</b> : <a href="Cairn.Effects.html#Cairn.Request.Kind" title="Cairn.Request.Kind">Kind</a></pre></div><div class="member" id="Cairn.Request.Kind.writeFile"><pre class="sig"><b class="nm">writeFile</b> : <a href="Cairn.Effects.html#Cairn.Request.Kind" title="Cairn.Request.Kind">Kind</a></pre></div><div class="member" id="Cairn.Request.Kind.playSound"><pre class="sig"><b class="nm">playSound</b> : <a href="Cairn.Effects.html#Cairn.Request.Kind" title="Cairn.Request.Kind">Kind</a></pre></div><div class="member" id="Cairn.Request.Kind.http"><pre class="sig"><b class="nm">http</b> : <a href="Cairn.Effects.html#Cairn.Request.Kind" title="Cairn.Request.Kind">Kind</a></pre></div><div class="member" id="Cairn.Request.Kind.appendFile"><pre class="sig"><b class="nm">appendFile</b> : <a href="Cairn.Effects.html#Cairn.Request.Kind" title="Cairn.Request.Kind">Kind</a></pre></div><div class="member" id="Cairn.Request.Kind.listDir"><pre class="sig"><b class="nm">listDir</b> : <a href="Cairn.Effects.html#Cairn.Request.Kind" title="Cairn.Request.Kind">Kind</a></pre></div><div class="member" id="Cairn.Request.Kind.deleteFile"><pre class="sig"><b class="nm">deleteFile</b> : <a href="Cairn.Effects.html#Cairn.Request.Kind" title="Cairn.Request.Kind">Kind</a></pre></div><div class="member" id="Cairn.Request.Kind.frontmostApp"><pre class="sig"><b class="nm">frontmostApp</b> : <a href="Cairn.Effects.html#Cairn.Request.Kind" title="Cairn.Request.Kind">Kind</a></pre></div><div class="member" id="Cairn.Request.Kind.permission"><pre class="sig"><b class="nm">permission</b> : <a href="Cairn.Effects.html#Cairn.Request.Kind" title="Cairn.Request.Kind">Kind</a></pre></div><div class="member" id="Cairn.Request.Kind.typeText"><pre class="sig"><b class="nm">typeText</b> : <a href="Cairn.Effects.html#Cairn.Request.Kind" title="Cairn.Request.Kind">Kind</a></pre></div><div class="member" id="Cairn.Request.Kind.upload"><pre class="sig"><b class="nm">upload</b> : <a href="Cairn.Effects.html#Cairn.Request.Kind" title="Cairn.Request.Kind">Kind</a></pre></div><div class="member" id="Cairn.Request.Kind.forgetClip"><pre class="sig"><b class="nm">forgetClip</b> : <a href="Cairn.Effects.html#Cairn.Request.Kind" title="Cairn.Request.Kind">Kind</a></pre></div><div class="member" id="Cairn.Request.Kind.openItem"><pre class="sig"><b class="nm">openItem</b> : <a href="Cairn.Effects.html#Cairn.Request.Kind" title="Cairn.Request.Kind">Kind</a></pre></div><div class="member" id="Cairn.Request.Kind.appRunning"><pre class="sig"><b class="nm">appRunning</b> : <a href="Cairn.Effects.html#Cairn.Request.Kind" title="Cairn.Request.Kind">Kind</a></pre></div><div class="member" id="Cairn.Request.Kind.readDefault"><pre class="sig"><b class="nm">readDefault</b> : <a href="Cairn.Effects.html#Cairn.Request.Kind" title="Cairn.Request.Kind">Kind</a></pre></div><div class="member" id="Cairn.Request.Kind.makeDir"><pre class="sig"><b class="nm">makeDir</b> : <a href="Cairn.Effects.html#Cairn.Request.Kind" title="Cairn.Request.Kind">Kind</a></pre></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Effects.html#Cairn.Request.instInhabitedKind"><code>Inhabited</code></a> <a href="Cairn.Effects.html#Cairn.Request.instReprKind"><code>Repr</code></a></p></div>
 </section>
-<section class="decl" id="Cairn.Reply" data-line="116">
-<div class="dhead"><span class="kind pix">inductive</span><h3><a href="#Cairn.Reply"><span class="ns">Cairn.</span>Reply</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:116</span></div>
+<section class="decl" id="Cairn.Reply" data-line="119">
+<div class="dhead"><span class="kind pix">inductive</span><h3><a href="#Cairn.Reply"><span class="ns">Cairn.</span>Reply</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:119</span></div>
 <pre class="sig"><b class="nm">Reply</b> : Type</pre><div class="members"><b class="pix muted">Constructors</b><div class="member" id="Cairn.Reply.done"><pre class="sig"><b class="nm">done</b> : <a href="Cairn.Effects.html#Cairn.Reply" title="Cairn.Reply">Reply</a></pre><div class="doc"><p><code>writeFile</code>, <code>appendFile</code>, <code>deleteFile</code>, <code>makeDir</code> and <code>playSound</code> succeeded.</p>
 </div></div><div class="member" id="Cairn.Reply.bytes"><pre class="sig"><b class="nm">bytes</b> (data : <span title="ByteArray">ByteArray</span>) : <a href="Cairn.Effects.html#Cairn.Reply" title="Cairn.Reply">Reply</a></pre><div class="doc"><p><code>readFile</code>'s contents, or <code>readDefault</code>'s value.</p>
 </div></div><div class="member" id="Cairn.Reply.http"><pre class="sig"><b class="nm">http</b> (status : <span title="Nat">Nat</span>) (headers : List (<span title="String">String</span> × <span title="String">String</span>)) (body : <span title="ByteArray">ByteArray</span>) :
@@ -114,8 +114,8 @@ pending.</p>
 </div></div><div class="member" id="Cairn.Reply.flag"><pre class="sig"><b class="nm">flag</b> (granted : <span title="Bool">Bool</span>) : <a href="Cairn.Effects.html#Cairn.Reply" title="Cairn.Reply">Reply</a></pre><div class="doc"><p><code>permission</code>'s or <code>appRunning</code>'s answer.</p>
 </div></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Effects.html#Cairn.instReprReply"><code>Repr</code></a> <a href="Cairn.Effects.html#Cairn.instBEqReply"><code>BEq</code></a> <a href="Cairn.Effects.html#Cairn.instInhabitedReply"><code>Inhabited</code></a></p></div>
 </section>
-<section class="decl" id="Cairn.Sub" data-line="147">
-<div class="dhead"><span class="kind pix">inductive</span><h3><a href="#Cairn.Sub"><span class="ns">Cairn.</span>Sub</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:147</span></div>
+<section class="decl" id="Cairn.Sub" data-line="152">
+<div class="dhead"><span class="kind pix">inductive</span><h3><a href="#Cairn.Sub"><span class="ns">Cairn.</span>Sub</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:152</span></div>
 <pre class="sig"><b class="nm">Sub</b> : Type</pre><div class="doc"><p>An outside input an app asks for, as data derived from its state.</p>
 </div><div class="members"><b class="pix muted">Constructors</b><div class="member" id="Cairn.Sub.every"><pre class="sig"><b class="nm">every</b> (ms : <span title="Nat">Nat</span>) : <a href="Cairn.Effects.html#Cairn.Sub" title="Cairn.Sub">Sub</a></pre><div class="doc"><p>A tick every <code>ms</code> milliseconds (at least 1), from the host.</p>
 </div></div><div class="member" id="Cairn.Sub.watchFile"><pre class="sig"><b class="nm">watchFile</b> (path : <span title="String">String</span>) : <a href="Cairn.Effects.html#Cairn.Sub" title="Cairn.Sub">Sub</a></pre><div class="doc"><p><code>changed</code> whenever the file at <code>path</code> changes: written, replaced, created or removed.</p>
@@ -127,8 +127,8 @@ that tells a modifier key's press from its release): <code>keyDown</code>, <code
 any other key pressed while it is down. Needs Accessibility.</p>
 </div></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Effects.html#Cairn.instInhabitedSub"><code>Inhabited</code></a> <a href="Cairn.Effects.html#Cairn.instReprSub"><code>Repr</code></a></p></div>
 </section>
-<section class="decl" id="Cairn.SubEvent" data-line="171">
-<div class="dhead"><span class="kind pix">inductive</span><h3><a href="#Cairn.SubEvent"><span class="ns">Cairn.</span>SubEvent</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:171</span></div>
+<section class="decl" id="Cairn.SubEvent" data-line="177">
+<div class="dhead"><span class="kind pix">inductive</span><h3><a href="#Cairn.SubEvent"><span class="ns">Cairn.</span>SubEvent</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:177</span></div>
 <pre class="sig"><b class="nm">SubEvent</b> : Type</pre><div class="doc"><p>What an active subscription reports.</p>
 </div><div class="members"><b class="pix muted">Constructors</b><div class="member" id="Cairn.SubEvent.tick"><pre class="sig"><b class="nm">tick</b> : <a href="Cairn.Effects.html#Cairn.SubEvent" title="Cairn.SubEvent">SubEvent</a></pre><div class="doc"><p><code>every</code>'s tick.</p>
 </div></div><div class="member" id="Cairn.SubEvent.changed"><pre class="sig"><b class="nm">changed</b> : <a href="Cairn.Effects.html#Cairn.SubEvent" title="Cairn.SubEvent">SubEvent</a></pre><div class="doc"><p><code>watchFile</code>'s file changed.</p>
@@ -143,13 +143,13 @@ monotonic milliseconds <code>t</code> (the clock of <a href="Cairn.Effects.html#
 running; an app stops it by not asking for it.</p>
 </div></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Effects.html#Cairn.instReprSubEvent"><code>Repr</code></a> <a href="Cairn.Effects.html#Cairn.instInhabitedSubEvent"><code>Inhabited</code></a></p></div>
 </section>
-<section class="decl" id="Cairn.SubCmd" data-line="194">
-<div class="dhead"><span class="kind pix">inductive</span><h3><a href="#Cairn.SubCmd"><span class="ns">Cairn.</span>SubCmd</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:194</span></div>
+<section class="decl" id="Cairn.SubCmd" data-line="200">
+<div class="dhead"><span class="kind pix">inductive</span><h3><a href="#Cairn.SubCmd"><span class="ns">Cairn.</span>SubCmd</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:200</span></div>
 <pre class="sig"><b class="nm">SubCmd</b> : Type</pre><div class="doc"><p>Runtime → host: start or stop a subscription, under the runtime's id for it.</p>
 </div><div class="members"><b class="pix muted">Constructors</b><div class="member" id="Cairn.SubCmd.start"><pre class="sig"><b class="nm">start</b> (id : <span title="Nat">Nat</span>) (s : <a href="Cairn.Effects.html#Cairn.Sub" title="Cairn.Sub">Sub</a>) : <a href="Cairn.Effects.html#Cairn.SubCmd" title="Cairn.SubCmd">SubCmd</a></pre></div><div class="member" id="Cairn.SubCmd.stop"><pre class="sig"><b class="nm">stop</b> (id : <span title="Nat">Nat</span>) : <a href="Cairn.Effects.html#Cairn.SubCmd" title="Cairn.SubCmd">SubCmd</a></pre></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Effects.html#Cairn.instInhabitedSubCmd"><code>Inhabited</code></a> <a href="Cairn.Effects.html#Cairn.instReprSubCmd"><code>Repr</code></a></p></div>
 </section>
-<section class="decl" id="Cairn.Msg" data-line="200">
-<div class="dhead"><span class="kind pix">inductive</span><h3><a href="#Cairn.Msg"><span class="ns">Cairn.</span>Msg</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:200</span></div>
+<section class="decl" id="Cairn.Msg" data-line="207">
+<div class="dhead"><span class="kind pix">inductive</span><h3><a href="#Cairn.Msg"><span class="ns">Cairn.</span>Msg</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:207</span></div>
 <pre class="sig"><b class="nm">Msg</b> : Type</pre><div class="doc"><p>Runtime → app, through <a href="Cairn.App.html#Cairn.App.receive"><code>App.receive</code></a>: the outside world.</p>
 </div><div class="members"><b class="pix muted">Constructors</b><div class="member" id="Cairn.Msg.clock"><pre class="sig"><b class="nm">clock</b> (t : <a href="Cairn.Effects.html#Cairn.Time" title="Cairn.Time">Time</a>) : <a href="Cairn.Effects.html#Cairn.Msg" title="Cairn.Msg">Msg</a></pre><div class="doc"><p>The current time, delivered before anything else whenever it changed.</p>
 </div></div><div class="member" id="Cairn.Msg.timer"><pre class="sig"><b class="nm">timer</b> (name : <span title="String">String</span>) : <a href="Cairn.Effects.html#Cairn.Msg" title="Cairn.Msg">Msg</a></pre><div class="doc"><p>A timer the app set has come due.</p>
@@ -158,12 +158,12 @@ running; an app stops it by not asking for it.</p>
 </div></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Effects.html#Cairn.instInhabitedMsg"><code>Inhabited</code></a> <a href="Cairn.Effects.html#Cairn.instReprMsg"><code>Repr</code></a> <a href="Cairn.Effects.html#Cairn.instBEqMsg"><code>BEq</code></a></p></div>
 </section>
 <h2 id="definitions">Definitions <span class="n">2</span></h2>
-<section class="decl" id="Cairn.Request.kind" data-line="107">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Request.kind"><span class="ns">Cairn.Request.</span>kind</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:107</span></div>
+<section class="decl" id="Cairn.Request.kind" data-line="109">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Request.kind"><span class="ns">Cairn.Request.</span>kind</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:109</span></div>
 <pre class="sig"><b class="nm">kind</b> : <a href="Cairn.Effects.html#Cairn.Request" title="Cairn.Request">Request</a> → <a href="Cairn.Effects.html#Cairn.Request.Kind" title="Cairn.Request.Kind">Kind</a></pre>
 </section>
-<section class="decl" id="Cairn.Reply.answers" data-line="134">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Reply.answers"><span class="ns">Cairn.Reply.</span>answers</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:134</span></div>
+<section class="decl" id="Cairn.Reply.answers" data-line="137">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Reply.answers"><span class="ns">Cairn.Reply.</span>answers</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:137</span></div>
 <pre class="sig"><b class="nm">answers</b> : <a href="Cairn.Effects.html#Cairn.Request.Kind" title="Cairn.Request.Kind">Request.Kind</a> → <a href="Cairn.Effects.html#Cairn.Reply" title="Cairn.Reply">Reply</a> → <span title="Bool">Bool</span></pre><div class="doc"><p>Whether a reply has the shape that answers a request of kind <code>k</code>.</p>
 </div>
 </section>
@@ -233,100 +233,100 @@ running; an app stops it by not asking for it.</p>
 <div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instDecidableEqSecret"><span class="ns">Cairn.</span>instDecidableEqSecret</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:53</span></div>
 <pre class="sig"><b class="nm">instDecidableEqSecret</b> : DecidableEq <a href="Cairn.Effects.html#Cairn.Secret" title="Cairn.Secret">Secret</a></pre>
 </section>
-<section class="decl" id="Cairn.instBEqRequest" data-line="97">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instBEqRequest"><span class="ns">Cairn.</span>instBEqRequest</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:97</span></div>
+<section class="decl" id="Cairn.instBEqRequest" data-line="98">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instBEqRequest"><span class="ns">Cairn.</span>instBEqRequest</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:98</span></div>
 <pre class="sig"><b class="nm">instBEqRequest</b> : BEq <a href="Cairn.Effects.html#Cairn.Request" title="Cairn.Request">Request</a></pre>
 </section>
-<section class="decl" id="Cairn.instInhabitedRequest" data-line="97">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedRequest"><span class="ns">Cairn.</span>instInhabitedRequest</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:97</span></div>
+<section class="decl" id="Cairn.instInhabitedRequest" data-line="98">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedRequest"><span class="ns">Cairn.</span>instInhabitedRequest</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:98</span></div>
 <pre class="sig"><b class="nm">instInhabitedRequest</b> : Inhabited <a href="Cairn.Effects.html#Cairn.Request" title="Cairn.Request">Request</a></pre>
 </section>
-<section class="decl" id="Cairn.instReprRequest" data-line="97">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprRequest"><span class="ns">Cairn.</span>instReprRequest</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:97</span></div>
+<section class="decl" id="Cairn.instReprRequest" data-line="98">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprRequest"><span class="ns">Cairn.</span>instReprRequest</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:98</span></div>
 <pre class="sig"><b class="nm">instReprRequest</b> : Repr <a href="Cairn.Effects.html#Cairn.Request" title="Cairn.Request">Request</a></pre>
 </section>
-<section class="decl" id="Cairn.Request.instInhabitedKind" data-line="105">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.Request.instInhabitedKind"><span class="ns">Cairn.Request.</span>instInhabitedKind</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:105</span></div>
+<section class="decl" id="Cairn.Request.instInhabitedKind" data-line="107">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.Request.instInhabitedKind"><span class="ns">Cairn.Request.</span>instInhabitedKind</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:107</span></div>
 <pre class="sig"><b class="nm">instInhabitedKind</b> : Inhabited <a href="Cairn.Effects.html#Cairn.Request.Kind" title="Cairn.Request.Kind">Kind</a></pre>
 </section>
-<section class="decl" id="Cairn.Request.instReprKind" data-line="105">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.Request.instReprKind"><span class="ns">Cairn.Request.</span>instReprKind</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:105</span></div>
+<section class="decl" id="Cairn.Request.instReprKind" data-line="107">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.Request.instReprKind"><span class="ns">Cairn.Request.</span>instReprKind</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:107</span></div>
 <pre class="sig"><b class="nm">instReprKind</b> : Repr <a href="Cairn.Effects.html#Cairn.Request.Kind" title="Cairn.Request.Kind">Kind</a></pre>
 </section>
-<section class="decl" id="Cairn.Request.instDecidableEqKind" data-line="105">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.Request.instDecidableEqKind"><span class="ns">Cairn.Request.</span>instDecidableEqKind</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:105</span></div>
+<section class="decl" id="Cairn.Request.instDecidableEqKind" data-line="107">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.Request.instDecidableEqKind"><span class="ns">Cairn.Request.</span>instDecidableEqKind</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:107</span></div>
 <pre class="sig"><b class="nm">instDecidableEqKind</b> : DecidableEq <a href="Cairn.Effects.html#Cairn.Request.Kind" title="Cairn.Request.Kind">Kind</a></pre>
 </section>
-<section class="decl" id="Cairn.instReprReply" data-line="131">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprReply"><span class="ns">Cairn.</span>instReprReply</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:131</span></div>
+<section class="decl" id="Cairn.instReprReply" data-line="134">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprReply"><span class="ns">Cairn.</span>instReprReply</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:134</span></div>
 <pre class="sig"><b class="nm">instReprReply</b> : Repr <a href="Cairn.Effects.html#Cairn.Reply" title="Cairn.Reply">Reply</a></pre>
 </section>
-<section class="decl" id="Cairn.instBEqReply" data-line="131">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instBEqReply"><span class="ns">Cairn.</span>instBEqReply</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:131</span></div>
+<section class="decl" id="Cairn.instBEqReply" data-line="134">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instBEqReply"><span class="ns">Cairn.</span>instBEqReply</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:134</span></div>
 <pre class="sig"><b class="nm">instBEqReply</b> : BEq <a href="Cairn.Effects.html#Cairn.Reply" title="Cairn.Reply">Reply</a></pre>
 </section>
-<section class="decl" id="Cairn.instInhabitedReply" data-line="131">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedReply"><span class="ns">Cairn.</span>instInhabitedReply</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:131</span></div>
+<section class="decl" id="Cairn.instInhabitedReply" data-line="134">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedReply"><span class="ns">Cairn.</span>instInhabitedReply</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:134</span></div>
 <pre class="sig"><b class="nm">instInhabitedReply</b> : Inhabited <a href="Cairn.Effects.html#Cairn.Reply" title="Cairn.Reply">Reply</a></pre>
 </section>
-<section class="decl" id="Cairn.instInhabitedSub" data-line="160">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedSub"><span class="ns">Cairn.</span>instInhabitedSub</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:160</span></div>
+<section class="decl" id="Cairn.instInhabitedSub" data-line="165">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedSub"><span class="ns">Cairn.</span>instInhabitedSub</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:165</span></div>
 <pre class="sig"><b class="nm">instInhabitedSub</b> : Inhabited <a href="Cairn.Effects.html#Cairn.Sub" title="Cairn.Sub">Sub</a></pre>
 </section>
-<section class="decl" id="Cairn.instDecidableEqSub" data-line="160">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instDecidableEqSub"><span class="ns">Cairn.</span>instDecidableEqSub</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:160</span></div>
+<section class="decl" id="Cairn.instDecidableEqSub" data-line="165">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instDecidableEqSub"><span class="ns">Cairn.</span>instDecidableEqSub</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:165</span></div>
 <pre class="sig"><b class="nm">instDecidableEqSub</b> : DecidableEq <a href="Cairn.Effects.html#Cairn.Sub" title="Cairn.Sub">Sub</a></pre>
 </section>
-<section class="decl" id="Cairn.instReprSub" data-line="160">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprSub"><span class="ns">Cairn.</span>instReprSub</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:160</span></div>
+<section class="decl" id="Cairn.instReprSub" data-line="165">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprSub"><span class="ns">Cairn.</span>instReprSub</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:165</span></div>
 <pre class="sig"><b class="nm">instReprSub</b> : Repr <a href="Cairn.Effects.html#Cairn.Sub" title="Cairn.Sub">Sub</a></pre>
 </section>
-<section class="decl" id="Cairn.instInhabitedLevel" data-line="168">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedLevel"><span class="ns">Cairn.</span>instInhabitedLevel</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:168</span></div>
+<section class="decl" id="Cairn.instInhabitedLevel" data-line="174">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedLevel"><span class="ns">Cairn.</span>instInhabitedLevel</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:174</span></div>
 <pre class="sig"><b class="nm">instInhabitedLevel</b> : Inhabited <a href="Cairn.Effects.html#Cairn.Level" title="Cairn.Level">Level</a></pre>
 </section>
-<section class="decl" id="Cairn.instDecidableEqLevel" data-line="168">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instDecidableEqLevel"><span class="ns">Cairn.</span>instDecidableEqLevel</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:168</span></div>
+<section class="decl" id="Cairn.instDecidableEqLevel" data-line="174">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instDecidableEqLevel"><span class="ns">Cairn.</span>instDecidableEqLevel</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:174</span></div>
 <pre class="sig"><b class="nm">instDecidableEqLevel</b> : DecidableEq <a href="Cairn.Effects.html#Cairn.Level" title="Cairn.Level">Level</a></pre>
 </section>
-<section class="decl" id="Cairn.instReprLevel" data-line="168">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprLevel"><span class="ns">Cairn.</span>instReprLevel</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:168</span></div>
+<section class="decl" id="Cairn.instReprLevel" data-line="174">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprLevel"><span class="ns">Cairn.</span>instReprLevel</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:174</span></div>
 <pre class="sig"><b class="nm">instReprLevel</b> : Repr <a href="Cairn.Effects.html#Cairn.Level" title="Cairn.Level">Level</a></pre>
 </section>
-<section class="decl" id="Cairn.instDecidableEqSubEvent" data-line="191">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instDecidableEqSubEvent"><span class="ns">Cairn.</span>instDecidableEqSubEvent</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:191</span></div>
+<section class="decl" id="Cairn.instDecidableEqSubEvent" data-line="197">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instDecidableEqSubEvent"><span class="ns">Cairn.</span>instDecidableEqSubEvent</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:197</span></div>
 <pre class="sig"><b class="nm">instDecidableEqSubEvent</b> : DecidableEq <a href="Cairn.Effects.html#Cairn.SubEvent" title="Cairn.SubEvent">SubEvent</a></pre>
 </section>
-<section class="decl" id="Cairn.instReprSubEvent" data-line="191">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprSubEvent"><span class="ns">Cairn.</span>instReprSubEvent</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:191</span></div>
+<section class="decl" id="Cairn.instReprSubEvent" data-line="197">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprSubEvent"><span class="ns">Cairn.</span>instReprSubEvent</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:197</span></div>
 <pre class="sig"><b class="nm">instReprSubEvent</b> : Repr <a href="Cairn.Effects.html#Cairn.SubEvent" title="Cairn.SubEvent">SubEvent</a></pre>
 </section>
-<section class="decl" id="Cairn.instInhabitedSubEvent" data-line="191">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedSubEvent"><span class="ns">Cairn.</span>instInhabitedSubEvent</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:191</span></div>
+<section class="decl" id="Cairn.instInhabitedSubEvent" data-line="197">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedSubEvent"><span class="ns">Cairn.</span>instInhabitedSubEvent</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:197</span></div>
 <pre class="sig"><b class="nm">instInhabitedSubEvent</b> : Inhabited <a href="Cairn.Effects.html#Cairn.SubEvent" title="Cairn.SubEvent">SubEvent</a></pre>
 </section>
-<section class="decl" id="Cairn.instDecidableEqSubCmd" data-line="197">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instDecidableEqSubCmd"><span class="ns">Cairn.</span>instDecidableEqSubCmd</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:197</span></div>
+<section class="decl" id="Cairn.instDecidableEqSubCmd" data-line="203">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instDecidableEqSubCmd"><span class="ns">Cairn.</span>instDecidableEqSubCmd</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:203</span></div>
 <pre class="sig"><b class="nm">instDecidableEqSubCmd</b> : DecidableEq <a href="Cairn.Effects.html#Cairn.SubCmd" title="Cairn.SubCmd">SubCmd</a></pre>
 </section>
-<section class="decl" id="Cairn.instInhabitedSubCmd" data-line="197">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedSubCmd"><span class="ns">Cairn.</span>instInhabitedSubCmd</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:197</span></div>
+<section class="decl" id="Cairn.instInhabitedSubCmd" data-line="203">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedSubCmd"><span class="ns">Cairn.</span>instInhabitedSubCmd</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:203</span></div>
 <pre class="sig"><b class="nm">instInhabitedSubCmd</b> : Inhabited <a href="Cairn.Effects.html#Cairn.SubCmd" title="Cairn.SubCmd">SubCmd</a></pre>
 </section>
-<section class="decl" id="Cairn.instReprSubCmd" data-line="197">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprSubCmd"><span class="ns">Cairn.</span>instReprSubCmd</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:197</span></div>
+<section class="decl" id="Cairn.instReprSubCmd" data-line="203">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprSubCmd"><span class="ns">Cairn.</span>instReprSubCmd</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:203</span></div>
 <pre class="sig"><b class="nm">instReprSubCmd</b> : Repr <a href="Cairn.Effects.html#Cairn.SubCmd" title="Cairn.SubCmd">SubCmd</a></pre>
 </section>
-<section class="decl" id="Cairn.instInhabitedMsg" data-line="209">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedMsg"><span class="ns">Cairn.</span>instInhabitedMsg</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:209</span></div>
+<section class="decl" id="Cairn.instInhabitedMsg" data-line="216">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedMsg"><span class="ns">Cairn.</span>instInhabitedMsg</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:216</span></div>
 <pre class="sig"><b class="nm">instInhabitedMsg</b> : Inhabited <a href="Cairn.Effects.html#Cairn.Msg" title="Cairn.Msg">Msg</a></pre>
 </section>
-<section class="decl" id="Cairn.instReprMsg" data-line="209">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprMsg"><span class="ns">Cairn.</span>instReprMsg</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:209</span></div>
+<section class="decl" id="Cairn.instReprMsg" data-line="216">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprMsg"><span class="ns">Cairn.</span>instReprMsg</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:216</span></div>
 <pre class="sig"><b class="nm">instReprMsg</b> : Repr <a href="Cairn.Effects.html#Cairn.Msg" title="Cairn.Msg">Msg</a></pre>
 </section>
-<section class="decl" id="Cairn.instBEqMsg" data-line="209">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instBEqMsg"><span class="ns">Cairn.</span>instBEqMsg</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:209</span></div>
+<section class="decl" id="Cairn.instBEqMsg" data-line="216">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instBEqMsg"><span class="ns">Cairn.</span>instBEqMsg</a></h3><span class="src" title="source">lean/Cairn/Effects.lean:216</span></div>
 <pre class="sig"><b class="nm">instBEqMsg</b> : BEq <a href="Cairn.Effects.html#Cairn.Msg" title="Cairn.Msg">Msg</a></pre>
 </section>
 

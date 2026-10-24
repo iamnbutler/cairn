@@ -66,18 +66,18 @@ place claim is <code>place</code> (docs/surfaces.md). A bare local event is the 
 semantics are <a href="Cairn.Text.Field.html#Cairn.Text.Field.apply"><code>Cairn.Text.Field.apply</code></a>.</p>
 </div><div class="members"><b class="pix muted">Constructors</b><div class="member" id="Cairn.TextOp.insert"><pre class="sig"><b class="nm">insert</b> (s : <span title="String">String</span>) : <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a></pre></div><div class="member" id="Cairn.TextOp.deleteBackward"><pre class="sig"><b class="nm">deleteBackward</b> : <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a></pre></div><div class="member" id="Cairn.TextOp.deleteForward"><pre class="sig"><b class="nm">deleteForward</b> : <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a></pre></div><div class="member" id="Cairn.TextOp.deleteWordBackward"><pre class="sig"><b class="nm">deleteWordBackward</b> : <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a></pre></div><div class="member" id="Cairn.TextOp.deleteWordForward"><pre class="sig"><b class="nm">deleteWordForward</b> : <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a></pre></div><div class="member" id="Cairn.TextOp.moveLeft"><pre class="sig"><b class="nm">moveLeft</b> (extend : <span title="Bool">Bool</span>) : <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a></pre></div><div class="member" id="Cairn.TextOp.moveRight"><pre class="sig"><b class="nm">moveRight</b> (extend : <span title="Bool">Bool</span>) : <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a></pre></div><div class="member" id="Cairn.TextOp.moveWordLeft"><pre class="sig"><b class="nm">moveWordLeft</b> (extend : <span title="Bool">Bool</span>) : <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a></pre></div><div class="member" id="Cairn.TextOp.moveWordRight"><pre class="sig"><b class="nm">moveWordRight</b> (extend : <span title="Bool">Bool</span>) : <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a></pre></div><div class="member" id="Cairn.TextOp.moveHome"><pre class="sig"><b class="nm">moveHome</b> (extend : <span title="Bool">Bool</span>) : <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a></pre></div><div class="member" id="Cairn.TextOp.moveEnd"><pre class="sig"><b class="nm">moveEnd</b> (extend : <span title="Bool">Bool</span>) : <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a></pre></div><div class="member" id="Cairn.TextOp.setCaret"><pre class="sig"><b class="nm">setCaret</b> (i : <span title="Nat">Nat</span>) (extend : <span title="Bool">Bool</span>) : <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a></pre></div><div class="member" id="Cairn.TextOp.selectAll"><pre class="sig"><b class="nm">selectAll</b> : <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a></pre></div><div class="member" id="Cairn.TextOp.setMarked"><pre class="sig"><b class="nm">setMarked</b> (s : <span title="String">String</span>) (selStart selLen : <span title="Nat">Nat</span>) : <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a></pre></div><div class="member" id="Cairn.TextOp.unmark"><pre class="sig"><b class="nm">unmark</b> : <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a></pre></div><div class="member" id="Cairn.TextOp.cut"><pre class="sig"><b class="nm">cut</b> : <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a></pre></div><div class="member" id="Cairn.TextOp.copy"><pre class="sig"><b class="nm">copy</b> : <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a></pre></div><div class="member" id="Cairn.TextOp.paste"><pre class="sig"><b class="nm">paste</b> (s : <span title="String">String</span>) : <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a></pre></div><div class="member" id="Cairn.TextOp.undo"><pre class="sig"><b class="nm">undo</b> : <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a></pre></div><div class="member" id="Cairn.TextOp.redo"><pre class="sig"><b class="nm">redo</b> : <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a></pre></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Input.html#Cairn.instBEqTextOp"><code>BEq</code></a> <a href="Cairn.Input.html#Cairn.instInhabitedTextOp"><code>Inhabited</code></a> <a href="Cairn.Input.html#Cairn.instReprTextOp"><code>Repr</code></a></p></div>
 </section>
-<section class="decl" id="Cairn.Action" data-line="114">
-<div class="dhead"><span class="kind pix">inductive</span><h3><a href="#Cairn.Action"><span class="ns">Cairn.</span>Action</a></h3><span class="src" title="source">lean/Cairn/Input.lean:114</span></div>
+<section class="decl" id="Cairn.Action" data-line="115">
+<div class="dhead"><span class="kind pix">inductive</span><h3><a href="#Cairn.Action"><span class="ns">Cairn.</span>Action</a></h3><span class="src" title="source">lean/Cairn/Input.lean:115</span></div>
 <pre class="sig"><b class="nm">Action</b> : Type</pre><div class="doc"><p>Runtime → app. Every action names the control it came from, so every behaviour can be
 traced to a claim.</p>
 </div><div class="members"><b class="pix muted">Constructors</b><div class="member" id="Cairn.Action.press"><pre class="sig"><b class="nm">press</b> (c : <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a>) : <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a></pre></div><div class="member" id="Cairn.Action.doublePress"><pre class="sig"><b class="nm">doublePress</b> (c : <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a>) : <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a></pre></div><div class="member" id="Cairn.Action.edit"><pre class="sig"><b class="nm">edit</b> (c : <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a>) (op : <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a>) : <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a></pre></div><div class="member" id="Cairn.Action.submit"><pre class="sig"><b class="nm">submit</b> (c : <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a>) : <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a></pre></div><div class="member" id="Cairn.Action.cancel"><pre class="sig"><b class="nm">cancel</b> (c : <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a>) : <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a></pre></div><div class="member" id="Cairn.Action.blur"><pre class="sig"><b class="nm">blur</b> (c : <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a>) : <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a></pre></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Input.html#Cairn.instReprAction"><code>Repr</code></a> <a href="Cairn.Input.html#Cairn.instBEqAction"><code>BEq</code></a> <a href="Cairn.Input.html#Cairn.instInhabitedAction"><code>Inhabited</code></a></p></div>
 </section>
-<section class="decl" id="Cairn.Cursor" data-line="126">
-<div class="dhead"><span class="kind pix">inductive</span><h3><a href="#Cairn.Cursor"><span class="ns">Cairn.</span>Cursor</a></h3><span class="src" title="source">lean/Cairn/Input.lean:126</span></div>
+<section class="decl" id="Cairn.Cursor" data-line="128">
+<div class="dhead"><span class="kind pix">inductive</span><h3><a href="#Cairn.Cursor"><span class="ns">Cairn.</span>Cursor</a></h3><span class="src" title="source">lean/Cairn/Input.lean:128</span></div>
 <pre class="sig"><b class="nm">Cursor</b> : Type</pre><div class="members"><b class="pix muted">Constructors</b><div class="member" id="Cairn.Cursor.arrow"><pre class="sig"><b class="nm">arrow</b> : <a href="Cairn.Input.html#Cairn.Cursor" title="Cairn.Cursor">Cursor</a></pre></div><div class="member" id="Cairn.Cursor.pointer"><pre class="sig"><b class="nm">pointer</b> : <a href="Cairn.Input.html#Cairn.Cursor" title="Cairn.Cursor">Cursor</a></pre></div><div class="member" id="Cairn.Cursor.text"><pre class="sig"><b class="nm">text</b> : <a href="Cairn.Input.html#Cairn.Cursor" title="Cairn.Cursor">Cursor</a></pre></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Input.html#Cairn.instReprCursor"><code>Repr</code></a> <a href="Cairn.Input.html#Cairn.instInhabitedCursor"><code>Inhabited</code></a> <a href="Cairn.Input.html#Cairn.instBEqCursor"><code>BEq</code></a></p></div>
 </section>
-<section class="decl" id="Cairn.Effect" data-line="131">
-<div class="dhead"><span class="kind pix">inductive</span><h3><a href="#Cairn.Effect"><span class="ns">Cairn.</span>Effect</a></h3><span class="src" title="source">lean/Cairn/Input.lean:131</span></div>
+<section class="decl" id="Cairn.Effect" data-line="134">
+<div class="dhead"><span class="kind pix">inductive</span><h3><a href="#Cairn.Effect"><span class="ns">Cairn.</span>Effect</a></h3><span class="src" title="source">lean/Cairn/Input.lean:134</span></div>
 <pre class="sig"><b class="nm">Effect</b> : Type</pre><div class="doc"><p>App → host (and runtime).</p>
 </div><div class="members"><b class="pix muted">Constructors</b><div class="member" id="Cairn.Effect.setClipboard"><pre class="sig"><b class="nm">setClipboard</b> (s : <span title="String">String</span>) : <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a></pre></div><div class="member" id="Cairn.Effect.beep"><pre class="sig"><b class="nm">beep</b> : <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a></pre></div><div class="member" id="Cairn.Effect.focus"><pre class="sig"><b class="nm">focus</b> (c : <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a>) : <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a></pre><div class="doc"><p>Move keyboard focus to the control <code>c</code>. The runtime runs this one, not the host: after the
 step's actions it sets <code>ui.focus := some c</code>, and keeps it only if <code>c</code> is a focusable control
@@ -112,8 +112,8 @@ laid tree.</p>
 scale, focus). Only these may be addressed to a surface with <a href="Cairn.Input.html#Cairn.Event.surface"><code>Event.surface</code></a>.</p>
 </div>
 </section>
-<section class="decl" id="Cairn.Action.control" data-line="123">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Action.control"><span class="ns">Cairn.Action.</span>control</a></h3><span class="src" title="source">lean/Cairn/Input.lean:123</span></div>
+<section class="decl" id="Cairn.Action.control" data-line="125">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Action.control"><span class="ns">Cairn.Action.</span>control</a></h3><span class="src" title="source">lean/Cairn/Input.lean:125</span></div>
 <pre class="sig"><b class="nm">control</b> : <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a> → <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a></pre>
 </section>
 <h2 id="instances">Instances <span class="n">28</span></h2>
@@ -189,44 +189,44 @@ scale, focus). Only these may be addressed to a surface with <a href="Cairn.Inpu
 <div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprTextOp"><span class="ns">Cairn.</span>instReprTextOp</a></h3><span class="src" title="source">lean/Cairn/Input.lean:110</span></div>
 <pre class="sig"><b class="nm">instReprTextOp</b> : Repr <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a></pre>
 </section>
-<section class="decl" id="Cairn.instReprAction" data-line="121">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprAction"><span class="ns">Cairn.</span>instReprAction</a></h3><span class="src" title="source">lean/Cairn/Input.lean:121</span></div>
+<section class="decl" id="Cairn.instReprAction" data-line="122">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprAction"><span class="ns">Cairn.</span>instReprAction</a></h3><span class="src" title="source">lean/Cairn/Input.lean:122</span></div>
 <pre class="sig"><b class="nm">instReprAction</b> : Repr <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a></pre>
 </section>
-<section class="decl" id="Cairn.instBEqAction" data-line="121">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instBEqAction"><span class="ns">Cairn.</span>instBEqAction</a></h3><span class="src" title="source">lean/Cairn/Input.lean:121</span></div>
+<section class="decl" id="Cairn.instBEqAction" data-line="122">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instBEqAction"><span class="ns">Cairn.</span>instBEqAction</a></h3><span class="src" title="source">lean/Cairn/Input.lean:122</span></div>
 <pre class="sig"><b class="nm">instBEqAction</b> : BEq <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a></pre>
 </section>
-<section class="decl" id="Cairn.instInhabitedAction" data-line="121">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedAction"><span class="ns">Cairn.</span>instInhabitedAction</a></h3><span class="src" title="source">lean/Cairn/Input.lean:121</span></div>
+<section class="decl" id="Cairn.instInhabitedAction" data-line="122">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedAction"><span class="ns">Cairn.</span>instInhabitedAction</a></h3><span class="src" title="source">lean/Cairn/Input.lean:122</span></div>
 <pre class="sig"><b class="nm">instInhabitedAction</b> : Inhabited <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a></pre>
 </section>
-<section class="decl" id="Cairn.instDecidableEqCursor" data-line="128">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instDecidableEqCursor"><span class="ns">Cairn.</span>instDecidableEqCursor</a></h3><span class="src" title="source">lean/Cairn/Input.lean:128</span></div>
+<section class="decl" id="Cairn.instDecidableEqCursor" data-line="130">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instDecidableEqCursor"><span class="ns">Cairn.</span>instDecidableEqCursor</a></h3><span class="src" title="source">lean/Cairn/Input.lean:130</span></div>
 <pre class="sig"><b class="nm">instDecidableEqCursor</b> : DecidableEq <a href="Cairn.Input.html#Cairn.Cursor" title="Cairn.Cursor">Cursor</a></pre>
 </section>
-<section class="decl" id="Cairn.instReprCursor" data-line="128">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprCursor"><span class="ns">Cairn.</span>instReprCursor</a></h3><span class="src" title="source">lean/Cairn/Input.lean:128</span></div>
+<section class="decl" id="Cairn.instReprCursor" data-line="130">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprCursor"><span class="ns">Cairn.</span>instReprCursor</a></h3><span class="src" title="source">lean/Cairn/Input.lean:130</span></div>
 <pre class="sig"><b class="nm">instReprCursor</b> : Repr <a href="Cairn.Input.html#Cairn.Cursor" title="Cairn.Cursor">Cursor</a></pre>
 </section>
-<section class="decl" id="Cairn.instInhabitedCursor" data-line="128">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedCursor"><span class="ns">Cairn.</span>instInhabitedCursor</a></h3><span class="src" title="source">lean/Cairn/Input.lean:128</span></div>
+<section class="decl" id="Cairn.instInhabitedCursor" data-line="130">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedCursor"><span class="ns">Cairn.</span>instInhabitedCursor</a></h3><span class="src" title="source">lean/Cairn/Input.lean:130</span></div>
 <pre class="sig"><b class="nm">instInhabitedCursor</b> : Inhabited <a href="Cairn.Input.html#Cairn.Cursor" title="Cairn.Cursor">Cursor</a></pre>
 </section>
-<section class="decl" id="Cairn.instBEqCursor" data-line="128">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instBEqCursor"><span class="ns">Cairn.</span>instBEqCursor</a></h3><span class="src" title="source">lean/Cairn/Input.lean:128</span></div>
+<section class="decl" id="Cairn.instBEqCursor" data-line="130">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instBEqCursor"><span class="ns">Cairn.</span>instBEqCursor</a></h3><span class="src" title="source">lean/Cairn/Input.lean:130</span></div>
 <pre class="sig"><b class="nm">instBEqCursor</b> : BEq <a href="Cairn.Input.html#Cairn.Cursor" title="Cairn.Cursor">Cursor</a></pre>
 </section>
-<section class="decl" id="Cairn.instInhabitedEffect" data-line="148">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedEffect"><span class="ns">Cairn.</span>instInhabitedEffect</a></h3><span class="src" title="source">lean/Cairn/Input.lean:148</span></div>
+<section class="decl" id="Cairn.instInhabitedEffect" data-line="151">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedEffect"><span class="ns">Cairn.</span>instInhabitedEffect</a></h3><span class="src" title="source">lean/Cairn/Input.lean:151</span></div>
 <pre class="sig"><b class="nm">instInhabitedEffect</b> : Inhabited <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a></pre>
 </section>
-<section class="decl" id="Cairn.instBEqEffect" data-line="148">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instBEqEffect"><span class="ns">Cairn.</span>instBEqEffect</a></h3><span class="src" title="source">lean/Cairn/Input.lean:148</span></div>
+<section class="decl" id="Cairn.instBEqEffect" data-line="151">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instBEqEffect"><span class="ns">Cairn.</span>instBEqEffect</a></h3><span class="src" title="source">lean/Cairn/Input.lean:151</span></div>
 <pre class="sig"><b class="nm">instBEqEffect</b> : BEq <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a></pre>
 </section>
-<section class="decl" id="Cairn.instReprEffect" data-line="148">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprEffect"><span class="ns">Cairn.</span>instReprEffect</a></h3><span class="src" title="source">lean/Cairn/Input.lean:148</span></div>
+<section class="decl" id="Cairn.instReprEffect" data-line="151">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprEffect"><span class="ns">Cairn.</span>instReprEffect</a></h3><span class="src" title="source">lean/Cairn/Input.lean:151</span></div>
 <pre class="sig"><b class="nm">instReprEffect</b> : Repr <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a></pre>
 </section>
 
