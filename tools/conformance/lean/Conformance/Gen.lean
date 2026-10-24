@@ -514,6 +514,17 @@ def runEvents (app : App S) (cfg : Config) (s : Runtime.State S) (es : List Even
     let (s', ef) := step app cfg s e
     (s', acts ++ a, effs ++ ef)) (s, [], [])
 
+/-- Whether a press or double press of `c` is dropped by design (TodoMVC decision T33,
+docs/plan.md): the first pointerDown delivers a `blur`, and after its step `c` is no longer at
+the point, because the edit the blur saved moved or removed it. The release then lands elsewhere
+and presses nothing (docs/runtime.md), which is where `Runtime.click_presses`'s hypothesis fails. -/
+def droppedClick (app : App S) (cfg : Config) (s : Runtime.State S) (c : ControlRef) :
+    List Event → Bool
+  | [] => false
+  | e@(.pointerDown p _ 1 _) :: _ =>
+    (route cfg.metrics s e).2.any (· matches .blur _) && hitRef (step app cfg s e).1.laid p != some c
+  | e :: es => droppedClick app cfg (step app cfg s e).1 c es
+
 def modelFrame (s : Runtime.State S) (effs : List Effect) : Frame :=
   Runtime.frame Frame.boundary { s with effects := effs.toArray }
 
@@ -617,10 +628,15 @@ structure Options where
   /-- Raw gesture sequences to replay (`--gestures FILE`). -/
   gestures : Option String := none
 
+/-- The label of a press dropped by design (`droppedClick`). The driver counts these as
+known, not as failures: the app did what the model does. -/
+def t33Label : String := "T33"
+
 /-- Model checks that need no app: every control on screen belongs to an enabled move
-(presence), and a chosen press delivers exactly that press, after any blurs (pressable). -/
+(presence), and a chosen press delivers exactly that press, after any blurs (pressable),
+unless the click was dropped by design (`dropped`, T33): then it is in `known`, not here. -/
 def findings (M : Machine S) (s : Runtime.State S) (f : Frame) (ch : Choice)
-    (acts : List Action) : List String := Id.run do
+    (acts : List Action) (dropped : Bool := false) : List String := Id.run do
   let mut out := []
   for n in f.ax do
     if let some c := n.control then
@@ -639,6 +655,7 @@ def findings (M : Machine S) (s : Runtime.State S) (f : Frame) (ch : Choice)
             out := out ++ [s!"{refLabel c} is enabled in the menu of ^{sf.place} but its move is not"]
   if let some (c, t) := ch.move then
     let main := acts.filter fun a => match a with | .blur _ => false | _ => true
+    if dropped && main.isEmpty then return out
     match t with
     | "press" =>
       unless main == [.press c] do
@@ -651,7 +668,7 @@ def findings (M : Machine S) (s : Runtime.State S) (f : Frame) (ch : Choice)
 
 def jstep (M : Machine S) (s : Runtime.State S) (ch : Choice) (clipboard : String) (es : List Event)
     (acts : List Action) (effs : List Effect) (f : Frame) (probes : List String)
-    (finds : List String) : String :=
+    (finds : List String) (known : List String := []) : String :=
   jobj [("label", jstr ch.label),
         ("move", jopt (fun (r, t) =>
             jobj [("ref", jstr (refLabel r)), ("claim", jnat r.claim), ("key", jnat r.key),
@@ -663,7 +680,8 @@ def jstep (M : Machine S) (s : Runtime.State S) (ch : Choice) (clipboard : Strin
             ("accepted", jbool (accepts M.moves s.app a))])),
         ("effects", jarr (effs.map jeffect)),
         ("clipboard", jstr clipboard),
-        ("frame", jframe f), ("probes", jarr probes), ("findings", jarr (finds.map jstr))]
+        ("frame", jframe f), ("probes", jarr probes), ("findings", jarr (finds.map jstr)),
+        ("known", jarr (known.map jstr))]
 
 /-- One step: perform `ch` on the model; returns the new state and clipboard and the step's JSON.
 The actions are accepted against the state before the step's first event, which is exact for a
@@ -675,8 +693,15 @@ def stepModel (M : Machine S) (app : App S) (cfg : Config) (o : Options)
   let clip := effs.foldl (fun c e => match e with | .setClipboard t => t | _ => c) clipboard
   let f := modelFrame s' effs
   let probes := f.ax.toList.filterMap (probeFor cfg.metrics f o.clear)
-  let finds := findings M s (modelFrame s []) ch acts
-  (s', clip, jstep M s ch clipboard es acts effs f probes finds)
+  let dropped := match ch.move with
+    | some (c, "press") | some (c, "doublePress") => droppedClick app cfg s c es
+    | _ => false
+  let main := acts.filter fun a => match a with | .blur _ => false | _ => true
+  let known := if dropped && main.isEmpty then
+      [s!"{t33Label}: {ch.label} dropped: the blur saved the edit, which moved or removed the control before the release"]
+    else []
+  let finds := findings M s (modelFrame s []) ch acts dropped
+  (s', clip, jstep M s ch clipboard es acts effs f probes finds known)
 
 def start (app : App S) (cfg : Config) (o : Options) : Runtime.State S :=
   initState app cfg o.width.toUInt32 o.height.toUInt32 o.scale.toUInt32

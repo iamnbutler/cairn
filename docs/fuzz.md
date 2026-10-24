@@ -83,7 +83,14 @@ default.
 
 1. **Invariants:** every runnable invariant's `check` on the app state.
 2. **Performed:** an `act a` delivered `a` (the runtime's `route` returned it). A click at an
-   enabled control's centre that delivers anything else is a pressability failure of that move.
+   enabled control's centre that delivers anything else is a pressability failure of that move,
+   with one exception, the dropped click of TodoMVC decision T33 (docs/plan.md): when the
+   pointerDown delivers a `blur` and, after that step, the control is no longer at the point
+   (the edit the blur saved moved or removed it), the release lands elsewhere and presses
+   nothing (docs/runtime.md). That is exactly where `Runtime.click_presses`'s hypothesis
+   fails, so the click is counted under the claim's `droppedT33` check, not failed, and the
+   run's `droppedClicks` totals them. A control that moves on pointerDown without a blur is
+   still a failure.
 3. **Presence** for every move and candidate key.
 4. **Pressable** when the window is at or above the minimum: `hitTest` at the centre of each
    enabled pointer move's control returns it, and `checkPressable && controlsNonempty` holds

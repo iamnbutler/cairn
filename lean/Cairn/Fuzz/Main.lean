@@ -217,8 +217,11 @@ def runTarget (t : Target) (o : Opts) : IO UInt32 := do
   let seqPerS := o.iterations * 1_000_000_000 / ns
   let stepsPerS := stepsRun * 1_000_000_000 / ns
   IO.println s!"{o.iterations} sequences, {stepsRun} steps in {msText ns} ms: {seqPerS} sequences/s, {stepsPerS} steps/s; slowest step {msText maxNs} ms (budget {t.budgetNs / 1_000_000} ms, {over.size} over); {fails.size} failing sequences"
+  let dropped : Nat := stats.fold (fun (n : Nat) _ (st : ClaimStat) => n + (st.checks.get? droppedCheck).getD 0) 0
   if t.app.isSome then
     IO.println s!"pressability skipped in {skipped} of {stepsRun} steps (window below the view's minimum); {mono} sequences with mono metrics"
+    if dropped > 0 then
+      IO.println s!"{dropped} clicks dropped by design: the pointerDown's blur saved an edit that moved the clicked control (T33; counted as {droppedCheck}, not failed)"
   for inv in t.invariants do
     if inv.check.isNone then IO.println s!"note: ^{inv.info.id} {inv.info.title} is not runnable (no Decidable instance)"
   let json := Json.mkObj [
@@ -232,7 +235,7 @@ def runTarget (t : Target) (o : Opts) : IO UInt32 := do
     ("failures", Json.arr reports),
     ("failingSequences", toJson fails.size),
     ("budget", Json.mkObj [("maxMs", msJson maxNs), ("over", Json.arr over)]),
-    ("pressableSkipped", toJson skipped)]
+    ("pressableSkipped", toJson skipped), ("droppedClicks", toJson dropped)]
   let dir : System.FilePath := o.out.getD (if ← System.FilePath.pathExists "../claims.lock" then "../build/fuzz" else "build/fuzz")
   IO.FS.createDirAll dir
   IO.FS.writeFile (dir / s!"{t.name}.json") (json.pretty ++ "\n")

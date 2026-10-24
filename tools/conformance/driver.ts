@@ -77,6 +77,9 @@ type Step = {
 	label: string; move: { ref: string; claim: number; key: number; trigger: string } | null; gestures: Gesture[];
 	events: string[]; actions: { action: string; claim: number; ref: string; accepted: boolean }[];
 	effects: Record<string, unknown>[]; clipboard: string; frame: Frame; probes: Probe[]; findings: string[];
+	/** Known outcomes of open decisions, labelled (`T33: …`): not failures (the app did what the
+	 * model does), but reported so the map can say so. */
+	known?: string[];
 };
 type Sequence = { name: string; witness?: boolean; init: Frame; initProbes: Probe[]; stopped?: string | null; steps: Step[] };
 
@@ -382,6 +385,8 @@ async function shrink(c: Client, seq: Sequence, failedAt: number, hello: any, cl
 // MARK: Main
 
 type ClaimTally = { runs: number; fails: number; notes: string[] };
+/** Steps whose outcome an open decision explains (docs/plan.md), by label (`T33`). */
+type Known = { count: number; first: string; claims: Record<string, number> };
 
 async function main() {
 	const t0 = performance.now();
@@ -402,6 +407,7 @@ async function main() {
 	const failures: Failure[] = [];
 	let sequences = 0, passed = 0, actions = 0;
 	const triggers = new Map<string, number>();
+	const known = new Map<string, Known>();
 
 	const record = (seq: Sequence, res: Awaited<ReturnType<typeof runSequence>>) => {
 		sequences++;
@@ -411,6 +417,14 @@ async function main() {
 			const failed = res.failedAt === i;
 			const note = failed ? `${seq.name} step ${i} (${st.label}): ${res.problems[0].kind}: ${res.problems[0].detail}` : null;
 			actions += st.actions.length;
+			for (const k of st.known ?? []) {
+				const label = k.split(":")[0];
+				const ref = st.move ? `^${st.move.claim}` : "(plain UI)";
+				const e = known.get(label) ?? { count: 0, first: `${seq.name} step ${i} (${st.label})`, claims: {} };
+				e.count++;
+				e.claims[ref] = (e.claims[ref] ?? 0) + 1;
+				known.set(label, e);
+			}
 			if (st.move) {
 				bump(`^${st.move.claim}`, note);
 				const k = `^${st.move.claim} ${st.move.trigger}`;
@@ -480,10 +494,16 @@ async function main() {
 
 	// build/conformance/<App>.json, in the map's shape (docs/map.md).
 	const commit = spawnSync("git", ["rev-parse", "--short", "HEAD"]).stdout.toString().trim();
-	const claims: Record<string, { pass: boolean; runs: number; note?: string }> = {};
+	const claims: Record<string, { pass: boolean; runs: number; note?: string; known?: Record<string, number> }> = {};
 	for (const [ref, t] of [...tally].sort()) {
 		if (!ref.startsWith("^")) continue;
-		claims[ref] = { pass: t.fails === 0, runs: t.runs, ...(t.notes.length ? { note: t.notes[0] } : {}) };
+		const mine = [...known].filter(([, k]) => k.claims[ref]).map(([label, k]) => [label, k.claims[ref]!] as const);
+		const knownNote = mine.map(([label, n]) => knownText(label, n, known.get(label)!.first)).join(" ");
+		claims[ref] = {
+			pass: t.fails === 0, runs: t.runs,
+			...(t.notes.length ? { note: t.notes[0] } : knownNote ? { note: knownNote } : {}),
+			...(mine.length ? { known: Object.fromEntries(mine) } : {}),
+		};
 	}
 	const ms = stats.stepMs.sort((a, b) => a - b);
 	const pct = (p: number) => Math.round(ms[Math.min(ms.length - 1, Math.floor(ms.length * p))] * 10) / 10;
@@ -493,6 +513,7 @@ async function main() {
 		sequences: { walks: sequences, passed, failed: sequences - passed, flows: flows.length, flowsPassed: flows.filter((f) => f.pass).length },
 		steps: stats.steps, actions, probes: stats.probes, pixelSource: stats.pixelSource,
 		plainUi: tally.get("(plain UI)") ?? { runs: 0, fails: 0 },
+		known: Object.fromEntries([...known].sort()),
 		triggers: Object.fromEntries([...triggers].sort()),
 		timing: { totalSeconds: Math.round(totalMs / 100) / 10, walkSeconds: Math.round(walkMs / 100) / 10, stepMs: { p50: pct(0.5), p90: pct(0.9), p99: pct(0.99), max: pct(1) } },
 	};
@@ -507,6 +528,12 @@ async function main() {
 		`- Time: ${summary.timing.totalSeconds} s in all; per step p50 ${pct(0.5)} ms, p90 ${pct(0.9)} ms, max ${pct(1)} ms.`, "",
 		"| Claim | Result | Runs | Note |", "|---|---|---|---|",
 		...Object.entries(claims).map(([r, v]) => `| ${r} | ${v.pass ? "pass" : "**fail**"} | ${v.runs} | ${(v.note ?? "").replace(/\|/g, "\\|").slice(0, 300)} |`), ""];
+	if (known.size) {
+		md.push("## Known: open decisions", "", "Steps where the app did what the model does, but the model's outcome is an open decision in docs/plan.md. Not failures.", "");
+		for (const [label, k] of [...known].sort())
+			md.push(`- **${label}**: ${k.count} steps (${Object.entries(k.claims).map(([r, n]) => `${r} ${n}`).join(", ")}). First: ${k.first}.`);
+		md.push("");
+	}
 	if (!failures.length) md.push("No failures.");
 	else {
 		md.push(`## Failures`, "", `${failures.length} failing sequences; distinct kinds:`, "");
@@ -528,6 +555,13 @@ async function main() {
 	console.log(`conformance: ${APP}: walks ${passed}/${sequences} passed, flows ${flows.filter((f) => f.pass).length}/${flows.length}, ${stats.steps} steps, ${stats.probes} probes, ${summary.timing.totalSeconds} s`);
 	console.log(`  wrote ${join(OUT, `${APP}.json`)} and ${join(OUT, APP, "report.md")}`);
 	process.exit(failures.length ? 1 : 0);
+}
+
+/** A claim's note for steps an open decision explains. */
+function knownText(label: string, n: number, first: string): string {
+	if (label === "T33")
+		return `T33 (open decision, docs/plan.md): ${n === 1 ? "1 click" : `${n} clicks`} dropped by design: the click ended an edit, the blur saved it, and saving moved or removed the control before the release. First: ${first}.`;
+	return `${label}: ${n} steps. First: ${first}.`;
 }
 
 main().catch((e) => { console.error(e); stopApp(); process.exit(2); });
