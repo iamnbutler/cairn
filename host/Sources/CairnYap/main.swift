@@ -78,9 +78,16 @@ final class FakeMic: @unchecked Sendable {
     private var sink: (@Sendable (UnsafeBufferPointer<Int16>) -> Void)?
     private(set) var starts = 0
     var failNext: ReplyError?
+    /// How long the next start blocks before it returns (a slow engine), in microseconds.
+    var slowNext: UInt32 = 0
 
     var microphone: Microphone {
         Microphone { [self] onSamples throws(ReplyError) in
+            lock.lock()
+            let slow = slowNext
+            slowNext = 0
+            lock.unlock()
+            if slow > 0 { usleep(slow) }
             lock.lock()
             defer { lock.unlock() }
             if let f = failNext { failNext = nil; throw f }
@@ -91,6 +98,8 @@ final class FakeMic: @unchecked Sendable {
     }
 
     var live: Bool { lock.lock(); defer { lock.unlock() }; return sink != nil }
+    func failing(_ f: ReplyError) { lock.lock(); failNext = f; lock.unlock() }
+    func slow(_ us: UInt32) { lock.lock(); slowNext = us; lock.unlock() }
     var startCount: Int { lock.lock(); defer { lock.unlock() }; return starts }
 
     /// One buffer of samples, as the microphone would deliver it.
@@ -448,6 +457,36 @@ enum SelfTest {
         // 8. Recent holds five.
         until("recent holds five: \(recent())") { recent().count == 5 + 2 }
 
+        // 8b. Nothing shows before the microphone runs (^349), as the original's `begin` shows
+        // the overlay only once `capture.start` returns. A microphone that fails to start:
+        // no overlay, ever, and the menu says why.
+        until("8b: the last overlay never hid", timeout: 4) { overlay()?.shown != true }
+        let starts8 = mic.startCount, sent8 = FakeOpenAI.seen.value.count
+        mic.failing(ReplyError(.other, "no input device"))
+        keys.send(.keyDown, f13)
+        until("failing mic: \(titles(menu.root))") {
+            titles(menu.root).first?.contains("Microphone failed: no input device") == true
+        }
+        usleep(200_000)
+        if overlay()?.shown == true { fail("the overlay showed for a microphone that failed") }
+        keys.send(.keyUp, f13)
+        usleep(200_000)
+        if mic.live || mic.startCount != starts8 || overlay()?.shown == true { fail("after a failed start") }
+        // A slow start (0.5 s): nothing shows while it starts, and a tap during it is timed from
+        // when the start finished, so it is a hold (^351), as on the original's blocked main
+        // thread; the clip is too short and nothing is sent.
+        mic.slow(500_000)
+        keys.send(.keyDown, f13)
+        usleep(100_000)
+        if overlay()?.shown == true { fail("the overlay showed while the microphone was starting") }
+        keys.send(.keyUp, f13)
+        until("slow start: never started") { mic.startCount == starts8 + 1 }
+        until("slow start: a tap during it latched", timeout: 3) { !mic.live }
+        usleep(300_000)
+        if overlayTexts().contains(where: { $0.hasPrefix("REC · HANDS FREE") }) { fail("a tap during a slow start latched") }
+        if FakeOpenAI.seen.value.count != sent8 { fail("a slow-start tap sent a clip") }
+        until("slow start: the overlay never hid", timeout: 4) { overlay()?.shown != true }
+
         // 9. The original Yap starts: the key is let go, and the menu says why.
         log.originalRunning.value = true
         until("original running: still listening", timeout: 5) { !keys.listening }
@@ -499,7 +538,7 @@ enum SelfTest {
         choose("^342")
         if quits != 1 { fail("Quit sent \(quits) quits") }
         engine.stop()
-        print("selftest: PASS (Yap: launch, hold, tap, shortcut, silent, failed type, copy, live reload, return, recent five, original Yap, menu items, quit)")
+        print("selftest: PASS (Yap: launch, hold, tap, shortcut, silent, failed type, copy, live reload, return, recent five, microphone start, original Yap, menu items, quit)")
         print("  launch to listening: \(launchMs); key up to typed (fake OpenAI): \(holdMs)")
         print(String(format: "  levels at 50 Hz: 150 buffers in %.2f s, %d frames published", levelSecs, levelFrames))
         print("  Lean step+frame+decode per batch while recording: \(levelLean)")
