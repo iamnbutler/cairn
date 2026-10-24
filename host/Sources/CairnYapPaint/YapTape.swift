@@ -5,13 +5,14 @@ import Metal
 /// Yap's tape display (the original Yap's `Overlay.metal`, unchanged), as a painter for a
 /// `paint` draw named `yap.tape` (docs/yap.md, "Overlay parity").
 ///
-/// What Lean sends (lean/Examples/Yap/View.lean, `tapePaint`), times in ms from the paint's
-/// origin, which is when the recording began:
+/// What Lean sends (lean/Examples/Yap/View.lean, `tapePaint`), every time in ms from the paint's
+/// origin, the tape's own clock (the first recording's start, as the original's renderer runs
+/// from when it was made):
 ///
 /// - scalars: the phase colour's red, green and blue in ten-thousandths; 1 while recording
-///   (listening or hands free), else 0; when recording began; when it stopped, or -1.
-/// - arrays: the times of the level samples; their levels in millionths (Yap's
-///   `min(1, sqrt(6·rms))` of each 20 ms window); where chunks were cut, in ms of recording.
+///   (listening or hands free), else 0; when this recording began; when it stopped, or -1.
+/// - arrays: when each level was heard; the levels in millionths (the original's
+///   `min(1, sqrt(6·rms))` of each buffer); when the preview cut the recording.
 ///
 /// The original keeps a 120-entry history, one entry per 60 Hz display frame: each frame it
 /// pushes `max(active ? latest level : 0, previous · 0.9)`. `history` rebuilds that history
@@ -50,7 +51,7 @@ public enum YapTape {
         let elapsed = max(0, (active ? now : (stop ?? now)) - start) / 1000
         var levels = history(now: now, start: start, stop: active ? nil : (stop ?? now),
                              times: array(0), levels: array(1))
-        let cuts = array(2).suffix(maximumCuts).map { Float(Double($0) / 1000) }
+        let cuts = array(2).suffix(maximumCuts).map { Float((Double($0) - start) / 1000) }
         var cutBuffer = cuts + [Float](repeating: 0, count: maximumCuts - cuts.count)
         var u = Uniforms(
             tint: SIMD4(Float(scalar(0)) / 10000, Float(scalar(1)) / 10000, Float(scalar(2)) / 10000, 1),
@@ -86,7 +87,7 @@ public enum YapTape {
                 shown = 0
                 value = 0
             } else {
-                let recording = stop.map { f < $0 } ?? true
+                let recording = stop.map { f <= $0 } ?? true
                 let latest = k > 0 && Double(times[k - 1]) >= start - 1 ? Float(Double(levels[k - 1]) / 1e6) : 0
                 shown = max(recording ? min(1, max(0, latest)) : 0, shown * Float(0.9))
                 value = shown

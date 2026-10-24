@@ -21,7 +21,7 @@ step : State → Input → State × List Cmd        -- Examples/Yap/Model.lean
 | `../Yap.lean` | the claims, ^301–^341 |
 | `Tests.lean` | `#guard` scenarios replaying the README's behaviours |
 | `App.lean` | the app: `AppState`, `receive` (messages → inputs), `tr` (commands → effects), files, the upload, `subscriptions` |
-| `View.lean` | the status item's menu (^301) and the overlay panel (^345) |
+| `View.lean` | the status item's menu (^301) and the overlay panel (^399) |
 | `AppProofs.lean` | the claims through `receive` and `menuStep` (`app_*`, `Keeps`, `TypedInv`) |
 | `AppTests.lean`, `OnScreen.lean` | `#guard`s through `receive`; each invariant on screen in reachable states |
 | `Abi.lean` | the C ABI the CairnYap host links (`libcairn_app_yap`) |

@@ -12,10 +12,9 @@ What the app shows (docs/yap.md), as functions of `AppState`:
   Transcript; Recent Transcripts (with ⚠︎ on those never typed) and Open Transcripts Folder;
   Dictate with the key, Press Return After Dictating, Keep Transcripts; Edit Dictionary…, Edit
   Settings…; Quit.
-* **The overlay** (^345): Yap's black panel at the bottom of the screen, 520 points wide: a
-  coloured dot, the phase's label and the elapsed time; a waveform of bars drawn from the
-  recording's levels (one bar per 20 ms window); the live preview in 14-point text, its last
-  four lines (`Node.para`, keep tail).
+* **The overlay** (^399): the original's panel at the bottom of the screen, 520 points wide: a
+  glowing dot, the phase's label and the clock; the tape (the original's shader, as a `paint`
+  draw); the live preview in 14-point text, its last 280 characters.
 
 Every actionable menu item is a control naming a move in `Examples.Yap`. -/
 
@@ -86,15 +85,30 @@ def statusItem (s : AppState) : StatusItem :=
       | .idle => "waveform" | .recording => "mic.fill" | .transcribing => "text.bubble",
     label := "Yap", control := openMenuRef, menu := menuItems s }
 
-/-! ## The overlay -/
+/-! ## The overlay
 
-def panelBg : Color := ⟨0, 0, 0, 235⟩
-def edge : Color := ⟨255, 255, 255, 43⟩
-def red : Color := ⟨255, 77, 46, 255⟩
-def orange : Color := ⟨255, 158, 51, 255⟩
-def blue : Color := ⟨97, 153, 255, 255⟩
+The original's `OverlayView`, one to one (docs/yap.md, "Overlay parity"): a black rounded
+rectangle (continuous corners, radius 14) 520 points wide with a 1-point edge and a soft
+shadow, 18 points of room for the shadow around it; inside, 12 points above, 14 below and 16 at
+the sides, rows 10 apart: the header (a glowing dot, the phase's label, the clock), the tape
+(the original's `Overlay.metal`, drawn by the host's `yap.tape` painter from the levels, cuts and
+times here) and, once there is text, a rule and the transcript's tail. -/
+
+/-- The original's `Palette`, in 8-bit sRGB. -/
 def cream : Color := ⟨237, 232, 219, 255⟩
-def dim : Color := ⟨237, 232, 219, 140⟩
+def blue : Color := ⟨97, 153, 255, 255⟩
+def orange : Color := ⟨255, 158, 51, 255⟩
+def red : Color := ⟨255, 77, 46, 255⟩
+def edge : Color := ⟨43, 43, 43, 255⟩
+
+def withAlpha (c : Color) (a : UInt8) : Color := ⟨c.r, c.g, c.b, a⟩
+
+/-- The palette for the tape's shader, in ten-thousandths (`Palette` exactly). -/
+def Look.tint : Look → List Int
+  | .listening | .failed => [10000, 3000, 1800]
+  | .handsFree => [10000, 6200, 2000]
+  | .transcribing => [3800, 6000, 10000]
+  | .typed => [9300, 9100, 8600]
 
 def Look.color : Look → Color
   | .listening | .failed => red
@@ -109,38 +123,63 @@ def Look.label : Look → String
   | .typed => "TYPED"
   | .failed => "NOT TYPED · IN RECENT TRANSCRIPTS"
 
-/-- `m:ss` of milliseconds. -/
+/-- `%d:%02d` of whole seconds in `ms`. -/
 def clockText (ms : Nat) : String :=
   let s := ms / 1000
   s!"{s / 60}:{if s % 60 < 10 then "0" else ""}{s % 60}"
 
-def bar (c : Color) (h : Nat) : Node :=
-  .box { width := .fixed 2, height := .fixed h, radius := 1, background := some c } none []
+/-- How much of the transcript the overlay shows: about four lines. -/
+def shownChars : Nat := 280
 
-/-- The last 280 characters, as Yap's overlay keeps them. -/
-def tailText (t : String) : String := String.ofList (t.toList.drop (t.length - 280))
+/-- The text as the original shows it: all of it, or "…" and its last 280 characters. -/
+def tailText (t : String) : String :=
+  if t.length ≤ shownChars then t else "…" ++ String.ofList (t.toList.drop (t.length - shownChars))
+
+/-- A time relative to the tape's clock, in ms, within the shader's 32-bit numbers. -/
+def tapeMs (o : Overlay) (t : Nat) : Int := max (-2147483648) (min 2147483647 ((t : Int) - o.epoch))
+
+/-- What the `yap.tape` painter is given (host/Sources/CairnYapPaint/YapTape.swift): the tint,
+whether it is recording, its start and stop, then the levels' times and values and the cuts,
+all in ms on the tape's clock (`epoch`). -/
+def tapePaint (o : Overlay) : Paint :=
+  { shader := "yap.tape", origin := o.epoch,
+    scalars := o.look.tint ++
+      [if o.isLive then 1 else 0, tapeMs o o.since, (o.stop.map (tapeMs o)).getD (-1)],
+    arrays := [o.levels.map (tapeMs o ·.1), o.levels.map (fun l => (l.2 : Int)),
+               (o.marks.reverse.map fun n => tapeMs o (o.since + n / 16))] }
+
+def header (o : Overlay) (now : Nat) : Node :=
+  .box { axis := .row, width := .fill, height := .fixed 26, gap := 7, align := .center } none
+    [ .box { width := .fixed 7, height := .fixed 7, radius := 4, background := some o.look.color,
+             shadow := some { color := withAlpha o.look.color 204, radius := 3 } } none [],
+      .text { font := { size := 10, weight := 600, width := .expanded, tracking := 140 },
+              color := o.look.color } o.look.label,
+      .box { width := .fill, height := .fixed 1 } none [],
+      .text { font := { size := 22, weight := 200, width := .expanded, tabular := true },
+              color := cream } (clockText (o.stop.getD now - o.since)) ]
+
+/-- The panel's shadow. SwiftUI's `shadow` on the original's whole stack shadows every view in it,
+so the tape (an opaque Metal view) and the rule cast it too, below the panel's edge. -/
+def panelShadow : Shadow := { color := ⟨0, 0, 0, 89⟩, radius := 14, y := 4 }
 
 def overlayView (s : AppState) : Node :=
   let o := s.io.overlay
-  let live := o.look == .listening || o.look == .handsFree
-  .box { width := .fill, padding := ⟨14, 20, 16, 20⟩, gap := 10, radius := 14,
-         background := some panelBg, border := some ⟨1, edge⟩ } none
-    ([ .box { axis := .row, width := .fill, height := .fixed 16, gap := 8, align := .center } none
-        [ .box { width := .fixed 8, height := .fixed 8, radius := 4, background := some o.look.color }
-            none [],
-          .text { font := { size := 11, weight := 600 }, color := o.look.color } o.look.label,
-          .box { width := .fill, height := .fixed 1 } none [],
-          .text { font := { size := 11, weight := 500, family := 1 }, color := dim }
-            (if live then clockText (s.io.mono - o.since) else "") ],
-       .box { axis := .row, width := .fill, height := .fixed 58, gap := 2, align := .center,
-              justify := .finish, clip := true } none
-         (o.levels.map (bar (if live then o.look.color else dim))) ] ++
-     (if o.text.isEmpty then []
-      else [ .box { width := .fill, height := .fixed 1, background := some edge } none [],
-             .para { font := { size := 14, weight := 400 }, color := cream }
-               { maxLines := some 4, keep := .tail } (tailText o.text) ]))
+  .box { width := .fill, padding := ⟨18, 18, 18, 18⟩ } none
+    [ .box { width := .fill, padding := ⟨12, 16, 14, 16⟩, gap := 10, radius := 14,
+             corner := .continuous, background := some ⟨0, 0, 0, 255⟩, border := some ⟨1, edge⟩,
+             shadow := some panelShadow } none
+        ([ header o s.io.mono,
+           .box { width := .fill, height := .fixed 58, background := some ⟨0, 0, 0, 255⟩,
+                  shadow := some panelShadow, paint := some (tapePaint o) } none [] ] ++
+         (if o.text.isEmpty then []
+          else [ .box { width := .fill, height := .fixed 1, background := some edge,
+                        shadow := some panelShadow } none [],
+                 .para { font := { size := 14 },
+                         color := withAlpha cream (if o.look == .typed then 255 else 153) }
+                   { lineSpacing := 3 } (tailText o.text) ])) ]
 
+/-- The panel: 520 points and 18 of room for the shadow on each side. -/
 def panel (s : AppState) : Option PanelView :=
-  if s.io.overlay.shown then some { width := 520, content := overlayView s } else none
+  if s.io.overlay.shown then some { width := 556, content := overlayView s } else none
 
 end Examples.Yap

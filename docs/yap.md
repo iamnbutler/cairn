@@ -75,11 +75,14 @@ If both are open, the original has the key; Yap (Cairn) waits. Remove Yap (Cairn
   Folder); Dictate with ‹key› ✓, Press Return After Dictating ✓, Keep Transcripts (N Days) ✓;
   Edit Dictionary…, Edit Settings…; Quit Yap (Cairn) (⌘Q). The icon follows the phase
   (`waveform`, `mic.fill`, `text.bubble`).
-- **The overlay** (^345), at the bottom of the screen, never taking focus or clicks: the
-  phase (REC, REC · HANDS FREE · TAP AGAIN TO SEND, TRANSCRIBING, TYPED, NOT TYPED · IN RECENT
-  TRANSCRIPTS) and the elapsed time; a waveform of bars from the microphone's 20 ms levels;
-  the live preview as a paragraph keeping its last four lines. It hides 1.5 s after a
-  transcript is typed and 4 s after one fails. `"overlay": false` in config.json turns it off.
+- **The overlay** (^399; ^345 is retired), at the bottom of the screen, never taking focus
+  or clicks, drawn as the original's (see "Overlay parity" below): the phase (REC, REC · HANDS
+  FREE · TAP AGAIN TO SEND, TRANSCRIBING, TYPED, NOT TYPED · IN RECENT TRANSCRIPTS) with a
+  glowing dot and a clock that stops when recording does; the tape (the original's
+  `Overlay.metal`, unchanged: the scope, the scrolling ruler, the reel and the meter, from the
+  microphone's levels and the preview's cuts); and the live transcript's last 280 characters.
+  It hides 1.5 s after a transcript is typed and 4 s after one fails. `"overlay": false` in
+  config.json turns it off.
 
 ## Testing
 

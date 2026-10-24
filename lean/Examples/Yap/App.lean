@@ -74,6 +74,10 @@ def dictionaryTemplate : String :=
 /-- How often the app checks its permissions and whether the original Yap is running. -/
 def pollEveryMs : Nat := 2000
 
+/-- The overlay's clock is redrawn this often while it runs, as the original's
+`TimelineView(.periodic(from: .now, by: 0.25))`. -/
+def clockEveryMs : Nat := 250
+
 /-- A transcript's day file: named by its local date. -/
 def dayPath (day : Int) : String := transcriptsDir ++ "/" ++ Dates.dayFile day
 
@@ -155,19 +159,29 @@ inductive Look where
   | listening | handsFree | transcribing | typed | failed
 deriving Repr, DecidableEq, Inhabited
 
-/-- How many bars the waveform has: about 2.4 s of 20 ms windows. -/
-def bars : Nat := 120
+/-- How many level samples the overlay keeps: about 5 s of 20 ms windows, more than the tape's
+four seconds (two of history and two of warm-up for its decay, `YapTape.history`). -/
+def levelSamples : Nat := 256
+
+/-- How many cuts the tape shows, as the original's `WaveRenderer.maximumCuts`. -/
+def maximumCuts : Nat := 32
 
 structure Overlay where
   clip : Nat := 0
   shown : Bool := false
   look : Look := .listening
   text : String := ""
-  /-- When the recording began (monotonic ms), for the elapsed clock. -/
+  /-- When the recording began (monotonic ms): the clock's and the tape's start. -/
   since : Nat := 0
-  /-- Bar heights, oldest first, at most `bars`. -/
-  levels : List Nat := []
-  /-- Where the preview cut the recording (in samples), newest first. -/
+  /-- When it stopped recording (transcribing, typed or failed): the clock stops there. -/
+  stop : Option Nat := none
+  /-- The first recording's start: the tape's own clock (its traces) runs from here, as the
+  original's renderer runs from when it was made. -/
+  epoch : Nat := 0
+  /-- Levels as heard: (monotonic ms, level in millionths), oldest first, at most
+  `levelSamples`. -/
+  levels : List (Nat × Nat) := []
+  /-- Where the preview cut the recording (in samples), newest first, at most `maximumCuts`. -/
   marks : List Nat := []
 deriving Repr, Inhabited
 
@@ -510,29 +524,42 @@ def coreReply (s : State) (q : Nat) (r : Cairn.Reply) : Reply :=
 
 /-! ## The overlay -/
 
-/-- A 20 ms window's bar: 2 to 58 points, on a square-root scale of its RMS. -/
-def barHeight (l : Level) : Nat :=
-  let rms := Nat.sqrt (l.sumSq / 320)
-  2 + min 56 (Nat.sqrt rms * 56 / 60)
+/-- The level of a buffer of 16-bit samples, in millionths, as the original's
+`PCMRecorder.append`: the RMS as a fraction of full scale (`Int16.max`), times six,
+square-rooted again, at most 1. `sumSq` is the sum of squares over `n` samples. -/
+def levelPpm (sumSq n : Nat) : Nat :=
+  if n = 0 then 0
+  else
+    -- rms × 1000 in sample units, then √(6 · rms / 32767) × 10⁶.
+    let rms1000 := Nat.sqrt (sumSq * 1000000 / n)
+    min 1000000 (Nat.sqrt (6000000000 * rms1000 / 32767))
+
+def Overlay.isLive (o : Overlay) : Bool := o.look == .listening || o.look == .handsFree
 
 def Overlay.apply (o : Overlay) (now c : Nat) : OverlayCmd → Overlay × List Effect
-  | .begin => ({ clip := c, shown := true, since := now }, [])
+  | .begin => ({ clip := c, shown := true, since := now,
+                 epoch := if o.epoch = 0 then now else o.epoch }, [])
   | .phase p =>
     if o.clip = c ∧ o.shown then
-      ({ o with look := match p with
+      let o' := { o with look := match p with
           | .handsFree => .handsFree | .transcribing => .transcribing
-          | .typed => .typed | .failed => .failed }, [])
+          | .typed => .typed | .failed => .failed }
+      ({ o' with stop := if o'.isLive then o'.stop else some (o'.stop.getD now) }, [])
     else (o, [])
   | .text t => if o.clip = c ∧ o.shown then ({ o with text := t }, []) else (o, [])
-  | .mark n => if o.clip = c ∧ o.shown then ({ o with marks := n :: o.marks.take 20 }, []) else (o, [])
+  | .mark n =>
+    if o.clip = c ∧ o.shown then ({ o with marks := n :: o.marks.take (maximumCuts - 1) }, [])
+    else (o, [])
   | .hide ms =>
     if ms = 0 then (if o.clip = c then ({ o with shown := false }, []) else (o, []))
     else (o, [.setTimer s!"hide{c}" ms])
 
-def Overlay.hear (o : Overlay) (c : Nat) (ls : List Level) : Overlay :=
-  if o.clip = c ∧ o.shown then
-    let hs := o.levels ++ ls.map barHeight
-    { o with levels := hs.drop (hs.length - bars) }
+/-- A buffer of the recording heard at `now`: one level for the whole buffer, as the original
+reads the latest buffer's level. -/
+def Overlay.hear (o : Overlay) (c now : Nat) (ls : List Level) : Overlay :=
+  if o.clip = c ∧ o.shown ∧ !ls.isEmpty then
+    let hs := o.levels ++ [(now, levelPpm (ls.foldl (· + ·.sumSq) 0) (ls.length * 320))]
+    { o with levels := hs.drop (hs.length - levelSamples) }
   else o
 
 /-! ## Commands to effects -/
@@ -891,14 +918,17 @@ def prepMsg (s : AppState) : Msg → Prep
     else match io.take id with
       | some (p, io) => ownReply s p io r
       | none => { io }
-  | .sub (.every _) .tick => let (io, as) := checks s.io; { io, asks := as }
+  | .sub (.every n) .tick =>
+    -- The overlay's clock ticks on its own subscription (`clockEveryMs`); only the clock moves.
+    if n = clockEveryMs then { io := s.io }
+    else let (io, as) := checks s.io; { io, asks := as }
   | .sub (.watchFile p) .changed =>
     if p = configPath then let (io, a) := s.io.ask .config (.read configPath); { io, asks := [a] }
     else if p = dictionaryPath then
       let (io, a) := s.io.ask .dictionary (.read dictionaryPath); { io, asks := [a] }
     else { io := s.io }
   | .sub (.record c) (.audio frames peak ws) =>
-    { io := { s.io with overlay := s.io.overlay.hear c ws },
+    { io := { s.io with overlay := s.io.overlay.hear c s.io.mono ws },
       input := some (.audio c { frames, peak, windows := ws.map fun l => ⟨l.sumSq, l.peak⟩ }) }
   | .sub (.record c) (.failed f m) =>
     { io := if f = .denied then { s.io with micGranted := some false } else s.io,
@@ -958,6 +988,7 @@ def wantsKey (s : AppState) : Bool :=
 
 def subscriptions (s : AppState) : List Sub :=
   [.every pollEveryMs] ++
+  (if s.io.overlay.shown && s.io.overlay.isLive then [.every clockEveryMs] else []) ++
   (if s.io.launched then [.watchFile configPath, .watchFile dictionaryPath] else []) ++
   (match s.core.recording with
    | some r => [.record r.clip]
