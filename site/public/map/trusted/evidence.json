@@ -1,6 +1,6 @@
 {
   "app": "Trusted",
-  "generated": "2026-10-24T05:18:07.881Z",
+  "generated": "2026-10-24T06:59:46.125Z",
   "inputs": {
     "fuzz": "/Users/natebutler/code/cairn/build/fuzz/Trusted.json",
     "trusted": "/Users/natebutler/code/cairn/build/fuzz/trusted.json",
@@ -18,8 +18,8 @@
       },
       {
         "kind": "fuzzed",
-        "have": 37,
-        "fail": 2,
+        "have": 39,
+        "fail": 0,
         "of": 39
       },
       {
@@ -42,8 +42,7 @@
       }
     ],
     "headlines": {
-      "assumed": 37,
-      "broken": 2
+      "assumed": 39
     }
   },
   "claims": [
@@ -214,7 +213,7 @@
       "ref": "^907",
       "kind": "assume",
       "title": "Carets follow the painted glyphs",
-      "headline": "broken",
+      "headline": "assumed",
       "evidence": [
         {
           "kind": "assumed",
@@ -224,9 +223,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "fail",
-          "label": "fuzz fails",
-          "detail": "The trusted-base check `text.metrics.carets` failed in 17 of 11043 cases: offset 18 (after U+62) is 399, left of the glyphs before it, which end at 410 (Core Text's caret 396). Replay with `host/.build/release/CairnFuzzTrusted --replay metrics --case 1131 --seed 10054090169120437835`."
+          "state": "pass",
+          "label": "fuzzed 11k",
+          "detail": "The trusted-base fuzzer's `text.metrics.carets` held in 11,043 cases, against Lean's proved side (seed 0)."
         }
       ],
       "theorems": [],
@@ -268,7 +267,7 @@
       "ref": "^909",
       "kind": "assume",
       "title": "The host wakes Lean by wake",
-      "headline": "broken",
+      "headline": "assumed",
       "evidence": [
         {
           "kind": "assumed",
@@ -278,9 +277,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "fail",
-          "label": "fuzz fails",
-          "detail": "The trusted-base check `clock.wake` failed in 1 of 1000 cases: woken 78 ms after the deadline. Replay with `host/.build/release/CairnFuzzTrusted --replay clock --case 15 --seed 12230080902777306649`."
+          "state": "pass",
+          "label": "fuzzed 1k",
+          "detail": "The trusted-base fuzzer's `clock.wake` held in 1,000 cases, against Lean's proved side (seed 0)."
         }
       ],
       "theorems": [],
@@ -1101,18 +1100,5 @@
       }
     }
   ],
-  "gaps": [
-    {
-      "ref": "^907",
-      "what": "fuzz fails",
-      "detail": "The trusted-base check `text.metrics.carets` failed in 17 of 11043 cases: offset 18 (after U+62) is 399, left of the glyphs before it, which end at 410 (Core Text's caret 396). Replay with `host/.build/release/CairnFuzzTrusted --replay metrics --case 1131 --seed 10054090169120437835`.",
-      "broken": true
-    },
-    {
-      "ref": "^909",
-      "what": "fuzz fails",
-      "detail": "The trusted-base check `clock.wake` failed in 1 of 1000 cases: woken 78 ms after the deadline. Replay with `host/.build/release/CairnFuzzTrusted --replay clock --case 15 --seed 12230080902777306649`.",
-      "broken": true
-    }
-  ]
+  "gaps": []
 }
