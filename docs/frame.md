@@ -386,7 +386,8 @@ error. `button` is `0` primary, `1` secondary.
 - **Subscription events.** Codes `0` tick and `1` changed (no fields); `2` audio (u32 frames,
   u32 peak, u32 count, then each window as u64 sum of squares and u32 peak: 12 bytes);
   `3` keyDown, `4` keyUp, `5` otherKey (u64 monotonic ms); `6` failed (string message; `b` is
-  the fault, coded as for replies). For codes other than `6`, `b` is written as 0 and must be 0.
+  the fault, coded as for replies); `7` started (no fields: `record`'s microphone is running).
+  For codes other than `6`, `b` is written as 0 and must be 0.
 - **Surfaces.** A bare local event (tags 0–17) is the window's, as in version 1. `surface`
   addresses a local event to the surface with that place: its inner record must be a local
   event (not `clock`, `reply`, `subEvent`, `surface` or a menu event), else the batch is an

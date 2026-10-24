@@ -49,10 +49,11 @@ def Reply.faultCode : Reply → UInt8
   | .failed f _ => Fault.code f
   | _ => 0
 
-/-- `tick` 0, `changed` 1, `audio` 2, `keyDown` 3, `keyUp` 4, `otherKey` 5, `failed` 6. -/
+/-- `tick` 0, `changed` 1, `audio` 2, `keyDown` 3, `keyUp` 4, `otherKey` 5, `failed` 6,
+`started` 7. -/
 def SubEvent.code : SubEvent → UInt8
   | .tick => 0 | .changed => 1 | .audio .. => 2 | .keyDown _ => 3 | .keyUp _ => 4
-  | .otherKey _ => 5 | .failed .. => 6
+  | .otherKey _ => 5 | .failed .. => 6 | .started => 7
 
 def SubEvent.faultCode : SubEvent → UInt8
   | .failed f _ => Fault.code f
@@ -63,7 +64,7 @@ def fitsTime (t : Time) : Bool := fu64 t.mono && fi64 t.wall && fi t.zone
 def fitsLevel (l : Level) : Bool := fu64 l.sumSq && fu l.peak
 
 def fitsSubEvent : SubEvent → Bool
-  | .tick | .changed => true
+  | .tick | .changed | .started => true
   | .audio n pk ws => fu n && fu pk && fu ws.length && ws.all fitsLevel
   | .keyDown t | .keyUp t | .otherKey t => fu64 t
   | .failed _ m => fs m
@@ -114,7 +115,7 @@ def level (l : Level) : List UInt8 := u64 l.sumSq ++ u32 l.peak
 
 /-- A subscription event's fields after its record head and id. -/
 def subEventBody : SubEvent → List UInt8
-  | .tick | .changed => []
+  | .tick | .changed | .started => []
   | .audio n pk ws => u32 n ++ u32 pk ++ u32 ws.length ++ ws.flatMap level
   | .keyDown t | .keyUp t | .otherKey t => u64 t
   | .failed _ m => str m
@@ -213,6 +214,7 @@ def subEventBody (code fault : UInt8) : Dec SubEvent :=
   | 6 => do
     let some f := Fault.ofCode fault | fail
     return .failed f (← str)
+  | 7 => if fault = 0 then pure .started else fail
   | _ => fail
 
 /-- Read a record head, then the rest of the record by its tag. -/
@@ -351,7 +353,7 @@ theorem subEventBody_enc {e : SubEvent} (h : fitsSubEvent e = true) (r : List UI
     subEventBody (SubEvent.code e) (SubEvent.faultCode e) (Enc.subEventBody e ++ r) =
       some (e, r) := by
   cases e with
-  | tick | changed => rfl
+  | tick | changed | started => rfl
   | audio n pk ws =>
     simp only [fitsSubEvent, Bool.and_eq_true, fu_iff, List.all_eq_true] at h
     obtain ⟨⟨⟨hn, hp⟩, hc⟩, hw⟩ := h
