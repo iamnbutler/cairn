@@ -21,6 +21,7 @@ describe("with the fixture", () => {
 		expect(text).toContain('<a href="/packages/" class="on" aria-current="page">Libraries <span class="n">1</span></a>');
 		expect(text).toContain('<a href="/packages/?tab=apps">Apps <span class="n">1</span></a>');
 		expect(text).toContain('href="/docs/cairn/0.1.2/"');
+		expect(text).toContain('<span class="owner">by iamnbutler</span>');
 		expect(text).not.toContain('href="/packages/yap/"');
 		const apps = await (await get("/packages/?tab=apps")).text();
 		expect(apps).toContain('<a href="/packages/?tab=apps" class="on" aria-current="page">Apps <span class="n">1</span></a>');
@@ -38,6 +39,7 @@ describe("with the fixture", () => {
 	test("shows the latest release with its ledger", async () => {
 		const text = await (await get("/packages/cairn/")).text();
 		expect(text).toContain("<dd>0.1.2</dd>");
+		expect(text).toContain("<dt>Owner</dt><dd>iamnbutler</dd>");
 		expect(text).toContain('<tr id="301" class="moved">');
 		expect(text).toContain("<code>cairn^1</code>");
 	});
@@ -120,7 +122,8 @@ describe("with a registry", () => {
 		globalThis.fetch = real;
 	});
 
-	const env = { ASSETS: assets, REGISTRY_URL: "https://reg.test/", REGISTRY_TOKEN: "t0ken" };
+	// The one public registry: a URL and no token.
+	const env = { ASSETS: assets, REGISTRY_URL: "https://reg.test/" };
 	const release = {
 		version: "1.2.0",
 		revision: "a".repeat(40),
@@ -136,16 +139,28 @@ describe("with a registry", () => {
 		docs: true,
 	};
 	const answers = {
-		"/config.json": { owner: "carl" },
 		"/api/v1/packages?per_page=100": {
 			data: {
 				items: [
-					{ name: "hello", version: "1.2.0", description: "Says <b>hello</b>" },
-					{ name: "wave", kind: "bin", version: "0.3.0", description: "Waves" },
+					{ name: "hello", fullName: "carl/hello", version: "1.2.0", description: "Says <b>hello</b>" },
+					{ name: "wave", fullName: "acme/wave", kind: "bin", version: "0.3.0", description: "Waves" },
 				],
 			},
 		},
-		"/api/v1/packages/carl/hello": { data: { name: "hello", description: "Says <b>hello</b>" } },
+		// A name has one owner; the site finds it by searching for the name.
+		"/api/v1/packages?q=hello&per_page=100": {
+			data: {
+				items: [
+					{ name: "hello_world", fullName: "zed/hello_world", version: "0.1.0" },
+					{ name: "hello", fullName: "carl/hello", version: "1.2.0" },
+				],
+			},
+		},
+		"/api/v1/packages?q=wave&per_page=100": { data: { items: [{ name: "wave", fullName: "acme/wave", kind: "bin", version: "0.3.0" }] } },
+		"/api/v1/packages?q=other&per_page=100": { data: { items: [] } },
+		"/api/v1/packages/carl/hello": { data: { name: "hello", fullName: "carl/hello", owner: "carl", description: "Says <b>hello</b>" } },
+		"/api/v1/packages/acme/wave": { data: { name: "wave", fullName: "acme/wave", owner: "acme", kind: "bin", description: "Waves" } },
+		"/api/v1/packages/acme/wave/versions?yanked=true": { data: [{ ...release, version: "0.3.0", kind: "bin", tag: "v0.3.0", publisher: "dee" }] },
 		"/api/v1/packages/carl/hello/versions?yanked=true": { data: [release] },
 		"/api/v1/packages/carl/hello/versions/1.2.0/claims": {
 			data: { claims: [{ id: 1, kind: "move", status: "active", statement: "-", title: "Wave" }] },
@@ -163,7 +178,7 @@ describe("with a registry", () => {
 		return Response.json({ error: { status: 404, message: "Not found" } }, { status: 404 });
 	};
 
-	test("renders from the API, escapes what publishers wrote, and sends the token", async () => {
+	test("renders from the API with each package's owner, escapes what publishers wrote, and sends no token", async () => {
 		globalThis.fetch = fake;
 		const list = await (await get("/packages/", env)).text();
 		expect(list).not.toContain("Sample data");
@@ -171,17 +186,26 @@ describe("with a registry", () => {
 		// A registry from before kinds says none: a library.
 		expect(list).toContain("Libraries <span class=\"n\">1</span>");
 		expect(list).not.toContain('href="/packages/wave/"');
+		expect(list).toContain('<span class="owner">by carl</span>');
 		const apps = await (await get("/packages/?tab=apps", env)).text();
 		expect(apps).toContain('href="/packages/wave/"');
 		expect(apps).not.toContain('href="/packages/hello/"');
+		expect(apps).toContain('<span class="owner">by acme</span>');
 		const page = await (await get("/packages/hello/", env)).text();
 		expect(page).toContain("<code>hello^1</code>");
 		expect(page).toContain('<a href="/docs/hello/1.2.0/">Docs for 1.2.0</a>');
 		expect(page).toContain("cairn add hello@^1.2.0");
 		expect(page).toContain('version = "^1.2.0"');
 		expect(page).toContain('.package(url: "https://reg.test/git/carl/hello.git", from: "1.2.0")');
+		expect(page).toContain("<dt>Owner</dt><dd>carl</dd>");
+		expect(page).toContain('scope = "carl"');
 		expect(page).not.toContain("Not from a registry yet");
-		expect(seen.every((auth) => auth === "Bearer t0ken")).toBe(true);
+		const app = await (await get("/packages/wave/", env)).text();
+		expect(app).toContain("<dt>Owner</dt><dd>acme</dd>");
+		expect(app).toContain("git clone https://reg.test/git/acme/wave.git");
+		expect(seen.length).toBeGreaterThan(0);
+		expect(seen.every((auth) => auth === null)).toBe(true);
+		expect(paths).not.toContain("/config.json");
 	});
 
 	test("never fetches, proxies or renders docs from the registry", async () => {

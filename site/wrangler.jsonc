@@ -3,8 +3,10 @@
   "main": "worker.js",
   "compatibility_date": "2026-10-01",
   "assets": { "directory": "./public", "binding": "ASSETS" },
-  // The package pages read a Cairn package registry (a nextpm `cairn` registry) when
-  // REGISTRY_URL is set here and REGISTRY_TOKEN is a secret (`wrangler secret put`). Without
-  // them they show site/registry/fixture.json, marked as sample data.
+  // The package pages read the public Cairn registry when REGISTRY_URL is set, with no token:
+  // anyone reads it. Unset, they show site/registry/fixture.json, marked as sample data. Once
+  // https://cairn.registry.nexthub.sh answers (its DNS is pending), switch it on with
+  //   "vars": { "REGISTRY_URL": "https://cairn.registry.nexthub.sh" },
+  // and drop any old REGISTRY_TOKEN secret (`wrangler secret delete REGISTRY_TOKEN`).
   "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "cairn-media" }]
 }

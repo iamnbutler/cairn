@@ -1,8 +1,10 @@
-// The package pages: /packages/ and /packages/<name>/[<version>/]. They render from a Cairn
-// package registry, the nextpm `cairn` kind (its ADR 0005), when the Worker has REGISTRY_URL and
-// REGISTRY_TOKEN, and from site/registry/fixture.json (tools/registry/fixture.ts) when it
-// doesn't. Everything a registry answers is escaped: a package's description is its publisher's
-// text, not ours.
+// The package pages: /packages/ and /packages/<name>/[<version>/]. They render from the Cairn
+// package registry, the nextpm `cairn` kind (its ADR 0005), when the Worker has REGISTRY_URL, and
+// from site/registry/fixture.json (tools/registry/fixture.ts) when it doesn't. There is one
+// public registry, https://cairn.registry.nexthub.sh, which anyone reads with no token, so the
+// site sends none. Each package has its own owner, the account that first published its name.
+// Everything a registry answers is escaped: a package's description is its publisher's text,
+// not ours.
 //
 // /docs/<name>/<version>/ is a placeholder. It never fetches, proxies or renders HTML from the
 // registry: HTML served from a publisher's upload would run as this origin, so a registry takes
@@ -25,37 +27,51 @@ const kindOf = (one) => (one?.kind === "bin" ? "bin" : "lib");
 
 /** The registry's API, or the fixture with the same answers. */
 export function source(env) {
-	if (env.REGISTRY_URL && env.REGISTRY_TOKEN) return remote(env.REGISTRY_URL.replace(/\/$/, ""), env.REGISTRY_TOKEN);
+	if (env.REGISTRY_URL) return remote(env.REGISTRY_URL.replace(/\/$/, ""));
 	return local();
 }
 
-function remote(base, token) {
+/** The owner half of a search result's `fullName`, `owner/name`. */
+const ownerIn = (fullName) => (String(fullName ?? "").includes("/") ? String(fullName).split("/")[0] : "");
+
+function remote(base) {
 	const get = async (path) => {
-		const res = await fetch(`${base}${path}`, { headers: { authorization: `Bearer ${token}` } });
+		const res = await fetch(`${base}${path}`, { headers: { accept: "application/json" } });
 		if (res.status === 404) return undefined;
 		if (!res.ok) throw new Error(`registry: ${path} answered ${res.status}`);
 		return res;
 	};
 	const data = async (path) => (await (await get(path))?.json())?.data;
-	let config;
-	const owner = async () => (config ??= await (await get("/config.json")).json()).owner;
+	// The API reads a package only as <owner>/<name>, and a name has one owner, so find it by
+	// searching for the name. A source lives for one request, so this caches no longer.
+	const owners = new Map();
+	const ownerOf = async (name) => {
+		if (!owners.has(name)) {
+			const found = await data(`/api/v1/packages?q=${encodeURIComponent(name)}&per_page=100`);
+			owners.set(name, ownerIn(found?.items?.find((one) => one.name === name)?.fullName));
+		}
+		return owners.get(name);
+	};
+	const at = (who, name) => `/api/v1/packages/${encodeURIComponent(who)}/${name}`;
 	return {
 		fixture: false,
-		git: (name) => `${base}/git/${encodeURIComponent(config?.owner ?? "")}/${name}.git`,
+		git: (owner, name) => `${base}/git/${encodeURIComponent(owner)}/${name}.git`,
 		async list() {
 			const found = await data("/api/v1/packages?per_page=100");
-			return found?.items ?? [];
+			return (found?.items ?? []).map((one) => ({ ...one, owner: ownerIn(one.fullName) }));
 		},
 		async pkg(name) {
-			const who = await owner();
-			const pkg = await data(`/api/v1/packages/${encodeURIComponent(who)}/${name}`);
+			const who = await ownerOf(name);
+			if (!who) return undefined;
+			const pkg = await data(at(who, name));
 			if (!pkg) return undefined;
-			const versions = (await data(`/api/v1/packages/${encodeURIComponent(who)}/${name}/versions?yanked=true`)) ?? [];
-			return { name, owner: who, description: pkg.description, kind: kindOf(pkg), versions };
+			const versions = (await data(`${at(who, name)}/versions?yanked=true`)) ?? [];
+			return { name, owner: pkg.owner ?? who, description: pkg.description, kind: kindOf(pkg), versions };
 		},
 		async claims(name, version) {
-			const who = await owner();
-			return (await data(`/api/v1/packages/${encodeURIComponent(who)}/${name}/versions/${version}/claims`))?.claims ?? [];
+			const who = await ownerOf(name);
+			if (!who) return [];
+			return (await data(`${at(who, name)}/versions/${version}/claims`))?.claims ?? [];
 		},
 	};
 }
@@ -64,13 +80,14 @@ function local() {
 	const find = (name) => fixture.packages.find((one) => one.name === name);
 	return {
 		fixture: true,
-		git: (name) => `https://<registry>/git/${fixture.owner}/${name}.git`,
+		git: (owner, name) => `https://<registry>/git/${owner}/${name}.git`,
 		async list() {
 			const all = fixture.packages.map((one) => {
 				const latest = latestOf(one.versions);
 				return {
 					name: one.name,
 					fullName: `${fixture.owner}/${one.name}`,
+					owner: fixture.owner,
 					version: latest.version,
 					kind: kindOf(latest),
 					description: latest.description,
@@ -172,7 +189,7 @@ export async function listPage(src, kind = "lib") {
 	const cards = items
 		.map(
 			(one) => `<li class="pkg px">
-<div class="head"><a class="name" href="/packages/${esc(one.name)}/">${esc(one.name)}</a><span class="ver">${esc(one.version)}</span></div>
+<div class="head"><a class="name" href="/packages/${esc(one.name)}/">${esc(one.name)}</a><span class="ver">${esc(one.version)}</span>${one.owner ? `<span class="owner">by ${esc(one.owner)}</span>` : ""}</div>
 <p>${esc(one.description ?? "")}</p>
 <div class="meta">${counts(one.claims)}<span class="links"><a href="/docs/${esc(one.name)}/${esc(one.version)}/">Docs</a><a href="/packages/${esc(one.name)}/">Versions and claims</a></span></div>
 </li>`,
@@ -216,6 +233,7 @@ export async function packagePage(src, name, wanted) {
 	const body = `${sample(src)}
 <div class="facts px"><dl>
 <div><dt>Kind</dt><dd>${app ? "App" : "Library"}</dd></div>
+<div><dt>Owner</dt><dd>${esc(pkg.owner)}</dd></div>
 <div><dt>Version</dt><dd>${esc(shown.version)}${shown.yanked ? ' <span class="chip retired">yanked</span>' : ""}</dd></div>
 <div><dt>Published</dt><dd>${esc(date(shown.date))}${shown.publisher ? ` by ${esc(shown.publisher)}` : ""}</dd></div>
 <div><dt>Commit</dt><dd><code>${esc(shown.revision.slice(0, 12))}</code> at <code>${esc(shown.tag ?? `v${shown.version}`)}</code></dd></div>
@@ -233,7 +251,7 @@ ${
 		: app
 		? `<h2 id="use">Build it</h2>
 <p>${esc(name)} is an app: nothing can depend on it. Clone it from the registry and build it with the <code>cairn</code> tool:</p>
-<figure class="code"><pre><code>git clone ${esc(src.git(name))}
+<figure class="code"><pre><code>git clone ${esc(src.git(pkg.owner, name))}
 cd ${esc(name)} &amp;&amp; git checkout ${esc(shown.tag ?? `v${shown.version}`)} &amp;&amp; cairn build --release</code></pre></figure>`
 		: `<h2 id="use">Use it</h2>
 <p>With the <code>cairn</code> tool:</p>
@@ -245,7 +263,7 @@ ${esc(name)} = "${esc(range)}"</code></pre><figcaption><code>cairn.toml</code></
 name = "${esc(name)}"
 scope = "${esc(pkg.owner)}"
 version = "${esc(range)}"</code></pre><figcaption><code>lean/lakefile.toml</code></figcaption></figure>
-<figure class="code"><pre><code>.package(url: "${esc(src.git(name))}", from: "${esc(shown.version.replace(/-.*$/, ""))}")</code></pre><figcaption><code>Package.swift</code></figcaption></figure>`
+<figure class="code"><pre><code>.package(url: "${esc(src.git(pkg.owner, name))}", from: "${esc(shown.version.replace(/-.*$/, ""))}")</code></pre><figcaption><code>Package.swift</code></figcaption></figure>`
 }
 ${deps.length ? `<h2 id="deps">Depends on</h2><ul>${deps.map(([dep, r]) => `<li><a href="/packages/${esc(dep)}/"><code>${esc(dep)}</code></a> <code>${esc(r)}</code></li>`).join("")}</ul>` : ""}
 <h2 id="versions">Versions</h2>
