@@ -7,7 +7,7 @@ public import Cairn.Text.Field
 public import Cairn.Text.Host
 public import Cairn.Layout.Core
 public import Cairn.Runtime.Abi
-public import Cairn.Frame.Boundary
+public import Cairn.Abi
 
 /-! # Basics: the first app on the v1 ABI
 

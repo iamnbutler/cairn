@@ -1,7 +1,8 @@
 # Packages and the standard library
 
-How Cairn is cut into packages, and what its standard library is. Design only; nothing here is
-implemented yet. Measured on `main` at c6176ea (Cairn 0.1.2) and Yap at 4d69f7f.
+How Cairn is cut into packages, and what its standard library is. A design: step 1 of the
+migration (§5) is done, nothing after it is. Measured on `main` at c6176ea (Cairn 0.1.2) and Yap
+at 4d69f7f.
 
 ## Recommendation
 
@@ -219,7 +220,8 @@ Yap pins `v0.1.2` exactly, so nothing on `main` breaks it. Each step below is a 
 take with no source change, or a one-line one.
 
 1. **Moves with shims** (0.1.3). `Cairn.Abi`, `Cairn.UI.Hit`, `Cairn.Font`; the old modules
-   re-export them. Add a lint that fails on a directory-level cycle. No claim changes.
+   re-export them. Add a lint that fails on a directory-level cycle. No claim changes. Done:
+   `make lint` runs `tools/lint/dircycles.ts`, which skips the three shims.
 2. **Libraries** (0.1.3 or 0.1.4). Narrow `Cairn` to the linked closure; add `CairnProofs`,
    `CairnClaims`, `CairnFuzz`, `CairnTools`, rename `TrustedClaims` to `CairnTrusted`. Take
    `Cairn.Fuzz.Rng` out of the `Todo` library's roots. The `Cairn.lean` umbrella keeps importing

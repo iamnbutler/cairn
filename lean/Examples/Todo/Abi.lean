@@ -3,7 +3,7 @@ module
 public import Examples.Todo
 public import Cairn.Text.Host
 public import Cairn.Runtime.Abi
-public import Cairn.Frame.Boundary
+public import Cairn.Abi
 
 /-! # TodoMVC's v1 exports
 

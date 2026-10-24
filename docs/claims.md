@@ -337,10 +337,10 @@ the host never calls them. Lake executables that link the real module (`ledger`,
 
 Consequences of the module system for the modules an app imports: every one of them is a
 `module` (a module can only import modules), so `Cairn.Claim`, `Input`, `Geometry`,
-`Text.Metrics`, `UI.Node`, `App` and `Claims.Move`/`Machine`/`Core` are modules with
-`@[expose] public section`, and so (for the apps on the v1 runtime) are `Text.Field`, `Text.Host`, `Layout.Core`, `Layout.Facts`, `Runtime.Hit`, `Runtime.Step`,
+`Font`, `UI.Node`, `App` and `Claims.Move`/`Machine`/`Core` are modules with
+`@[expose] public section`, and so (for the apps on the v1 runtime) are `Text.Field`, `Text.Host`, `Layout.Core`, `Layout.Facts`, `UI.Hit`, `Runtime.Step`,
 `Runtime.Abi`, `Frame`, `Frame.Bytes`, `Frame.Encode`, `Frame.Events`, `Frame.Build` and
-`Frame.Boundary`. Their `#guard`s moved to sibling `…Tests.lean` files. Non-module files (`Cairn.Runtime`, `Cairn.Layout`,
+`Abi`. Their `#guard`s moved to sibling `…Tests.lean` files. Non-module files (`Cairn.Runtime`, `Cairn.Layout`,
 …) import them unchanged and see everything. `#guard` does not work in a module without
 `meta`-importing what it evaluates, so checks there are `example … := by decide`.
 

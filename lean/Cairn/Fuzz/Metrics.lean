@@ -1,5 +1,5 @@
 import Cairn.Fuzz.Rng
-import Cairn.Text.Metrics
+import Cairn.Font
 import Cairn.Layout.Proofs
 
 /-! # Random text metrics, valid by construction

@@ -1,5 +1,5 @@
 import Cairn.Layout.Proofs
-import Cairn.Runtime.Hit
+import Cairn.UI.Hit
 
 /-! # From layout facts to the runtime's `LayoutFacts`
 

@@ -1,6 +1,6 @@
 import Cairn.Geometry
 import Cairn.Claim
-import Cairn.Text.Metrics
+import Cairn.Font
 import Cairn.Text.Field
 import Cairn.Text.FieldTests
 import Cairn.Text.Proofs
@@ -8,6 +8,7 @@ import Cairn.Text.Host
 import Cairn.Text.Wrap
 import Cairn.Text.WrapProofs
 import Cairn.UI.Node
+import Cairn.UI.Hit
 import Cairn.Input
 import Cairn.Frame
 import Cairn.Frame.Bytes
@@ -16,11 +17,11 @@ import Cairn.Frame.Events
 import Cairn.Frame.Build
 import Cairn.Frame.Menu
 import Cairn.Frame.Dump
-import Cairn.Frame.Boundary
+import Cairn.Abi
 import Cairn.Frame.Layout
 import Cairn.Frame.EventsTests
 import Cairn.Frame.BuildTests
-import Cairn.Frame.BoundaryTests
+import Cairn.Abi.Tests
 import Cairn.Surface
 import Cairn.App
 -- The runtime half of the claim language only: `Cairn.Claims` imports `Lean` and must stay out
@@ -29,3 +30,7 @@ import Cairn.Claims.Core
 import Cairn.Runtime
 import Cairn.Claims.Deliver
 import Cairn.Layout
+-- Old names of moved modules, re-exporting the new ones until 0.2.0 (docs/packages-and-std.md).
+import Cairn.Frame.Boundary
+import Cairn.Runtime.Hit
+import Cairn.Text.Metrics
