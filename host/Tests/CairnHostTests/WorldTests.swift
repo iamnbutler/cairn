@@ -53,6 +53,17 @@ final class Inbox: @unchecked Sendable {
         if case .failed(.notFound, _) = Files.list(dir + "/nothing") {} else { Issue.record("list missing") }
     }
 
+    /// `listDir` gives the bytes the file system holds, sorted by UTF-8 bytes, including a
+    /// leading U+FEFF, which `FileManager.contentsOfDirectory(atPath:)` drops (found by
+    /// `effects.list-dir` at 20,000 cases; the oracle was wrong, not `Files.list`).
+    @Test func listDirKeepsALeadingBOM() {
+        let dir = Self.scratch()
+        defer { try? FileManager.default.removeItem(atPath: dir) }
+        for n in ["a", "\u{FEFF}a", "\u{FEFF}", "Z"] { #expect(Files.write(dir + "/" + n, [1]) == .done) }
+        #expect(Files.list(dir) == .names(["Z", "a", "\u{FEFF}", "\u{FEFF}a"]))
+        #expect(Files.read(dir + "/\u{FEFF}a") == .bytes([1]))
+    }
+
     @Test func watchFileSeesChanges() {
         let dir = Self.scratch()
         defer { try? FileManager.default.removeItem(atPath: dir) }

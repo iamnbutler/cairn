@@ -242,21 +242,21 @@ final class FileOpsSuite: Suite {
             r.fail(c, "listDir of a directory: \(Files.list(dir))")
             return
         }
-        // FileManager drops a name's leading U+FEFF (readdir and `listDir` keep it), so it is
-        // compared without one.
-        func unBOM(_ n: String) -> String {
-            n.unicodeScalars.first == "\u{FEFF}" ? String(String.UnicodeScalarView(n.unicodeScalars.dropFirst())) : n
-        }
-        let byBytes: (String, String) -> Bool = { $0.utf8.lexicographicallyPrecedes($1.utf8) }
-        let fm = ((try? FileManager.default.contentsOfDirectory(atPath: dir)) ?? []).sorted(by: byBytes)
-        let listed = names.map(unBOM).sorted(by: byBytes)
-        let i = Array(zip(listed, fm)).firstIndex { Array($0.0.utf8) != Array($0.1.utf8) } ?? min(listed.count, fm.count)
-        r.expect(c, listed.map { Array($0.utf8) } == fm.map { Array($0.utf8) },
-                 "listDir differs from FileManager at \(i) of \(listed.count) and \(fm.count): \(listed.dropFirst(i).prefix(2).map { Array($0.unicodeScalars) }) vs \(fm.dropFirst(i).prefix(2).map { Array($0.unicodeScalars) })")
+        // FileManager's URL listing, read back through each URL's file-system representation:
+        // the bytes the file system holds. (`contentsOfDirectory(atPath:)` decodes names as
+        // NSString does, which drops one leading U+FEFF: "\u{FEFF}a" comes back as "a", a name
+        // that isn't in the directory. That was the oracle's bug, not the host's.)
+        let fm = ((try? FileManager.default.contentsOfDirectory(at: URL(fileURLWithPath: dir),
+                                                                includingPropertiesForKeys: nil)) ?? [])
+            .map(Self.fileSystemName)
+            .sorted { $0.utf8.lexicographicallyPrecedes($1.utf8) }
+        r.expect(c, names.map { Array($0.utf8) } == fm.map { Array($0.utf8) },
+                 "listDir differs from FileManager: \(names.prefix(5)) vs \(fm.prefix(5))")
         r.expect(c, Set(names) == made, "listDir has \(names.count) names; the case made \(made.count)")
         r.expect(c, zip(names, names.dropFirst()).allSatisfy { $0.utf8.lexicographicallyPrecedes($1.utf8) },
                  "listDir's names are not strictly sorted by UTF-8 bytes")
         r.count(c, "names", names.count)
+        r.count(c, "leadingBOM", names.filter { $0.unicodeScalars.first == "\u{FEFF}" }.count)
         if let f = names.first(where: { FileManager.default.fileExists(atPath: dir + "/" + $0) && !isDir(dir + "/" + $0) }) {
             r.expect(c, isFailure(Files.list(dir + "/" + f), .invalid), "listDir of a file: \(Files.list(dir + "/" + f))")
         }
@@ -266,6 +266,17 @@ final class FileOpsSuite: Suite {
             chmod(dir, 0o000)
             r.expect(c, isFailure(Files.list(dir), .denied), "listDir of an unreadable directory: \(Files.list(dir))")
             chmod(dir, 0o755)
+        }
+    }
+
+    /// A listed URL's last component as the file system's bytes, not as Foundation decodes it.
+    static func fileSystemName(_ u: URL) -> String {
+        u.withUnsafeFileSystemRepresentation { p -> String in
+            guard let p else { return u.lastPathComponent }
+            let bytes = Array(UnsafeBufferPointer(start: UnsafeRawPointer(p).assumingMemoryBound(to: UInt8.self),
+                                                  count: strlen(p)))
+            let last = bytes.split(separator: UInt8(ascii: "/"), omittingEmptySubsequences: true).last ?? []
+            return String(decoding: last, as: UTF8.self)
         }
     }
 
