@@ -12,11 +12,13 @@ open Lean
 
 def allowed : List Name := [``propext, ``Classical.choice, ``Quot.sound]
 
-def ours (env : Environment) (n : Name) : Bool :=
+/-- Cairn's own modules, and those of the package being audited: the modules under the roots'
+first components (`lake exe audit Yap` from an app also audits `Yap.*`). -/
+def ours (env : Environment) (roots : List Name) (n : Name) : Bool :=
   match env.getModuleIdxFor? n with
   | some idx =>
     let m := env.header.moduleNames[idx.toNat]!
-    m.getRoot == `Cairn || m.getRoot == `Examples
+    m.getRoot == `Cairn || m.getRoot == `Examples || roots.any (·.getRoot == m.getRoot)
   | none => false
 
 /-- Split `--json PATH` out of the arguments. -/
@@ -34,7 +36,7 @@ def main (args : List String) : IO UInt32 := do
   let mut bad : Array String := #[]
   let mut results : Array (String × Json) := #[]
   for (n, ci) in env.constants.toList do
-    unless ours env n do continue
+    unless ours env roots n do continue
     if n.isInternal then continue
     match ci with
     | .thmInfo _ | .axiomInfo _ =>

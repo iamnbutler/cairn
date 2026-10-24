@@ -1,3 +1,6 @@
+// lean.h narrows 64-bit values on purpose; the package builds without unsafe flags, so the
+// warning is silenced here rather than with -Wno-shorten-64-to-32.
+#pragma clang diagnostic ignored "-Wshorten-64-to-32"
 #include "cairn_lean.h"
 #include <lean/lean.h>
 #include <stdlib.h>

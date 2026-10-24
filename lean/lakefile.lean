@@ -11,17 +11,18 @@ target text_host.o pkg : System.FilePath := do
   let weakArgs := #["-I", (← getLeanIncludeDir).toString]
   buildO (pkg.buildDir / "c" / "text_host.o") src weakArgs #["-O2", "-fPIC"] "cc"
 
-@[default_target]
-lean_lib Cairn where
-  defaultFacets := #[LeanLib.staticFacet]
-  moreLinkObjs := #[text_host.o]
-
 /-- A weak stand-in for the claim commands' full initializer, so the host links apps that
-`meta import` them without libLean (see lean/c/claims_meta.c). -/
+`meta import` them without libLean (see lean/c/claims_meta.c). `Cairn`'s library carries it, so
+every library `bin/cairn-link` merges has it, whichever package the app is in. -/
 target claims_meta.o pkg : System.FilePath := do
   let src ← inputTextFile <| pkg.dir / "c" / "claims_meta.c"
   let args := #["-I", (← getLeanIncludeDir).toString]
   buildO (pkg.buildDir / "c" / "claims_meta.o") src args #["-O2", "-fPIC"] "cc"
+
+@[default_target]
+lean_lib Cairn where
+  defaultFacets := #[LeanLib.staticFacet]
+  moreLinkObjs := #[text_host.o, claims_meta.o]
 
 /-- Every example app and its proofs (`Examples.lean`): what the ledger, the axiom audit and the
 kernel replay read. The host links the per-app libraries below, never this one. -/

@@ -20,12 +20,9 @@ lean:
 	cd lean && lake build
 	mkdir -p build/lib $(VENDOR)
 	cp $(LEAN_PREFIX)/include/lean/*.h $(VENDOR)/
-	libtool -static -o $(LIB) \
-		lean/.lake/build/lib/libcairn_Cairn.a \
-		$(LEAN_PREFIX)/lib/lean/libInit.a \
-		$(LEAN_PREFIX)/lib/lean/libleanrt.a \
-		$(LEAN_PREFIX)/lib/libuv.a \
-		$(LEAN_PREFIX)/lib/libgmp.a 2>&1 | grep -v "has no symbols" || true
+	@git diff --quiet -- $(VENDOR) \
+	  || (echo "lean: the toolchain's lean.h differs from the committed $(VENDOR); commit it"; exit 1)
+	cd lean && ../bin/cairn-link --out ../$(LIB)
 	@for a in $(APPS); do \
 		cp lean/.lake/build/lib/libcairn_$${a%%:*}.a build/lib/libcairn_app_$${a##*:}.a; done
 	cp lean/.lake/build/lib/libcairn_TrustedFuzz.a build/lib/libcairn_trusted_fuzz.a
@@ -199,7 +196,7 @@ site: site-feed-check
 	cd site && npx -y wrangler@4 deploy
 
 clean:
-	rm -rf build lean/.lake host/.build $(VENDOR)
+	rm -rf build lean/.lake host/.build .build
 
 # region: make-map
 # The map (docs/map.md): claims + evidence → build/map/$(APP)/dist/, Cairn's own pages, with

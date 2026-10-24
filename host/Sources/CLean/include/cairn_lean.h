@@ -1,5 +1,5 @@
 // The C boundary between the Swift host and the Lean library.
-// Lean's own header is vendored into ../vendor by `make lean` (not committed).
+// Lean's own header is committed in ../vendor (copied by `make lean` from the pinned toolchain).
 #pragma once
 #include <stdint.h>
 #include <stddef.h>
