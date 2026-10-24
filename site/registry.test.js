@@ -13,14 +13,20 @@ const PLACEHOLDER = "will be built by the registry from its source, like docs.rs
 const get = (path, env = { ASSETS: assets }) => route(new Request(ORIGIN + path), env);
 
 describe("with the fixture", () => {
-	test("lists packages, newest first, and says the data is a sample", async () => {
+	test("lists libraries, and apps under their own tab, and says the data is a sample", async () => {
 		const res = await get("/packages/");
 		expect(res.status).toBe(200);
 		const text = await res.text();
 		expect(text).toContain("Sample data");
-		expect(text.indexOf('href="/packages/yap/"')).toBeLessThan(text.indexOf('href="/packages/cairn/"'));
+		expect(text).toContain('<a href="/packages/" class="on" aria-current="page">Libraries <span class="n">1</span></a>');
+		expect(text).toContain('<a href="/packages/?tab=apps">Apps <span class="n">1</span></a>');
 		expect(text).toContain('href="/docs/cairn/0.1.0/"');
-		expect(text).toContain('href="/docs/yap/0.1.0/"');
+		expect(text).not.toContain('href="/packages/yap/"');
+		const apps = await (await get("/packages/?tab=apps")).text();
+		expect(apps).toContain('<a href="/packages/?tab=apps" class="on" aria-current="page">Apps <span class="n">1</span></a>');
+		expect(apps).toContain('href="/packages/yap/"');
+		expect(apps).toContain('href="/docs/yap/0.1.0/"');
+		expect(apps).not.toContain('href="/packages/cairn/"');
 	});
 
 	test("redirects to the slash form", async () => {
@@ -48,6 +54,18 @@ describe("with the fixture", () => {
 		const text = await (await get("/packages/yap/")).text();
 		expect(text).toContain('<a href="/packages/cairn/"><code>cairn</code></a> <code>^0.1.0</code>');
 		expect(text).toContain("<code>yap^301</code>");
+	});
+
+	test("tells a library, which apps depend on, from an app, which they build", async () => {
+		const lib = await (await get("/packages/cairn/")).text();
+		expect(lib).toContain("<dt>Kind</dt><dd>Library</dd>");
+		expect(lib).toContain("cairn add cairn@^0.1.0");
+		const app = await (await get("/packages/yap/")).text();
+		expect(app).toContain("<dt>Kind</dt><dd>App</dd>");
+		expect(app).toContain("yap is an app: nothing can depend on it.");
+		expect(app).toContain("git checkout v0.1.0 &amp;&amp; cairn build --release");
+		expect(app).not.toContain("cairn add yap");
+		expect(app).not.toContain("[[require]]");
 	});
 
 	test("answers a version's docs with the placeholder, in the site's style", async () => {
@@ -111,7 +129,14 @@ describe("with a registry", () => {
 	};
 	const answers = {
 		"/config.json": { owner: "carl" },
-		"/api/v1/packages?per_page=100": { data: { items: [{ name: "hello", version: "1.2.0", description: "Says <b>hello</b>" }] } },
+		"/api/v1/packages?per_page=100": {
+			data: {
+				items: [
+					{ name: "hello", version: "1.2.0", description: "Says <b>hello</b>" },
+					{ name: "wave", kind: "bin", version: "0.3.0", description: "Waves" },
+				],
+			},
+		},
 		"/api/v1/packages/carl/hello": { data: { name: "hello", description: "Says <b>hello</b>" } },
 		"/api/v1/packages/carl/hello/versions?yanked=true": { data: [release] },
 		"/api/v1/packages/carl/hello/versions/1.2.0/claims": {
@@ -135,6 +160,12 @@ describe("with a registry", () => {
 		const list = await (await get("/packages/", env)).text();
 		expect(list).not.toContain("Sample data");
 		expect(list).toContain("Says &lt;b&gt;hello&lt;/b&gt;");
+		// A registry from before kinds says none: a library.
+		expect(list).toContain("Libraries <span class=\"n\">1</span>");
+		expect(list).not.toContain('href="/packages/wave/"');
+		const apps = await (await get("/packages/?tab=apps", env)).text();
+		expect(apps).toContain('href="/packages/wave/"');
+		expect(apps).not.toContain('href="/packages/hello/"');
 		const page = await (await get("/packages/hello/", env)).text();
 		expect(page).toContain("<code>hello^1</code>");
 		expect(page).toContain('<a href="/docs/hello/1.2.0/">Docs for 1.2.0</a>');

@@ -2,6 +2,7 @@
 // is configured (site/registry.js). It has the shape of the nextpm
 // `cairn` kind's API (nextpm docs/adr/0005-cairn-kind.md) and is built from this repo's own
 // claims.lock: Cairn's claims, and Yap's (^300–^399), which move to the Yap package in #75.
+// Cairn is a library (kind = "lib") and Yap an app (kind = "bin").
 //
 //   bun tools/registry/fixture.ts           write site/registry/fixture.json
 //   bun tools/registry/fixture.ts --check   fail if the committed fixture differs
@@ -39,6 +40,7 @@ const yap = claims.filter(isYap);
 
 const version = (v: {
 	version: string;
+	kind: "lib" | "bin";
 	revision: string;
 	date: string;
 	description: string;
@@ -48,6 +50,7 @@ const version = (v: {
 	yanked?: boolean;
 }) => ({
 	version: v.version,
+	kind: v.kind,
 	revision: v.revision,
 	tag: `v${v.version}`,
 	date: v.date,
@@ -75,6 +78,7 @@ const fixture = {
 			versions: [
 				version({
 					version: "0.1.0",
+					kind: "lib",
 					revision: "d04416c112658bf673143d4d88e3f357c43f1895",
 					date: "2026-10-24T18:00:00.000Z",
 					description: CAIRN,
@@ -84,6 +88,7 @@ const fixture = {
 				}),
 				version({
 					version: "0.1.0-rc.1",
+					kind: "lib",
 					revision: "334f3c08f5c0493022f05a817a9afd51d0463429",
 					date: "2026-10-23T18:00:00.000Z",
 					description: CAIRN,
@@ -100,6 +105,7 @@ const fixture = {
 			versions: [
 				version({
 					version: "0.1.0",
+					kind: "bin",
 					revision: "9f1c2b3a4d5e6f708192a3b4c5d6e7f809a1b2c3",
 					date: "2026-10-24T19:00:00.000Z",
 					description: YAP,
