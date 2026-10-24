@@ -52,6 +52,8 @@ public enum MapCapture {
         var image: String, pinned: String
         var width: Int, height: Int
         var controls: [Control]
+        /// The place claims the image shows, for an app with surfaces (`SurfaceCapture`).
+        var places: [UInt32]? = nil
     }
     struct StepResult: Encodable {
         var step: Step
@@ -73,6 +75,8 @@ public enum MapCapture {
         /// The logical rect of the window every image shows (x, y, w, h).
         var crop: [Int32]
         var sequences: [SequenceResult]
+        /// Per place claim, how the capture drew it, when that isn't the renderer's window.
+        var places: [String: String]? = nil
     }
 
     /// Runs the capture if `args` asks for it, and returns the exit code; nil otherwise.
@@ -294,6 +298,15 @@ public enum MapCapture {
     /// come from the frame's accessibility nodes (the visible rect: the node's rect intersected
     /// with its clip), so a pin is where layout put the control, never placed by hand.
     static func pinned(_ img: CGImage, frame: Frame, scale s: CGFloat, active: String?) -> CGImage {
+        pinned(img, pins: frame.ax.compactMap { node in
+            node.control.map { c in
+                (c.label, CGRect(x: CGFloat(node.rect.x), y: CGFloat(node.rect.y), width: CGFloat(node.rect.w), height: CGFloat(node.rect.h)))
+            }
+        }, scale: s, active: active)
+    }
+
+    /// Pins on `img` at logical rects (y down), each labelled.
+    static func pinned(_ img: CGImage, pins: [(label: String, rect: CGRect)], scale s: CGFloat, active: String?) -> CGImage {
         let w = img.width, h = img.height
         let ctx = context(w, h)
         ctx.draw(img, in: CGRect(x: 0, y: 0, width: w, height: h))
@@ -303,16 +316,14 @@ public enum MapCapture {
         let ink = CGColor(red: 0.85, green: 0.27, blue: 0.05, alpha: 1)   // pins
         let hot = CGColor(red: 0.10, green: 0.35, blue: 0.95, alpha: 1)   // the next step's control
         let font = CTFontCreateUIFontForLanguage(.emphasizedSystem, 11, nil)!
-        for node in frame.ax {
-            guard let c = node.control else { continue }
-            let color = c.label == active ? hot : ink
-            let r = CGRect(x: CGFloat(node.rect.x), y: CGFloat(node.rect.y), width: CGFloat(node.rect.w), height: CGFloat(node.rect.h))
+        for (label, r) in pins {
+            let color = label == active ? hot : ink
             ctx.setStrokeColor(color)
             ctx.setLineWidth(2)
-            ctx.setLineDash(phase: 0, lengths: c.label == active ? [] : [4, 3])
+            ctx.setLineDash(phase: 0, lengths: label == active ? [] : [4, 3])
             ctx.stroke(r.insetBy(dx: -2, dy: -2))
             // Badge: the ref, white on the pin colour, sitting on the rect's top-left corner.
-            let text = NSAttributedString(string: c.label, attributes: [
+            let text = NSAttributedString(string: label, attributes: [
                 .init(kCTFontAttributeName as String): font,
                 .init(kCTForegroundColorAttributeName as String): CGColor(red: 1, green: 1, blue: 1, alpha: 1)])
             let line = CTLineCreateWithAttributedString(text)

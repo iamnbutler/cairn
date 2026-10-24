@@ -52,7 +52,7 @@ let package = Package(
                           linkerSettings: [.unsafeFlags(["-L" + leanLib, "-lcairn_app_tray"])]),
         // Yap's tape display: the original Yap's Overlay.metal as a painter (`paint` draws).
         .target(name: "CairnYapPaint", dependencies: ["CairnFrame", "CairnRender"]),
-        .executableTarget(name: "CairnYap", dependencies: ["CairnHost", "CLean", "CairnFrame", "CairnYapPaint"],
+        .executableTarget(name: "CairnYap", dependencies: ["CairnHost", "CLean", "CairnFrame", "CairnYapPaint", "CairnCapture", "CairnRender"],
                           linkerSettings: [.unsafeFlags(["-L" + leanLib, "-lcairn_app_yap"])]),
         // A Swift stand-in app with a text field, for checking the host by hand (IME, AX) before
         // a Lean app has one. Not product code.

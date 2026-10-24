@@ -309,6 +309,14 @@ Not covered: the real menu bar (clicking the status item, keyboard navigation in
 VoiceOver), and the panel's pixels (it has no AX nodes or probes; its canvas is checked through
 the frame codec and Tray's self test). See [surfaces-checklist.md](surfaces-checklist.md).
 
+Yap (`make conformance APP=Yap`) is driven the same way, with a silent world: every request
+kind stays in flight (`silentWorld` in host/Sources/CairnYap/main.swift answers none, including
+kinds added later, such as `makeDir`; before, a "no handler" reply to Open Transcripts Folder's
+`makeDir` let the app go on to `open`, which the model, hearing nothing, never did). So its walks
+stay in the menu, and `CONF_ARGS_Yap` passes `--invariants-unreached <why>`: the invariants are
+reported `pass: null` with that reason, a gap on the map, rather than tested by states that
+never exercise them.
+
 ## What it does not check
 
 - **The window server.** Events are handed to the view, not routed by the window server or

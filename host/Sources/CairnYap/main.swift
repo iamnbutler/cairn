@@ -38,7 +38,7 @@ func fail(_ msg: String) -> Never {
 /// conformance model (which hears no replies) expects of it.
 func silentWorld() -> World {
     var table: [UInt8: RequestHandler] = [:]
-    for k in UInt8(0)...UInt8(14) { table[k] = { _, _ in } }
+    for k in UInt8.min...UInt8.max { table[k] = { _, _ in } }  // every kind, present and future
     return World(handlers: Handlers(table: table), devices: .inert)
 }
 
@@ -55,6 +55,12 @@ if let i = args.firstIndex(of: "--overlay-motion") {
 if args.contains("--selftest") {
     MainActor.assumeIsolated { SelfTest.run() }
     exit(0)
+}
+
+// `--map-capture <script.json> <out dir>`: the map's headless captures (docs/map.md, "Surfaces"),
+// against the self test's fakes. Never falls through to the live app.
+if let i = args.firstIndex(of: "--map-capture") {
+    exit(MainActor.assumeIsolated { YapMapCapture.run(Array(args[(i + 1)...])) })
 }
 
 // MARK: - Fakes for the self test
@@ -183,7 +189,8 @@ final class Log: @unchecked Sendable {
 /// The self test's world: files under a scratch home, the fakes above, and every request that
 /// would reach outside answered by the test.
 func fakeWorld(home: String, mic: FakeMic, keys: FakeKeys, log: Log,
-               typist custom: Typist? = nil, protocolClass: AnyClass = FakeOpenAI.self) -> World {
+               typist custom: Typist? = nil, protocolClass: AnyClass = FakeOpenAI.self,
+               permitted: Bool = true) -> World {
     @Sendable func moved(_ p: String) -> String { p.hasPrefix("~/") ? home + String(p.dropFirst(1)) : p }
     var h = Handlers.standard
     h.table[0] = { r, reply in if case let .readFile(p) = r { reply(Files.read(moved(p))) } }
@@ -194,7 +201,7 @@ func fakeWorld(home: String, mic: FakeMic, keys: FakeKeys, log: Log,
     h.table[5] = { r, reply in if case let .listDir(p) = r { reply(Files.list(moved(p))) } }
     h.table[6] = { r, reply in if case let .deleteFile(p) = r { reply(Files.delete(moved(p))) } }
     h.table[7] = { _, reply in reply(.app(pid: 4242, name: "Notes")) }
-    h.table[8] = { _, reply in reply(.flag(true)) }
+    h.table[8] = { _, reply in reply(.flag(permitted)) }
     h.table[12] = { r, reply in if case let .openItem(t) = r { log.opened.update { $0.append(t) }; reply(.done) } }
     h.table[15] = { r, reply in if case let .makeDir(p) = r { reply(Files.makeDir(moved(p))) } }
     h.table[13] = { r, reply in
@@ -210,7 +217,7 @@ func fakeWorld(home: String, mic: FakeMic, keys: FakeKeys, log: Log,
         c.protocolClasses = [protocolClass]
         return URLSession(configuration: c)
     }()
-    let typist = custom ?? Typist(trusted: { true }, exists: { _ in true },
+    let typist = custom ?? Typist(trusted: { permitted }, exists: { _ in true },
                         activate: { _, _ in log.typingWorks.value },
                         post: { runs, ret in
                             let s = runs.map { String(utf16CodeUnits: $0, count: $0.count) }.joined()

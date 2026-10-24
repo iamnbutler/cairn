@@ -9,7 +9,7 @@ comes from evidence.
 ```sh
 make map APP=Counter        # writes build/map/Counter/dist/; open build/map/Counter/dist/index.html
 make map-trusted            # the trusted base's assumptions → build/map/Trusted/dist/
-make site-maps              # fuzz, conformance and map for Counter, Basics, Todo and the trusted base → site/public/map/
+make site-maps              # fuzz, conformance and map for Counter, Basics, Todo, Yap and the trusted base → site/public/map/
 ```
 
 `make map` reads whatever evidence is already in `build/`: run `make fuzz APP=<App>` and
@@ -62,7 +62,42 @@ if let code = MapCapture.main(args, size: Size(w: 480, h: 320), core: { LeanCore
 ```
 
 `make map APP=<App>` then works for any app whose module is `Examples.<App>` and whose executable
-is `Cairn<App>`: today `Counter`, `Basics` and `Todo`, all on v1.
+is `Cairn<App>`: today `Counter`, `Basics` and `Todo`, all on v1, and Yap (below).
+
+### Surfaces: Yap
+
+Yap has no window. What a person sees is a status item's menu (^301) and an overlay panel
+(^399), and its states come from its world (a key, the microphone, replies), so
+`CairnYap --map-capture` (host/Sources/CairnYap/MapCapture.swift) drives its own capture and
+`SurfaceCapture` (host/Sources/CairnCapture/SurfaceCapture.swift) draws each frame:
+
+- Each sequence runs the app on the host's real threads (`Engine`, `SurfaceHost` detached), in
+  the self test's world of fakes: a scratch home with a config, a dictionary and two of today's
+  transcripts, a fake key and microphone, a fake typist and a held OpenAI. Nothing records,
+  listens to the real key, types into another app, reaches the network or the clipboard (every
+  effect is kept by the hook), or is put on screen.
+- A press on a menu item is the item's action through `performActionForItem(at:)`, as
+  conformance does; a press on the status item's control opens and closes the menu. A sequence
+  that presses ^310 runs with accessibility denied, and one that presses ^343 first has the fake
+  microphone refuse a recording: the only states that show those items.
+- **The menu is drawn by the capture** from the `NSMenu` the host built from the frame: titles,
+  greyed items, checkmarks, shortcuts, status lines, submenus cascaded open. AppKit draws real
+  menus in another process, so this is what the host's menu holds, not a screenshot of it.
+  Rows are drawn taller than AppKit's so each pin's badge sits above its row. Pins go on the
+  status item's button and on every enabled item; a greyed item is drawn grey and not pinned.
+- **The panel is rendered** offscreen by the renderer from its canvas (the tape through the
+  `yap.tape` painter). An extra sequence, `overlay`, dictates with the fake key and microphone,
+  so the panel is seen recording, transcribing and typed.
+
+Each shot lists the places it shows (`places`), and `capture.json` says how each place was
+drawn; a place is seen in the first shot that shows it.
+
+Yap's other evidence: **fuzzed** from both `make fuzz APP=Yap` (the menu's moves through the
+runtime: presence, and that choosing an item delivers its press) and `make fuzz-yap` (the
+dictation invariants against a random host, `build/fuzz/host/Yap.json`); **tested** from
+`make conformance APP=Yap` for the menu's moves and flows. Under the debug socket Yap's world is
+silent, so no walk reaches a dictation state: its invariants are reported not run
+(`--invariants-unreached`), a gap, not tested.
 
 ## Evidence
 
@@ -155,7 +190,12 @@ opened from disk they don't, and nothing else changes.
 ```
 
 **Fuzz** (`build/fuzz/<App>.json`, docs/fuzz.md): `mode`, `seed`, `iterations`, and per claim
-`pass` (`true`, `false`, or `null` with a `note`), `sequences`, `steps` and `failure`.
+`pass` (`true`, `false`, or `null` with a `note`), `sequences`, `steps`, `checks` and `failure`.
+An app's own random-host fuzzer (`build/fuzz/host/<App>.json`: Yap's `make fuzz-yap`) has the
+same shape and adds to it: a claim is fuzzed when either held and neither failed.
+
+A conformance entry may have `pass: null` with a `note`: the run can't reach the claim (Yap's
+invariants), which the map shows as a gap with that reason.
 
 **Trusted base** (`build/fuzz/trusted.json`, `make fuzz-trusted`; docs/fuzz.md, "Trusted base").
 The map reads `checks`: each check lists the `assume` claims it is evidence for (`claims`), with
@@ -172,7 +212,8 @@ base"`).
 ## What is not yet evidenced
 
 - **Seen is the Lean model's own frames,** rendered by the real renderer, not the running host:
-  no window, no accessibility mirror, no AppKit event path. The capture clicks through the app's
+  no window, no accessibility mirror, no AppKit event path. Yap's menu is drawn by the capture
+  from the host's `NSMenu`, not by AppKit. The capture clicks through the app's
   hit testing, so a control that is covered or mis-laid fails to act. Conformance covers the
   host.
 - **`blur` and the rarer text operations** (word and caret movement, marked text, cut, copy)

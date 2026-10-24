@@ -3,6 +3,7 @@
 //
 //   bun tools/conformance/driver.ts --app Basics --bin <host app> --gen <generator> \
 //       --claims <lake exe claims JSON> [--n 1000] [--length 12] [--seed 1] [--out build/conformance]
+//       [--invariants-unreached <why>]
 //
 // Launches the app with its debug socket on, asks the generator (the Lean model, walking the
 // app's own `step` and `frame`) for sequences, and replays each one on the running app as real
@@ -53,6 +54,10 @@ const SEED = Number(args.seed ?? 1);
 const OUT = resolve(args.out ?? "build/conformance");
 const TOLERANCE = Number(args.tolerance ?? 3);
 const SHRINK_MAX = Number(args.shrink ?? 6); // distinct failures to shrink
+// An app whose walks can't reach the states its invariants are about (Yap: the world is silent,
+// so no key, audio or reply arrives) says so: its invariants are reported not run, with this
+// reason, instead of tested by states that never exercise them.
+const UNREACHED = args["invariants-unreached"];
 if (!BIN || !GEN) {
 	console.error("usage: driver.ts --app A --bin APP_BINARY --gen GENERATOR [--claims FILE] [--n N] [--length L] [--seed S]");
 	process.exit(2);
@@ -472,8 +477,11 @@ async function main() {
 
 	// Invariants: every state the app reached was the model's, where the invariant is proved.
 	const allPass = failures.length === 0;
+	const unreached = new Set<string>();
 	for (const inv of claimsJson.claims.filter((c: any) => c.kind === "invariant" && !c.retired)) {
-		tally.set(inv.ref, { runs: stats.steps, fails: allPass ? 0 : 1, notes: allPass ? [] : ["a reached state differed from the model; see report.md"] });
+		if (UNREACHED) unreached.add(inv.ref);
+		tally.set(inv.ref, UNREACHED ? { runs: 0, fails: 0, notes: [UNREACHED] }
+			: { runs: stats.steps, fails: allPass ? 0 : 1, notes: allPass ? [] : ["a reached state differed from the model; see report.md"] });
 	}
 
 	// Shrink the first failure of each kind.
@@ -494,13 +502,13 @@ async function main() {
 
 	// build/conformance/<App>.json, in the map's shape (docs/map.md).
 	const commit = spawnSync("git", ["rev-parse", "--short", "HEAD"]).stdout.toString().trim();
-	const claims: Record<string, { pass: boolean; runs: number; note?: string; known?: Record<string, number> }> = {};
+	const claims: Record<string, { pass: boolean | null; runs: number; note?: string; known?: Record<string, number> }> = {};
 	for (const [ref, t] of [...tally].sort()) {
 		if (!ref.startsWith("^")) continue;
 		const mine = [...known].filter(([, k]) => k.claims[ref]).map(([label, k]) => [label, k.claims[ref]!] as const);
 		const knownNote = mine.map(([label, n]) => knownText(label, n, known.get(label)!.first)).join(" ");
 		claims[ref] = {
-			pass: t.fails === 0, runs: t.runs,
+			pass: unreached.has(ref) ? null : t.fails === 0, runs: t.runs,
 			...(t.notes.length ? { note: t.notes[0] } : knownNote ? { note: knownNote } : {}),
 			...(mine.length ? { known: Object.fromEntries(mine) } : {}),
 		};
@@ -527,7 +535,7 @@ async function main() {
 		`- Flows: ${flows.map((f) => `${f.ref} ${f.pass ? "pass" : "FAIL"}`).join(", ") || "none"}.`,
 		`- Time: ${summary.timing.totalSeconds} s in all; per step p50 ${pct(0.5)} ms, p90 ${pct(0.9)} ms, max ${pct(1)} ms.`, "",
 		"| Claim | Result | Runs | Note |", "|---|---|---|---|",
-		...Object.entries(claims).map(([r, v]) => `| ${r} | ${v.pass ? "pass" : "**fail**"} | ${v.runs} | ${(v.note ?? "").replace(/\|/g, "\\|").slice(0, 300)} |`), ""];
+		...Object.entries(claims).map(([r, v]) => `| ${r} | ${v.pass === null ? "not run" : v.pass ? "pass" : "**fail**"} | ${v.runs} | ${(v.note ?? "").replace(/\|/g, "\\|").slice(0, 300)} |`), ""];
 	if (known.size) {
 		md.push("## Known: open decisions", "", "Steps where the app did what the model does, but the model's outcome is an open decision in docs/plan.md. Not failures.", "");
 		for (const [label, k] of [...known].sort())

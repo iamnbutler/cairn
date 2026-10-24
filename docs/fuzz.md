@@ -213,7 +213,9 @@ shrunk from 13 operations to 2.
 
 Yap's dictation is driven by the host, not by moves, so `lake exe yapfuzz` (`make fuzz-yap`,
 and in `make fuzz-quick`) plays a random host instead, in two modes, and writes one
-`build/fuzz/Yap.json`:
+`build/fuzz/host/Yap.json` (the map reads it beside `build/fuzz/Yap.json`, where the generic
+`make fuzz APP=Yap` checks the menu's moves: a status item's enabled menu items are on screen,
+and a press on one is a `menuSelect`):
 
 - **host** (`lean/Examples/Yap/Fuzz.lean`): inputs straight into the model's `step`, checking
   ^311–^323 as the model states them. It imports the model only, so it builds against mutants.
@@ -489,7 +491,9 @@ in 20,000 cases), but a cap would be cheaper.
 
 Yap's dictation is driven by the host, not by moves, so `lake exe yapfuzz` (`make fuzz-yap`,
 and in `make fuzz-quick`) plays a random host instead, in two modes, and writes one
-`build/fuzz/Yap.json`:
+`build/fuzz/host/Yap.json` (the map reads it beside `build/fuzz/Yap.json`, where the generic
+`make fuzz APP=Yap` checks the menu's moves: a status item's enabled menu items are on screen,
+and a press on one is a `menuSelect`):
 
 - **host** (`lean/Examples/Yap/Fuzz.lean`): inputs straight into the model's `step`, checking
   ^311–^323 as the model states them. It imports the model only, so it builds against mutants.

@@ -152,15 +152,17 @@ build/bin/record: tools/record/main.swift
 	mkdir -p build/bin
 	swiftc -O $< -o $@
 
-# Copy the Counter, Basics and Todo maps, and the trusted base's, into the microsite
+# Copy the Counter, Basics, Todo and Yap maps, and the trusted base's, into the microsite
 # (site/public/map/<app>/, site/public/map/trusted/), building them
-# first with fresh evidence: fuzzing for each, and conformance for each app with a generator
-# (it shows the app's window while it runs; CONFORMANCE=0 skips it and keeps any earlier run).
+# first with fresh evidence: fuzzing for each (and Yap's random host, `make fuzz-yap`), and
+# conformance for each app with a generator (it shows the app's window while it runs; Yap has
+# none and runs detached; CONFORMANCE=0 skips it and keeps any earlier run).
 # A failing fuzz or conformance run doesn't stop it: the failure is evidence, and the map shows it.
-MAP_APPS = Counter Basics Todo
+MAP_APPS = Counter Basics Todo Yap
 site-maps:
 	@for a in $(MAP_APPS); do \
 		$(MAKE) fuzz APP=$$a N=1000 || echo "site-maps: fuzzing $$a failed; its map shows it"; \
+		if [ $$a = Yap ]; then $(MAKE) fuzz-yap || echo "site-maps: Yap's random-host fuzzer failed; its map shows it"; fi; \
 		if [ "$(CONFORMANCE)" != 0 ] && [ -f tools/conformance/lean/Conformance/Apps/$$a.lean ]; then \
 			$(MAKE) conformance APP=$$a || echo "site-maps: conformance on $$a failed; its map shows it"; fi; \
 		$(MAKE) map APP=$$a || exit 1; \
@@ -228,7 +230,11 @@ conformance: lean
 		-L$(SDK)/usr/lib/swift -lc++ -o $(CONFDIR)/$(APP)/gen
 	bun tools/conformance/driver.ts --app $(APP) --n $(or $(N),1000) --length $(LEN) --seed $(or $(SEED),1) \
 		--bin $$(cd host && swift build --show-bin-path)/Cairn$(APP) --gen $(CONFDIR)/$(APP)/gen \
-		--claims $(CONFDIR)/$(APP)/claims.json --out $(CONFDIR)
+		--claims $(CONFDIR)/$(APP)/claims.json --out $(CONFDIR) $(CONF_ARGS_$(APP))
+
+# Yap under the socket has a silent world (no key, microphone or reply), so its walks stay in
+# the menu and never reach a state its dictation invariants are about: the map says so.
+CONF_ARGS_Yap = --invariants-unreached "under the debug socket Yap's world is silent (no key, microphone or reply reaches it), so every walk stays in the menu and no state reached exercises a dictation invariant; the invariants are checked by the proofs, \`make fuzz-yap\` and \`CairnYap --selftest\`"
 
 # Claim-driven fuzzing (docs/fuzz.md): `make fuzz APP=Basics N=1000` runs N sequences from seed
 # SEED (default 0) and writes build/fuzz/$(APP).json, which `make map` reads.
@@ -246,9 +252,10 @@ fuzz-quick: lean
 # Yap's dictation machine against a random host (lean/Examples/Yap/Fuzz.lean): keys, ticks,
 # audio, replies late, failed, duplicated and out of order; then the app itself (`receive` and
 # the menu, lean/Examples/Yap/AppFuzz.lean) against one. `make fuzz-yap [N=5000] [SEED=0]`
-# writes build/fuzz/Yap.json; the generic `make fuzz APP=Yap` drives only Yap's menu.
+# writes build/fuzz/host/Yap.json, which `make map APP=Yap` reads beside build/fuzz/Yap.json
+# from the generic `make fuzz APP=Yap` (the menu's moves, through the runtime).
 fuzz-yap: lean
-	cd lean && lake build yapfuzz && .lake/build/bin/yapfuzz --seed $(or $(SEED),0) --iterations $(or $(N),5000) --steps 300 --out ../build/fuzz
+	cd lean && lake build yapfuzz && .lake/build/bin/yapfuzz --seed $(or $(SEED),0) --iterations $(or $(N),5000) --steps 300 --out ../build/fuzz/host
 
 # Binary size (bench/size.md): each app executable built for release with a link map, stripped
 # into build/size/, attributed (Lean runtime, Cairn, the app, Swift host, shaders), and checked
