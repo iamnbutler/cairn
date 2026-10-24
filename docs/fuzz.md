@@ -327,7 +327,9 @@ every call, and the geometry once the frame for the call has arrived.
 glyph painted for the text before it ends (its advance, or the next glyph's start in the same
 run if sooner), less 1 pt + 0.15 em for kerning, fallback fonts and rounding. Where Core Text's
 own caret already sits inside a glyph and the host passed it on unchanged, the case is counted
-(`coreTextCaretInsideGlyph`) and not failed: that is Core Text's behaviour, listed below.
+(`coreTextCaretInsideGlyph`) and not failed: that is Core Text's behaviour, listed below. A
+tracked line's carets are the host's own (finding 11), so they are counted as `tracked` and
+always checked.
 
 `text.wrap.painted` and `text.wrap.coretext` run `N / 2` cases. The painted check allows
 `1 + ⌈0.15 em⌉` points: a line shaped alone loses the kerning across the dropped break space
@@ -456,6 +458,20 @@ Each fix is its own commit, with a regression test holding the minimal repro.
    the host creates every missing parent, while the POSIX oracle `mkdir`'ed it as one (ENOENT,
    so it expected a refusal) and list-dir counted it as a name. Both now split by bytes (a
    `"/"` followed by a combining or tag scalar is one Swift `Character`).
+11. **Core Text's carets are wrong on tracked lines** (`text.metrics.carets`, 3 of 11,043
+   cases at seed 0, N=20,000, after frame v4 added tracking; fixed in `TextSystem.swift`).
+   Untracked text had no failure and 1 `coreTextCaretInsideGlyph`; every failure and nearly
+   all of the 19,360 inside-glyph counts were tracked. Core Text puts a tracked caret half the
+   tracking short of the next glyph ("abc", 20 pt, tracking 5: glyphs at 0, 17.4, 34.7, carets
+   14.9, 32.2, 47.1), and beside a control whose glyph advance is just the tracking it is
+   wrong outright: in `"\u{94D}t\u{FFFD}\u{FFFD}ab\there"` (family 1, 312 pt, tracking −156)
+   the caret before the tab is 1227.6, after it 1131.9, and after the h 1226.0, the middle of
+   an h painted from 1130 to 1322. Large negative tracking also runs glyphs backwards
+   (tracking −2³¹: the caret after `क्षि` was 0, its first glyph painted to 10). A tracked
+   line's caret is now where the pen is after every glyph drawn for the text before it (the
+   furthest position + advance), so it is right of everything painted before it; untracked
+   lines keep Core Text's carets and their numbers are unchanged. Repros: seed 0, cases
+   1131, 2037 and 3941.
 
 Also changed while writing the suites, found by reading rather than by a failing case: a reply
 checked against the world's generation and then sent outside the lock could arrive after

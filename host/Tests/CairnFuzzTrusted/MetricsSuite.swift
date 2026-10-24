@@ -18,7 +18,7 @@ final class MetricsSuite: Suite {
                       "host/Sources/CairnRender/Fonts.swift", "Core Text"],
             oracle: "TextMetrics.Valid (shape), Lean's TextMetrics.host through cairn_text_host_check (values)"),
         "text.metrics.carets": CheckInfo(
-            title: "On left-to-right text the offsets are Core Text's own caret offsets (the running max never changes one)",
+            title: "On left-to-right text the caret after each grapheme is at or right of every glyph painted before it",
             trusted: ["host/Sources/CairnRender/TextSystem.swift", "Core Text"],
             oracle: "CTLineGetOffsetForStringIndex on a fresh CTLine, rounded the same way"),
     ]
@@ -195,6 +195,14 @@ final class MetricsSuite: Suite {
             while j < ends.count, ends[j].index < u { painted = max(painted, ends[j].x); j += 1 }
             let floor = Self.round(painted) - 1 - Int32(Double(min(max(c.size, 1), 1024)) * 0.15)
             let ct = Self.round(CTLineGetOffsetForStringIndex(line, u, nil))
+            if c.tracking != 0 {
+                // A tracked line's carets are the pen's position, not Core Text's (TextSystem.shape).
+                r.count(carets, "tracked")
+                r.expect(carets, offs[k] >= floor,
+                         "offset \(k) (after U+\(String(sc[k - 1].value, radix: 16, uppercase: true))) is \(offs[k]), left of the glyphs before it, which end at \(Self.round(painted)) (tracking \(c.tracking))",
+                         repro: repro)
+                continue
+            }
             if offs[k] < floor, ct != 0, offs[k] == ct {
                 // Core Text's own caret sits inside a painted glyph (a LastResort glyph for an
                 // unassigned scalar, compressed CJK brackets): the host passes it on. Counted, and
