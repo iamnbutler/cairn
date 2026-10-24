@@ -1,0 +1,239 @@
+/* The site's look, shared by the homepage and /milestones/: the night palette, Pixelify Sans for
+   headings and labels, a serif for prose, stepped corners on panels. The docs have their own
+   copy in tools/docs/docs.css. */
+:root {
+  --bg: #161937;
+  --fg: #e6e2f6;
+  --muted: #a29fca;
+  --rule: #2d3062;
+  --ink: #0c0e26;
+  --panel: #1d2047;
+  --shadow: #0c0e26;
+  --chip: #2a2d5e;
+  --accent: #9cc8e8;
+  --gold: #f2c46a;
+  --px: 4px;
+  --pixel: "Pixelify Sans", ui-monospace, monospace;
+  --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { background: var(--bg); }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 17px/1.65 ui-serif, "New York", Georgia, serif;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); text-underline-offset: 3px; }
+code {
+  font: 0.84em var(--mono);
+  background: var(--chip);
+  padding: 1px 5px;
+  border-radius: 2px;
+}
+
+/* Stepped corners: the shape every panel, stone and frame on the page shares. */
+.px {
+  --s: var(--px);
+  clip-path: polygon(
+    0 calc(var(--s) * 2), var(--s) calc(var(--s) * 2), var(--s) var(--s), calc(var(--s) * 2) var(--s), calc(var(--s) * 2) 0,
+    calc(100% - var(--s) * 2) 0, calc(100% - var(--s) * 2) var(--s), calc(100% - var(--s)) var(--s), calc(100% - var(--s)) calc(var(--s) * 2), 100% calc(var(--s) * 2),
+    100% calc(100% - var(--s) * 2), calc(100% - var(--s)) calc(100% - var(--s) * 2), calc(100% - var(--s)) calc(100% - var(--s)), calc(100% - var(--s) * 2) calc(100% - var(--s)), calc(100% - var(--s) * 2) 100%,
+    calc(var(--s) * 2) 100%, calc(var(--s) * 2) calc(100% - var(--s)), var(--s) calc(100% - var(--s)), var(--s) calc(100% - var(--s) * 2), 0 calc(100% - var(--s) * 2)
+  );
+}
+
+/* The scene sits behind the top of the page. Under the text column it dissolves into mist
+   where the lede begins; in the margins the meadow runs on down the page. The header's height
+   is where the text starts, and scene.js reads it. */
+body { overflow-x: clip; }
+h1, h2, h3, .meta, .note .label, .lede em, .diagram, .kinds, .ladder b, .soon { font-variant-ligatures: none; } /* Pixelify draws "fi" as a broken glyph */
+.scene { position: relative; height: 420px; }
+.scene canvas {
+  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  width: min(100%, 2400px); height: 900px;
+  image-rendering: pixelated;
+}
+.scene .title {
+  position: relative; max-width: 760px; margin: 0 auto; padding: 64px 16px 0;
+}
+h1 {
+  font: 700 64px/1 var(--pixel);
+  margin: 0;
+  color: #f3efff;
+  letter-spacing: 0.02em;
+  text-shadow: 3px 3px 0 #2b2d6a;
+}
+
+
+main, footer { position: relative; }
+main { max-width: 760px; margin: 0 auto; padding: 8px 16px 64px; }
+.lede { font-size: 21px; line-height: 1.5; margin: 0; max-width: 32em; }
+.lede em { font-style: normal; font: 600 0.95em var(--pixel); color: var(--accent); }
+
+h2 {
+  font: 600 22px/1.2 var(--pixel);
+  color: var(--ink);
+  margin: 72px 0 18px;
+  display: flex; align-items: center; gap: 12px;
+}
+h2 { color: var(--fg); position: relative; }
+/* A strip of turf and flowers at the far right of each heading (scene.js). */
+h2 canvas.sprig { position: absolute; right: 0; bottom: 0; width: 138px; height: 42px; image-rendering: pixelated; pointer-events: none; }
+
+h2::before {
+  content: ""; width: 20px; height: 20px; flex: none;
+  background: url("/icon.svg") center / contain no-repeat;
+  image-rendering: pixelated;
+}
+p { margin: 0 0 14px; }
+
+/* A framed video: an outline and a stepped panel. scene.js gives the box a margin and draws
+   a thin frame in it, leaving an empty gap around the picture. */
+.frame { position: relative; margin: 0; }
+.frame .box { background: var(--ink); padding: var(--px); }
+.frame video { display: block; width: 100%; height: auto; background: var(--panel); }
+.frame canvas.stones { position: absolute; pointer-events: none; image-rendering: pixelated; }
+.frame figcaption { font-size: 15.5px; color: var(--muted); margin-top: 6px; }
+
+/* A note card: a panel with stepped corners and a gold label, for asides the reader
+   shouldn't miss. */
+.note { margin: 40px 0; filter: drop-shadow(var(--px) var(--px) 0 var(--shadow)); }
+.note .card { --s: var(--px); background: var(--panel); padding: 20px 24px 22px; box-shadow: inset 0 0 0 var(--px) var(--chip); }
+.note .label { font: 600 15px/1 var(--pixel); color: var(--gold); letter-spacing: 0.04em; margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
+.note .label img { width: 16px; height: 16px; image-rendering: pixelated; }
+.note p { margin: 0; }
+.note p + p { margin-top: 10px; }
+.meta {
+  font: 15px/1.4 var(--pixel); color: var(--muted);
+  display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px;
+}
+.meta .date { color: var(--gold); }
+/* The featured video sits on the meadow like a plate, a little wider than the text; the
+   scene fades into mist behind its lower part. */
+.feature { margin: 0 calc((100% - min(960px, 100vw - 32px)) / 2); }
+.feature .frame { width: min(100%, 720px * var(--ar, 1.6)); margin: 0 auto; } /* portrait takes stand as a narrower plate */
+.lede { margin-top: 40px; }
+
+/* Figures: one ink (the text colour), a tint for the proved part, the accent for "proved".
+   Pixel style: stepped corners, crisp 2px lines, open chevrons. */
+figure.diagram { margin: 32px 0 8px; }
+figure.diagram svg { display: block; width: 100%; max-width: 640px; height: auto; margin: 0 auto; color: var(--fg); }
+.diagram svg * { fill: none; stroke: currentColor; stroke-width: 2; shape-rendering: crispEdges; stroke-linejoin: miter; }
+.diagram svg text { fill: currentColor; stroke: none; font: 15px ui-serif, "New York", Georgia, serif; }
+.diagram svg .hd { font: 600 13px var(--pixel); letter-spacing: 0.06em; }
+.diagram svg .it { font-style: italic; font-size: 13.5px; fill: var(--muted); }
+.diagram svg .sm { font-size: 13px; }
+.diagram svg .lb { font: 600 14px var(--pixel); }
+.diagram svg .tint { fill: color-mix(in srgb, currentColor 9%, transparent); }
+.diagram svg .chip { fill: var(--bg); }
+.diagram svg .dash { stroke-dasharray: 4 4; }
+.diagram svg .accent { stroke: var(--accent); }
+.diagram svg text.accent { fill: var(--accent); stroke: none; }
+figure.diagram figcaption { font-size: 15.5px; color: var(--muted); margin-top: 12px; text-align: center; }
+
+/* Claims: an annotated claim, the kinds, and the evidence ladder. */
+h3.sub { font: 600 18px/1.3 var(--pixel); margin: 36px 0 10px; }
+.claim { margin: 22px 0 18px; }
+.claim pre { --s: var(--px); margin: 0; background: var(--panel); padding: 16px 18px; overflow-x: auto;
+  font: 14px/1.7 var(--mono); box-shadow: inset 0 0 0 var(--px) var(--chip); }
+.claim pre code { background: none; padding: 0; font: inherit; }
+.claim .kw { color: #c9a8f0; }
+.claim .id { color: var(--gold); }
+.claim .str { color: #9fd3b4; }
+.claim .mk, .callouts li::before {
+  display: inline-grid; place-items: center; width: 18px; height: 18px; margin-left: 10px;
+  font: 600 12px/1 var(--pixel); background: var(--gold); color: var(--ink); vertical-align: 1px;
+}
+.callouts { list-style: none; counter-reset: c; margin: 14px 0 0; padding: 0; font-size: 16px; }
+.callouts li { counter-increment: c; position: relative; padding-left: 30px; margin-bottom: 6px; }
+.callouts li::before { content: counter(c); position: absolute; left: 0; top: 4px; margin: 0; }
+table.kinds { width: 100%; border-collapse: collapse; font-size: 16px; margin: 8px 0 4px; }
+.kinds th { font: 600 13px var(--pixel); color: var(--muted); text-align: left; letter-spacing: 0.04em; padding: 0 12px 6px 0; }
+.kinds td { padding: 9px 12px 9px 0; border-top: 2px solid var(--rule); vertical-align: top; }
+.kinds td:first-child { font: 600 15px var(--pixel); color: var(--accent); white-space: nowrap; }
+.kinds td:last-child { color: var(--muted); }
+.ladder > li::before { content: ""; width: 18px; height: 18px; left: 6px; top: 5px; }
+.ladder > li:nth-child(1)::before { background: var(--accent); }
+.ladder > li:nth-child(2)::before { background: #6f8fc0; }
+.ladder > li:nth-child(3)::before { background: #5a5a96; }
+.ladder > li:nth-child(4)::before { background: var(--chip); }
+.ladder b { font: 600 16px var(--pixel); }
+.soon { font: 13px var(--pixel); color: var(--gold); margin-left: 6px; }
+
+/* Trails: the milestone and the progress log. */
+.trail { list-style: none; margin: 0; padding: 0; position: relative; }
+.trail::before {
+  content: ""; position: absolute; left: 13px; top: 18px; bottom: 18px; width: 4px;
+  background: repeating-linear-gradient(to bottom, var(--rule) 0 8px, transparent 8px 16px);
+}
+.trail > li { position: relative; padding-left: 48px; margin-bottom: 18px; }
+.trail > li::before {
+  position: absolute; left: 0; top: 0;
+  width: 30px; height: 30px;
+  display: grid; place-items: center;
+  font: 600 15px/1 var(--pixel);
+  background: var(--chip); color: var(--ink);
+}
+.trail > li::before { color: var(--fg); }
+
+ol.trail { counter-reset: step; }
+ol.trail > li { counter-increment: step; }
+ol.trail > li::before { content: counter(step); }
+.log > li { margin-bottom: 56px; }
+.log > li::before { content: ""; background: var(--gold); width: 18px; height: 18px; left: 6px; top: 6px; }
+.log h3 { font: 600 20px/1.3 var(--pixel); margin: 0 0 14px; color: var(--ink); }
+.log h3 { color: var(--fg); }
+
+/* The trail markers share the stepped corners at a smaller step. */
+.trail > li::before { clip-path: polygon(0 4px, 4px 4px, 4px 0, calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px), 0 calc(100% - 4px)); }
+
+footer {
+  max-width: 760px; margin: 0 auto; padding: 24px 16px 56px;
+  font: 15px/1.4 var(--pixel); color: var(--muted);
+  display: flex; align-items: center; gap: 10px;
+}
+footer img { width: 32px; height: 32px; image-rendering: pixelated; }
+footer .feed { margin-left: auto; }
+footer a { color: var(--accent); }
+.scene .title .links { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 14px 0 0; font: 600 17px/1 var(--pixel); font-variant-ligatures: none; }
+.scene .title .links a { color: var(--fg); text-decoration: none; box-shadow: inset 0 -3px 0 var(--chip); padding-bottom: 3px; }
+.scene .title .links a[aria-current="page"] { box-shadow: inset 0 -3px 0 var(--gold); }
+.scene .title .links a:hover { color: var(--accent); }
+
+/* A feed link: a small pixel label with the feed's orange square. */
+a.feed { font: 600 15px/1 var(--pixel); font-variant-ligatures: none; color: var(--muted); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+a.feed::before { content: ""; width: 12px; height: 12px; flex: none; background:
+  radial-gradient(circle at 2px 10px, var(--bg) 0 1.5px, transparent 2px),
+  #e8924a; clip-path: polygon(0 2px, 2px 2px, 2px 0, 10px 0, 10px 2px, 12px 2px, 12px 10px, 10px 10px, 10px 12px, 2px 12px, 2px 10px, 0 10px); }
+a.feed:hover { color: var(--accent); }
+
+/* Posts on /milestones/: each starts with its heading, then its date. */
+.post > .meta { margin: -10px 0 18px; }
+/* With no video plate on the meadow, the scene fades out about 80 scene pixels below the header
+   (scene.js), so the intro starts below the mist instead of on it. */
+.intro { font-size: 19px; line-height: 1.5; margin: 190px 0 0; max-width: 34em; }
+.intro + .meta { margin-top: 14px; }
+
+/* The homepage's pointer to the latest milestone (written by tools/site/build.ts). */
+.latest .label a { color: inherit; text-decoration: none; }
+.latest h3 { font: 600 19px/1.3 var(--pixel); margin: 0 0 8px; font-variant-ligatures: none; }
+.latest h3 a { color: var(--fg); text-decoration: none; }
+.latest h3 a:hover { color: var(--accent); }
+.latest .more { margin-top: 12px; font: 15px/1.4 var(--pixel); display: flex; flex-wrap: wrap; gap: 6px 18px; }
+
+@media (max-width: 600px) {
+  :root { --px: 3px; }
+  .scene .title { padding-top: 44px; }
+  h1 { font-size: 48px; }
+  .lede { font-size: 19px; }
+  .intro { margin-top: 110px; font-size: 18px; }
+  .scene { height: 290px; }
+  h2 canvas.sprig { width: 92px; height: 28px; }
+  .claim pre { font-size: 12.5px; padding: 14px; }
+  .kinds thead { display: none; }
+  .kinds tr { display: block; border-top: 2px solid var(--rule); padding: 8px 0; }
+  .kinds td { display: block; border: 0; padding: 2px 0; }
+}

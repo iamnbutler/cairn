@@ -5,7 +5,8 @@
 #
 # --feature makes it the video at the top of the site. --milestone puts it in that
 # milestone's progress log (default m2, the current one; see GOAL.md). Run from the repo root,
-# then commit site/public/media.json and deploy the site (make site).
+# then run make site-feed (the video is an item of the RSS feed), commit site/public/media.json
+# and site/public/feed.xml, and deploy the site (make site).
 set -eu
 in=$1; title=$2; caption=$3; shift 3
 feature=; milestone=m2
@@ -35,10 +36,10 @@ size=$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -o
 duration=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$work/v.mp4")
 list=site/public/media.json
 jq --arg video "/m/$video" --arg poster "/m/$poster" --arg title "$title" --arg caption "$caption" --arg milestone "$milestone" \
-   --arg date "$(date +%Y-%m-%d)" --arg commit "$(git rev-parse --short HEAD)" \
+   --arg date "$(date +%Y-%m-%d)" --arg published "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg commit "$(git rev-parse --short HEAD)" \
    --argjson w "${size%,*}" --argjson h "${size#*,}" --argjson d "$duration" \
    --argjson feature "$([ "$feature" = --feature ] && echo true || echo false)" \
-   '[{video: $video, poster: $poster, title: $title, caption: $caption, date: $date, commit: $commit,
+   '[{video: $video, poster: $poster, title: $title, caption: $caption, date: $date, published: $published, commit: $commit,
       width: $w, height: $h, seconds: ($d | floor), feature: $feature, milestone: $milestone}]
     + (if $feature then map(.feature = false) else . end)' "$list" > "$work/m.json"
 mv "$work/m.json" "$list"

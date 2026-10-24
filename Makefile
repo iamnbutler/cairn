@@ -194,8 +194,8 @@ docs-site:
 docs-check:
 	bun tools/docs/build.ts --check
 
-# Deploy the microsite (site/) to Cloudflare.
-site:
+# Deploy the microsite (site/) to Cloudflare, once the feed is fresh (site-feed-check, below).
+site: site-feed-check
 	cd site && npx -y wrangler@4 deploy
 
 clean:
@@ -344,3 +344,16 @@ fuzz-trusted-quick: lean
 	cd lean && lake build claims TrustedClaims && lake exe claims Cairn.Fuzz.Trusted.Claims > ../build/fuzz/quick/trusted-claims.json
 	cd host && swift build --product CairnFuzzTrusted
 	host/.build/debug/CairnFuzzTrusted --n 500 --claims build/fuzz/quick/trusted-claims.json --out build/fuzz/quick/trusted.json
+
+# The RSS feed (site/public/feed.xml) and the homepage's links into /milestones/, from the posts in
+# site/public/milestones/index.html and the videos in site/public/media.json (tools/site/build.ts).
+# Both are committed; site-feed-check fails when either is stale. It is part of check (on its own
+# line, so the check: list stays as the docs include it) and runs before every deploy.
+.PHONY: site-feed site-feed-check
+site-feed:
+	bun tools/site/build.ts
+
+site-feed-check:
+	bun tools/site/build.ts --check
+
+check: site-feed-check
