@@ -450,6 +450,12 @@ Each fix is its own commit, with a regression test holding the minimal repro.
    provenance attribute), and a poll that landed between them reported both. The host now
    reports a state once it has held for a whole poll, which also keeps Lean from reading a
    write in place half done.
+10. **Pool components with a slash confused two oracles** (`effects.list-dir` seed 0 case 210,
+   `effects.write-file` seed 1 cases 939 and 4157, `effects.append-file` seed 2 case 480;
+   the oracles were wrong). A component such as `"(_/\u{E0067}"` is two path components:
+   the host creates every missing parent, while the POSIX oracle `mkdir`'ed it as one (ENOENT,
+   so it expected a refusal) and list-dir counted it as a name. Both now split by bytes (a
+   `"/"` followed by a combining or tag scalar is one Swift `Character`).
 
 Also changed while writing the suites, found by reading rather than by a failing case: a reply
 checked against the world's generation and then sent outside the lock could arrive after
