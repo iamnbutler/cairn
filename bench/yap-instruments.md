@@ -327,10 +327,10 @@ Two of the recommendations above, matched to what the original does (lane `yap-p
 **What the original does.**
 
 - **Pacing.** The waveform is an `MTKView` with `preferredFramesPerSecond = 60`
-  (`~/code/yap/App/Overlay.swift` L352), paused while not recording (L313–315, L353); it draws
+  (`~/code/yap/App/Overlay.swift` L352), paused while not recording (L313–314, L353); it draws
   on its `CVDisplayLink` thread's callback. The rest of the overlay is SwiftUI: the clock is a
   `TimelineView(.periodic(from: .now, by: 0.25))` (L226) and the text eases with
-  `.animation(.easeOut(duration: 0.15), value: model.text)` (L254). On the 120 Hz display it
+  `.animation(.easeOut(duration: 0.15), value: model.text)` (L256). On the 120 Hz display it
   presents 60.0 frames a second (above, and again below).
 - **Files.** No file system events and no dispatch source: `watchConfig` polls `config.json`'s
   modification date with `FileManager.attributesOfItem` every 2 s in a `Task` loop and reloads
