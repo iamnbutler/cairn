@@ -78,7 +78,7 @@ prints the table that goes into the Lean file.
 | Microphone fails to start | "Microphone failed: <error.localizedDescription>" (L259–262) | was "the microphone did not start: …"; now the error's own description | fixed |
 | "Listening…" and the overlay | only once `capture.start` returns: `try engine.start()` (AudioCapture.swift L46) runs on the main thread, then `state = .recording`, "Listening…", `overlay.begin` and the preview (L250–257); a start that throws never touches the overlay (L258–261) | was at key-down, so a failing microphone flashed the overlay; now after the host's `started` event (^1005, ^348), and only then (^349) | fixed |
 | Keys during the start | the main thread is in `engine.start()`, so key events wait and are handled once it returns; `end()` times the press as `pressedAt.duration(to: .now)` when it runs (L278), so a tap during a slow start is a hold | key events wait while the microphone starts (^350) and are handled once it is reported, timed from when the start finished, not from their own timestamps (^351); after a failed start they are handled on the next tick, as the original handles them once `begin` returns | fixed |
-| A start that never returns | the main thread waits in `engine.start()` for ever: no keys, no menu | a release that waits for it gives the recording up ten minutes later, so every recording ends (^314); held down, it waits like the original | bug fix (a bound the proof of ^314 needs; no issue filed yet) |
+| A start that never returns | the main thread waits in `engine.start()` for ever: no keys, no menu | a release that waits for it gives the recording up ten minutes later, so every recording ends (^314); held down, it waits like the original | bug fix, [yap#17](https://github.com/iamnbutler/yap/issues/17) (the bound the proof of ^314 needs) |
 | Microphone not yet asked | starting the engine shows the system prompt | the host returned `denied` without starting; now it starts the engine, which prompts | fixed |
 | Microphone refused | the engine records silence and says "Heard nothing" (L310–313) | "Microphone failed: Microphone access is not granted" and a "Microphone Is Off: Grant It…" item | bug fix, [yap#11](https://github.com/iamnbutler/yap/issues/11) |
 | Shortcut while holding | stops capture, `finish(ready)`, but `finish` leaves `.recording` (L267–276, L449–452), so Yap is stuck | back to idle (^311) | bug fix, [yap#8](https://github.com/iamnbutler/yap/issues/8) |
@@ -259,6 +259,6 @@ match the original, but matching it costs something the brief didn't settle.
 |---|---|
 | same | 58 |
 | fixed (#56, yap-overlay and yap-mic-start) | 40 |
-| bug fix (intentional; yap#6 and #8–#15, and the start that never returns) | 10 |
+| bug fix (intentional; yap#6, #8–#15 and #17) | 10 |
 | open (needs Nate) | 7 |
 | Y (overlay pixels) | 0 |
