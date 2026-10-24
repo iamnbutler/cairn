@@ -1,12 +1,12 @@
 {
   "app": "Todo",
-  "generated": "2026-10-24T00:03:47.456Z",
+  "generated": "2026-10-24T01:46:30.221Z",
   "inputs": {
     "fuzz": "/Users/natebutler/code/cairn/.lane/trees/map-own/build/fuzz/Todo.json",
     "trusted": "/Users/natebutler/code/cairn/.lane/trees/map-own/build/fuzz/trusted.json",
     "conformance": "/Users/natebutler/code/cairn/.lane/trees/map-own/build/conformance/Todo.json",
     "capture": true,
-    "theoremsAudited": 3295
+    "theoremsAudited": 3657
   },
   "counts": {
     "kinds": [

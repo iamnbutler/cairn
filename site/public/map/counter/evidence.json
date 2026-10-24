@@ -1,12 +1,12 @@
 {
   "app": "Counter",
-  "generated": "2026-10-24T00:01:10.502Z",
+  "generated": "2026-10-24T01:43:27.073Z",
   "inputs": {
     "fuzz": "/Users/natebutler/code/cairn/.lane/trees/map-own/build/fuzz/Counter.json",
     "trusted": "/Users/natebutler/code/cairn/.lane/trees/map-own/build/fuzz/trusted.json",
     "conformance": "/Users/natebutler/code/cairn/.lane/trees/map-own/build/conformance/Counter.json",
     "capture": true,
-    "theoremsAudited": 3295
+    "theoremsAudited": 3657
   },
   "counts": {
     "kinds": [

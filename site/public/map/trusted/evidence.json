@@ -1,12 +1,12 @@
 {
   "app": "Trusted",
-  "generated": "2026-10-24T00:04:35.698Z",
+  "generated": "2026-10-24T02:09:00.920Z",
   "inputs": {
     "fuzz": "/Users/natebutler/code/cairn/.lane/trees/map-own/build/fuzz/Trusted.json",
     "trusted": "/Users/natebutler/code/cairn/.lane/trees/map-own/build/fuzz/trusted.json",
     "conformance": null,
     "capture": false,
-    "theoremsAudited": 3295
+    "theoremsAudited": 3657
   },
   "counts": {
     "kinds": [
@@ -18,9 +18,9 @@
       },
       {
         "kind": "fuzzed",
-        "have": 32,
+        "have": 35,
         "fail": 2,
-        "of": 34
+        "of": 37
       },
       {
         "kind": "tested",
@@ -36,13 +36,13 @@
       },
       {
         "kind": "assumed",
-        "have": 34,
+        "have": 37,
         "fail": 0,
-        "of": 34
+        "of": 37
       }
     ],
     "headlines": {
-      "assumed": 32,
+      "assumed": 35,
       "broken": 2
     }
   },
@@ -685,7 +685,7 @@
           "kind": "fuzzed",
           "state": "fail",
           "label": "fuzz fails",
-          "detail": "The trusted-base check `subs.watch-file` failed in 5 of 244 cases: 2 changed for op 1, allowed 1…1. Replay with `host/.build/release/CairnFuzzTrusted --replay fileops --case 15 --seed 5867409788454195734`."
+          "detail": "The trusted-base check `subs.watch-file` failed in 2 of 244 cases: 2 changed for op 1, allowed 1…1. Replay with `host/.build/release/CairnFuzzTrusted --replay fileops --case 604 --seed 5867409788454196323`."
         }
       ],
       "theorems": [],
@@ -964,6 +964,87 @@
       "shots": {
         "frames": []
       }
+    },
+    {
+      "id": 1000,
+      "ref": "^1000",
+      "kind": "assume",
+      "title": "openItem opens exactly the URL or existing file it names",
+      "headline": "assumed",
+      "evidence": [
+        {
+          "kind": "assumed",
+          "state": "pass",
+          "label": "assumed",
+          "detail": "Recorded, never proved. Theorems that rely on it take it as a hypothesis."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 5k",
+          "detail": "The trusted-base fuzzer's `effects.open-item` held in 5,000 cases, against Lean's proved side (seed 0)."
+        }
+      ],
+      "theorems": [],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": []
+      }
+    },
+    {
+      "id": 1001,
+      "ref": "^1001",
+      "kind": "assume",
+      "title": "appRunning answers whether an app with that bundle id runs",
+      "headline": "assumed",
+      "evidence": [
+        {
+          "kind": "assumed",
+          "state": "pass",
+          "label": "assumed",
+          "detail": "Recorded, never proved. Theorems that rely on it take it as a hypothesis."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 5k",
+          "detail": "The trusted-base fuzzer's `effects.app-running` held in 5,000 cases, against Lean's proved side (seed 0)."
+        }
+      ],
+      "theorems": [],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": []
+      }
+    },
+    {
+      "id": 1002,
+      "ref": "^1002",
+      "kind": "assume",
+      "title": "readDefault answers the default's value as text",
+      "headline": "assumed",
+      "evidence": [
+        {
+          "kind": "assumed",
+          "state": "pass",
+          "label": "assumed",
+          "detail": "Recorded, never proved. Theorems that rely on it take it as a hypothesis."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 5k",
+          "detail": "The trusted-base fuzzer's `effects.read-default` held in 5,000 cases, against Lean's proved side (seed 0)."
+        }
+      ],
+      "theorems": [],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": []
+      }
     }
   ],
   "gaps": [
@@ -976,7 +1057,7 @@
     {
       "ref": "^963",
       "what": "fuzz fails",
-      "detail": "The trusted-base check `subs.watch-file` failed in 5 of 244 cases: 2 changed for op 1, allowed 1…1. Replay with `host/.build/release/CairnFuzzTrusted --replay fileops --case 15 --seed 5867409788454195734`.",
+      "detail": "The trusted-base check `subs.watch-file` failed in 2 of 244 cases: 2 changed for op 1, allowed 1…1. Replay with `host/.build/release/CairnFuzzTrusted --replay fileops --case 604 --seed 5867409788454196323`.",
       "broken": true
     }
   ]
