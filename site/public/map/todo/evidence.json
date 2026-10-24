@@ -1,12 +1,12 @@
 {
   "app": "Todo",
-  "generated": "2026-10-24T02:37:22.239Z",
+  "generated": "2026-10-24T04:56:17.569Z",
   "inputs": {
     "fuzz": "/Users/natebutler/code/cairn/build/fuzz/Todo.json",
     "trusted": null,
     "conformance": "/Users/natebutler/code/cairn/build/conformance/Todo.json",
     "capture": true,
-    "theoremsAudited": 3764
+    "theoremsAudited": 3848
   },
   "counts": {
     "kinds": [
@@ -18,14 +18,14 @@
       },
       {
         "kind": "fuzzed",
-        "have": 10,
-        "fail": 1,
+        "have": 11,
+        "fail": 0,
         "of": 13
       },
       {
         "kind": "tested",
-        "have": 18,
-        "fail": 3,
+        "have": 21,
+        "fail": 0,
         "of": 21
       },
       {
@@ -43,8 +43,7 @@
     ],
     "headlines": {
       "seen": 1,
-      "proved": 17,
-      "broken": 4,
+      "proved": 21,
       "assumed": 1,
       "retired": 1
     }
@@ -90,13 +89,13 @@
           "kind": "fuzzed",
           "state": "pass",
           "label": "fuzzed 1k",
-          "detail": "Held in 1,000 random sequences, 50,982 steps checked (seed 0)."
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (seed 0)."
         },
         {
           "kind": "tested",
           "state": "pass",
           "label": "tested 8.4k",
-          "detail": "8,385 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
+          "detail": "8,388 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
         },
         {
           "kind": "seen",
@@ -135,7 +134,7 @@
       "ref": "^203",
       "kind": "move",
       "title": "Mark all as complete",
-      "headline": "broken",
+      "headline": "proved",
       "evidence": [
         {
           "kind": "proved",
@@ -147,13 +146,13 @@
           "kind": "fuzzed",
           "state": "pass",
           "label": "fuzzed 1k",
-          "detail": "Held in 1,000 random sequences, 50,982 steps checked (seed 0)."
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (seed 0). 2 clicks ended an edit and were dropped by design: the blur saved the edit, which moved or removed the control (T33, an open decision in docs/plan.md)."
         },
         {
           "kind": "tested",
-          "state": "fail",
-          "label": "test fails",
-          "detail": "Conformance failed: walk-1-823 step 7 (press ^203): model: press ^203 delivered [], not [press ^203]"
+          "state": "pass",
+          "label": "tested 161",
+          "detail": "161 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model. 1 click ended an edit and was dropped by design: the blur saved the edit, which moved or removed the control (T33, an open decision in docs/plan.md)."
         },
         {
           "kind": "seen",
@@ -198,13 +197,13 @@
           "kind": "fuzzed",
           "state": "pass",
           "label": "fuzzed 1k",
-          "detail": "Held in 1,000 random sequences, 50,982 steps checked (seed 0)."
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (seed 0). 9 clicks ended an edit and were dropped by design: the blur saved the edit, which moved or removed the control (T33, an open decision in docs/plan.md)."
         },
         {
           "kind": "tested",
           "state": "pass",
-          "label": "tested 127",
-          "detail": "127 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
+          "label": "tested 128",
+          "detail": "128 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
         },
         {
           "kind": "seen",
@@ -249,7 +248,7 @@
           "kind": "fuzzed",
           "state": "pass",
           "label": "fuzzed 1k",
-          "detail": "Held in 1,000 random sequences, 50,982 steps checked (seed 0)."
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (seed 0). 9 clicks ended an edit and were dropped by design: the blur saved the edit, which moved or removed the control (T33, an open decision in docs/plan.md)."
         },
         {
           "kind": "tested",
@@ -300,7 +299,7 @@
           "kind": "fuzzed",
           "state": "pass",
           "label": "fuzzed 1k",
-          "detail": "Held in 1,000 random sequences, 50,982 steps checked (seed 0)."
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (seed 0). 6 clicks ended an edit and were dropped by design: the blur saved the edit, which moved or removed the control (T33, an open decision in docs/plan.md)."
         },
         {
           "kind": "tested",
@@ -348,7 +347,7 @@
           "kind": "fuzzed",
           "state": "pass",
           "label": "fuzzed 1k",
-          "detail": "Held in 1,000 random sequences, 50,982 steps checked (seed 0)."
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (seed 0)."
         },
         {
           "kind": "tested",
@@ -405,7 +404,7 @@
       "ref": "^208",
       "kind": "move",
       "title": "All",
-      "headline": "broken",
+      "headline": "proved",
       "evidence": [
         {
           "kind": "proved",
@@ -415,9 +414,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "fail",
-          "label": "fuzz fails",
-          "detail": "performed failed at seed 260, step 32: Cairn.Action.press { claim := 208, key := 0 } was meant, but the runtime delivered [Cairn.Action.blur { claim := 207, key := 2 }]. Replay with `lake exe fuzz Todo --seed 260 --iterations 1 -v`."
+          "state": "pass",
+          "label": "fuzzed 1k",
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (seed 0). 18 clicks ended an edit and were dropped by design: the blur saved the edit, which moved or removed the control (T33, an open decision in docs/plan.md)."
         },
         {
           "kind": "tested",
@@ -465,7 +464,7 @@
           "kind": "fuzzed",
           "state": "pass",
           "label": "fuzzed 1k",
-          "detail": "Held in 1,000 random sequences, 50,982 steps checked (seed 0)."
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (seed 0). 17 clicks ended an edit and were dropped by design: the blur saved the edit, which moved or removed the control (T33, an open decision in docs/plan.md)."
         },
         {
           "kind": "tested",
@@ -516,7 +515,7 @@
           "kind": "fuzzed",
           "state": "pass",
           "label": "fuzzed 1k",
-          "detail": "Held in 1,000 random sequences, 50,982 steps checked (seed 0)."
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (seed 0). 21 clicks ended an edit and were dropped by design: the blur saved the edit, which moved or removed the control (T33, an open decision in docs/plan.md)."
         },
         {
           "kind": "tested",
@@ -567,7 +566,7 @@
           "kind": "fuzzed",
           "state": "pass",
           "label": "fuzzed 1k",
-          "detail": "Held in 1,000 random sequences, 50,982 steps checked (seed 0)."
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (seed 0). 3 clicks ended an edit and were dropped by design: the blur saved the edit, which moved or removed the control (T33, an open decision in docs/plan.md)."
         },
         {
           "kind": "tested",
@@ -606,7 +605,7 @@
       "ref": "^212",
       "kind": "invariant",
       "title": "Counter and ids",
-      "headline": "broken",
+      "headline": "proved",
       "evidence": [
         {
           "kind": "proved",
@@ -618,13 +617,13 @@
           "kind": "fuzzed",
           "state": "pass",
           "label": "fuzzed 1k",
-          "detail": "Held in 1,000 random sequences, 50,982 steps checked (seed 0)."
+          "detail": "Held in 1,000 random sequences, 51,000 steps checked (seed 0)."
         },
         {
           "kind": "tested",
-          "state": "fail",
-          "label": "test fails",
-          "detail": "Conformance failed: a reached state differed from the model; see report.md"
+          "state": "pass",
+          "label": "tested",
+          "detail": "Every state the running app reached (12,049 steps) was the model's, and the frame, accessibility tree, effects and pixels matched the model."
         }
       ],
       "theorems": [
@@ -670,7 +669,7 @@
       "ref": "^213",
       "kind": "invariant",
       "title": "The list is the filter applied to the todos",
-      "headline": "broken",
+      "headline": "proved",
       "evidence": [
         {
           "kind": "proved",
@@ -686,9 +685,9 @@
         },
         {
           "kind": "tested",
-          "state": "fail",
-          "label": "test fails",
-          "detail": "Conformance failed: a reached state differed from the model; see report.md"
+          "state": "pass",
+          "label": "tested",
+          "detail": "Every state the running app reached (12,049 steps) was the model's, and the frame, accessibility tree, effects and pixels matched the model."
         }
       ],
       "theorems": [
@@ -1271,34 +1270,10 @@
   ],
   "gaps": [
     {
-      "ref": "^203",
-      "what": "test fails",
-      "detail": "Conformance failed: walk-1-823 step 7 (press ^203): model: press ^203 delivered [], not [press ^203]",
-      "broken": true
-    },
-    {
-      "ref": "^208",
-      "what": "fuzz fails",
-      "detail": "performed failed at seed 260, step 32: Cairn.Action.press { claim := 208, key := 0 } was meant, but the runtime delivered [Cairn.Action.blur { claim := 207, key := 2 }]. Replay with `lake exe fuzz Todo --seed 260 --iterations 1 -v`.",
-      "broken": true
-    },
-    {
-      "ref": "^212",
-      "what": "test fails",
-      "detail": "Conformance failed: a reached state differed from the model; see report.md",
-      "broken": true
-    },
-    {
       "ref": "^213",
       "what": "not runnable",
       "detail": "The fuzzer can't run it: not runnable: no Decidable instance.",
       "broken": false
-    },
-    {
-      "ref": "^213",
-      "what": "test fails",
-      "detail": "Conformance failed: a reached state differed from the model; see report.md",
-      "broken": true
     },
     {
       "ref": "^214",
