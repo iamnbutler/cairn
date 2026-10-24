@@ -271,7 +271,9 @@ structure PanelView where
   content : Node
 ```
 
-- **Shown or not**: the panel's view returns `Option PanelView`; `none` is hidden. Yap's fade-out
+- **Shown or not**: the panel's view returns `Option PanelView`; `none` is hidden. The view is
+  given the text metrics the panel is laid out with, so it can measure its own content (Yap's
+  overlay eases between the heights of its old and new text). Yap's fade-out
   (0.18 s) is a host animation of `alphaValue` on hide, a look-only choice listed in trusted.md,
   unless we decide Lean should own it (open question 6).
 - **Size.** Lean lays the content out at `width × ∞` (a `hug` column) and the frame carries the

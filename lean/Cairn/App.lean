@@ -4,6 +4,7 @@ public import Cairn.UI.Node
 public import Cairn.Input
 public import Cairn.Claim
 public import Cairn.Surface
+public import Cairn.Text.Metrics
 
 /-! An app is its state, its surfaces, and its moves. The runtime (`Cairn.Runtime`) owns
 interaction state (hover, press, focus, window size), turns events into actions by hit testing
@@ -30,8 +31,9 @@ inductive Surface (S : Type) where
   /-- M1's window: Metal content laid out at the window's size, with input. -/
   | window (place : ClaimId) (title : String) (view : S → UI → Node)
   /-- A non-activating, click-through overlay panel; `none` hides it. It takes no input, so its
-  view doesn't read `UI`. -/
-  | panel (place : ClaimId) (view : S → Option PanelView)
+  view doesn't read `UI`. The view is given the text metrics the panel is laid out with, so it
+  can measure content (`Cairn.Layout.measure`), for instance to animate between two heights. -/
+  | panel (place : ClaimId) (view : TextMetrics → S → Option PanelView)
   /-- A menu bar status item and its native menu; `none` removes it from the menu bar. -/
   | statusItem (place : ClaimId) (view : S → Option StatusItem)
 
@@ -45,7 +47,7 @@ def place : Surface S → ClaimId
 /-- The same surface over a bigger state (`Cairn.Runtime.logged` wraps an app's state). -/
 def comap (f : T → S) : Surface S → Surface T
   | .window p t v => .window p t (fun s ui => v (f s) ui)
-  | .panel p v => .panel p (fun s => v (f s))
+  | .panel p v => .panel p (fun m s => v m (f s))
   | .statusItem p v => .statusItem p (fun s => v (f s))
 
 @[simp] theorem place_comap (f : T → S) (x : Surface S) : (x.comap f).place = x.place := by

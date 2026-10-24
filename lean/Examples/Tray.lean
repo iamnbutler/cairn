@@ -269,7 +269,7 @@ def panel (s : State) : Option PanelView :=
   if s.overlay then some { width := 320, content := overlayView s } else none
 
 def app : App State :=
-  { machine.toApp [.statusItem 450 (some ∘ statusItem), .panel 452 panel] claimInfos with
+  { machine.toApp [.statusItem 450 (some ∘ statusItem), .panel 452 (fun _ => panel)] claimInfos with
     subscriptions := fun s => if s.overlay then [.every 20] else [] }
 
 example : claimInfos.map (·.id) =
