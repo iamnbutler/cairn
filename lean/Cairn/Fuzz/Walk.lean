@@ -176,13 +176,54 @@ def clickEvents (p : Point) (clicks : Nat) : List Event :=
   [.pointerMove p, .pointerDown p .primary 1 {}, .pointerUp p .primary {}] ++
     (if clicks ≥ 2 then [.pointerDown p .primary 2 {}, .pointerUp p .primary {}] else [])
 
+/-! ### Status items
+
+A status item's menu is a description, not a laid tree (`Cairn.Surface`): its controls are the
+item's own (pressed by opening the menu) and its menu's items, and a move's control is on screen
+there when its item is in the menu and enabled (a greyed-out item keeps its control but can't be
+chosen). -/
+
+/-- The status items shown now, with their places. -/
+def statusShown (rt : Runtime.State S) : List (ClaimId × StatusItem) :=
+  rt.surfaces.filterMap fun
+    | .status p (some it) => some (p, it)
+    | _ => none
+
+/-- Every control in a shown status item: its own and every item of its menu. -/
+def menuRefs (rt : Runtime.State S) : List ControlRef :=
+  (statusShown rt).flatMap fun (_, it) => it.control :: MenuItem.refs it.menu
+
+/-- The controls a person can act on in the shown status items: each item's own and its menu's
+enabled items. -/
+def menuLive (rt : Runtime.State S) : List ControlRef :=
+  (statusShown rt).flatMap fun (_, it) => it.control :: MenuItem.enabledRefs it.menu
+
+/-- Where `c` is in a status item: the item's place, and whether `c` is the item's own control. -/
+def menuPlace? (rt : Runtime.State S) (c : ControlRef) : Option (ClaimId × Bool) :=
+  (statusShown rt).findSome? fun (p, it) =>
+    if decide (it.control = c) then some (p, true)
+    else if (MenuItem.refs it.menu).any (fun x => decide (x = c)) then some (p, false) else none
+
+/-- Every control on screen: the window's and the status items'. -/
+def allRefs (rt : Runtime.State S) : List ControlRef := refs rt.laid ++ menuRefs rt
+
+/-- Whether a move's control for `r` is on screen: in the window, or live in a status item. -/
+def onScreen (rt : Runtime.State S) (r : ControlRef) : Bool :=
+  present rt.laid r || (menuLive rt).any fun x => decide (x = r)
+
 /-- The events that perform an operation in the current state; `none` when an action's control
-isn't on screen (or can't take that action), so the operation is skipped. -/
+isn't on screen (or can't take that action), so the operation is skipped. A press on a status
+item's control opens and closes its menu; on a menu item it chooses it, as the conformance
+driver does (docs/conformance.md, "Tray: menus"). -/
 def opToEvents (rt : Runtime.State S) : Op → Option (List Event)
   | .act a =>
     let c := a.control
     match find rt.laid c with
-    | none => none
+    | none =>
+      match a, menuPlace? rt c with
+      | .press _, some (p, true) => some [.menuOpen p, .menuClose p]
+      | .press _, some (p, false) => some [.menuSelect p c]
+      | _, _ => none
     | some tg =>
       let p := tg.visible.center
       let focus := if rt.ui.focus = some c then [] else clickEvents p 1
@@ -261,13 +302,13 @@ def perform (t : Target) (setup : Setup) (w : World t.S) (op : Op) : IO (Perform
 /-- Keys to probe for a move: those on screen, the largest seen so far, and one past it. -/
 def probeKeys (t : Target) (w : World t.S) (id : ClaimId) : List Nat :=
   if !t.isKeyed id then [0] else
-  let onScreen := (refs w.rt.laid).filterMap fun r => if r.claim = id then some r.key else none
+  let onScreen := (allRefs w.rt).filterMap fun r => if r.claim = id then some r.key else none
   let top := (w.seen.get? id).getD 0
   let top := onScreen.foldl max top
   (onScreen ++ [top, top + 1, 0]).eraseDups
 
-def World.noteSeen (w : World S) (laid : Laid) : World S :=
-  { w with seen := (refs laid).foldl (fun m r => m.insert r.claim (max r.key ((m.get? r.claim).getD 0))) w.seen }
+def World.noteSeen (w : World S) (rt : Runtime.State S) : World S :=
+  { w with seen := (allRefs rt).foldl (fun m r => m.insert r.claim (max r.key ((m.get? r.claim).getD 0))) w.seen }
 
 def isPointer (m : Move S) : Bool := m.triggers.any fun tr => tr == .press || tr == .doublePress
 
@@ -326,12 +367,12 @@ def checks (t : Target) (setup : Setup) (w : World t.S) (act? : Option Action)
     ran := ran.push (mv.id, "presence")
     for k in probeKeys t w mv.id do
       let r : ControlRef := ⟨mv.id, k⟩
-      let on := present laid r
+      let on := onScreen w.rt r
       let en := mv.enabled s k
       if on != en then
         fails := fails.push <| mkFail "presence" r stepIx
-          (if en then s!"{r.label} is enabled but has no control in the frame"
-           else s!"{r.label} is in the frame but its move is disabled")
+          (if en then s!"{r.label} is enabled but has no control in the frame or a menu"
+           else s!"{r.label} is in the frame or enabled in a menu, but its move is disabled")
   -- Pressable, at sizes at or above the minimum.
   if fitsWindow then
     let ts := targets laid
@@ -367,7 +408,7 @@ def candidates (t : Target) (w : World t.S) : List (ControlRef × Trigger × Boo
   let s := w.rt.app
   match t.app with
   | some _ =>
-    (targets w.rt.laid).flatMap fun tg =>
+    let window := (targets w.rt.laid).flatMap fun tg =>
       match t.move? tg.ref.claim with
       | none => []
       | some mv =>
@@ -376,6 +417,14 @@ def candidates (t : Target) (w : World t.S) : List (ControlRef × Trigger × Boo
           let ok := if tg.isField then tr != .press && tr != .doublePress
                     else tr == .press || tr == .doublePress
           if ok then some (tg.ref, tr, tg.isField) else none
+    -- A status item's controls take presses only: opening the menu, or choosing an item.
+    let menus := (menuLive w.rt).filterMap fun r =>
+      match t.move? r.claim with
+      | some mv =>
+        if mv.enabled s r.key && mv.triggers.contains Trigger.press then some (r, Trigger.press, false)
+        else none
+      | none => none
+    window ++ menus
   | none =>
     t.machine.moves.flatMap fun mv =>
       let keys := if t.isKeyed mv.id then List.range 17 else [0]
@@ -491,7 +540,7 @@ inductive Source where
 /-- Run one sequence, stopping at the first failure. Verbose prints each step. -/
 def runSeq (t : Target) (setup : Setup) (src : Source) (stats : Stats := {})
     (verbose : Bool := false) : IO Outcome := do
-  let mut w := (World.start t setup).noteSeen (World.start t setup).rt.laid
+  let mut w := (World.start t setup).noteSeen (World.start t setup).rt
   let mut stats := stats
   let mut ops : Array Op := #[]
   let mut over : Array (Nat × Nat) := #[]
@@ -521,7 +570,7 @@ def runSeq (t : Target) (setup : Setup) (src : Source) (stats : Stats := {})
     ops := ops.push op
     let p ← perform t setup w op
     i := i + 1
-    w := p.world.noteSeen p.world.rt.laid
+    w := p.world.noteSeen p.world.rt
     maxNs := max maxNs p.maxNs
     if p.maxNs > t.budgetNs then over := over.push (i, p.maxNs)
     let act? := match op with | .act a => if p.ran then some a else none | _ => none
