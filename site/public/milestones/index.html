@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Milestones · Cairn</title>
+<meta name="description" content="Cairn's milestones: what each one sets out to show, and the videos of the work as it lands.">
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/site.css">
+<link rel="alternate" type="application/rss+xml" title="Cairn" href="/feed.xml">
+</head>
+<body>
+<!-- The posts here are the source of the feed: tools/site/build.ts (make site-feed) turns each
+     article.post into an item of /feed.xml, with its h2's id as the permalink and its time as the
+     date, and the newest into the homepage's pointer. Put a new milestone on top, with the time
+     it was published, then run make site-feed. Heading ids are links people have; never change one. -->
+<header class="scene">
+  <canvas id="scene" aria-hidden="true"></canvas>
+  <div class="title"><h1>Milestones</h1><nav class="links" aria-label="Site"><a href="/">Home</a><a href="/milestones/" aria-current="page">Milestones</a><a href="/docs/">Docs</a><a href="/docs/evidence/">Maps</a></nav></div>
+</header>
+
+<main>
+  <p class="intro">Each milestone asks one question of Cairn and answers it with working software.
+    The videos under each are the progress log, newest first.</p>
+  <p class="meta"><a class="feed" href="/feed.xml">Follow along with the RSS feed</a></p>
+
+  <article class="post">
+  <h2 id="second-milestone-yap-on-cairn">Second milestone: Yap on Cairn<span class="soon">now</span></h2>
+  <p class="meta"><time class="date" datetime="2026-10-23T21:04:46-04:00">2026-10-23</time></p>
+  <p>Can claims hold up on real software someone uses every day? Yap is a small dictation app for
+    the Mac: hold a key, talk, and the transcript is typed into the app in front. Almost all of it
+    lives outside its window, so Cairn has to learn the outside world first.</p>
+  <ol class="trail">
+    <li>Effects: the clock and timers, requests the host performs and answers, and outside inputs
+      like a global key and the microphone. Each one is a recorded assumption, fuzzed.</li>
+    <li>New surfaces: a native menu bar menu built from Lean, and an overlay that never takes focus.</li>
+    <li>Proofs about dictation: a shortcut never sends, a transcript is saved before it is typed,
+      a late reply never types, every recording ends.</li>
+    <li>Yap rebuilt on Cairn, signed and installed, and used for a real day of work.</li>
+  </ol>
+  <ul id="log-m2" class="trail log"><li class="meta">Loading…</li></ul>
+  </article>
+
+  <article class="post">
+  <h2 id="first-milestone-a-proved-todomvc">First milestone: a proved TodoMVC<span class="soon">done</span></h2>
+  <p class="meta"><time class="date" datetime="2026-10-23T10:57:34-04:00">2026-10-23</time></p>
+  <ol class="trail">
+    <li>The full TodoMVC app on the Mac, including real text fields and input methods.</li>
+    <li>Every action is a claim with an id that the build refuses to let drift.</li>
+    <li>Proofs: each action does what it says, the counts and filters stay right, and every
+      control is present exactly when it should be and can actually be pressed.</li>
+    <li>The real app is driven through a thousand generated sequences and must agree with the model.</li>
+    <li>A map of the app, generated from the claims, showing the evidence behind each one.</li>
+  </ol>
+  <ul id="log-m1" class="trail log"><li class="meta">Loading…</li></ul>
+  </article>
+</main>
+
+<footer><img src="/icon.svg" alt=""><span>MIT licensed. Built in the open, slowly. <a href="/docs/">Read the docs</a>.</span><a class="feed" href="/feed.xml">RSS feed</a></footer>
+
+<script type="module">
+  import { mountScene, mountFrames, mountSprigs, mountAnchors } from "/scene.js";
+  import { list, fillLogs } from "/media.js";
+  const main = document.querySelector("main");
+  mountFrames(main);
+  mountSprigs(main);
+  mountAnchors(main);
+  mountScene(document.getElementById("scene"));
+  // The logs arrive after the page has drawn, so a link to a video's heading scrolls once they do.
+  list().then(all => {
+    fillLogs(main, all);
+    const target = location.hash && document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    if (target) target.scrollIntoView();
+  }).catch(() => { for (const log of main.querySelectorAll("[id^=log-]")) log.innerHTML = '<li class="meta">Could not load the video list.</li>'; });
+</script>
+</body>
+</html>
