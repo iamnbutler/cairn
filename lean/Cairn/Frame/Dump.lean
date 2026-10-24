@@ -34,9 +34,19 @@ def draw : Draw → String
     s!"rect {rect r} fill={opt color fill} radius={radius} border=" ++
       opt (fun b => s!"{b.width}:{color b.color}") border
   | .text o f c s =>
-    s!"text {o.x} {o.y} font={f.family},{f.size},{f.weight},{bit f.italic} color={color c} {str s}"
+    s!"text {o.x} {o.y} font={f.family},{f.size},{f.weight},{bit f.italic},{f.width.code}," ++
+      s!"{f.tracking},{bit f.tabular} color={color c} {str s}"
   | .pushClip r => s!"push {rect r}"
   | .popClip => "pop"
+  | .shape r fill radius border corner shadow =>
+    s!"shape {rect r} fill={opt color fill} radius={radius} border=" ++
+      opt (fun b => s!"{b.width}:{color b.color}") border ++
+      s!" corner={if corner == .continuous then 1 else 0} shadow=" ++
+      opt (fun sh => s!"{color sh.color}:{sh.radius}:{sh.x}:{sh.y}") shadow
+  | .paint r p =>
+    let ints (xs : List Int) : String := "[" ++ ",".intercalate (xs.map toString) ++ "]"
+    s!"paint {rect r} origin={p.origin} shader={str p.shader} scalars={ints p.scalars} arrays=[" ++
+      ",".intercalate (p.arrays.map ints) ++ "]"
 
 def ax (n : AxNode) : String :=
   s!"node role={Role.code n.role} control={opt ref n.control} parent={opt toString n.parent} " ++

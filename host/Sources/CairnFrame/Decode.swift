@@ -24,11 +24,11 @@ extension Frame {
         self = try bytes.withUnsafeBytes { try Frame(decoding: $0) }
     }
 
-    /// Header (magic, version 3, flags 0), surfaces, effects, subscription commands, wake.
+    /// Header (magic, version 4, flags 0), surfaces, effects, subscription commands, wake.
     public init(decoding raw: UnsafeRawBufferPointer) throws {
         var r = ByteReader(raw)
         try r.need(8)
-        guard r.u8(0) == 0x43, r.u8(1) == 0x41, r.u8(2) == 0x46, r.u8(3) == 0x52, r.u16(4) == 3,
+        guard r.u8(0) == 0x43, r.u8(1) == 0x41, r.u8(2) == 0x46, r.u8(3) == 0x52, r.u16(4) == 4,
               r.u16(6) == 0  // flags: reserved, zero (found by cairn-fuzz-trusted)
         else { throw FrameDecodeError.badHeader }
         r.i = 8
@@ -122,12 +122,15 @@ extension Frame {
             r.i += 36
             return .rect(rect, fill: hasFill ? fill : nil, radius: radius, border: hasBorder ? border : nil)
         case 1:
-            try r.need(28)
+            try r.need(32)
             let italic = try r.flag(1)
+            guard let width = FontWidth(rawValue: r.u8(2)) else { throw FrameDecodeError.badCode(r.u8(2), at: r.i + 2) }
+            let tabular = try r.flag(3)
             let origin = Point(x: r.i32(4), y: r.i32(8))
-            let font = Font(family: r.u32(12), size: r.u32(16), weight: r.u32(20), italic: italic)
-            let color = r.color(24)
-            r.i += 28
+            let font = Font(family: r.u32(12), size: r.u32(16), weight: r.u32(20), italic: italic,
+                            width: width, tracking: r.i32(24), tabular: tabular)
+            let color = r.color(28)
+            r.i += 32
             return .text(origin: origin, font: font, color: color, string: try r.string())
         case 2:
             try r.need(20)
@@ -136,6 +139,31 @@ extension Frame {
         case 3:
             r.i += 4
             return .popClip
+        case 4:
+            try r.need(28)
+            let rect = r.rect(4)
+            let origin = r.u64(20)
+            r.i += 28
+            let shader = try r.string()
+            let scalars = try r.ints()
+            try r.need(4)
+            let n = Int(r.u32(0))
+            r.i += 4
+            var arrays: [[Int32]] = []
+            for _ in 0..<n { arrays.append(try r.ints()) }
+            return .paint(rect, Paint(shader: shader, origin: origin, scalars: scalars, arrays: arrays))
+        case 5:
+            try r.need(56)
+            let hasFill = try r.flag(1), hasBorder = try r.flag(2), hasShadow = try r.flag(3)
+            guard let corner = Corner(rawValue: r.u8(4)) else { throw FrameDecodeError.badCode(r.u8(4), at: r.i + 4) }
+            let rect = r.rect(8)
+            let fill = r.color(24)
+            let radius = r.u32(28)
+            let border = Border(width: r.u32(32), color: r.color(36))
+            let shadow = Shadow(color: r.color(40), radius: r.u32(44), x: r.i32(48), y: r.i32(52))
+            r.i += 56
+            return .shape(rect, fill: hasFill ? fill : nil, radius: radius, border: hasBorder ? border : nil,
+                          corner: corner, shadow: hasShadow ? shadow : nil)
         default:
             throw FrameDecodeError.badCode(tag, at: r.i)
         }
@@ -409,6 +437,19 @@ struct ByteReader {
         let start = i + 4
         i = start + n
         return Array(raw[start..<start + n])
+    }
+
+    /// `u32` count, then that many `i32`s.
+    mutating func ints() throws -> [Int32] {
+        try need(4)
+        let n = Int(u32(0))
+        try need(4 + 4 * n)
+        i += 4
+        var out: [Int32] = []
+        out.reserveCapacity(n)
+        for k in 0..<n { out.append(i32(4 * k)) }
+        i += 4 * n
+        return out
     }
 
     /// `u32` count, then each name and value.

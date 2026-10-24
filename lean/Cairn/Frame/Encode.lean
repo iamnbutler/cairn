@@ -48,6 +48,25 @@ def Cursor.ofCode : UInt8 → Option Cursor
 @[simp] theorem Cursor.ofCode_code (c : Cursor) : Cursor.ofCode (Cursor.code c) = some c := by
   cases c <;> rfl
 
+def FontWidth.wire : FontWidth → UInt8
+  | .standard => 0 | .condensed => 1 | .expanded => 2 | .compressed => 3
+
+def FontWidth.ofWire : UInt8 → Option FontWidth
+  | 0 => some .standard | 1 => some .condensed | 2 => some .expanded | 3 => some .compressed
+  | _ => none
+
+@[simp] theorem FontWidth.ofWire_wire (w : FontWidth) : FontWidth.ofWire (FontWidth.wire w) = some w := by
+  cases w <;> rfl
+
+def Corner.code : Corner → UInt8
+  | .circular => 0 | .continuous => 1
+
+def Corner.ofCode : UInt8 → Option Corner
+  | 0 => some .circular | 1 => some .continuous | _ => none
+
+@[simp] theorem Corner.ofCode_code (c : Corner) : Corner.ofCode (Corner.code c) = some c := by
+  cases c <;> rfl
+
 def checkedCode : Option Bool → UInt8
   | none => 0 | some false => 1 | some true => 2
 
@@ -204,12 +223,24 @@ def fitsRange (p : Nat × Nat) : Bool := fu p.1 && fu p.2
 
 /-- Font fields are clamped, not wrapped, so out-of-range fonts still name the font layout
 measured with (`Cairn.Text.Host.sat`); the round trip is exact when they fit. -/
+def fitsInts (xs : List Int) : Bool := fu xs.length && xs.all fi
+
+def fitsPaint (p : Paint) : Bool :=
+  fs p.shader && decide (FitsU64 p.origin) && fitsInts p.scalars && fu p.arrays.length &&
+    p.arrays.all fitsInts
+
+def fitsShadow (s : Shadow) : Bool := fu s.radius && fi s.x && fi s.y
+
 def fitsDraw : Draw → Bool
   | .rect r _ radius border => fitsRect r && fu radius && (border.all fun b => fu b.width)
   | .text o font _ s =>
-    fi o.x && fi o.y && fu font.family && fu font.size && fu font.weight && fs s
+    fi o.x && fi o.y && fu font.family && fu font.size && fu font.weight && fi font.tracking &&
+      fs s
   | .pushClip r => fitsRect r
   | .popClip => true
+  | .shape r _ radius border _ shadow =>
+    fitsRect r && fu radius && (border.all fun b => fu b.width) && shadow.all fitsShadow
+  | .paint r p => fitsRect r && fitsPaint p
 
 def fitsAx (n : AxNode) : Bool :=
   n.control.all fitsRef && n.parent.all fu && fitsRect n.rect && fs n.label && fs n.value
@@ -313,17 +344,31 @@ def noColor : Color := ⟨0, 0, 0, 0⟩
 def list {α : Type} (e : α → List UInt8) (xs : List α) : List UInt8 :=
   u32 xs.length ++ sect (xs.flatMap e)
 
+/-- A `u32` count, then each as an `i32`. -/
+def ints (xs : List Int) : List UInt8 := u32 xs.length ++ xs.flatMap i32
+
+/-- A `u32` count, then each list as `ints`. -/
+def intLists (xss : List (List Int)) : List UInt8 := u32 xss.length ++ xss.flatMap ints
+
 def draw : Draw → List UInt8
   | .rect r fill radius border =>
     [0] ++ bool fill.isSome ++ bool border.isSome ++ pad 1 ++ rect r ++
       color (fill.getD noColor) ++ u32 radius ++
       u32 (border.elim 0 (·.width)) ++ color (border.elim noColor (·.color))
   | .text o font c s =>
-    [1] ++ bool font.italic ++ pad 2 ++ point o ++
+    [1] ++ bool font.italic ++ [FontWidth.wire font.width] ++ bool font.tabular ++ point o ++
       u32 (satU32 font.family) ++ u32 (satU32 font.size) ++ u32 (satU32 font.weight) ++
-      color c ++ str s
+      i32 (satI32 font.tracking) ++ color c ++ str s
   | .pushClip r => [2] ++ pad 3 ++ rect r
   | .popClip => [3] ++ pad 3
+  | .paint r p => [4] ++ pad 3 ++ rect r ++ u64 p.origin ++ str p.shader ++ ints p.scalars ++
+      intLists p.arrays
+  | .shape r fill radius border corner shadow =>
+    [5] ++ bool fill.isSome ++ bool border.isSome ++ bool shadow.isSome ++
+      [Corner.code corner] ++ pad 3 ++ rect r ++ color (fill.getD noColor) ++ u32 radius ++
+      u32 (border.elim 0 (·.width)) ++ color (border.elim noColor (·.color)) ++
+      color (shadow.elim noColor (·.color)) ++ u32 (shadow.elim 0 (·.radius)) ++
+      i32 (shadow.elim 0 (·.x)) ++ i32 (shadow.elim 0 (·.y))
 
 def ax (n : AxNode) : List UInt8 :=
   [Role.code n.role] ++ bool n.focused ++ bool n.selected ++ [checkedCode n.checked] ++
@@ -424,8 +469,8 @@ def surface (s : SurfaceFrame) : List UInt8 :=
   [SurfaceKind.code s.kind] ++ bool s.shown ++ [Anchor.code s.anchor, ScreenChoice.code s.screen] ++
     u32 s.place ++ u32 s.anchor.offset ++ str s.title ++ canvas s.canvas ++ status s.status
 
-/-- Magic, version 3, flags 0. -/
-def header : List UInt8 := magic ++ [3, 0, 0, 0]
+/-- Magic, version 4, flags 0. -/
+def header : List UInt8 := magic ++ [4, 0, 0, 0]
 
 def frame (f : Frame) : List UInt8 :=
   header ++ list surface f.surfaces.toList ++ list effect f.effects.toList ++
@@ -451,6 +496,14 @@ def list {α : Type} (d : Dec α) : Dec (List α) := do
   let n ← u32
   sect (count d n)
 
+def ints : Dec (List Int) := do
+  let n ← u32
+  count i32 n
+
+def intLists : Dec (List (List Int)) := do
+  let n ← u32
+  count ints n
+
 def draw : Dec Draw := do
   match (← byte) with
   | 0 =>
@@ -466,20 +519,48 @@ def draw : Dec Draw := do
       (if hasBorder then some ⟨bw, bc⟩ else none)
   | 1 =>
     let italic ← bool
-    skip 2
+    let some width := FontWidth.ofWire (← byte) | fail
+    let tabular ← bool
     let o ← point
     let family ← u32
     let sz ← u32
     let weight ← u32
+    let tracking ← i32
     let c ← color
     let s ← str
-    return .text o ⟨family, sz, weight, italic⟩ c s
+    return .text o { family, size := sz, weight, italic, width, tracking, tabular } c s
   | 2 =>
     skip 3
     return .pushClip (← rect)
   | 3 =>
     skip 3
     return .popClip
+  | 4 =>
+    skip 3
+    let r ← rect
+    let origin ← u64
+    let shader ← str
+    let scalars ← ints
+    let arrays ← intLists
+    return .paint r { shader, origin, scalars, arrays }
+  | 5 =>
+    let hasFill ← bool
+    let hasBorder ← bool
+    let hasShadow ← bool
+    let some corner := Corner.ofCode (← byte) | fail
+    skip 3
+    let r ← rect
+    let fill ← color
+    let radius ← u32
+    let bw ← u32
+    let bc ← color
+    let sc ← color
+    let sr ← u32
+    let sx ← i32
+    let sy ← i32
+    return .shape r (if hasFill then some fill else none) radius
+      (if hasBorder then some ⟨bw, bc⟩ else none) corner
+      (if hasShadow then some ⟨sc, sr, sx, sy⟩ else none)
   | _ => fail
 
 def ax : Dec AxNode := do
@@ -765,6 +846,18 @@ theorem list_enc {α : Type} {d : Dec α} {e : α → List UInt8} (xs : List α)
   simp only [list, Enc.list, List.append_assoc, bind_apply, u32_enc hn]
   exact sect_enc (by simpa using count_enc xs h []) hb r
 
+theorem ints_enc {xs : List Int} (h : fitsInts xs = true) (r : List UInt8) :
+    ints (Enc.ints xs ++ r) = some (xs, r) := by
+  simp only [fitsInts, Bool.and_eq_true, fu_iff, List.all_eq_true, fi_iff] at h
+  simp only [ints, Enc.ints, List.append_assoc, bind_apply, u32_enc h.1]
+  exact count_enc xs (fun v hv => i32_enc (h.2 v hv)) r
+
+theorem intLists_enc {xss : List (List Int)} (hn : FitsU32 xss.length)
+    (h : ∀ xs ∈ xss, fitsInts xs = true) (r : List UInt8) :
+    intLists (Enc.intLists xss ++ r) = some (xss, r) := by
+  simp only [intLists, Enc.intLists, List.append_assoc, bind_apply, u32_enc hn]
+  exact count_enc xss (fun xs hxs => ints_enc (h xs hxs)) r
+
 theorem draw_enc {x : Draw} (h : fitsDraw x = true) (r : List UInt8) :
     draw (Enc.draw x ++ r) = some (x, r) := by
   cases x with
@@ -780,8 +873,8 @@ theorem draw_enc {x : Draw} (h : fitsDraw x = true) (r : List UInt8) :
   | text o font c s =>
     simp only [fitsDraw, Bool.and_eq_true, fu_iff, fi_iff, fs_iff] at h
     simp only [draw, Enc.draw, List.cons_append, List.nil_append, List.append_assoc, h,
-        satU32_of_fits, bind_apply, byte_cons, bool_enc, skip_pad, point_enc, u32_enc, color_enc,
-        str_enc, pure_apply]
+        satU32_of_fits, satI32_of_fits, bind_apply, byte_cons, bool_enc, FontWidth.ofWire_wire,
+        point_enc, u32_enc, i32_enc, color_enc, str_enc, pure_apply]
   | pushClip rc =>
     simp only [fitsDraw] at h
     simp only [draw, Enc.draw, List.cons_append, List.nil_append, List.append_assoc, bind_apply,
@@ -789,6 +882,34 @@ theorem draw_enc {x : Draw} (h : fitsDraw x = true) (r : List UInt8) :
   | popClip =>
     simp only [draw, Enc.draw, List.cons_append, List.nil_append, bind_apply, byte_cons, skip_pad,
         pure_apply]
+  | paint rc p =>
+    simp only [fitsDraw, fitsPaint, Bool.and_eq_true, fs_iff, decide_eq_true_eq, fu_iff,
+        List.all_eq_true] at h
+    obtain ⟨hr, ⟨⟨⟨⟨hs, ho⟩, hsc⟩, hn⟩, ha⟩⟩ := h
+    simp only [draw, Enc.draw, List.cons_append, List.nil_append, List.append_assoc, bind_apply,
+        byte_cons, skip_pad, rect_enc hr, u64_enc ho, str_enc hs, ints_enc hsc,
+        intLists_enc hn ha, pure_apply]
+  | shape rc fill radius border corner shadow =>
+    simp only [fitsDraw, Bool.and_eq_true, fu_iff] at h
+    obtain ⟨⟨⟨hr, hrad⟩, hb⟩, hsh⟩ := h
+    cases shadow with
+    | none =>
+      cases fill <;> cases border <;>
+        simp_all only [Option.all_none, draw, Enc.draw, Option.isSome_none, List.cons_append,
+            List.nil_append, List.append_assoc, Option.getD_none, Option.elim_none, bind_apply,
+            byte_cons, bool_enc, Bool.false_eq_true, ↓reduceIte, skip_pad, rect_enc, color_enc,
+            u32_enc, i32_enc, fitsU32_zero, pure_apply, Option.all_some, fu_iff,
+            Option.isSome_some, Option.elim_some, Option.getD_some, Corner.ofCode_code,
+            show FitsI32 0 by decide]
+    | some sh =>
+      simp only [Option.all_some, fitsShadow, Bool.and_eq_true, fu_iff, fi_iff] at hsh
+      obtain ⟨⟨hsr, hsx⟩, hsy⟩ := hsh
+      cases fill <;> cases border <;>
+        simp_all only [Option.all_none, draw, Enc.draw, Option.isSome_none, List.cons_append,
+            List.nil_append, List.append_assoc, Option.getD_none, Option.elim_none, bind_apply,
+            byte_cons, bool_enc, Bool.false_eq_true, ↓reduceIte, skip_pad, rect_enc, color_enc,
+            u32_enc, i32_enc, fitsU32_zero, pure_apply, Option.all_some, fu_iff,
+            Option.isSome_some, Option.elim_some, Option.getD_some, Corner.ofCode_code]
 
 theorem ax_enc {x : AxNode} (h : fitsAx x = true) (r : List UInt8) :
     ax (Enc.ax x ++ r) = some (x, r) := by
@@ -1108,11 +1229,17 @@ namespace Len
 
 def str (s : String) : Nat := 4 + s.toUTF8.size
 
+def ints (xs : List Int) : Nat := 4 + 4 * xs.length
+
+def intLists (xss : List (List Int)) : Nat := 4 + xss.foldl (fun n xs => n + ints xs) 0
+
 def draw : Draw → Nat
   | .rect .. => 36
-  | .text _ _ _ s => 28 + str s
+  | .text _ _ _ s => 32 + str s
   | .pushClip _ => 20
   | .popClip => 4
+  | .paint _ p => 28 + str p.shader + ints p.scalars + intLists p.arrays
+  | .shape .. => 56
 
 def ax (n : AxNode) : Nat := 36 + str n.label + str n.value
 
@@ -1193,8 +1320,23 @@ theorem str_eq (s : String) : str s = (Enc.str s).length := by
   simp only [str, String.toUTF8_eq_toByteArray, String.size_toByteArray, Enc.str,
       List.length_append, Enc.length_u32, Array.length_toList, ByteArray.size_data]; all_goals omega
 
+theorem length_flatMap_i32 (xs : List Int) : (xs.flatMap Enc.i32).length = 4 * xs.length := by
+  induction xs with
+  | nil => rfl
+  | cons x xs ih =>
+    simp only [List.flatMap_cons, List.length_append, Enc.length_i32, ih, List.length_cons]
+    omega
+
+theorem ints_eq (xs : List Int) : ints xs = (Enc.ints xs).length := by
+  simp only [ints, Enc.ints, List.length_append, Enc.length_u32, length_flatMap_i32]
+
+theorem intLists_eq (xss : List (List Int)) : intLists xss = (Enc.intLists xss).length := by
+  rw [intLists, foldl_add]
+  simp only [Enc.intLists, List.length_append, Enc.length_u32, List.length_flatMap, ← ints_eq,
+      Nat.zero_add]
+
 theorem draw_eq (d : Draw) : draw d = (Enc.draw d).length := by
-  cases d <;> simp only [draw, Enc.draw, Enc.bool, List.cons_append, List.nil_append, Enc.pad,
+  cases d <;> simp only [draw, Enc.draw, ints_eq, intLists_eq, Enc.length_u64, Enc.bool, List.cons_append, List.nil_append, Enc.pad,
       List.replicate_one, Enc.rect, List.append_assoc, Enc.color, List.length_cons,
       List.length_append, Enc.length_i32, Enc.length_u32, List.length_nil, Nat.zero_add,
       Nat.reduceAdd, str_eq, Enc.str, String.toUTF8_eq_toByteArray, String.size_toByteArray,
@@ -1295,17 +1437,32 @@ def color (b : ByteArray) (c : Color) : ByteArray := (((b.push c.r).push c.g).pu
 def ref (b : ByteArray) (c : ControlRef) : ByteArray := u32 (u32 b c.claim) c.key
 def range (b : ByteArray) (p : Nat × Nat) : ByteArray := u32 (u32 b p.1) p.2
 
+def ints (b : ByteArray) (xs : List Int) : ByteArray := xs.foldl i32 (u32 b xs.length)
+
+def intLists (b : ByteArray) (xss : List (List Int)) : ByteArray :=
+  xss.foldl ints (u32 b xss.length)
+
 def draw (b : ByteArray) : Draw → ByteArray
   | .rect r fill radius border =>
     let b := pad (bool (bool (b.push 0) fill.isSome) border.isSome) 1
     color (u32 (u32 (color (rect b r) (fill.getD Enc.noColor)) radius)
       (border.elim 0 (·.width))) (border.elim Enc.noColor (·.color))
   | .text o font c s =>
-    let b := point (pad (bool (b.push 1) font.italic) 2) o
-    str (color (u32 (u32 (u32 b (satU32 font.family)) (satU32 font.size))
-      (satU32 font.weight)) c) s
+    let b := point (bool ((bool (b.push 1) font.italic).push (FontWidth.wire font.width))
+      font.tabular) o
+    str (color (i32 (u32 (u32 (u32 b (satU32 font.family)) (satU32 font.size))
+      (satU32 font.weight)) (satI32 font.tracking)) c) s
   | .pushClip r => rect (pad (b.push 2) 3) r
   | .popClip => pad (b.push 3) 3
+  | .paint r p =>
+    intLists (ints (str (u64 (rect (pad (b.push 4) 3) r) p.origin) p.shader) p.scalars) p.arrays
+  | .shape r fill radius border corner shadow =>
+    let b := (bool (bool (bool (b.push 5) fill.isSome) border.isSome) shadow.isSome).push
+      (Corner.code corner)
+    let b := color (u32 (u32 (color (rect (pad b 3) r) (fill.getD Enc.noColor)) radius)
+      (border.elim 0 (·.width))) (border.elim Enc.noColor (·.color))
+    i32 (i32 (u32 (color b (shadow.elim Enc.noColor (·.color))) (shadow.elim 0 (·.radius)))
+      (shadow.elim 0 (·.x))) (shadow.elim 0 (·.y))
 
 def ax (b : ByteArray) (n : AxNode) : ByteArray :=
   let b := bool (bool (b.push (Role.code n.role)) n.focused) n.selected
@@ -1428,9 +1585,25 @@ def frame (f : Frame) : ByteArray :=
     (range b p).data.toList = b.data.toList ++ Enc.range p := by simp only [range, u32_data,
         List.append_assoc, Enc.range]
 
+theorem foldl_data' {α : Type} (put : ByteArray → α → ByteArray) (e : α → List UInt8)
+    (h : ∀ b x, (put b x).data.toList = b.data.toList ++ e x) (xs : List α) (b : ByteArray) :
+    (xs.foldl put b).data.toList = b.data.toList ++ xs.flatMap e := by
+  induction xs generalizing b with
+  | nil => simp only [List.foldl_nil, List.flatMap_nil, List.append_nil]
+  | cons x xs ih => simp only [List.foldl_cons, ih, h, List.append_assoc, List.flatMap_cons]
+
+@[simp] theorem ints_data (b : ByteArray) (xs : List Int) :
+    (ints b xs).data.toList = b.data.toList ++ Enc.ints xs := by
+  simp only [ints, foldl_data' i32 Enc.i32 i32_data, u32_data, List.append_assoc, Enc.ints]
+
+@[simp] theorem intLists_data (b : ByteArray) (xss : List (List Int)) :
+    (intLists b xss).data.toList = b.data.toList ++ Enc.intLists xss := by
+  simp only [intLists, foldl_data' ints Enc.ints ints_data, u32_data, List.append_assoc,
+      Enc.intLists]
+
 @[simp] theorem draw_data (b : ByteArray) (d : Draw) :
     (draw b d).data.toList = b.data.toList ++ Enc.draw d := by
-  cases d <;> simp only [draw, color_data, u32_data, rect_data, pad_data, bool_data,
+  cases d <;> simp only [draw, ints_data, intLists_data, u64_data, i32_data, color_data, u32_data, rect_data, pad_data, bool_data,
       ByteArray.data_push, Array.toList_push, List.append_assoc, List.cons_append, List.nil_append,
       Enc.draw, str_data, point_data]
 
@@ -1453,13 +1626,6 @@ def frame (f : Frame) : ByteArray :=
 @[simp] theorem header1_data (b : ByteArray) (kv : String × String) :
     (header1 b kv).data.toList = b.data.toList ++ Enc.header1 kv := by
   simp only [header1, str_data, List.append_assoc, Enc.header1]
-
-theorem foldl_data' {α : Type} (put : ByteArray → α → ByteArray) (e : α → List UInt8)
-    (h : ∀ b x, (put b x).data.toList = b.data.toList ++ e x) (xs : List α) (b : ByteArray) :
-    (xs.foldl put b).data.toList = b.data.toList ++ xs.flatMap e := by
-  induction xs generalizing b with
-  | nil => simp only [List.foldl_nil, List.flatMap_nil, List.append_nil]
-  | cons x xs ih => simp only [List.foldl_cons, ih, h, List.append_assoc, List.flatMap_cons]
 
 @[simp] theorem headers_data (b : ByteArray) (hs : List (String × String)) :
     (headers b hs).data.toList = b.data.toList ++ Enc.headers hs := by

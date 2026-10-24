@@ -17,6 +17,12 @@ inductive Draw where
   | text (origin : Point) (font : Font) (color : Color) (s : String)
   | pushClip (r : Rect)
   | popClip
+  /-- A rounded rect with what `rect` lacks: continuous corners and a soft shadow painted under
+  it (`Style.corner`, `Style.shadow`). -/
+  | shape (r : Rect) (fill : Option Color) (radius : Nat) (border : Option Border)
+      (corner : Corner) (shadow : Option Shadow)
+  /-- Host-drawn pixels inside `r` (`Style.paint`). -/
+  | paint (r : Rect) (p : Paint)
 deriving Repr, BEq, Inhabited
 
 structure AxNode where

@@ -429,7 +429,7 @@ def claimInfos : List ClaimInfo := claims%
 
 /-- Yap on Cairn: the status item with Yap's menu, and the overlay. -/
 def app : App AppState :=
-  { machine.toApp [.statusItem 301 (some ∘ statusItem), .panel 345 panel] claimInfos with
+  { machine.toApp [.statusItem 301 (some ∘ statusItem), .panel 345 (fun _ => panel)] claimInfos with
     subscriptions, initEffects }
 
 end Examples.Yap

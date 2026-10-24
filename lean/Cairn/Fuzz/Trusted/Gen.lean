@@ -75,13 +75,35 @@ def range : Gen (Nat × Nat) := do return (← u32, ← u32)
 
 def font : Gen Font := do
   return ⟨← Gen.elem [0, 1, 2, 4294967295], ← Gen.elem [0, 1, 9, 13, 17, 24, 1024, 4294967295],
-    ← Gen.elem [0, 100, 400, 700, 900, 4294967295], ← Gen.bool⟩
+    ← Gen.elem [0, 100, 400, 700, 900, 4294967295], ← Gen.bool,
+    ← Gen.elem [FontWidth.standard, .condensed, .expanded, .compressed],
+    ← Gen.elem [0, 140, -50, 2147483647, -2147483648], ← Gen.bool⟩
+
+def ints : Gen (List Int) := do
+  let n ← Gen.below 5
+  (List.range n).mapM fun _ => i32
 
 def draw : Gen Draw := do
-  match ← Gen.below 4 with
+  match ← Gen.below 6 with
   | 0 => return .rect (← rect) (← opt color) (← u32) (← opt (do return ⟨← u32, ← color⟩))
   | 1 => return .text ⟨← i32, ← i32⟩ (← font) (← color) (← str)
   | 2 => return .pushClip (← rect)
+  | 3 =>
+    let r ← rect
+    let fill ← opt color
+    let radius ← u32
+    let border ← opt (do return ⟨← u32, ← color⟩)
+    let corner ← Gen.elem [Corner.circular, Corner.continuous]
+    let shadow ← opt (do return (⟨← color, ← u32, ← i32, ← i32⟩ : Shadow))
+    return .shape r fill radius border corner shadow
+  | 4 =>
+    let k ← Gen.below 3
+    let r ← rect
+    let shader ← str
+    let origin ← Gen.elem [0, 1, 4294967296, 18446744073709551615]
+    let scalars ← ints
+    let arrays ← (List.range k).mapM fun _ => ints
+    return .paint r { shader, origin, scalars, arrays }
   | _ => return .popClip
 
 def role : Gen Role :=

@@ -15,13 +15,18 @@ public struct Rect: Equatable, Sendable {
     public var x, y, w, h: Int32
     public init(x: Int32, y: Int32, w: Int32, h: Int32) { self.x = x; self.y = y; self.w = w; self.h = h }
 }
-public struct Color: Equatable, Sendable {
+public struct Color: Hashable, Sendable {
     public var r, g, b, a: UInt8
     public init(r: UInt8, g: UInt8, b: UInt8, a: UInt8 = 255) { self.r = r; self.g = g; self.b = b; self.a = a }
 }
-public struct Border: Equatable, Sendable {
+public struct Border: Hashable, Sendable {
     public var width: UInt32; public var color: Color
     public init(width: UInt32, color: Color) { self.width = width; self.color = color }
+}
+
+/// A font's width axis (SwiftUI's `Font.Width` presets); raw values are the wire codes.
+public enum FontWidth: UInt8, Hashable, Sendable {
+    case standard = 0, condensed = 1, expanded = 2, compressed = 3
 }
 
 public struct Font: Hashable, Sendable {
@@ -29,8 +34,52 @@ public struct Font: Hashable, Sendable {
     public var size: UInt32    // points
     public var weight: UInt32  // 100–900
     public var italic: Bool
-    public init(family: UInt32 = 0, size: UInt32 = 13, weight: UInt32 = 400, italic: Bool = false) {
+    public var width: FontWidth
+    /// Extra space after each character, in hundredths of a point.
+    public var tracking: Int32
+    /// Digits all one width.
+    public var tabular: Bool
+    public init(family: UInt32 = 0, size: UInt32 = 13, weight: UInt32 = 400, italic: Bool = false,
+                width: FontWidth = .standard, tracking: Int32 = 0, tabular: Bool = false) {
         self.family = family; self.size = size; self.weight = weight; self.italic = italic
+        self.width = width; self.tracking = tracking; self.tabular = tabular
+    }
+
+    /// The metrics ABI's style byte: bit 0 italic, bit 1 tabular, bits 2–3 the width.
+    public var style: UInt8 { (italic ? 1 : 0) | (tabular ? 2 : 0) | (width.rawValue << 2) }
+
+    public init(family: UInt32, size: UInt32, weight: UInt32, style: UInt8, tracking: Int32) {
+        self.init(family: family, size: size, weight: weight, italic: style & 1 != 0,
+                  width: FontWidth(rawValue: (style >> 2) & 3) ?? .standard, tracking: tracking,
+                  tabular: style & 2 != 0)
+    }
+}
+
+/// How a rounded rect's corners turn.
+public enum Corner: UInt8, Hashable, Sendable {
+    case circular = 0, continuous = 1
+}
+
+/// A soft shadow under a shape: its silhouette in `color`, blurred by `radius` points, moved by
+/// `(x, y)`.
+public struct Shadow: Hashable, Sendable {
+    public var color: Color
+    public var radius: UInt32
+    public var x: Int32, y: Int32
+    public init(color: Color, radius: UInt32, x: Int32 = 0, y: Int32 = 0) {
+        self.color = color; self.radius = radius; self.x = x; self.y = y
+    }
+}
+
+/// Host-drawn pixels: the registered shader `shader` fills the rect, fed with these numbers and
+/// with the host's clock as milliseconds since `origin` (monotonic ms).
+public struct Paint: Hashable, Sendable {
+    public var shader: String
+    public var origin: UInt64
+    public var scalars: [Int32]
+    public var arrays: [[Int32]]
+    public init(shader: String, origin: UInt64 = 0, scalars: [Int32] = [], arrays: [[Int32]] = []) {
+        self.shader = shader; self.origin = origin; self.scalars = scalars; self.arrays = arrays
     }
 }
 
@@ -39,6 +88,8 @@ public enum Draw: Equatable, Sendable {
     case text(origin: Point, font: Font, color: Color, string: String)  // origin: baseline left
     case pushClip(Rect)
     case popClip
+    case paint(Rect, Paint)
+    case shape(Rect, fill: Color?, radius: UInt32, border: Border?, corner: Corner, shadow: Shadow?)
 }
 
 public enum Role: UInt8, Sendable {

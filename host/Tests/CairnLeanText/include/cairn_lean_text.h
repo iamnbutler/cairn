@@ -9,5 +9,7 @@ void cairn_text_test_init(void);
 
 // Fills `out` with [linked, ascent, descent, offset_0, …] as Lean computes them through
 // `TextMetrics.host`; returns how many int32s the full result has.
-size_t cairn_text_test_lean_metrics(uint32_t family, uint32_t size, uint32_t weight, uint8_t italic,
-                                    const uint8_t *utf8, size_t len, int32_t *out, size_t cap);
+// `style` and `tracking` as in cairn_text_metrics.
+size_t cairn_text_test_lean_metrics(uint32_t family, uint32_t size, uint32_t weight, uint8_t style,
+                                    int32_t tracking, const uint8_t *utf8, size_t len,
+                                    int32_t *out, size_t cap);

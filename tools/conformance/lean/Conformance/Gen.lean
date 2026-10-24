@@ -84,9 +84,19 @@ def jdraw : Draw → String
           ("border", jopt (fun b => jobj [("width", jnat b.width), ("color", jcolor b.color)]) border)]
   | .text o f c s =>
     jobj [("text", jstr s), ("at", jpoint o),
-          ("font", jarr [jnat f.family, jnat f.size, jnat f.weight, jbool f.italic]), ("color", jcolor c)]
+          ("font", jarr [jnat f.family, jnat f.size, jnat f.weight, jbool f.italic,
+                         jnat f.width.code, jint f.tracking, jbool f.tabular]), ("color", jcolor c)]
   | .pushClip r => jobj [("push", jrect r)]
   | .popClip => jobj [("pop", "true")]
+  | .shape r fill radius border corner shadow =>
+    jobj [("shape", jrect r), ("fill", jopt jcolor fill), ("radius", jnat radius),
+          ("border", jopt (fun b => jobj [("width", jnat b.width), ("color", jcolor b.color)]) border),
+          ("continuous", jbool (corner == .continuous)),
+          ("shadow", jopt (fun s => jobj [("color", jcolor s.color), ("radius", jnat s.radius),
+                                          ("offset", jarr [jint s.x, jint s.y])]) shadow)]
+  | .paint r p =>
+    jobj [("paint", jrect r), ("shader", jstr p.shader), ("origin", jnat p.origin),
+          ("scalars", jarr (p.scalars.map jint)), ("arrays", jarr (p.arrays.map fun a => jarr (a.map jint)))]
 
 def jax (n : AxNode) : String :=
   jobj [("role", jstr (roleName n.role)), ("control", jopt (jstr ∘ refLabel) n.control),
@@ -560,6 +570,14 @@ def colourAt (m : TextMetrics) (draws : List Draw) (clear : Color) (p : Point) :
       let w := (m.offsets font s).back?.getD 0
       let box : Rect := ⟨o.x - 1, o.y - m.ascent font - 1, w + 2, m.ascent font + m.descent font + 2⟩
       if has box p then return none
+    | .shape r _ _ _ _ shadow =>
+      -- Continuous corners and soft shadows aren't modelled here: no exact answer near one.
+      let spread : Int := match shadow with
+        | some s => 3 * s.radius + s.x.natAbs + s.y.natAbs + 1
+        | none => 1
+      if has ⟨r.x - spread, r.y - spread, r.w + 2 * spread, r.h + 2 * spread⟩ p then return none
+    | .paint r _ =>
+      if has r p then return none
   return some c
 
 /-- The topmost rect draw covering `p` has exactly the rect `r`: the control's own box. -/

@@ -26,7 +26,8 @@ namespace Cairn.Text.Host
 /-- `[ascent, descent, offset_0, …, offset_n]` as little-endian int32s (`4 * (n + 3)` bytes,
 `n = s.length`), or empty when no host is linked. -/
 @[extern "cairn_lean_text_metrics"]
-opaque raw (family size weight : UInt32) (italic : UInt8) (s : @& String) : ByteArray
+opaque raw (family size weight : UInt32) (style : UInt8) (tracking : UInt32) (s : @& String) :
+    ByteArray
 
 /-- Whether the Swift host's metrics are linked (otherwise `raw` is always empty). -/
 @[extern "cairn_lean_text_host_linked"]
@@ -36,8 +37,17 @@ opaque hostLinked : Unit → Bool
 The host clamps sizes to 1–1024 and weights to 100–900 itself. -/
 def sat (n : Nat) : UInt32 := if n < UInt32.size then n.toUInt32 else UInt32.ofNat (UInt32.size - 1)
 
+/-- Signed fields (tracking) saturate to the int32 range and cross as its two's complement. -/
+def satI (n : Int) : Int := max (-2147483648) (min n 2147483647)
+
+def satI32 (n : Int) : UInt32 := UInt32.ofInt (satI n)
+
+/-- The style byte: bit 0 italic, bit 1 tabular digits, bits 2–3 the width's code. -/
+def styleByte (f : Font) : UInt8 :=
+  ((if f.italic then 1 else 0) + (if f.tabular then 2 else 0) + 4 * f.width.code : Nat).toUInt8
+
 def rawFor (f : Font) (s : String) : ByteArray :=
-  raw (sat f.family) (sat f.size) (sat f.weight) (if f.italic then 1 else 0) s
+  raw (sat f.family) (sat f.size) (sat f.weight) (styleByte f) (satI32 f.tracking) s
 
 /-- The `i`th little-endian int32 of `b`; bytes past the end read as 0. (`b[j]?`, not
 `b.data.getD j`: compiled, `ByteArray.data` copies the whole array, which made decoding a
@@ -149,8 +159,12 @@ def putI32 (b : ByteArray) (v : Int) : ByteArray :=
 this font and string through `TextMetrics.host`, as int32s
 `[linked, ascent, descent, offset_0, …, offset_n]`. -/
 @[export cairn_text_host_check]
-def hostCheck (family size weight : UInt32) (italic : UInt8) (s : String) : ByteArray :=
-  let f : Font := { family := family.toNat, size := size.toNat, weight := weight.toNat, italic := italic != 0 }
+def hostCheck (family size weight : UInt32) (style : UInt8) (tracking : UInt32) (s : String) :
+    ByteArray :=
+  let f : Font := { family := family.toNat, size := size.toNat, weight := weight.toNat,
+                    italic := style &&& 1 != 0, tabular := style &&& 2 != 0,
+                    width := (FontWidth.ofCode? (style >>> 2 &&& 3).toNat).getD .standard,
+                    tracking := tracking.toInt32.toInt }
   let m := TextMetrics.host
   let head := [if hostLinked () then 1 else 0, m.ascent f, m.descent f]
   (head ++ (m.offsets f s).toList).foldl putI32 ByteArray.empty

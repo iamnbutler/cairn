@@ -308,7 +308,7 @@ def layPanel (cfg : Config) (v : PanelView) : Size × Laid :=
 /-- What one surface shows in app state `st`. -/
 def Surface.show (cfg : Config) (st : S) : Surface S → Shown
   | .window p t _ => .window p t
-  | .panel p v => .panel p ((v st).map fun pv => (pv, layPanel cfg pv))
+  | .panel p v => .panel p ((v cfg.metrics st).map fun pv => (pv, layPanel cfg pv))
   | .statusItem p v => .status p (v st)
 
 /-- What every surface shows in app state `st`. -/

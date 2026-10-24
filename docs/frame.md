@@ -75,7 +75,7 @@ Swift's model uses `Int32` and `UInt32` for these fields, so every Swift value f
 ```
 offset  size  field
 0       4     magic "CAFR" (43 41 46 52)
-4       2     u16 version = 3
+4       2     u16 version = 4
 6       2     u16 flags = 0
 8       4+4   surfaces: u32 count, u32 byteLength, then the surface records
 .       4+4   effects: u32 count, u32 byteLength, then the effect records
@@ -87,7 +87,8 @@ A decoder rejects any other magic, version or flags. A future incompatible forma
 version; flags are reserved for compatible additions and must be zero. Version 1 (M1) ended
 after the effects; version 2 added `subs` and `wake` and the effect records 3–6; version 3
 replaced the single window (size, draws, ax, text input, cursor after the header) with the list
-of surface records.
+of surface records; version 4 added the font's width, tracking and tabular digits to the text
+record and the `paint` and `shape` draws.
 
 ### Surface records
 
@@ -169,17 +170,48 @@ rect      [0, hasFill, hasBorder, 0]                                         36 
           28 u32 border width    (0 and ignored when hasBorder = 0)
           32 border color        (0,0,0,0 and ignored when hasBorder = 0)
 
-text      [1, italic, 0, 0]                                             28 + string
+text      [1, italic, width, tabular]                                   32 + string
           4  point: baseline origin (left end of the baseline)
           12 u32 font family (saturating, see above)
           16 u32 font size in points (saturating)
           20 u32 font weight, 100–900 (saturating)
-          24 color
-          28 string: the text
+          24 i32 tracking: extra advance per character, hundredths of a point (saturating)
+          28 color
+          32 string: the text
 
 pushClip  [2, 0, 0, 0]  4 rect                                               20 bytes
 popClip   [3, 0, 0, 0]                                                        4 bytes
+
+paint     [4, 0, 0, 0]                                        28 + string + int lists
+          4  rect: the box the host draws in
+          20 u64 origin: monotonic ms the painter's clock counts from
+          28 string: the painter's name
+          .  ints: scalars (u32 count, then i32 each)
+          .  u32 count, then that many ints: arrays
+
+shape     [5, hasFill, hasBorder, hasShadow]                                 56 bytes
+          4  [corner, 0, 0, 0]   (0 circular, 1 continuous)
+          8  rect
+          24 fill color          (0,0,0,0 and ignored when hasFill = 0)
+          28 u32 corner radius
+          32 u32 border width    (0 and ignored when hasBorder = 0)
+          36 border color        (0,0,0,0 and ignored when hasBorder = 0)
+          40 shadow color        (all of the shadow 0 and ignored when hasShadow = 0)
+          44 u32 shadow radius
+          48 i32 shadow x offset
+          52 i32 shadow y offset
 ```
+
+`width` is `0` standard, `1` condensed, `2` expanded, `3` compressed (the system font's width
+axis); `tabular` (bool) asks for monospaced digits. Text metrics measure with all three, so a
+para is laid out with what is painted.
+
+`paint` is host-drawn content: the host draws the box's pixels with the painter registered under
+that name, feeding it the scalars, the arrays and the seconds since `origin`, every display frame
+while the draw is on screen. It paints nothing outside its box (trusted, `render.paint.bounds`)
+and nothing at all if no painter has the name. `shape` is a rounded rect drawn by Core Graphics:
+continuous corners, a border inside the edge, and a shadow (blur radius in points, offset)
+under the fill, blurred as SwiftUI's `shadow(color:radius:x:y:)` is.
 
 `pushClip` intersects the clip with its rect until the matching `popClip`. Frames from
 `Frame.ofLaid` are balanced (`balanced_ofLaid`).
@@ -426,7 +458,9 @@ surface kind=K place=P shown=B anchor=A offset=O screen=S title="…"
 canvas W H
 draws N
 rect X Y W H fill=R,G,B,A|none radius=N border=W:R,G,B,A|none
-text X Y font=FAMILY,SIZE,WEIGHT,ITALIC color=R,G,B,A "STRING"
+text X Y font=FAMILY,SIZE,WEIGHT,ITALIC,WIDTH,TRACKING,TABULAR color=R,G,B,A "STRING"
+shape X Y W H fill=R,G,B,A|none radius=N border=W:R,G,B,A|none corner=0|1 shadow=R,G,B,A:RADIUS:X:Y|none
+paint X Y W H origin=N shader="NAME" scalars=[A,B,…] arrays=[[A,…],[…]]
 push X Y W H
 pop
 ax N

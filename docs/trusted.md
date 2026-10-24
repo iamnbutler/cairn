@@ -49,7 +49,8 @@ rounding), `Fonts.swift` (Font → CTFont), `Metrics.swift` (the C export),
 - `InkTests`: the painted pixels of every sample text draw lie inside the box Lean computes
   (upright LTR text: exactly; italic and RTL: within 1 pt), at 1x and 2x.
 - **Fuzzed** (^906 `text.metrics`): `cairn_text_metrics` across families, sizes 0 to 2³²−1,
-  weights, italic, edge text and invalid UTF-8 returns `TextMetrics.Valid`'s shape, its
+  weights, italic, the four widths, tracking from −2³¹ to 2³¹−1 hundredths of a point,
+  tabular digits, edge text and invalid UTF-8 returns `TextMetrics.Valid`'s shape, its
   truncated and null-buffer forms agree, and Lean's `TextMetrics.host` sees the same numbers.
 - **Fuzzed** (^907 `text.metrics.carets`): on left-to-right text, the caret after each grapheme
   is at or right of the glyphs painted before it. This found Core Text answering 0 for real
@@ -112,7 +113,7 @@ text paints its glyphs at the positions Core Text gives, relative to its baselin
 **Evidence.** Golden images at 1x, 1.5x and 2x with tolerances; pixel-probe tests (exact fills,
 borders, clips, order, seams, antialiasing width); `Renderer.probe` for conformance checks that
 each control's box is painted (workstream J). Choices that affect only the look, not what is
-painted where: grayscale antialiasing with font smoothing off, gamma-space blending into
+painted where: grayscale antialiasing with the system's font smoothing (its level picked from the text colour), gamma-space blending into
 `bgra8Unorm`, sRGB colours (the host must set the layer's colour space to sRGB).
 
 **Also assumed.** Frames have balanced `pushClip`/`popClip`; an extra `popClip` is ignored and
@@ -378,6 +379,40 @@ in a scratch directory and never prompts.
 - **Permissions.** None of these needs one. Accessibility and Microphone are what
   `permission` reports; they are granted to the app's code signature, so an unsigned or
   re-signed build is a new app to TCC (docs/effects.md).
+
+## Host-drawn content and shapes (workstream Y)
+
+A `paint` draw (docs/frame.md) hands a box to a painter: a Metal shader the app registers with
+the host (`Painters.register`) and the Swift that feeds it the draw's integers and the time.
+Yap's tape display is the original Yap's `Overlay.metal`, unchanged
+(`host/Sources/CairnYapPaint/YapTape.swift`). A `shape` draw is a rounded rect drawn by Core
+Graphics: continuous corners, an inside border, and a drop shadow blurred with a Gaussian of
+σ = 1.05 × radius (Accelerate), fitted to SwiftUI's `shadow(radius:)` (`shadowsAreSwiftUIs`:
+within 7 levels).
+
+**What is assumed.** ^1004 `hostPaintBounds`: a paint draw changes no pixel outside its box
+(snapped to device pixels as rects are) within the clip in force. The renderer sets the
+viewport to the box and the scissor to the box within the clip before the painter encodes,
+and resets both after; Metal's scissor test does the rest. A painter must not change the
+viewport, the scissor or the pipeline; nothing enforces that but review. A paint is part of a
+box's style and adds no control of its own: hit testing and the accessibility tree come from
+the laid tree's controls (`controls_ofLaid`), so a box whose only content is a paint is inert.
+
+**Not assumed, and not proved.** What a painter paints inside its box: Yap's tape is compared
+with the original by eye and by pixel (docs/yap.md, "Overlay parity"). Shapes paint outside
+their rect on purpose (the shadow) and are not covered by ^1004.
+
+**Trusted code.** `host/Sources/CairnRender/Renderer.swift` (paint batches),
+`Painters.swift`, `Shapes.swift`, `host/Sources/CairnYapPaint/YapTape.swift`, Metal and Core
+Graphics.
+
+**Evidence.**
+- **Fuzzed** (^1004 `render.paint.bounds`): random frames with paint draws between rects, text
+  and clips, at 1x to 3x and random times, rendered offscreen with and without their paint
+  draws; every pixel outside the paint boxes is the same. Painters: Yap's tape with random and
+  malformed data, one whose triangle covers 100 times the viewport, one whose triangles land
+  anywhere, and an unregistered name. Removing the scissor from the paint batch makes it fail
+  in the first 50 cases.
 
 ## Yap's devices: recording, keys, typing, uploads (workstream T)
 

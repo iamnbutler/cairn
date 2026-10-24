@@ -100,7 +100,8 @@ def wrapWidth (wr : Wrap) (aw : Int) : Int :=
 
 /-- A wrapped text is laid out as a column of its lines that clips to its rect. -/
 def paraStyle (wr : Wrap) : Style :=
-  { axis := .column, width := wr.width, height := wr.height, align := wr.align, clip := true }
+  { axis := .column, width := wr.width, height := wr.height, align := wr.align, clip := true,
+    gap := wr.lineSpacing }
 
 /-- The lines of a wrapped text, each a `text` sized to its width by the line height. The
 offsets come from one measurement of the whole string. -/
@@ -116,7 +117,7 @@ mutual
 def measure (m : TextMetrics) (aw : Int) : Node → Sized
   | .para ts wr s =>
     let ks := paraLines m ts wr aw s
-    let c := contentSize .column 0 (ks.map Sized.size)
+    let c := contentSize .column wr.lineSpacing (ks.map Sized.size)
     .box (paraStyle wr) none ⟨resolve wr.width c.w, resolve wr.height c.h⟩ ks
   | .box st ctl kids =>
     let ks := measureList m (innerAvail st aw) kids

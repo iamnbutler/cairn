@@ -30,8 +30,8 @@ def paraOffsets (m : TextMetrics) (ts : TextStyle) (s : String) : Nat → Int :=
 theorem measure_para (m : TextMetrics) (aw : Int) (ts : TextStyle) (wr : Wrap) (s : String) :
     measure m aw (.para ts wr s) =
       .box (paraStyle wr) none
-        ⟨resolve wr.width (contentSize .column 0 ((paraLines m ts wr aw s).map Sized.size)).w,
-         resolve wr.height (contentSize .column 0 ((paraLines m ts wr aw s).map Sized.size)).h⟩
+        ⟨resolve wr.width (contentSize .column wr.lineSpacing ((paraLines m ts wr aw s).map Sized.size)).w,
+         resolve wr.height (contentSize .column wr.lineSpacing ((paraLines m ts wr aw s).map Sized.size)).h⟩
         (paraLines m ts wr aw s) := rfl
 
 theorem paraLines_eq (m : TextMetrics) (ts : TextStyle) (wr : Wrap) (aw : Int) (s : String) :
@@ -122,27 +122,30 @@ theorem para_line_height (m : TextMetrics) (ts : TextStyle) (wr : Wrap) (aw : In
   obtain ⟨p, -, rfl⟩ := hk
   rfl
 
-/-- **Height.** A `hug` para is exactly lines × line height tall. -/
+/-- **Height.** A `hug` para is exactly lines × line height tall, plus the line spacing between
+lines. -/
 theorem para_height (m : TextMetrics) (ts : TextStyle) (wr : Wrap) (aw : Int) (s : String)
     (hh : wr.height = .hug) :
     (measure m aw (.para ts wr s)).size.h =
-      (paraLines m ts wr aw s).length * max 0 (m.lineHeight ts.font) := by
+      (paraLines m ts wr aw s).length * max 0 (m.lineHeight ts.font) +
+        gaps wr.lineSpacing (paraLines m ts wr aw s).length := by
   rw [measure_para]
-  simp only [Sized.size, contentSize, hh, resolve, gaps, Nat.zero_mul, Int.natCast_zero,
-    Int.add_zero, List.map_map]
+  simp only [Sized.size, contentSize, hh, resolve, List.map_map, List.length_map]
   have := sum_replicate_heights _ _ (para_line_height m ts wr aw s)
   simp only [Function.comp_def] at this ⊢
   rw [this]
   have : (0 : Int) ≤ (paraLines m ts wr aw s).length * max 0 (m.lineHeight ts.font) :=
     Int.mul_nonneg (Int.natCast_nonneg _) (Int.le_max_left _ _)
+  have : (0 : Int) ≤ gaps wr.lineSpacing (paraLines m ts wr aw s).length := Int.natCast_nonneg _
   omega
 
-/-- A para at the root of a view is lines × line height tall, and wraps at the window's width
-unless its width is fixed. -/
+/-- A para at the root of a view is lines × line height tall (plus line spacing), and wraps at
+the window's width unless its width is fixed. -/
 theorem layout_para_height (m : TextMetrics) (w : Size) (ts : TextStyle) (wr : Wrap) (s : String)
     (hh : wr.height = .hug) :
     (layout m w (.para ts wr s)).rect.h =
-      (paraLines m ts wr (windowRect w).w s).length * max 0 (m.lineHeight ts.font) := by
+      (paraLines m ts wr (windowRect w).w s).length * max 0 (m.lineHeight ts.font) +
+        gaps wr.lineSpacing (paraLines m ts wr (windowRect w).w s).length := by
   simp only [layout, arrange_rect, rootRect, measure_sizings, nodeSizings, hh, Sizing.isFill,
     Bool.false_eq_true, ↓reduceIte]
   exact para_height m ts wr _ s hh

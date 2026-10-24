@@ -172,4 +172,10 @@ assume ^1003 hostMakeDir "makeDir makes a private directory and its parents" whe
   does "makeDir answers done only when the path is then a directory, each directory it made mode 700 whatever the umask, one already there done and left as it was; a file in the way, a path under a file, a read-only parent, NUL and the empty path fail."
   check "effects.make-dir"
 
+/-! Host-drawn content (workstream Y, docs/frame.md "Draw records"): ids 1004–1019 (^1003 is the trusted makeDir claim). -/
+
+assume ^1004 hostPaintBounds "A painter's pixels stay inside its box" where
+  does "A paint draw changes no pixel outside its rect (snapped to device pixels as rects are) within the clip in force, whatever its painter draws and whatever data, time or scale it is given; a paint naming no registered painter changes nothing. Checked offscreen against the same frame without its paint draws, with Yap's tape painter and painters whose triangles cover the whole target or land anywhere."
+  check "render.paint.bounds"
+
 end Cairn.Fuzz.Trusted.Claims

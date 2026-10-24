@@ -82,9 +82,8 @@ final class WrapSuite: Suite {
         let c = gen(&g)
         let repro = { c.description }
         let painted = "text.wrap.painted"
-        let lines = Lean.wrap(family: c.family, size: c.size, weight: c.weight, italic: c.italic,
-                              width: c.width, c.text)
-        let metrics = Lean.hostMetrics(family: c.family, size: c.size, weight: c.weight, italic: c.italic, c.text)
+        let lines = Lean.wrap(c.font, width: c.width, c.text)
+        let metrics = Lean.hostMetrics(c.font, c.text)
         let lh = max(0, metrics[1] + metrics[2])
         let offs = Array(metrics[3...])
         let scalars = Array(c.text.unicodeScalars)
@@ -274,7 +273,7 @@ extension WrapSuite {
                 let s = paragraph(width * 100 + i)
                 shapeWhole.append(ms { _ = TextSystem.shared.shape(font, s) })
                 var lines: [Lean.WrapLine] = []
-                lean.append(ms { lines = Lean.wrap(family: 0, size: 13, weight: 400, italic: false, width: UInt32(width), s) })
+                lean.append(ms { lines = Lean.wrap(font, width: UInt32(width), s) })
                 lineCount = lines.count
                 let scalars = Array(s.unicodeScalars)
                 let strs = lines.map { l in
