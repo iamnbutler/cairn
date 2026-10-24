@@ -273,10 +273,12 @@ theorem frame_prepMsg (s : AppState) (m : Msg) :
     cases x <;> cases e
     case every.tick =>
       simp only [prepMsg]
-      have h := frame_checks s.io
-      rcases hc : checks s.io with ⟨io', as⟩
-      rw [hc] at h
-      exact h
+      split
+      · exact ⟨Io.Frame.refl _, noAppend_nil⟩
+      · have h := frame_checks s.io
+        rcases hc : checks s.io with ⟨io', as⟩
+        rw [hc] at h
+        exact h
     all_goals simp only [prepMsg, Io.ask, Io.fresh]
     all_goals (repeat' split) <;> first
       | exact ⟨Io.Frame.refl _, noAppend_nil⟩

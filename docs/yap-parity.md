@@ -217,9 +217,9 @@ prints the table that goes into the Lean file.
 
 | Behaviour | Original | Port | Status |
 |---|---|---|---|
-| Pixels | Overlay.swift, Overlay.metal | View.lean's overlay | Y |
+| Pixels and motion | Overlay.swift, Overlay.metal | View.lean's overlay and the `yap.tape` painter; matched in every phase, with what still differs listed ([docs/yap.md](yap.md#overlay-parity)) | fixed (yap-overlay) |
 | Hide after typed and after failure | 1.5 s and 4 s (Yap.swift L357, L362) | the same | same |
-| A microphone failure | hides the panel without showing it | shows it, then hides it | Y |
+| A microphone failure | hides the panel without showing it | shows it, then hides it | open |
 
 ## Open
 
@@ -244,13 +244,18 @@ match the original, but matching it costs something the brief didn't settle.
    from 20 ms windows. This changes the waveform's cadence (Y).
 7. **Recent labels across a DST change.** The port formats times with the zone offset at
    launch.
+8. **When the overlay appears.** Yap shows it after `capture.start` returns, so a microphone that
+   can't start never shows it. The port shows it with the key-down, while the host starts the
+   microphone, and hides it on the `failed` event. Matching needs a "started" event on
+   `Sub.record` (an ABI change and a new trusted check); showing on the first audio instead would
+   come a buffer later than Yap.
 
 ## Counts
 
 | Status | Rows |
 |---|---|
 | same | 57 |
-| fixed (this PR) | 36 |
+| fixed (#56 and yap-overlay) | 37 |
 | bug fix (intentional; yap#6 and #8–#15) | 9 |
-| open (needs Nate) | 7 |
-| Y (overlay pixels) | 2 |
+| open (needs Nate) | 8 |
+| Y (overlay pixels) | 0 |

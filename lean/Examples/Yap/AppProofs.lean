@@ -430,8 +430,12 @@ theorem record_sub_iff (s : AppState) (c : Nat) :
     split <;> simp
   have h2 : Sub.record c ∉ (if wantsKey s then [Sub.globalKey s.core.hotkey.code s.core.hotkey.modifier] else []) := by
     split <;> simp
+  have h3 : Sub.record c ∉ (if s.io.overlay.shown && s.io.overlay.isLive then [Sub.every clockEveryMs] else []) := by
+    split <;> simp
+  have h4 : Sub.record c ∉ (if s.io.overlay.easing s.io.mono then [Sub.every easeEveryMs] else []) := by
+    split <;> simp
   unfold subscriptions
-  simp only [List.mem_append, List.mem_singleton, reduceCtorEq, false_or, h1, h2, or_false]
+  simp only [List.mem_append, List.mem_singleton, reduceCtorEq, false_or, h1, h2, h3, h4, or_false]
   cases s.core.recording <;> simp [eq_comm]
 
 theorem app_new_recording (s : AppState) (m : Msg) {r' : Recording}

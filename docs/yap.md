@@ -75,11 +75,84 @@ If both are open, the original has the key; Yap (Cairn) waits. Remove Yap (Cairn
   Folder); Dictate with ‹key› ✓, Press Return After Dictating ✓, Keep Transcripts (N Days) ✓;
   Edit Dictionary…, Edit Settings…; Quit Yap (Cairn) (⌘Q). The icon follows the phase
   (`waveform`, `mic.fill`, `text.bubble`).
-- **The overlay** (^345), at the bottom of the screen, never taking focus or clicks: the
-  phase (REC, REC · HANDS FREE · TAP AGAIN TO SEND, TRANSCRIBING, TYPED, NOT TYPED · IN RECENT
-  TRANSCRIPTS) and the elapsed time; a waveform of bars from the microphone's 20 ms levels;
-  the live preview as a paragraph keeping its last four lines. It hides 1.5 s after a
-  transcript is typed and 4 s after one fails. `"overlay": false` in config.json turns it off.
+- **The overlay** (^399; ^345 is retired), at the bottom of the screen, never taking focus
+  or clicks, drawn as the original's (see "Overlay parity" below): the phase (REC, REC · HANDS
+  FREE · TAP AGAIN TO SEND, TRANSCRIBING, TYPED, NOT TYPED · IN RECENT TRANSCRIPTS) with a
+  glowing dot and a clock that stops when recording does; the tape (the original's
+  `Overlay.metal`, unchanged: the scope, the scrolling ruler, the reel and the meter, from the
+  microphone's levels and the preview's cuts); and the live transcript's last 280 characters.
+  It hides 1.5 s after a transcript is typed and 4 s after one fails. `"overlay": false` in
+  config.json turns it off.
+
+## Overlay parity
+
+The overlay is the original's `OverlayView` rebuilt in Cairn: the same palette, fonts (SF Pro,
+expanded width, tracking, tabular digits), padding, gaps, continuous corners, edge and shadows,
+and the original's `Overlay.metal`, unchanged, as a host-drawn `paint` node (^1004 assumes it
+paints only inside its box). It is checked against the original, not by eye but pixel by pixel:
+`tools/overlay-parity` captures the original's own panel (a patched copy that injects the tape's
+values; it never records, listens to keys or types) and renders Cairn's from the same states,
+both at 2x.
+
+**Stills.** Twelve states: each phase without text and with two lines, and 300 characters (the
+tail with "…") listening and typed. Each image below is the original | Cairn | the difference ×
+4. Channels more than 8 levels (of 255) apart, by region:
+
+| state | window | tape | text | header | whole window |
+|---|---|---:|---:|---:|---:|
+| listening, no text | 556 × 156 both | 0 (max 2) | – | 1.3% | 0.24% |
+| listening, two lines | 556 × 214 both | 0 (max 3) | 0 (max 2) | 1.3% | 0.18% |
+| hands free, no text | 556 × 156 both | 0 | – | 6.0% | 0.92% |
+| hands free, two lines | 556 × 214 both | 0 | 0 | 6.0% | 0.67% |
+| transcribing, no text | 556 × 156 both | 0 | – | 2.9% | 0.47% |
+| transcribing, two lines | 556 × 214 both | 0 | 0 | 2.9% | 0.34% |
+| typed, no text | 556 × 156 both | 0 | – | 1.5% | 0.27% |
+| typed, two lines | 556 × 214 both | 0 | 0 | 1.5% | 0.20% |
+| failed, no text | 556 × 156 both | 0 | – | 5.6% | 0.87% |
+| failed, two lines | 556 × 214 both | 0 | 0 | 5.6% | 0.63% |
+| listening, 300 characters | 556 × 254 both | 0 | 0 (max 2) | 1.3% | 0.15% |
+| typed, 300 characters | 556 × 254 both | 0 | 0 (max 3) | 1.5% | 0.17% |
+
+Images: `docs/yap-overlay/<state>.png` (`listening-empty.png`, `listening-two-line.png`, …,
+`typed-300.png`).
+
+**Motion.** The original captured at 60 Hz while the text appears, grows to two lines, is typed
+and hides; Cairn rendered at the same frame times (`docs/yap-overlay/motion-appear.png`,
+`motion-grow.png`: the original on the left). The original eases the panel with SwiftUI's
+`easeOut` over 0.15 s, starting one frame after the window takes its new height; new text fades
+in where it ends up and the old fades out as it moves. Cairn does the same in Lean
+(`easingView`, `textEaseMs`, `textEaseDelayMs`), and its header sits within 1.7 px of the
+original's in every frame of both changes (one point of integer layout is 2 px). The fade on
+hide is the same call in both (`NSAnimationContext`, 0.18 s, `alphaValue`). The clock redraws
+every 0.25 s in both, as `TimelineView(.periodic(by: 0.25))` does.
+
+**What still differs, and why:**
+
+- **The dot and the label sit 1 px (half a point) higher.** The original centres a 7-point dot
+  and a 10-point label in a 26-point row, at 9.5 points and a baseline of 16.55; Cairn's layout
+  and frames are in whole points (AGENTS.md: integers for geometry), so they land on 9 and 16.
+  Closing it needs half-point coordinates in the frame format. This is all of the header's
+  difference (more for the long hands-free and failed labels).
+- **Shadows** differ by up to 5 levels (7 at corners): SwiftUI's blur is not exactly a Gaussian,
+  and Cairn's is one fitted to it (σ = 1.05 × radius; `shadowsAreSwiftUIs`).
+- **The clock's x** is up to a quarter pixel off: it is right-aligned at a fractional point in
+  the original and at a whole point here.
+- **Mid-ease positions** are whole points, so they step by up to 1.7 px from the original's.
+- **Not compared on screen:** Cairn's own display latency. The motion frames are rendered at the
+  original's frame times less its 20 ms from change to screen; Cairn's on-screen latency is
+  assumed the same, not measured.
+- **Levels** come from Cairn's microphone, which taps 20 ms buffers, so the tape's history gets a
+  level every 20 ms; the original's taps 2048 frames (43 ms at 48 kHz). Driving the tape from the
+  same levels gives the same pixels (above), but live, Cairn's scope follows the voice more
+  finely. Matching it needs a per-recording tap size in `Sub.record`.
+- **A transcript that becomes empty while shown** (not something Yap does: a new recording starts
+  a new panel) switches at once instead of fading out the old text.
+- **When it appears.** Yap shows the panel once `capture.start` returns; Cairn shows it with
+  the key-down, while the host starts the microphone, so it comes up earlier by the engine's
+  start time, and a microphone that can't start shows it briefly before it hides (Yap never shows
+  it). Matching needs a "started" event on `Sub.record` (docs/yap-parity.md, Open 8).
+- **Colour tagging.** The original's tape layer is untagged and Cairn's is sRGB; on the Studio
+  Display both read as the same sRGB values (the comparison matches both to sRGB first).
 
 ## Testing
 

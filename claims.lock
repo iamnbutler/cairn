@@ -50,19 +50,19 @@
 308	move	active	3ae37860f0471301	Edit Dictionary
 309	move	active	bd78e8985f7ae69c	Edit Settings
 310	move	active	affcac8293e81fcf	Grant Accessibility Access
-311	invariant	active	c5376fcd6f0bacb7	A shortcut never sends
-312	invariant	active	748ac0af2701ba3c	Hold to talk, tap to latch: 300 ms
-313	invariant	active	1dde52ed894217a6	One recording at a time
-314	invariant	active	a08fc4c82294662c	Every recording ends
-315	invariant	active	a28b17315d030e29	Kept before it is typed
-316	invariant	active	898a720f78a7dc15	A failed type is kept and flagged
-317	invariant	active	5481ad1013341119	Late and cancelled replies never type
+311	invariant	active	2f4ea595784eee2b	A shortcut never sends
+312	invariant	active	18e8457492069889	Hold to talk, tap to latch: 300 ms
+313	invariant	active	18d8059f7b462187	One recording at a time
+314	invariant	active	1a597535a838f756	Every recording ends
+315	invariant	active	69f5763d0310c60e	Kept before it is typed
+316	invariant	active	91039a81a12d1d7e	A failed type is kept and flagged
+317	invariant	active	d9078714ae732f65	Late and cancelled replies never type
 318	invariant	active	5a14ca4ff573c54d	Each clip is typed at most once
-319	invariant	active	cb777cbb5a63b5a9	Fixes replace whole words
-320	invariant	active	5bf556268be0c2e0	Retention never deletes today
-321	invariant	active	84c530deb868d627	Only the first 25 terms are sent
+319	invariant	active	9339fd7c434cfc1c	Fixes replace whole words
+320	invariant	active	0860548515c40b2b	Retention never deletes today
+321	invariant	active	14f5647a17a147fa	Only the first 25 terms are sent
 322	invariant	active	df82bb5021439b6f	Recent Transcripts holds five
-323	invariant	active	e21df6547331b76e	Too short, silent or nowhere to type: never sent
+323	invariant	active	267f7c99ca221460	Too short, silent or nowhere to type: never sent
 330	assume	active	-	The host reports the dictation key and every other key
 331	assume	active	-	The host delivers the ticks it is asked for
 332	assume	active	-	The host answers requests by id, in order of commands
@@ -76,9 +76,10 @@
 342	move	active	d442b5898c12ab24	Quit Yap (Cairn)
 343	move	active	a64749d31c1646a5	Grant Microphone Access
 344	move	active	9f7ae1916a6c4e2f	Open the menu
-345	place	active	-	Overlay panel
-346	invariant	active	6874b1dbcd054944	The original Yap keeps its key
-347	invariant	active	5d61d993c3a84fee	A mark waits for the appends
+345	place	retired	-	Overlay panel
+346	invariant	active	a3674441bc4af0a8	The original Yap keeps its key
+347	invariant	active	eadbc5e87a819584	A mark waits for the appends
+399	place	active	-	Overlay panel
 401	move	active	1b77afe95aa65f24	Start / Stop
 402	move	active	6750765048a4300d	Lap
 403	move	active	b3e0b25d90f70b6f	Reset

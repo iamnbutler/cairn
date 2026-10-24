@@ -43,6 +43,13 @@ func silentWorld() -> World {
 // The overlay's tape display: the original Yap's shader, drawn where Lean puts a `yap.tape` paint.
 YapTape.register()
 
+if let i = args.firstIndex(of: "--overlay-scenes") {
+    exit(OverlayScenes.run(Array(args[(i + 1)...])))
+}
+if let i = args.firstIndex(of: "--overlay-motion") {
+    exit(OverlayScenes.runMotion(Array(args[(i + 1)...])))
+}
+
 if args.contains("--selftest") {
     MainActor.assumeIsolated { SelfTest.run() }
     exit(0)
@@ -262,7 +269,7 @@ enum SelfTest {
             }
         }
         if frame.windowIndex != nil { fail("Yap has a window") }
-        if frame.surfaces.map(\.place) != [301, 345] { fail("surfaces \(frame.surfaces.map(\.place))") }
+        if frame.surfaces.map(\.place) != [301, 399] { fail("surfaces \(frame.surfaces.map(\.place))") }
         guard let menu = host.menu(301) else { fail("no status item at ^301") }
         func titles(_ m: NSMenu) -> [String] { m.items.map { $0.isSeparatorItem ? "-" : $0.title } }
         func item(_ id: String) -> NSMenuItem? { menu.find(id).flatMap { $0.0.item(at: $0.1) } }
@@ -275,7 +282,7 @@ enum SelfTest {
         func recent() -> [String] {
             menu.root.items.first { $0.title == "Recent Transcripts" }?.submenu.map(titles) ?? []
         }
-        func overlay() -> Surface? { frame.surface(345) }
+        func overlay() -> Surface? { frame.surface(399) }
         func overlayTexts() -> [String] {
             overlay()?.canvas.draws.compactMap { if case let .text(_, _, _, s) = $0 { s } else { nil } } ?? []
         }
@@ -310,8 +317,11 @@ enum SelfTest {
         until("the overlay never showed") { overlay()?.shown == true }
         if !overlayTexts().contains("REC") { fail("overlay says \(overlayTexts())") }
         mic.push(ms: 600, amplitude: 8000)
-        until("no waveform") {
-            overlay()?.canvas.draws.contains { if case let .rect(r, _, _, _) = $0 { r.w == 2 && r.h > 10 } else { false } } == true
+        until("no levels on the tape") {
+            overlay()?.canvas.draws.contains {
+                if case let .paint(_, p) = $0 { p.shader == YapTape.name && p.arrays.count == 3 && p.arrays[1].contains { $0 > 100_000 } }
+                else { false }
+            } == true
         }
         usleep(400_000)
         t0 = hostNow()
@@ -440,7 +450,7 @@ enum SelfTest {
         until("original quit: not listening again") { keys.listening }
 
         // Levels at 50 Hz: a 3 s hold fed in real time, one 20 ms buffer per 20 ms, each a
-        // `record` event and a Lean step that redraws the waveform. Then a shortcut cancels it.
+        // `record` event and a Lean step that redraws the tape. Then a shortcut cancels it.
         keys.send(.keyDown, f13)
         until("levels: no microphone") { mic.live }
         until("levels: no overlay") { overlay()?.shown == true }
