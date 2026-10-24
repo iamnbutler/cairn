@@ -67,8 +67,12 @@ final class RenderLoop: NSObject, @unchecked Sendable {
         lock.unlock()
     }
 
-    /// Starts the thread with a display link made by the view (main thread).
-    func start(link: CADisplayLink) {
+    /// Starts the thread with a display link made by the view (main thread). `maxFps` caps the
+    /// link's rate on a faster display (ProMotion's 120 Hz); nil runs at the display's rate.
+    func start(link: CADisplayLink, maxFps: Float? = nil) {
+        if let maxFps {
+            link.preferredFrameRateRange = CAFrameRateRange(minimum: maxFps, maximum: maxFps, preferred: maxFps)
+        }
         self.link = link
         nonisolated(unsafe) let link = link  // handed to the render thread, used only there
         let t = Thread {

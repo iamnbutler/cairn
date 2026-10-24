@@ -445,8 +445,15 @@ final class PanelContentView: NSView {
         super.viewDidMoveToWindow()
         guard window != nil, !started else { return }
         started = true
-        renderLoop.start(link: displayLink(target: renderLoop, selector: #selector(RenderLoop.tick)))
+        renderLoop.start(link: displayLink(target: renderLoop, selector: #selector(RenderLoop.tick)),
+                         maxFps: Self.maxFps)
     }
+
+    /// A panel draws at most 60 frames a second, as the original Yap's overlay does (its
+    /// `MTKView.preferredFramesPerSecond = 60`, App/Overlay.swift): on a 120 Hz display an
+    /// animated `paint` would otherwise draw every refresh and queue up behind its own
+    /// drawables (bench/yap-instruments.md, "120 Hz").
+    static let maxFps: Float = 60
 
     func update(size: Size) {
         let scale = window?.backingScaleFactor ?? 2

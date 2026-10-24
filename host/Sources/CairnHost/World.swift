@@ -264,8 +264,15 @@ public final class World: @unchecked Sendable {
     private let lock = NSLock()
     /// Running subscriptions: how to stop each.
     private var running_: [UInt32: () -> Void] = [:]
-    /// How often `watchFile` looks at its file.
-    public var watchPeriodMs = 250
+    /// How often `watchFile` looks at its file while it holds still: every 2 s, as the original
+    /// Yap polls `config.json`'s modification date (App/Yap.swift, `watchConfig`).
+    public var watchPeriodMs = World.liveWatchPeriodMs
+    public static let liveWatchPeriodMs = 2000
+    /// How soon `watchFile` looks again once it has seen the file move (at most the period): the
+    /// change is reported when the file has held still from one look to the next, so a save is
+    /// heard within the period plus this, not two periods. Yap hears an edit 0 to 2 s after the
+    /// save and reads it at once; this look is the one difference (docs/yap-parity.md).
+    public var watchSettleMs = 50
     /// The file `watchFile` looks at for a path: as given (`~/` is home). Tests that move the
     /// file handlers to a scratch directory move this too.
     public var watchPath: @Sendable (String) -> String = { $0 }
@@ -342,14 +349,23 @@ public final class World: @unchecked Sendable {
             // of syscalls, and the metadata macOS writes just after: a new file's ctime moves
             // again when its provenance attribute lands) is one `changed`, and Lean never hears
             // about a half-done write (truncated, not yet written).
+            // Looks come every `watchPeriodMs` while the file holds still, and `watchSettleMs`
+            // after one that saw it move, until it holds still again.
             var reported = FileSignature.of(path)
             var seen = reported
             let t = DispatchSource.makeTimerSource(queue: queue)
-            let period = DispatchTimeInterval.milliseconds(max(1, watchPeriodMs))
-            t.schedule(deadline: .now() + period, repeating: period, leeway: .milliseconds(5))
+            let periodMs = max(1, watchPeriodMs)
+            let settleMs = max(1, min(watchSettleMs, periodMs))
+            // A tenth of the wait as leeway, so the system can wake for both files (and other
+            // timers) at once; a look is never early, only up to that much late.
+            func next(_ ms: Int) {
+                t.schedule(deadline: .now() + .milliseconds(ms), repeating: .never, leeway: .microseconds(max(100, ms * 100)))
+            }
+            next(periodMs)
             t.setEventHandler { [weak self] in
                 let now = FileSignature.of(path)
                 defer { seen = now }
+                next(now == seen ? periodMs : settleMs)
                 guard now == seen, now != reported else { return }
                 reported = now
                 self?.send?([.subEvent(id: id, .changed)])

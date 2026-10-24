@@ -289,7 +289,7 @@ check that touches nothing outside a scratch directory and prompts no one.
 | `appendFile path data` | `done` | `open(O_APPEND\|O_CREAT, 0600)` after creating parent directories (mode 700), then `write` until every byte is out; a failure says what Foundation says for that errno | ^960 `effects.append-file` |
 | `listDir path` | `names` | `readdir`, without `.`, `..` and names that aren't UTF-8, sorted by UTF-8 bytes | ^961 `effects.list-dir` |
 | `deleteFile path` | `done` | `lstat`, then `unlink`; a directory is `failed invalid` and stays | ^962 `effects.delete-file` |
-| `Sub.watchFile path` | `changed` events | polls `stat` every 250 ms on the world's queue | ^963 `subs.watch-file` |
+| `Sub.watchFile path` | `changed` events | polls `stat` every 2 s on the world's queue (50 ms after a look that saw a change) | ^963 `subs.watch-file` |
 | `frontmostApp` | `app pid name` | `NSWorkspace.frontmostApplication` | ^964 `effects.frontmost-app` |
 | `permission p prompt` | `flag granted` | `AXIsProcessTrustedWithOptions`; `AVCaptureDevice.authorizationStatus`/`requestAccess` | ^965 `effects.permission` |
 | `openItem target` | `done` | `NSWorkspace.open`: a URL with a scheme as it is, a path (`~/` expanded) only when it exists | ^1000 `effects.open-item` |
@@ -319,14 +319,24 @@ Decisions, and why:
 - **`deleteFile` never removes a directory**, so a wrong path can cost at most one file.
 - **`watchFile` polls.** A kqueue watch on the file is lost when an editor saves by renaming a
   new file over it, and one on the directory misses in-place writes; Yap itself polls
-  `config.json`'s date every 2 s for that reason. The host compares `stat`'s device, inode,
-  size, modification and change times (nanoseconds) every 250 ms (`World.watchPeriodMs`), so
-  a write, a replacement, an append, a creation, a removal, a `touch` and a `chmod` all count.
-  A change is reported once the file has held still for a whole poll, so a burst is one
-  `changed` (a save is several system calls, and macOS moves a new file's change time again
-  a moment later when it attaches its provenance attribute), and Lean doesn't hear about a
-  write half done (truncated, not yet written). That costs up to one more poll of latency;
-  Lean reads the file again on `changed`, so nothing is lost.
+  `config.json`'s date every 2 s for that reason (App/Yap.swift, `watchConfig`). The host
+  compares `stat`'s device, inode, size, modification and change times (nanoseconds) every
+  2 s (`World.watchPeriodMs`), as Yap does, so a write, a replacement, an append, a creation,
+  a removal, a `touch` and a `chmod` all count. (It polled every 250 ms until the Instruments
+  bench showed it was most of the idle app's wakeups: bench/yap-instruments.md.)
+  A change is reported once the file has held still from one look to the next, so a burst is
+  one `changed` (a save is several system calls, and macOS moves a new file's change time
+  again a moment later when it attaches its provenance attribute), and Lean doesn't hear about
+  a write half done (truncated, not yet written). The look after one that saw the file move
+  comes 50 ms later (`World.watchSettleMs`), not a whole period, so a save is heard 0.05 to
+  2.05 s after it lands, against Yap's 0 to 2 s (Yap reads the file at the look that sees the
+  new date, with no second look). The second look can't go: without it a save that lands as
+  several changes (a new file's change time moves again when macOS attaches its provenance
+  attribute) is reported more than once and Lean can read a write half done, and ^963's check
+  allows one `changed` per change. A save that takes longer than 50 ms can still be heard
+  twice, which costs one more read; Lean reads the file again on `changed`, so
+  nothing is lost. Each look's timer has a tenth of its wait as leeway, so the two files Yap
+  watches wake the process once.
   The first poll's state is taken when the subscription starts, with no event: an app reads
   the file once (`readFile`) when it subscribes. A change between that read and the start is
   missed until the next one (a window of one step). A symbolic link is followed.

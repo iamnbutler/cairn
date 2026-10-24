@@ -65,6 +65,72 @@ reap() {
 swift -e 'import AppKit; for (i, s) in NSScreen.screens.enumerated() { print("display", i, s.maximumFramesPerSecond, s.localizedName) }' \
 	2>/dev/null | tee -a "$OUT/runs.tsv" | awk -v s="$SCREEN" '$2 == s { print $3 }' >"$OUT/refresh-hz"
 
+# xctrace records into a raw instruments*.ktrace in the per-user temp directory (confstr's
+# DARWIN_USER_TEMP_DIR, not $TMPDIR's override: setting TMPDIR doesn't move it), 10-30 GB for a
+# Metal System Trace, and never deletes it; a DTServiceHub it starts holds the file open and can
+# outlive it by a minute or more. So each run notes the ktrace files its own xctrace's
+# descendants hold open while it records and that are newer than a marker touched just before
+# it, and deletes exactly those (and stops those helpers) once the trace is saved.
+# Files other recordings made are never touched.
+USER_TMP=$(getconf DARWIN_USER_TEMP_DIR 2>/dev/null || echo "${TMPDIR:-/tmp}")
+MIN_FREE_GB=${MIN_FREE_GB:-60}
+
+free_gb() { df -g "$1" | awk 'NR == 2 { print $4 }'; }
+
+need_space() {
+	local d f
+	for d in "$USER_TMP" "$TRACES" "$OUT"; do
+		f=$(free_gb "$d")
+		if [ "${f:-0}" -lt "$MIN_FREE_GB" ]; then
+			echo "yap-instruments: only ${f} GB free on the volume of $d; a recording needs ${MIN_FREE_GB} GB (MIN_FREE_GB). Stopping." >&2
+			exit 3
+		fi
+	done
+}
+
+descendants() { # pid: its children, recursively
+	local c
+	for c in $(pgrep -P "$1"); do
+		echo "$c"
+		descendants "$c"
+	done
+}
+
+# Records while noting, every second, the ktrace files under USER_TMP that xctrace's own
+# descendants hold open (into $1.ktraces) and those descendants (into $1.helpers).
+record_and_note() { # notes-prefix xctrace-args...
+	local notes=$1 pid q
+	shift
+	: >"$notes.ktraces"
+	: >"$notes.helpers"
+	touch "$notes.marker"  # a file this run deletes must be newer than this, too
+	xcrun xctrace record "$@" &
+	pid=$!
+	while kill -0 "$pid" 2>/dev/null; do
+		for q in $(descendants "$pid"); do
+			echo "$q" >>"$notes.helpers"
+			lsof -p "$q" -Fn 2>/dev/null | sed -n 's/^n//p' | grep -E "^(/private)?$USER_TMP/*instruments[^/]*\.ktrace$" >>"$notes.ktraces"
+		done
+		sleep 1
+	done
+	wait "$pid"
+}
+
+# Deletes the ktrace files a run noted and stops the helpers it started that are still alive.
+clean_run() { # notes-prefix
+	local notes=$1 q f
+	for q in $(sort -u "$notes.helpers"); do
+		# Only a helper still holding one of this run's files: a reused pid is left alone.
+		if lsof -p "$q" -Fn 2>/dev/null | sed -n 's/^n//p' | grep -qxF -f <(sort -u "$notes.ktraces"); then
+			kill "$q" 2>/dev/null && echo "  stopped this run's helper $q"
+		fi
+	done
+	for f in $(sort -u "$notes.ktraces"); do
+		[ -f "$f" ] && [ "$f" -nt "$notes.marker" ] && rm -f "$f" && echo "  deleted $(basename "$f")"
+	done
+	rm -f "$notes.ktraces" "$notes.helpers" "$notes.marker"
+}
+
 record() { # suite app n
 	local suite=$1 app=$2 n=$3 b trace args tmpl limit
 	b=$(bin "$app")
@@ -87,19 +153,25 @@ record() { # suite app n
 	launch) tmpl=(--template "App Launch" --instrument os_signpost)
 		args=(--bench-idle) limit=10 ;;
 	esac
-	local home
+	local home notes
+	need_space
 	home=$(mktemp -d /tmp/yap-bench-home.XXXXXX)
+	notes="$TRACES/$TAG-$suite-$app-$n"
 	printf '%s\t%s\t%s\t%s\tload %s\n' "$(date +%T)" "$suite" "$app" "$n" "$(sysctl -n vm.loadavg)" >>"$OUT/runs.tsv"
 	echo "== $suite $app run $n"
-	xcrun xctrace record "${tmpl[@]}" --output "$trace" --time-limit "${limit}s" --no-prompt \
+	record_and_note "$notes" "${tmpl[@]}" --output "$trace" --time-limit "${limit}s" --no-prompt \
 		--target-stdout - --env YAP_BENCH_HOME="$home" --launch -- "$b" "${args[@]}" 2>&1 | grep -E "^bench:|^Error|failed|Output file" | tail -3
 	reap
 	rm -rf "$home"
+	# The raw ktrace isn't needed once the .trace is saved.
+	clean_run "$notes"
 	if python3 -I "$ROOT/tools/bench/analyze.py" "$suite" "$trace" >"$OUT/$suite/$app-$n.json.tmp"; then
 		mv "$OUT/$suite/$app-$n.json.tmp" "$OUT/$suite/$app-$n.json"
 	else
-		echo "  analysis failed, trace kept: $trace"
+		# Kept only with KEEP=1: a Metal System Trace bundle is several GB.
+		echo "  analysis failed; trace $([ "$KEEP" = 1 ] && echo "kept: $trace" || echo deleted)"
 		rm -f "$OUT/$suite/$app-$n.json.tmp"
+		[ "$KEEP" = 1 ] || rm -rf "$trace"
 		return
 	fi
 	[ "$KEEP" = 1 ] || rm -rf "$trace"

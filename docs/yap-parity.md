@@ -106,7 +106,7 @@ prints the table that goes into the Lean file.
 | Preview text | fixed, trimmed, joined with spaces (L414–417) | the same | same |
 | Cancel (Dictate off) | turn bumped, capture stopped, idle, ready (L438–445) | the same | same |
 | Accessibility polling | every 2 s until the first grant, then never (L161–172) | every 2 s and when the menu opens, always | bug fix, [yap#10](https://github.com/iamnbutler/yap/issues/10) |
-| Config polling | mtime every 2 s (L209–225) | `watchFile` | same |
+| Config polling | mtime every 2 s (L209–225) | `watchFile`: `stat` every 2 s, reported once it holds still at a second look 50 ms later, so 0.05–2.05 s after the save against Yap's 0–2 s (docs/effects.md) | open |
 | Config errors | "config.json won't parse, keeping the last settings: <DecodingError text>" (L193); unknown key "config.json: no key called "x", still using K" (L198) | the same texts, `JSONDecoder`'s messages | fixed (earlier commit in this PR) |
 | Defaults `enabled`/`submits` | `register` true/false, `bool(forKey:)` (L108–111) | read from `dev.yap.Yap` at first launch, then `prefs.json` | open |
 | Copy | clears the pasteboard, sets the text (L121–124) | `setClipboard` | same |
@@ -237,7 +237,9 @@ match the original, but matching it costs something the brief didn't settle.
    which is what Yap's preview does. Reading at key-up would put a host round trip before the
    upload.
 3. **The dictionary read.** Yap reads `dictionary.txt` at each send. The port uses the
-   last version the file watch reported, so an edit saved during a recording may miss that clip.
+   last version the file watch reported, so an edit saved during a recording, or up to 2.05 s
+   before the send (the watch looks every 2 s, as Yap does for `config.json`), may miss that
+   clip.
 4. **The round trip.** Yap's timer starts after reading the key; the port's starts at the send.
    The difference is the key's file read, under a millisecond.
 5. **Defaults' numbers.** `UserDefaults.bool` is true for the number 2. `readDefault` (^1002)
