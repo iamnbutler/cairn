@@ -111,6 +111,16 @@ What each number is, and the Instruments table it comes from:
   interrupt wakeups, physical footprint). **launch:** `life-cycle-period` and the `ready`
   signpost (the app is watching its key).
 
+- **Disk.** xctrace leaves a raw `instruments*.ktrace` (10–30 GB for a Metal System Trace) in
+  the per-user temp directory (`getconf DARWIN_USER_TEMP_DIR`; setting `TMPDIR` doesn't move
+  it) and never deletes it, and a `DTServiceHub` it starts can hold the file open for a minute
+  after it exits. Since the 120 Hz follow-up below, `tools/bench/yap-instruments.sh` notes, every
+  second while it records, the ktrace files that its own xctrace's descendants hold open, and
+  once the trace is saved deletes those that are also newer than a marker touched just before
+  the run, and stops those helpers; a trace whose analysis fails is deleted too unless `KEEP=1`.
+  Files other recordings made are never touched. Before each run it checks that the temp,
+  trace and output volumes have 60 GB free (`MIN_FREE_GB`) and stops with a message if not.
+
 What isn't measured: the real microphone, the network and transcription, and how the real
 key's event reaches each app. Power Profiler was tried and is not available: xctrace 27.1 reports "The Power Profiler instrument is not supported on macOS".
 
@@ -309,3 +319,71 @@ display as screen 0; `SCREEN=1` for the built-in display), or `make bench-yap` f
 (about 2.5 hours). Results land in `bench/out/yap-instruments/<tag>/` (`summary.md`, `runs.csv`
 and the per-run JSON); copy `summary.md` and `runs.csv` into `bench/yap-instruments/` to commit
 them.
+
+## Follow-up: 120 Hz at 60 frames a second, and the file watch
+
+Two of the recommendations above, matched to what the original does (lane `yap-perf2`).
+
+**What the original does.**
+
+- **Pacing.** The waveform is an `MTKView` with `preferredFramesPerSecond = 60`
+  (`~/code/yap/App/Overlay.swift` L352), paused while not recording (L313–315, L353); it draws
+  on its `CVDisplayLink` thread's callback. The rest of the overlay is SwiftUI: the clock is a
+  `TimelineView(.periodic(from: .now, by: 0.25))` (L226) and the text eases with
+  `.animation(.easeOut(duration: 0.15), value: model.text)` (L254). On the 120 Hz display it
+  presents 60.0 frames a second (above, and again below).
+- **Files.** No file system events and no dispatch source: `watchConfig` polls `config.json`'s
+  modification date with `FileManager.attributesOfItem` every 2 s in a `Task` loop and reloads
+  when it differs (`~/code/yap/App/Yap.swift` L206–225; its comment: "A file watch would miss
+  editors that save in place, and a stat every two seconds costs nothing"). The dictionary is
+  not watched: `DictationDictionary.load()` reads it at each send (L326) and each live preview
+  (L385).
+
+**The changes.**
+
+- The panel's display link is capped at 60 Hz (`CAFrameRateRange(minimum: 60, maximum: 60,
+  preferred: 60)`, `PanelContentView.maxFps`, host/Sources/CairnHost/Surfaces.swift and
+  RenderLoop.swift). Windows keep the display's rate.
+- `watchFile` looks every 2 s (`World.watchPeriodMs`, was 250 ms), as the original polls, and
+  50 ms after a look that saw the file move (`World.watchSettleMs`), reporting once it holds
+  still. An edit is heard 0.05–2.05 s after the save, against the original's 0–2 s
+  (docs/effects.md, docs/yap-parity.md). The trusted fuzz now also varies the second look
+  (^963 `subs.watch-file`).
+
+**120 Hz display** (`perf2/120hz-buf20`: built-in XDR as screen 0, the Studio Display was
+disconnected; 20 ms buffers; `cairnbase` is main at a83d447, `cairn` this branch with the cap
+only; Metal System Trace; 1-minute load 4.3 to 39.9, median 9.9; 1 `cairnbase` run excluded,
+recording started late):
+
+| | main (a83d447) | 60 Hz cap | original |
+|---|---:|---:|---:|
+| runs | 4 | 5 | 5 |
+| frames/s | 118.3 (117.4–119.0) | 59.75 (59.71–59.82) | 59.97 (59.94–60.04) |
+| frame interval ms, median / p90 / p99 / max | 8.33 / 8.38 / 12.5 / 41.7 | 16.67 / 16.74 / 25.1 / 41.7 | 16.67 / 16.72 / 16.82 / 33.3 |
+| frames held long | 1.0% | 3.7% | 0.24% |
+| cadence changes | 2.0% | 16.0% | 1.7% |
+| level to glass ms, median / p90 / p99 / max | 11.8 / 15.2 / 26.8 / 39.3 | 16.9 / 24.1 / 37.7 / 50.6 | 11.3 / 17.7 / 20.2 / 43.8 |
+| fp time on glass avg / σ ms | 8.40 / 0.55 | 16.67 / 1.36 | 16.67 / 0.47 |
+| fp total end to end avg ms | 32.7 | 24.8 | 20.0 |
+| fp next drawable wait avg / max ms | 7.5 / 27.9 | 0.010 / 0.94 | 0.005 / 0.023 |
+| fp skipped frames per run | 12.5 | 4 | 0 |
+| fp late on glass per run | 2011 | 859 | 688 |
+| CPU ms/s | 70 (60–79) | 50 (40–61) | 65 (61–71) |
+
+- The cap does what it should: 60 frames a second, no wait for drawables (7.5 ms → 0.01 ms),
+  end to end 32.7 → 24.8 ms (the original 20.0), CPU down by a quarter, skipped frames 12.5 → 4.
+- What it leaves: **phase slips.** About one interval in 50 (and one in 5 in two of the five
+  runs) is a 25 ms frame followed by an 8.3 ms one, where the original has about one in 200.
+  The 60 Hz callback lands close enough to a refresh that a frame sometimes misses it and the
+  next catches up. Level to glass is 5 ms later than the original's at the median.
+- **Tried and not kept: `present(afterMinimumDuration: 1/60)`** (`perf2/120hz-mindur`, 3 runs
+  each; there `cairn` is the cap plus the minimum duration and `cairnbase` the cap alone).
+  The slips go (cadence changes 0.9% against the cap's 4.9% and the original's 1.3%; time on
+  glass σ 0.06 ms) but frames queue: end to end 43.9 ms against 24.9 and 19.5, level to glass
+  median 20.2 against 16.5 and 11.0, and 9 skipped frames a run. It is not in the branch.
+
+**Not measured yet** (the session ended for the weekend; see the PR): the idle suite before
+and after the 2 s watch (B: 6.5 wakeups/s and 0.21% CPU against the original's 0.48 and
+0.012%; at 2 s the two watches should wake about 0.5 times a second instead of 8, beside the
+2 s permission checks), a 60 Hz check of the cap (no 60 Hz display was connected), and recording
+CPU at 60 Hz.
