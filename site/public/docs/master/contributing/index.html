@@ -19,6 +19,7 @@
   <a class="home" href="/"><img src="/icon.svg" alt="">Cairn</a>
   <a href="/milestones/">Milestones</a>
   <a href="/docs/">Docs</a>
+  <a href="/packages/">Packages</a>
   <a href="/docs/evidence/">Maps</a>
 </header>
 <div class="layout">
@@ -81,7 +82,7 @@ the kernel, checks every claim against <code>claims.lock</code>, builds the Swif
 runs each app's self test, runs a short fuzz of every app and of the trusted base, checks that each app binary stays under its size limit, and checks
 that these docs are up to date with the code they include.</p>
 <figure class="code"><pre class="px"><code class="make"><span class="cm"># Everything a PR must pass.</span>
-<span class="kw">check</span>: lint audit ledger kernel doctest test selftest fuzz-quick size fuzz-trusted-quick docs-check</code></pre><figcaption><code>Makefile</code>, lines 77–78</figcaption></figure>
+<span class="kw">check</span>: lint audit ledger kernel doctest test selftest fuzz-quick size fuzz-trusted-quick docs-check registry-check</code></pre><figcaption><code>Makefile</code>, lines 77–78</figcaption></figure>
 <h2 id="changing-these-docs">Changing these docs</h2>
 <p>These pages are Markdown in <code>site/docs</code>, built into <code>site/public/docs</code> by <code>make docs-site</code>, and
 the built pages are committed. Code is never pasted into a page: it is included from compiled

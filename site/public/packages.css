@@ -1,0 +1,37 @@
+/* The package pages (site/registry.js), on top of /docs/docs.css: the same palette, type and
+   stepped corners, with a package list, a facts panel and claim chips. */
+main.registry { max-width: 1180px; margin: 0 auto; padding: 8px 16px 72px; }
+.prose.wide, main.registry > .note, main.registry > header.page { max-width: 900px; }
+
+.prose .pkgs { list-style: none; margin: 8px 0 18px; padding: 0; display: grid; gap: 16px; }
+.prose .pkgs .pkg { background: var(--panel); padding: 18px 22px; margin: 0; }
+.pkg .head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+.pkg .name { font: 600 22px/1.2 var(--pixel); color: #f3efff; text-decoration: none; }
+.pkg .name:hover { color: var(--accent); }
+.pkg .ver { font: 14px/1 var(--mono); color: var(--gold); }
+.pkg p { color: var(--muted); margin-bottom: 10px; }
+.pkg .meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.pkg .links { display: flex; gap: 16px; font: 15px/1.3 var(--pixel); }
+
+.chips { display: inline-flex; flex-wrap: wrap; gap: 6px; vertical-align: middle; }
+.chip { font: 600 12.5px/1 var(--pixel); padding: 4px 7px; background: var(--chip); color: var(--fg); letter-spacing: 0.02em; white-space: nowrap; }
+.chip.active { box-shadow: inset 3px 0 0 #9fd3b4; }
+.chip.retired { box-shadow: inset 3px 0 0 #8a87b8; color: var(--muted); }
+.chip.moved { box-shadow: inset 3px 0 0 var(--gold); }
+
+.facts { max-width: 900px; background: var(--panel); padding: 18px 22px; margin: 0 0 8px; filter: drop-shadow(var(--px) var(--px) 0 var(--ink)); }
+.facts dl { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px 24px; }
+.facts dt { font: 600 13px/1.2 var(--pixel); color: var(--gold); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 4px; }
+.facts dd { margin: 0; font-size: 15.5px; overflow-wrap: anywhere; }
+.facts .go { margin: 16px 0 0; font: 600 16px/1.3 var(--pixel); }
+
+tr.on td { background: color-mix(in srgb, var(--panel) 70%, transparent); }
+.ledger tr.retired td, .ledger tr.moved td { color: var(--muted); }
+.ledger tr:target td { box-shadow: inset 0 2px 0 var(--gold), inset 0 -2px 0 var(--gold); }
+.muted { color: var(--muted); }
+.ledger td:first-child code, td code[title] { white-space: nowrap; overflow-wrap: normal; }
+
+@media (max-width: 640px) {
+	.pkgs .pkg, .facts { padding: 16px; }
+	.pkg .name { font-size: 20px; }
+}

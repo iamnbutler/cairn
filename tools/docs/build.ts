@@ -377,6 +377,7 @@ ${page.lede ? `<meta name="description" content="${esc(page.lede.replace(/`/g, "
   <a class="home" href="/"><img src="/icon.svg" alt="">Cairn</a>
   <a href="/milestones/">Milestones</a>
   <a href="/docs/"${page.id === "index" ? ' class="on"' : ""}>Docs</a>
+  <a href="/packages/">Packages</a>
   <a href="/docs/evidence/">Maps</a>
 </header>
 <div class="layout">

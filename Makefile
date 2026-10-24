@@ -5,7 +5,7 @@ LEAN_PREFIX = $(shell cd lean && lean --print-prefix)
 LIB = build/lib/libcairn_lean.a
 VENDOR = host/Sources/CLean/vendor/lean
 
-.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest demo fixture clean record site site-maps map map-trusted doc doctest site-api conformance fuzz fuzz-quick size fuzz-trusted fuzz-trusted-quick bundle docs-site docs-check
+.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest demo fixture clean record site site-maps map map-trusted doc doctest site-api conformance fuzz fuzz-quick size fuzz-trusted fuzz-trusted-quick bundle docs-site docs-check registry-check
 
 # region: make-apps
 # build/lib/libcairn_lean.a: the framework (`Cairn`) and Lean's runtime, linked by every host
@@ -75,7 +75,7 @@ corpus: lean
 
 # region: make-check
 # Everything a PR must pass.
-check: lint audit ledger kernel doctest test selftest fuzz-quick size fuzz-trusted-quick docs-check
+check: lint audit ledger kernel doctest test selftest fuzz-quick size fuzz-trusted-quick docs-check registry-check
 # endregion: make-check
 
 bench: lean
@@ -158,6 +158,11 @@ docs-site:
 
 docs-check:
 	bun tools/docs/build.ts --check
+
+# The package pages (site/registry.js) against the registry fixture and a fake registry. The
+# fixture comes from claims.lock: `bun tools/registry/fixture.ts` rewrites it, `--check` diffs it.
+registry-check:
+	bun test site/registry.test.js
 
 # Deploy the microsite (site/) to Cloudflare, once the feed is fresh (site-feed-check, below).
 site: site-feed-check

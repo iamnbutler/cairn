@@ -19,6 +19,7 @@
   <a class="home" href="/"><img src="/icon.svg" alt="">Cairn</a>
   <a href="/milestones/">Milestones</a>
   <a href="/docs/">Docs</a>
+  <a href="/packages/">Packages</a>
   <a href="/docs/evidence/">Maps</a>
 </header>
 <div class="layout">
@@ -45,7 +46,7 @@ audits every theorem's axioms, replays every declaration through the kernel, che
 ledger, runs the Swift tests and each app's self test, fuzzes every app briefly, and checks binary
 sizes:</p>
 <figure class="code"><pre class="px"><code class="make"><span class="cm"># Everything a PR must pass.</span>
-<span class="kw">check</span>: lint audit ledger kernel doctest test selftest fuzz-quick size fuzz-trusted-quick docs-check</code></pre><figcaption><code>Makefile</code>, lines 77–78</figcaption></figure>
+<span class="kw">check</span>: lint audit ledger kernel doctest test selftest fuzz-quick size fuzz-trusted-quick docs-check registry-check</code></pre><figcaption><code>Makefile</code>, lines 77–78</figcaption></figure>
 <h3 id="the-self-test">The self test</h3>
 <p>Each app's executable has a <code>--selftest</code> mode: it runs the real host, with its threads and
 accessibility mirror, but no window, and drives the app through its controls. Counter's checks
@@ -63,7 +64,7 @@ with the Lean model at every step. Conformance needs one small file per app, und
 <figure class="code"><pre class="px"><code class="make"><span class="cm"># Claim-driven fuzzing (docs/fuzz.md): `make fuzz APP=Basics N=1000` runs N sequences from seed</span>
 <span class="cm"># SEED (default 0) and writes build/fuzz/$(APP).json, which `make map` reads.</span>
 <span class="kw">fuzz</span>: lean
-	cd lean &amp;&amp; lake build fuzz &amp;&amp; .lake/build/bin/fuzz $(APP) --seed $(or $(SEED),0) --iterations $(or $(N),200) --out ../build/fuzz</code></pre><figcaption><code>Makefile</code>, lines 258–261</figcaption></figure>
+	cd lean &amp;&amp; lake build fuzz &amp;&amp; .lake/build/bin/fuzz $(APP) --seed $(or $(SEED),0) --iterations $(or $(N),200) --out ../build/fuzz</code></pre><figcaption><code>Makefile</code>, lines 263–266</figcaption></figure>
 <h2 id="size">Size</h2>
 <p>A Cairn app should be a few megabytes. The commands that declare claims need Lean's compiler at
 build time, and linking the compiler into an app makes it about 100 MB, so apps only <code>meta import</code>
@@ -73,7 +74,7 @@ them. <code>make size</code> builds each app for release and fails past 5 MB:</p
 <span class="cm"># against SIZE_LIMIT bytes. No host app links `Lean` (the compiler, about 100 MB), so each is a</span>
 <span class="cm"># few MB; crossing the limit almost always means something imported `Lean`.</span>
 SIZE_APPS = CairnCounter CairnBasics CairnTodo CairnClock CairnTray
-SIZE_LIMIT = 5000000</code></pre><figcaption><code>Makefile</code>, lines 273–278</figcaption></figure>
+SIZE_LIMIT = 5000000</code></pre><figcaption><code>Makefile</code>, lines 278–283</figcaption></figure>
 <h2 id="bundle-and-sign">Bundle and sign</h2>
 <p><code>make bundle APP=&lt;App&gt;</code> writes a <code>.app</code> bundle. Per-app <code>Info.plist</code> and entitlements go in
 <code>host/Bundles/&lt;App&gt;/</code>:</p>
@@ -104,7 +105,7 @@ MAPDIR = build/map/$(APP)
 	bun tools/map/cairn-map.ts script --claims $(MAPDIR)/claims.json &gt; $(MAPDIR)/script.json
 	rm -rf $(MAPDIR)/capture
 	cd host &amp;&amp; swift run Cairn$(APP) --map-capture ../$(MAPDIR)/script.json ../$(MAPDIR)/capture
-	bun tools/map/cairn-map.ts build --app $(APP) --dir $(MAPDIR)</code></pre><figcaption><code>Makefile</code>, lines 170–183</figcaption></figure>
+	bun tools/map/cairn-map.ts build --app $(APP) --dir $(MAPDIR)</code></pre><figcaption><code>Makefile</code>, lines 175–188</figcaption></figure>
 
 </article>
 <nav class="pager" aria-label="The Book"><a class="prev" rel="prev" href="/docs/book/effects/"><small>Previous</small>Effects and the host</a><span></span></nav>
