@@ -133,7 +133,7 @@ function page({ title, lede, eyebrow, body, on = "packages" }) {
 </header>
 ${body}
 </main>
-<footer>Packages come from the Cairn package registry. Each version carries its source, its build and its claim ledger.</footer>
+<footer>Each version on a Cairn package registry carries its source, its build and its claim ledger.</footer>
 <script type="module">
   import { mountAnchors } from "/scene.js";
   mountAnchors(document.querySelector("main"));
@@ -146,7 +146,7 @@ ${body}
 function sample(src) {
 	if (!src.fixture) return "";
 	return `<aside class="note"><div class="card px"><p class="label"><img src="/icon.svg" alt="">Sample data</p>
-<p>No registry is deployed yet, so these pages show a fixture built from this repository's own claims. The versions and dates are samples, not releases.</p>
+<p>No registry is deployed yet, so these pages show a fixture. Cairn's versions are its real releases, read from its git tags with their commits, dates and claims. Yap's entry is a sample: it isn't tagged yet.</p>
 </div></aside>`;
 }
 
@@ -183,8 +183,6 @@ export async function listPage(src, kind = "lib") {
 <nav class="tabs" aria-label="Package kinds">${tabs}</nav>
 <h2 id="all">${TABS[kind].title}</h2>
 ${items.length ? `<ul class="pkgs">${cards}</ul>` : `<p>${TABS[kind].none}</p>`}
-<h2 id="use">Use one</h2>
-<p>${kind === "bin" ? "An app is something to run, not to depend on: clone it from the registry and <code>cairn build</code> it. Only a library can be a dependency, and the registry refuses a version that depends on an app." : "An app requires a library in its <code>cairn.toml</code>, and <code>cairn build</code> resolves it from the registry, downloads its prebuilt Lean code, and links it."} A version's id never moves: its tag, its commit, and its claims stay as published.</p>
 </section>`;
 	return page({
 		title: "Packages",
@@ -229,7 +227,10 @@ export async function packagePage(src, name, wanted) {
 </div>
 <section class="prose wide">
 ${
-	app
+	src.fixture
+		? `<h2 id="use">${app ? "Build it" : "Use it"}</h2>
+<p>Not from a registry yet: none is deployed, so <code>cairn add</code> and <code>cairn build</code> have nothing to resolve against. Today an app depends on Cairn by its git tag, in its lakefile and <code>Package.swift</code>: see <a href="/docs/book/first-app/#an-app-in-its-own-repository">An app in its own repository</a>.</p>`
+		: app
 		? `<h2 id="use">Build it</h2>
 <p>${esc(name)} is an app: nothing can depend on it. Clone it from the registry and build it with the <code>cairn</code> tool:</p>
 <figure class="code"><pre><code>git clone ${esc(src.git(name))}
