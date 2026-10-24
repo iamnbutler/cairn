@@ -123,6 +123,7 @@ function page({ title, lede, eyebrow, body, on = "packages" }) {
 <body>
 <header class="bar">
   <a class="home" href="/"><img src="/icon.svg" alt="">Cairn</a>
+  <a href="/milestones/">Milestones</a>
   <a href="/docs/">Docs</a>
   <a href="/packages/"${on === "packages" ? ' class="on"' : ""}>Packages</a>
   <a href="/docs/evidence/">Maps</a>
