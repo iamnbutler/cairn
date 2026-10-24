@@ -35,10 +35,9 @@ describe("with the fixture", () => {
 		expect((await get("/docs/cairn/0.1.0")).headers.get("location")).toBe(`${ORIGIN}/docs/cairn/0.1.0/`);
 	});
 
-	test("shows the latest release with its ledger and install lines", async () => {
+	test("shows the latest release with its ledger", async () => {
 		const text = await (await get("/packages/cairn/")).text();
 		expect(text).toContain("<dd>0.1.2</dd>");
-		expect(text).toContain('version = "^0.1.2"');
 		expect(text).toContain('<tr id="301" class="moved">');
 		expect(text).toContain("<code>cairn^1</code>");
 	});
@@ -60,13 +59,21 @@ describe("with the fixture", () => {
 	test("tells a library, which apps depend on, from an app, which they build", async () => {
 		const lib = await (await get("/packages/cairn/")).text();
 		expect(lib).toContain("<dt>Kind</dt><dd>Library</dd>");
-		expect(lib).toContain("cairn add cairn@^0.1.2");
 		const app = await (await get("/packages/yap/")).text();
 		expect(app).toContain("<dt>Kind</dt><dd>App</dd>");
-		expect(app).toContain("yap is an app: nothing can depend on it.");
-		expect(app).toContain("git checkout v0.1.0 &amp;&amp; cairn build --release");
-		expect(app).not.toContain("cairn add yap");
-		expect(app).not.toContain("[[require]]");
+		expect(app).toContain('<h2 id="use">Build it</h2>');
+	});
+
+	test("gives no install lines, as nothing resolves from a registry yet", async () => {
+		for (const name of ["cairn", "yap"]) {
+			const text = await (await get(`/packages/${name}/`)).text();
+			expect(text).toContain("Not from a registry yet");
+			expect(text).toContain('<a href="/docs/book/first-app/#an-app-in-its-own-repository">');
+			expect(text).not.toContain(`cairn add ${name}@`);
+			expect(text).not.toContain("cairn build --release");
+			expect(text).not.toContain("git clone");
+			expect(text).not.toContain("[[require]]");
+		}
 	});
 
 	test("answers a version's docs with the placeholder, in the site's style", async () => {
@@ -170,7 +177,10 @@ describe("with a registry", () => {
 		const page = await (await get("/packages/hello/", env)).text();
 		expect(page).toContain("<code>hello^1</code>");
 		expect(page).toContain('<a href="/docs/hello/1.2.0/">Docs for 1.2.0</a>');
+		expect(page).toContain("cairn add hello@^1.2.0");
+		expect(page).toContain('version = "^1.2.0"');
 		expect(page).toContain('.package(url: "https://reg.test/git/carl/hello.git", from: "1.2.0")');
+		expect(page).not.toContain("Not from a registry yet");
 		expect(seen.every((auth) => auth === "Bearer t0ken")).toBe(true);
 	});
 
