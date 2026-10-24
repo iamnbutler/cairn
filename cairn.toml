@@ -1,0 +1,11 @@
+# Read by the `cairn` CLI (docs/cli.md): `cairn doc` finds a dependency's
+# version here. Cairn ships no app libs; consumers link it with bin/cairn-link.
+[package]
+name = "cairn"
+version = "0.1.0"
+description = "Native macOS apps whose behaviour is proved in Lean."
+license = "MIT"
+lean = "lean"
+libs = []
+swift = "."
+claims = "claims.lock"

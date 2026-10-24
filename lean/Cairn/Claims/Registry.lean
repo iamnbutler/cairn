@@ -15,6 +15,20 @@ public meta section
 namespace Cairn.Claims
 open Lean
 
+/-- The package whose claims a module declares: `^301` in a module built with scope `yap` is the
+claim `yap^301`. Ids are unique within a scope, never across scopes, so a package's ids are its
+own and the ids of the packages it depends on can't collide with them. Set once per package, in
+its lakefile: `leanOptions := #[⟨`weak.cairn.claims.scope, "yap"⟩]` (`weak.`, because Lake
+passes it to every module, including those that don't import the claim commands). Cairn's own
+modules use the default, `cairn`. -/
+register_option cairn.claims.scope : String := {
+  defValue := "cairn"
+  descr := "the package scope of the claims a module declares (`yap` makes `^301` the claim `yap^301`)"
+}
+
+/-- A claim's full name, `scope^N` (`cairn^1005`, `yap^301`). -/
+def scopedRef (scope : String) (id : ClaimId) : String := s!"{scope}^{id}"
+
 def _root_.Cairn.ClaimKind.name : ClaimKind → String
   | .move => "move" | .flow => "flow" | .invariant => "invariant"
   | .assume => "assume" | .place => "place"
@@ -27,6 +41,8 @@ def _root_.Cairn.ClaimKind.ofName? : String → Option ClaimKind
 /-- One claim as the registry records it. -/
 structure Entry where
   info : ClaimInfo
+  /-- The package scope the claim was declared in (`cairn.claims.scope`). -/
+  scope : String := "cairn"
   /-- The namespace the claim was declared in; `claims%` and `moves%` collect by it. -/
   ns : Name
   /-- The declaration holding the claim (a `Move`, `Flow`, `Invariant`, `Assumption`, `Place`,
@@ -52,11 +68,15 @@ structure Entry where
   check : Option String := none
 deriving Inhabited
 
+/-- `scope^N`. -/
+def Entry.ref (e : Entry) : String := scopedRef e.scope e.info.id
+
 def Entry.label (e : Entry) : String :=
-  s!"^{e.info.id} {e.info.kind.name} “{e.info.title}” ({e.decl}, module {e.module})"
+  s!"{e.ref} {e.info.kind.name} “{e.info.title}” ({e.decl}, module {e.module})"
 
 structure State where
-  byId : Std.HashMap ClaimId Entry := {}
+  /-- By scope and id. -/
+  byId : Std.HashMap (String × ClaimId) Entry := {}
   /-- Pairs of imported claims with the same id (modules that never import each other). -/
   clashes : Array (Entry × Entry) := #[]
   /-- Entries declared in this module, in order. -/
@@ -64,9 +84,9 @@ structure State where
 deriving Inhabited
 
 def State.add (st : State) (e : Entry) : State :=
-  match st.byId[e.info.id]? with
+  match st.byId[(e.scope, e.info.id)]? with
   | some old => { st with clashes := st.clashes.push (old, e) }
-  | none => { st with byId := st.byId.insert e.info.id e }
+  | none => { st with byId := st.byId.insert (e.scope, e.info.id) e }
 
 initialize registry : SimplePersistentEnvExtension Entry State ←
   registerSimplePersistentEnvExtension {
@@ -79,18 +99,23 @@ declared in the first afterwards would never be dispatched, and a claim declared
 would be missing from the app's claims, so the commands refuse both. -/
 initialize sealedExt : EnvExtension (NameSet × NameSet) ← registerEnvExtension (pure ({}, {}))
 
+/-- Order by scope, then id. -/
+def Entry.lt (a b : Entry) : Bool :=
+  a.scope < b.scope || (a.scope == b.scope && a.info.id < b.info.id)
+
+/-- Every claim in every scope, by scope and then id. -/
 def entries (env : Environment) : Array Entry :=
   let st := registry.getState env
-  st.byId.fold (fun acc _ e => acc.push e) #[] |>.qsort (·.info.id < ·.info.id)
+  st.byId.fold (fun acc _ e => acc.push e) #[] |>.qsort Entry.lt
 
-def lookup? (env : Environment) (id : ClaimId) : Option Entry :=
-  (registry.getState env).byId[id]?
+def lookup? (env : Environment) (scope : String) (id : ClaimId) : Option Entry :=
+  (registry.getState env).byId[(scope, id)]?
 
 def clashes (env : Environment) : Array (Entry × Entry) := (registry.getState env).clashes
 
 /-- Every entry, including both sides of any clash, for tools that report on the whole set. -/
 def allEntries (env : Environment) : Array Entry :=
   let es := entries env
-  (clashes env).foldl (fun acc (_, b) => acc.push b) es |>.qsort (·.info.id < ·.info.id)
+  (clashes env).foldl (fun acc (_, b) => acc.push b) es |>.qsort Entry.lt
 
 end Cairn.Claims

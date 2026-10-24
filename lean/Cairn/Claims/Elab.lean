@@ -175,15 +175,19 @@ def checkTitle (ref : Syntax) (title : String) : CommandElabM Unit := do
   if title.any (fun c => c == '\t' || c == '\n') then
     throwErrorAt ref "a title is one line, without tabs"
 
-/-- An id is issued once in the whole imported environment. -/
+/-- The package scope this module's claims are declared in (`cairn.claims.scope`). -/
+def currentScope : CoreM String := return cairn.claims.scope.get (← getOptions)
+
+/-- An id is issued once per scope in the whole imported environment. -/
 def checkFresh (ref : Syntax) (id : ClaimId) : CommandElabM Unit := do
   let env ← getEnv
+  let scope ← liftCoreM currentScope
   for (a, b) in clashes env do
-    throwErrorAt ref m!"claim id ^{a.info.id} is issued twice in the imported modules: \
+    throwErrorAt ref m!"claim id {a.ref} is issued twice in the imported modules: \
       {a.label} and {b.label}"
   if id == 0 then throwErrorAt ref "claim ids start at ^1"
-  if let some e := lookup? env id then
-    throwErrorAt ref m!"claim id ^{id} is already issued: {e.label}. Ids are never reused; \
+  if let some e := lookup? env scope id then
+    throwErrorAt ref m!"claim id {scopedRef scope id} is already issued: {e.label}. Ids are never reused; \
       take a new one"
 
 def checkPlace (stx : Syntax) : CommandElabM (Option ClaimId) := do
@@ -191,7 +195,7 @@ def checkPlace (stx : Syntax) : CommandElabM (Option ClaimId) := do
   | none => return none
   | some g =>
     let p := refId g[1]
-    match lookup? (← getEnv) p with
+    match lookup? (← getEnv) (← liftCoreM currentScope) p with
     | some e =>
       unless e.info.kind == .place do
         throwErrorAt g m!"^{p} is not a place: {e.label}"
@@ -208,8 +212,9 @@ def checkUnsealed (ref : Syntax) (dispatched : Bool) : CommandElabM Unit := do
     throwErrorAt ref m!"`moves%` already collected namespace {ns}; a move declared now would \
       never be dispatched. Declare moves before it"
 
-def register (e : Entry) : CommandElabM Unit :=
-  modifyEnv (registry.addEntry · e)
+def register (e : Entry) : CommandElabM Unit := do
+  let scope ← liftCoreM currentScope
+  modifyEnv (registry.addEntry · { e with scope })
 
 /-! ### Building declarations -/
 
@@ -265,7 +270,9 @@ def mkInfo (name : Name) (id : ClaimId) (kind : Name) (title does sees : String)
     s!"The human half of claim ^{id}."
   -- A declaration named after the id: two modules that issue the same id cannot both be
   -- imported, even when neither imports the other.
-  let issued := mkIdent (`_root_ ++ `Cairn.Claims.Issued ++ Name.mkSimple s!"^{id}")
+  -- Scoped (`Issued.«yap^301»`): packages issue their own ids independently.
+  let issued := mkIdent (`_root_ ++ `Cairn.Claims.Issued ++
+    Name.mkSimple (scopedRef (← liftCoreM currentScope) id))
   let target := cid ((← getCurrNamespace) ++ name)
   if (← getEnv).header.isModule then
     elabCommand (← `(@[reducible, expose] public def $issued:ident : Cairn.ClaimInfo := $target))
@@ -444,7 +451,7 @@ def stepAction (step : Syntax) : CommandElabM (Term × ClaimId) := do
     if step[3].getNumArgs == 0 then none else some ⟨step[3][step[3].getNumArgs - 1]⟩
   let some (_, _) := triggers.find? (·.1 == t)
     | throwErrorAt step[0] m!"unknown trigger `{t}`; expected one of {triggers.map (·.1)}"
-  match lookup? (← getEnv) id with
+  match lookup? (← getEnv) (← liftCoreM currentScope) id with
   | some e =>
     unless e.info.kind == .move && e.info.retired.isNone do
       throwErrorAt step[1] m!"a witness step names a move, and ^{id} is not one: {e.label}"

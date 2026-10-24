@@ -56,7 +56,7 @@ final class ShapeCache {
     }
 
     /// SwiftUI's `shadow(radius:)` as a Gaussian's standard deviation in device pixels: about the
-    /// radius, fitted to the original Yap's overlay on screen (σ = 1.05 r; docs/yap.md, "Overlay
+    /// radius, fitted to the original Yap's overlay on screen (σ = 1.05 r; yap-cairn's docs/yap.md, "Overlay
     /// parity"). SwiftUI's blur is not exactly Gaussian: against its `ImageRenderer` this is
     /// within a level or two along edges and up to 7 near corners (ShapeTests.shadowsAreSwiftUIs).
     static func blur(radius: UInt32, scale: CGFloat) -> CGFloat { 1.05 * CGFloat(radius) * scale }

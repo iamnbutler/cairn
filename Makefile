@@ -5,7 +5,7 @@ LEAN_PREFIX = $(shell cd lean && lean --print-prefix)
 LIB = build/lib/libcairn_lean.a
 VENDOR = host/Sources/CLean/vendor/lean
 
-.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest demo fixture clean record site site-maps map map-trusted doc doctest site-api conformance fuzz fuzz-quick fuzz-yap size fuzz-trusted fuzz-trusted-quick bundle yap yap-install bench-yap-apps bench-yap-overlay bench-yap docs-site docs-check
+.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest demo fixture clean record site site-maps map map-trusted doc doctest site-api conformance fuzz fuzz-quick size fuzz-trusted fuzz-trusted-quick bundle docs-site docs-check
 
 # region: make-apps
 # build/lib/libcairn_lean.a: the framework (`Cairn`) and Lean's runtime, linked by every host
@@ -13,19 +13,16 @@ VENDOR = host/Sources/CLean/vendor/lean
 # links exactly one: v1 apps all export `cairn_app_init/step/frame` (docs/runtime.md), so two
 # in one binary would clash. The check below keeps the shared library free of app exports and
 # each app library to one set.
-APPS = Counter:counter Basics:basics Todo:todo Clock:clock Tray:tray Yap:yap
+APPS = Counter:counter Basics:basics Todo:todo Clock:clock Tray:tray
 # endregion: make-apps
 
 lean:
 	cd lean && lake build
 	mkdir -p build/lib $(VENDOR)
 	cp $(LEAN_PREFIX)/include/lean/*.h $(VENDOR)/
-	libtool -static -o $(LIB) \
-		lean/.lake/build/lib/libcairn_Cairn.a \
-		$(LEAN_PREFIX)/lib/lean/libInit.a \
-		$(LEAN_PREFIX)/lib/lean/libleanrt.a \
-		$(LEAN_PREFIX)/lib/libuv.a \
-		$(LEAN_PREFIX)/lib/libgmp.a 2>&1 | grep -v "has no symbols" || true
+	@git diff --quiet -- $(VENDOR) \
+	  || (echo "lean: the toolchain's lean.h differs from the committed $(VENDOR); commit it"; exit 1)
+	cd lean && ../bin/cairn-link --out ../$(LIB)
 	@for a in $(APPS); do \
 		cp lean/.lake/build/lib/libcairn_$${a%%:*}.a build/lib/libcairn_app_$${a##*:}.a; done
 	cp lean/.lake/build/lib/libcairn_TrustedFuzz.a build/lib/libcairn_trusted_fuzz.a
@@ -93,21 +90,6 @@ bench-audio: lean
 	cd lean && lake build framecorpus && .lake/build/bin/framecorpus bench-audio
 	cd host && swift build -c release --product CairnFuzzTrusted && .build/release/CairnFuzzTrusted --bench-audio
 
-# region: make-bench-yap
-# Yap (Cairn) against the original Yap under Apple's Instruments (bench/yap-instruments.md).
-# Builds both bench apps, records each suite with xctrace and summarises the traces into
-# bench/out/yap-instruments/. bench-yap-overlay is the frame pacing suite alone (~15 min);
-# bench-yap is every suite (~2 h). Set SCREEN=1 for the second display, BUFFER_MS=100 for
-# coarser microphone buffers, RUNS, SECS; see tools/bench/yap-instruments.sh.
-bench-yap-apps: lean
-	tools/bench/build-apps.sh
-
-bench-yap-overlay: bench-yap-apps
-	tools/bench/yap-instruments.sh overlay
-
-bench-yap: bench-yap-apps
-	tools/bench/yap-instruments.sh overlay hitches latency idle menu launch
-# endregion: make-bench-yap
 
 # Lean encode and Swift decode times for 1,000- and 10,000-node frames (bench/frame.md).
 bench-frame: lean
@@ -122,7 +104,6 @@ selftest: host
 	cd host && swift run CairnTodo --selftest
 	cd host && swift run CairnClock --selftest
 	cd host && swift run CairnTray --selftest
-	cd host && swift run CairnYap --selftest
 # endregion: make-selftest
 
 # region: make-demo
@@ -139,22 +120,6 @@ bundle: host
 	tools/bundle/bundle.sh $(APP) $$(cd host && swift build --show-bin-path) $(or $(SIGN),-) "$(or $(NAME),$(APP))"
 # endregion: make-bundle
 
-# region: make-yap
-# Yap on Cairn (docs/yap.md): `make yap` builds build/apps/Yap (Cairn).app, release, signed with
-# the first valid Apple Development identity (Yap's own project.yml signs with team 8S43JJMN6B's
-# "Apple Development"), so TCC grants survive rebuilds. YAP_SIGN=<identity or hash> overrides it.
-# `make yap-install` copies it to /Applications, beside (never over) the original Yap.app.
-YAP_SIGN ?= $(shell security find-identity -v -p codesigning | grep '"Apple Development' | grep -v CSSMERR | head -1 | awk '{print $$2}')
-yap: lean
-	cd host && swift build -c release --product CairnYap
-	@[ -n "$(YAP_SIGN)" ] || { echo "yap: no Apple Development identity; pass YAP_SIGN=<identity>"; exit 1; }
-	tools/bundle/bundle.sh Yap $$(cd host && swift build -c release --show-bin-path) $(YAP_SIGN) "Yap (Cairn)"
-# endregion: make-yap
-
-yap-install: yap
-	rm -rf "/Applications/Yap (Cairn).app"
-	cp -R "build/apps/Yap (Cairn).app" "/Applications/Yap (Cairn).app"
-	@echo "installed /Applications/Yap (Cairn).app"
 
 # The Swift stand-in app with a text field, for checking IME and accessibility by hand.
 fixture: host
@@ -199,7 +164,7 @@ site: site-feed-check
 	cd site && npx -y wrangler@4 deploy
 
 clean:
-	rm -rf build lean/.lake host/.build $(VENDOR)
+	rm -rf build lean/.lake host/.build .build
 
 # region: make-map
 # The map (docs/map.md): claims + evidence → build/map/$(APP)/dist/, Cairn's own pages, with
@@ -302,21 +267,14 @@ FUZZ_APPS = Counter Basics Todo
 fuzz-quick: lean
 	cd lean && lake build fuzz
 	@for a in $(FUZZ_APPS); do (cd lean && .lake/build/bin/fuzz $$a --iterations 200 --out ../build/fuzz/quick) || exit 1; done
-	cd lean && lake build yapfuzz && .lake/build/bin/yapfuzz --iterations 200 --steps 200 --out ../build/fuzz/quick
 
-# Yap's dictation machine against a random host (lean/Examples/Yap/Fuzz.lean): keys, ticks,
-# audio, replies late, failed, duplicated and out of order; then the app itself (`receive` and
-# the menu, lean/Examples/Yap/AppFuzz.lean) against one. `make fuzz-yap [N=5000] [SEED=0]`
-# writes build/fuzz/Yap.json; the generic `make fuzz APP=Yap` drives only Yap's menu.
-fuzz-yap: lean
-	cd lean && lake build yapfuzz && .lake/build/bin/yapfuzz --seed $(or $(SEED),0) --iterations $(or $(N),5000) --steps 300 --out ../build/fuzz
 
 # region: make-size
 # Binary size (bench/size.md): each app executable built for release with a link map, stripped
 # into build/size/, attributed (Lean runtime, Cairn, the app, Swift host, shaders), and checked
 # against SIZE_LIMIT bytes. No host app links `Lean` (the compiler, about 100 MB), so each is a
 # few MB; crossing the limit almost always means something imported `Lean`.
-SIZE_APPS = CairnCounter CairnBasics CairnTodo CairnClock CairnTray CairnYap
+SIZE_APPS = CairnCounter CairnBasics CairnTodo CairnClock CairnTray
 SIZE_LIMIT = 5000000
 # endregion: make-size
 size: lean

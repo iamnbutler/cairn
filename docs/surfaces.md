@@ -397,7 +397,7 @@ own `Laid`; `route_names` holds for events addressed to a surface against that s
 
 An app with no `window` surface is an accessory app:
 
-- the bundle `make yap` builds sets `LSUIElement = YES` in `Info.plist`, so there is no Dock
+- the bundle yap-cairn's `make yap` builds sets `LSUIElement = YES` in `Info.plist`, so there is no Dock
   icon even for the instant before code runs (Yap does this);
 - the host also calls `setActivationPolicy(.accessory)`, which is what makes a bare executable
   (`make demo`) behave the same;

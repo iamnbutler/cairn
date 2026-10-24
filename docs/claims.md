@@ -53,7 +53,7 @@ It generates, in the current namespace:
 | `reset.info : ClaimInfo` | the human half |
 | `reset : Move State` | the move, as `dispatch` uses it |
 | `reset.preserves` | turns "every handler keeps `P`", in the move's own terms, into `Move.Preserves reset P` (for invariants) |
-| `Cairn.Claims.Issued.«^2»` | a declaration named after the id (see below) |
+| `Cairn.Claims.Issued.«cairn^2»` | a declaration named after the scoped id (see below) |
 
 The `sound` goal is exactly the statement above (with `k` and `op` added for keyed and edit
 handlers, and without the `enabled` hypothesis when there is no `enabled`). Inside the proof the
@@ -172,8 +172,8 @@ At compile time (in the commands):
 
 | Check | Error |
 |---|---|
-| An id is issued once in the imported environment | `claim id ^N is already issued: …` |
-| Two sibling modules issue the same id | importing both fails: `Cairn.Claims.Issued.^N` is declared twice; `ledger check` also reports it |
+| An id is issued once per scope in the imported environment | `claim id cairn^N is already issued: …` |
+| Two sibling modules issue the same id in one scope | importing both fails: `Cairn.Claims.Issued.«cairn^N»` is declared twice; `ledger check` also reports it |
 | A move says what the person does and what follows | `missing does "…"` / `missing sees "…"` |
 | Every claim has a one-line title and a `does` | |
 | `in ^P` names an existing, unretired place | `unknown place ^P` / `^P is not a place` |
@@ -200,6 +200,20 @@ Proved about dispatch (`Cairn/Claims/Move.lean`, `Machine.lean`, `Deliver.lean`)
 | `deliver_effect`, `deliver_unclaimed` | the same two guarantees for a batch of actions through `Runtime.deliver`, so they compose with `Runtime.step_delivers` |
 | `deliver_run`, `steps_reachable` | delivering a batch runs it (`Machine.run`); for a machine that ignores the world, the app state of every runtime state reached from `start` by events is `Machine.Reachable`, so every invariant holds on screen |
 | `steps_reachableAll`, `Invariant.reachableAll` | for any machine, including one with `receive`, every runtime state reached by any events (input, clock, timers, replies, subscription events) is `Machine.ReachableAll`, so every invariant holds on screen (from `Cairn.Runtime.step_fed`: a step is some updates and messages) |
+
+## Scopes
+
+Claim ids are scoped by package. Cairn's are `cairn^N`; an app in its own repository
+(docs/package.md) declares its scope once in its lakefile,
+`leanOptions := #[⟨`weak.cairn.claims.scope, "yap"⟩]`, and its `^301` is then `yap^301`. In
+code, a bare `^N` always means the module's own scope: `in ^P` and a flow's `witness` find only
+claims of that scope, and two packages may both issue `^301`. The registry keys entries on
+(scope, id), messages name claims in full (`claim id yap^301 is already issued: …`), and the
+`Issued` declaration is `Cairn.Claims.Issued.«yap^301»`. Frames and the runtime still carry bare
+numbers, since an app's controls are always its own moves.
+
+The scope defaults to `cairn`, so an app that forgets to set it collides with Cairn's ids at
+compile time instead of shipping with them silently.
 
 ## The ledger
 
@@ -231,10 +245,15 @@ changing a move flags that move and not every flow over the machine.
 - **warns** when a claim's statement hash or title changed: "meaning changed: give it a new id
   or `lake exe ledger update --accept`".
 
+Both take `--scope NAME` (default `cairn`): the ledger reads and writes one scope's ids, so each
+package has its own `claims.lock`, and an app's ledger never reads Cairn's lock. `lake exe ledger
+move <scope> <id>…` marks ids that left with another package as `moved:<scope>` (Yap's, when it
+moved to iamnbutler/yap-cairn). A moved id stays issued here: it may not come back in this scope.
+
 `lake exe ledger update [--accept]` appends new ids, marks ids retired in the code as retired,
 and with `--accept` records changed hashes and titles. It never removes a line and refuses to
 write while `check` has errors other than new ids. Both take `--lock PATH` and `--root MODULE`
-(default roots `Cairn` and `Examples`: a claim in a module neither imports is invisible to the
+(default roots `Cairn`, `Examples` and `Cairn.Fuzz.Trusted.Claims`: a claim in a module neither imports is invisible to the
 ledger, so every app module must be reachable from `Examples.lean`).
 
 ## Export for the map
@@ -253,6 +272,9 @@ ledger, so every app module must be reachable from `Examples.lean`).
    "evidence": [{"role": "sound press", "theorem": "Examples.Counter.reset.press.sound",
                  "proved": true, "extraAxioms": []}]}]}
 ```
+
+Each claim also carries `"scope"` (`cairn`) and `"qualified"` (`cairn^2`); `"ref"` stays the
+bare `^2` the map labels pins with.
 
 `passes` is a flow's path through move ids, and `witness` its steps (`{"trigger": "press", "ref": "^1", "claim": 1, "key": 0}`, plus `op` for edits), for drivers that replay it (docs/map.md); `pos` is where the claim is declared; `machine` is the machine a flow or invariant is
 stated against. Evidence roles: `sound <trigger>` (moves), `live` and `reaches` (flows),
@@ -309,6 +331,8 @@ which `libInit` is 15 MB); the `CairnCounter` binary contains no symbols from `l
 
 ## What is not enforced, and why
 
+- **Cross-scope references are prose only.** A claim can't name another package's claim in
+  `in ^P` or a witness; Yap's ^348 cites `cairn^1005` in its text.
 - **Ids are global only as far as imports reach.** Two modules that are never imported together
   can issue the same id; the ledger catches it because it imports everything reachable from
   `Cairn` and `Examples`, and the `Issued.«^N»` declarations make importing both fail.

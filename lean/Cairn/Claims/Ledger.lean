@@ -10,12 +10,21 @@ retired, a hash of its formal statement and its title. Ids are the contract, so:
   an id twice, when a claim has no description, and when the code has an id the lock doesn't or
   retires one the lock still has as active (run `update` for both). It warns when a claim's formal statement or title changed: give it a new id,
   or `update --accept` if the meaning is the same.
+- `move <scope> <id>…` marks ids that left this package for another as `moved:<scope>`: they must
+  be in the lock and gone from this scope's code.
 - `update` appends new ids, marks newly retired ones, and with `--accept` records changed
   hashes and titles. It never removes a line, and refuses while `check` has errors other than
   new ids.
 
 The code's claims are those reachable by importing the roots (`Cairn`, `Examples` and
-`Cairn.Fuzz.Trusted.Claims`, the trusted base's assumptions, by default). -/
+`Cairn.Fuzz.Trusted.Claims`, the trusted base's assumptions, by default) and declared in one
+package scope (`--scope`, default `cairn`; see `cairn.claims.scope`). Each package keeps its own
+`claims.lock` for its own scope: an app's ledger never reads Cairn's ids, and Cairn's never reads
+the app's.
+
+A claim that moves to another package keeps its number there and is marked `moved:<scope>` in
+the lock it left (Yap's ids, `moved:yap`, after Yap moved to its own repository): the id stays
+issued in the old scope, and can't come back in it. -/
 
 namespace Cairn.Claims.Ledger
 open Lean Cairn.Claims Cairn.Claims.Tool
@@ -26,13 +35,21 @@ structure Line where
   retired : Bool
   hash : String
   title : String
+  /-- The scope the claim moved to, if it left this package (`moved:yap`). -/
+  moved : Option String := none
+deriving Inhabited
 
 def header : String :=
   "# claims.lock: every claim id ever issued. Written by `lake exe ledger update`; never edit by hand.\n" ++
   "# id\tkind\tstatus\tstatement\ttitle\n"
 
+def Line.status (l : Line) : String :=
+  match l.moved with
+  | some to => s!"moved:{to}"
+  | none => if l.retired then "retired" else "active"
+
 def Line.render (l : Line) : String :=
-  s!"{l.id}\t{l.kind.name}\t{if l.retired then "retired" else "active"}\t{l.hash}\t{l.title}"
+  s!"{l.id}\t{l.kind.name}\t{l.status}\t{l.hash}\t{l.title}"
 
 def parse (text : String) : Except String (Array Line) := do
   let mut out := #[]
@@ -45,9 +62,10 @@ def parse (text : String) : Except String (Array Line) := do
     | [id, kind, status, hash, title] =>
       let some id := id.toNat? | throw s!"claims.lock:{n}: bad id `{id}`"
       let some kind := ClaimKind.ofName? kind | throw s!"claims.lock:{n}: bad kind `{kind}`"
-      unless status == "active" || status == "retired" do
+      let moved := if status.startsWith "moved:" then some (status.drop 6).toString else none
+      unless status == "active" || status == "retired" || moved.any (!·.isEmpty) do
         throw s!"claims.lock:{n}: bad status `{status}`"
-      out := out.push { id, kind, retired := status == "retired", hash, title }
+      out := out.push { id, kind, retired := status == "retired", hash, title, moved }
     | _ => throw s!"claims.lock:{n}: expected 5 tab-separated fields"
   return out
 
@@ -68,19 +86,26 @@ def lineOf (env : Environment) (e : Entry) : Line :=
   { id := e.info.id, kind := e.info.kind, retired := e.info.retired.isSome
     hash := statementHash env e, title := e.info.title }
 
-def compare (env : Environment) (locked : Array Line) : Report := Id.run do
+/-- The claims of one scope. -/
+def inScope (env : Environment) (scope : String) : Array Entry :=
+  (entries env).filter (·.scope == scope)
+
+def compare (env : Environment) (scope : String) (locked : Array Line) : Report := Id.run do
   let mut r : Report := {}
   for (a, b) in clashes env do
-    r := r.err s!"^{a.info.id} is issued twice: {a.label} and {b.label}"
-  let code := entries env
+    if a.scope == scope then
+      r := r.err s!"{a.ref} is issued twice: {a.label} and {b.label}"
+  let code := inScope env scope
   let byId : Std.HashMap ClaimId Entry := code.foldl (fun m e => m.insert e.info.id e) {}
   for l in locked do
     match byId[l.id]? with
     | none =>
-      unless l.retired do
+      unless l.retired || l.moved.isSome do
         r := r.err s!"^{l.id} {l.kind.name} “{l.title}” is in claims.lock but gone from the code. Ids never disappear: retire it with `retire ^{l.id} {l.kind.name} \"{l.title}\" because \"…\"`"
     | some e =>
-      if e.info.kind != l.kind then
+      if let some to := l.moved then
+        r := r.err s!"^{l.id} “{l.title}” moved to {to}^{l.id} and has come back: {e.label}. Take a new id"
+      else if e.info.kind != l.kind then
         r := r.err s!"^{l.id} was issued as a {l.kind.name} (“{l.title}”) and is now reused as a claim of kind `{e.info.kind.name}`: {e.label}. Take a new id"
       else if l.retired && e.info.retired.isNone then
         r := r.err s!"^{l.id} “{l.title}” is retired and has come back: {e.label}. Take a new id"
@@ -100,14 +125,15 @@ def compare (env : Environment) (locked : Array Line) : Report := Id.run do
       r := r.err s!"{e.label} has no description (`does`)"
   return r
 
-def update (env : Environment) (locked : Array Line) (accept : Bool) : Array Line := Id.run do
-  let code := entries env
+def update (env : Environment) (scope : String) (locked : Array Line) (accept : Bool) :
+    Array Line := Id.run do
+  let code := inScope env scope
   let byId : Std.HashMap ClaimId Entry := code.foldl (fun m e => m.insert e.info.id e) {}
   let mut out := #[]
   for l in locked do
     match byId[l.id]? with
     | some e =>
-      if e.info.kind == l.kind then
+      if l.moved.isNone && e.info.kind == l.kind then
         if e.info.retired.isSome then
           out := out.push { l with retired := true }
         else if accept then
@@ -125,20 +151,24 @@ def defaultLock : IO System.FilePath := do
   return "claims.lock"
 
 def usage : String :=
-  "usage: lake exe ledger (check | update [--accept]) [--lock PATH] [--root MODULE]…"
+  "usage: lake exe ledger (check | update [--accept] | move <scope> <id>…) [--lock PATH] [--scope NAME] [--root MODULE]…"
 
 unsafe def main (args : List String) : IO UInt32 := do
   let mut cmd := none
   let mut accept := false
   let mut lock ← defaultLock
   let mut roots : List Name := []
+  let mut scope := "cairn"
+  let mut operands : List String := []
   let mut rest := args
   while !rest.isEmpty do
     match rest with
     | "--accept" :: r => accept := true; rest := r
     | "--lock" :: p :: r => lock := p; rest := r
     | "--root" :: m :: r => roots := roots ++ [m.toName]; rest := r
+    | "--scope" :: s :: r => scope := s; rest := r
     | c :: r => if cmd.isNone then cmd := some c; rest := r else
+        if cmd == some "move" then operands := operands ++ [c]; rest := r else
         IO.eprintln usage; return 2
     | [] => rest := []
   if roots.isEmpty then roots := [`Cairn, `Examples, `Cairn.Fuzz.Trusted.Claims]
@@ -147,22 +177,35 @@ unsafe def main (args : List String) : IO UInt32 := do
   let locked ← match parse text with
     | .ok ls => pure ls
     | .error e => IO.eprintln s!"ledger: {e}"; return 1
-  let r := compare env locked
+  let r := compare env scope locked
   for w in r.warnings do IO.eprintln s!"ledger: warning: {w}"
   match cmd with
   | some "check" =>
     for e in r.errors ++ r.fresh do IO.eprintln s!"ledger: error: {e}"
-    let n := (entries env).size
-    IO.println s!"ledger: {n} claims in code, {locked.size} in {lock}, {r.errors.size + r.fresh.size} errors, {r.warnings.size} warnings"
+    let n := (inScope env scope).size
+    IO.println s!"ledger: {n} {scope} claims in code, {locked.size} in {lock}, {r.errors.size + r.fresh.size} errors, {r.warnings.size} warnings"
     return if r.errors.isEmpty && r.fresh.isEmpty then 0 else 1
   | some "update" =>
     unless r.errors.isEmpty do
       for e in r.errors do IO.eprintln s!"ledger: error: {e}"
       IO.eprintln "ledger: not updating claims.lock until these are fixed"
       return 1
-    let out := update env locked accept
+    let out := update env scope locked accept
     IO.FS.writeFile lock (render out)
     IO.println s!"ledger: wrote {out.size} ids to {lock} ({out.size - locked.size} new)"
+    return 0
+  | some "move" =>
+    let to :: ids := operands | IO.eprintln usage; return 2
+    let code := inScope env scope
+    let mut out := locked
+    for i in ids do
+      let some id := i.toNat? | IO.eprintln s!"ledger: `{i}` is not an id"; return 2
+      let some k := out.findIdx? (·.id == id) | IO.eprintln s!"ledger: ^{id} is not in {lock}"; return 1
+      if code.any (·.info.id == id) then
+        IO.eprintln s!"ledger: ^{id} is still in {scope}'s code; move it out first"; return 1
+      out := out.set! k { out[k]! with moved := some to }
+    IO.FS.writeFile lock (render out)
+    IO.println s!"ledger: marked {ids.length} ids moved:{to} in {lock}"
     return 0
   | _ => IO.eprintln usage; return 2
 

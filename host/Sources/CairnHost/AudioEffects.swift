@@ -7,7 +7,7 @@ import Foundation
 // only their levels (20 ms windows of sums of squares and peaks) and asks for a WAV of a range
 // of windows, which goes straight into an upload body.
 
-/// Samples per level window: 20 ms at 16 kHz (`Examples.Yap.Chunker.windowSamples`).
+/// Samples per level window: 20 ms at 16 kHz (`Yap.Chunker.windowSamples`).
 public let windowSamples = 320
 /// The sample rate the host records at, as Yap's AudioCapture does.
 public let sampleRate = 16_000

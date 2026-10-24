@@ -1,0 +1,67 @@
+#!/bin/sh
+# cairn-link: one static library for a Cairn app's Swift host (docs/package.md).
+#
+#   cairn-link [--lib <LeanLib>]... --out <path/libNAME.a>
+#
+# Run from the app's Lake package directory (the one with its lakefile), with the pinned
+# toolchain on PATH. It builds each named Lean library's static facet and Cairn's, then merges
+# into one archive, with libtool:
+#
+#   - Lean's runtime: libInit, libleanrt, libuv and libgmp from `lean --print-prefix`;
+#   - Cairn's library (libcairn_Cairn.a, with its C glue) and claims_meta.o, the weak stand-ins
+#     for the claim commands' initializers (Cairn's docs/claims.md, "Linking");
+#   - each --lib, the app's own Lean libraries (`Yap` builds `Yap:static`).
+#
+# The app's root Package.swift links the result:
+#
+#   linkerSettings: [.unsafeFlags(["-L<dir>", "-l<NAME>"])]
+#
+# With --lib, the library must define `cairn_app_init` exactly once (a v1 app; docs/runtime.md).
+# Without, it is the runtime and Cairn alone (cairn's own Makefile builds build/lib/libcairn_lean.a
+# that way). The minimal entry point for `cairn build`, which runs lake build, this, then swift build.
+set -eu
+
+die() { echo "cairn-link: $*" >&2; exit 1; }
+
+libs=""
+out=""
+while [ $# -gt 0 ]; do
+	case "$1" in
+	--lib) [ $# -ge 2 ] || die "--lib needs a Lean library name"; libs="$libs $2"; shift 2 ;;
+	--out) [ $# -ge 2 ] || die "--out needs a path"; out="$2"; shift 2 ;;
+	-h|--help) sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+	*) die "unknown argument $1 (cairn-link --help)" ;;
+	esac
+done
+[ -n "$out" ] || die "missing --out <path/libNAME.a>"
+case "$(basename "$out")" in lib*.a) ;; *) die "--out must name lib<NAME>.a, got $out" ;; esac
+[ -f lakefile.lean ] || [ -f lakefile.toml ] || die "run me from a Lake package directory (no lakefile here)"
+command -v lake >/dev/null || die "lake is not on PATH (export PATH=\$HOME/.elan/bin:\$PATH)"
+command -v libtool >/dev/null || die "libtool is missing (Xcode's command line tools)"
+
+prefix=$(lean --print-prefix)
+# `lake query` builds each target and prints its path. @cairn/ names Cairn's package whether
+# it is this one or a dependency.
+cairn=$(lake query @cairn/Cairn:static | tail -1)
+stubs=$(lake query @cairn/claims_meta.o | tail -1)
+app=""
+for l in $libs; do
+	app="$app $(lake query "$l:static" | tail -1)"
+done
+
+mkdir -p "$(dirname "$out")"
+tmp="$out.tmp.$$"
+# shellcheck disable=SC2086
+libtool -static -o "$tmp" $app "$cairn" "$stubs" \
+	"$prefix/lib/lean/libInit.a" "$prefix/lib/lean/libleanrt.a" \
+	"$prefix/lib/libuv.a" "$prefix/lib/libgmp.a" 2>&1 | grep -v "has no symbols" >&2 || true
+[ -f "$tmp" ] || die "libtool wrote nothing"
+
+n=$(nm -gU "$tmp" 2>/dev/null | grep -c ' _cairn_app_init$' || true)
+if [ -n "$libs" ]; then
+	[ "$n" -eq 1 ] || { rm -f "$tmp"; die "$out would define cairn_app_init $n times; link exactly one app"; }
+else
+	[ "$n" -eq 0 ] || { rm -f "$tmp"; die "$out has app exports without --lib"; }
+fi
+mv "$tmp" "$out"
+echo "cairn-link: $out ($(du -h "$out" | cut -f1 | tr -d ' '))"

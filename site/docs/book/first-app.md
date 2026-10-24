@@ -113,5 +113,6 @@ the new ids with `cd lean && lake exe ledger update`, and commit `claims.lock` w
 it with `make demo DEMO=Cairn<App>`.
 
 Pick ids in a range of their own: the examples use ^1–^7 (Counter), ^101–^109 (Basics), ^201–^224
-(TodoMVC), ^301–^399 (Yap), ^401–^409 (Clock) and ^450 onwards (Tray); the trusted base uses ^900 and up. Ids are global for now; per-package ids are
-part of issue #75.
+(TodoMVC), ^401–^409 (Clock) and ^450 onwards (Tray); the trusted base uses ^900 and up, and
+^301–^399 moved with Yap to its own package. Ids are scoped per package: these are all `cairn^N`,
+and an app in its own repository has its own (`yap^301`), so it can number from ^1.

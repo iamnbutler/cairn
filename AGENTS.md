@@ -13,7 +13,11 @@ evidence. Read [GOAL.md](GOAL.md) for what we are building now (M2; M1 is in doc
 - `docs/`: design docs, the frame format (`frame.md`) and the trusted base (`trusted.md`).
 - `research/`: sourced notes on prior art, one folder per source.
 - `tools/`: the conformance driver, map generation, audits.
-- `claims.lock`: every claim id ever issued. Tools write it; never edit it by hand.
+- `claims.lock`: every `cairn^N` claim id ever issued. Tools write it; never edit it by hand.
+- `Package.swift` (root) and `bin/cairn-link`: Cairn as a package for apps in their own repos
+  (docs/package.md). The root manifest is library-only with no `unsafeFlags`; it declares
+  host/'s library targets again, so keep it in step with `host/Package.swift`. Yap lives in
+  iamnbutler/yap-cairn and depends on a tag; a change to anything it uses needs a new tag.
 
 ## Rules
 

@@ -15,7 +15,9 @@ The existing Yap is the reference. Read it; don't change it.
 
 ## The demo
 
-`make yap` builds and installs a signed `Yap (Cairn).app`. Nate uses it instead of Yap for a day
+`make yap` builds and installs a signed `Yap (Cairn).app`. Since #75 the app lives in its own
+repository, [iamnbutler/yap-cairn](https://github.com/iamnbutler/yap-cairn), and depends on a tagged
+Cairn (docs/package.md); `make yap` runs there. Nate uses it instead of Yap for a day
 of real work. Its state, its decisions and its menus are Lean; Swift captures audio, hears the
 key, makes the request, writes files and types the text, each one an effect Lean asked for.
 

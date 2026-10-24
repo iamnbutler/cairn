@@ -261,7 +261,7 @@ public final class StatusHost {
         guard let item, let button = item.button else { return }
         // Every write below, even of an unchanged value, makes AppKit redraw the status item's
         // replicants in the menu bar (-[NSStatusItem _updateReplicants]); frames arrive at up to
-        // 50 a second while recording, so write only what changed (bench/yap-instruments.md).
+        // 50 a second while recording, so write only what changed (yap-cairn's bench/yap-instruments.md).
         if item.isVisible != s.shown { item.isVisible = s.shown }
         if old.symbol != status.symbol || button.image == nil && !status.symbol.isEmpty {
             let image = status.symbol.isEmpty ? nil
@@ -348,7 +348,7 @@ public final class PanelHost {
         }
     }
 
-    /// Benchmarks only (tools/bench/): put every panel on `NSScreen.screens[i]` whatever the
+    /// Benchmarks only (yap-cairn's tools/bench/): put every panel on `NSScreen.screens[i]` whatever the
     /// frame chose, so runs compared with each other draw on the same display.
     public static var benchScreen: Int?
 
@@ -452,7 +452,7 @@ final class PanelContentView: NSView {
     /// A panel draws at most 60 frames a second, as the original Yap's overlay does (its
     /// `MTKView.preferredFramesPerSecond = 60`, App/Overlay.swift): on a 120 Hz display an
     /// animated `paint` would otherwise draw every refresh and queue up behind its own
-    /// drawables (bench/yap-instruments.md, "120 Hz").
+    /// drawables (yap-cairn's bench/yap-instruments.md, "120 Hz").
     static let maxFps: Float = 60
 
     func update(size: Size) {

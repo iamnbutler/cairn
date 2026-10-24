@@ -45,7 +45,7 @@ audits every theorem's axioms, replays every declaration through the kernel, che
 ledger, runs the Swift tests and each app's self test, fuzzes every app briefly, and checks binary
 sizes:</p>
 <figure class="code"><pre class="px"><code class="make"><span class="cm"># Everything a PR must pass.</span>
-<span class="kw">check</span>: lint audit ledger kernel doctest test selftest fuzz-quick size fuzz-trusted-quick docs-check</code></pre><figcaption><code>Makefile</code>, lines 80–81</figcaption></figure>
+<span class="kw">check</span>: lint audit ledger kernel doctest test selftest fuzz-quick size fuzz-trusted-quick docs-check</code></pre><figcaption><code>Makefile</code>, lines 77–78</figcaption></figure>
 <h3 id="the-self-test">The self test</h3>
 <p>Each app's executable has a <code>--selftest</code> mode: it runs the real host, with its threads and
 accessibility mirror, but no window, and drives the app through its controls. Counter's checks
@@ -63,7 +63,7 @@ with the Lean model at every step. Conformance needs one small file per app, und
 <figure class="code"><pre class="px"><code class="make"><span class="cm"># Claim-driven fuzzing (docs/fuzz.md): `make fuzz APP=Basics N=1000` runs N sequences from seed</span>
 <span class="cm"># SEED (default 0) and writes build/fuzz/$(APP).json, which `make map` reads.</span>
 <span class="kw">fuzz</span>: lean
-	cd lean &amp;&amp; lake build fuzz &amp;&amp; .lake/build/bin/fuzz $(APP) --seed $(or $(SEED),0) --iterations $(or $(N),200) --out ../build/fuzz</code></pre><figcaption><code>Makefile</code>, lines 293–296</figcaption></figure>
+	cd lean &amp;&amp; lake build fuzz &amp;&amp; .lake/build/bin/fuzz $(APP) --seed $(or $(SEED),0) --iterations $(or $(N),200) --out ../build/fuzz</code></pre><figcaption><code>Makefile</code>, lines 258–261</figcaption></figure>
 <h2 id="size">Size</h2>
 <p>A Cairn app should be a few megabytes. The commands that declare claims need Lean's compiler at
 build time, and linking the compiler into an app makes it about 100 MB, so apps only <code>meta import</code>
@@ -72,27 +72,21 @@ them. <code>make size</code> builds each app for release and fails past 5 MB:</p
 <span class="cm"># into build/size/, attributed (Lean runtime, Cairn, the app, Swift host, shaders), and checked</span>
 <span class="cm"># against SIZE_LIMIT bytes. No host app links `Lean` (the compiler, about 100 MB), so each is a</span>
 <span class="cm"># few MB; crossing the limit almost always means something imported `Lean`.</span>
-SIZE_APPS = CairnCounter CairnBasics CairnTodo CairnClock CairnTray CairnYap
-SIZE_LIMIT = 5000000</code></pre><figcaption><code>Makefile</code>, lines 315–320</figcaption></figure>
+SIZE_APPS = CairnCounter CairnBasics CairnTodo CairnClock CairnTray
+SIZE_LIMIT = 5000000</code></pre><figcaption><code>Makefile</code>, lines 273–278</figcaption></figure>
 <h2 id="bundle-and-sign">Bundle and sign</h2>
 <p><code>make bundle APP=&lt;App&gt;</code> writes a <code>.app</code> bundle. Per-app <code>Info.plist</code> and entitlements go in
 <code>host/Bundles/&lt;App&gt;/</code>:</p>
 <figure class="code"><pre class="px"><code class="make"><span class="cm"># An app bundle: `make bundle APP=Tray [SIGN=identity]` writes build/apps/Tray.app. Per-app</span>
 <span class="cm"># Info.plist and entitlements go in host/Bundles/&lt;App&gt;/ (tools/bundle/bundle.sh).</span>
 <span class="kw">bundle</span>: host
-	tools/bundle/bundle.sh $(APP) $$(cd host &amp;&amp; swift build --show-bin-path) $(or $(SIGN),-) "$(or $(NAME),$(APP))"</code></pre><figcaption><code>Makefile</code>, lines 136–139</figcaption></figure>
+	tools/bundle/bundle.sh $(APP) $$(cd host &amp;&amp; swift build --show-bin-path) $(or $(SIGN),-) "$(or $(NAME),$(APP))"</code></pre><figcaption><code>Makefile</code>, lines 117–120</figcaption></figure>
 <p>Yap shows a release build signed with a stable identity. Signing with the same identity every
 time matters: macOS grants permissions such as Accessibility and the microphone to the code
-signature, so a differently signed build is a new app and has to be granted again.</p>
-<figure class="code"><pre class="px"><code class="make"><span class="cm"># Yap on Cairn (docs/yap.md): `make yap` builds build/apps/Yap (Cairn).app, release, signed with</span>
-<span class="cm"># the first valid Apple Development identity (Yap's own project.yml signs with team 8S43JJMN6B's</span>
-<span class="cm"># "Apple Development"), so TCC grants survive rebuilds. YAP_SIGN=&lt;identity or hash&gt; overrides it.</span>
-<span class="cm"># `make yap-install` copies it to /Applications, beside (never over) the original Yap.app.</span>
-YAP_SIGN ?= $(shell security find-identity -v -p codesigning | grep '"Apple Development' | grep -v CSSMERR | head -1 | awk '{print $$2}')
-<span class="kw">yap</span>: lean
-	cd host &amp;&amp; swift build -c release --product CairnYap
-	@[ -n "$(YAP_SIGN)" ] || { echo "yap: no Apple Development identity; pass YAP_SIGN=&lt;identity&gt;"; exit 1; }
-	tools/bundle/bundle.sh Yap $$(cd host &amp;&amp; swift build -c release --show-bin-path) $(YAP_SIGN) "Yap (Cairn)"</code></pre><figcaption><code>Makefile</code>, lines 143–151</figcaption></figure>
+signature, so a differently signed build is a new app and has to be granted again. Its package's
+<code>make yap</code> finds the first valid Apple Development identity with <code>security find-identity</code> and
+passes it to Cairn's <code>tools/bundle/bundle.sh</code>, which an app outside this repository runs from its
+Lake checkout of Cairn.</p>
 <h2 id="publish-the-map">Publish the map</h2>
 <p>The map is a set of pages generated from an app's claims and the build's evidence: one row per
 claim, its proofs, fuzz and conformance results, and screenshots taken from the app's own frames.
@@ -110,7 +104,7 @@ MAPDIR = build/map/$(APP)
 	bun tools/map/cairn-map.ts script --claims $(MAPDIR)/claims.json &gt; $(MAPDIR)/script.json
 	rm -rf $(MAPDIR)/capture
 	cd host &amp;&amp; swift run Cairn$(APP) --map-capture ../$(MAPDIR)/script.json ../$(MAPDIR)/capture
-	bun tools/map/cairn-map.ts build --app $(APP) --dir $(MAPDIR)</code></pre><figcaption><code>Makefile</code>, lines 205–218</figcaption></figure>
+	bun tools/map/cairn-map.ts build --app $(APP) --dir $(MAPDIR)</code></pre><figcaption><code>Makefile</code>, lines 170–183</figcaption></figure>
 
 </article>
 <nav class="pager" aria-label="The Book"><a class="prev" rel="prev" href="/docs/book/effects/"><small>Previous</small>Effects and the host</a><span></span></nav>

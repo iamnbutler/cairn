@@ -211,13 +211,13 @@ shrunk from 13 operations to 2.
 
 ## Yap: a random host
 
-Yap's dictation is driven by the host, not by moves, so `lake exe yapfuzz` (`make fuzz-yap`,
+Yap's dictation is driven by the host, not by moves, so `lake exe yapfuzz` (yap-cairn's `make fuzz-yap`,
 and in `make fuzz-quick`) plays a random host instead, in two modes, and writes one
 `build/fuzz/Yap.json`:
 
-- **host** (`lean/Examples/Yap/Fuzz.lean`): inputs straight into the model's `step`, checking
+- **host** (yap-cairn's `lean/Yap/Fuzz.lean`): inputs straight into the model's `step`, checking
   ^311–^323 as the model states them. It imports the model only, so it builds against mutants.
-- **app** (`lean/Examples/Yap/AppFuzz.lean`): messages into the app's `receive` and menu items
+- **app** (yap-cairn's `lean/Yap/AppFuzz.lean`): messages into the app's `receive` and menu items
   into `menuStep`, as the Cairn runtime sends them. The host answers the requests the app made
   (files there or not, config.json and dictionary.txt good and bad, OpenAI's transcripts and
   errors, typing that fails), late, twice, out of order or never; fires the subscriptions the
@@ -225,7 +225,7 @@ and in `make fuzz-quick`) plays a random host instead, in two modes, and writes 
   and quits the original Yap. It keeps the day files' contents (an append, a write or a delete
   lands when its answer says it worked; a read gives what is there) and answers requests in
   any order, as the host's concurrent requests finish, so an append can land after the read
-  that marks its line. It checks ^311–^323, ^346 and ^347 as `Examples.Yap` states them over
+  that marks its line. It checks ^311–^323, ^346 and ^347 as `Yap` states them over
   `AppState` and effects, and ^347 on disk: once every request is answered, each transcript
   typed while kept, whose append worked, is `"typed":true` (a mark the app gives up on must
   say so in the menu). Dropping the original-Yap test from `wantsKey` is caught as ^346
@@ -487,13 +487,13 @@ in 20,000 cases), but a cap would be cheaper.
 
 ### Yap: a random host
 
-Yap's dictation is driven by the host, not by moves, so `lake exe yapfuzz` (`make fuzz-yap`,
+Yap's dictation is driven by the host, not by moves, so `lake exe yapfuzz` (yap-cairn's `make fuzz-yap`,
 and in `make fuzz-quick`) plays a random host instead, in two modes, and writes one
 `build/fuzz/Yap.json`:
 
-- **host** (`lean/Examples/Yap/Fuzz.lean`): inputs straight into the model's `step`, checking
+- **host** (yap-cairn's `lean/Yap/Fuzz.lean`): inputs straight into the model's `step`, checking
   ^311–^323 as the model states them. It imports the model only, so it builds against mutants.
-- **app** (`lean/Examples/Yap/AppFuzz.lean`): messages into the app's `receive` and menu items
+- **app** (yap-cairn's `lean/Yap/AppFuzz.lean`): messages into the app's `receive` and menu items
   into `menuStep`, as the Cairn runtime sends them. The host answers the requests the app made
   (files there or not, config.json and dictionary.txt good and bad, OpenAI's transcripts and
   errors, typing that fails), late, twice, out of order or never; fires the subscriptions the
@@ -501,7 +501,7 @@ and in `make fuzz-quick`) plays a random host instead, in two modes, and writes 
   and quits the original Yap. It keeps the day files' contents (an append, a write or a delete
   lands when its answer says it worked; a read gives what is there) and answers requests in
   any order, as the host's concurrent requests finish, so an append can land after the read
-  that marks its line. It checks ^311–^323, ^346 and ^347 as `Examples.Yap` states them over
+  that marks its line. It checks ^311–^323, ^346 and ^347 as `Yap` states them over
   `AppState` and effects, and ^347 on disk: once every request is answered, each transcript
   typed while kept, whose append worked, is `"typed":true` (a mark the app gives up on must
   say so in the menu). Dropping the original-Yap test from `wantsKey` is caught as ^346

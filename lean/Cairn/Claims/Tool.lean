@@ -17,12 +17,13 @@ unsafe def load (roots : List Name) : IO Environment := do
   enableInitializersExecution
   importModules (roots.map ({ module := · })).toArray {} (trustLevel := 1024) (loadExts := true)
 
-/-- Whether a constant comes from Cairn's own modules (`Cairn.*`, `Examples.*`). -/
-def ours (env : Environment) (n : Name) : Bool :=
+/-- Whether a constant comes from Cairn's own modules (`Cairn.*`, `Examples.*`) or from the
+claim's own package, the modules under `own` (`Yap` for a claim in `Yap.Model`). -/
+def ours (env : Environment) (own : Name) (n : Name) : Bool :=
   match env.getModuleIdxFor? n with
   | some idx =>
     let m := env.header.moduleNames[idx.toNat]!
-    m.getRoot == `Cairn || m.getRoot == `Examples
+    m.getRoot == `Cairn || m.getRoot == `Examples || m.getRoot == own
   | none => false
 
 /-! ### Statement hashes
@@ -41,7 +42,8 @@ structure Hasher where
   /-- Constants being hashed, to cut cycles. -/
   active : NameSet := {}
 
-abbrev HashM := ReaderT Environment (StateM Hasher)
+/-- The environment, and the root of the claim's own modules (see `ours`). -/
+abbrev HashM := ReaderT (Environment × Name) (StateM Hasher)
 
 def mixByte (h : UInt64) (b : UInt8) : UInt64 := (h ^^^ b.toUInt64) * 1099511628211
 
@@ -70,9 +72,9 @@ def claimTypes : List Name :=
 
 mutual
 partial def hashConst (n : Name) : HashM Unit := do
-  let env ← read
+  let (env, own) ← read
   emitStr n.toString
-  unless ours env n do return
+  unless ours env own n do return
   -- Machines and other claims count by name: each claim has its own id and hash, so changing a
   -- move flags that move, not every flow and invariant stated against its machine.
   if let some ci := env.find? n then
@@ -120,7 +122,7 @@ def statementHash (env : Environment) (e : Entry) : String :=
     for t in e.triggers do emitStr t
     emitTag (if e.keyed then 1 else 0)
     for n in e.statement do hashConst n
-  hex ((act.run env).run {}).2.h
+  hex ((act.run (env, e.module.getRoot)).run {}).2.h
 
 /-- The axioms a theorem depends on beyond Lean's standard three. -/
 def extraAxioms (env : Environment) (n : Name) : IO (List Name) := do
