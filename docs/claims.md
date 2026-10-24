@@ -242,6 +242,8 @@ changing a move flags that move and not every flow over the machine.
   id is reused for a different kind; when a retired id comes back as a live claim; when the code
   issues an id twice; when a claim has no `does`; and when the code has an id the lock doesn't
   (run `lake exe ledger update` and commit `claims.lock`);
+- **fails** when a claim that the package's last release had active is now retired (or moved),
+  and `cairn.toml`'s version isn't a breaking one after that release (below);
 - **warns** when a claim's statement hash or title changed: "meaning changed: give it a new id
   or `lake exe ledger update --accept`".
 
@@ -255,6 +257,22 @@ and with `--accept` records changed hashes and titles. It never removes a line a
 write while `check` has errors other than new ids. Both take `--lock PATH` and `--root MODULE`
 (default roots `Cairn`, `Examples` and `Cairn.Fuzz.Trusted.Claims`: a claim in a module neither imports is invisible to the
 ledger, so every app module must be reachable from `Examples.lean`).
+
+### Retiring needs a major version
+
+A released claim is a promise to the apps that rely on it, so ending one is a breaking change.
+A claim that a published version had active may be retired, or moved to another package, only in
+a new major version, or in a new minor version while the package is at 0.x (semver's rule for
+0.x, as Cargo applies it): Cairn at 0.1.1 can retire ^2 in 0.2.0 but not in 0.1.2, and at 1.4.0
+only in 2.0.0. A claim added since the last release can go in any version.
+
+The ledger finds the last release in git: the highest final `v<version>` tag that isn't after
+`cairn.toml`'s version (release candidates don't count), and reads `claims.lock` at that tag
+(`git show v0.1.1:./claims.lock`). `cairn.toml` is the one beside the lock; `--version V` stands
+in for its version. With no `cairn.toml` or no tag there's nothing to compare against, so the
+check passes. So: bump the version in `cairn.toml` first, then retire. The rule is pure code in
+`Cairn.Claims.Release`, with tests in `Cairn.Claims.Tests`. The registry checks the same rule
+when a version is published (nextpm's cairn kind), against the version before it.
 
 ## Export for the map
 
