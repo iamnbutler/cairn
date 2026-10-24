@@ -345,6 +345,10 @@ final class FileOpsSuite: Suite {
         let world = World(handlers: Handlers(table: [:]), devices: .inert)
         world.watchPeriodMs = g.elem([5, 10, 20])
         let period = world.watchPeriodMs
+        // The look after a change comes sooner than the period (the live world: 250 ms after
+        // one that saw a change, else every 2 s), or a whole period later.
+        world.watchSettleMs = g.bool() ? period : g.elem([1, 2, period / 2])
+        r.count(c, world.watchSettleMs < period ? "shortSettle" : "periodSettle")
         let events = Locked<[(UInt32, SubEvent, UInt64)]>([])
         world.send = { es in
             for case let .subEvent(id, e) in es { events.update { $0.append((id, e, HostClock.monoMs())) } }

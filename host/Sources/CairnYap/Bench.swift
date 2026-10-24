@@ -161,7 +161,7 @@ enum Bench {
                 typed.update { $0 += 1 }
             })
         let world = fakeWorld(home: home, mic: mic, keys: keys, log: log, typist: typist, protocolClass: mode.kind == .demo ? DemoOpenAI.self : BenchOpenAI.self)
-        world.watchPeriodMs = 250  // the live world's period, not the self test's
+        world.watchPeriodMs = World.liveWatchPeriodMs  // the live world's period, not the self test's
 
         let d = BenchDriver(mic: mic, keys: keys, typed: typed, trial: trial)
         let driver = Thread { [d] in
