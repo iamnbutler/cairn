@@ -1,39 +1,39 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8">
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Invariants and assumptions · Counter map</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="style.css"></head><body><div class="page"><nav class="rail" aria-label="Areas"><a class="home" href="index.html">Counter map</a>
-<a href="counter-window.html">Counter window</a>
-<a href="guarantees.html" class="on">Invariants and assumptions</a>
-<a href="gaps.html">Gaps <span class="count">0</span></a>
+<meta name="description" content="Every claim Counter makes, with the evidence the build has for it.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav class="bar"><a class="home" href="../../"><img src="icon.svg" alt="">Cairn</a><span class="sep">/</span><a href="index.html">Counter map</a><a href="counter-window.html">Counter window</a><a href="guarantees.html" class="on">Invariants and assumptions</a><a href="evidence.html">Evidence</a></nav>
+<main>
+<header class="page"><div class="eyebrow">Counter</div><h1>Invariants and assumptions</h1><p class="lede">What holds in every state the app can reach (proved), and what the proofs take as given about the world (assumed).</p></header>
 
 
-<hr><a href="notes/evidence.html">Evidence</a></nav><main>
-<header><div class="eyebrow">Counter map · guarantees</div><h1>Invariants and assumptions</h1><p class="lede">What holds in every reachable state (proved), and what the proofs take as given about the world (assumed, never proved).</p>
-</header>
-<figure class="overview"><div class="lanes"><div class="lane"><a class="lane-label" href="#6"><span class="id">^6</span>Moves never leave a press in progress</a>
-<ol class="boxes"></ol></div><div class="lane"><a class="lane-label" href="#7"><span class="id">^7</span>The host reports clicks where they happen</a>
-<ol class="boxes"></ol></div></div>
-<figcaption class="key"><span><i class="sw tested"></i>tested</span><span><i class="sw visual"></i>visual</span><span><i class="sw partial"></i>partial</span><span><i class="sw broken"></i>broken</span><span><i class="sw untested"></i>untested</span><span><i class="sw missing"></i>missing</span><span><i class="sw planned"></i>planned</span><span><b class="dot">n</b>open gap</span></figcaption></figure>
+<h2>Invariants <span class="n">1</span></h2>
+<section class="claim px" id="6">
+<div class="head"><a class="id" href="#6">^6</a><h3>Moves never leave a press in progress</h3><span class="pix muted">invariant</span><span class="hl retired">retired</span></div>
+<div class="body wide"><div class="said"><p class="retired-why">Retired: The runtime owns press tracking; Counter's state no longer has a pressed field, so the invariant was vacuous.</p><p class="src"><a href="https://github.com/iamnbutler/cairn/blob/main/lean/Examples/Counter.lean#L77">lean/Examples/Counter.lean:77</a> · <code>Counter.retired_6</code> · ledger: retired</p></div></div>
 
-<section class="flow" id="6">
-<div class="flow-head"><a class="id" href="#6">^6</a><h2>Moves never leave a press in progress</h2><span class="st untested">untested</span></div>
-
-<p class="summary">No move touches the press the spike is tracking, so after any sequence of moves none is in progress. — proved ✓ · conformance <b>not run</b></p>
-
-<div class="meta"><a class="code" href="https://github.com/iamnbutler/cairn/blob/main/lean/Examples/Counter.lean#L65">lean/Examples/Counter.lean:65</a></div>
-
-<ol class="steps"></ol>
 </section>
-<section class="flow" id="7">
-<div class="flow-head"><a class="id" href="#7">^7</a><h2>The host reports clicks where they happen</h2><span class="st untested">untested</span></div>
+<h2>Assumptions <span class="n">1</span></h2>
+<section class="claim px" id="7">
+<div class="head"><a class="id" href="#7">^7</a><h3>The host reports clicks where they happen</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="body wide"><div class="said"><b>Does</b><p>The host sends a pointer down and up at the logical point the person clicked, in order.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed gap" title="No check of the trusted-base fuzzer names it.">unchecked</span></dt><dd>No check of the trusted-base fuzzer names it.</dd></dl><p class="src"><a href="https://github.com/iamnbutler/cairn/blob/main/lean/Examples/Counter.lean#L79">lean/Examples/Counter.lean:79</a> · <code>Counter.hostClicks</code> · ledger: active</p></div></div>
 
-<p class="summary">The spike host sends a pointer down and up at the logical point the person clicked, in order. — assumed</p>
-
-<div class="meta"><a class="code" href="https://github.com/iamnbutler/cairn/blob/main/lean/Examples/Counter.lean#L73">lean/Examples/Counter.lean:73</a></div>
-
-<ol class="steps"></ol>
 </section>
-<footer class="pager"><a rel="prev" href="counter-window.html">← Counter window</a></footer>
-</main></div><script src="keys.js"></script></body></html>
+</main>
+<footer>Generated by <code>make map APP=Counter</code> from the claims and the build. Nothing here is written by hand.</footer>
+<script type="module">
+// On the site, the headings get the meadow's sprigs (site/public/scene.js); elsewhere, nothing.
+import("/scene.js").then((m) => m.mountSprigs(document.querySelector("main"))).catch(() => {});
+</script>
+</body>
+</html>

@@ -1,98 +1,65 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8">
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Basics window · Basics map</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="style.css"></head><body><div class="page"><nav class="rail" aria-label="Areas"><a class="home" href="index.html">Basics map</a>
-<a href="basics-window.html" class="on">Basics window</a>
-<a href="guarantees.html">Invariants and assumptions</a>
-<a href="gaps.html">Gaps <span class="count">0</span></a>
-
-
-<hr><a href="notes/evidence.html">Evidence</a></nav><main>
-<header><div class="eyebrow">Basics map · basics-window</div><h1>Basics window</h1><p class="lede">The window: a heading, the New item field and Add, the list of items, and the count of items left. Generated from the claims in <code>Examples.Basics</code>; every status comes from evidence (see the Evidence page).</p>
-</header>
-<figure class="overview"><div class="lanes"><div class="lane"><a class="lane-label" href="#106"><span class="id">^106</span>Basics window</a>
-<ol class="boxes"><li><a class="box visual" href="#101"><span class="id">^101</span><span class="t">Type a new item</span></a></li><li><a class="box visual" href="#102"><span class="id">^102</span><span class="t">Add</span></a></li><li><a class="box visual" href="#103"><span class="id">^103</span><span class="t">Toggle an item</span></a></li><li><a class="box visual" href="#104"><span class="id">^104</span><span class="t">Delete an item</span></a></li></ol></div><div class="lane"><a class="lane-label" href="#107"><span class="id">^107</span>Add two items and finish one</a>
-<ol class="boxes"></ol></div><div class="lane"><a class="lane-label" href="#108"><span class="id">^108</span>Blank text adds nothing</a>
-<ol class="boxes"></ol></div><div class="lane"><a class="lane-label" href="#109"><span class="id">^109</span>Add an item, then delete it</a>
-<ol class="boxes"></ol></div></div>
-<figcaption class="key"><span><i class="sw tested"></i>tested</span><span><i class="sw visual"></i>visual</span><span><i class="sw partial"></i>partial</span><span><i class="sw broken"></i>broken</span><span><i class="sw untested"></i>untested</span><span><i class="sw missing"></i>missing</span><span><i class="sw planned"></i>planned</span><span><b class="dot">n</b>open gap</span></figcaption></figure>
-
-<section class="flow" id="106">
-<div class="flow-head"><a class="id" href="#106">^106</a><h2>Basics window</h2><span class="st visual">visual</span></div>
-
-<p class="summary">seen ✓</p>
-
-<div class="meta"><a class="code" href="https://github.com/iamnbutler/cairn/blob/main/lean/Examples/Basics.lean#L282">lean/Examples/Basics.lean:282</a></div>
-
-<ol class="steps"><li class="step has-shot" id="101">
-<div class="step-text"><div class="step-head"><a class="id" href="#101">^101</a><h3>Type a new item</h3><span class="st visual">visual</span></div>
-
-<div class="where">Basics window (<a class="ref" href="basics-window.html#106" title="Basics window">^106</a>) — proved ✓ · conformance <b>not run</b> · seen ✓</div>
-<p>Type in the New item field, and press Enter.</p>
-<p class="sees">The text appears in the field; Enter adds it like Add does.</p>
-
-<div class="meta"><a class="code" href="https://github.com/iamnbutler/cairn/blob/main/lean/Examples/Basics.lean#L285">lean/Examples/Basics.lean:285</a></div></div>
-<div class="step-shots"><div class="shot"><a href="img/flow-107-0.pinned.webp"><img loading="lazy" src="img/flow-107-0.pinned.webp" alt=""></a></div><div class="shot"><a href="img/flow-107-1.pinned.webp"><img loading="lazy" src="img/flow-107-1.pinned.webp" alt=""></a></div></div>
-</li>
-<li class="step has-shot" id="102">
-<div class="step-text"><div class="step-head"><a class="id" href="#102">^102</a><h3>Add</h3><span class="st visual">visual</span></div>
-
-<div class="where">Basics window (<a class="ref" href="basics-window.html#106" title="Basics window">^106</a>) — proved ✓ · conformance <b>not run</b> · seen ✓</div>
-<p>Press Add.</p>
-<p class="sees">The field's text, trimmed, is added at the end of the list and the field is cleared. Blank text changes nothing.</p>
-
-<div class="meta"><a class="code" href="https://github.com/iamnbutler/cairn/blob/main/lean/Examples/Basics.lean#L298">lean/Examples/Basics.lean:298</a></div></div>
-<div class="step-shots"><div class="shot"><a href="img/flow-107-3.pinned.webp"><img loading="lazy" src="img/flow-107-3.pinned.webp" alt=""></a></div><div class="shot"><a href="img/flow-107-4.pinned.webp"><img loading="lazy" src="img/flow-107-4.pinned.webp" alt=""></a></div></div>
-</li>
-<li class="step has-shot" id="103">
-<div class="step-text"><div class="step-head"><a class="id" href="#103">^103</a><h3>Toggle an item</h3><span class="st visual">visual</span></div>
-
-<div class="where">Basics window (<a class="ref" href="basics-window.html#106" title="Basics window">^106</a>) — proved ✓ · conformance <b>not run</b> · seen ✓</div>
-<p>Press an item's checkbox.</p>
-<p class="sees">The item is marked done, or not done again, and the count of items left follows.</p>
-
-<div class="meta"><a class="code" href="https://github.com/iamnbutler/cairn/blob/main/lean/Examples/Basics.lean#L306">lean/Examples/Basics.lean:306</a></div></div>
-<div class="step-shots"><div class="shot"><a href="img/flow-107-4.pinned.webp"><img loading="lazy" src="img/flow-107-4.pinned.webp" alt=""></a></div><div class="shot"><a href="img/flow-107-5.pinned.webp"><img loading="lazy" src="img/flow-107-5.pinned.webp" alt=""></a></div></div>
-</li>
-<li class="step has-shot" id="104">
-<div class="step-text"><div class="step-head"><a class="id" href="#104">^104</a><h3>Delete an item</h3><span class="st visual">visual</span></div>
-
-<div class="where">Basics window (<a class="ref" href="basics-window.html#106" title="Basics window">^106</a>) — proved ✓ · conformance <b>not run</b> · seen ✓</div>
-<p>Press an item's delete button.</p>
-<p class="sees">The item is gone, and its checkbox and delete button with it.</p>
-
-<div class="meta"><a class="code" href="https://github.com/iamnbutler/cairn/blob/main/lean/Examples/Basics.lean#L315">lean/Examples/Basics.lean:315</a></div></div>
-<div class="step-shots"><div class="shot"><a href="img/flow-109-2.pinned.webp"><img loading="lazy" src="img/flow-109-2.pinned.webp" alt=""></a></div><div class="shot"><a href="img/flow-109-3.pinned.webp"><img loading="lazy" src="img/flow-109-3.pinned.webp" alt=""></a></div></div>
-</li></ol>
+<meta name="description" content="Every claim Basics makes, with the evidence the build has for it.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav class="bar"><a class="home" href="../../"><img src="icon.svg" alt="">Cairn</a><span class="sep">/</span><a href="index.html">Basics map</a><a href="basics-window.html" class="on">Basics window</a><a href="guarantees.html">Invariants and assumptions</a><a href="evidence.html">Evidence</a></nav>
+<main>
+<header class="page"><div class="eyebrow">Basics · place ^106</div><h1 id="106">Basics window</h1><p class="lede">The window: a heading, the New item field and Add, the list of items, and the count of items left.</p><span class="marks"><span class="m seen pass" title="The window, rendered from the app's initial frame.">seen</span></span></header>
+<div class="hero"><figure class="shot"><div class="box px"><img src="img/start-0.pinned.webp" alt="Basics window, as the app starts" width="480" height="271" loading="lazy"></div><figcaption>As the app starts. Pins come from the frame's layout: each control is labelled with its claim.</figcaption></figure></div>
+<h2>Moves <span class="n">4</span></h2>
+<section class="claim px" id="101">
+<div class="head"><a class="id" href="#101">^101</a><h3>Type a new item</h3><span class="pix muted">move</span><span class="hl proved">proved</span></div>
+<div class="body wide"><div class="said"><b>Does</b><p>Type in the New item field, and press Enter.</p><b>Sees</b><p>The text appears in the field; Enter adds it like Add does.</p><dl class="ev"><dt><span class="m proved pass" title="2 theorems (sound edit, sound submit), standard axioms only.">proved</span></dt><dd>2 theorems (sound edit, sound submit), standard axioms only.</dd><dt><span class="m fuzzed pass" title="Held in 1,000 random sequences, 51,000 steps checked (seed 0).">fuzzed 1k</span></dt><dd>Held in 1,000 random sequences, 51,000 steps checked (seed 0).</dd><dt><span class="m tested pass" title="5,899 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model.">tested 5.9k</span></dt><dd>5,899 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model.</dd><dt><span class="m seen pass" title="Pressed in the capture: before and after.">seen</span></dt><dd>Pressed in the capture: before and after.</dd></dl><details><summary>2 theorems</summary><div class="thm"><div><span class="ok">✓</span> <code>Basics.typeItem.edit.sound</code> <span class="muted">sound edit</span></div><div><span class="ok">✓</span> <code>Basics.typeItem.submit.sound</code> <span class="muted">sound submit</span></div></div></details><p class="src"><a href="https://github.com/iamnbutler/cairn/blob/main/lean/Examples/Basics.lean#L292">lean/Examples/Basics.lean:292</a> · <code>Basics.typeItem</code> · ledger: active</p></div></div>
+<div class="pair"><figure class="shot"><div class="box px"><img src="img/flow-107-0.pinned.webp" alt="Type a new item, before" width="480" height="271" loading="lazy"></div><figcaption>before</figcaption></figure><figure class="shot"><div class="box px"><img src="img/flow-107-1.pinned.webp" alt="Type a new item, after" width="480" height="271" loading="lazy"></div><figcaption>after</figcaption></figure></div>
 </section>
-<section class="flow" id="107">
-<div class="flow-head"><a class="id" href="#107">^107</a><h2>Add two items and finish one</h2><span class="st visual">visual</span></div>
-
-<p class="summary">Type milk and press Enter, type eggs and press Add, then check milk. Two items, milk done, and one item left. — proved ✓ · conformance <b>not run</b> · seen ✓</p>
-
-<div class="meta"><a class="code" href="https://github.com/iamnbutler/cairn/blob/main/lean/Examples/Basics.lean#L337">lean/Examples/Basics.lean:337</a><a class="ref" href="basics-window.html#101" title="Type a new item">^101</a><a class="ref" href="basics-window.html#102" title="Add">^102</a><a class="ref" href="basics-window.html#103" title="Toggle an item">^103</a></div>
-<figure class="fig"><div class="frame"><img src="img/flow-107.strip.webp" alt="The witness, edit ^101, submit ^101, edit ^101, press ^102, press ^103#1, replayed on the app as clicks at each control's centre. Pins come from the frame's layout; blue marks the control the next step acts on."></div><figcaption>The witness, edit <a class="ref" href="basics-window.html#101" title="Type a new item">^101</a>, submit <a class="ref" href="basics-window.html#101" title="Type a new item">^101</a>, edit <a class="ref" href="basics-window.html#101" title="Type a new item">^101</a>, press <a class="ref" href="basics-window.html#102" title="Add">^102</a>, press <a class="ref" href="basics-window.html#103" title="Toggle an item">^103</a>#1, replayed on the app as clicks at each control's centre. Pins come from the frame's layout; blue marks the control the next step acts on.</figcaption></figure>
-<ol class="steps"></ol>
+<section class="claim px" id="102">
+<div class="head"><a class="id" href="#102">^102</a><h3>Add</h3><span class="pix muted">move</span><span class="hl proved">proved</span></div>
+<div class="body wide"><div class="said"><b>Does</b><p>Press Add.</p><b>Sees</b><p>The field's text, trimmed, is added at the end of the list and the field is cleared. Blank text changes nothing.</p><dl class="ev"><dt><span class="m proved pass" title="1 theorem (sound press), standard axioms only.">proved</span></dt><dd>1 theorem (sound press), standard axioms only.</dd><dt><span class="m fuzzed pass" title="Held in 1,000 random sequences, 51,000 steps checked (seed 0).">fuzzed 1k</span></dt><dd>Held in 1,000 random sequences, 51,000 steps checked (seed 0).</dd><dt><span class="m tested pass" title="2,858 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model.">tested 2.9k</span></dt><dd>2,858 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model.</dd><dt><span class="m seen pass" title="Pressed in the capture: before and after.">seen</span></dt><dd>Pressed in the capture: before and after.</dd></dl><details><summary>1 theorem</summary><div class="thm"><div><span class="ok">✓</span> <code>Basics.addItem.press.sound</code> <span class="muted">sound press</span></div></div></details><p class="src"><a href="https://github.com/iamnbutler/cairn/blob/main/lean/Examples/Basics.lean#L305">lean/Examples/Basics.lean:305</a> · <code>Basics.addItem</code> · ledger: active</p></div></div>
+<div class="pair"><figure class="shot"><div class="box px"><img src="img/flow-107-3.pinned.webp" alt="Add, before" width="480" height="271" loading="lazy"></div><figcaption>before</figcaption></figure><figure class="shot"><div class="box px"><img src="img/flow-107-4.pinned.webp" alt="Add, after" width="480" height="271" loading="lazy"></div><figcaption>after</figcaption></figure></div>
 </section>
-<section class="flow" id="108">
-<div class="flow-head"><a class="id" href="#108">^108</a><h2>Blank text adds nothing</h2><span class="st visual">visual</span></div>
-
-<p class="summary">Type spaces, then press Enter and Add. The list stays empty. — proved ✓ · conformance <b>not run</b> · seen ✓</p>
-
-<div class="meta"><a class="code" href="https://github.com/iamnbutler/cairn/blob/main/lean/Examples/Basics.lean#L345">lean/Examples/Basics.lean:345</a><a class="ref" href="basics-window.html#101" title="Type a new item">^101</a><a class="ref" href="basics-window.html#102" title="Add">^102</a></div>
-<figure class="fig"><div class="frame"><img src="img/flow-108.strip.webp" alt="The witness, edit ^101, submit ^101, press ^102, replayed on the app as clicks at each control's centre. Pins come from the frame's layout; blue marks the control the next step acts on."></div><figcaption>The witness, edit <a class="ref" href="basics-window.html#101" title="Type a new item">^101</a>, submit <a class="ref" href="basics-window.html#101" title="Type a new item">^101</a>, press <a class="ref" href="basics-window.html#102" title="Add">^102</a>, replayed on the app as clicks at each control's centre. Pins come from the frame's layout; blue marks the control the next step acts on.</figcaption></figure>
-<ol class="steps"></ol>
+<section class="claim px" id="103">
+<div class="head"><a class="id" href="#103">^103</a><h3>Toggle an item</h3><span class="pix muted">move</span><span class="hl proved">proved</span></div>
+<div class="body wide"><div class="said"><b>Does</b><p>Press an item's checkbox.</p><b>Sees</b><p>The item is marked done, or not done again, and the count of items left follows.</p><dl class="ev"><dt><span class="m proved pass" title="1 theorem (sound press), standard axioms only.">proved</span></dt><dd>1 theorem (sound press), standard axioms only.</dd><dt><span class="m fuzzed pass" title="Held in 1,000 random sequences, 51,000 steps checked (seed 0).">fuzzed 1k</span></dt><dd>Held in 1,000 random sequences, 51,000 steps checked (seed 0).</dd><dt><span class="m tested pass" title="175 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model.">tested 175</span></dt><dd>175 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model.</dd><dt><span class="m seen pass" title="Pressed in the capture: before and after.">seen</span></dt><dd>Pressed in the capture: before and after.</dd></dl><details><summary>1 theorem</summary><div class="thm"><div><span class="ok">✓</span> <code>Basics.toggleItem.press.sound</code> <span class="muted">sound press</span></div></div></details><p class="src"><a href="https://github.com/iamnbutler/cairn/blob/main/lean/Examples/Basics.lean#L313">lean/Examples/Basics.lean:313</a> · <code>Basics.toggleItem</code> · ledger: active</p></div></div>
+<div class="pair"><figure class="shot"><div class="box px"><img src="img/flow-107-4.pinned.webp" alt="Toggle an item, before" width="480" height="271" loading="lazy"></div><figcaption>before</figcaption></figure><figure class="shot"><div class="box px"><img src="img/flow-107-5.pinned.webp" alt="Toggle an item, after" width="480" height="271" loading="lazy"></div><figcaption>after</figcaption></figure></div>
 </section>
-<section class="flow" id="109">
-<div class="flow-head"><a class="id" href="#109">^109</a><h2>Add an item, then delete it</h2><span class="st visual">visual</span></div>
-
-<p class="summary">Type milk, press Add, then press milk's delete button. The list is empty again, and nothing is left. — proved ✓ · conformance <b>not run</b> · seen ✓</p>
-
-<div class="meta"><a class="code" href="https://github.com/iamnbutler/cairn/blob/main/lean/Examples/Basics.lean#L351">lean/Examples/Basics.lean:351</a><a class="ref" href="basics-window.html#101" title="Type a new item">^101</a><a class="ref" href="basics-window.html#102" title="Add">^102</a><a class="ref" href="basics-window.html#104" title="Delete an item">^104</a></div>
-<figure class="fig"><div class="frame"><img src="img/flow-109.strip.webp" alt="The witness, edit ^101, press ^102, press ^104#1, replayed on the app as clicks at each control's centre. Pins come from the frame's layout; blue marks the control the next step acts on."></div><figcaption>The witness, edit <a class="ref" href="basics-window.html#101" title="Type a new item">^101</a>, press <a class="ref" href="basics-window.html#102" title="Add">^102</a>, press <a class="ref" href="basics-window.html#104" title="Delete an item">^104</a>#1, replayed on the app as clicks at each control's centre. Pins come from the frame's layout; blue marks the control the next step acts on.</figcaption></figure>
-<ol class="steps"></ol>
+<section class="claim px" id="104">
+<div class="head"><a class="id" href="#104">^104</a><h3>Delete an item</h3><span class="pix muted">move</span><span class="hl proved">proved</span></div>
+<div class="body wide"><div class="said"><b>Does</b><p>Press an item's delete button.</p><b>Sees</b><p>The item is gone, and its checkbox and delete button with it.</p><dl class="ev"><dt><span class="m proved pass" title="1 theorem (sound press), standard axioms only.">proved</span></dt><dd>1 theorem (sound press), standard axioms only.</dd><dt><span class="m fuzzed pass" title="Held in 1,000 random sequences, 51,000 steps checked (seed 0).">fuzzed 1k</span></dt><dd>Held in 1,000 random sequences, 51,000 steps checked (seed 0).</dd><dt><span class="m tested pass" title="133 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model.">tested 133</span></dt><dd>133 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model.</dd><dt><span class="m seen pass" title="Pressed in the capture: before and after.">seen</span></dt><dd>Pressed in the capture: before and after.</dd></dl><details><summary>1 theorem</summary><div class="thm"><div><span class="ok">✓</span> <code>Basics.deleteItem.press.sound</code> <span class="muted">sound press</span></div></div></details><p class="src"><a href="https://github.com/iamnbutler/cairn/blob/main/lean/Examples/Basics.lean#L322">lean/Examples/Basics.lean:322</a> · <code>Basics.deleteItem</code> · ledger: active</p></div></div>
+<div class="pair"><figure class="shot"><div class="box px"><img src="img/flow-109-2.pinned.webp" alt="Delete an item, before" width="480" height="271" loading="lazy"></div><figcaption>before</figcaption></figure><figure class="shot"><div class="box px"><img src="img/flow-109-3.pinned.webp" alt="Delete an item, after" width="480" height="271" loading="lazy"></div><figcaption>after</figcaption></figure></div>
 </section>
-<footer class="pager"><span></span><a rel="next" href="guarantees.html">Invariants and assumptions →</a></footer>
-</main></div><script src="keys.js"></script></body></html>
+<h2>Flows <span class="n">3</span></h2>
+<section class="claim px" id="107">
+<div class="head"><a class="id" href="#107">^107</a><h3>Add two items and finish one</h3><span class="pix muted">flow</span><span class="hl proved">proved</span></div>
+<div class="body wide"><div class="said"><b>Does</b><p>Type milk and press Enter, type eggs and press Add, then check milk.</p><b>Sees</b><p>Two items, milk done, and one item left.</p><b class="pix muted">Witness</b><ol class="witness"><li>edit <a class="id" href="#101">^101</a> <code>insert &quot;milk&quot;</code></li><li>submit <a class="id" href="#101">^101</a></li><li>edit <a class="id" href="#101">^101</a> <code>insert &quot; eggs &quot;</code></li><li>press <a class="id" href="#102">^102</a></li><li>press <a class="id" href="#103">^103#1</a></li></ol><dl class="ev"><dt><span class="m proved pass" title="2 theorems (live, reaches), standard axioms only.">proved</span></dt><dd>2 theorems (live, reaches), standard axioms only.</dd><dt><span class="m tested pass" title="Its witness replayed on the running app, and the frame, accessibility tree, effects and pixels matched the model.">tested</span></dt><dd>Its witness replayed on the running app, and the frame, accessibility tree, effects and pixels matched the model.</dd><dt><span class="m seen pass" title="Its 5 steps replayed in the capture, each on the control it names.">seen</span></dt><dd>Its 5 steps replayed in the capture, each on the control it names.</dd></dl><details><summary>2 theorems</summary><div class="thm"><div><span class="ok">✓</span> <code>Basics.addAndFinish.live</code> <span class="muted">live</span></div><div><span class="ok">✓</span> <code>Basics.addAndFinish.reaches</code> <span class="muted">reaches</span></div></div></details><p class="src"><a href="https://github.com/iamnbutler/cairn/blob/main/lean/Examples/Basics.lean#L344">lean/Examples/Basics.lean:344</a> · <code>Basics.addAndFinish</code> · ledger: active</p></div></div>
+<div class="strip"><figure class="shot"><div class="box px"><img src="img/flow-107-0.pinned.webp" alt="Add two items and finish one, start" width="480" height="271" loading="lazy"></div><figcaption>start</figcaption></figure><span class="arrow">→</span><figure class="shot"><div class="box px"><img src="img/flow-107-1.pinned.webp" alt="Add two items and finish one, after step 1" width="480" height="271" loading="lazy"></div><figcaption>1. edit ^101</figcaption></figure><span class="arrow">→</span><figure class="shot"><div class="box px"><img src="img/flow-107-2.pinned.webp" alt="Add two items and finish one, after step 2" width="480" height="271" loading="lazy"></div><figcaption>2. submit ^101</figcaption></figure><span class="arrow">→</span><figure class="shot"><div class="box px"><img src="img/flow-107-3.pinned.webp" alt="Add two items and finish one, after step 3" width="480" height="271" loading="lazy"></div><figcaption>3. edit ^101</figcaption></figure><span class="arrow">→</span><figure class="shot"><div class="box px"><img src="img/flow-107-4.pinned.webp" alt="Add two items and finish one, after step 4" width="480" height="271" loading="lazy"></div><figcaption>4. press ^102</figcaption></figure><span class="arrow">→</span><figure class="shot"><div class="box px"><img src="img/flow-107-5.pinned.webp" alt="Add two items and finish one, after step 5" width="480" height="271" loading="lazy"></div><figcaption>5. press ^103#1</figcaption></figure></div>
+</section>
+<section class="claim px" id="108">
+<div class="head"><a class="id" href="#108">^108</a><h3>Blank text adds nothing</h3><span class="pix muted">flow</span><span class="hl proved">proved</span></div>
+<div class="body wide"><div class="said"><b>Does</b><p>Type spaces, then press Enter and Add.</p><b>Sees</b><p>The list stays empty.</p><b class="pix muted">Witness</b><ol class="witness"><li>edit <a class="id" href="#101">^101</a> <code>insert &quot;   &quot;</code></li><li>submit <a class="id" href="#101">^101</a></li><li>press <a class="id" href="#102">^102</a></li></ol><dl class="ev"><dt><span class="m proved pass" title="2 theorems (live, reaches), standard axioms only.">proved</span></dt><dd>2 theorems (live, reaches), standard axioms only.</dd><dt><span class="m tested pass" title="Its witness replayed on the running app, and the frame, accessibility tree, effects and pixels matched the model.">tested</span></dt><dd>Its witness replayed on the running app, and the frame, accessibility tree, effects and pixels matched the model.</dd><dt><span class="m seen pass" title="Its 3 steps replayed in the capture, each on the control it names.">seen</span></dt><dd>Its 3 steps replayed in the capture, each on the control it names.</dd></dl><details><summary>2 theorems</summary><div class="thm"><div><span class="ok">✓</span> <code>Basics.blankAddsNothing.live</code> <span class="muted">live</span></div><div><span class="ok">✓</span> <code>Basics.blankAddsNothing.reaches</code> <span class="muted">reaches</span></div></div></details><p class="src"><a href="https://github.com/iamnbutler/cairn/blob/main/lean/Examples/Basics.lean#L352">lean/Examples/Basics.lean:352</a> · <code>Basics.blankAddsNothing</code> · ledger: active</p></div></div>
+<div class="strip"><figure class="shot"><div class="box px"><img src="img/flow-108-0.pinned.webp" alt="Blank text adds nothing, start" width="480" height="271" loading="lazy"></div><figcaption>start</figcaption></figure><span class="arrow">→</span><figure class="shot"><div class="box px"><img src="img/flow-108-1.pinned.webp" alt="Blank text adds nothing, after step 1" width="480" height="271" loading="lazy"></div><figcaption>1. edit ^101</figcaption></figure><span class="arrow">→</span><figure class="shot"><div class="box px"><img src="img/flow-108-2.pinned.webp" alt="Blank text adds nothing, after step 2" width="480" height="271" loading="lazy"></div><figcaption>2. submit ^101</figcaption></figure><span class="arrow">→</span><figure class="shot"><div class="box px"><img src="img/flow-108-3.pinned.webp" alt="Blank text adds nothing, after step 3" width="480" height="271" loading="lazy"></div><figcaption>3. press ^102</figcaption></figure></div>
+</section>
+<section class="claim px" id="109">
+<div class="head"><a class="id" href="#109">^109</a><h3>Add an item, then delete it</h3><span class="pix muted">flow</span><span class="hl proved">proved</span></div>
+<div class="body wide"><div class="said"><b>Does</b><p>Type milk, press Add, then press milk's delete button.</p><b>Sees</b><p>The list is empty again, and nothing is left.</p><b class="pix muted">Witness</b><ol class="witness"><li>edit <a class="id" href="#101">^101</a> <code>insert &quot;milk&quot;</code></li><li>press <a class="id" href="#102">^102</a></li><li>press <a class="id" href="#104">^104#1</a></li></ol><dl class="ev"><dt><span class="m proved pass" title="2 theorems (live, reaches), standard axioms only.">proved</span></dt><dd>2 theorems (live, reaches), standard axioms only.</dd><dt><span class="m tested pass" title="Its witness replayed on the running app, and the frame, accessibility tree, effects and pixels matched the model.">tested</span></dt><dd>Its witness replayed on the running app, and the frame, accessibility tree, effects and pixels matched the model.</dd><dt><span class="m seen pass" title="Its 3 steps replayed in the capture, each on the control it names.">seen</span></dt><dd>Its 3 steps replayed in the capture, each on the control it names.</dd></dl><details><summary>2 theorems</summary><div class="thm"><div><span class="ok">✓</span> <code>Basics.addThenDelete.live</code> <span class="muted">live</span></div><div><span class="ok">✓</span> <code>Basics.addThenDelete.reaches</code> <span class="muted">reaches</span></div></div></details><p class="src"><a href="https://github.com/iamnbutler/cairn/blob/main/lean/Examples/Basics.lean#L358">lean/Examples/Basics.lean:358</a> · <code>Basics.addThenDelete</code> · ledger: active</p></div></div>
+<div class="strip"><figure class="shot"><div class="box px"><img src="img/flow-109-0.pinned.webp" alt="Add an item, then delete it, start" width="480" height="271" loading="lazy"></div><figcaption>start</figcaption></figure><span class="arrow">→</span><figure class="shot"><div class="box px"><img src="img/flow-109-1.pinned.webp" alt="Add an item, then delete it, after step 1" width="480" height="271" loading="lazy"></div><figcaption>1. edit ^101</figcaption></figure><span class="arrow">→</span><figure class="shot"><div class="box px"><img src="img/flow-109-2.pinned.webp" alt="Add an item, then delete it, after step 2" width="480" height="271" loading="lazy"></div><figcaption>2. press ^102</figcaption></figure><span class="arrow">→</span><figure class="shot"><div class="box px"><img src="img/flow-109-3.pinned.webp" alt="Add an item, then delete it, after step 3" width="480" height="271" loading="lazy"></div><figcaption>3. press ^104#1</figcaption></figure></div>
+</section>
+
+
+</main>
+<footer>Generated by <code>make map APP=Basics</code> from the claims and the build. Nothing here is written by hand.</footer>
+<script type="module">
+// On the site, the headings get the meadow's sprigs (site/public/scene.js); elsewhere, nothing.
+import("/scene.js").then((m) => m.mountSprigs(document.querySelector("main"))).catch(() => {});
+</script>
+</body>
+</html>

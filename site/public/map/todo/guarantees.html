@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Invariants and assumptions · Todo map</title>
+<meta name="description" content="Every claim Todo makes, with the evidence the build has for it.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav class="bar"><a class="home" href="../../"><img src="icon.svg" alt="">Cairn</a><span class="sep">/</span><a href="index.html">Todo map</a><a href="todos-window.html">Todos window</a><a href="guarantees.html" class="on">Invariants and assumptions</a><a href="evidence.html">Evidence</a></nav>
+<main>
+<header class="page"><div class="eyebrow">Todo</div><h1>Invariants and assumptions</h1><p class="lede">What holds in every state the app can reach (proved), and what the proofs take as given about the world (assumed).</p></header>
+
+
+<h2>Invariants <span class="n">2</span></h2>
+<section class="claim px" id="212">
+<div class="head"><a class="id" href="#212">^212</a><h3>Counter and ids</h3><span class="pix muted">invariant</span><span class="hl broken">broken</span></div>
+<div class="body wide"><div class="said"><b>Does</b><p>The counter shows the number of active todos, over all todos; todo ids are distinct, in every reachable state. (T24, T34)</p><dl class="ev"><dt><span class="m proved pass" title="5 theorems (init, step, receive, reachable, reachableAll), standard axioms only.">proved</span></dt><dd>5 theorems (init, step, receive, reachable, reachableAll), standard axioms only.</dd><dt><span class="m fuzzed pass" title="Held in 1,000 random sequences, 50,982 steps checked (seed 0).">fuzzed 1k</span></dt><dd>Held in 1,000 random sequences, 50,982 steps checked (seed 0).</dd><dt><span class="m tested fail" title="Conformance failed: a reached state differed from the model; see report.md">test fails</span></dt><dd>Conformance failed: a reached state differed from the model; see report.md</dd></dl><details><summary>5 theorems</summary><div class="thm"><div><span class="ok">✓</span> <code>Todo.counterAndIds.init</code> <span class="muted">init</span></div><div><span class="ok">✓</span> <code>Todo.counterAndIds.step</code> <span class="muted">step</span></div><div><span class="ok">✓</span> <code>Todo.counterAndIds.receive</code> <span class="muted">receive</span></div><div><span class="ok">✓</span> <code>Todo.counterAndIds.reachable</code> <span class="muted">reachable</span></div><div><span class="ok">✓</span> <code>Todo.counterAndIds.reachableAll</code> <span class="muted">reachableAll</span></div></div></details><p class="src"><a href="https://github.com/iamnbutler/cairn/blob/main/lean/Examples/Todo.lean#L178">lean/Examples/Todo.lean:178</a> · <code>Todo.counterAndIds</code> · ledger: active</p></div></div>
+
+</section>
+<section class="claim px" id="213">
+<div class="head"><a class="id" href="#213">^213</a><h3>The list is the filter applied to the todos</h3><span class="pix muted">invariant</span><span class="hl broken">broken</span></div>
+<div class="body wide"><div class="said"><b>Does</b><p>The rows on screen are exactly the todos the selected filter accepts, in creation order, under any hover and focus, in every reachable state. (T40, T42)</p><dl class="ev"><dt><span class="m proved pass" title="5 theorems (init, step, receive, reachable, reachableAll), standard axioms only.">proved</span></dt><dd>5 theorems (init, step, receive, reachable, reachableAll), standard axioms only.</dd><dt><span class="m fuzzed gap" title="The fuzzer can't run it: not runnable: no Decidable instance.">not runnable</span></dt><dd>The fuzzer can't run it: not runnable: no Decidable instance.</dd><dt><span class="m tested fail" title="Conformance failed: a reached state differed from the model; see report.md">test fails</span></dt><dd>Conformance failed: a reached state differed from the model; see report.md</dd></dl><details><summary>5 theorems</summary><div class="thm"><div><span class="ok">✓</span> <code>Todo.listedRows.init</code> <span class="muted">init</span></div><div><span class="ok">✓</span> <code>Todo.listedRows.step</code> <span class="muted">step</span></div><div><span class="ok">✓</span> <code>Todo.listedRows.receive</code> <span class="muted">receive</span></div><div><span class="ok">✓</span> <code>Todo.listedRows.reachable</code> <span class="muted">reachable</span></div><div><span class="ok">✓</span> <code>Todo.listedRows.reachableAll</code> <span class="muted">reachableAll</span></div></div></details><p class="src"><a href="https://github.com/iamnbutler/cairn/blob/main/lean/Examples/Todo.lean#L195">lean/Examples/Todo.lean:195</a> · <code>Todo.listedRows</code> · ledger: active</p></div></div>
+
+</section>
+<h2>Assumptions <span class="n">1</span></h2>
+<section class="claim px" id="214">
+<div class="head"><a class="id" href="#214">^214</a><h3>The host reports a double click as a second click</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="body wide"><div class="said"><b>Does</b><p>The host sends the second click of a double click as a pointer down with a click count of 2, at the same point, within the system's double-click interval; the runtime turns its release into a double press. (T20)</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed gap" title="No check of the trusted-base fuzzer names it.">unchecked</span></dt><dd>No check of the trusted-base fuzzer names it.</dd></dl><p class="src"><a href="https://github.com/iamnbutler/cairn/blob/main/lean/Examples/Todo.lean#L201">lean/Examples/Todo.lean:201</a> · <code>Todo.doubleClick</code> · ledger: active</p></div></div>
+
+</section>
+</main>
+<footer>Generated by <code>make map APP=Todo</code> from the claims and the build. Nothing here is written by hand.</footer>
+<script type="module">
+// On the site, the headings get the meadow's sprigs (site/public/scene.js); elsewhere, nothing.
+import("/scene.js").then((m) => m.mountSprigs(document.querySelector("main"))).catch(() => {});
+</script>
+</body>
+</html>

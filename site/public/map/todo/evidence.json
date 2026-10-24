@@ -1,0 +1,1316 @@
+{
+  "app": "Todo",
+  "generated": "2026-10-24T01:46:30.221Z",
+  "inputs": {
+    "fuzz": "/Users/natebutler/code/cairn/.lane/trees/map-own/build/fuzz/Todo.json",
+    "trusted": "/Users/natebutler/code/cairn/.lane/trees/map-own/build/fuzz/trusted.json",
+    "conformance": "/Users/natebutler/code/cairn/.lane/trees/map-own/build/conformance/Todo.json",
+    "capture": true,
+    "theoremsAudited": 3657
+  },
+  "counts": {
+    "kinds": [
+      {
+        "kind": "proved",
+        "have": 21,
+        "fail": 0,
+        "of": 21
+      },
+      {
+        "kind": "fuzzed",
+        "have": 10,
+        "fail": 1,
+        "of": 13
+      },
+      {
+        "kind": "tested",
+        "have": 18,
+        "fail": 3,
+        "of": 21
+      },
+      {
+        "kind": "seen",
+        "have": 19,
+        "fail": 0,
+        "of": 20
+      },
+      {
+        "kind": "assumed",
+        "have": 1,
+        "fail": 0,
+        "of": 1
+      }
+    ],
+    "headlines": {
+      "seen": 1,
+      "proved": 17,
+      "broken": 4,
+      "assumed": 1,
+      "retired": 1
+    }
+  },
+  "claims": [
+    {
+      "id": 201,
+      "ref": "^201",
+      "kind": "place",
+      "title": "Todos window",
+      "headline": "seen",
+      "evidence": [
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "The window, rendered from the app's initial frame."
+        }
+      ],
+      "theorems": [],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": [
+          "img/start-0.pinned.webp"
+        ]
+      }
+    },
+    {
+      "id": 202,
+      "ref": "^202",
+      "kind": "move",
+      "title": "New todo",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "2 theorems (sound edit, sound submit), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 1k",
+          "detail": "Held in 1,000 random sequences, 50,982 steps checked (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested 8.4k",
+          "detail": "8,388 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Pressed in the capture: before and after."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "sound edit",
+          "theorem": "Examples.Todo.newTodo.edit.sound",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "sound submit",
+          "theorem": "Examples.Todo.newTodo.submit.sound",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "before": "flow-216-0.pinned.webp",
+        "after": "flow-216-1.pinned.webp",
+        "frames": [
+          "img/flow-216-0.pinned.webp",
+          "img/flow-216-1.pinned.webp"
+        ]
+      }
+    },
+    {
+      "id": 203,
+      "ref": "^203",
+      "kind": "move",
+      "title": "Mark all as complete",
+      "headline": "broken",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "1 theorem (sound press), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 1k",
+          "detail": "Held in 1,000 random sequences, 50,982 steps checked (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "fail",
+          "label": "test fails",
+          "detail": "Conformance failed: walk-1-823 step 7 (press ^203): model: press ^203 delivered [], not [press ^203]"
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Pressed in the capture: before and after."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "sound press",
+          "theorem": "Examples.Todo.toggleAllTodos.press.sound",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "before": "flow-223-5.pinned.webp",
+        "after": "flow-223-6.pinned.webp",
+        "frames": [
+          "img/flow-223-5.pinned.webp",
+          "img/flow-223-6.pinned.webp"
+        ]
+      }
+    },
+    {
+      "id": 204,
+      "ref": "^204",
+      "kind": "move",
+      "title": "Complete a todo",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "1 theorem (sound press), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 1k",
+          "detail": "Held in 1,000 random sequences, 50,982 steps checked (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested 127",
+          "detail": "127 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Pressed in the capture: before and after."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "sound press",
+          "theorem": "Examples.Todo.toggleTodo.press.sound",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "before": "flow-216-4.pinned.webp",
+        "after": "flow-216-5.pinned.webp",
+        "frames": [
+          "img/flow-216-4.pinned.webp",
+          "img/flow-216-5.pinned.webp"
+        ]
+      }
+    },
+    {
+      "id": 205,
+      "ref": "^205",
+      "kind": "move",
+      "title": "Edit a todo",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "1 theorem (sound doublePress), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 1k",
+          "detail": "Held in 1,000 random sequences, 50,982 steps checked (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested 124",
+          "detail": "124 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Pressed in the capture: before and after."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "sound doublePress",
+          "theorem": "Examples.Todo.startEditing.doublePress.sound",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "before": "flow-218-2.pinned.webp",
+        "after": "flow-218-3.pinned.webp",
+        "frames": [
+          "img/flow-218-2.pinned.webp",
+          "img/flow-218-3.pinned.webp"
+        ]
+      }
+    },
+    {
+      "id": 206,
+      "ref": "^206",
+      "kind": "move",
+      "title": "Delete a todo",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "1 theorem (sound press), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 1k",
+          "detail": "Held in 1,000 random sequences, 50,982 steps checked (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested 136",
+          "detail": "136 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Its control is in a captured frame; no capture performed it."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "sound press",
+          "theorem": "Examples.Todo.deleteTodo.press.sound",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": [
+          "img/flow-216-2.pinned.webp"
+        ]
+      }
+    },
+    {
+      "id": 207,
+      "ref": "^207",
+      "kind": "move",
+      "title": "Edit field",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "4 theorems (sound edit, sound submit, sound blur, sound cancel), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 1k",
+          "detail": "Held in 1,000 random sequences, 50,982 steps checked (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested 64",
+          "detail": "64 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Pressed in the capture: before and after."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "sound edit",
+          "theorem": "Examples.Todo.editTodo.edit.sound",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "sound submit",
+          "theorem": "Examples.Todo.editTodo.submit.sound",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "sound blur",
+          "theorem": "Examples.Todo.editTodo.blur.sound",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "sound cancel",
+          "theorem": "Examples.Todo.editTodo.cancel.sound",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "before": "flow-218-3.pinned.webp",
+        "after": "flow-218-4.pinned.webp",
+        "frames": [
+          "img/flow-218-3.pinned.webp",
+          "img/flow-218-4.pinned.webp"
+        ]
+      }
+    },
+    {
+      "id": 208,
+      "ref": "^208",
+      "kind": "move",
+      "title": "All",
+      "headline": "broken",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "1 theorem (sound press), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "fail",
+          "label": "fuzz fails",
+          "detail": "performed failed at seed 260, step 32: Cairn.Action.press { claim := 208, key := 0 } was meant, but the runtime delivered [Cairn.Action.blur { claim := 207, key := 2 }]. Replay with `lake exe fuzz Todo --seed 260 --iterations 1 -v`."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested 163",
+          "detail": "163 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Its control is in a captured frame; no capture performed it."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "sound press",
+          "theorem": "Examples.Todo.showAll.press.sound",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": [
+          "img/flow-216-2.pinned.webp"
+        ]
+      }
+    },
+    {
+      "id": 209,
+      "ref": "^209",
+      "kind": "move",
+      "title": "Active",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "1 theorem (sound press), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 1k",
+          "detail": "Held in 1,000 random sequences, 50,982 steps checked (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested 185",
+          "detail": "185 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Pressed in the capture: before and after."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "sound press",
+          "theorem": "Examples.Todo.showActive.press.sound",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "before": "flow-221-5.pinned.webp",
+        "after": "flow-221-6.pinned.webp",
+        "frames": [
+          "img/flow-221-5.pinned.webp",
+          "img/flow-221-6.pinned.webp"
+        ]
+      }
+    },
+    {
+      "id": 210,
+      "ref": "^210",
+      "kind": "move",
+      "title": "Completed",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "1 theorem (sound press), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 1k",
+          "detail": "Held in 1,000 random sequences, 50,982 steps checked (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested 165",
+          "detail": "165 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Pressed in the capture: before and after."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "sound press",
+          "theorem": "Examples.Todo.showCompleted.press.sound",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "before": "flow-224-2.pinned.webp",
+        "after": "flow-224-3.pinned.webp",
+        "frames": [
+          "img/flow-224-2.pinned.webp",
+          "img/flow-224-3.pinned.webp"
+        ]
+      }
+    },
+    {
+      "id": 211,
+      "ref": "^211",
+      "kind": "move",
+      "title": "Clear completed",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "1 theorem (sound press), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 1k",
+          "detail": "Held in 1,000 random sequences, 50,982 steps checked (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested 38",
+          "detail": "38 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Pressed in the capture: before and after."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "sound press",
+          "theorem": "Examples.Todo.clearDone.press.sound",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "before": "flow-222-5.pinned.webp",
+        "after": "flow-222-6.pinned.webp",
+        "frames": [
+          "img/flow-222-5.pinned.webp",
+          "img/flow-222-6.pinned.webp"
+        ]
+      }
+    },
+    {
+      "id": 212,
+      "ref": "^212",
+      "kind": "invariant",
+      "title": "Counter and ids",
+      "headline": "broken",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "5 theorems (init, step, receive, reachable, reachableAll), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "pass",
+          "label": "fuzzed 1k",
+          "detail": "Held in 1,000 random sequences, 50,982 steps checked (seed 0)."
+        },
+        {
+          "kind": "tested",
+          "state": "fail",
+          "label": "test fails",
+          "detail": "Conformance failed: a reached state differed from the model; see report.md"
+        }
+      ],
+      "theorems": [
+        {
+          "role": "init",
+          "theorem": "Examples.Todo.counterAndIds.init",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "step",
+          "theorem": "Examples.Todo.counterAndIds.step",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "receive",
+          "theorem": "Examples.Todo.counterAndIds.receive",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachable",
+          "theorem": "Examples.Todo.counterAndIds.reachable",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachableAll",
+          "theorem": "Examples.Todo.counterAndIds.reachableAll",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": []
+      }
+    },
+    {
+      "id": 213,
+      "ref": "^213",
+      "kind": "invariant",
+      "title": "The list is the filter applied to the todos",
+      "headline": "broken",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "5 theorems (init, step, receive, reachable, reachableAll), standard axioms only."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "gap",
+          "label": "not runnable",
+          "detail": "The fuzzer can't run it: not runnable: no Decidable instance."
+        },
+        {
+          "kind": "tested",
+          "state": "fail",
+          "label": "test fails",
+          "detail": "Conformance failed: a reached state differed from the model; see report.md"
+        }
+      ],
+      "theorems": [
+        {
+          "role": "init",
+          "theorem": "Examples.Todo.listedRows.init",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "step",
+          "theorem": "Examples.Todo.listedRows.step",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "receive",
+          "theorem": "Examples.Todo.listedRows.receive",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachable",
+          "theorem": "Examples.Todo.listedRows.reachable",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reachableAll",
+          "theorem": "Examples.Todo.listedRows.reachableAll",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": []
+      }
+    },
+    {
+      "id": 214,
+      "ref": "^214",
+      "kind": "assume",
+      "title": "The host reports a double click as a second click",
+      "headline": "assumed",
+      "evidence": [
+        {
+          "kind": "assumed",
+          "state": "pass",
+          "label": "assumed",
+          "detail": "Recorded, never proved. Theorems that rely on it take it as a hypothesis."
+        },
+        {
+          "kind": "fuzzed",
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "No check of the trusted-base fuzzer names it."
+        }
+      ],
+      "theorems": [],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": []
+      }
+    },
+    {
+      "id": 215,
+      "ref": "^215",
+      "kind": "move",
+      "title": "Back through filters",
+      "headline": "retired",
+      "evidence": [],
+      "theorems": [],
+      "ledger": "retired",
+      "findings": [],
+      "shots": {
+        "frames": []
+      }
+    },
+    {
+      "id": 216,
+      "ref": "^216",
+      "kind": "flow",
+      "title": "Add two todos and complete one",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "2 theorems (live, reaches), standard axioms only."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested",
+          "detail": "Its witness replayed on the running app, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Its 5 steps replayed in the capture, each on the control it names."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "live",
+          "theorem": "Examples.Todo.addAndComplete.live",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reaches",
+          "theorem": "Examples.Todo.addAndComplete.reaches",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": [
+          "img/flow-216-0.pinned.webp",
+          "img/flow-216-1.pinned.webp",
+          "img/flow-216-2.pinned.webp",
+          "img/flow-216-3.pinned.webp",
+          "img/flow-216-4.pinned.webp",
+          "img/flow-216-5.pinned.webp"
+        ],
+        "strip": "flow-216.strip.webp",
+        "complete": true
+      }
+    },
+    {
+      "id": 217,
+      "ref": "^217",
+      "kind": "flow",
+      "title": "Blank text adds nothing",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "2 theorems (live, reaches), standard axioms only."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested",
+          "detail": "Its witness replayed on the running app, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Its 2 steps replayed in the capture, each on the control it names."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "live",
+          "theorem": "Examples.Todo.blankAddsNothing.live",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reaches",
+          "theorem": "Examples.Todo.blankAddsNothing.reaches",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": [
+          "img/flow-217-0.pinned.webp",
+          "img/flow-217-1.pinned.webp",
+          "img/flow-217-2.pinned.webp"
+        ],
+        "strip": "flow-217.strip.webp",
+        "complete": true
+      }
+    },
+    {
+      "id": 218,
+      "ref": "^218",
+      "kind": "flow",
+      "title": "Edit a todo and save with Enter",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "2 theorems (live, reaches), standard axioms only."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested",
+          "detail": "Its witness replayed on the running app, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Its 6 steps replayed in the capture, each on the control it names."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "live",
+          "theorem": "Examples.Todo.editAndSave.live",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reaches",
+          "theorem": "Examples.Todo.editAndSave.reaches",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": [
+          "img/flow-218-0.pinned.webp",
+          "img/flow-218-1.pinned.webp",
+          "img/flow-218-2.pinned.webp",
+          "img/flow-218-3.pinned.webp",
+          "img/flow-218-4.pinned.webp",
+          "img/flow-218-5.pinned.webp",
+          "img/flow-218-6.pinned.webp"
+        ],
+        "strip": "flow-218.strip.webp",
+        "complete": true
+      }
+    },
+    {
+      "id": 219,
+      "ref": "^219",
+      "kind": "flow",
+      "title": "Saving a blank edit deletes the todo",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "2 theorems (live, reaches), standard axioms only."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested",
+          "detail": "Its witness replayed on the running app, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "gap",
+          "label": "partly seen",
+          "detail": "The capture can't replay step 6 (blur ^207#1)."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "live",
+          "theorem": "Examples.Todo.editToBlankDeletes.live",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reaches",
+          "theorem": "Examples.Todo.editToBlankDeletes.reaches",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": [
+          "img/flow-219-0.pinned.webp",
+          "img/flow-219-1.pinned.webp",
+          "img/flow-219-2.pinned.webp",
+          "img/flow-219-3.pinned.webp",
+          "img/flow-219-4.pinned.webp",
+          "img/flow-219-5.pinned.webp"
+        ],
+        "strip": "flow-219.strip.webp",
+        "complete": false
+      }
+    },
+    {
+      "id": 220,
+      "ref": "^220",
+      "kind": "flow",
+      "title": "Escape cancels an edit",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "2 theorems (live, reaches), standard axioms only."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested",
+          "detail": "Its witness replayed on the running app, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Its 6 steps replayed in the capture, each on the control it names."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "live",
+          "theorem": "Examples.Todo.escapeCancels.live",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reaches",
+          "theorem": "Examples.Todo.escapeCancels.reaches",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": [
+          "img/flow-220-0.pinned.webp",
+          "img/flow-220-1.pinned.webp",
+          "img/flow-220-2.pinned.webp",
+          "img/flow-220-3.pinned.webp",
+          "img/flow-220-4.pinned.webp",
+          "img/flow-220-5.pinned.webp",
+          "img/flow-220-6.pinned.webp"
+        ],
+        "strip": "flow-220.strip.webp",
+        "complete": true
+      }
+    },
+    {
+      "id": 221,
+      "ref": "^221",
+      "kind": "flow",
+      "title": "The Active filter hides completed todos",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "2 theorems (live, reaches), standard axioms only."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested",
+          "detail": "Its witness replayed on the running app, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Its 6 steps replayed in the capture, each on the control it names."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "live",
+          "theorem": "Examples.Todo.activeFilter.live",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reaches",
+          "theorem": "Examples.Todo.activeFilter.reaches",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": [
+          "img/flow-221-0.pinned.webp",
+          "img/flow-221-1.pinned.webp",
+          "img/flow-221-2.pinned.webp",
+          "img/flow-221-3.pinned.webp",
+          "img/flow-221-4.pinned.webp",
+          "img/flow-221-5.pinned.webp",
+          "img/flow-221-6.pinned.webp"
+        ],
+        "strip": "flow-221.strip.webp",
+        "complete": true
+      }
+    },
+    {
+      "id": 222,
+      "ref": "^222",
+      "kind": "flow",
+      "title": "Clear completed",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "2 theorems (live, reaches), standard axioms only."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested",
+          "detail": "Its witness replayed on the running app, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Its 6 steps replayed in the capture, each on the control it names."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "live",
+          "theorem": "Examples.Todo.clearCompletedFlow.live",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reaches",
+          "theorem": "Examples.Todo.clearCompletedFlow.reaches",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": [
+          "img/flow-222-0.pinned.webp",
+          "img/flow-222-1.pinned.webp",
+          "img/flow-222-2.pinned.webp",
+          "img/flow-222-3.pinned.webp",
+          "img/flow-222-4.pinned.webp",
+          "img/flow-222-5.pinned.webp",
+          "img/flow-222-6.pinned.webp"
+        ],
+        "strip": "flow-222.strip.webp",
+        "complete": true
+      }
+    },
+    {
+      "id": 223,
+      "ref": "^223",
+      "kind": "flow",
+      "title": "Mark all as complete, then undo it",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "2 theorems (live, reaches), standard axioms only."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested",
+          "detail": "Its witness replayed on the running app, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Its 7 steps replayed in the capture, each on the control it names."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "live",
+          "theorem": "Examples.Todo.markAllComplete.live",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reaches",
+          "theorem": "Examples.Todo.markAllComplete.reaches",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": [
+          "img/flow-223-0.pinned.webp",
+          "img/flow-223-1.pinned.webp",
+          "img/flow-223-2.pinned.webp",
+          "img/flow-223-3.pinned.webp",
+          "img/flow-223-4.pinned.webp",
+          "img/flow-223-5.pinned.webp",
+          "img/flow-223-6.pinned.webp",
+          "img/flow-223-7.pinned.webp"
+        ],
+        "strip": "flow-223.strip.webp",
+        "complete": true
+      }
+    },
+    {
+      "id": 224,
+      "ref": "^224",
+      "kind": "flow",
+      "title": "A new todo under the Completed filter",
+      "headline": "proved",
+      "evidence": [
+        {
+          "kind": "proved",
+          "state": "pass",
+          "label": "proved",
+          "detail": "2 theorems (live, reaches), standard axioms only."
+        },
+        {
+          "kind": "tested",
+          "state": "pass",
+          "label": "tested",
+          "detail": "Its witness replayed on the running app, and the frame, accessibility tree, effects and pixels matched the model."
+        },
+        {
+          "kind": "seen",
+          "state": "pass",
+          "label": "seen",
+          "detail": "Its 5 steps replayed in the capture, each on the control it names."
+        }
+      ],
+      "theorems": [
+        {
+          "role": "live",
+          "theorem": "Examples.Todo.addUnderCompleted.live",
+          "ok": true,
+          "extraAxioms": []
+        },
+        {
+          "role": "reaches",
+          "theorem": "Examples.Todo.addUnderCompleted.reaches",
+          "ok": true,
+          "extraAxioms": []
+        }
+      ],
+      "ledger": "active",
+      "findings": [],
+      "shots": {
+        "frames": [
+          "img/flow-224-0.pinned.webp",
+          "img/flow-224-1.pinned.webp",
+          "img/flow-224-2.pinned.webp",
+          "img/flow-224-3.pinned.webp",
+          "img/flow-224-4.pinned.webp",
+          "img/flow-224-5.pinned.webp"
+        ],
+        "strip": "flow-224.strip.webp",
+        "complete": true
+      }
+    }
+  ],
+  "gaps": [
+    {
+      "ref": "^203",
+      "what": "test fails",
+      "detail": "Conformance failed: walk-1-823 step 7 (press ^203): model: press ^203 delivered [], not [press ^203]",
+      "broken": true
+    },
+    {
+      "ref": "^208",
+      "what": "fuzz fails",
+      "detail": "performed failed at seed 260, step 32: Cairn.Action.press { claim := 208, key := 0 } was meant, but the runtime delivered [Cairn.Action.blur { claim := 207, key := 2 }]. Replay with `lake exe fuzz Todo --seed 260 --iterations 1 -v`.",
+      "broken": true
+    },
+    {
+      "ref": "^212",
+      "what": "test fails",
+      "detail": "Conformance failed: a reached state differed from the model; see report.md",
+      "broken": true
+    },
+    {
+      "ref": "^213",
+      "what": "not runnable",
+      "detail": "The fuzzer can't run it: not runnable: no Decidable instance.",
+      "broken": false
+    },
+    {
+      "ref": "^213",
+      "what": "test fails",
+      "detail": "Conformance failed: a reached state differed from the model; see report.md",
+      "broken": true
+    },
+    {
+      "ref": "^214",
+      "what": "unchecked",
+      "detail": "No check of the trusted-base fuzzer names it.",
+      "broken": false
+    },
+    {
+      "ref": "^219",
+      "what": "partly seen",
+      "detail": "The capture can't replay step 6 (blur ^207#1).",
+      "broken": false
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Evidence · Counter map</title>
+<meta name="description" content="Every claim Counter makes, with the evidence the build has for it.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav class="bar"><a class="home" href="../../"><img src="icon.svg" alt="">Cairn</a><span class="sep">/</span><a href="index.html">Counter map</a><a href="counter-window.html">Counter window</a><a href="guarantees.html">Invariants and assumptions</a><a href="evidence.html" class="on">Evidence</a></nav>
+<main>
+<header class="page"><div class="eyebrow">Counter · evidence</div><h1>Evidence</h1>
+<p class="lede">One row per claim, every column computed from the build. Hover a chip for what it rests on.</p></header>
+<div class="wrap"><table class="claims"><thead><tr><th>Id</th><th>Kind</th><th>Claim</th><th>Reads as</th><th>proved</th><th>fuzzed</th><th>tested</th><th>seen</th><th>assumed</th><th>Theorems (axiom audit)</th><th>Ledger</th></tr></thead>
+<tbody><tr><td class="id"><a class="id" href="counter-window.html#1">^1</a></td><td class="kind">move</td><td>Increment</td><td><span class="hl proved">proved</span></td><td class="slot"><span class="m proved pass" title="1 theorem (sound press), standard axioms only.">proved</span></td><td class="slot"><span class="m fuzzed pass" title="Held in 1,000 random sequences, 51,000 steps checked (seed 0).">fuzzed 1k</span></td><td class="slot"><span class="m tested pass" title="4,886 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model.">tested 4.9k</span></td><td class="slot"><span class="m seen pass" title="Pressed in the capture: before and after.">seen</span></td><td class="slot"></td><td class="thm"><div><span class="ok">✓</span> <code>Counter.increment.press.sound</code></div></td><td class="muted">active</td></tr>
+<tr><td class="id"><a class="id" href="counter-window.html#2">^2</a></td><td class="kind">move</td><td>Reset</td><td><span class="hl proved">proved</span></td><td class="slot"><span class="m proved pass" title="1 theorem (sound press), standard axioms only.">proved</span></td><td class="slot"><span class="m fuzzed pass" title="Held in 1,000 random sequences, 51,000 steps checked (seed 0).">fuzzed 1k</span></td><td class="slot"><span class="m tested pass" title="2,118 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model.">tested 2.1k</span></td><td class="slot"><span class="m seen pass" title="Pressed in the capture: before and after.">seen</span></td><td class="slot"></td><td class="thm"><div><span class="ok">✓</span> <code>Counter.reset.press.sound</code></div></td><td class="muted">active</td></tr>
+<tr><td class="id"><a class="id" href="counter-window.html#3">^3</a></td><td class="kind">place</td><td>Counter window</td><td><span class="hl seen">seen</span></td><td class="slot"></td><td class="slot"></td><td class="slot"></td><td class="slot"><span class="m seen pass" title="The window, rendered from the app's initial frame.">seen</span></td><td class="slot"></td><td class="thm"></td><td class="muted">active</td></tr>
+<tr><td class="id"><a class="id" href="counter-window.html#4">^4</a></td><td class="kind">flow</td><td>Count to three</td><td><span class="hl proved">proved</span></td><td class="slot"><span class="m proved pass" title="2 theorems (live, reaches), standard axioms only.">proved</span></td><td class="slot"></td><td class="slot"><span class="m tested pass" title="Its witness replayed on the running app, and the frame, accessibility tree, effects and pixels matched the model.">tested</span></td><td class="slot"><span class="m seen pass" title="Its 3 steps replayed in the capture, each on the control it names.">seen</span></td><td class="slot"></td><td class="thm"><div><span class="ok">✓</span> <code>Counter.countToThree.live</code></div><div><span class="ok">✓</span> <code>Counter.countToThree.reaches</code></div></td><td class="muted">active</td></tr>
+<tr><td class="id"><a class="id" href="counter-window.html#5">^5</a></td><td class="kind">flow</td><td>Start over</td><td><span class="hl proved">proved</span></td><td class="slot"><span class="m proved pass" title="2 theorems (live, reaches), standard axioms only.">proved</span></td><td class="slot"></td><td class="slot"><span class="m tested pass" title="Its witness replayed on the running app, and the frame, accessibility tree, effects and pixels matched the model.">tested</span></td><td class="slot"><span class="m seen pass" title="Its 3 steps replayed in the capture, each on the control it names.">seen</span></td><td class="slot"></td><td class="thm"><div><span class="ok">✓</span> <code>Counter.startOver.live</code></div><div><span class="ok">✓</span> <code>Counter.startOver.reaches</code></div></td><td class="muted">active</td></tr>
+<tr class="retired"><td class="id"><a class="id" href="guarantees.html#6">^6</a></td><td class="kind">invariant</td><td>Moves never leave a press in progress</td><td><span class="hl retired">retired</span></td><td class="slot"></td><td class="slot"></td><td class="slot"></td><td class="slot"></td><td class="slot"></td><td class="thm"></td><td class="muted">retired</td></tr>
+<tr><td class="id"><a class="id" href="guarantees.html#7">^7</a></td><td class="kind">assume</td><td>The host reports clicks where they happen</td><td><span class="hl assumed">assumed</span></td><td class="slot"></td><td class="slot"><span class="m fuzzed gap" title="No check of the trusted-base fuzzer names it.">unchecked</span></td><td class="slot"></td><td class="slot"></td><td class="slot"><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></td><td class="thm"></td><td class="muted">active</td></tr></tbody></table></div>
+<h2 id="ladder">The ladder</h2>
+<div class="prose">
+<p>A claim shows every kind of evidence it has. It <em>reads as</em> the strongest of them, so a proved invariant reads as proved whatever else ran. Strongest first:</p>
+<ol class="ladder">
+<li><span class="m proved pass">proved</span><span>Every theorem the claim names (each move handler's <code>sound</code>; a flow's <code>live</code> and <code>reaches</code>; an invariant's <code>init</code>, <code>step</code> and <code>reachable</code>) is in <code>lake exe audit --json</code> and uses only <code>propext</code>, <code>Classical.choice</code> and <code>Quot.sound</code>. <code>make check</code> also replays every declaration through the kernel.</span></li>
+<li><span class="m fuzzed pass">fuzzed N</span><span>N random sequences of the Lean model and runtime (<code>make fuzz</code>, docs/fuzz.md), with each invariant's check, presence and pressability after every step. For an assumption, the trusted-base fuzzer (<code>build/fuzz/trusted.json</code>) found no counterexample.</span></li>
+<li><span class="m tested pass">tested N</span><span>The running app, driven through its debug socket by generated sequences (<code>make conformance</code>, docs/conformance.md), matched the model's frame, accessibility tree, effects and pixels after every step. N counts the steps that exercised a move.</span></li>
+<li><span class="m seen pass">seen</span><span>A headless capture of the app's own frames, drawn by the real renderer, shows the control (for a move), the whole witness performed on the controls it names (for a flow), or the window (for a place).</span></li>
+<li><span class="m assumed pass">assumed</span><span>An <code>assume</code>: stated, never proved. Theorems that rely on it take it as a hypothesis.</span></li>
+</ol>
+<p>Two more readings: <span class="hl broken">broken</span> when any evidence failed (a theorem missing or using another axiom, a fuzz or conformance failure, or a capture that contradicts a live witness), and <span class="hl untested">untested</span> when a live claim has no evidence at all. A dashed chip, <span class="m gap">not tested</span>, is evidence the claim could have and doesn't: a gap.</p>
+<p>Proved and fuzzed are about the Lean model; tested and seen are about the app. A proof is the stronger statement, but only conformance reaches through the host, so a claim is fully covered when it has every chip its kind allows: a move can be proved, fuzzed, tested and seen; a flow proved, tested and seen; an invariant proved, fuzzed and tested; a place seen.</p>
+</div>
+</main>
+<footer>Generated by <code>make map APP=Counter</code> from the claims and the build. Nothing here is written by hand.</footer>
+<script type="module">
+// On the site, the headings get the meadow's sprigs (site/public/scene.js); elsewhere, nothing.
+import("/scene.js").then((m) => m.mountSprigs(document.querySelector("main"))).catch(() => {});
+</script>
+</body>
+</html>
