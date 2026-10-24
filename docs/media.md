@@ -25,7 +25,7 @@ videos. Record a video whenever something new works on screen.
   A panel (a non-activating window above layer 0, like Yap's overlay) is taken by its window
   id, still only if the app owns it: `--window <id> --wait 2` waits for it to come on screen,
   and `--size WxH` (points) fixes the output for a panel that grows. Yap's overlay take:
-  `CairnYap --bench-demo` (host/Sources/CairnYap/Bench.swift) plays a synthetic dictation with
+  `CairnYap --bench-demo` (yap-cairn's host/Sources/CairnYap/Bench.swift) plays a synthetic dictation with
   no microphone, key, network or typing, and prints `demo: panel window <id>`; then
   `build/bin/record --pid <pid> --window <id> --wait 2 --size 556x214 --out take.mov --seconds 14`
   (it stops when the panel closes).

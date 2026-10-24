@@ -40,50 +40,50 @@
 222	flow	active	b0d8d8a6a65e2c5f	Clear completed
 223	flow	active	36d2b8e708c4eceb	Mark all as complete, then undo it
 224	flow	active	06954be5c9e714a8	A new todo under the Completed filter
-301	place	active	-	Menu bar menu
-302	move	active	64ec1c59a4b05b88	Copy Last Transcript
-303	move	active	b2465772ee2b99fb	Recent transcript
-304	move	active	c142e008893d9784	Keep Transcripts
-305	move	active	c6c077ae05ccd979	Press Return After Dictating
-306	move	active	0778accdbfbdc224	Dictate with Key
-307	move	active	38eb518eebb34d2e	Open Transcripts Folder
-308	move	active	3ae37860f0471301	Edit Dictionary
-309	move	active	bd78e8985f7ae69c	Edit Settings
-310	move	active	affcac8293e81fcf	Grant Accessibility Access
-311	invariant	active	84588bbf55ad1fbb	A shortcut never sends
-312	invariant	retired	18e8457492069889	Hold to talk, tap to latch: 300 ms
-313	invariant	active	9c42834e776e30d9	One recording at a time
-314	invariant	active	233b3e899a2c6986	Every recording ends
-315	invariant	active	9fe828ced9a46264	Kept before it is typed
-316	invariant	active	4a3b47a7175b2e76	A failed type is kept and flagged
-317	invariant	active	6e0b8c52e2765477	Late and cancelled replies never type
-318	invariant	active	cb4553cb7d385772	Each clip is typed at most once
-319	invariant	active	03fd6d67afab2dfd	Fixes replace whole words
-320	invariant	active	37f2bf6dc88c9211	Retention never deletes today
-321	invariant	active	f7324b1b0da1fb16	Only the first 25 terms are sent
-322	invariant	active	e8ab42042293136c	Recent Transcripts holds five
-323	invariant	active	40f5c919d3a62ac0	Too short, silent or nowhere to type: never sent
-330	assume	active	-	The host reports the dictation key and every other key
-331	assume	active	-	The host delivers the ticks it is asked for
-332	assume	active	-	The host answers requests by id, in order of commands
-333	assume	active	-	The host reports the microphone faithfully
-334	assume	active	-	The host transcribes the samples it was asked for
-335	assume	active	-	The host types into the app it was given
-336	assume	active	-	The host reports config.json and dictionary.txt when they change
-337	assume	active	-	The host lists day files and today by the local calendar
-340	flow	active	b4b80b3cb0e6c044	Turn Dictate with Key off
-341	flow	active	62efef256b7e50b2	Keep Transcripts off and on again
-342	move	active	d442b5898c12ab24	Quit Yap (Cairn)
-343	move	active	a64749d31c1646a5	Grant Microphone Access
-344	move	active	9f7ae1916a6c4e2f	Open the menu
-345	place	retired	-	Overlay panel
-346	invariant	active	a3674441bc4af0a8	The original Yap keeps its key
-347	invariant	active	3dd97bf89059d643	A mark waits for the appends
-348	assume	active	-	The host reports the microphone's start or its failure
-349	invariant	active	dcbeb79447854fea	The overlay waits for the microphone
-350	invariant	active	63efc19eb6d9a3eb	Keys wait for the microphone
-351	invariant	active	7460add6dfa50672	Hold to talk, tap to latch: 300 ms, timed as the original
-399	place	active	-	Overlay panel
+301	place	moved:yap	-	Menu bar menu
+302	move	moved:yap	64ec1c59a4b05b88	Copy Last Transcript
+303	move	moved:yap	b2465772ee2b99fb	Recent transcript
+304	move	moved:yap	c142e008893d9784	Keep Transcripts
+305	move	moved:yap	c6c077ae05ccd979	Press Return After Dictating
+306	move	moved:yap	0778accdbfbdc224	Dictate with Key
+307	move	moved:yap	38eb518eebb34d2e	Open Transcripts Folder
+308	move	moved:yap	3ae37860f0471301	Edit Dictionary
+309	move	moved:yap	bd78e8985f7ae69c	Edit Settings
+310	move	moved:yap	affcac8293e81fcf	Grant Accessibility Access
+311	invariant	moved:yap	84588bbf55ad1fbb	A shortcut never sends
+312	invariant	moved:yap	18e8457492069889	Hold to talk, tap to latch: 300 ms
+313	invariant	moved:yap	9c42834e776e30d9	One recording at a time
+314	invariant	moved:yap	233b3e899a2c6986	Every recording ends
+315	invariant	moved:yap	9fe828ced9a46264	Kept before it is typed
+316	invariant	moved:yap	4a3b47a7175b2e76	A failed type is kept and flagged
+317	invariant	moved:yap	6e0b8c52e2765477	Late and cancelled replies never type
+318	invariant	moved:yap	cb4553cb7d385772	Each clip is typed at most once
+319	invariant	moved:yap	03fd6d67afab2dfd	Fixes replace whole words
+320	invariant	moved:yap	37f2bf6dc88c9211	Retention never deletes today
+321	invariant	moved:yap	f7324b1b0da1fb16	Only the first 25 terms are sent
+322	invariant	moved:yap	e8ab42042293136c	Recent Transcripts holds five
+323	invariant	moved:yap	40f5c919d3a62ac0	Too short, silent or nowhere to type: never sent
+330	assume	moved:yap	-	The host reports the dictation key and every other key
+331	assume	moved:yap	-	The host delivers the ticks it is asked for
+332	assume	moved:yap	-	The host answers requests by id, in order of commands
+333	assume	moved:yap	-	The host reports the microphone faithfully
+334	assume	moved:yap	-	The host transcribes the samples it was asked for
+335	assume	moved:yap	-	The host types into the app it was given
+336	assume	moved:yap	-	The host reports config.json and dictionary.txt when they change
+337	assume	moved:yap	-	The host lists day files and today by the local calendar
+340	flow	moved:yap	b4b80b3cb0e6c044	Turn Dictate with Key off
+341	flow	moved:yap	62efef256b7e50b2	Keep Transcripts off and on again
+342	move	moved:yap	d442b5898c12ab24	Quit Yap (Cairn)
+343	move	moved:yap	a64749d31c1646a5	Grant Microphone Access
+344	move	moved:yap	9f7ae1916a6c4e2f	Open the menu
+345	place	moved:yap	-	Overlay panel
+346	invariant	moved:yap	a3674441bc4af0a8	The original Yap keeps its key
+347	invariant	moved:yap	3dd97bf89059d643	A mark waits for the appends
+348	assume	moved:yap	-	The host reports the microphone's start or its failure
+349	invariant	moved:yap	dcbeb79447854fea	The overlay waits for the microphone
+350	invariant	moved:yap	63efc19eb6d9a3eb	Keys wait for the microphone
+351	invariant	moved:yap	7460add6dfa50672	Hold to talk, tap to latch: 300 ms, timed as the original
+399	place	moved:yap	-	Overlay panel
 401	move	active	1b77afe95aa65f24	Start / Stop
 402	move	active	6750765048a4300d	Lap
 403	move	active	b3e0b25d90f70b6f	Reset

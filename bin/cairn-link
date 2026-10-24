@@ -8,7 +8,8 @@
 # into one archive, with libtool:
 #
 #   - Lean's runtime: libInit, libleanrt, libuv and libgmp from `lean --print-prefix`;
-#   - Cairn's library (libcairn_Cairn.a, with its C glue and the claim commands' weak stubs);
+#   - Cairn's library (libcairn_Cairn.a, with its C glue) and claims_meta.o, the weak stand-ins
+#     for the claim commands' initializers (Cairn's docs/claims.md, "Linking");
 #   - each --lib, the app's own Lean libraries (`Yap` builds `Yap:static`).
 #
 # The app's root Package.swift links the result:
@@ -42,6 +43,7 @@ prefix=$(lean --print-prefix)
 # `lake query` builds each target and prints its path. @cairn/ names Cairn's package whether
 # it is this one or a dependency.
 cairn=$(lake query @cairn/Cairn:static | tail -1)
+stubs=$(lake query @cairn/claims_meta.o | tail -1)
 app=""
 for l in $libs; do
 	app="$app $(lake query "$l:static" | tail -1)"
@@ -50,7 +52,7 @@ done
 mkdir -p "$(dirname "$out")"
 tmp="$out.tmp.$$"
 # shellcheck disable=SC2086
-libtool -static -o "$tmp" $app "$cairn" \
+libtool -static -o "$tmp" $app "$cairn" "$stubs" \
 	"$prefix/lib/lean/libInit.a" "$prefix/lib/lean/libleanrt.a" \
 	"$prefix/lib/libuv.a" "$prefix/lib/libgmp.a" 2>&1 | grep -v "has no symbols" >&2 || true
 [ -f "$tmp" ] || die "libtool wrote nothing"

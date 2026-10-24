@@ -1,6 +1,5 @@
 import CairnFrame
 import CairnRender
-import CairnYapPaint
 import Foundation
 import Metal
 
@@ -19,7 +18,7 @@ final class PaintSuite: Suite {
         "render.paint.bounds": CheckInfo(
             title: "A paint draw changes no pixel outside its box within the clip",
             trusted: ["host/Sources/CairnRender/Renderer.swift (paint batches: viewport and scissor)",
-                      "host/Sources/CairnRender/Painters.swift", "host/Sources/CairnYapPaint/YapTape.swift",
+                      "host/Sources/CairnRender/Painters.swift", "host/Tests/CairnFuzzTrusted/YapTape.swift",
                       "Metal (scissor test)"],
             oracle: "the same frame rendered without its paint draws, compared pixel by pixel"),
     ]

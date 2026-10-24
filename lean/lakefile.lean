@@ -12,8 +12,9 @@ target text_host.o pkg : System.FilePath := do
   buildO (pkg.buildDir / "c" / "text_host.o") src weakArgs #["-O2", "-fPIC"] "cc"
 
 /-- A weak stand-in for the claim commands' full initializer, so the host links apps that
-`meta import` them without libLean (see lean/c/claims_meta.c). `Cairn`'s library carries it, so
-every library `bin/cairn-link` merges has it, whichever package the app is in. -/
+`meta import` them without libLean (see lean/c/claims_meta.c). `bin/cairn-link` adds it to every
+library it merges, whichever package the app is in. Not in `Cairn`'s own library: Lake
+executables that load modules at run time (`ledger`, `claims`) would find the stub and call it. -/
 target claims_meta.o pkg : System.FilePath := do
   let src ← inputTextFile <| pkg.dir / "c" / "claims_meta.c"
   let args := #["-I", (← getLeanIncludeDir).toString]
@@ -22,7 +23,7 @@ target claims_meta.o pkg : System.FilePath := do
 @[default_target]
 lean_lib Cairn where
   defaultFacets := #[LeanLib.staticFacet]
-  moreLinkObjs := #[text_host.o, claims_meta.o]
+  moreLinkObjs := #[text_host.o]
 
 /-- Every example app and its proofs (`Examples.lean`): what the ledger, the axiom audit and the
 kernel replay read. The host links the per-app libraries below, never this one. -/
@@ -104,14 +105,6 @@ lean_lib Tray where
   defaultFacets := #[LeanLib.staticFacet]
   moreLinkObjs := #[claims_meta.o]
 
-/-- Yap on Cairn (workstream W, docs/yap.md): the dictation machine as a menu bar app with an
-overlay. -/
-@[default_target]
-lean_lib Yap where
-  roots := #[`Examples.Yap.Abi, `Examples.Yap]
-  defaultFacets := #[LeanLib.staticFacet]
-  moreLinkObjs := #[claims_meta.o]
-
 lean_exe bench where
   root := `Bench
 
@@ -140,11 +133,6 @@ lean_lib Fuzz where
 /-- `lake exe fuzz <App> [--seed S] [--iterations N] [--steps K]` (docs/fuzz.md). -/
 lean_exe fuzz where
   root := `FuzzMain
-
-/-- `lake exe yapfuzz [--seed S] [--iterations N] [--steps K] [--out DIR]`: Yap's dictation
-machine against a random host (`Examples/Yap/Fuzz.lean`). -/
-lean_exe yapfuzz where
-  root := `YapFuzz
 
 /-- Lean's side of the trusted-base fuzzer (docs/fuzz.md, "Trusted base"): generators, the
 proved decoders' verdicts and a one-field app, exported over C for the Swift executable

@@ -10,6 +10,8 @@ retired, a hash of its formal statement and its title. Ids are the contract, so:
   an id twice, when a claim has no description, and when the code has an id the lock doesn't or
   retires one the lock still has as active (run `update` for both). It warns when a claim's formal statement or title changed: give it a new id,
   or `update --accept` if the meaning is the same.
+- `move <scope> <id>…` marks ids that left this package for another as `moved:<scope>`: they must
+  be in the lock and gone from this scope's code.
 - `update` appends new ids, marks newly retired ones, and with `--accept` records changed
   hashes and titles. It never removes a line, and refuses while `check` has errors other than
   new ids.
@@ -35,6 +37,7 @@ structure Line where
   title : String
   /-- The scope the claim moved to, if it left this package (`moved:yap`). -/
   moved : Option String := none
+deriving Inhabited
 
 def header : String :=
   "# claims.lock: every claim id ever issued. Written by `lake exe ledger update`; never edit by hand.\n" ++
@@ -148,7 +151,7 @@ def defaultLock : IO System.FilePath := do
   return "claims.lock"
 
 def usage : String :=
-  "usage: lake exe ledger (check | update [--accept]) [--lock PATH] [--scope NAME] [--root MODULE]…"
+  "usage: lake exe ledger (check | update [--accept] | move <scope> <id>…) [--lock PATH] [--scope NAME] [--root MODULE]…"
 
 unsafe def main (args : List String) : IO UInt32 := do
   let mut cmd := none
@@ -156,6 +159,7 @@ unsafe def main (args : List String) : IO UInt32 := do
   let mut lock ← defaultLock
   let mut roots : List Name := []
   let mut scope := "cairn"
+  let mut operands : List String := []
   let mut rest := args
   while !rest.isEmpty do
     match rest with
@@ -164,6 +168,7 @@ unsafe def main (args : List String) : IO UInt32 := do
     | "--root" :: m :: r => roots := roots ++ [m.toName]; rest := r
     | "--scope" :: s :: r => scope := s; rest := r
     | c :: r => if cmd.isNone then cmd := some c; rest := r else
+        if cmd == some "move" then operands := operands ++ [c]; rest := r else
         IO.eprintln usage; return 2
     | [] => rest := []
   if roots.isEmpty then roots := [`Cairn, `Examples, `Cairn.Fuzz.Trusted.Claims]
@@ -188,6 +193,19 @@ unsafe def main (args : List String) : IO UInt32 := do
     let out := update env scope locked accept
     IO.FS.writeFile lock (render out)
     IO.println s!"ledger: wrote {out.size} ids to {lock} ({out.size - locked.size} new)"
+    return 0
+  | some "move" =>
+    let to :: ids := operands | IO.eprintln usage; return 2
+    let code := inScope env scope
+    let mut out := locked
+    for i in ids do
+      let some id := i.toNat? | IO.eprintln s!"ledger: `{i}` is not an id"; return 2
+      let some k := out.findIdx? (·.id == id) | IO.eprintln s!"ledger: ^{id} is not in {lock}"; return 1
+      if code.any (·.info.id == id) then
+        IO.eprintln s!"ledger: ^{id} is still in {scope}'s code; move it out first"; return 1
+      out := out.set! k { out[k]! with moved := some to }
+    IO.FS.writeFile lock (render out)
+    IO.println s!"ledger: marked {ids.length} ids moved:{to} in {lock}"
     return 0
   | _ => IO.eprintln usage; return 2
 

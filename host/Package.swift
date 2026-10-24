@@ -1,6 +1,10 @@
 // swift-tools-version: 6.0
 import PackageDescription
 
+// The development package: the example apps, tests and fuzzers. Apps outside this repository
+// depend on the root package (../Package.swift) at a tag instead; its library targets are these
+// sources again, without the development link line below.
+//
 // `make lean` builds the Lean libraries, merges the framework with Lean's runtime into
 // ../build/lib/libcairn_lean.a (linked through CLean), puts each app in its own
 // ../build/lib/libcairn_app_<name>.a (linked by that app's executable only: v1 apps share the
@@ -52,10 +56,6 @@ let package = Package(
                           linkerSettings: [.unsafeFlags(["-L" + leanLib, "-lcairn_app_clock"])]),
         .executableTarget(name: "CairnTray", dependencies: ["CairnHost", "CLean", "CairnFrame", "CairnCapture"],
                           linkerSettings: [.unsafeFlags(["-L" + leanLib, "-lcairn_app_tray"])]),
-        // Yap's tape display: the original Yap's Overlay.metal as a painter (`paint` draws).
-        .target(name: "CairnYapPaint", dependencies: ["CairnFrame", "CairnRender"]),
-        .executableTarget(name: "CairnYap", dependencies: ["CairnHost", "CLean", "CairnFrame", "CairnYapPaint"],
-                          linkerSettings: [.unsafeFlags(["-L" + leanLib, "-lcairn_app_yap"])]),
         // A Swift stand-in app with a text field, for checking the host by hand (IME, AX) before
         // a Lean app has one. Not product code.
         .executableTarget(name: "CairnFixture", dependencies: ["CairnHost", "CairnFrame", "CairnRender"]),
@@ -67,7 +67,7 @@ let package = Package(
         // fuzz-trusted` runs it. Dump.swift is a symlink to CairnFrameTests' canonical dump.
         .target(name: "CairnTrustedLean", dependencies: ["CLean"], path: "Tests/CairnTrustedLean"),
         .executableTarget(name: "CairnFuzzTrusted",
-                          dependencies: ["CairnHost", "CairnFrame", "CairnRender", "CLean", "CairnTrustedLean", "CairnYapPaint"],
+                          dependencies: ["CairnHost", "CairnFrame", "CairnRender", "CLean", "CairnTrustedLean"],
                           path: "Tests/CairnFuzzTrusted",
                           swiftSettings: [.swiftLanguageMode(.v5)],
                           linkerSettings: [.unsafeFlags(["-L" + leanLib, "-lcairn_trusted_fuzz"])]),

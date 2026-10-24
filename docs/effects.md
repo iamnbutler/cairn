@@ -210,7 +210,7 @@ with a fuzz check (below).
 
 ### What Yap needs next, and where it slots in
 
-Yap's machine (`lean/Examples/Yap/Model.lean`, PR #40) talks to the host through its own
+Yap's machine (yap-cairn's `lean/Yap/Model.lean`, PR #40) talks to the host through its own
 `Input` and `Cmd`. Each `Cmd` is one of three shapes, and each shape has its slot here:
 
 | Yap `Cmd` / `Input` | Shape | Slot | Status |
@@ -297,12 +297,12 @@ check that touches nothing outside a scratch directory and prompts no one.
 | `readDefault domain key` | `bytes text` | `CFPreferencesCopyAppValue`: a string as UTF-8, a boolean `1`/`0`, a number in decimal | ^1002 `effects.read-default` |
 | `makeDir path` | `done` | `FileManager.createDirectory`, intermediates, mode 700; `done` if it is there | ^1003 `effects.make-dir` |
 
-The last three came with Yap on Cairn (workstream W, docs/yap.md): Open Transcripts Folder,
+The last three came with Yap on Cairn (workstream W, yap-cairn's docs/yap.md): Open Transcripts Folder,
 Edit Dictionary and Edit Settings open files, the Accessibility and Microphone items open
 System Settings; Yap (Cairn) leaves the dictation key alone while the original Yap
 (`dev.yap.Yap`) runs; and it reads the model the original keeps in its defaults. `readDefault`
 only reads: Yap (Cairn) keeps its own settings in a file. `makeDir` is Open Transcripts Folder's
-first step, as Yap creates the folder (mode 700) before opening it (docs/yap-parity.md).
+first step, as Yap creates the folder (mode 700) before opening it (yap-cairn's docs/yap-parity.md).
 
 Decisions, and why:
 
@@ -323,7 +323,7 @@ Decisions, and why:
   compares `stat`'s device, inode, size, modification and change times (nanoseconds) every
   2 s (`World.watchPeriodMs`), as Yap does, so a write, a replacement, an append, a creation,
   a removal, a `touch` and a `chmod` all count. (It polled every 250 ms until the Instruments
-  bench showed it was most of the idle app's wakeups: bench/yap-instruments.md.)
+  bench showed it was most of the idle app's wakeups: yap-cairn's bench/yap-instruments.md.)
   A change is reported once the file has held still from one look to the next, so a burst is
   one `changed` (a save is several system calls, and macOS moves a new file's change time
   again a moment later when it attaches its provenance attribute), and Lean doesn't hear about
@@ -379,7 +379,7 @@ Decisions, and why:
 - **Lean sees levels, never samples.** Each `audio` event carries the number of samples it
   covers, their peak, and the 20 ms windows (320 samples) completed so far: each window's sum
   of squares and peak (`Int16.min` counts as 32767), exactly the integers
-  `Examples/Yap/Chunker.lean` cuts on. Windows count from the start of the clip, whatever
+  yap-cairn's `lean/Yap/Chunker.lean` cuts on. Windows count from the start of the clip, whatever
   buffer sizes Core Audio delivers, so window `i` is samples `320 i ..< 320 (i + 1)` of the
   clip, and a cut Lean computes is a sample offset the host can use. The tap asks for about
   20 ms of input per buffer; Core Audio may deliver larger ones, so events come at up to 50 a
@@ -426,7 +426,7 @@ Decisions, and why:
 Each needs a TCC permission, and without it fails with an ordinary `failed` instead of
 touching anything (an app asks with `permission p true`). The one exception is the microphone
 while undecided: `record` starts the engine, which shows the system's prompt, as Yap's first
-recording does (docs/yap-parity.md).
+recording does (yap-cairn's docs/yap-parity.md).
 
 | Effect | Permission (TCC service) | Without it |
 |---|---|---|

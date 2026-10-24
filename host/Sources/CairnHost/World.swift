@@ -273,7 +273,7 @@ public final class World: @unchecked Sendable {
     /// How soon `watchFile` looks again once it has seen the file move (at most the period): the
     /// change is reported when the file has held still from one look to the next, so a save is
     /// heard within the period plus this, not two periods. Yap hears an edit 0 to 2 s after the
-    /// save and reads it at once; this look is the one difference (docs/yap-parity.md).
+    /// save and reads it at once; this look is the one difference (yap-cairn's docs/yap-parity.md).
     public var watchSettleMs = 50
     /// The file `watchFile` looks at for a path: as given (`~/` is home). Tests that move the
     /// file handlers to a scratch directory move this too.

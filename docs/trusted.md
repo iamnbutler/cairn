@@ -390,7 +390,7 @@ in a scratch directory and never prompts.
 A `paint` draw (docs/frame.md) hands a box to a painter: a Metal shader the app registers with
 the host (`Painters.register`) and the Swift that feeds it the draw's integers and the time.
 Yap's tape display is the original Yap's `Overlay.metal`, unchanged
-(`host/Sources/CairnYapPaint/YapTape.swift`). A `shape` draw is a rounded rect drawn by Core
+(`host/Tests/CairnFuzzTrusted/YapTape.swift`). A `shape` draw is a rounded rect drawn by Core
 Graphics: continuous corners, an inside border, and a drop shadow blurred with a Gaussian of
 σ = 1.05 × radius (Accelerate), fitted to SwiftUI's `shadow(radius:)` (`shadowsAreSwiftUIs`:
 within 7 levels).
@@ -404,11 +404,11 @@ box's style and adds no control of its own: hit testing and the accessibility tr
 the laid tree's controls (`controls_ofLaid`), so a box whose only content is a paint is inert.
 
 **Not assumed, and not proved.** What a painter paints inside its box: Yap's tape is compared
-with the original by eye and by pixel (docs/yap.md, "Overlay parity"). Shapes paint outside
+with the original by eye and by pixel (yap-cairn's docs/yap.md, "Overlay parity"). Shapes paint outside
 their rect on purpose (the shadow) and are not covered by ^1004.
 
 **Trusted code.** `host/Sources/CairnRender/Renderer.swift` (paint batches),
-`Painters.swift`, `Shapes.swift`, `host/Sources/CairnYapPaint/YapTape.swift`, Metal and Core
+`Painters.swift`, `Shapes.swift`, `host/Tests/CairnFuzzTrusted/YapTape.swift`, Metal and Core
 Graphics.
 
 **Evidence.**
@@ -610,10 +610,10 @@ app showed exactly what the model says, judged through the pieces below. Each on
   on the same machine with the same fonts.
 - **Yap runs silent under the socket.** `CairnYap --debug-socket` gets a world whose every
   request handler waits forever and whose devices are inert (`silentWorld()` in
-  `host/Sources/CairnYap/main.swift`), because the model the driver compares against hears no
+  yap-cairn's `host/Sources/CairnYap/main.swift`), because the model the driver compares against hears no
   replies, ticks or subscription events. So conformance covers Yap's menu and its moves from
   launch, not dictation; the host's devices and effects are covered by the trusted fuzz suites
-  and the self test's fakes (docs/yap.md). `World.watchPath` (identity outside the self test)
+  and the self test's fakes (yap-cairn's docs/yap.md). `World.watchPath` (identity outside the self test)
   is how the self test moves `~/` watches into a scratch home; the real app never sets it.
 - **The comparison code.** Frames are compared through two JSON printers, `Conformance.jframe`
   in Lean and `DebugJSON.frame` in Swift. The expected AX tree is derived in the driver from the

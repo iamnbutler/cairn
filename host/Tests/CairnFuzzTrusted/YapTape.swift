@@ -2,10 +2,12 @@ import CairnFrame
 import CairnRender
 import Metal
 
-/// Yap's tape display (the original Yap's `Overlay.metal`, unchanged), as a painter for a
-/// `paint` draw named `yap.tape` (docs/yap.md, "Overlay parity").
+/// A copy of Yap's tape painter, the fixture for ^1004's fuzz suite (PaintSuite): the original
+/// Yap's `Overlay.metal`, unchanged, as a painter for a `paint` draw named `yap.tape`. The app's
+/// own copy lives in iamnbutler/yap-cairn (host/Sources/YapPaint/YapTape.swift, docs/yap.md,
+/// "Overlay parity"), and registers it the same public way (`Painters.register`).
 ///
-/// What Lean sends (lean/Examples/Yap/View.lean, `tapePaint`), every time in ms from the paint's
+/// What Lean sends (yap-cairn's lean/Yap/View.lean, `tapePaint`), every time in ms from the paint's
 /// origin, the tape's own clock (the first recording's start, as the original's renderer runs
 /// from when it was made):
 ///
