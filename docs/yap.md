@@ -147,6 +147,10 @@ every 0.25 s in both, as `TimelineView(.periodic(by: 0.25))` does.
   finely. Matching it needs a per-recording tap size in `Sub.record`.
 - **A transcript that becomes empty while shown** (not something Yap does: a new recording starts
   a new panel) switches at once instead of fading out the old text.
+- **When it appears.** Yap shows the panel once `capture.start` returns; Cairn shows it with
+  the key-down, while the host starts the microphone, so it comes up earlier by the engine's
+  start time, and a microphone that can't start shows it briefly before it hides (Yap never shows
+  it). Matching needs a "started" event on `Sub.record` (docs/yap-parity.md, Open 8).
 - **Colour tagging.** The original's tape layer is untagged and Cairn's is sRGB; on the Studio
   Display both read as the same sRGB values (the comparison matches both to sRGB first).
 
