@@ -211,6 +211,12 @@ structure Performed (S : Type) where
   ran : Bool
   /-- The slowest event's `Runtime.step` (update, view, layout, settle), in nanoseconds. -/
   maxNs : Nat
+  /-- A press or double press the runtime dropped by design: its pointerDown delivered a `blur`,
+  and after that step the pressed control is no longer at the point, so the release lands
+  elsewhere and presses nothing (docs/runtime.md; TodoMVC decision T33 in docs/plan.md: the
+  edit saves first, and if saving moved what was clicked, the click is dropped). This is
+  exactly where `Runtime.click_presses`'s hypothesis fails, so "performed" does not apply. -/
+  dropped : Bool := false
 
 /-- Perform an operation: through the runtime with an `App`, or straight into the machine. -/
 def perform (t : Target) (setup : Setup) (w : World t.S) (op : Op) : IO (Performed t.S) := do
@@ -231,6 +237,11 @@ def perform (t : Target) (setup : Setup) (w : World t.S) (op : Op) : IO (Perform
       let mut rt := w.rt
       let mut acts : Array Action := #[]
       let mut maxNs := 0
+      let mut dropped := false
+      -- The control a press means, so the first pointerDown can be checked for a T33 drop.
+      let pressed? : Option ControlRef := match op with
+        | .act (.press c) | .act (.doublePress c) => some c
+        | _ => none
       for e in es do
         let routed := (route cfg.metrics rt e).2
         let t0 ← IO.monoNanosNow
@@ -239,9 +250,11 @@ def perform (t : Target) (setup : Setup) (w : World t.S) (op : Op) : IO (Perform
         let _ ← IO.lazyPure fun _ => (targets rt'.laid).length
         let t1 ← IO.monoNanosNow
         maxNs := max maxNs (t1 - t0)
+        if let (some c, .pointerDown p _ 1 _) := (pressed?, e) then
+          if routed.any (· matches .blur _) && hitRef rt'.laid p != some c then dropped := true
         acts := acts ++ routed.toArray
         rt := rt'
-      return { world := { w with rt }, acts := acts.toList, ran := true, maxNs }
+      return { world := { w with rt }, acts := acts.toList, ran := true, maxNs, dropped }
 
 /-! ## Checks -/
 
@@ -272,10 +285,14 @@ def firstBadList : List Laid → Option (String × Laid)
   | k :: ks => (firstBad k).orElse fun _ => firstBadList ks
 end
 
+/-- The check name a dropped click is counted under (`Performed.dropped`). -/
+def droppedCheck : String := "droppedT33"
+
 /-- Every check after an operation: the checks that ran and the failures. `act?` is the
 action the operation meant to perform, if it ran. -/
 def checks (t : Target) (setup : Setup) (w : World t.S) (act? : Option Action)
-    (acts : List Action) (stepIx : Nat) : List Ran × List Failure := Id.run do
+    (acts : List Action) (stepIx : Nat) (dropped : Bool := false) :
+    List Ran × List Failure := Id.run do
   let s := w.rt.app
   let mut ran : Array Ran := #[]
   let mut fails : Array Failure := #[]
@@ -292,10 +309,12 @@ def checks (t : Target) (setup : Setup) (w : World t.S) (act? : Option Action)
   let size := w.rt.ui.size
   let min := t.minSize m s w.rt.ui
   let fitsWindow := decide (min.w ≤ size.w) && decide (min.h ≤ size.h)
-  -- Performed: the action meant was delivered.
+  -- Performed: the action meant was delivered, unless the click was dropped by design (T33).
   if let some a := act? then
     let c := a.control
-    if fitsWindow then
+    if dropped && !acts.contains a then
+      ran := ran.push (c.claim, droppedCheck)
+    else if fitsWindow then
       ran := ran.push (c.claim, "performed")
       unless acts.contains a do
         fails := fails.push <| mkFail "performed" c stepIx
@@ -506,13 +525,13 @@ def runSeq (t : Target) (setup : Setup) (src : Source) (stats : Stats := {})
     maxNs := max maxNs p.maxNs
     if p.maxNs > t.budgetNs then over := over.push (i, p.maxNs)
     let act? := match op with | .act a => if p.ran then some a else none | _ => none
-    let (ran, fs) := checks t setup w act? p.acts i
+    let (ran, fs) := checks t setup w act? p.acts i p.dropped
     if t.app.isSome then
       let min := t.minSize setup.metrics.metrics w.rt.app w.rt.ui
       unless min.w ≤ w.rt.ui.size.w && min.h ≤ w.rt.ui.size.h do skipped := skipped + 1
     stats := stats.record setup.seed ran
     if verbose then
-      IO.println s!"  {i}. {opText op}{if p.ran then "" else "  (skipped: no such control)"} → {", ".intercalate (p.acts.map actionLean)}"
+      IO.println s!"  {i}. {opText op}{if p.ran then "" else "  (skipped: no such control)"} → {", ".intercalate (p.acts.map actionLean)}{if p.dropped then "  (click dropped: the blur's save moved the control, T33)" else ""}"
     if let some f := fs.head? then
       return { setup, ops, failure := some f, stats, steps := i, over, maxNs, skipped }
   return { setup, ops, failure := none, stats, steps := i, over, maxNs, skipped }

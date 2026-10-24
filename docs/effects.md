@@ -322,7 +322,11 @@ Decisions, and why:
   `config.json`'s date every 2 s for that reason. The host compares `stat`'s device, inode,
   size, modification and change times (nanoseconds) every 250 ms (`World.watchPeriodMs`), so
   a write, a replacement, an append, a creation, a removal, a `touch` and a `chmod` all count.
-  Two changes inside one poll are one `changed`; Lean reads the file again, so nothing is lost.
+  A change is reported once the file has held still for a whole poll, so a burst is one
+  `changed` (a save is several system calls, and macOS moves a new file's change time again
+  a moment later when it attaches its provenance attribute), and Lean doesn't hear about a
+  write half done (truncated, not yet written). That costs up to one more poll of latency;
+  Lean reads the file again on `changed`, so nothing is lost.
   The first poll's state is taken when the subscription starts, with no event: an app reads
   the file once (`readFile`) when it subscribes. A change between that read and the start is
   missed until the next one (a window of one step). A symbolic link is followed.

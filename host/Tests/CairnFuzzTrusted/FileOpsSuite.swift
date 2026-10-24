@@ -19,7 +19,9 @@ import Foundation
 ///   `notFound`; a directory is `invalid` and stays; a read-only parent is `denied`.
 /// - `subs.watch-file`: every change (write in place, atomic replace, append, delete, create,
 ///   touch, chmod) brings `changed` within a few polls; an untouched file brings none; after
-///   the stop has been handled none at all.
+///   the stop has been handled none at all. The host reports a change once the file has held
+///   still for a poll, so an operation brings one `changed`, or one per system call that
+///   changes the file when a poll fits between them (`seenTwice` counts those).
 final class FileOpsSuite: Suite {
     let name = "fileops"
     let crashCheck = "effects.append-file"
@@ -226,7 +228,8 @@ final class FileOpsSuite: Suite {
         var made = Set<String>()
         for _ in 0..<g.weighted([(1, { _ in 0 }), (4, { $0.range(1, 12) }), (1, { $0.range(100, 300) })]) {
             let n = FilesSuite.component(&g)
-            if n.utf8.contains(0) || made.contains(where: { $0.lowercased() == n.lowercased() }) { continue }
+            // A "/" makes it a path, not a name ("/x" under `dir` is "x"), so it isn't one to list.
+            if n.utf8.contains(0) || n.utf8.contains(UInt8(ascii: "/")) || made.contains(where: { $0.lowercased() == n.lowercased() }) { continue }
             let p = dir + "/" + n
             let ok: Bool = switch g.below(4) {
             case 0: mkdir(p, 0o755) == 0
@@ -242,21 +245,21 @@ final class FileOpsSuite: Suite {
             r.fail(c, "listDir of a directory: \(Files.list(dir))")
             return
         }
-        // FileManager drops a name's leading U+FEFF (readdir and `listDir` keep it), so it is
-        // compared without one.
-        func unBOM(_ n: String) -> String {
-            n.unicodeScalars.first == "\u{FEFF}" ? String(String.UnicodeScalarView(n.unicodeScalars.dropFirst())) : n
-        }
-        let byBytes: (String, String) -> Bool = { $0.utf8.lexicographicallyPrecedes($1.utf8) }
-        let fm = ((try? FileManager.default.contentsOfDirectory(atPath: dir)) ?? []).sorted(by: byBytes)
-        let listed = names.map(unBOM).sorted(by: byBytes)
-        let i = Array(zip(listed, fm)).firstIndex { Array($0.0.utf8) != Array($0.1.utf8) } ?? min(listed.count, fm.count)
-        r.expect(c, listed.map { Array($0.utf8) } == fm.map { Array($0.utf8) },
-                 "listDir differs from FileManager at \(i) of \(listed.count) and \(fm.count): \(listed.dropFirst(i).prefix(2).map { Array($0.unicodeScalars) }) vs \(fm.dropFirst(i).prefix(2).map { Array($0.unicodeScalars) })")
-        r.expect(c, Set(names) == made, "listDir has \(names.count) names; the case made \(made.count)")
+        // FileManager's URL listing, read back through each URL's file-system representation:
+        // the bytes the file system holds. (`contentsOfDirectory(atPath:)` decodes names as
+        // NSString does, which drops one leading U+FEFF: "\u{FEFF}a" comes back as "a", a name
+        // that isn't in the directory. That was the oracle's bug, not the host's.)
+        let fm = ((try? FileManager.default.contentsOfDirectory(at: URL(fileURLWithPath: dir),
+                                                                includingPropertiesForKeys: nil)) ?? [])
+            .map(Self.fileSystemName)
+            .sorted { $0.utf8.lexicographicallyPrecedes($1.utf8) }
+        r.expect(c, names.map { Array($0.utf8) } == fm.map { Array($0.utf8) },
+                 "listDir differs from FileManager: \(names.prefix(5)) vs \(fm.prefix(5))")
+        r.expect(c, Set(names) == made, "listDir has \(names.count) names; the case made \(made.count); only listed: \(Set(names).subtracting(made).map { Array($0.unicodeScalars.map(\.value)) }), only made: \(made.subtracting(names).map { Array($0.unicodeScalars.map(\.value)) })")
         r.expect(c, zip(names, names.dropFirst()).allSatisfy { $0.utf8.lexicographicallyPrecedes($1.utf8) },
                  "listDir's names are not strictly sorted by UTF-8 bytes")
         r.count(c, "names", names.count)
+        r.count(c, "leadingBOM", names.filter { $0.unicodeScalars.first == "\u{FEFF}" }.count)
         if let f = names.first(where: { FileManager.default.fileExists(atPath: dir + "/" + $0) && !isDir(dir + "/" + $0) }) {
             r.expect(c, isFailure(Files.list(dir + "/" + f), .invalid), "listDir of a file: \(Files.list(dir + "/" + f))")
         }
@@ -266,6 +269,17 @@ final class FileOpsSuite: Suite {
             chmod(dir, 0o000)
             r.expect(c, isFailure(Files.list(dir), .denied), "listDir of an unreadable directory: \(Files.list(dir))")
             chmod(dir, 0o755)
+        }
+    }
+
+    /// A listed URL's last component as the file system's bytes, not as Foundation decodes it.
+    static func fileSystemName(_ u: URL) -> String {
+        u.withUnsafeFileSystemRepresentation { p -> String in
+            guard let p else { return u.lastPathComponent }
+            let bytes = Array(UnsafeBufferPointer(start: UnsafeRawPointer(p).assumingMemoryBound(to: UInt8.self),
+                                                  count: strlen(p)))
+            let last = bytes.split(separator: UInt8(ascii: "/"), omittingEmptySubsequences: true).last ?? []
+            return String(decoding: last, as: UTF8.self)
         }
     }
 
@@ -355,8 +369,11 @@ final class FileOpsSuite: Suite {
                     h.truncateFile(atOffset: 0); h.write(Data("{\"key\":\"f13\"}".utf8)); h.closeFile()
                     changes = 2
                 } else { FileManager.default.createFile(atPath: path, contents: Data("{}".utf8)) }
-            case 1: try? Data("{\"x\":\(g.below(1000))}".utf8).write(to: URL(fileURLWithPath: path), options: .atomic)
-            case 2: _ = Files.append(path, [10])
+            case 1:  // Foundation touches the old file's metadata, then renames the new one over it
+                try? Data("{\"x\":\(g.below(1000))}".utf8).write(to: URL(fileURLWithPath: path), options: .atomic)
+                if exists { changes = 2 }
+            case 2: _ = Files.append(path, [10])  // a new file is created, then written
+                if !exists { changes = 2 }
             case 3:
                 if exists { unlink(path) } else { changes = 0 }
             case 4: FileManager.default.createFile(atPath: path, contents: Data())
@@ -384,6 +401,7 @@ final class FileOpsSuite: Suite {
             } else {
                 r.expect(c, !got.isEmpty && got.count <= changes, "\(got.count) changed for op \(op), allowed 1…\(changes)")
                 r.count(c, "changes")
+                if got.count > 1 { r.count(c, "seenTwice") }
             }
         }
         world.run([], [.stop(id: id)])

@@ -30,9 +30,9 @@ export type Audit = { theorems: Record<string, { ok: boolean; extraAxioms: strin
 /** One line of `claims.lock`. */
 export type Lock = { id: number; kind: string; status: string; statement: string; title: string };
 /** `build/conformance/<App>.json` (docs/conformance.md). Only `claims` is read. */
-export type Conformance = { runs?: number; commit?: string; claims: Record<string, { pass: boolean; runs?: number; note?: string }> };
+export type Conformance = { runs?: number; commit?: string; claims: Record<string, { pass: boolean; runs?: number; note?: string; known?: Record<string, number> }> };
 /** `build/fuzz/<App>.json` (docs/fuzz.md). */
-export type FuzzClaim = { pass: boolean | null; steps?: number; sequences?: number; note?: string; failure?: { check: string; seed: number; step: number; message: string } };
+export type FuzzClaim = { pass: boolean | null; steps?: number; sequences?: number; note?: string; checks?: Record<string, number>; failure?: { check: string; seed: number; step: number; message: string } };
 export type Fuzz = { mode?: string; seed: number; iterations: number; stepsRun: number; claims: Record<string, FuzzClaim> };
 /** `build/fuzz/trusted.json` (`make fuzz-trusted`, docs/fuzz.md "Trusted base"): one entry per
  *  check of the trusted base, naming the `assume` claims it is evidence for. */
@@ -120,6 +120,10 @@ export function captureScript(claims: Claim[]) {
 	};
 }
 
+/** A dropped click (docs/fuzz.md, docs/conformance.md): what TodoMVC decision T33 says happens. */
+const t33 = (n: number) =>
+	`${plural(n, "click")} ended an edit and ${n === 1 ? "was" : "were"} dropped by design: the blur saved the edit, which moved or removed the control (T33, an open decision in docs/plan.md).`;
+
 /** Every claim's evidence. `image` maps a capture file to the name the pages use. */
 export function evaluate(inp: Inputs, image: (file: string) => string = (f) => f): Row[] {
 	const { app, audit, fuzz, conformance, capture } = inp;
@@ -180,7 +184,7 @@ export function evaluate(inp: Inputs, image: (file: string) => string = (f) => f
 				mark("fuzzed", "gap", "not fuzzed", "The app is fuzzed at the model level only (it has no `App` yet), where a move has no checks of its own: presence and pressability need a frame.");
 			else if (!f || f.pass === null)
 				mark("fuzzed", "gap", f?.note?.startsWith("not runnable") ? "not runnable" : "not fuzzed", f?.note?.startsWith("not runnable") ? `The fuzzer can't run it: ${f.note}.` : "No fuzzed sequence exercised it.");
-			else if (f.pass) mark("fuzzed", "pass", `fuzzed ${short(f.sequences ?? fuzz.iterations)}`, `Held in ${plural(f.sequences ?? fuzz.iterations, "random sequence")}${model}, ${plural(f.steps ?? 0, "step")} checked (seed ${fuzz.seed}).`);
+			else if (f.pass) mark("fuzzed", "pass", `fuzzed ${short(f.sequences ?? fuzz.iterations)}`, `Held in ${plural(f.sequences ?? fuzz.iterations, "random sequence")}${model}, ${plural(f.steps ?? 0, "step")} checked (seed ${fuzz.seed}).${f.checks?.droppedT33 ? ` ${t33(f.checks.droppedT33)}` : ""}`);
 			else {
 				const x = f.failure;
 				mark("fuzzed", "fail", "fuzz fails", x ? `${x.check} failed at seed ${x.seed}, step ${x.step}: ${x.message}. Replay with \`lake exe fuzz ${app} --seed ${x.seed} --iterations 1 -v\`.` : `Fuzzing failed${f.note ? `: ${f.note}` : "."}`);
@@ -208,7 +212,7 @@ export function evaluate(inp: Inputs, image: (file: string) => string = (f) => f
 			if (!conformance)
 				mark("tested", "gap", "not tested", inp.conformable === false ? `${app} has no conformance generator yet (\`tools/conformance/lean/Conformance/Apps/${app}.lean\`).` : `No \`build/conformance/${app}.json\`: run \`make conformance APP=${app}\`.`);
 			else if (!t) mark("tested", "gap", "not tested", "No conformance step exercised it.");
-			else if (t.pass) mark("tested", "pass", c.kind === "move" && t.runs ? `tested ${short(t.runs)}` : "tested", `${what(t.runs ?? 0)}, and the frame, accessibility tree, effects and pixels matched the model.`);
+			else if (t.pass) mark("tested", "pass", c.kind === "move" && t.runs ? `tested ${short(t.runs)}` : "tested", `${what(t.runs ?? 0)}, and the frame, accessibility tree, effects and pixels matched the model.${t.known?.T33 ? ` ${t33(t.known.T33)}` : ""}`);
 			else mark("tested", "fail", "test fails", `Conformance failed${t.note ? `: ${t.note}` : "."}`);
 		}
 

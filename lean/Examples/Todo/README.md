@@ -93,5 +93,8 @@ Known gaps: persistence (T44, T47); editing has no keyboard or VoiceOver path (t
 focusable, and double-click is pointer-only). A click that ends an edit can be dropped: the blur
 saves first (T33), and if that save deletes the todo, the row or button that was clicked can move
 or vanish (the last todo goes, so toggle all goes too) before the release, as in a browser. Tests
-show it (`Tests.lean`); `make fuzz APP=Todo N=1000` finds one such sequence (seed 260, ^208) and
-`make conformance APP=Todo N=1000` one (walk-1-823, ^203). Everything else passed.
+show it (`Tests.lean`). `make fuzz APP=Todo` and `make conformance APP=Todo` meet it (fuzz seed
+260, ^208; conformance walk-1-823 step 7, ^203: both edit the last todo to blank, then click a
+control that goes with it) and label it T33 instead of failing: the fuzzer counts it as
+`droppedT33`, the conformance run under `known` (docs/fuzz.md, docs/conformance.md). It is
+exactly where `Runtime.click_presses`'s hypothesis fails, so code, model and proofs agree.

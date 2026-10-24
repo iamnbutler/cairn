@@ -169,11 +169,20 @@ is applied on the main thread. Then it checks:
 | effects | the effects the host ran equal the model's |
 | shadow | no new text-input shadow divergences: the host's prediction between an IME call and its frame agreed with Lean |
 | pixels | each probe's colour in the presented drawable is within 3 per channel of the model's |
-| model | the generator's findings are empty: every control on screen belongs to an enabled move, and a press delivered exactly that press |
+| model | the generator's findings are empty: every control on screen belongs to an enabled move, and a press delivered exactly that press (except a T33 dropped click, below) |
 
 The initial frame, AX tree and pixels are checked after each restart. A sequence stops at its
 first failing step. The states after that step have diverged, so later steps would only repeat
 the failure.
+
+**Known outcomes.** A press whose pointerDown delivers a `blur` and whose control is no longer
+at the point after that step is dropped by the runtime (docs/runtime.md): the click ended an
+edit, the blur saved it, and saving moved or removed the control, so the release presses
+nothing. That is TodoMVC decision T33 (docs/plan.md), still open, and where
+`Runtime.click_presses`'s hypothesis fails. The generator lists such a step under `known`
+(`"T33: …"`), not `findings`: the app did what the model does, so the walk passes. The driver
+counts them in the results file's `known` and in the claim's `known` and `note`, and
+`report.md` lists them under "Known: open decisions", so the map can say so.
 
 ## Results file
 
@@ -191,7 +200,8 @@ the failure.
 | flow | 1 | the replay of its witness from `lake exe claims` failed anywhere |
 | invariant | every step checked | anything failed: it passes only when every state the app reached was the model's, where the invariant is proved |
 
-Places and assumptions aren't run; the map shows them as `n/a`. The extra fields (`sequences`,
+A claim with known outcomes (above) has `known` (`{"T33": 1}`) and, when it passed, a `note`
+naming the decision and the first walk and step. Places and assumptions aren't run; the map shows them as `n/a`. The extra fields (`sequences`,
 `steps`, `probes`, `triggers`, `timing`, `plainUi`) are for people. The map reads only `claims`.
 
 ## Shrinking

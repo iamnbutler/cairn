@@ -51,6 +51,11 @@ final class FilesSuite: Suite {
     static func posixRefuses(_ root: String, _ parts: [String]) -> Int32? {
         var p = root
         if mkdir(p, 0o755) != 0 && errno != EEXIST { return errno }
+        // A pool component can hold a "/": it is then several components of the path, as it is
+        // for the host (which creates every missing parent), so split it the same way.
+        // (By bytes: "/" then a combining mark is one Character.)
+        let parts = parts.joined(separator: "/").utf8.split(separator: UInt8(ascii: "/"))
+            .map { String(decoding: $0, as: UTF8.self) }
         for (i, c) in parts.enumerated() {
             p += "/" + c
             if i == parts.count - 1 {
@@ -87,7 +92,7 @@ final class FilesSuite: Suite {
         // and noncharacters with EILSEQ): the oracle makes the same path with POSIX calls.
         if let e = Self.posixRefuses(root + "-oracle", parts) {
             let reply = Files.write(path, [1])
-            r.expect(w, isFailure(reply, .invalid), "writeFile to a name the file system refuses (errno \(e)): \(reply)")
+            r.expect(w, isFailure(reply, .invalid), "writeFile to a name the file system refuses (errno \(e)): \(reply); parts \(parts.map { Array($0.unicodeScalars.map(\.value)) })")
             r.count(w, "refusedNames")
             try? FileManager.default.removeItem(atPath: root + "-oracle")
             return
