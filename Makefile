@@ -206,7 +206,8 @@ fuzz-quick: lean
 	cd lean && lake build yapfuzz && .lake/build/bin/yapfuzz --iterations 200 --steps 200 --out ../build/fuzz/quick
 
 # Yap's dictation machine against a random host (lean/Examples/Yap/Fuzz.lean): keys, ticks,
-# audio, replies late, failed, duplicated and out of order. `make fuzz-yap [N=5000] [SEED=0]`
+# audio, replies late, failed, duplicated and out of order; then the app itself (`receive` and
+# the menu, lean/Examples/Yap/AppFuzz.lean) against one. `make fuzz-yap [N=5000] [SEED=0]`
 # writes build/fuzz/Yap.json; the generic `make fuzz APP=Yap` drives only Yap's menu.
 fuzz-yap: lean
 	cd lean && lake build yapfuzz && .lake/build/bin/yapfuzz --seed $(or $(SEED),0) --iterations $(or $(N),5000) --steps 300 --out ../build/fuzz

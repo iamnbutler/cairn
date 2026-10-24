@@ -203,6 +203,25 @@ shrunk from 13 operations to 2.
 `make check` runs `make fuzz-quick`: Counter and Basics, 200 sequences of 50 steps each, about
 1 s plus linking the exe.
 
+## Yap: a random host
+
+Yap's dictation is driven by the host, not by moves, so `lake exe yapfuzz` (`make fuzz-yap`,
+and in `make fuzz-quick`) plays a random host instead, in two modes, and writes one
+`build/fuzz/Yap.json`:
+
+- **host** (`lean/Examples/Yap/Fuzz.lean`): inputs straight into the model's `step`, checking
+  ^311–^323 as the model states them. It imports the model only, so it builds against mutants.
+- **app** (`lean/Examples/Yap/AppFuzz.lean`): messages into the app's `receive` and menu items
+  into `menuStep`, as the Cairn runtime sends them. The host answers the requests the app made
+  (files there or not, config.json and dictionary.txt good and bad, OpenAI's transcripts and
+  errors, typing that fails), late, twice, out of order or never; fires the subscriptions the
+  app has on (the key, the microphone, file watches, the poll) and some it doesn't; and starts
+  and quits the original Yap. It checks ^311–^323 and ^346 as `Examples.Yap` states them over
+  `AppState` and effects. Dropping the original-Yap test from `wantsKey` is caught as ^346
+  within 50 steps and shrunk.
+
+Each claim's entry has `hostSteps` and `appSteps`; `steps` is their sum.
+
 ## Limits
 
 - It fuzzes the Lean model and runtime, not the host: no AppKit, Core Text or Metal. J's
@@ -416,7 +435,26 @@ ignores; `A~` in the verdict), and Swift agrees on every one. A `count` field of
 the Swift decoder reserve that many elements before failing; virtual memory absorbs it (no crash
 in 20,000 cases), but a cap would be cheaper.
 
-### Limits
+### Yap: a random host
+
+Yap's dictation is driven by the host, not by moves, so `lake exe yapfuzz` (`make fuzz-yap`,
+and in `make fuzz-quick`) plays a random host instead, in two modes, and writes one
+`build/fuzz/Yap.json`:
+
+- **host** (`lean/Examples/Yap/Fuzz.lean`): inputs straight into the model's `step`, checking
+  ^311–^323 as the model states them. It imports the model only, so it builds against mutants.
+- **app** (`lean/Examples/Yap/AppFuzz.lean`): messages into the app's `receive` and menu items
+  into `menuStep`, as the Cairn runtime sends them. The host answers the requests the app made
+  (files there or not, config.json and dictionary.txt good and bad, OpenAI's transcripts and
+  errors, typing that fails), late, twice, out of order or never; fires the subscriptions the
+  app has on (the key, the microphone, file watches, the poll) and some it doesn't; and starts
+  and quits the original Yap. It checks ^311–^323 and ^346 as `Examples.Yap` states them over
+  `AppState` and effects. Dropping the original-Yap test from `wantsKey` is caught as ^346
+  within 50 steps and shrunk.
+
+Each claim's entry has `hostSteps` and `appSteps`; `steps` is their sum.
+
+## Limits
 
 - A seeded loop, not coverage-guided: no libFuzzer on this toolchain. Mutations are structural
   (the frame format's length and count fields) to make up for it.

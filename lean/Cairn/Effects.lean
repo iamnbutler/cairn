@@ -36,8 +36,9 @@ deriving Repr, DecidableEq, Inhabited
 /-- A part of an `upload` body: bytes Lean built, or audio the host holds. -/
 inductive Part where
   | bytes (b : ByteArray)
-  /-- The recording of `clip`, samples `[start, stop)` (to the end of the recording with
-  `none`), as a WAV file: 16 kHz, mono, 16-bit PCM. Lean never sees the samples. -/
+  /-- The recording of `clip`, 20 ms windows `[start, stop)` (320 samples each; to the end of
+  the recording, with any partial last window, for `none`), as a WAV file: 16 kHz, mono,
+  16-bit PCM. Lean never sees the samples. -/
   | wav (clip start : Nat) (stop : Option Nat)
 deriving Repr, BEq, Inhabited
 

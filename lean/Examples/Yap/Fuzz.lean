@@ -450,7 +450,17 @@ where
     | some n => k n
     | none => .error s!"expected a number, got {v}"
 
-def main (args : List String) : IO UInt32 := do
+/-- What the app-mode fuzzer (`Examples.Yap.Fuzz.App`, which plays a host against the app's
+`receive` and `menuStep`) reports, for the shared summary and `Yap.json`. -/
+structure AppReport where
+  stats : Stats
+  claims : List (Nat × String)
+  /-- Claim, step, steps before shrinking, and the shrunk steps. -/
+  failures : List (Nat × Nat × Nat × String)
+  failing : Nat
+
+/-- Runs the host mode, then the app mode if given, and writes one report. -/
+def main (args : List String) (app : Option (Opts → IO AppReport) := none) : IO UInt32 := do
   let o ← match parseArgs {} args with
     | .ok o => pure o
     | .error e =>
@@ -481,28 +491,47 @@ def main (args : List String) : IO UInt32 := do
     let failed := fails.any (·.claim == id)
     IO.println s!"^{id} {claimTitle id}: {if failed then "FAIL" else if n == 0 then "not run" else "pass"} ({n} steps exercised it)"
   IO.println s!"{o.iterations} sequences × {o.steps} steps from seed {o.seed}: {st.steps} steps in {secs} s ({perSec.toUInt64} steps/s), {fails.size} failing"
+  let a ← match app with
+    | some run => some <$> run o
+    | none => pure none
+  if let some a := a then
+    for (id, title) in a.claims do
+      let n := a.stats.exercised.getD id 0
+      let failed := a.failures.any (·.1 == id)
+      IO.println s!"^{id} {title} (app): {if failed then "FAIL" else if n == 0 then "not run" else "pass"} ({n} steps exercised it)"
+    IO.println s!"app mode: {a.stats.steps} steps through receive and menuStep, {a.failing} failing"
+  let appClaims := (a.map (·.claims)).getD []
+  let ids := claimIds ++ (appClaims.map (·.1)).filter (!claimIds.contains ·)
+  let title (id : Nat) := (appClaims.lookup id).getD (claimTitle id)
   if let some dir := o.out then
     IO.FS.createDirAll dir
-    let claimJ := claimIds.map fun id =>
-      let n := st.exercised.getD id 0
-      let failed := fails.any (·.claim == id)
-      (s!"^{id}", Json.mkObj ([("kind", Json.str "invariant"), ("title", Json.str (claimTitle id)),
-        ("steps", toJson n)] ++
+    let claimJ := ids.map fun id =>
+      let hostN := st.exercised.getD id 0
+      let appN := (a.map (·.stats.exercised.getD id 0)).getD 0
+      let n := hostN + appN
+      let failed := fails.any (·.claim == id) || (a.map (·.failures.any (·.1 == id))).getD false
+      (s!"^{id}", Json.mkObj ([("kind", Json.str "invariant"), ("title", Json.str (title id)),
+        ("steps", toJson n), ("hostSteps", toJson hostN), ("appSteps", toJson appN)] ++
         (if failed then [("pass", Json.bool false)]
          else if n == 0 then [("pass", Json.null), ("note", Json.str "not run")]
          else [("pass", Json.bool true)])))
     let failJ := shrunk.toList.map fun (f, small) => Json.mkObj [
       ("check", Json.str "invariant"), ("claim", toJson f.claim), ("step", toJson f.step),
-      ("shrunkFrom", toJson f.inputs.length), ("inputs", Json.str (inputsLean small))]
+      ("shrunkFrom", toJson f.inputs.length), ("inputs", Json.str (inputsLean small)),
+      ("mode", Json.str "host")]
+    let appFailJ := ((a.map (·.failures)).getD []).map fun (c, k, n, xs) => Json.mkObj [
+      ("check", Json.str "invariant"), ("claim", toJson c), ("step", toJson k),
+      ("shrunkFrom", toJson n), ("inputs", Json.str xs), ("mode", Json.str "app")]
     let j := Json.mkObj [
-      ("app", Json.str "Yap"), ("module", Json.str "Examples.Yap"), ("mode", Json.str "host"),
+      ("app", Json.str "Yap"), ("module", Json.str "Examples.Yap"), ("mode", Json.str (if a.isSome then "host+app" else "host")),
       ("seed", toJson o.seed), ("iterations", toJson o.iterations), ("steps", toJson o.steps),
       ("sequences", toJson o.iterations), ("stepsRun", toJson st.steps),
       ("seconds", Json.num ⟨((t1 - t0 + 5000000) / 10000000 : Nat), 2⟩),
       ("stepsPerSecond", toJson perSec.toUInt64.toNat),
-      ("failingSequences", toJson fails.size),
-      ("claims", Json.mkObj claimJ), ("failures", Json.arr failJ.toArray)]
+      ("failingSequences", toJson (fails.size + (a.map (·.failing)).getD 0)),
+      ("appStepsRun", toJson ((a.map (·.stats.steps)).getD 0)),
+      ("claims", Json.mkObj claimJ), ("failures", Json.arr (failJ ++ appFailJ).toArray)]
     IO.FS.writeFile (dir ++ "/Yap.json") (j.pretty ++ "\n")
-  return if fails.isEmpty then 0 else 1
+  return if fails.isEmpty && (a.map (·.failing == 0)).getD true then 0 else 1
 
 end Examples.Yap.Fuzz
