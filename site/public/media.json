@@ -1,5 +1,18 @@
 [
   {
+    "video": "/m/videos/796054c4982eb3e6.mp4",
+    "poster": "/m/videos/796054c4982eb3e6.jpg",
+    "title": "Yap on Cairn: the overlay",
+    "caption": "Yap's dictation overlay on Cairn, driven by a synthetic voice: recording with a moving tape waveform and a two-line live preview, then transcribing, then typed. The state, view and layout are Lean; the waveform is a host-drawn paint node running the original's Metal shader.",
+    "date": "2026-10-24",
+    "commit": "a83d447",
+    "width": 1112,
+    "height": 428,
+    "seconds": 11,
+    "feature": false,
+    "milestone": "m2"
+  },
+  {
     "video": "/m/videos/a79d52b1bab3288e.mp4",
     "poster": "/m/videos/a79d52b1bab3288e.jpg",
     "title": "Clock: effects",

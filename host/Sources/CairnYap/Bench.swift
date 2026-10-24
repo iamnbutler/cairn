@@ -24,6 +24,10 @@ import os
 //        per trial: key down, 1 s of voice, key up (signpost begin), stubbed typing (end)
 //   --bench-idle     launch and sit in the menu bar
 //   --bench-menu     launch, then open the status item's menu after 3 s and leave it open
+//   --bench-demo     for a demo video (docs/media.md): hold the key, feed the voice for 8.4 s
+//        (two cuts, so a two-line preview), release; the transcription answers after 1.4 s
+//        with the whole sentence, it is typed (the stub) and the overlay hides. Prints the
+//        panel's window number ("demo: panel window N") so `record --window N` can take it.
 
 let benchLog = OSLog(subsystem: "dev.yap.bench", category: "bench")
 
@@ -44,6 +48,39 @@ enum BenchVoice {
             return n % 2 == 0 ? a : -a
         }
     }
+}
+
+/// OpenAI as the demo plays it: each preview chunk answers with the next phrase at once; once
+/// `final` is set (the key is up), the recording's transcription answers after `delay` with
+/// the whole sentence, so TRANSCRIBING stays on screen long enough to see. No network.
+final class DemoOpenAI: URLProtocol, @unchecked Sendable {
+    static let phrases = [
+        "So the overlay should feel like a little tape machine,",
+        "with the reel turning while I talk.",
+    ]
+    static let sentence = "So the overlay should feel like a little tape machine, with the reel turning while I talk."
+    static let count = Locked(0)
+    static let final = Locked(false)
+    static let delay = 1.4
+
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        var n = 0
+        Self.count.update { n = $0; $0 += 1 }
+        let last = Self.final.value
+        let text = last ? Self.sentence : Self.phrases[min(n, Self.phrases.count - 1)]
+        let answer: @Sendable () -> Void = { [self] in
+            let json = try! JSONSerialization.data(withJSONObject: ["text": text])
+            let resp = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: "HTTP/1.1",
+                                       headerFields: ["Content-Type": "application/json"])!
+            client?.urlProtocol(self, didReceive: resp, cacheStoragePolicy: .notAllowed)
+            client?.urlProtocol(self, didLoad: json)
+            client?.urlProtocolDidFinishLoading(self)
+        }
+        if last { DispatchQueue.global().asyncAfter(deadline: .now() + Self.delay, execute: answer) } else { answer() }
+    }
+    override func stopLoading() {}
 }
 
 /// OpenAI as the bench plays it: every transcription answers at once with the next phrase.
@@ -73,7 +110,7 @@ final class BenchOpenAI: URLProtocol, @unchecked Sendable {
 
 @MainActor
 enum Bench {
-    enum Kind { case overlay, latency, idle, menu }
+    enum Kind { case overlay, latency, idle, menu, demo }
 
     struct Mode {
         var kind: Kind
@@ -87,6 +124,7 @@ enum Bench {
             else if args.contains("--bench-latency") { kind = .latency }
             else if args.contains("--bench-idle") { kind = .idle }
             else if args.contains("--bench-menu") { kind = .menu }
+            else if args.contains("--bench-demo") { kind = .demo }
             else { return nil }
             func value(_ flag: String) -> String? {
                 args.firstIndex(of: flag).flatMap { $0 + 1 < args.count ? args[$0 + 1] : nil }
@@ -122,7 +160,7 @@ enum Bench {
                 os_signpost(.end, log: benchLog, name: "keyUpToTyped", signpostID: OSSignpostID(UInt64(trial.value)))
                 typed.update { $0 += 1 }
             })
-        let world = fakeWorld(home: home, mic: mic, keys: keys, log: log, typist: typist, protocolClass: BenchOpenAI.self)
+        let world = fakeWorld(home: home, mic: mic, keys: keys, log: log, typist: typist, protocolClass: mode.kind == .demo ? DemoOpenAI.self : BenchOpenAI.self)
         world.watchPeriodMs = 250  // the live world's period, not the self test's
 
         let d = BenchDriver(mic: mic, keys: keys, typed: typed, trial: trial)
@@ -164,6 +202,24 @@ enum Bench {
                     wait("the microphone stayed on") { !mic.live }
                     usleep(2_500_000)  // the overlay hides 1.5 s after TYPED
                 }
+            case .demo:
+                // Hold: REC. The voice starts in one of its pauses, so the first 0.7 s is quiet
+                // while the recorder finds the panel; cuts land about 3.2 s and 7 s in, so the
+                // two-line preview shows for a second before the key comes up.
+                keys.send(.keyDown, f13)
+                wait("no microphone") { mic.live }
+                DispatchQueue.main.async {
+                    MainActor.assumeIsolated {
+                        if let p = NSApp.windows.first(where: { $0 is NSPanel && $0.isVisible }) {
+                            print("demo: panel window \(p.windowNumber)"); fflush(stdout)
+                        }
+                    }
+                }
+                d.feed(seconds: 8.4, bufferMs: 20, from: 2.5)
+                DemoOpenAI.final.value = true
+                keys.send(.keyUp, f13)
+                wait("never typed", 10) { typed.value > 0 }
+                usleep(2_500_000)
             case .idle:
                 return
             case .menu:
