@@ -259,7 +259,10 @@ public final class StatusHost {
             item = it
         }
         guard let item, let button = item.button else { return }
-        item.isVisible = s.shown
+        // Every write below, even of an unchanged value, makes AppKit redraw the status item's
+        // replicants in the menu bar (-[NSStatusItem _updateReplicants]); frames arrive at up to
+        // 50 a second while recording, so write only what changed (bench/yap-instruments.md).
+        if item.isVisible != s.shown { item.isVisible = s.shown }
         if old.symbol != status.symbol || button.image == nil && !status.symbol.isEmpty {
             let image = status.symbol.isEmpty ? nil
                 : NSImage(systemSymbolName: status.symbol, accessibilityDescription: status.label)
@@ -271,9 +274,11 @@ public final class StatusHost {
             button.image = image
         }
         if button.title != status.title { button.title = status.title }
-        button.imagePosition = status.title.isEmpty ? .imageOnly : .imageLeading
-        button.setAccessibilityLabel(status.label)
-        button.identifier = NSUserInterfaceItemIdentifier(status.control.label)
+        let position: NSControl.ImagePosition = status.title.isEmpty ? .imageOnly : .imageLeading
+        if button.imagePosition != position { button.imagePosition = position }
+        if button.accessibilityLabel() != status.label { button.setAccessibilityLabel(status.label) }
+        let id = NSUserInterfaceItemIdentifier(status.control.label)
+        if button.identifier != id { button.identifier = id }
     }
 }
 
@@ -343,8 +348,13 @@ public final class PanelHost {
         }
     }
 
+    /// Benchmarks only (tools/bench/): put every panel on `NSScreen.screens[i]` whatever the
+    /// frame chose, so runs compared with each other draw on the same display.
+    public static var benchScreen: Int?
+
     /// The screen a panel shown now goes on.
     static func screen(_ choice: ScreenChoice) -> NSScreen? {
+        if let i = benchScreen, NSScreen.screens.indices.contains(i) { return NSScreen.screens[i] }
         switch choice {
         case .pointer:
             let p = NSEvent.mouseLocation

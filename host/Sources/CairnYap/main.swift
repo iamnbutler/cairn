@@ -12,6 +12,8 @@ import QuartzCore
 //   CairnYap --selftest        a day of dictation against fakes, headless, and check it
 //   CairnYap --debug-socket    driven detached through the socket (docs/conformance.md), with a
 //                              world that never records, listens, types or answers
+//   CairnYap --bench-overlay | --bench-latency | --bench-idle | --bench-menu
+//                              the live app with fake devices, for Instruments (Bench.swift)
 //
 // Every decision is Lean's. This file only builds the world: the live one, or fakes.
 
@@ -91,6 +93,13 @@ final class FakeMic: @unchecked Sendable {
     var live: Bool { lock.lock(); defer { lock.unlock() }; return sink != nil }
     var startCount: Int { lock.lock(); defer { lock.unlock() }; return starts }
 
+    /// One buffer of samples, as the microphone would deliver it.
+    func push(_ samples: [Int16]) {
+        lock.lock()
+        samples.withUnsafeBufferPointer { sink?($0) }
+        lock.unlock()
+    }
+
     /// `ms` of 16 kHz samples at `amplitude`, in 20 ms buffers.
     func push(ms: Int, amplitude: Int16) {
         for i in 0..<(ms / 20) {
@@ -164,7 +173,8 @@ final class Log: @unchecked Sendable {
 
 /// The self test's world: files under a scratch home, the fakes above, and every request that
 /// would reach outside answered by the test.
-func fakeWorld(home: String, mic: FakeMic, keys: FakeKeys, log: Log) -> World {
+func fakeWorld(home: String, mic: FakeMic, keys: FakeKeys, log: Log,
+               typist custom: Typist? = nil, protocolClass: AnyClass = FakeOpenAI.self) -> World {
     @Sendable func moved(_ p: String) -> String { p.hasPrefix("~/") ? home + String(p.dropFirst(1)) : p }
     var h = Handlers.standard
     h.table[0] = { r, reply in if case let .readFile(p) = r { reply(Files.read(moved(p))) } }
@@ -188,10 +198,10 @@ func fakeWorld(home: String, mic: FakeMic, keys: FakeKeys, log: Log) -> World {
     }
     let session: URLSession = {
         let c = URLSessionConfiguration.ephemeral
-        c.protocolClasses = [FakeOpenAI.self]
+        c.protocolClasses = [protocolClass]
         return URLSession(configuration: c)
     }()
-    let typist = Typist(trusted: { true }, exists: { _ in true },
+    let typist = custom ?? Typist(trusted: { true }, exists: { _ in true },
                         activate: { _, _ in log.typingWorks.value },
                         post: { runs, ret in
                             let s = runs.map { String(utf16CodeUnits: $0, count: $0.count) }.joined()
@@ -503,6 +513,10 @@ final class NullRenderer: FrameRenderer {
     let device = MTLCreateSystemDefaultDevice()!
     func configure(_ layer: CAMetalLayer) { layer.device = device }
     func draw(_ frame: Frame, to drawable: CAMetalDrawable, viewport: Viewport) {}
+}
+
+if let mode = Bench.Mode(args) {
+    MainActor.assumeIsolated { Bench.run(mode) }
 }
 
 MainActor.assumeIsolated {
