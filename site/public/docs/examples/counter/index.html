@@ -149,7 +149,7 @@ layout, which is `layout` unless a test swaps it). -/</span>
 #guard (st (three ++ [.pointerExit, .key .tab {}, .key .tab {}, .insertText <span class="str">" "</span>])).count == 0
 <span class="cm">-- The frame through the v1 boundary carries both controls, and the count as text.</span>
 #guard ((decodeFrame (frameBytes Frame.boundary (run three))).map <span class="kw">fun</span> f =&gt;
-  f.ax.toList.filterMap (·.control)) == some [incrementRef, resetRef]</code></pre><figcaption><code>lean/Examples/Counter/Tests.lean</code>, lines 27–43</figcaption></figure>
+  f.ax.toList.filterMap (·.control)) == some [incrementRef, resetRef]</code></pre><figcaption><code>lean/Examples/Counter/Tests.lean</code>, lines 28–44</figcaption></figure>
 <p>And the self test, run by <code>make check</code>, through the real host and its accessibility mirror:</p>
 <figure class="code"><pre class="px"><code class="swift"><span class="kw">if</span> element(<span class="str">"^2"</span>) != <span class="kw">nil</span> { fail(<span class="str">"^2 present at count 0"</span>) }
 click(<span class="str">"^1"</span>); click(<span class="str">"^1"</span>); click(<span class="str">"^1"</span>)
