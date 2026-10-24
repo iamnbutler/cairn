@@ -252,6 +252,7 @@ def stepKinds : Input → List Kind
   | .trust _ => []
   | .menu _ => [.copy, .saveConfig, .storePrefs, .stop, .overlay, .opens]
   | .front .. => []
+  | .model _ => []
   | .keyLost => [.stop, .overlay]
 
 theorem step_kinds (s : State) (i : Input) : Kinds (stepKinds i) (step s i).2 := by

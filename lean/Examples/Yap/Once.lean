@@ -194,7 +194,7 @@ theorem transcribed_typed (s : State) (c : ClipReq) (raw : String) :
     · refine ⟨?_, ?_, ?_⟩
       · rw [typedClips_append, typedClips_nil (keep_kinds _ _) (by decide)]
         simp [typeIt, typedClips]
-      · rw [typeIt_live, keep_live]
+      · rw [typeIt_live]; exact keep_live _ _
       · exact keep_nextClip _ _
     · exact ⟨by rw [typedClips_nil (keep_kinds _ _) (by decide)]; simp, keep_live _ _, keep_nextClip _ _⟩
 

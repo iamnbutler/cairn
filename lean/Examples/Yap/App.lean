@@ -105,6 +105,9 @@ inductive Pend where
   | config | dictionary
   /-- Launch: prefs.json, then the original's `model`, `enabled` and `submits` defaults. -/
   | bootPrefs | bootModel | bootEnabled | bootSubmits
+  /-- The original's `model` default, read again as each recording starts (Yap reads it per
+  clip). -/
+  | model
   /-- The app in front for this clip. -/
   | front (clip : Nat)
   /-- The day files, for retention. -/
@@ -583,7 +586,8 @@ def trAsk (io : Io) : Cmd → Io × List (Nat × Ask)
   | .readDictionary => let (io, a) := io.ask .dictionary (.read dictionaryPath); (io, [a])
   | .startRecording c =>
     let (io, a) := { io with held := c :: io.held }.ask (.front c) .front
-    (io, [a])
+    let (io, b) := io.ask .model (.readDefault originalBundle "model")
+    (io, [a, b])
   | .storePrefs p =>
     let (io, a) := io.ask .ignore (.write prefsPath (prefsText p.enabled p.submits)); (io, [a])
   | .play snd =>
@@ -735,6 +739,10 @@ def ownReply (s : AppState) (p : Pend) (io : Io) (r : Cairn.Reply) : Prep :=
     booted { io with boot := { io.boot with model := some (match r with
       | .bytes d => some (utf8 d)
       | _ => none) } }
+  | .model =>
+    { io, input := some (.model (match r with
+        | .bytes d => some (utf8 d)
+        | _ => none)) }
   | .bootEnabled =>
     booted { io with boot := { io.boot with enabled := some (match r with
       | .bytes d => some (parseFlag d)

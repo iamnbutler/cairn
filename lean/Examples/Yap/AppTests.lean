@@ -58,6 +58,10 @@ open Examples.Yap Cairn
 #guard typeFault (some "Notes") .other "app 4 would not come to the front" == "Notes would not come to the front"
 #guard typeFault none .other "x" == "that app would not come to the front" && typeFault none .notFound "x" == "that app is no longer running"
 #guard typeFault none .denied "x" == "Accessibility is not granted, so Yap cannot type"
+-- Each recording reads the `model` default again, as Yap reads it per clip.
+#guard (trAsk {} (.startRecording 3)).2.map (·.2.request) == [.frontmostApp, .readDefault originalBundle "model"]
+#guard (ownReply default .model {} (.bytes "whisper-1".toUTF8)).input == some (.model (some "whisper-1"))
+#guard (ownReply default .model {} (.failed .notFound "")).input == some (.model none)
 def boot1 : Boot :=
   { prefs := some none, model := some (some "whisper-1"), enabled := some (some false), submits := some none }
 def boot2 : Boot :=

@@ -126,6 +126,44 @@ def noKeep : List Input := boot ++ [.menu .toggleKeep, .reply 1 (.ok ""), .keyDo
 #guard types (cmds noKeep) == [(1, "hi ", false)] && (st noKeep).recent.length == 1
 #guard has noKeep (.saveConfig 1 { keepTranscripts := false })
 
+-- "Typed N characters (T ms round trip)": T from sending the clip to its transcript (Yap's
+-- `finish("Typed \(text.count) characters (\(elapsed) round trip)")`).
+#guard (st typed).detail == "Typed 11 characters (0ms round trip)"
+#guard (st (hold ++ [.tick 3450, .reply 1 (.ok "hello world"), .tick 3900, .reply 3 (.ok "")])).detail ==
+  "Typed 11 characters (450ms round trip)"
+#guard (st typed).trips == [] && (st holdDone).trips == [(1, 0)]
+-- A failed save is the last word on its clip, whichever reply comes first: Yap saves once
+-- typing is over, so its message follows "Typed …" or "Couldn't type it …".
+#guard (st (holdDone ++ [.reply 2 (.failed "The disk is full."), .reply 3 (.ok "")])).detail ==
+  "Couldn't save the transcript: The disk is full."
+#guard (st (holdDone ++ [.reply 2 (.failed "The disk is full.")])).detail == "Transcribing 2.0s…"
+#guard (st (holdDone ++ [.reply 3 (.ok ""), .reply 2 (.failed "The disk is full.")])).detail ==
+  "Couldn't save the transcript: The disk is full."
+#guard (st (holdDone ++ [.reply 2 (.failed "The disk is full."), .reply 3 (.failed "no")])).detail ==
+  "Couldn't save the transcript: The disk is full."
+#guard (st (holdDone ++ [.reply 2 (.failed "The disk is full."), .reply 3 (.ok "")])).unsaved == []
+-- The next clip's typing is its own.
+#guard (st (holdDone ++ [.reply 2 (.failed "The disk is full."), .reply 3 (.ok ""),
+  .keyDown 9000 (some front), .audio 2 (loud 100), .keyUp 11000, .reply 4 (.ok "again"),
+  .reply 6 (.ok "")])).detail == "Typed 5 characters (0ms round trip)"
+
+/-! ### "Transcribing 1.5s…": `String(format: "%.1f")` of a double -/
+
+#guard seconds 24000 == "1.5" && seconds 4800 == "0.3" && seconds 9600000 == "600.0"
+-- Ties in the tenths go the way the double lies, and to even on an exact tie.
+#guard seconds 800 == "0.1" && seconds 2400 == "0.1" && seconds 4000 == "0.2"
+#guard seconds 7200 == "0.5" && seconds 10400 == "0.7" && seconds 12000 == "0.8"
+#guard seconds 13600 == "0.8" && seconds 28000 == "1.8" && seconds 15200 == "0.9"
+
+/-! ### The model default, read as each recording starts -/
+
+def modelHold (m : Option String) : List Input :=
+  boot ++ [.model m, .keyDown 1000 (some front), .audio 1 (loud 100), .keyUp 3000]
+#guard has (modelHold (some "whisper-1")) (.transcribe 1 1 "whisper-1" none)
+#guard has (modelHold none) (.transcribe 1 1 "gpt-transcribe" none)
+-- An empty default is sent as it is, as Yap's `defaults.string(forKey:) ?? defaultModel` does.
+#guard has (modelHold (some "")) (.transcribe 1 1 "" none)
+
 /-- Dictate `n` clips, each typed. -/
 def many : Nat → List Input
   | 0 => boot

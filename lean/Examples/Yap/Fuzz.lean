@@ -126,7 +126,8 @@ def later (h : Host) : Gen Nat := Gen.weighted [
 def reply : Gen Reply := Gen.weighted [
   (5, do return .ok (← text)),
   (1, do return .ok ""),
-  (2, do return .failed "timed out")]
+  (2, do return .failed "timed out"),
+  (1, do return .failed "The disk is full.")]
 
 /-- One input from the host, given what the model and the host know. -/
 def input (s : State) (h : Host) : Gen Input := do
@@ -160,6 +161,7 @@ def input (s : State) (h : Host) : Gen Input := do
       | some t => return .front (if ← Gen.chance 1 10 then clip + 1 else clip) t
       | none => return .otherKey),
     (1, do return .keyLost),
+    (1, do return .model (← opt (Gen.elem ["gpt-transcribe", "whisper-1", ""]))),
     (5, do return .menu (← menuAction)),
     (1, do return .launch { enabled := ← Gen.chance 5 6, submits := ← Gen.bool,
                             model := ← opt (Gen.elem ["gpt-transcribe", "whisper-1"]) })]
