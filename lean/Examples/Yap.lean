@@ -228,6 +228,7 @@ theorem Keeps.machine {Q : State → List Nat → Prop} (hq : Keeps Q) :
 
 /-! ## Dictation -/
 
+-- region: yap-shortcut
 invariant ^311 shortcutNeverSends "A shortcut never sends" for machine where
   does "While the dictation key is held and another key has gone down with it (a shortcut such as the key plus C), nothing the host reports leads to a clip's upload for transcription: not the key's release, not a new key in config.json, not a reply, and never the menu. Only the clock (or a timer) can, for a hands-free recording that hits its ten-minute limit (`app_shortcut_never_sends`, `shortcut_never_sends`)."
   holds s := (s.core.keyHeld = true → s.core.chorded = true →
@@ -240,6 +241,7 @@ invariant ^311 shortcutNeverSends "A shortcut never sends" for machine where
     fun a _ _ h => menuStep_no_upload _ a h⟩
   receive := fun _ _ _ => ⟨fun hk hc m hcl hti _ _ h => app_shortcut_never_sends _ m hk hc hcl hti h,
     fun a _ _ h => menuStep_no_upload _ a h⟩
+-- endregion: yap-shortcut
 
 retire ^312 invariant "Hold to talk, tap to latch: 300 ms" because "Key events now wait while the microphone starts, and the ones that waited are timed from when the start finished, as in the original (^351); the hold/tap split is restated there for a recording whose microphone is running."
 
@@ -303,6 +305,7 @@ invariant ^314 recordingEnds "Every recording ends" for machine where
     have h' := keeps_recInv.machine.2 s m h.1
     ⟨h', fun t k mo tm => app_recording_ends _ h' t k mo tm⟩
 
+-- region: yap-kept
 invariant ^315 keptBeforeTyped "Kept before it is typed" for machine where
   does "When Yap types a transcript, it is already in Recent Transcripts, marked not yet typed, and when transcripts are kept the request appending it to its day file comes before the request typing it (`app_saved_before_typed`, `saved_before_typed`). Swift Yap saves after typing; see the README."
   holds s := ∀ m id pid text ret, Effect.request id (.typeText pid text ret) ∈ (receive s m).2 →
@@ -313,6 +316,7 @@ invariant ^315 keptBeforeTyped "Kept before it is typed" for machine where
   init := fun m _ _ _ _ h => app_saved_before_typed _ m h
   step := fun _ _ _ m _ _ _ _ h => app_saved_before_typed _ m h
   receive := fun _ _ _ m _ _ _ _ h => app_saved_before_typed _ m h
+-- endregion: yap-kept
 
 invariant ^316 failedTypeFlagged "A failed type is kept and flagged" for machine where
   does "When typing fails, the transcript is first in Recent Transcripts (so Copy Last Transcript copies it), marked as never having reached its app, and the error sound plays (`app_failed_type_flagged`)."
@@ -331,6 +335,7 @@ invariant ^317 onlyLiveRepliesType "Late and cancelled replies never type" for m
   step := fun _ _ _ m _ _ _ _ h => app_only_live_replies_type _ m h
   receive := fun _ _ _ m _ _ _ _ h => app_only_live_replies_type _ m h
 
+-- region: yap-typed-once
 invariant ^318 typedOnce "Each clip is typed at most once" for machine where
   does "However replies arrive (late, twice, out of order, or never), and whatever else the host reports, no clip's transcript has been typed twice: the app's log of typed clips counts each at most once (`TypedInv`, `step_rel`)."
   holds s := TypedInv s.core s.typed ∧ ∀ n, s.typed.count n ≤ 1
@@ -341,6 +346,7 @@ invariant ^318 typedOnce "Each clip is typed at most once" for machine where
   receive := fun s m h =>
     have h' := keeps_typedInv.machine.2 s m h.1
     ⟨h', h'.once⟩
+-- endregion: yap-typed-once
 
 invariant ^319 wholeWordFixes "Fixes replace whole words" for machine where
   does "What is typed is the text of a successful transcription reply with each dictionary fix applied to whole words only, case-insensitively, then trimmed, then a space (or Return) (`app_typed_text`, `typed_text`, `replaceWord_replaces`)."

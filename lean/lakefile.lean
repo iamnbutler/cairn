@@ -56,6 +56,7 @@ host/Package.swift): v1 apps all export `cairn_app_init/step/frame`, so two in o
 clash. Each needs `claims_meta.o` (docs/claims.md, "Linking"). The host calls the app module's
 `runtime_initialize_*`. -/
 
+-- region: lakefile-counter
 /-- Counter: its exports (`Examples.Counter.Abi`) and the app. The exports are a separate module
 so that executables linking all of `Examples` (the fuzzer) don't get two `cairn_app_init`s. -/
 @[default_target]
@@ -63,6 +64,7 @@ lean_lib Counter where
   roots := #[`Examples.Counter.Abi, `Examples.Counter]
   defaultFacets := #[LeanLib.staticFacet]
   moreLinkObjs := #[claims_meta.o]
+-- endregion: lakefile-counter
 
 /-- Basics (`Examples.Basics`). -/
 @[default_target]

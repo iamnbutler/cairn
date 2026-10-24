@@ -23,6 +23,7 @@ def clicks (r : ControlRef) : Nat → List Event
   | 0 => []
   | n + 1 => let es := clicks r n; es ++ clickOn (run es) r
 
+-- region: counter-tests
 #guard (st []).count == 0
 #guard (at? (run []) resetRef).isNone
 #guard (st (clicks incrementRef 3)).count == 3
@@ -40,5 +41,6 @@ def three : List Event := clicks incrementRef 3
 -- The frame through the v1 boundary carries both controls, and the count as text.
 #guard ((decodeFrame (frameBytes Frame.boundary (run three))).map fun f =>
   f.ax.toList.filterMap (·.control)) == some [incrementRef, resetRef]
+-- endregion: counter-tests
 
 end Examples.Counter.Tests

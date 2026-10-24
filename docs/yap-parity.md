@@ -69,6 +69,7 @@ prints the table that goes into the Lean file.
 
 ## Dictation (`App/Yap.swift`)
 
+<!-- region: parity-dictation -->
 | Behaviour | Original | Port | Status |
 |---|---|---|---|
 | Ready line | "Hold K to dictate, or tap to start and tap to send" (L33) | `ready` | same |
@@ -110,6 +111,7 @@ prints the table that goes into the Lean file.
 | Config errors | "config.json won't parse, keeping the last settings: <DecodingError text>" (L193); unknown key "config.json: no key called "x", still using K" (L198) | the same texts, `JSONDecoder`'s messages | fixed (earlier commit in this PR) |
 | Defaults `enabled`/`submits` | `register` true/false, `bool(forKey:)` (L108–111) | read from `dev.yap.Yap` at first launch, then `prefs.json` | open |
 | Copy | clears the pasteboard, sets the text (L121–124) | `setClipboard` | same |
+<!-- endregion: parity-dictation -->
 
 ## Transcripts (`Packages/Core/Sources/Core/TranscriptLog.swift`)
 
@@ -189,6 +191,7 @@ prints the table that goes into the Lean file.
 
 ## Menu (`App/YapApp.swift`)
 
+<!-- region: parity-menu -->
 | Behaviour | Original | Port | Status |
 |---|---|---|---|
 | Icon | `waveform`, `mic.fill`, `text.bubble` (L23–29) | the same symbols | same |
@@ -203,6 +206,7 @@ prints the table that goes into the Lean file.
 | Quit | "Quit Yap", ⌘Q (L77–78) | "Quit Yap (Cairn)", ⌘Q | open |
 | Failed menu actions | nothing happens and nothing is said (Yap.swift L126–140, YapApp.swift L92–105) | the failure is shown in the menu | bug fix, [yap#15](https://github.com/iamnbutler/yap/issues/15) |
 | Original running | (n/a) | "Yap is running. Quit it to dictate with K here." (^346) | open |
+<!-- endregion: parity-menu -->
 
 ## Bundle (`App/Info.plist`, `project.yml`, `App/Yap.entitlements`)
 
@@ -257,6 +261,7 @@ match the original, but matching it costs something the brief didn't settle.
 
 ## Counts
 
+<!-- region: parity-counts -->
 | Status | Rows |
 |---|---|
 | same | 58 |
@@ -264,3 +269,4 @@ match the original, but matching it costs something the brief didn't settle.
 | bug fix (intentional; yap#6, #8–#15 and #17) | 10 |
 | open (needs Nate) | 7 |
 | Y (overlay pixels) | 0 |
+<!-- endregion: parity-counts -->
