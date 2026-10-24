@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cairn.Fuzz.Main · Cairn docs</title>
+<meta name="description" content="Cairn's API, generated from its code.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="doc.css">
+</head>
+<body>
+<nav class="bar"><a class="home" href="../../"><img src="icon.svg" alt="">Cairn</a><span class="sep">/</span><a href="index.html">Cairn docs</a><a href="claims.html">Claims</a><span class="search"><input id="search" type="search" placeholder="Search names, docs, ^N  ( / )" autocomplete="off" spellcheck="false"><div id="results" hidden></div></span></nav>
+<div class="layout"><aside class="toc"><div class="pix muted">Cairn.Fuzz.Main</div><a href="#structures">Structures <span class="n">1</span></a><ol><li><a href="#Cairn.Fuzz.Opts">Opts</a></li></ol><a href="#definitions">Definitions <span class="n">17</span></a><ol><li><a href="#Cairn.Fuzz.opJson">opJson</a></li><li><a href="#Cairn.Fuzz.opJson.kind">kind</a></li><li><a href="#Cairn.Fuzz.opJson.ext">ext</a></li><li><a href="#Cairn.Fuzz.actionJson">actionJson</a></li><li><a href="#Cairn.Fuzz.keyName">keyName</a></li><li><a href="#Cairn.Fuzz.stepJson">stepJson</a></li><li><a href="#Cairn.Fuzz.metricsJson">metricsJson</a></li><li><a href="#Cairn.Fuzz.sequenceJson">sequenceJson</a></li><li><a href="#Cairn.Fuzz.parseArgs">parseArgs</a></li><li><a href="#Cairn.Fuzz.parseArgs.num">num</a></li><li><a href="#Cairn.Fuzz.usage">usage</a></li><li><a href="#Cairn.Fuzz.fmt2">fmt2</a></li><li><a href="#Cairn.Fuzz.msText">msText</a></li><li><a href="#Cairn.Fuzz.msJson">msJson</a></li><li><a href="#Cairn.Fuzz.claimJson">claimJson</a></li><li><a href="#Cairn.Fuzz.runTarget">runTarget</a></li><li><a href="#Cairn.Fuzz.main">main</a></li></ol></aside><main>
+<header class="page"><div class="eyebrow">Cairn · module</div><h1 class="mod">Cairn.Fuzz.Main</h1><p class="src">lean/Cairn/Fuzz/Main.lean</p></header>
+<div class="doc"><h1><code>lake exe fuzz</code></h1>
+<pre><code>lake exe fuzz &lt;App&gt; [--seed S|random] [--iterations N] [--steps K] [--budget-ms M]
+                    [--out DIR] [--shrink N] [-v]
+lake exe fuzz --list
+</code></pre>
+<p>Runs sequences with seeds <code>S, S+1, …, S+N−1</code> (the <code>SEED</code> and <code>ITERATIONS</code> environment variables
+set the defaults), stops each at its first failure, shrinks the first failure of each kind,
+prints it as a <code>flow</code>, and writes <code>&lt;DIR&gt;/&lt;App&gt;.json</code> (docs/fuzz.md). Exit code 1 when anything
+failed.</p>
+</div>
+<p class="imports"><span class="pix muted">Imports</span> <span class="muted">Lean.Data.Json</span>, <a href="Cairn.Fuzz.Shrink.html">Cairn.Fuzz.Shrink</a></p>
+<div class="order"><span class="pix muted">Order</span> <button type="button" data-order="kind" class="on">by kind</button><button type="button" data-order="source">as in the source</button></div>
+<div id="items">
+
+<h2 id="structures">Structures <span class="n">1</span></h2>
+<section class="decl" id="Cairn.Fuzz.Opts" data-line="87">
+<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.Fuzz.Opts"><span class="ns">Cairn.Fuzz.</span>Opts</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Main.lean:87</span></div>
+<pre class="sig"><b class="nm">Opts</b> : Type</pre><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.Fuzz.Opts.app"><pre class="sig"><b class="nm">app</b> : <span title="String">String</span></pre></div><div class="member" id="Cairn.Fuzz.Opts.seed"><pre class="sig"><b class="nm">seed</b> : <span title="Nat">Nat</span></pre></div><div class="member" id="Cairn.Fuzz.Opts.iterations"><pre class="sig"><b class="nm">iterations</b> : <span title="Nat">Nat</span></pre></div><div class="member" id="Cairn.Fuzz.Opts.steps"><pre class="sig"><b class="nm">steps</b> : <span title="Nat">Nat</span></pre></div><div class="member" id="Cairn.Fuzz.Opts.budgetMs"><pre class="sig"><b class="nm">budgetMs</b> : Option <span title="Nat">Nat</span></pre></div><div class="member" id="Cairn.Fuzz.Opts.out"><pre class="sig"><b class="nm">out</b> : Option <span title="String">String</span></pre></div><div class="member" id="Cairn.Fuzz.Opts.shrinks"><pre class="sig"><b class="nm">shrinks</b> : <span title="Nat">Nat</span></pre></div><div class="member" id="Cairn.Fuzz.Opts.verbose"><pre class="sig"><b class="nm">verbose</b> : <span title="Bool">Bool</span></pre></div><div class="member" id="Cairn.Fuzz.Opts.list"><pre class="sig"><b class="nm">list</b> : <span title="Bool">Bool</span></pre></div></div>
+</section>
+<h2 id="definitions">Definitions <span class="n">17</span></h2>
+<section class="decl" id="Cairn.Fuzz.opJson" data-line="23">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.opJson"><span class="ns">Cairn.Fuzz.</span>opJson</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Main.lean:23</span></div>
+<pre class="sig"><b class="nm">opJson</b> : <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a> → <span title="Lean.Json">Lean.Json</span></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.opJson.kind" data-line="45">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.opJson.kind"><span class="ns">Cairn.Fuzz.opJson.</span>kind</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Main.lean:45</span></div>
+<pre class="sig"><b class="nm">kind</b> (k : <span title="String">String</span>) : <span title="Lean.Json">Lean.Json</span></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.opJson.ext" data-line="46">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.opJson.ext"><span class="ns">Cairn.Fuzz.opJson.</span>ext</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Main.lean:46</span></div>
+<pre class="sig"><b class="nm">ext</b> (k : <span title="String">String</span>) (e : <span title="Bool">Bool</span>) : <span title="Lean.Json">Lean.Json</span></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.actionJson" data-line="49">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.actionJson"><span class="ns">Cairn.Fuzz.</span>actionJson</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Main.lean:49</span></div>
+<pre class="sig"><b class="nm">actionJson</b> (a : <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a>) : <span title="Lean.Json">Lean.Json</span></pre><div class="doc"><p>An action step, in the shape of a flow's witness in <code>lake exe claims</code>.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Fuzz.keyName" data-line="57">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.keyName"><span class="ns">Cairn.Fuzz.</span>keyName</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Main.lean:57</span></div>
+<pre class="sig"><b class="nm">keyName</b> : <a href="Cairn.Input.html#Cairn.Key" title="Cairn.Key">Key</a> → <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.stepJson" data-line="63">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.stepJson"><span class="ns">Cairn.Fuzz.</span>stepJson</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Main.lean:63</span></div>
+<pre class="sig"><b class="nm">stepJson</b> (tr : <a href="Cairn.Fuzz.Shrink.html#Cairn.Fuzz.Traced" title="Cairn.Fuzz.Traced">Traced</a>) : <span title="Lean.Json">Lean.Json</span></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.metricsJson" data-line="76">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.metricsJson"><span class="ns">Cairn.Fuzz.</span>metricsJson</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Main.lean:76</span></div>
+<pre class="sig"><b class="nm">metricsJson</b> : <a href="Cairn.Fuzz.Metrics.html#Cairn.Fuzz.MetricsChoice" title="Cairn.Fuzz.MetricsChoice">MetricsChoice</a> → <span title="Lean.Json">Lean.Json</span></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.sequenceJson" data-line="80">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.sequenceJson"><span class="ns">Cairn.Fuzz.</span>sequenceJson</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Main.lean:80</span></div>
+<pre class="sig"><b class="nm">sequenceJson</b> (t : <a href="Cairn.Fuzz.Target.html" title="Cairn.Fuzz.Target">Target</a>) (setup : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Setup" title="Cairn.Fuzz.Setup">Setup</a>) (traced : Array <a href="Cairn.Fuzz.Shrink.html#Cairn.Fuzz.Traced" title="Cairn.Fuzz.Traced">Traced</a>) : <span title="Lean.Json">Lean.Json</span></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.parseArgs" data-line="98">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.parseArgs"><span class="ns">Cairn.Fuzz.</span>parseArgs</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Main.lean:98</span></div>
+<pre class="sig"><b class="nm">parseArgs</b> (o : <a href="Cairn.Fuzz.Main.html#Cairn.Fuzz.Opts" title="Cairn.Fuzz.Opts">Opts</a>) : List <span title="String">String</span> → Except <span title="String">String</span> <a href="Cairn.Fuzz.Main.html#Cairn.Fuzz.Opts" title="Cairn.Fuzz.Opts">Opts</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.parseArgs.num" data-line="113">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.parseArgs.num"><span class="ns">Cairn.Fuzz.parseArgs.</span>num</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Main.lean:113</span></div>
+<pre class="sig"><b class="nm">num</b> (v : <span title="String">String</span>) (k : <span title="Nat">Nat</span> → Except <span title="String">String</span> <a href="Cairn.Fuzz.Main.html#Cairn.Fuzz.Opts" title="Cairn.Fuzz.Opts">Opts</a>) : Except <span title="String">String</span> <a href="Cairn.Fuzz.Main.html#Cairn.Fuzz.Opts" title="Cairn.Fuzz.Opts">Opts</a></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.usage" data-line="118">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.usage"><span class="ns">Cairn.Fuzz.</span>usage</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Main.lean:118</span></div>
+<pre class="sig"><b class="nm">usage</b> : <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.fmt2" data-line="124">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.fmt2"><span class="ns">Cairn.Fuzz.</span>fmt2</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Main.lean:124</span></div>
+<pre class="sig"><b class="nm">fmt2</b> (hundredths : <span title="Nat">Nat</span>) : <span title="String">String</span></pre><div class="doc"><p>Hundredths, as text: <code>fmt2 1234 = &quot;12.34&quot;</code>.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Fuzz.msText" data-line="129">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.msText"><span class="ns">Cairn.Fuzz.</span>msText</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Main.lean:129</span></div>
+<pre class="sig"><b class="nm">msText</b> (ns : <span title="Nat">Nat</span>) : <span title="String">String</span></pre><div class="doc"><p>Nanoseconds as milliseconds, to hundredths.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Fuzz.msJson" data-line="130">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.msJson"><span class="ns">Cairn.Fuzz.</span>msJson</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Main.lean:130</span></div>
+<pre class="sig"><b class="nm">msJson</b> (ns : <span title="Nat">Nat</span>) : <span title="Lean.Json">Lean.Json</span></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.claimJson" data-line="133">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.claimJson"><span class="ns">Cairn.Fuzz.</span>claimJson</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Main.lean:133</span></div>
+<pre class="sig"><b class="nm">claimJson</b> (t : <a href="Cairn.Fuzz.Target.html" title="Cairn.Fuzz.Target">Target</a>) (stats : <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Stats" title="Cairn.Fuzz.Stats">Stats</a>) (fails : Array (<a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Failure" title="Cairn.Fuzz.Failure">Failure</a> × <a href="Cairn.Fuzz.Walk.html#Cairn.Fuzz.Setup" title="Cairn.Fuzz.Setup">Setup</a>))
+  (c : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a>) : <span title="Lean.Json">Lean.Json</span></pre><div class="doc"><p>Per-claim evidence: pass (true/false), or null with a note when it wasn't run.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Fuzz.runTarget" data-line="159">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.runTarget"><span class="ns">Cairn.Fuzz.</span>runTarget</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Main.lean:159</span></div>
+<pre class="sig"><b class="nm">runTarget</b> (t : <a href="Cairn.Fuzz.Target.html" title="Cairn.Fuzz.Target">Target</a>) (o : <a href="Cairn.Fuzz.Main.html#Cairn.Fuzz.Opts" title="Cairn.Fuzz.Opts">Opts</a>) : IO <span title="UInt32">UInt32</span></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.main" data-line="245">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.main"><span class="ns">Cairn.Fuzz.</span>main</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Main.lean:245</span></div>
+<pre class="sig"><b class="nm">main</b> (targets : List <a href="Cairn.Fuzz.Target.html" title="Cairn.Fuzz.Target">Target</a>) (args : List <span title="String">String</span>) : IO <span title="UInt32">UInt32</span></pre>
+</section>
+<div class="mdoc" data-line="21" hidden><div class="doc"><h2>JSON</h2>
+</div></div><div class="mdoc" data-line="85" hidden><div class="doc"><h2>Options</h2>
+</div></div><div class="mdoc" data-line="121" hidden><div class="doc"><h2>The run</h2>
+</div></div>
+</div>
+</main></div>
+<footer>Generated by <code>make doc APP=Counter</code> from the code and the build. Nothing here is written by hand.</footer>
+<script src="search-index.js"></script>
+<script src="search.js"></script>
+<script type="module">
+// On the site, the headings get the meadow's sprigs and a "#" that copies a link to them
+// (site/public/scene.js); elsewhere, nothing.
+import("/scene.js").then((m) => { const main = document.querySelector("main"); m.mountSprigs(main); m.mountAnchors(main); }).catch(() => {});
+</script>
+</body>
+</html>

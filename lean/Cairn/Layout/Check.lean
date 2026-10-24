@@ -7,7 +7,7 @@ can't be decided directly. This file gives each condition a `Bool` twin and prov
 sound, so for a concrete view, window and metrics an app proves every control pressable with
 `by decide +kernel` (the kernel evaluates the layout; no compiler, no extra axiom):
 
-```lean
+```lean ignore
 theorem pressable : ∀ t ∈ targets (layout m w v), hitTest (layout m w v) t.visible.center = some t.control :=
   hitTest_center_of_check (by decide +kernel)
 ```

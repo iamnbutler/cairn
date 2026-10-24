@@ -51,6 +51,12 @@ lean_exe claims where
   root := `Cairn.Claims.Export
   supportInterpreter := true
 
+/-- `lake exe doc [--check] <Module>…`: modules, declarations, signatures and doc comments as JSON,
+for `make doc` (docs/doc.md); `--check` runs the doc tests. -/
+lean_exe doc where
+  root := `Cairn.Doc.Export
+  supportInterpreter := true
+
 /-! One static library per app, and each host executable links exactly one (`make lean`,
 host/Package.swift): v1 apps all export `cairn_app_init/step/frame`, so two in one binary would
 clash. Each needs `claims_meta.o` (docs/claims.md, "Linking"). The host calls the app module's

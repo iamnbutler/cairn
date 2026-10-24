@@ -23,25 +23,33 @@
 <div class="layout">
 <details class="side" open>
 <summary>Contents</summary>
-<nav aria-label="Docs"><h2>Learn</h2><ul><li><a href="/docs/book/">The Cairn Book</a><ol><li><a href="/docs/book/first-app/">Your first app</a></li><li><a href="/docs/book/moves-and-flows/">Moves and flows</a></li><li><a href="/docs/book/view-and-layout/">The view and layout</a></li><li><a href="/docs/book/proving/">Proving a claim</a></li><li><a href="/docs/book/effects/">Effects and the host</a></li><li><a href="/docs/book/shipping/">Shipping</a></li></ol></li><li><a href="/docs/examples/">Cairn by Example</a><ol><li><a href="/docs/examples/counter/">Counter</a></li><li><a href="/docs/examples/basics/">Basics</a></li><li><a href="/docs/examples/todo/">TodoMVC</a></li><li><a href="/docs/examples/yap/">Yap</a></li></ol></li></ul><h2>Use</h2><ul><li><a href="/docs/use/api/" class="on" aria-current="page">API reference<span class="todo">to do</span></a></li><li><a href="/docs/use/cairn-tool/">The cairn tool</a></li><li><a href="/docs/use/claims/">Claims reference</a></li><li><a href="/docs/use/evidence/">The evidence ladder</a></li><li><a href="/docs/use/errors/">Error index<span class="todo">to do</span></a></li><li><a href="/docs/use/releases/">Release notes<span class="todo">to do</span></a></li></ul><h2>Master</h2><ul><li><a href="/docs/master/trusted-base/">The trusted base</a></li><li><a href="/docs/master/host-protocol/">The host protocol</a></li><li><a href="/docs/master/host-effects/">Writing host effects</a></li><li><a href="/docs/master/profiling/">Profiling against a reference</a></li><li><a href="/docs/master/contributing/">Contributing</a></li></ul><h2>Evidence</h2><ul><li><a href="/docs/evidence/">The maps</a></li><li><a href="/map/counter/">Counter's map</a></li><li><a href="/map/basics/">Basics' map</a></li><li><a href="/map/todo/">TodoMVC's map</a></li><li><a href="/map/trusted/">The trusted base's map</a></li></ul></nav>
+<nav aria-label="Docs"><h2>Learn</h2><ul><li><a href="/docs/book/">The Cairn Book</a><ol><li><a href="/docs/book/first-app/">Your first app</a></li><li><a href="/docs/book/moves-and-flows/">Moves and flows</a></li><li><a href="/docs/book/view-and-layout/">The view and layout</a></li><li><a href="/docs/book/proving/">Proving a claim</a></li><li><a href="/docs/book/effects/">Effects and the host</a></li><li><a href="/docs/book/shipping/">Shipping</a></li></ol></li><li><a href="/docs/examples/">Cairn by Example</a><ol><li><a href="/docs/examples/counter/">Counter</a></li><li><a href="/docs/examples/basics/">Basics</a></li><li><a href="/docs/examples/todo/">TodoMVC</a></li><li><a href="/docs/examples/yap/">Yap</a></li></ol></li></ul><h2>Use</h2><ul><li><a href="/docs/api/" class="on" aria-current="page">API reference</a></li><li><a href="/docs/use/cairn-tool/">The cairn tool</a></li><li><a href="/docs/use/claims/">Claims reference</a></li><li><a href="/docs/use/evidence/">The evidence ladder</a></li><li><a href="/docs/use/errors/">Error index<span class="todo">to do</span></a></li><li><a href="/docs/use/releases/">Release notes<span class="todo">to do</span></a></li></ul><h2>Master</h2><ul><li><a href="/docs/master/trusted-base/">The trusted base</a></li><li><a href="/docs/master/host-protocol/">The host protocol</a></li><li><a href="/docs/master/host-effects/">Writing host effects</a></li><li><a href="/docs/master/profiling/">Profiling against a reference</a></li><li><a href="/docs/master/contributing/">Contributing</a></li></ul><h2>Evidence</h2><ul><li><a href="/docs/evidence/">The maps</a></li><li><a href="/map/counter/">Counter's map</a></li><li><a href="/map/basics/">Basics' map</a></li><li><a href="/map/todo/">TodoMVC's map</a></li><li><a href="/map/trusted/">The trusted base's map</a></li></ul></nav>
 </details>
 <script>if (matchMedia("(max-width: 900px)").matches) document.querySelector("details.side").open = false;</script>
 <main>
 <header class="page">
-<p class="eyebrow">Use<span class="todo">not written yet</span></p>
+<p class="eyebrow">Use</p>
 <h1>API reference</h1>
 <p class="lede">Every module, type and declaration in Cairn, and every claim it makes, generated from the code.</p>
 </header>
 <article class="prose">
-<p>The API reference will be generated, never written by hand: <code>cairn doc</code> run on Cairn itself, the
-way rustdoc documents a Rust crate. It will have a page per module, type and declaration, with
-signatures and doc comments, and a page per claim with its statement, its proof and the evidence
-from the build, addressed by its <code>^N</code> id. <code>cairn doc</code> is
-<a href="https://github.com/iamnbutler/cairn/issues/74">issue #74</a>, and it publishes to
-<a href="/docs/api/">/docs/api/</a>, which doesn't exist until it lands.</p>
-<p>Until then, the <a href="/docs/use/claims/">claims reference</a> covers the claim commands, and the Book's
-chapters include the definitions they use (<code>Node</code>, <code>Style</code>, <code>App</code>, <code>Effect</code>, <code>Request</code>, <code>Sub</code>)
-straight from the source.</p>
+<p>The API reference is at <strong><a href="/docs/api/">/docs/api/</a></strong>. It is generated, never written by hand:
+<code>cairn doc</code> run on Cairn itself, the way rustdoc documents a Rust crate
+(<a href="https://github.com/iamnbutler/cairn/issues/74">issue #74</a>).</p>
+<ul>
+<li><strong>An index of modules</strong>, nested by name, with the first sentence of each module's doc comment.</li>
+<li><strong>A page per module</strong>: its declarations grouped by kind (or in source order), each with its
+signature, its doc comment, its source as <code>path:line</code>, and a <code>proved</code> chip on theorems.</li>
+<li><strong>Claims</strong> on the page of the module that declares them, with their formal statement, the
+evidence from the build and their proofs, addressed by their <code>^N</code> id. <code>claims.html</code> lists them
+all.</li>
+<li><strong>Search</strong> over names, doc comments and claims; <code>/</code> focuses it and <code>^212</code> finds a claim.</li>
+</ul>
+<p>Anchors don't change while the name doesn't: a declaration's is its full name
+(<code>Cairn.Layout.Core.html#Cairn.Layout.layout</code>), a claim's its number.</p>
+<p>To build the same docs for an app, run <code>make doc APP=Todo</code> (output in <code>build/doc/Todo/dist/</code>).
+<code>make site-api</code> regenerates <code>/docs/api/</code>. Lean code blocks in doc comments are doc tests: <code>make check</code> compiles them, and a <code>```lean ignore</code> block is shown but not checked. The design is in
+<code>docs/doc.md</code>.</p>
 
 </article>
 

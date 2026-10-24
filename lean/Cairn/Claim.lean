@@ -39,6 +39,13 @@ structure ControlRef where
   key : Nat := 0
 deriving Repr, DecidableEq, Inhabited, Hashable
 
+/-- How a control is written in ids and on the map's pins: `^5`, or `^5#12` for a keyed one.
+
+```lean
+example : ({ claim := 5 } : ControlRef).label = "^5" := by decide
+example : ({ claim := 5, key := 12 } : ControlRef).label = "^5#12" := by decide
+```
+-/
 def ControlRef.label (c : ControlRef) : String :=
   if c.key == 0 then s!"^{c.claim}" else s!"^{c.claim}#{c.key}"
 

@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cairn.Text.Wrap · Cairn docs</title>
+<meta name="description" content="Cairn's API, generated from its code.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="doc.css">
+</head>
+<body>
+<nav class="bar"><a class="home" href="../../"><img src="icon.svg" alt="">Cairn</a><span class="sep">/</span><a href="index.html">Cairn docs</a><a href="claims.html">Claims</a><span class="search"><input id="search" type="search" placeholder="Search names, docs, ^N  ( / )" autocomplete="off" spellcheck="false"><div id="results" hidden></div></span></nav>
+<div class="layout"><aside class="toc"><div class="pix muted">Cairn.Text.Wrap</div><a href="#definitions">Definitions <span class="n">17</span></a><ol><li><a href="#Cairn.Text.Wrap.isBreak">isBreak</a></li><li><a href="#Cairn.Text.Wrap.wordsFrom">wordsFrom</a></li><li><a href="#Cairn.Text.Wrap.words">words</a></li><li><a href="#Cairn.Text.Wrap.width">width</a></li><li><a href="#Cairn.Text.Wrap.cutGo">cutGo</a></li><li><a href="#Cairn.Text.Wrap.cut">cut</a></li><li><a href="#Cairn.Text.Wrap.chunkGo">chunkGo</a></li><li><a href="#Cairn.Text.Wrap.chunk">chunk</a></li><li><a href="#Cairn.Text.Wrap.fill">fill</a></li><li><a href="#Cairn.Text.Wrap.breakAll">breakAll</a></li><li><a href="#Cairn.Text.Wrap.allLines">allLines</a></li><li><a href="#Cairn.Text.Wrap.keepLines">keepLines</a></li><li><a href="#Cairn.Text.Wrap.lines">lines</a></li><li><a href="#Cairn.Text.Wrap.slice">slice</a></li><li><a href="#Cairn.Text.Wrap.mapSlices">mapSlices</a></li><li><a href="#Cairn.Text.Wrap.mapSlicesGo">mapSlicesGo</a></li><li><a href="#Cairn.Text.Wrap.mapSlicesFast">mapSlicesFast</a></li></ol><a href="#theorems">Theorems <span class="n">2</span></a><ol><li><a href="#Cairn.Text.Wrap.mapSlicesGo_eq">mapSlicesGo_eq</a></li><li><a href="#Cairn.Text.Wrap.mapSlices_eq">mapSlices_eq</a></li></ol></aside><main>
+<header class="page"><div class="eyebrow">Cairn · module</div><h1 class="mod">Cairn.Text.Wrap</h1><p class="src">lean/Cairn/Text/Wrap.lean</p></header>
+<div class="doc"><h1>Line breaking</h1>
+<p>Lean decides where wrapped text (<a href="Cairn.UI.Node.html#Cairn.Node.para"><code>Node.para</code></a>) breaks; the host only measures. Everything here
+works on the text as a list of Unicode scalars and on its caret offsets <code>o : Nat → Int</code> (<code>o i</code>
+is the x offset before scalar <code>i</code>, from one Core Text shaping of the whole string, so a line
+<code>[a, b)</code> is <code>o b - o a</code> wide). The rules (<code>docs/layout.md</code>, &quot;Wrapped text&quot;):</p>
+<ol>
+<li><strong>Words</strong> are maximal runs of scalars other than the <em>break space</em> U+0020 (<a href="Cairn.Text.Wrap.html#Cairn.Text.Wrap.isBreak"><code>isBreak</code></a>). Lines
+break only between words, and the spaces at a break are dropped: a line runs from the start
+of its first word to the end of its last, with the spaces between its own words kept.</li>
+<li><strong>Greedy fill</strong> (<a href="Cairn.Text.Wrap.html#Cairn.Text.Wrap.fill"><code>fill</code></a>): a line takes words while the line, measured from its first scalar
+to the end of the next word, still fits; then the next word starts a new line.</li>
+<li><strong>Over-wide words.</strong> A word that starts a line and is wider than the width is cut into
+<em>pieces</em> (<a href="Cairn.Text.Wrap.html#Cairn.Text.Wrap.chunk"><code>chunk</code></a>): each the longest run of its scalars, from where the last one ended, that
+fits, and never less than one scalar. Every piece but the last is a line of its own; the last
+starts a line that later words may join.</li>
+<li><strong>At most <code>maxLines</code></strong>, keeping the first (<a href="Cairn.UI.Node.html#Cairn.Keep.head"><code>Keep.head</code></a>) or the last (<a href="Cairn.UI.Node.html#Cairn.Keep.tail"><code>Keep.tail</code></a>) lines.</li>
+</ol>
+<p>Theorems (<a href="Cairn.Text.WrapProofs.html"><code>Cairn.Text.WrapProofs</code></a>): every line fits the width or is a single scalar; the lines
+tile the text with only break spaces between and around them; the count is at most <code>maxLines</code>;
+<code>tail</code> keeps exactly the last lines and <code>head</code> the first.</p>
+<p>Each function is structural recursion (fuel where the measure isn't), so <code>#guard</code> and <code>decide</code>
+evaluate it; the examples are in <a href="Cairn.Text.WrapProofs.html"><code>Cairn.Text.WrapProofs</code></a>.</p>
+</div>
+<p class="imports"><span class="pix muted">Imports</span> <a href="Cairn.UI.Node.html">Cairn.UI.Node</a></p>
+<div class="order"><span class="pix muted">Order</span> <button type="button" data-order="kind" class="on">by kind</button><button type="button" data-order="source">as in the source</button></div>
+<div id="items">
+
+<h2 id="definitions">Definitions <span class="n">17</span></h2>
+<section class="decl" id="Cairn.Text.Wrap.isBreak" data-line="35">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Wrap.isBreak"><span class="ns">Cairn.Text.Wrap.</span>isBreak</a></h3><span class="src" title="source">lean/Cairn/Text/Wrap.lean:35</span></div>
+<pre class="sig"><b class="nm">isBreak</b> (c : <span title="Char">Char</span>) : <span title="Bool">Bool</span></pre><div class="doc"><p>The break space: the only scalar a line breaks at, and the only one a break drops.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Wrap.wordsFrom" data-line="39">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Wrap.wordsFrom"><span class="ns">Cairn.Text.Wrap.</span>wordsFrom</a></h3><span class="src" title="source">lean/Cairn/Text/Wrap.lean:39</span></div>
+<pre class="sig"><b class="nm">wordsFrom</b> : List <span title="Char">Char</span> → <span title="Nat">Nat</span> → Option <span title="Nat">Nat</span> → List (<span title="Nat">Nat</span> × <span title="Nat">Nat</span>)</pre><div class="doc"><p>Maximal runs of non-break scalars, as <code>[a, b)</code> ranges. <code>i</code> is the index of the list's head
+in the whole text; <code>cur</code> is where the run in progress started, if one is.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Wrap.words" data-line="50">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Wrap.words"><span class="ns">Cairn.Text.Wrap.</span>words</a></h3><span class="src" title="source">lean/Cairn/Text/Wrap.lean:50</span></div>
+<pre class="sig"><b class="nm">words</b> (cs : List <span title="Char">Char</span>) : List (<span title="Nat">Nat</span> × <span title="Nat">Nat</span>)</pre><div class="doc"><p>The words of a text.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Wrap.width" data-line="53">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Wrap.width"><span class="ns">Cairn.Text.Wrap.</span>width</a></h3><span class="src" title="source">lean/Cairn/Text/Wrap.lean:53</span></div>
+<pre class="sig"><b class="nm">width</b> (o : <span title="Nat">Nat</span> → <span title="Int">Int</span>) (p : <span title="Nat">Nat</span> × <span title="Nat">Nat</span>) : <span title="Int">Int</span></pre><div class="doc"><p>The width of the scalars <code>[a, b)</code>.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Wrap.cutGo" data-line="56">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Wrap.cutGo"><span class="ns">Cairn.Text.Wrap.</span>cutGo</a></h3><span class="src" title="source">lean/Cairn/Text/Wrap.lean:56</span></div>
+<pre class="sig"><b class="nm">cutGo</b> (o : <span title="Nat">Nat</span> → <span title="Int">Int</span>) (W : <span title="Int">Int</span>) (a b : <span title="Nat">Nat</span>) : <span title="Nat">Nat</span> → <span title="Nat">Nat</span> → <span title="Nat">Nat</span></pre><div class="doc"><p>From a piece <code>[a, c)</code> that is allowed, add scalars while <code>c &lt; b</code> and <code>[a, c + 1)</code> fits.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Wrap.cut" data-line="62">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Wrap.cut"><span class="ns">Cairn.Text.Wrap.</span>cut</a></h3><span class="src" title="source">lean/Cairn/Text/Wrap.lean:62</span></div>
+<pre class="sig"><b class="nm">cut</b> (o : <span title="Nat">Nat</span> → <span title="Int">Int</span>) (W : <span title="Int">Int</span>) (a b : <span title="Nat">Nat</span>) : <span title="Nat">Nat</span></pre><div class="doc"><p>Where the piece of <code>[a, b)</code> that starts at <code>a</code> ends: the longest prefix that fits, and at
+least one scalar.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Wrap.chunkGo" data-line="66">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Wrap.chunkGo"><span class="ns">Cairn.Text.Wrap.</span>chunkGo</a></h3><span class="src" title="source">lean/Cairn/Text/Wrap.lean:66</span></div>
+<pre class="sig"><b class="nm">chunkGo</b> (o : <span title="Nat">Nat</span> → <span title="Int">Int</span>) (W : <span title="Int">Int</span>) (b : <span title="Nat">Nat</span>) :
+  <span title="Nat">Nat</span> → <span title="Nat">Nat</span> → List (<span title="Nat">Nat</span> × <span title="Nat">Nat</span>) × <span title="Nat">Nat</span> × <span title="Nat">Nat</span></pre><div class="doc"><p>Cut the rest of a word, <code>[a, b)</code>, into pieces: all but the last, and the last. <code>fuel ≥ b - a</code>
+suffices.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Wrap.chunk" data-line="76">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Wrap.chunk"><span class="ns">Cairn.Text.Wrap.</span>chunk</a></h3><span class="src" title="source">lean/Cairn/Text/Wrap.lean:76</span></div>
+<pre class="sig"><b class="nm">chunk</b> (o : <span title="Nat">Nat</span> → <span title="Int">Int</span>) (W : <span title="Int">Int</span>) (p : <span title="Nat">Nat</span> × <span title="Nat">Nat</span>) :
+  List (<span title="Nat">Nat</span> × <span title="Nat">Nat</span>) × <span title="Nat">Nat</span> × <span title="Nat">Nat</span></pre><div class="doc"><p>A word as pieces (rule 3): itself if it fits, otherwise cut. The pieces but the last fill
+whole lines; the last one starts the line that continues with the next words.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Wrap.fill" data-line="81">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Wrap.fill"><span class="ns">Cairn.Text.Wrap.</span>fill</a></h3><span class="src" title="source">lean/Cairn/Text/Wrap.lean:81</span></div>
+<pre class="sig"><b class="nm">fill</b> (o : <span title="Nat">Nat</span> → <span title="Int">Int</span>) (W : <span title="Int">Int</span>) :
+  <span title="Nat">Nat</span> × <span title="Nat">Nat</span> → List (<span title="Nat">Nat</span> × <span title="Nat">Nat</span>) → List (<span title="Nat">Nat</span> × <span title="Nat">Nat</span>)</pre><div class="doc"><p>Greedy fill (rule 2): <code>cur</code> is the line so far. A word that doesn't fit on it starts a new
+line, cut into pieces first if it is wider than a line.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Wrap.breakAll" data-line="87">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Wrap.breakAll"><span class="ns">Cairn.Text.Wrap.</span>breakAll</a></h3><span class="src" title="source">lean/Cairn/Text/Wrap.lean:87</span></div>
+<pre class="sig"><b class="nm">breakAll</b> (o : <span title="Nat">Nat</span> → <span title="Int">Int</span>) (W : <span title="Int">Int</span>) : List (<span title="Nat">Nat</span> × <span title="Nat">Nat</span>) → List (<span title="Nat">Nat</span> × <span title="Nat">Nat</span>)</pre>
+</section>
+<section class="decl" id="Cairn.Text.Wrap.allLines" data-line="92">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Wrap.allLines"><span class="ns">Cairn.Text.Wrap.</span>allLines</a></h3><span class="src" title="source">lean/Cairn/Text/Wrap.lean:92</span></div>
+<pre class="sig"><b class="nm">allLines</b> (o : <span title="Nat">Nat</span> → <span title="Int">Int</span>) (W : <span title="Int">Int</span>) (cs : List <span title="Char">Char</span>) : List (<span title="Nat">Nat</span> × <span title="Nat">Nat</span>)</pre><div class="doc"><p>Every line of <code>cs</code> at width <code>W</code>, as <code>[a, b)</code> scalar ranges, before <code>maxLines</code>.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Wrap.keepLines" data-line="96">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Wrap.keepLines"><span class="ns">Cairn.Text.Wrap.</span>keepLines</a></h3><span class="src" title="source">lean/Cairn/Text/Wrap.lean:96</span></div>
+<pre class="sig"><b class="nm">keepLines</b> {α : Type} : Option <span title="Nat">Nat</span> → <a href="Cairn.UI.Node.html#Cairn.Keep" title="Cairn.Keep">Keep</a> → List α → List α</pre><div class="doc"><p>At most <code>n</code> lines, from the front or the back.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Wrap.lines" data-line="102">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Wrap.lines"><span class="ns">Cairn.Text.Wrap.</span>lines</a></h3><span class="src" title="source">lean/Cairn/Text/Wrap.lean:102</span></div>
+<pre class="sig"><b class="nm">lines</b> (o : <span title="Nat">Nat</span> → <span title="Int">Int</span>) (W : <span title="Int">Int</span>) (wr : <a href="Cairn.UI.Node.html#Cairn.Wrap" title="Cairn.Wrap">Wrap</a>) (cs : List <span title="Char">Char</span>) :
+  List (<span title="Nat">Nat</span> × <span title="Nat">Nat</span>)</pre><div class="doc"><p>The lines a wrapped text shows.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Wrap.slice" data-line="106">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Wrap.slice"><span class="ns">Cairn.Text.Wrap.</span>slice</a></h3><span class="src" title="source">lean/Cairn/Text/Wrap.lean:106</span></div>
+<pre class="sig"><b class="nm">slice</b> (cs : List <span title="Char">Char</span>) (p : <span title="Nat">Nat</span> × <span title="Nat">Nat</span>) : List <span title="Char">Char</span></pre><div class="doc"><p>The scalars of the range <code>[a, b)</code>.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Wrap.mapSlices" data-line="111">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Wrap.mapSlices"><span class="ns">Cairn.Text.Wrap.</span>mapSlices</a></h3><span class="src" title="source">lean/Cairn/Text/Wrap.lean:111</span></div>
+<pre class="sig"><b class="nm">mapSlices</b> {β : Type} (f : <span title="Nat">Nat</span> × <span title="Nat">Nat</span> → List <span title="Char">Char</span> → β) (cs : List <span title="Char">Char</span>)
+  (ps : List (<span title="Nat">Nat</span> × <span title="Nat">Nat</span>)) : List β</pre><div class="doc"><p><code>f</code> applied to each range and its scalars: the specification. Each <a href="Cairn.Text.Wrap.html#Cairn.Text.Wrap.slice"><code>slice</code></a> walks from the
+start of the text, so this is quadratic in the text's length; the compiler runs
+<a href="Cairn.Text.Wrap.html#Cairn.Text.Wrap.mapSlicesFast"><code>mapSlicesFast</code></a> instead (<a href="Cairn.Text.Wrap.html#Cairn.Text.Wrap.mapSlices_eq"><code>mapSlices_eq</code></a>).</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Wrap.mapSlicesGo" data-line="117">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Wrap.mapSlicesGo"><span class="ns">Cairn.Text.Wrap.</span>mapSlicesGo</a></h3><span class="src" title="source">lean/Cairn/Text/Wrap.lean:117</span></div>
+<pre class="sig"><b class="nm">mapSlicesGo</b> {β : Type} (f : <span title="Nat">Nat</span> × <span title="Nat">Nat</span> → List <span title="Char">Char</span> → β) (cs : List <span title="Char">Char</span>) :
+  <span title="Nat">Nat</span> → List <span title="Char">Char</span> → List (<span title="Nat">Nat</span> × <span title="Nat">Nat</span>) → List β</pre><div class="doc"><p><code>cur</code> is <code>cs.drop base</code>; ranges that start at or after <code>base</code> drop from there, so lines in
+order cost one pass over the text. Any other range drops from the start.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Wrap.mapSlicesFast" data-line="124">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Wrap.mapSlicesFast"><span class="ns">Cairn.Text.Wrap.</span>mapSlicesFast</a></h3><span class="src" title="source">lean/Cairn/Text/Wrap.lean:124</span></div>
+<pre class="sig"><b class="nm">mapSlicesFast</b> {β : Type} (f : <span title="Nat">Nat</span> × <span title="Nat">Nat</span> → List <span title="Char">Char</span> → β) (cs : List <span title="Char">Char</span>)
+  (ps : List (<span title="Nat">Nat</span> × <span title="Nat">Nat</span>)) : List β</pre>
+</section>
+<h2 id="theorems">Theorems <span class="n">2</span></h2>
+<section class="decl" id="Cairn.Text.Wrap.mapSlicesGo_eq" data-line="128">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Text.Wrap.mapSlicesGo_eq"><span class="ns">Cairn.Text.Wrap.</span>mapSlicesGo_eq</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Text/Wrap.lean:128</span></div>
+<pre class="sig"><b class="nm">mapSlicesGo_eq</b> {β : Type} (f : <span title="Nat">Nat</span> × <span title="Nat">Nat</span> → List <span title="Char">Char</span> → β) (cs : List <span title="Char">Char</span>)
+  (ps : List (<span title="Nat">Nat</span> × <span title="Nat">Nat</span>)) (base : <span title="Nat">Nat</span>) :
+  mapSlicesGo f cs base (List.drop base cs) ps = mapSlices f cs ps</pre>
+</section>
+<section class="decl" id="Cairn.Text.Wrap.mapSlices_eq" data-line="140">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Text.Wrap.mapSlices_eq"><span class="ns">Cairn.Text.Wrap.</span>mapSlices_eq</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Text/Wrap.lean:140</span></div>
+<pre class="sig"><b class="nm">mapSlices_eq</b> : <a href="Cairn.Text.Wrap.html#Cairn.Text.Wrap.mapSlices" title="Cairn.Text.Wrap.mapSlices">@mapSlices</a> = <a href="Cairn.Text.Wrap.html#Cairn.Text.Wrap.mapSlicesFast" title="Cairn.Text.Wrap.mapSlicesFast">@mapSlicesFast</a></pre>
+</section>
+
+</div>
+</main></div>
+<footer>Generated by <code>make doc APP=Counter</code> from the code and the build. Nothing here is written by hand.</footer>
+<script src="search-index.js"></script>
+<script src="search.js"></script>
+<script type="module">
+// On the site, the headings get the meadow's sprigs and a "#" that copies a link to them
+// (site/public/scene.js); elsewhere, nothing.
+import("/scene.js").then((m) => { const main = document.querySelector("main"); m.mountSprigs(main); m.mountAnchors(main); }).catch(() => {});
+</script>
+</body>
+</html>

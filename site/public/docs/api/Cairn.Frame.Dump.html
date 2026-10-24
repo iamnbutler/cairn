@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cairn.Frame.Dump · Cairn docs</title>
+<meta name="description" content="Cairn's API, generated from its code.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="doc.css">
+</head>
+<body>
+<nav class="bar"><a class="home" href="../../"><img src="icon.svg" alt="">Cairn</a><span class="sep">/</span><a href="index.html">Cairn docs</a><a href="claims.html">Claims</a><span class="search"><input id="search" type="search" placeholder="Search names, docs, ^N  ( / )" autocomplete="off" spellcheck="false"><div id="results" hidden></div></span></nav>
+<div class="layout"><aside class="toc"><div class="pix muted">Cairn.Frame.Dump</div><a href="#definitions">Definitions <span class="n">28</span></a><ol><li><a href="#Cairn.Dump.hexDigits">hexDigits</a></li><li><a href="#Cairn.Dump.str">str</a></li><li><a href="#Cairn.Dump.rect">rect</a></li><li><a href="#Cairn.Dump.color">color</a></li><li><a href="#Cairn.Dump.ref">ref</a></li><li><a href="#Cairn.Dump.opt">opt</a></li><li><a href="#Cairn.Dump.range">range</a></li><li><a href="#Cairn.Dump.bit">bit</a></li><li><a href="#Cairn.Dump.draw">draw</a></li><li><a href="#Cairn.Dump.ax">ax</a></li><li><a href="#Cairn.Dump.textInput">textInput</a></li><li><a href="#Cairn.Dump.bytes">bytes</a></li><li><a href="#Cairn.Dump.headers">headers</a></li><li><a href="#Cairn.Dump.part">part</a></li><li><a href="#Cairn.Dump.secret">secret</a></li><li><a href="#Cairn.Dump.request">request</a></li><li><a href="#Cairn.Dump.effect">effect</a></li><li><a href="#Cairn.Dump.subCmd">subCmd</a></li><li><a href="#Cairn.Dump.reply">reply</a></li><li><a href="#Cairn.Dump.canvas">canvas</a></li><li><a href="#Cairn.Dump.shortcut">shortcut</a></li><li><a href="#Cairn.Dump.menuRecord">menuRecord</a></li><li><a href="#Cairn.Dump.status">status</a></li><li><a href="#Cairn.Dump.surface">surface</a></li><li><a href="#Cairn.Dump.frame">frame</a></li><li><a href="#Cairn.Dump.subEvent">subEvent</a></li><li><a href="#Cairn.Dump.event">event</a></li><li><a href="#Cairn.Dump.events">events</a></li></ol></aside><main>
+<header class="page"><div class="eyebrow">Cairn · module</div><h1 class="mod">Cairn.Frame.Dump</h1><p class="src">lean/Cairn/Frame/Dump.lean</p></header>
+<div class="doc"><p>A canonical text dump of frames and events (docs/frame.md, &quot;Canonical dump&quot;). The Swift
+decoder's tests print the same format and compare it line for line with Lean's, and it is a
+readable form for the debug socket. Strings print printable ASCII as itself and every other
+Unicode scalar, <code>&quot;</code> and <code>\</code> as <code>\u{HEX}</code>.</p>
+</div>
+<p class="imports"><span class="pix muted">Imports</span> <a href="Cairn.Frame.Events.html">Cairn.Frame.Events</a></p>
+<div class="order"><span class="pix muted">Order</span> <button type="button" data-order="kind" class="on">by kind</button><button type="button" data-order="source">as in the source</button></div>
+<div id="items">
+
+<h2 id="definitions">Definitions <span class="n">28</span></h2>
+<section class="decl" id="Cairn.Dump.hexDigits" data-line="12">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Dump.hexDigits"><span class="ns">Cairn.Dump.</span>hexDigits</a></h3><span class="src" title="source">lean/Cairn/Frame/Dump.lean:12</span></div>
+<pre class="sig"><b class="nm">hexDigits</b> (n : <span title="Nat">Nat</span>) : <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Dump.str" data-line="17">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Dump.str"><span class="ns">Cairn.Dump.</span>str</a></h3><span class="src" title="source">lean/Cairn/Frame/Dump.lean:17</span></div>
+<pre class="sig"><b class="nm">str</b> (s : <span title="String">String</span>) : <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Dump.rect" data-line="23">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Dump.rect"><span class="ns">Cairn.Dump.</span>rect</a></h3><span class="src" title="source">lean/Cairn/Frame/Dump.lean:23</span></div>
+<pre class="sig"><b class="nm">rect</b> (r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) : <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Dump.color" data-line="24">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Dump.color"><span class="ns">Cairn.Dump.</span>color</a></h3><span class="src" title="source">lean/Cairn/Frame/Dump.lean:24</span></div>
+<pre class="sig"><b class="nm">color</b> (c : <a href="Cairn.UI.Node.html#Cairn.Color" title="Cairn.Color">Color</a>) : <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Dump.ref" data-line="25">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Dump.ref"><span class="ns">Cairn.Dump.</span>ref</a></h3><span class="src" title="source">lean/Cairn/Frame/Dump.lean:25</span></div>
+<pre class="sig"><b class="nm">ref</b> (c : <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a>) : <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Dump.opt" data-line="26">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Dump.opt"><span class="ns">Cairn.Dump.</span>opt</a></h3><span class="src" title="source">lean/Cairn/Frame/Dump.lean:26</span></div>
+<pre class="sig"><b class="nm">opt</b> {α : Type} (f : α → <span title="String">String</span>) : Option α → <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Dump.range" data-line="29">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Dump.range"><span class="ns">Cairn.Dump.</span>range</a></h3><span class="src" title="source">lean/Cairn/Frame/Dump.lean:29</span></div>
+<pre class="sig"><b class="nm">range</b> (p : <span title="Nat">Nat</span> × <span title="Nat">Nat</span>) : <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Dump.bit" data-line="30">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Dump.bit"><span class="ns">Cairn.Dump.</span>bit</a></h3><span class="src" title="source">lean/Cairn/Frame/Dump.lean:30</span></div>
+<pre class="sig"><b class="nm">bit</b> (b : <span title="Bool">Bool</span>) : <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Dump.draw" data-line="32">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Dump.draw"><span class="ns">Cairn.Dump.</span>draw</a></h3><span class="src" title="source">lean/Cairn/Frame/Dump.lean:32</span></div>
+<pre class="sig"><b class="nm">draw</b> : <a href="Cairn.Frame.html#Cairn.Draw" title="Cairn.Draw">Draw</a> → <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Dump.ax" data-line="51">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Dump.ax"><span class="ns">Cairn.Dump.</span>ax</a></h3><span class="src" title="source">lean/Cairn/Frame/Dump.lean:51</span></div>
+<pre class="sig"><b class="nm">ax</b> (n : <a href="Cairn.Frame.html#Cairn.AxNode" title="Cairn.AxNode">AxNode</a>) : <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Dump.textInput" data-line="56">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Dump.textInput"><span class="ns">Cairn.Dump.</span>textInput</a></h3><span class="src" title="source">lean/Cairn/Frame/Dump.lean:56</span></div>
+<pre class="sig"><b class="nm">textInput</b> : Option <a href="Cairn.Frame.html#Cairn.TextInput" title="Cairn.TextInput">TextInput</a> → <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Dump.bytes" data-line="64">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Dump.bytes"><span class="ns">Cairn.Dump.</span>bytes</a></h3><span class="src" title="source">lean/Cairn/Frame/Dump.lean:64</span></div>
+<pre class="sig"><b class="nm">bytes</b> (b : <span title="ByteArray">ByteArray</span>) : <span title="String">String</span></pre><div class="doc"><p>Bytes as <code>x</code> and two lowercase hex digits each.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Dump.headers" data-line="67">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Dump.headers"><span class="ns">Cairn.Dump.</span>headers</a></h3><span class="src" title="source">lean/Cairn/Frame/Dump.lean:67</span></div>
+<pre class="sig"><b class="nm">headers</b> (hs : List (<span title="String">String</span> × <span title="String">String</span>)) : <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Dump.part" data-line="70">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Dump.part"><span class="ns">Cairn.Dump.</span>part</a></h3><span class="src" title="source">lean/Cairn/Frame/Dump.lean:70</span></div>
+<pre class="sig"><b class="nm">part</b> : <a href="Cairn.Effects.html#Cairn.Part" title="Cairn.Part">Part</a> → <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Dump.secret" data-line="74">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Dump.secret"><span class="ns">Cairn.Dump.</span>secret</a></h3><span class="src" title="source">lean/Cairn/Frame/Dump.lean:74</span></div>
+<pre class="sig"><b class="nm">secret</b> (s : <a href="Cairn.Effects.html#Cairn.Secret" title="Cairn.Secret">Secret</a>) : <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Dump.request" data-line="76">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Dump.request"><span class="ns">Cairn.Dump.</span>request</a></h3><span class="src" title="source">lean/Cairn/Frame/Dump.lean:76</span></div>
+<pre class="sig"><b class="nm">request</b> : <a href="Cairn.Effects.html#Cairn.Request" title="Cairn.Request">Request</a> → <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Dump.effect" data-line="96">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Dump.effect"><span class="ns">Cairn.Dump.</span>effect</a></h3><span class="src" title="source">lean/Cairn/Frame/Dump.lean:96</span></div>
+<pre class="sig"><b class="nm">effect</b> : <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a> → <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Dump.subCmd" data-line="105">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Dump.subCmd"><span class="ns">Cairn.Dump.</span>subCmd</a></h3><span class="src" title="source">lean/Cairn/Frame/Dump.lean:105</span></div>
+<pre class="sig"><b class="nm">subCmd</b> : <a href="Cairn.Effects.html#Cairn.SubCmd" title="Cairn.SubCmd">SubCmd</a> → <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Dump.reply" data-line="112">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Dump.reply"><span class="ns">Cairn.Dump.</span>reply</a></h3><span class="src" title="source">lean/Cairn/Frame/Dump.lean:112</span></div>
+<pre class="sig"><b class="nm">reply</b> : <a href="Cairn.Effects.html#Cairn.Reply" title="Cairn.Reply">Reply</a> → <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Dump.canvas" data-line="121">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Dump.canvas"><span class="ns">Cairn.Dump.</span>canvas</a></h3><span class="src" title="source">lean/Cairn/Frame/Dump.lean:121</span></div>
+<pre class="sig"><b class="nm">canvas</b> (c : <a href="Cairn.Frame.html#Cairn.Canvas" title="Cairn.Canvas">Canvas</a>) : <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Dump.shortcut" data-line="130">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Dump.shortcut"><span class="ns">Cairn.Dump.</span>shortcut</a></h3><span class="src" title="source">lean/Cairn/Frame/Dump.lean:130</span></div>
+<pre class="sig"><b class="nm">shortcut</b> (s : <a href="Cairn.Surface.html#Cairn.Shortcut" title="Cairn.Shortcut">Shortcut</a>) : <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Dump.menuRecord" data-line="132">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Dump.menuRecord"><span class="ns">Cairn.Dump.</span>menuRecord</a></h3><span class="src" title="source">lean/Cairn/Frame/Dump.lean:132</span></div>
+<pre class="sig"><b class="nm">menuRecord</b> (m : <a href="Cairn.Frame.html#Cairn.MenuRecord" title="Cairn.MenuRecord">MenuRecord</a>) : <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Dump.status" data-line="137">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Dump.status"><span class="ns">Cairn.Dump.</span>status</a></h3><span class="src" title="source">lean/Cairn/Frame/Dump.lean:137</span></div>
+<pre class="sig"><b class="nm">status</b> (s : <a href="Cairn.Frame.html#Cairn.StatusFrame" title="Cairn.StatusFrame">StatusFrame</a>) : <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Dump.surface" data-line="143">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Dump.surface"><span class="ns">Cairn.Dump.</span>surface</a></h3><span class="src" title="source">lean/Cairn/Frame/Dump.lean:143</span></div>
+<pre class="sig"><b class="nm">surface</b> (s : <a href="Cairn.Frame.html#Cairn.SurfaceFrame" title="Cairn.SurfaceFrame">SurfaceFrame</a>) : <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Dump.frame" data-line="149">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Dump.frame"><span class="ns">Cairn.Dump.</span>frame</a></h3><span class="src" title="source">lean/Cairn/Frame/Dump.lean:149</span></div>
+<pre class="sig"><b class="nm">frame</b> (f : <a href="Cairn.Frame.html" title="Cairn.Frame">Frame</a>) : <span title="String">String</span></pre><div class="doc"><p>One line per item, each ending in a newline.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Dump.subEvent" data-line="159">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Dump.subEvent"><span class="ns">Cairn.Dump.</span>subEvent</a></h3><span class="src" title="source">lean/Cairn/Frame/Dump.lean:159</span></div>
+<pre class="sig"><b class="nm">subEvent</b> : <a href="Cairn.Effects.html#Cairn.SubEvent" title="Cairn.SubEvent">SubEvent</a> → <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Dump.event" data-line="170">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Dump.event"><span class="ns">Cairn.Dump.</span>event</a></h3><span class="src" title="source">lean/Cairn/Frame/Dump.lean:170</span></div>
+<pre class="sig"><b class="nm">event</b> : <a href="Cairn.Input.html#Cairn.Event" title="Cairn.Event">Event</a> → <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Dump.events" data-line="197">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Dump.events"><span class="ns">Cairn.Dump.</span>events</a></h3><span class="src" title="source">lean/Cairn/Frame/Dump.lean:197</span></div>
+<pre class="sig"><b class="nm">events</b> (es : Array <a href="Cairn.Input.html#Cairn.Event" title="Cairn.Event">Event</a>) : <span title="String">String</span></pre>
+</section>
+
+</div>
+</main></div>
+<footer>Generated by <code>make doc APP=Counter</code> from the code and the build. Nothing here is written by hand.</footer>
+<script src="search-index.js"></script>
+<script src="search.js"></script>
+<script type="module">
+// On the site, the headings get the meadow's sprigs and a "#" that copies a link to them
+// (site/public/scene.js); elsewhere, nothing.
+import("/scene.js").then((m) => { const main = document.querySelector("main"); m.mountSprigs(main); m.mountAnchors(main); }).catch(() => {});
+</script>
+</body>
+</html>

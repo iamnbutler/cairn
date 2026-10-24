@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cairn.Claim · Cairn docs</title>
+<meta name="description" content="Cairn's API, generated from its code.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="doc.css">
+</head>
+<body>
+<nav class="bar"><a class="home" href="../../"><img src="icon.svg" alt="">Cairn</a><span class="sep">/</span><a href="index.html">Cairn docs</a><a href="claims.html">Claims</a><span class="search"><input id="search" type="search" placeholder="Search names, docs, ^N  ( / )" autocomplete="off" spellcheck="false"><div id="results" hidden></div></span></nav>
+<div class="layout"><aside class="toc"><div class="pix muted">Cairn.Claim</div><a href="#structures">Structures <span class="n">2</span></a><ol><li><a href="#Cairn.ClaimInfo">ClaimInfo</a></li><li><a href="#Cairn.ControlRef">ControlRef</a></li></ol><a href="#inductives">Inductive types <span class="n">1</span></a><ol><li><a href="#Cairn.ClaimKind">ClaimKind</a></li></ol><a href="#definitions">Definitions <span class="n">2</span></a><ol><li><a href="#Cairn.ClaimId">ClaimId</a></li><li><a href="#Cairn.ControlRef.label">label</a></li></ol><a href="#instances">Instances <span class="n">9</span></a><ol><li><a href="#Cairn.instDecidableEqClaimKind">instDecidableEqClaimKind</a></li><li><a href="#Cairn.instInhabitedClaimKind">instInhabitedClaimKind</a></li><li><a href="#Cairn.instReprClaimKind">instReprClaimKind</a></li><li><a href="#Cairn.instInhabitedClaimInfo">instInhabitedClaimInfo</a></li><li><a href="#Cairn.instReprClaimInfo">instReprClaimInfo</a></li><li><a href="#Cairn.instDecidableEqControlRef">instDecidableEqControlRef</a></li><li><a href="#Cairn.instHashableControlRef">instHashableControlRef</a></li><li><a href="#Cairn.instReprControlRef">instReprControlRef</a></li><li><a href="#Cairn.instInhabitedControlRef">instInhabitedControlRef</a></li></ol></aside><main>
+<header class="page"><div class="eyebrow">Cairn · module</div><h1 class="mod">Cairn.Claim</h1><p class="src">lean/Cairn/Claim.lean</p></header>
+<div class="doc"><p>Claims: statements about the product with durable ids.</p>
+<p>The vocabulary is fixed here; the <code>move</code>, <code>flow</code>, <code>invariant</code>, <code>assume</code> and <code>place</code> commands
+that create claims, and the ledger that guards their ids, live in <a href="Cairn.Claims.html"><code>Cairn.Claims</code></a>.</p>
+</div>
+
+<div class="order"><span class="pix muted">Order</span> <button type="button" data-order="kind" class="on">by kind</button><button type="button" data-order="source">as in the source</button></div>
+<div id="items">
+
+<h2 id="structures">Structures <span class="n">2</span></h2>
+<section class="decl" id="Cairn.ClaimInfo" data-line="21">
+<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.ClaimInfo"><span class="ns">Cairn.</span>ClaimInfo</a></h3><span class="src" title="source">lean/Cairn/Claim.lean:21</span></div>
+<pre class="sig"><b class="nm">ClaimInfo</b> : Type</pre><div class="doc"><p>The human half of a claim: what a reviewer reads next to the formal statement.</p>
+</div><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.ClaimInfo.id"><pre class="sig"><b class="nm">id</b> : <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a></pre></div><div class="member" id="Cairn.ClaimInfo.kind"><pre class="sig"><b class="nm">kind</b> : <a href="Cairn.Claim.html#Cairn.ClaimKind" title="Cairn.ClaimKind">ClaimKind</a></pre></div><div class="member" id="Cairn.ClaimInfo.title"><pre class="sig"><b class="nm">title</b> : <span title="String">String</span></pre></div><div class="member" id="Cairn.ClaimInfo.does"><pre class="sig"><b class="nm">does</b> : <span title="String">String</span></pre><div class="doc"><p>What the person does (moves) or what the claim states (others).</p>
+</div></div><div class="member" id="Cairn.ClaimInfo.sees"><pre class="sig"><b class="nm">sees</b> : <span title="String">String</span></pre><div class="doc"><p>What follows.</p>
+</div></div><div class="member" id="Cairn.ClaimInfo.place"><pre class="sig"><b class="nm">place</b> : Option <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a></pre><div class="doc"><p>The <a href="Cairn.Claim.html#Cairn.ClaimInfo.place"><code>place</code></a> claim this one appears in, if any.</p>
+</div></div><div class="member" id="Cairn.ClaimInfo.retired"><pre class="sig"><b class="nm">retired</b> : Option <span title="String">String</span></pre><div class="doc"><p>Retired claims keep their id and say why.</p>
+</div></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Claim.html#Cairn.instInhabitedClaimInfo"><code>Inhabited</code></a> <a href="Cairn.Claim.html#Cairn.instReprClaimInfo"><code>Repr</code></a></p></div>
+</section>
+<section class="decl" id="Cairn.ControlRef" data-line="37">
+<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.ControlRef"><span class="ns">Cairn.</span>ControlRef</a></h3><span class="src" title="source">lean/Cairn/Claim.lean:37</span></div>
+<pre class="sig"><b class="nm">ControlRef</b> : Type</pre><div class="doc"><p>One instance of a move's control on screen. A move like &quot;toggle a todo&quot; has one control
+per todo; <code>key</code> tells them apart (0 when there is only one). Shown as <code>^5</code> or <code>^5#12</code>.</p>
+</div><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.ControlRef.claim"><pre class="sig"><b class="nm">claim</b> : <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a></pre></div><div class="member" id="Cairn.ControlRef.key"><pre class="sig"><b class="nm">key</b> : <span title="Nat">Nat</span></pre></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Claim.html#Cairn.instHashableControlRef"><code>Hashable</code></a> <a href="Cairn.Claim.html#Cairn.instReprControlRef"><code>Repr</code></a> <a href="Cairn.Claim.html#Cairn.instInhabitedControlRef"><code>Inhabited</code></a></p></div>
+</section>
+<h2 id="inductives">Inductive types <span class="n">1</span></h2>
+<section class="decl" id="Cairn.ClaimKind" data-line="16">
+<div class="dhead"><span class="kind pix">inductive</span><h3><a href="#Cairn.ClaimKind"><span class="ns">Cairn.</span>ClaimKind</a></h3><span class="src" title="source">lean/Cairn/Claim.lean:16</span></div>
+<pre class="sig"><b class="nm">ClaimKind</b> : Type</pre><div class="members"><b class="pix muted">Constructors</b><div class="member" id="Cairn.ClaimKind.move"><pre class="sig"><b class="nm">move</b> : <a href="Cairn.Claim.html#Cairn.ClaimKind" title="Cairn.ClaimKind">ClaimKind</a></pre></div><div class="member" id="Cairn.ClaimKind.flow"><pre class="sig"><b class="nm">flow</b> : <a href="Cairn.Claim.html#Cairn.ClaimKind" title="Cairn.ClaimKind">ClaimKind</a></pre></div><div class="member" id="Cairn.ClaimKind.invariant"><pre class="sig"><b class="nm">invariant</b> : <a href="Cairn.Claim.html#Cairn.ClaimKind" title="Cairn.ClaimKind">ClaimKind</a></pre></div><div class="member" id="Cairn.ClaimKind.assume"><pre class="sig"><b class="nm">assume</b> : <a href="Cairn.Claim.html#Cairn.ClaimKind" title="Cairn.ClaimKind">ClaimKind</a></pre></div><div class="member" id="Cairn.ClaimKind.place"><pre class="sig"><b class="nm">place</b> : <a href="Cairn.Claim.html#Cairn.ClaimKind" title="Cairn.ClaimKind">ClaimKind</a></pre></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Claim.html#Cairn.instInhabitedClaimKind"><code>Inhabited</code></a> <a href="Cairn.Claim.html#Cairn.instReprClaimKind"><code>Repr</code></a></p></div>
+</section>
+<h2 id="definitions">Definitions <span class="n">2</span></h2>
+<section class="decl" id="Cairn.ClaimId" data-line="14">
+<div class="dhead"><span class="kind pix">abbrev</span><h3><a href="#Cairn.ClaimId"><span class="ns">Cairn.</span>ClaimId</a></h3><span class="src" title="source">lean/Cairn/Claim.lean:14</span></div>
+<pre class="sig"><b class="nm">ClaimId</b> : Type</pre><div class="doc"><p>A claim id, written <code>^N</code>. Never renumbered, reused or deleted.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.ControlRef.label" data-line="49">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.ControlRef.label"><span class="ns">Cairn.ControlRef.</span>label</a></h3><span class="src" title="source">lean/Cairn/Claim.lean:49</span></div>
+<pre class="sig"><b class="nm">label</b> (c : <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a>) : <span title="String">String</span></pre><div class="doc"><p>How a control is written in ids and on the map's pins: <code>^5</code>, or <code>^5#12</code> for a keyed one.</p>
+<pre><code class="language-lean">example : ({ claim := 5 } : ControlRef).label = &quot;^5&quot; := by decide
+example : ({ claim := 5, key := 12 } : ControlRef).label = &quot;^5#12&quot; := by decide
+</code></pre>
+</div>
+</section>
+<h2 id="instances">Instances <span class="n">9</span></h2>
+<section class="decl" id="Cairn.instDecidableEqClaimKind" data-line="18">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instDecidableEqClaimKind"><span class="ns">Cairn.</span>instDecidableEqClaimKind</a></h3><span class="src" title="source">lean/Cairn/Claim.lean:18</span></div>
+<pre class="sig"><b class="nm">instDecidableEqClaimKind</b> : DecidableEq <a href="Cairn.Claim.html#Cairn.ClaimKind" title="Cairn.ClaimKind">ClaimKind</a></pre>
+</section>
+<section class="decl" id="Cairn.instInhabitedClaimKind" data-line="18">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedClaimKind"><span class="ns">Cairn.</span>instInhabitedClaimKind</a></h3><span class="src" title="source">lean/Cairn/Claim.lean:18</span></div>
+<pre class="sig"><b class="nm">instInhabitedClaimKind</b> : Inhabited <a href="Cairn.Claim.html#Cairn.ClaimKind" title="Cairn.ClaimKind">ClaimKind</a></pre>
+</section>
+<section class="decl" id="Cairn.instReprClaimKind" data-line="18">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprClaimKind"><span class="ns">Cairn.</span>instReprClaimKind</a></h3><span class="src" title="source">lean/Cairn/Claim.lean:18</span></div>
+<pre class="sig"><b class="nm">instReprClaimKind</b> : Repr <a href="Cairn.Claim.html#Cairn.ClaimKind" title="Cairn.ClaimKind">ClaimKind</a></pre>
+</section>
+<section class="decl" id="Cairn.instInhabitedClaimInfo" data-line="33">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedClaimInfo"><span class="ns">Cairn.</span>instInhabitedClaimInfo</a></h3><span class="src" title="source">lean/Cairn/Claim.lean:33</span></div>
+<pre class="sig"><b class="nm">instInhabitedClaimInfo</b> : Inhabited <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre>
+</section>
+<section class="decl" id="Cairn.instReprClaimInfo" data-line="33">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprClaimInfo"><span class="ns">Cairn.</span>instReprClaimInfo</a></h3><span class="src" title="source">lean/Cairn/Claim.lean:33</span></div>
+<pre class="sig"><b class="nm">instReprClaimInfo</b> : Repr <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre>
+</section>
+<section class="decl" id="Cairn.instDecidableEqControlRef" data-line="40">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instDecidableEqControlRef"><span class="ns">Cairn.</span>instDecidableEqControlRef</a></h3><span class="src" title="source">lean/Cairn/Claim.lean:40</span></div>
+<pre class="sig"><b class="nm">instDecidableEqControlRef</b> : DecidableEq <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a></pre>
+</section>
+<section class="decl" id="Cairn.instHashableControlRef" data-line="40">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instHashableControlRef"><span class="ns">Cairn.</span>instHashableControlRef</a></h3><span class="src" title="source">lean/Cairn/Claim.lean:40</span></div>
+<pre class="sig"><b class="nm">instHashableControlRef</b> : Hashable <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a></pre>
+</section>
+<section class="decl" id="Cairn.instReprControlRef" data-line="40">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprControlRef"><span class="ns">Cairn.</span>instReprControlRef</a></h3><span class="src" title="source">lean/Cairn/Claim.lean:40</span></div>
+<pre class="sig"><b class="nm">instReprControlRef</b> : Repr <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a></pre>
+</section>
+<section class="decl" id="Cairn.instInhabitedControlRef" data-line="40">
+<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedControlRef"><span class="ns">Cairn.</span>instInhabitedControlRef</a></h3><span class="src" title="source">lean/Cairn/Claim.lean:40</span></div>
+<pre class="sig"><b class="nm">instInhabitedControlRef</b> : Inhabited <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a></pre>
+</section>
+
+</div>
+</main></div>
+<footer>Generated by <code>make doc APP=Counter</code> from the code and the build. Nothing here is written by hand.</footer>
+<script src="search-index.js"></script>
+<script src="search.js"></script>
+<script type="module">
+// On the site, the headings get the meadow's sprigs and a "#" that copies a link to them
+// (site/public/scene.js); elsewhere, nothing.
+import("/scene.js").then((m) => { const main = document.querySelector("main"); m.mountSprigs(main); m.mountAnchors(main); }).catch(() => {});
+</script>
+</body>
+</html>

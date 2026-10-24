@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cairn.Text.Host · Cairn docs</title>
+<meta name="description" content="Cairn's API, generated from its code.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="doc.css">
+</head>
+<body>
+<nav class="bar"><a class="home" href="../../"><img src="icon.svg" alt="">Cairn</a><span class="sep">/</span><a href="index.html">Cairn docs</a><a href="claims.html">Claims</a><span class="search"><input id="search" type="search" placeholder="Search names, docs, ^N  ( / )" autocomplete="off" spellcheck="false"><div id="results" hidden></div></span></nav>
+<div class="layout"><aside class="toc"><div class="pix muted">Cairn.Text.Host</div><a href="#definitions">Definitions <span class="n">13</span></a><ol><li><a href="#Cairn.Text.Host.raw">raw</a></li><li><a href="#Cairn.Text.Host.hostLinked">hostLinked</a></li><li><a href="#Cairn.Text.Host.sat">sat</a></li><li><a href="#Cairn.Text.Host.satI">satI</a></li><li><a href="#Cairn.Text.Host.satI32">satI32</a></li><li><a href="#Cairn.Text.Host.styleByte">styleByte</a></li><li><a href="#Cairn.Text.Host.rawFor">rawFor</a></li><li><a href="#Cairn.Text.Host.word">word</a></li><li><a href="#Cairn.Text.Host.climb">climb</a></li><li><a href="#Cairn.Text.Host.normalise">normalise</a></li><li><a href="#Cairn.TextMetrics.host">host</a></li><li><a href="#Cairn.Text.Host.putI32">putI32</a></li><li><a href="#Cairn.Text.Host.hostCheck">hostCheck</a></li></ol><a href="#theorems">Theorems <span class="n">8</span></a><ol><li><a href="#Cairn.Text.Host.length_climb">length_climb</a></li><li><a href="#Cairn.Text.Host.le_of_mem_climb">le_of_mem_climb</a></li><li><a href="#Cairn.Text.Host.pairwise_climb">pairwise_climb</a></li><li><a href="#Cairn.Text.Host.pairwise_normalised">pairwise_normalised</a></li><li><a href="#Cairn.Text.Host.size_normalise">size_normalise</a></li><li><a href="#Cairn.Text.Host.normalise_zero">normalise_zero</a></li><li><a href="#Cairn.Text.Host.normalise_mono">normalise_mono</a></li><li><a href="#Cairn.TextMetrics.host_valid">host_valid</a></li></ol></aside><main>
+<header class="page"><div class="eyebrow">Cairn · module</div><h1 class="mod">Cairn.Text.Host</h1><p class="src">lean/Cairn/Text/Host.lean</p></header>
+<div class="doc"><p>Core Text metrics from the host, as a <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics"><code>TextMetrics</code></a>.</p>
+<p>The host shapes each (font, string) once with Core Text and reports, in whole logical points,
+the font's ascent and descent and the caret offset at every Unicode scalar boundary; the
+renderer draws glyphs from the very same shaped line (docs/render.md). Lean receives the numbers
+as bytes through <code>cairn_lean_text_metrics</code> (lean/c/text_host.c), decodes them, and normalises
+them so <a href="Cairn.Text.Host.html#Cairn.TextMetrics.host"><code>TextMetrics.host</code></a> satisfies <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics.Valid"><code>TextMetrics.Valid</code></a> <em>by proof</em>, whatever the host sends:
+<code>host_valid</code> below. What stays trusted is only that the numbers match what is painted (an
+<code>assume</code>, docs/trusted.md).</p>
+<p>Linking: the extern symbols live in <code>text_host.o</code>, which Lake links into every executable and
+puts in <code>libcairn_Cairn.a</code>. The C function it calls, <code>cairn_text_metrics</code>, is defined weakly
+there (returning &quot;no host&quot;), so <code>bench</code>, <code>audit</code> and Lean tests link without the Swift host and
+get <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics.mono"><code>TextMetrics.mono</code></a> numbers; the Swift host's strong definition wins when it is linked.
+<code>hostLinked ()</code> says which one is in use. Never evaluate these at elaboration time (<code>#eval</code>,
+<code>#guard</code>): the interpreter has no native implementation to call.</p>
+</div>
+<p class="imports"><span class="pix muted">Imports</span> <a href="Cairn.Text.Metrics.html">Cairn.Text.Metrics</a></p>
+<div class="order"><span class="pix muted">Order</span> <button type="button" data-order="kind" class="on">by kind</button><button type="button" data-order="source">as in the source</button></div>
+<div id="items">
+
+<h2 id="definitions">Definitions <span class="n">13</span></h2>
+<section class="decl" id="Cairn.Text.Host.raw" data-line="29">
+<div class="dhead"><span class="kind pix">opaque</span><h3><a href="#Cairn.Text.Host.raw"><span class="ns">Cairn.Text.Host.</span>raw</a></h3><span class="src" title="source">lean/Cairn/Text/Host.lean:29</span></div>
+<pre class="sig"><b class="nm">raw</b> (family size weight : <span title="UInt32">UInt32</span>) (style : <span title="UInt8">UInt8</span>) (tracking : <span title="UInt32">UInt32</span>)
+  (s : <span title="String">String</span>) : <span title="ByteArray">ByteArray</span></pre><div class="doc"><p><code>[ascent, descent, offset_0, …, offset_n]</code> as little-endian int32s (<code>4 * (n + 3)</code> bytes,
+<code>n = s.length</code>), or empty when no host is linked.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Host.hostLinked" data-line="34">
+<div class="dhead"><span class="kind pix">opaque</span><h3><a href="#Cairn.Text.Host.hostLinked"><span class="ns">Cairn.Text.Host.</span>hostLinked</a></h3><span class="src" title="source">lean/Cairn/Text/Host.lean:34</span></div>
+<pre class="sig"><b class="nm">hostLinked</b> : <span title="Unit">Unit</span> → <span title="Bool">Bool</span></pre><div class="doc"><p>Whether the Swift host's metrics are linked (otherwise <a href="Cairn.Text.Host.html#Cairn.Text.Host.raw"><code>raw</code></a> is always empty).</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Host.sat" data-line="38">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Host.sat"><span class="ns">Cairn.Text.Host.</span>sat</a></h3><span class="src" title="source">lean/Cairn/Text/Host.lean:38</span></div>
+<pre class="sig"><b class="nm">sat</b> (n : <span title="Nat">Nat</span>) : <span title="UInt32">UInt32</span></pre><div class="doc"><p>Font fields cross as <code>UInt32</code>, saturating: a size of 2^40 means &quot;huge&quot;, not 2^40 mod 2^32.
+The host clamps sizes to 1–1024 and weights to 100–900 itself.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Host.satI" data-line="41">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Host.satI"><span class="ns">Cairn.Text.Host.</span>satI</a></h3><span class="src" title="source">lean/Cairn/Text/Host.lean:41</span></div>
+<pre class="sig"><b class="nm">satI</b> (n : <span title="Int">Int</span>) : <span title="Int">Int</span></pre><div class="doc"><p>Signed fields (tracking) saturate to the int32 range and cross as its two's complement.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Host.satI32" data-line="43">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Host.satI32"><span class="ns">Cairn.Text.Host.</span>satI32</a></h3><span class="src" title="source">lean/Cairn/Text/Host.lean:43</span></div>
+<pre class="sig"><b class="nm">satI32</b> (n : <span title="Int">Int</span>) : <span title="UInt32">UInt32</span></pre>
+</section>
+<section class="decl" id="Cairn.Text.Host.styleByte" data-line="46">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Host.styleByte"><span class="ns">Cairn.Text.Host.</span>styleByte</a></h3><span class="src" title="source">lean/Cairn/Text/Host.lean:46</span></div>
+<pre class="sig"><b class="nm">styleByte</b> (f : <a href="Cairn.Text.Metrics.html#Cairn.Font" title="Cairn.Font">Font</a>) : <span title="UInt8">UInt8</span></pre><div class="doc"><p>The style byte: bit 0 italic, bit 1 tabular digits, bits 2–3 the width's code.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Host.rawFor" data-line="49">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Host.rawFor"><span class="ns">Cairn.Text.Host.</span>rawFor</a></h3><span class="src" title="source">lean/Cairn/Text/Host.lean:49</span></div>
+<pre class="sig"><b class="nm">rawFor</b> (f : <a href="Cairn.Text.Metrics.html#Cairn.Font" title="Cairn.Font">Font</a>) (s : <span title="String">String</span>) : <span title="ByteArray">ByteArray</span></pre>
+</section>
+<section class="decl" id="Cairn.Text.Host.word" data-line="55">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Host.word"><span class="ns">Cairn.Text.Host.</span>word</a></h3><span class="src" title="source">lean/Cairn/Text/Host.lean:55</span></div>
+<pre class="sig"><b class="nm">word</b> (b : <span title="ByteArray">ByteArray</span>) (i : <span title="Nat">Nat</span>) : <span title="Int">Int</span></pre><div class="doc"><p>The <code>i</code>th little-endian int32 of <code>b</code>; bytes past the end read as 0. (<code>b[j]?</code>, not
+<code>b.data.getD j</code>: compiled, <code>ByteArray.data</code> copies the whole array, which made decoding a
+string's offsets quadratic.)</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Host.climb" data-line="61">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Host.climb"><span class="ns">Cairn.Text.Host.</span>climb</a></h3><span class="src" title="source">lean/Cairn/Text/Host.lean:61</span></div>
+<pre class="sig"><b class="nm">climb</b> (lo : <span title="Int">Int</span>) : List <span title="Int">Int</span> → List <span title="Int">Int</span></pre><div class="doc"><p>Running maximum from <code>lo</code>: each entry is at least <code>lo</code> and at least the one before it.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Host.normalise" data-line="68">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Host.normalise"><span class="ns">Cairn.Text.Host.</span>normalise</a></h3><span class="src" title="source">lean/Cairn/Text/Host.lean:68</span></div>
+<pre class="sig"><b class="nm">normalise</b> (n : <span title="Nat">Nat</span>) (b : <span title="ByteArray">ByteArray</span>) (fallback : <span title="Nat">Nat</span> → <span title="Int">Int</span>) : Array <span title="Int">Int</span></pre><div class="doc"><p>Offsets from the host's words (or from <code>fallback</code> when the reply has the wrong size):
+entry 0 forced to 0, the rest made nondecreasing and nonnegative. For a well-behaved host this
+is the identity, and the Swift tests check that it is.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.TextMetrics.host" data-line="79">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.TextMetrics.host"><span class="ns">Cairn.TextMetrics.</span>host</a></h3><span class="src" title="source">lean/Cairn/Text/Host.lean:79</span></div>
+<pre class="sig"><b class="nm">host</b> : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a></pre><div class="doc"><p>Core Text's metrics, from the host. Falls back to <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics.mono"><code>mono</code></a> when no host is linked.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Host.putI32" data-line="153">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Host.putI32"><span class="ns">Cairn.Text.Host.</span>putI32</a></h3><span class="src" title="source">lean/Cairn/Text/Host.lean:153</span></div>
+<pre class="sig"><b class="nm">putI32</b> (b : <span title="ByteArray">ByteArray</span>) (v : <span title="Int">Int</span>) : <span title="ByteArray">ByteArray</span></pre><div class="doc"><p>Little-endian int32 bytes of <code>v</code> (two's complement, truncated to 32 bits).</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Text.Host.hostCheck" data-line="162">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Host.hostCheck"><span class="ns">Cairn.Text.Host.</span>hostCheck</a></h3><span class="src" title="source">lean/Cairn/Text/Host.lean:162</span></div>
+<pre class="sig"><b class="nm">hostCheck</b> (family size weight : <span title="UInt32">UInt32</span>) (style : <span title="UInt8">UInt8</span>) (tracking : <span title="UInt32">UInt32</span>)
+  (s : <span title="String">String</span>) : <span title="ByteArray">ByteArray</span></pre><div class="doc"><p>For the host's end-to-end test (host/Tests/CairnRenderLeanTests): what layout would see for
+this font and string through <a href="Cairn.Text.Host.html#Cairn.TextMetrics.host"><code>TextMetrics.host</code></a>, as int32s
+<code>[linked, ascent, descent, offset_0, …, offset_n]</code>.</p>
+</div>
+</section>
+<h2 id="theorems">Theorems <span class="n">8</span></h2>
+<section class="decl" id="Cairn.Text.Host.length_climb" data-line="93">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Text.Host.length_climb"><span class="ns">Cairn.Text.Host.</span>length_climb</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Text/Host.lean:93</span></div>
+<pre class="sig"><b class="nm">length_climb</b> (lo : <span title="Int">Int</span>) (xs : List <span title="Int">Int</span>) : (climb lo xs).length = xs.length</pre>
+</section>
+<section class="decl" id="Cairn.Text.Host.le_of_mem_climb" data-line="98">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Text.Host.le_of_mem_climb"><span class="ns">Cairn.Text.Host.</span>le_of_mem_climb</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Text/Host.lean:98</span></div>
+<pre class="sig"><b class="nm">le_of_mem_climb</b> (lo : <span title="Int">Int</span>) (xs : List <span title="Int">Int</span>) (y : <span title="Int">Int</span>) :
+  y ∈ climb lo xs → lo ≤ y</pre>
+</section>
+<section class="decl" id="Cairn.Text.Host.pairwise_climb" data-line="108">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Text.Host.pairwise_climb"><span class="ns">Cairn.Text.Host.</span>pairwise_climb</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Text/Host.lean:108</span></div>
+<pre class="sig"><b class="nm">pairwise_climb</b> (lo : <span title="Int">Int</span>) (xs : List <span title="Int">Int</span>) :
+  List.Pairwise (fun x1 x2 =&gt; x1 ≤ x2) (climb lo xs)</pre>
+</section>
+<section class="decl" id="Cairn.Text.Host.pairwise_normalised" data-line="114">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Text.Host.pairwise_normalised"><span class="ns">Cairn.Text.Host.</span>pairwise_normalised</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Text/Host.lean:114</span></div>
+<pre class="sig"><b class="nm">pairwise_normalised</b> (xs : List <span title="Int">Int</span>) :
+  List.Pairwise (fun x1 x2 =&gt; x1 ≤ x2) (0 :: climb 0 xs)</pre>
+</section>
+<section class="decl" id="Cairn.Text.Host.size_normalise" data-line="117">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Text.Host.size_normalise"><span class="ns">Cairn.Text.Host.</span>size_normalise</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Text/Host.lean:117</span></div>
+<pre class="sig"><b class="nm">size_normalise</b> (n : <span title="Nat">Nat</span>) (b : <span title="ByteArray">ByteArray</span>) (fb : <span title="Nat">Nat</span> → <span title="Int">Int</span>) :
+  (normalise n b fb).size = n + 1</pre>
+</section>
+<section class="decl" id="Cairn.Text.Host.normalise_zero" data-line="121">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Text.Host.normalise_zero"><span class="ns">Cairn.Text.Host.</span>normalise_zero</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Text/Host.lean:121</span></div>
+<pre class="sig"><b class="nm">normalise_zero</b> (n : <span title="Nat">Nat</span>) (b : <span title="ByteArray">ByteArray</span>) (fb : <span title="Nat">Nat</span> → <span title="Int">Int</span>) :
+  (normalise n b fb)[0]? = some 0</pre>
+</section>
+<section class="decl" id="Cairn.Text.Host.normalise_mono" data-line="125">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Text.Host.normalise_mono"><span class="ns">Cairn.Text.Host.</span>normalise_mono</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Text/Host.lean:125</span></div>
+<pre class="sig"><b class="nm">normalise_mono</b> (n : <span title="Nat">Nat</span>) (b : <span title="ByteArray">ByteArray</span>) (fb : <span title="Nat">Nat</span> → <span title="Int">Int</span>) (i j : <span title="Nat">Nat</span>)
+  (hi : i &lt; (normalise n b fb).size) (hj : j &lt; (normalise n b fb).size) (hij : i ≤ j) :
+  (normalise n b fb)[i] ≤ (normalise n b fb)[j]</pre>
+</section>
+<section class="decl" id="Cairn.TextMetrics.host_valid" data-line="141">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.TextMetrics.host_valid"><span class="ns">Cairn.TextMetrics.</span>host_valid</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Text/Host.lean:141</span></div>
+<pre class="sig"><b class="nm">host_valid</b> : <a href="Cairn.Text.Host.html#Cairn.TextMetrics.host" title="Cairn.TextMetrics.host">host</a>.Valid</pre><div class="doc"><p>The host's metrics satisfy everything layout assumes, whatever the host returns.</p>
+</div>
+</section>
+
+</div>
+</main></div>
+<footer>Generated by <code>make doc APP=Counter</code> from the code and the build. Nothing here is written by hand.</footer>
+<script src="search-index.js"></script>
+<script src="search.js"></script>
+<script type="module">
+// On the site, the headings get the meadow's sprigs and a "#" that copies a link to them
+// (site/public/scene.js); elsewhere, nothing.
+import("/scene.js").then((m) => { const main = document.querySelector("main"); m.mountSprigs(main); m.mountAnchors(main); }).catch(() => {});
+</script>
+</body>
+</html>

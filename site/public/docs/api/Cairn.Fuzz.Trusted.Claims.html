@@ -1,0 +1,847 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cairn.Fuzz.Trusted.Claims · Cairn docs</title>
+<meta name="description" content="Cairn's API, generated from its code.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="doc.css">
+</head>
+<body>
+<nav class="bar"><a class="home" href="../../"><img src="icon.svg" alt="">Cairn</a><span class="sep">/</span><a href="index.html">Cairn docs</a><a href="claims.html">Claims</a><span class="search"><input id="search" type="search" placeholder="Search names, docs, ^N  ( / )" autocomplete="off" spellcheck="false"><div id="results" hidden></div></span></nav>
+<div class="layout"><aside class="toc"><div class="pix muted">Cairn.Fuzz.Trusted.Claims</div><a href="#claims">Claims <span class="n">40</span></a><ol><li><a href="#901"><span class="id">^901</span> The Swift frame decoder agrees with Lean's</a></li><li><a href="#902"><span class="id">^902</span> Lean decodes what the Swift event encoder writes</a></li><li><a href="#903"><span class="id">^903</span> UTF-16 offsets and scalar indices convert exactly</a></li><li><a href="#904"><span class="id">^904</span> The text-input shadow predicts Lean's field</a></li><li><a href="#905"><span class="id">^905</span> Input-method geometry agrees with Lean's caret</a></li><li><a href="#906"><span class="id">^906</span> The host's text metrics are what layout assumes</a></li><li><a href="#907"><span class="id">^907</span> Carets follow the painted glyphs</a></li><li><a href="#908"><span class="id">^908</span> The host's clock is monotonic milliseconds</a></li><li><a href="#909"><span class="id">^909</span> The host wakes Lean by wake</a></li><li><a href="#910"><span class="id">^910</span> readFile replies with the file's bytes, or failed</a></li><li><a href="#911"><span class="id">^911</span> writeFile is atomic, and replies done only when the bytes are there</a></li><li><a href="#912"><span class="id">^912</span> playSound starts a known sound and refuses an unknown one</a></li><li><a href="#913"><span class="id">^913</span> http sends the request as given and returns the response as received</a></li><li><a href="#914"><span class="id">^914</span> The host answers every request exactly once, with its id</a></li><li><a href="#915"><span class="id">^915</span> every ms ticks while started and never after it is stopped</a></li><li><a href="#940"><span class="id">^940</span> The native menu shows exactly the frame's menu records</a></li><li><a href="#941"><span class="id">^941</span> Choosing a menu item reports that item's ref</a></li><li><a href="#942"><span class="id">^942</span> Opening and closing the menu are reported once each</a></li><li><a href="#943"><span class="id">^943</span> An overlay panel never takes focus or clicks</a></li><li><a href="#944"><span class="id">^944</span> An overlay panel is where its anchor says</a></li><li><a href="#960"><span class="id">^960</span> appendFile adds exactly the bytes at the end, or fails and adds nothing</a></li><li><a href="#961"><span class="id">^961</span> listDir lists exactly the directory's names, sorted</a></li><li><a href="#962"><span class="id">^962</span> deleteFile removes a file or a link, never a directory</a></li><li><a href="#963"><span class="id">^963</span> watchFile reports every change to its file, and nothing after its stop</a></li><li><a href="#964"><span class="id">^964</span> frontmostApp answers the app in front</a></li><li><a href="#965"><span class="id">^965</span> permission answers whether the app holds it, and prompts only when asked</a></li><li><a href="#966"><span class="id">^966</span> record streams the levels of exactly the samples it keeps, and nothing after its stop</a></li><li><a href="#967"><span class="id">^967</span> A clip's WAV for a range of windows holds exactly those samples</a></li><li><a href="#968"><span class="id">^968</span> globalKey reports the hotkey's press and release, and other keys while it is held</a></li><li><a href="#969"><span class="id">^969</span> typeText types exactly the text into that app, or nothing</a></li><li><a href="#970"><span class="id">^970</span> upload sends the body assembled from its parts, with the secret in its header</a></li><li><a href="#971"><span class="id">^971</span> A secret is read from the environment or its file, and never shown</a></li><li><a href="#990"><span class="id">^990</span> Wrapped lines paint as wide as Lean measured them</a></li><li><a href="#991"><span class="id">^991</span> Lean breaks lines where Core Text would</a></li><li><a href="#1000"><span class="id">^1000</span> openItem opens exactly the URL or existing file it names</a></li><li><a href="#1001"><span class="id">^1001</span> appRunning answers whether an app with that bundle id runs</a></li><li><a href="#1002"><span class="id">^1002</span> readDefault answers the default's value as text</a></li><li><a href="#1003"><span class="id">^1003</span> makeDir makes a private directory and its parents</a></li><li><a href="#1004"><span class="id">^1004</span> A painter's pixels stay inside its box</a></li><li><a href="#1005"><span class="id">^1005</span> record reports started once its microphone is running, before any audio, or fails without it</a></li></ol></aside><main>
+<header class="page"><div class="eyebrow">Cairn · module</div><h1 class="mod">Cairn.Fuzz.Trusted.Claims</h1><p class="src">lean/Cairn/Fuzz/Trusted/Claims.lean</p></header>
+<div class="doc"><p>The trusted base's assumptions (docs/trusted.md), each naming the check of the trusted-base
+fuzzer that gathers its evidence (<code>make fuzz-trusted</code>, <code>build/fuzz/trusted.json</code>, docs/fuzz.md
+&quot;Trusted base&quot;). Evidence, not proof: these stay assumptions.</p>
+<p>Ids 901–999 and 1000 on are for framework-level assumptions; apps' own assumptions use their apps' ranges.
+Not imported by <a href="Cairn.html"><code>Cairn</code></a> (the host links that); the ledger reads this module as a root.</p>
+</div>
+<p class="imports"><span class="pix muted">Imports</span> <a href="Cairn.Claims.Core.html">Cairn.Claims.Core</a>, <a href="Cairn.Claims.Elab.html">Cairn.Claims.Elab</a></p>
+<div class="order"><span class="pix muted">Order</span> <button type="button" data-order="kind" class="on">by kind</button><button type="button" data-order="source">as in the source</button></div>
+<div id="items">
+<h2 id="claims">Claims <span class="n">40</span></h2>
+<section class="claim px" id="901" data-line="15">
+<div class="head"><a class="id" href="#901">^901</a><h3>The Swift frame decoder agrees with Lean's</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>For every byte buffer, the host's Frame(bytes:) accepts exactly when Lean's proved decodeFrame does, and then decodes the same frame.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's frame.decode held in 20,000 cases, against Lean's proved side (seed 0).">fuzzed 20k</span></dt><dd>The trusted-base fuzzer's <code>frame.decode</code> held in 20,000 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:15</span> · <code>swiftFrameDecoder</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.swiftFrameDecoder.info" data-line="15">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.swiftFrameDecoder.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.swiftFrameDecoder.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:15</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#901">^901</a>.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.swiftFrameDecoder" data-line="15">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.swiftFrameDecoder"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>swiftFrameDecoder</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:15</span></div>
+<pre class="sig"><b class="nm">swiftFrameDecoder</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#901">^901</a> The Swift frame decoder agrees with Lean's</strong> (assumption)</p>
+<p>For every byte buffer, the host's Frame(bytes:) accepts exactly when Lean's proved decodeFrame does, and then decodes the same frame.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.swiftFrameDecoder.statement" data-line="15">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.swiftFrameDecoder.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.swiftFrameDecoder.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:15</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#901">^901</a> The Swift frame decoder agrees with Lean's): For every byte buffer, the host's Frame(bytes:) accepts exactly when Lean's proved decodeFrame does, and then decodes the same frame.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="902" data-line="19">
+<div class="head"><a class="id" href="#902">^902</a><h3>Lean decodes what the Swift event encoder writes</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>For every batch of events, Lean's proved decodeEvents decodes the host's encodeEvents bytes to the same events, and Lean's encoder gives back the same bytes.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's events.encode held in 20,000 cases, against Lean's proved side (seed 0).">fuzzed 20k</span></dt><dd>The trusted-base fuzzer's <code>events.encode</code> held in 20,000 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:19</span> · <code>swiftEventEncoder</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.swiftEventEncoder" data-line="19">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.swiftEventEncoder"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>swiftEventEncoder</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:19</span></div>
+<pre class="sig"><b class="nm">swiftEventEncoder</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#902">^902</a> Lean decodes what the Swift event encoder writes</strong> (assumption)</p>
+<p>For every batch of events, Lean's proved decodeEvents decodes the host's encodeEvents bytes to the same events, and Lean's encoder gives back the same bytes.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.swiftEventEncoder.info" data-line="19">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.swiftEventEncoder.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.swiftEventEncoder.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:19</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#902">^902</a>.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.swiftEventEncoder.statement" data-line="19">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.swiftEventEncoder.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.swiftEventEncoder.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:19</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#902">^902</a> Lean decodes what the Swift event encoder writes): For every batch of events, Lean's proved decodeEvents decodes the host's encodeEvents bytes to the same events, and Lean's encoder gives back the same bytes.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="903" data-line="23">
+<div class="head"><a class="id" href="#903">^903</a><h3>UTF-16 offsets and scalar indices convert exactly</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>TextIndex maps between AppKit's UTF-16 offsets and Lean's scalar indices exactly on boundaries, rounds offsets inside a surrogate pair to a whole scalar, and clamps AppKit ranges (NSNotFound, negative, past the end) to whole scalars.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's text.index held in 20,000 cases, against Lean's proved side (seed 0).">fuzzed 20k</span></dt><dd>The trusted-base fuzzer's <code>text.index</code> held in 20,000 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:23</span> · <code>textIndex</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.textIndex.info" data-line="23">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.textIndex.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.textIndex.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:23</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#903">^903</a>.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.textIndex" data-line="23">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.textIndex"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>textIndex</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:23</span></div>
+<pre class="sig"><b class="nm">textIndex</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#903">^903</a> UTF-16 offsets and scalar indices convert exactly</strong> (assumption)</p>
+<p>TextIndex maps between AppKit's UTF-16 offsets and Lean's scalar indices exactly on boundaries, rounds offsets inside a surrogate pair to a whole scalar, and clamps AppKit ranges (NSNotFound, negative, past the end) to whole scalars.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.textIndex.statement" data-line="23">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.textIndex.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.textIndex.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:23</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#903">^903</a> UTF-16 offsets and scalar indices convert exactly): TextIndex maps between AppKit's UTF-16 offsets and Lean's scalar indices exactly on boundaries, rounds offsets inside a surrogate pair to a whole scalar, and clamps AppKit ranges (NSNotFound, negative, past the end) to whole scalars.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="904" data-line="27">
+<div class="head"><a class="id" href="#904">^904</a><h3>The text-input shadow predicts Lean's field</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>Between an input-method call and the frame that reflects it, the host's copy of the focused field has the text, selection and marked range Lean's field will show.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's text.shadow held in 4,000 cases, against Lean's proved side (seed 0).">fuzzed 4k</span></dt><dd>The trusted-base fuzzer's <code>text.shadow</code> held in 4,000 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:27</span> · <code>textShadow</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.textShadow.info" data-line="27">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.textShadow.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.textShadow.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:27</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#904">^904</a>.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.textShadow.statement" data-line="27">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.textShadow.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.textShadow.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:27</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#904">^904</a> The text-input shadow predicts Lean's field): Between an input-method call and the frame that reflects it, the host's copy of the focused field has the text, selection and marked range Lean's field will show.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.textShadow" data-line="27">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.textShadow"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>textShadow</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:27</span></div>
+<pre class="sig"><b class="nm">textShadow</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#904">^904</a> The text-input shadow predicts Lean's field</strong> (assumption)</p>
+<p>Between an input-method call and the frame that reflects it, the host's copy of the focused field has the text, selection and marked range Lean's field will show.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="905" data-line="31">
+<div class="head"><a class="id" href="#905">^905</a><h3>Input-method geometry agrees with Lean's caret</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>selectedRange and markedRange are Lean's, firstRect at the selection is Lean's caret, and characterIndex(for:) maps points back to scalar boundaries of the field.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's text.input-client held in 4,000 cases, against Lean's proved side (seed 0).">fuzzed 4k</span></dt><dd>The trusted-base fuzzer's <code>text.input-client</code> held in 4,000 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:31</span> · <code>inputClientGeometry</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.inputClientGeometry.info" data-line="31">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.inputClientGeometry.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.inputClientGeometry.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:31</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#905">^905</a>.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.inputClientGeometry" data-line="31">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.inputClientGeometry"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>inputClientGeometry</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:31</span></div>
+<pre class="sig"><b class="nm">inputClientGeometry</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#905">^905</a> Input-method geometry agrees with Lean's caret</strong> (assumption)</p>
+<p>selectedRange and markedRange are Lean's, firstRect at the selection is Lean's caret, and characterIndex(for:) maps points back to scalar boundaries of the field.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.inputClientGeometry.statement" data-line="31">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.inputClientGeometry.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.inputClientGeometry.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:31</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#905">^905</a> Input-method geometry agrees with Lean's caret): selectedRange and markedRange are Lean's, firstRect at the selection is Lean's caret, and characterIndex(for:) maps points back to scalar boundaries of the field.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="906" data-line="35">
+<div class="head"><a class="id" href="#906">^906</a><h3>The host's text metrics are what layout assumes</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>cairn_text_metrics gives one offset per scalar boundary, from 0 and nondecreasing, with nonnegative ascent and descent, and Lean's TextMetrics.host sees those numbers unchanged.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's text.metrics held in 20,000 cases, against Lean's proved side (seed 0).">fuzzed 20k</span></dt><dd>The trusted-base fuzzer's <code>text.metrics</code> held in 20,000 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:35</span> · <code>textMetricsHost</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.textMetricsHost.info" data-line="35">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.textMetricsHost.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.textMetricsHost.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:35</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#906">^906</a>.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.textMetricsHost.statement" data-line="35">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.textMetricsHost.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.textMetricsHost.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:35</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#906">^906</a> The host's text metrics are what layout assumes): cairn_text_metrics gives one offset per scalar boundary, from 0 and nondecreasing, with nonnegative ascent and descent, and Lean's TextMetrics.host sees those numbers unchanged.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.textMetricsHost" data-line="35">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.textMetricsHost"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>textMetricsHost</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:35</span></div>
+<pre class="sig"><b class="nm">textMetricsHost</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#906">^906</a> The host's text metrics are what layout assumes</strong> (assumption)</p>
+<p>cairn_text_metrics gives one offset per scalar boundary, from 0 and nondecreasing, with nonnegative ascent and descent, and Lean's TextMetrics.host sees those numbers unchanged.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="907" data-line="39">
+<div class="head"><a class="id" href="#907">^907</a><h3>Carets follow the painted glyphs</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>On left-to-right text, the caret offset after each grapheme is at or right of every glyph painted for the text before it.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's text.metrics.carets held in 11,043 cases, against Lean's proved side (seed 0).">fuzzed 11k</span></dt><dd>The trusted-base fuzzer's <code>text.metrics.carets</code> held in 11,043 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:39</span> · <code>textCaretsPainted</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.textCaretsPainted" data-line="39">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.textCaretsPainted"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>textCaretsPainted</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:39</span></div>
+<pre class="sig"><b class="nm">textCaretsPainted</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#907">^907</a> Carets follow the painted glyphs</strong> (assumption)</p>
+<p>On left-to-right text, the caret offset after each grapheme is at or right of every glyph painted for the text before it.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.textCaretsPainted.info" data-line="39">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.textCaretsPainted.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.textCaretsPainted.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:39</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#907">^907</a>.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.textCaretsPainted.statement" data-line="39">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.textCaretsPainted.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.textCaretsPainted.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:39</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#907">^907</a> Carets follow the painted glyphs): On left-to-right text, the caret offset after each grapheme is at or right of every glyph painted for the text before it.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="908" data-line="43">
+<div class="head"><a class="id" href="#908">^908</a><h3>The host's clock is monotonic milliseconds</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>Every batch the host sends Lean starts with exactly one clock event; its monotonic milliseconds never decrease from batch to batch and are not ahead of the system's monotonic clock, its wall time is the wall clock and its zone the current UTC offset.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's clock.monotonic held in 1,000 cases, against Lean's proved side (seed 0).">fuzzed 1k</span></dt><dd>The trusted-base fuzzer's <code>clock.monotonic</code> held in 1,000 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:43</span> · <code>hostClock</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostClock" data-line="43">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostClock"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>hostClock</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:43</span></div>
+<pre class="sig"><b class="nm">hostClock</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#908">^908</a> The host's clock is monotonic milliseconds</strong> (assumption)</p>
+<p>Every batch the host sends Lean starts with exactly one clock event; its monotonic milliseconds never decrease from batch to batch and are not ahead of the system's monotonic clock, its wall time is the wall clock and its zone the current UTC offset.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostClock.info" data-line="43">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostClock.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostClock.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:43</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#908">^908</a>.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostClock.statement" data-line="43">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostClock.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostClock.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:43</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#908">^908</a> The host's clock is monotonic milliseconds): Every batch the host sends Lean starts with exactly one clock event; its monotonic milliseconds never decrease from batch to batch and are not ahead of the system's monotonic clock, its wall time is the wall clock and its zone the current UTC offset.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="909" data-line="47">
+<div class="head"><a class="id" href="#909">^909</a><h3>The host wakes Lean by wake</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>When a frame carries a wake deadline, the host sends a clock-only batch whose time is at or past the deadline, soon after it, and sends none for a deadline that a later frame cleared or met.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's clock.wake held in 1,000 cases, against Lean's proved side (seed 0).">fuzzed 1k</span></dt><dd>The trusted-base fuzzer's <code>clock.wake</code> held in 1,000 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:47</span> · <code>hostWake</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostWake.info" data-line="47">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostWake.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostWake.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:47</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#909">^909</a>.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostWake.statement" data-line="47">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostWake.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostWake.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:47</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#909">^909</a> The host wakes Lean by wake): When a frame carries a wake deadline, the host sends a clock-only batch whose time is at or past the deadline, soon after it, and sends none for a deadline that a later frame cleared or met.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostWake" data-line="47">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostWake"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>hostWake</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:47</span></div>
+<pre class="sig"><b class="nm">hostWake</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#909">^909</a> The host wakes Lean by wake</strong> (assumption)</p>
+<p>When a frame carries a wake deadline, the host sends a clock-only batch whose time is at or past the deadline, soon after it, and sends none for a deadline that a later frame cleared or met.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="910" data-line="51">
+<div class="head"><a class="id" href="#910">^910</a><h3>readFile replies with the file's bytes, or failed</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>readFile answers with exactly the bytes the file holds, notFound for a missing file, a failure for a directory or an unreadable file, and invalid for a path that can't name a file.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's effects.read-file held in 3,797 cases, against Lean's proved side (seed 0).">fuzzed 3.8k</span></dt><dd>The trusted-base fuzzer's <code>effects.read-file</code> held in 3,797 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:51</span> · <code>hostReadFile</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostReadFile.statement" data-line="51">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostReadFile.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostReadFile.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:51</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#910">^910</a> readFile replies with the file's bytes, or failed): readFile answers with exactly the bytes the file holds, notFound for a missing file, a failure for a directory or an unreadable file, and invalid for a path that can't name a file.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostReadFile" data-line="51">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostReadFile"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>hostReadFile</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:51</span></div>
+<pre class="sig"><b class="nm">hostReadFile</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#910">^910</a> readFile replies with the file's bytes, or failed</strong> (assumption)</p>
+<p>readFile answers with exactly the bytes the file holds, notFound for a missing file, a failure for a directory or an unreadable file, and invalid for a path that can't name a file.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostReadFile.info" data-line="51">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostReadFile.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostReadFile.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:51</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#910">^910</a>.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="911" data-line="55">
+<div class="head"><a class="id" href="#911">^911</a><h3>writeFile is atomic, and replies done only when the bytes are there</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>writeFile answers done only when the file then holds exactly the bytes, creating missing directories; a reader alongside sees the old bytes or the new ones, never a mix; a failed write leaves the old file unchanged; a path that can't name a file is invalid.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's effects.write-file held in 5,000 cases, against Lean's proved side (seed 0).">fuzzed 5k</span></dt><dd>The trusted-base fuzzer's <code>effects.write-file</code> held in 5,000 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:55</span> · <code>hostWriteFile</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostWriteFile.info" data-line="55">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostWriteFile.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostWriteFile.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:55</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#911">^911</a>.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostWriteFile" data-line="55">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostWriteFile"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>hostWriteFile</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:55</span></div>
+<pre class="sig"><b class="nm">hostWriteFile</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#911">^911</a> writeFile is atomic, and replies done only when the bytes are there</strong> (assumption)</p>
+<p>writeFile answers done only when the file then holds exactly the bytes, creating missing directories; a reader alongside sees the old bytes or the new ones, never a mix; a failed write leaves the old file unchanged; a path that can't name a file is invalid.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostWriteFile.statement" data-line="55">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostWriteFile.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostWriteFile.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:55</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#911">^911</a> writeFile is atomic, and replies done only when the bytes are there): writeFile answers done only when the file then holds exactly the bytes, creating missing directories; a reader alongside sees the old bytes or the new ones, never a mix; a failed write leaves the old file unchanged; a path that can't name a file is invalid.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="912" data-line="59">
+<div class="head"><a class="id" href="#912">^912</a><h3>playSound starts a known sound and refuses an unknown one</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>playSound finds every system sound by its name and answers done once it starts; any other name is answered notFound, once, without playing anything.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's effects.sound held in 5,000 cases, against Lean's proved side (seed 0).">fuzzed 5k</span></dt><dd>The trusted-base fuzzer's <code>effects.sound</code> held in 5,000 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:59</span> · <code>hostPlaySound</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostPlaySound.info" data-line="59">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostPlaySound.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostPlaySound.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:59</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#912">^912</a>.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostPlaySound.statement" data-line="59">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostPlaySound.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostPlaySound.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:59</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#912">^912</a> playSound starts a known sound and refuses an unknown one): playSound finds every system sound by its name and answers done once it starts; any other name is answered notFound, once, without playing anything.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostPlaySound" data-line="59">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostPlaySound"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>hostPlaySound</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:59</span></div>
+<pre class="sig"><b class="nm">hostPlaySound</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#912">^912</a> playSound starts a known sound and refuses an unknown one</strong> (assumption)</p>
+<p>playSound finds every system sound by its name and answers done once it starts; any other name is answered notFound, once, without playing anything.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="913" data-line="63">
+<div class="head"><a class="id" href="#913">^913</a><h3>http sends the request as given and returns the response as received</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>http sends the method, URL, headers and body as given and answers with the response's status, headers sorted by name and body exactly; a connection failure is network, no answer in time is timeout, and a non-http URL, a bad method or a header that could inject another is invalid and sends nothing.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's effects.http held in 5,000 cases, against Lean's proved side (seed 0).">fuzzed 5k</span></dt><dd>The trusted-base fuzzer's <code>effects.http</code> held in 5,000 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:63</span> · <code>hostHttp</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostHttp" data-line="63">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostHttp"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>hostHttp</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:63</span></div>
+<pre class="sig"><b class="nm">hostHttp</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#913">^913</a> http sends the request as given and returns the response as received</strong> (assumption)</p>
+<p>http sends the method, URL, headers and body as given and answers with the response's status, headers sorted by name and body exactly; a connection failure is network, no answer in time is timeout, and a non-http URL, a bad method or a header that could inject another is invalid and sends nothing.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostHttp.statement" data-line="63">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostHttp.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostHttp.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:63</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#913">^913</a> http sends the request as given and returns the response as received): http sends the method, URL, headers and body as given and answers with the response's status, headers sorted by name and body exactly; a connection failure is network, no answer in time is timeout, and a non-http URL, a bad method or a header that could inject another is invalid and sends nothing.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostHttp.info" data-line="63">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostHttp.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostHttp.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:63</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#913">^913</a>.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="914" data-line="67">
+<div class="head"><a class="id" href="#914">^914</a><h3>The host answers every request exactly once, with its id</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>Every request the host runs is answered at most once and, when its handler answers, exactly once, under its own id with the handler's first answer; a kind with no handler is answered invalid; after the app starts over no answer to an earlier request is sent.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's effects.reply-once held in 1,031 cases, against Lean's proved side (seed 0).">fuzzed 1.0k</span></dt><dd>The trusted-base fuzzer's <code>effects.reply-once</code> held in 1,031 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:67</span> · <code>hostReplyOnce</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostReplyOnce.statement" data-line="67">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostReplyOnce.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostReplyOnce.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:67</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#914">^914</a> The host answers every request exactly once, with its id): Every request the host runs is answered at most once and, when its handler answers, exactly once, under its own id with the handler's first answer; a kind with no handler is answered invalid; after the app starts over no answer to an earlier request is sent.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostReplyOnce" data-line="67">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostReplyOnce"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>hostReplyOnce</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:67</span></div>
+<pre class="sig"><b class="nm">hostReplyOnce</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#914">^914</a> The host answers every request exactly once, with its id</strong> (assumption)</p>
+<p>Every request the host runs is answered at most once and, when its handler answers, exactly once, under its own id with the handler's first answer; a kind with no handler is answered invalid; after the app starts over no answer to an earlier request is sent.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostReplyOnce.info" data-line="67">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostReplyOnce.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostReplyOnce.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:67</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#914">^914</a>.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="915" data-line="71">
+<div class="head"><a class="id" href="#915">^915</a><h3>every ms ticks while started and never after it is stopped</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>An every subscription ticks under its id only while it is started and not yet stopped, at most once per period, and the host's running subscriptions are exactly those the frames started and did not stop.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's subs.every held in 969 cases, against Lean's proved side (seed 0).">fuzzed 969</span></dt><dd>The trusted-base fuzzer's <code>subs.every</code> held in 969 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:71</span> · <code>hostEvery</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostEvery.statement" data-line="71">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostEvery.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostEvery.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:71</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#915">^915</a> every ms ticks while started and never after it is stopped): An every subscription ticks under its id only while it is started and not yet stopped, at most once per period, and the host's running subscriptions are exactly those the frames started and did not stop.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostEvery" data-line="71">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostEvery"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>hostEvery</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:71</span></div>
+<pre class="sig"><b class="nm">hostEvery</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#915">^915</a> every ms ticks while started and never after it is stopped</strong> (assumption)</p>
+<p>An every subscription ticks under its id only while it is started and not yet stopped, at most once per period, and the host's running subscriptions are exactly those the frames started and did not stop.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostEvery.info" data-line="71">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostEvery.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostEvery.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:71</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#915">^915</a>.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="940" data-line="141">
+<div class="head"><a class="id" href="#940">^940</a><h3>The native menu shows exactly the frame's menu records</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>After each frame, a status item's NSMenu tree holds the frame's menu records in order: each item's title, enabled state, checkmark, key equivalent and ref, separators where they are, each submenu under its item with its own records, and status lines shown but not actionable; updating it in place or rebuilding it gives the same tree.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's menu.render held in 2,000 cases, against Lean's proved side (seed 0).">fuzzed 2k</span></dt><dd>The trusted-base fuzzer's <code>menu.render</code> held in 2,000 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:141</span> · <code>hostMenuRender</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostMenuRender.statement" data-line="141">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostMenuRender.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostMenuRender.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:141</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#940">^940</a> The native menu shows exactly the frame's menu records): After each frame, a status item's NSMenu tree holds the frame's menu records in order: each item's title, enabled state, checkmark, key equivalent and ref, separators where they are, each submenu under its item with its own records, and status lines shown but not actionable; updating it in place or rebuilding it gives the same tree.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostMenuRender.info" data-line="141">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostMenuRender.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostMenuRender.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:141</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#940">^940</a>.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostMenuRender" data-line="141">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostMenuRender"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>hostMenuRender</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:141</span></div>
+<pre class="sig"><b class="nm">hostMenuRender</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#940">^940</a> The native menu shows exactly the frame's menu records</strong> (assumption)</p>
+<p>After each frame, a status item's NSMenu tree holds the frame's menu records in order: each item's title, enabled state, checkmark, key equivalent and ref, separators where they are, each submenu under its item with its own records, and status lines shown but not actionable; updating it in place or rebuilding it gives the same tree.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="941" data-line="145">
+<div class="head"><a class="id" href="#941">^941</a><h3>Choosing a menu item reports that item's ref</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>When AppKit performs a menu item's action, the host sends exactly one menuSelect with the status item's place and that item's ref, and nothing for a status line, separator or submenu; Lean checks the ref against the menu it is showing (menu_select_stale).</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's menu.select held in 1,353 cases, against Lean's proved side (seed 0).">fuzzed 1.4k</span></dt><dd>The trusted-base fuzzer's <code>menu.select</code> held in 1,353 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:145</span> · <code>hostMenuSelect</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostMenuSelect.info" data-line="145">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostMenuSelect.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostMenuSelect.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:145</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#941">^941</a>.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostMenuSelect" data-line="145">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostMenuSelect"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>hostMenuSelect</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:145</span></div>
+<pre class="sig"><b class="nm">hostMenuSelect</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#941">^941</a> Choosing a menu item reports that item's ref</strong> (assumption)</p>
+<p>When AppKit performs a menu item's action, the host sends exactly one menuSelect with the status item's place and that item's ref, and nothing for a status line, separator or submenu; Lean checks the ref against the menu it is showing (menu_select_stale).</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostMenuSelect.statement" data-line="145">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostMenuSelect.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostMenuSelect.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:145</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#941">^941</a> Choosing a menu item reports that item's ref): When AppKit performs a menu item's action, the host sends exactly one menuSelect with the status item's place and that item's ref, and nothing for a status line, separator or submenu; Lean checks the ref against the menu it is showing (menu_select_stale).</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="942" data-line="149">
+<div class="head"><a class="id" href="#942">^942</a><h3>Opening and closing the menu are reported once each</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>When the status item's menu opens the host sends one menuOpen with its place, and one menuClose when it closes; submenus opening and closing send nothing.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's menu.open-close held in 2,000 cases, against Lean's proved side (seed 0).">fuzzed 2k</span></dt><dd>The trusted-base fuzzer's <code>menu.open-close</code> held in 2,000 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:149</span> · <code>hostMenuOpenClose</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostMenuOpenClose" data-line="149">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostMenuOpenClose"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>hostMenuOpenClose</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:149</span></div>
+<pre class="sig"><b class="nm">hostMenuOpenClose</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#942">^942</a> Opening and closing the menu are reported once each</strong> (assumption)</p>
+<p>When the status item's menu opens the host sends one menuOpen with its place, and one menuClose when it closes; submenus opening and closing send nothing.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostMenuOpenClose.info" data-line="149">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostMenuOpenClose.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostMenuOpenClose.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:149</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#942">^942</a>.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostMenuOpenClose.statement" data-line="149">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostMenuOpenClose.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostMenuOpenClose.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:149</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#942">^942</a> Opening and closing the menu are reported once each): When the status item's menu opens the host sends one menuOpen with its place, and one menuClose when it closes; submenus opening and closing send nothing.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="943" data-line="153">
+<div class="head"><a class="id" href="#943">^943</a><h3>An overlay panel never takes focus or clicks</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>Every overlay panel is a non-activating panel that cannot become key or main, ignores the mouse, sits at status-bar level on every Space and over full-screen apps, is not hidden when the app deactivates and is transparent, whatever frames it is given.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's panel.inert held in 2,000 cases, against Lean's proved side (seed 0).">fuzzed 2k</span></dt><dd>The trusted-base fuzzer's <code>panel.inert</code> held in 2,000 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:153</span> · <code>hostPanelInert</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostPanelInert.info" data-line="153">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostPanelInert.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostPanelInert.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:153</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#943">^943</a>.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostPanelInert" data-line="153">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostPanelInert"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>hostPanelInert</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:153</span></div>
+<pre class="sig"><b class="nm">hostPanelInert</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#943">^943</a> An overlay panel never takes focus or clicks</strong> (assumption)</p>
+<p>Every overlay panel is a non-activating panel that cannot become key or main, ignores the mouse, sits at status-bar level on every Space and over full-screen apps, is not hidden when the app deactivates and is transparent, whatever frames it is given.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostPanelInert.statement" data-line="153">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostPanelInert.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostPanelInert.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:153</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#943">^943</a> An overlay panel never takes focus or clicks): Every overlay panel is a non-activating panel that cannot become key or main, ignores the mouse, sits at status-bar level on every Space and over full-screen apps, is not hidden when the app deactivates and is transparent, whatever frames it is given.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="944" data-line="157">
+<div class="head"><a class="id" href="#944">^944</a><h3>An overlay panel is where its anchor says</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>A shown panel's frame has its canvas's size, horizontally centred in the chosen screen's visible frame and the anchor's offset above its bottom, on whole points; the screen is chosen when it appears and kept until it is hidden.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's panel.place held in 2,000 cases, against Lean's proved side (seed 0).">fuzzed 2k</span></dt><dd>The trusted-base fuzzer's <code>panel.place</code> held in 2,000 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:157</span> · <code>hostPanelPlace</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostPanelPlace.info" data-line="157">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostPanelPlace.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostPanelPlace.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:157</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#944">^944</a>.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostPanelPlace" data-line="157">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostPanelPlace"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>hostPanelPlace</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:157</span></div>
+<pre class="sig"><b class="nm">hostPanelPlace</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#944">^944</a> An overlay panel is where its anchor says</strong> (assumption)</p>
+<p>A shown panel's frame has its canvas's size, horizontally centred in the chosen screen's visible frame and the anchor's offset above its bottom, on whole points; the screen is chosen when it appears and kept until it is hidden.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostPanelPlace.statement" data-line="157">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostPanelPlace.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostPanelPlace.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:157</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#944">^944</a> An overlay panel is where its anchor says): A shown panel's frame has its canvas's size, horizontally centred in the chosen screen's visible frame and the anchor's offset above its bottom, on whole points; the screen is chosen when it appears and kept until it is hidden.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="960" data-line="77">
+<div class="head"><a class="id" href="#960">^960</a><h3>appendFile adds exactly the bytes at the end, or fails and adds nothing</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>appendFile answers done only when the file then holds its old bytes followed by exactly the new ones, creating the file with mode 600 and missing directories; appends from several threads each land whole; a directory, a path under a file, a read-only file and a path that can't name a file fail and leave the file unchanged.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's effects.append-file held in 212 cases, against Lean's proved side (seed 0).">fuzzed 212</span></dt><dd>The trusted-base fuzzer's <code>effects.append-file</code> held in 212 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:77</span> · <code>hostAppendFile</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostAppendFile" data-line="77">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostAppendFile"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>hostAppendFile</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:77</span></div>
+<pre class="sig"><b class="nm">hostAppendFile</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#960">^960</a> appendFile adds exactly the bytes at the end, or fails and adds nothing</strong> (assumption)</p>
+<p>appendFile answers done only when the file then holds its old bytes followed by exactly the new ones, creating the file with mode 600 and missing directories; appends from several threads each land whole; a directory, a path under a file, a read-only file and a path that can't name a file fail and leave the file unchanged.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostAppendFile.statement" data-line="77">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostAppendFile.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostAppendFile.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:77</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#960">^960</a> appendFile adds exactly the bytes at the end, or fails and adds nothing): appendFile answers done only when the file then holds its old bytes followed by exactly the new ones, creating the file with mode 600 and missing directories; appends from several threads each land whole; a directory, a path under a file, a read-only file and a path that can't name a file fail and leave the file unchanged.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostAppendFile.info" data-line="77">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostAppendFile.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostAppendFile.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:77</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#960">^960</a>.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="961" data-line="81">
+<div class="head"><a class="id" href="#961">^961</a><h3>listDir lists exactly the directory's names, sorted</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>listDir answers with exactly the names in the directory, without . and .., sorted by their UTF-8 bytes; a missing directory is notFound, a file invalid, an unreadable directory denied.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's effects.list-dir held in 217 cases, against Lean's proved side (seed 0).">fuzzed 217</span></dt><dd>The trusted-base fuzzer's <code>effects.list-dir</code> held in 217 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:81</span> · <code>hostListDir</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostListDir.statement" data-line="81">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostListDir.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostListDir.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:81</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#961">^961</a> listDir lists exactly the directory's names, sorted): listDir answers with exactly the names in the directory, without . and .., sorted by their UTF-8 bytes; a missing directory is notFound, a file invalid, an unreadable directory denied.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostListDir.info" data-line="81">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostListDir.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostListDir.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:81</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#961">^961</a>.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostListDir" data-line="81">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostListDir"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>hostListDir</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:81</span></div>
+<pre class="sig"><b class="nm">hostListDir</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#961">^961</a> listDir lists exactly the directory's names, sorted</strong> (assumption)</p>
+<p>listDir answers with exactly the names in the directory, without . and .., sorted by their UTF-8 bytes; a missing directory is notFound, a file invalid, an unreadable directory denied.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="962" data-line="85">
+<div class="head"><a class="id" href="#962">^962</a><h3>deleteFile removes a file or a link, never a directory</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>deleteFile answers done only when the file or link (not its target) is gone, notFound when there is none, invalid for a directory, which stays, and denied when its directory is read-only, leaving the file.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's effects.delete-file held in 190 cases, against Lean's proved side (seed 0).">fuzzed 190</span></dt><dd>The trusted-base fuzzer's <code>effects.delete-file</code> held in 190 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:85</span> · <code>hostDeleteFile</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostDeleteFile.info" data-line="85">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostDeleteFile.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostDeleteFile.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:85</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#962">^962</a>.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostDeleteFile.statement" data-line="85">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostDeleteFile.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostDeleteFile.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:85</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#962">^962</a> deleteFile removes a file or a link, never a directory): deleteFile answers done only when the file or link (not its target) is gone, notFound when there is none, invalid for a directory, which stays, and denied when its directory is read-only, leaving the file.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostDeleteFile" data-line="85">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostDeleteFile"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>hostDeleteFile</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:85</span></div>
+<pre class="sig"><b class="nm">hostDeleteFile</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#962">^962</a> deleteFile removes a file or a link, never a directory</strong> (assumption)</p>
+<p>deleteFile answers done only when the file or link (not its target) is gone, notFound when there is none, invalid for a directory, which stays, and denied when its directory is read-only, leaving the file.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="963" data-line="89">
+<div class="head"><a class="id" href="#963">^963</a><h3>watchFile reports every change to its file, and nothing after its stop</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>While a watchFile subscription runs, every write, replacement, append, creation, removal, touch or mode change of its file is followed by a changed event within a few polls, an untouched file brings none, and after its stop has been handled none is sent.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's subs.watch-file held in 197 cases, against Lean's proved side (seed 0).">fuzzed 197</span></dt><dd>The trusted-base fuzzer's <code>subs.watch-file</code> held in 197 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:89</span> · <code>hostWatchFile</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostWatchFile.statement" data-line="89">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostWatchFile.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostWatchFile.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:89</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#963">^963</a> watchFile reports every change to its file, and nothing after its stop): While a watchFile subscription runs, every write, replacement, append, creation, removal, touch or mode change of its file is followed by a changed event within a few polls, an untouched file brings none, and after its stop has been handled none is sent.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostWatchFile" data-line="89">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostWatchFile"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>hostWatchFile</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:89</span></div>
+<pre class="sig"><b class="nm">hostWatchFile</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#963">^963</a> watchFile reports every change to its file, and nothing after its stop</strong> (assumption)</p>
+<p>While a watchFile subscription runs, every write, replacement, append, creation, removal, touch or mode change of its file is followed by a changed event within a few polls, an untouched file brings none, and after its stop has been handled none is sent.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostWatchFile.info" data-line="89">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostWatchFile.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostWatchFile.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:89</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#963">^963</a>.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="964" data-line="93">
+<div class="head"><a class="id" href="#964">^964</a><h3>frontmostApp answers the app in front</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>frontmostApp answers with the process id and name of the app the system reports in front, notFound when there is none; the pid names a running process.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's effects.frontmost-app held in 5,000 cases, against Lean's proved side (seed 0).">fuzzed 5k</span></dt><dd>The trusted-base fuzzer's <code>effects.frontmost-app</code> held in 5,000 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:93</span> · <code>hostFrontmostApp</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostFrontmostApp.info" data-line="93">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostFrontmostApp.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostFrontmostApp.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:93</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#964">^964</a>.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostFrontmostApp" data-line="93">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostFrontmostApp"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>hostFrontmostApp</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:93</span></div>
+<pre class="sig"><b class="nm">hostFrontmostApp</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#964">^964</a> frontmostApp answers the app in front</strong> (assumption)</p>
+<p>frontmostApp answers with the process id and name of the app the system reports in front, notFound when there is none; the pid names a running process.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostFrontmostApp.statement" data-line="93">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostFrontmostApp.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostFrontmostApp.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:93</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#964">^964</a> frontmostApp answers the app in front): frontmostApp answers with the process id and name of the app the system reports in front, notFound when there is none; the pid names a running process.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="965" data-line="97">
+<div class="head"><a class="id" href="#965">^965</a><h3>permission answers whether the app holds it, and prompts only when asked</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>permission answers flag true exactly when the app holds Accessibility (AXIsProcessTrusted) or the microphone (authorized); the system is asked to prompt only when prompt is set, the microphone only while undecided, answering with the person's choice; each request is answered once.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's effects.permission held in 5,000 cases, against Lean's proved side (seed 0).">fuzzed 5k</span></dt><dd>The trusted-base fuzzer's <code>effects.permission</code> held in 5,000 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:97</span> · <code>hostPermission</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostPermission.statement" data-line="97">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostPermission.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostPermission.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:97</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#965">^965</a> permission answers whether the app holds it, and prompts only when asked): permission answers flag true exactly when the app holds Accessibility (AXIsProcessTrusted) or the microphone (authorized); the system is asked to prompt only when prompt is set, the microphone only while undecided, answering with the person's choice; each request is answered once.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostPermission" data-line="97">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostPermission"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>hostPermission</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:97</span></div>
+<pre class="sig"><b class="nm">hostPermission</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#965">^965</a> permission answers whether the app holds it, and prompts only when asked</strong> (assumption)</p>
+<p>permission answers flag true exactly when the app holds Accessibility (AXIsProcessTrusted) or the microphone (authorized); the system is asked to prompt only when prompt is set, the microphone only while undecided, answering with the person's choice; each request is answered once.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostPermission.info" data-line="97">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostPermission.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostPermission.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:97</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#965">^965</a>.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="966" data-line="101">
+<div class="head"><a class="id" href="#966">^966</a><h3>record streams the levels of exactly the samples it keeps, and nothing after its stop</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>While a record subscription runs, its audio events count every sample the clip keeps, in order, and their windows are the 20 ms levels (sum of squares and peak of each 320 samples) of those samples from the start of the clip, however the microphone split them; after its stop has been handled none is sent and the clip is finished; a microphone that can't start (no permission, no device) is one failed event and an empty clip, and the microphone is never started without the permission.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's subs.record held in 2,500 cases, against Lean's proved side (seed 0).">fuzzed 2.5k</span></dt><dd>The trusted-base fuzzer's <code>subs.record</code> held in 2,500 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:101</span> · <code>hostRecord</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostRecord.info" data-line="101">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostRecord.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostRecord.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:101</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#966">^966</a>.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostRecord" data-line="101">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostRecord"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>hostRecord</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:101</span></div>
+<pre class="sig"><b class="nm">hostRecord</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#966">^966</a> record streams the levels of exactly the samples it keeps, and nothing after its stop</strong> (assumption)</p>
+<p>While a record subscription runs, its audio events count every sample the clip keeps, in order, and their windows are the 20 ms levels (sum of squares and peak of each 320 samples) of those samples from the start of the clip, however the microphone split them; after its stop has been handled none is sent and the clip is finished; a microphone that can't start (no permission, no device) is one failed event and an empty clip, and the microphone is never started without the permission.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostRecord.statement" data-line="101">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostRecord.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostRecord.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:101</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#966">^966</a> record streams the levels of exactly the samples it keeps, and nothing after its stop): While a record subscription runs, its audio events count every sample the clip keeps, in order, and their windows are the 20 ms levels (sum of squares and peak of each 320 samples) of those samples from the start of the clip, however the microphone split them; after its stop has been handled none is sent and the clip is finished; a microphone that can't start (no permission, no device) is one failed event and an empty clip, and the microphone is never started without the permission.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="967" data-line="109">
+<div class="head"><a class="id" href="#967">^967</a><h3>A clip's WAV for a range of windows holds exactly those samples</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>An upload's wav part for clip c and windows s to e is a 16 kHz mono 16-bit RIFF/WAVE file of exactly samples 320 s to 320 e of the clip (to the end of the clip when e is none, waiting for a clip whose recording is being stopped); a range past the end or backwards is invalid, an unknown or forgotten clip notFound, and forgetClip answers done once and notFound after.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's effects.clip-wav held in 2,500 cases, against Lean's proved side (seed 0).">fuzzed 2.5k</span></dt><dd>The trusted-base fuzzer's <code>effects.clip-wav</code> held in 2,500 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:109</span> · <code>hostClipWav</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostClipWav" data-line="109">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostClipWav"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>hostClipWav</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:109</span></div>
+<pre class="sig"><b class="nm">hostClipWav</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#967">^967</a> A clip's WAV for a range of windows holds exactly those samples</strong> (assumption)</p>
+<p>An upload's wav part for clip c and windows s to e is a 16 kHz mono 16-bit RIFF/WAVE file of exactly samples 320 s to 320 e of the clip (to the end of the clip when e is none, waiting for a clip whose recording is being stopped); a range past the end or backwards is invalid, an unknown or forgotten clip notFound, and forgetClip answers done once and notFound after.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostClipWav.info" data-line="109">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostClipWav.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostClipWav.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:109</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#967">^967</a>.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostClipWav.statement" data-line="109">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostClipWav.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostClipWav.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:109</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#967">^967</a> A clip's WAV for a range of windows holds exactly those samples): An upload's wav part for clip c and windows s to e is a 16 kHz mono 16-bit RIFF/WAVE file of exactly samples 320 s to 320 e of the clip (to the end of the clip when e is none, waiting for a clip whose recording is being stopped); a range past the end or backwards is invalid, an unknown or forgotten clip notFound, and forgetClip answers done once and notFound after.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="968" data-line="113">
+<div class="head"><a class="id" href="#968">^968</a><h3>globalKey reports the hotkey's press and release, and other keys while it is held</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>A globalKey subscription reports keyDown and keyUp of the hotkey and otherKey for any other key pressed while it is down, as Yap's PushToTalk does (a modifier by its flag in flagsChanged, an ordinary key by key down without repeats and key up, no repeated state), with monotonic times; without Accessibility it reports failed denied and installs nothing; after its stop has been handled none is sent.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's subs.global-key held in 5,000 cases, against Lean's proved side (seed 0).">fuzzed 5k</span></dt><dd>The trusted-base fuzzer's <code>subs.global-key</code> held in 5,000 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:113</span> · <code>hostGlobalKey</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostGlobalKey.info" data-line="113">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostGlobalKey.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostGlobalKey.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:113</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#968">^968</a>.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostGlobalKey" data-line="113">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostGlobalKey"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>hostGlobalKey</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:113</span></div>
+<pre class="sig"><b class="nm">hostGlobalKey</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#968">^968</a> globalKey reports the hotkey's press and release, and other keys while it is held</strong> (assumption)</p>
+<p>A globalKey subscription reports keyDown and keyUp of the hotkey and otherKey for any other key pressed while it is down, as Yap's PushToTalk does (a modifier by its flag in flagsChanged, an ordinary key by key down without repeats and key up, no repeated state), with monotonic times; without Accessibility it reports failed denied and installs nothing; after its stop has been handled none is sent.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostGlobalKey.statement" data-line="113">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostGlobalKey.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostGlobalKey.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:113</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#968">^968</a> globalKey reports the hotkey's press and release, and other keys while it is held): A globalKey subscription reports keyDown and keyUp of the hotkey and otherKey for any other key pressed while it is down, as Yap's PushToTalk does (a modifier by its flag in flagsChanged, an ordinary key by key down without repeats and key up, no repeated state), with monotonic times; without Accessibility it reports failed denied and installs nothing; after its stop has been handled none is sent.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="969" data-line="117">
+<div class="head"><a class="id" href="#969">^969</a><h3>typeText types exactly the text into that app, or nothing</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>typeText posts the text as key events whose payloads, in order, are exactly its UTF-16 units, at most 20 per event and never splitting a character, then Return only when asked, and only after the app with that pid is in front; empty text is invalid, no Accessibility denied, no such app notFound and an app that won't come forward failed, and then nothing is posted.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's effects.type-text held in 5,000 cases, against Lean's proved side (seed 0).">fuzzed 5k</span></dt><dd>The trusted-base fuzzer's <code>effects.type-text</code> held in 5,000 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:117</span> · <code>hostTypeText</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostTypeText.statement" data-line="117">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostTypeText.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostTypeText.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:117</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#969">^969</a> typeText types exactly the text into that app, or nothing): typeText posts the text as key events whose payloads, in order, are exactly its UTF-16 units, at most 20 per event and never splitting a character, then Return only when asked, and only after the app with that pid is in front; empty text is invalid, no Accessibility denied, no such app notFound and an app that won't come forward failed, and then nothing is posted.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostTypeText" data-line="117">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostTypeText"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>hostTypeText</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:117</span></div>
+<pre class="sig"><b class="nm">hostTypeText</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#969">^969</a> typeText types exactly the text into that app, or nothing</strong> (assumption)</p>
+<p>typeText posts the text as key events whose payloads, in order, are exactly its UTF-16 units, at most 20 per event and never splitting a character, then Return only when asked, and only after the app with that pid is in front; empty text is invalid, no Accessibility denied, no such app notFound and an app that won't come forward failed, and then nothing is posted.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostTypeText.info" data-line="117">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostTypeText.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostTypeText.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:117</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#969">^969</a>.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="970" data-line="121">
+<div class="head"><a class="id" href="#970">^970</a><h3>upload sends the body assembled from its parts, with the secret in its header</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>upload sends one request whose body is its parts in order, each wav part replaced by the clip's WAV, with its headers and, for a secret, the header scheme ++ value; a missing clip, bad range or missing secret fails before anything is sent; otherwise it answers as http does.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's effects.upload held in 4,398 cases, against Lean's proved side (seed 0).">fuzzed 4.4k</span></dt><dd>The trusted-base fuzzer's <code>effects.upload</code> held in 4,398 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:121</span> · <code>hostUpload</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostUpload.statement" data-line="121">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostUpload.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostUpload.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:121</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#970">^970</a> upload sends the body assembled from its parts, with the secret in its header): upload sends one request whose body is its parts in order, each wav part replaced by the clip's WAV, with its headers and, for a secret, the header scheme ++ value; a missing clip, bad range or missing secret fails before anything is sent; otherwise it answers as http does.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostUpload" data-line="121">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostUpload"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>hostUpload</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:121</span></div>
+<pre class="sig"><b class="nm">hostUpload</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#970">^970</a> upload sends the body assembled from its parts, with the secret in its header</strong> (assumption)</p>
+<p>upload sends one request whose body is its parts in order, each wav part replaced by the clip's WAV, with its headers and, for a secret, the header scheme ++ value; a missing clip, bad range or missing secret fails before anything is sent; otherwise it answers as http does.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostUpload.info" data-line="121">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostUpload.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostUpload.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:121</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#970">^970</a>.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="971" data-line="125">
+<div class="head"><a class="id" href="#971">^971</a><h3>A secret is read from the environment or its file, and never shown</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>A secret's value is the environment variable if set and not empty, else its line in the KEY=value file as Yap's Secrets.parseDotEnv reads it (comments, export, quotes, a later line wins); a missing one is failed notFound; the value appears in the request's header and in no reply, failure message or debug description.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's effects.secret held in 5,000 cases, against Lean's proved side (seed 0).">fuzzed 5k</span></dt><dd>The trusted-base fuzzer's <code>effects.secret</code> held in 5,000 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:125</span> · <code>hostSecret</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostSecret.info" data-line="125">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostSecret.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostSecret.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:125</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#971">^971</a>.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostSecret.statement" data-line="125">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostSecret.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostSecret.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:125</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#971">^971</a> A secret is read from the environment or its file, and never shown): A secret's value is the environment variable if set and not empty, else its line in the KEY=value file as Yap's Secrets.parseDotEnv reads it (comments, export, quotes, a later line wins); a missing one is failed notFound; the value appears in the request's header and in no reply, failure message or debug description.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostSecret" data-line="125">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostSecret"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>hostSecret</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:125</span></div>
+<pre class="sig"><b class="nm">hostSecret</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#971">^971</a> A secret is read from the environment or its file, and never shown</strong> (assumption)</p>
+<p>A secret's value is the environment variable if set and not empty, else its line in the KEY=value file as Yap's Secrets.parseDotEnv reads it (comments, export, quotes, a later line wins); a missing one is failed notFound; the value appears in the request's header and in no reply, failure message or debug description.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="990" data-line="131">
+<div class="head"><a class="id" href="#990">^990</a><h3>Wrapped lines paint as wide as Lean measured them</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>On left-to-right text without controls or tabs, each line Lean's wrapping chose, shaped again on its own by the host, is within 1 + ceil(0.15 em) points of the width Lean took from the whole string's carets, and so fits the width up to that slack; laid lines sit at x 0, one line height apart.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's text.wrap.painted held in 9,393 cases, against Lean's proved side (seed 0).">fuzzed 9.4k</span></dt><dd>The trusted-base fuzzer's <code>text.wrap.painted</code> held in 9,393 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:131</span> · <code>wrapPainted</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.wrapPainted" data-line="131">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.wrapPainted"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>wrapPainted</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:131</span></div>
+<pre class="sig"><b class="nm">wrapPainted</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#990">^990</a> Wrapped lines paint as wide as Lean measured them</strong> (assumption)</p>
+<p>On left-to-right text without controls or tabs, each line Lean's wrapping chose, shaped again on its own by the host, is within 1 + ceil(0.15 em) points of the width Lean took from the whole string's carets, and so fits the width up to that slack; laid lines sit at x 0, one line height apart.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.wrapPainted.statement" data-line="131">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.wrapPainted.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.wrapPainted.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:131</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#990">^990</a> Wrapped lines paint as wide as Lean measured them): On left-to-right text without controls or tabs, each line Lean's wrapping chose, shaped again on its own by the host, is within 1 + ceil(0.15 em) points of the width Lean took from the whole string's carets, and so fits the width up to that slack; laid lines sit at x 0, one line height apart.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.wrapPainted.info" data-line="131">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.wrapPainted.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.wrapPainted.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:131</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#990">^990</a>.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="991" data-line="135">
+<div class="head"><a class="id" href="#991">^991</a><h3>Lean breaks lines where Core Text would</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>On left-to-right letters, digits and spaces, Lean's lines are Core Text's (CTTypesetterSuggestLineBreak, trailing spaces trimmed) except where a line is within one point of the width or a word is cut, where the cut is within two scalars of Core Text's.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's text.wrap.coretext held in 4,991 cases, against Lean's proved side (seed 0).">fuzzed 5.0k</span></dt><dd>The trusted-base fuzzer's <code>text.wrap.coretext</code> held in 4,991 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:135</span> · <code>wrapCoreText</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.wrapCoreText" data-line="135">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.wrapCoreText"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>wrapCoreText</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:135</span></div>
+<pre class="sig"><b class="nm">wrapCoreText</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#991">^991</a> Lean breaks lines where Core Text would</strong> (assumption)</p>
+<p>On left-to-right letters, digits and spaces, Lean's lines are Core Text's (CTTypesetterSuggestLineBreak, trailing spaces trimmed) except where a line is within one point of the width or a word is cut, where the cut is within two scalars of Core Text's.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.wrapCoreText.statement" data-line="135">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.wrapCoreText.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.wrapCoreText.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:135</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#991">^991</a> Lean breaks lines where Core Text would): On left-to-right letters, digits and spaces, Lean's lines are Core Text's (CTTypesetterSuggestLineBreak, trailing spaces trimmed) except where a line is within one point of the width or a word is cut, where the cut is within two scalars of Core Text's.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.wrapCoreText.info" data-line="135">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.wrapCoreText.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.wrapCoreText.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:135</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#991">^991</a>.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="1000" data-line="163">
+<div class="head"><a class="id" href="#1000">^1000</a><h3>openItem opens exactly the URL or existing file it names</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>openItem with a target that has a URL scheme asks the system to open that URL; with a path (a leading ~/ is the home folder) it opens that file or folder with its default app only when it exists, and answers notFound otherwise; it answers done exactly when the system took it, and an empty target or one with NUL is invalid and opens nothing.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's effects.open-item held in 5,000 cases, against Lean's proved side (seed 0).">fuzzed 5k</span></dt><dd>The trusted-base fuzzer's <code>effects.open-item</code> held in 5,000 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:163</span> · <code>hostOpenItem</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostOpenItem.statement" data-line="163">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostOpenItem.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostOpenItem.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:163</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#1000">^1000</a> openItem opens exactly the URL or existing file it names): openItem with a target that has a URL scheme asks the system to open that URL; with a path (a leading ~/ is the home folder) it opens that file or folder with its default app only when it exists, and answers notFound otherwise; it answers done exactly when the system took it, and an empty target or one with NUL is invalid and opens nothing.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostOpenItem.info" data-line="163">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostOpenItem.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostOpenItem.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:163</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#1000">^1000</a>.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostOpenItem" data-line="163">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostOpenItem"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>hostOpenItem</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:163</span></div>
+<pre class="sig"><b class="nm">hostOpenItem</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#1000">^1000</a> openItem opens exactly the URL or existing file it names</strong> (assumption)</p>
+<p>openItem with a target that has a URL scheme asks the system to open that URL; with a path (a leading ~/ is the home folder) it opens that file or folder with its default app only when it exists, and answers notFound otherwise; it answers done exactly when the system took it, and an empty target or one with NUL is invalid and opens nothing.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="1001" data-line="167">
+<div class="head"><a class="id" href="#1001">^1001</a><h3>appRunning answers whether an app with that bundle id runs</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>appRunning answers flag true exactly when the system lists a running, not terminated app with that bundle identifier; an empty identifier is invalid.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's effects.app-running held in 5,000 cases, against Lean's proved side (seed 0).">fuzzed 5k</span></dt><dd>The trusted-base fuzzer's <code>effects.app-running</code> held in 5,000 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:167</span> · <code>hostAppRunning</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostAppRunning.info" data-line="167">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostAppRunning.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostAppRunning.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:167</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#1001">^1001</a>.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostAppRunning.statement" data-line="167">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostAppRunning.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostAppRunning.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:167</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#1001">^1001</a> appRunning answers whether an app with that bundle id runs): appRunning answers flag true exactly when the system lists a running, not terminated app with that bundle identifier; an empty identifier is invalid.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostAppRunning" data-line="167">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostAppRunning"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>hostAppRunning</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:167</span></div>
+<pre class="sig"><b class="nm">hostAppRunning</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#1001">^1001</a> appRunning answers whether an app with that bundle id runs</strong> (assumption)</p>
+<p>appRunning answers flag true exactly when the system lists a running, not terminated app with that bundle identifier; an empty identifier is invalid.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="1002" data-line="171">
+<div class="head"><a class="id" href="#1002">^1002</a><h3>readDefault answers the default's value as text</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>readDefault answers the value CFPreferences holds for the key in the domain as UTF-8 bytes: a string as it is, a boolean as 1 or 0, a number as its decimal text; a missing value is notFound, any other type and an empty domain or key invalid. It never writes a default.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's effects.read-default held in 5,000 cases, against Lean's proved side (seed 0).">fuzzed 5k</span></dt><dd>The trusted-base fuzzer's <code>effects.read-default</code> held in 5,000 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:171</span> · <code>hostReadDefault</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostReadDefault.statement" data-line="171">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostReadDefault.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostReadDefault.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:171</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#1002">^1002</a> readDefault answers the default's value as text): readDefault answers the value CFPreferences holds for the key in the domain as UTF-8 bytes: a string as it is, a boolean as 1 or 0, a number as its decimal text; a missing value is notFound, any other type and an empty domain or key invalid. It never writes a default.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostReadDefault" data-line="171">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostReadDefault"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>hostReadDefault</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:171</span></div>
+<pre class="sig"><b class="nm">hostReadDefault</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#1002">^1002</a> readDefault answers the default's value as text</strong> (assumption)</p>
+<p>readDefault answers the value CFPreferences holds for the key in the domain as UTF-8 bytes: a string as it is, a boolean as 1 or 0, a number as its decimal text; a missing value is notFound, any other type and an empty domain or key invalid. It never writes a default.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostReadDefault.info" data-line="171">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostReadDefault.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostReadDefault.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:171</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#1002">^1002</a>.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="1003" data-line="175">
+<div class="head"><a class="id" href="#1003">^1003</a><h3>makeDir makes a private directory and its parents</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>makeDir answers done only when the path is then a directory, each directory it made mode 700 whatever the umask, one already there done and left as it was; a file in the way, a path under a file, a read-only parent, NUL and the empty path fail.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's effects.make-dir held in 184 cases, against Lean's proved side (seed 0).">fuzzed 184</span></dt><dd>The trusted-base fuzzer's <code>effects.make-dir</code> held in 184 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:175</span> · <code>hostMakeDir</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostMakeDir" data-line="175">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostMakeDir"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>hostMakeDir</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:175</span></div>
+<pre class="sig"><b class="nm">hostMakeDir</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#1003">^1003</a> makeDir makes a private directory and its parents</strong> (assumption)</p>
+<p>makeDir answers done only when the path is then a directory, each directory it made mode 700 whatever the umask, one already there done and left as it was; a file in the way, a path under a file, a read-only parent, NUL and the empty path fail.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostMakeDir.info" data-line="175">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostMakeDir.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostMakeDir.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:175</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#1003">^1003</a>.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostMakeDir.statement" data-line="175">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostMakeDir.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostMakeDir.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:175</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#1003">^1003</a> makeDir makes a private directory and its parents): makeDir answers done only when the path is then a directory, each directory it made mode 700 whatever the umask, one already there done and left as it was; a file in the way, a path under a file, a read-only parent, NUL and the empty path fail.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="1004" data-line="181">
+<div class="head"><a class="id" href="#1004">^1004</a><h3>A painter's pixels stay inside its box</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>A paint draw changes no pixel outside its rect (snapped to device pixels as rects are) within the clip in force, whatever its painter draws and whatever data, time or scale it is given; a paint naming no registered painter changes nothing. Checked offscreen against the same frame without its paint draws, with Yap's tape painter and painters whose triangles cover the whole target or land anywhere.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed pass" title="The trusted-base fuzzer's render.paint.bounds held in 5,000 cases, against Lean's proved side (seed 0).">fuzzed 5k</span></dt><dd>The trusted-base fuzzer's <code>render.paint.bounds</code> held in 5,000 cases, against Lean's proved side (seed 0).</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:181</span> · <code>hostPaintBounds</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostPaintBounds.info" data-line="181">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostPaintBounds.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostPaintBounds.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:181</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#1004">^1004</a>.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostPaintBounds" data-line="181">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostPaintBounds"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>hostPaintBounds</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:181</span></div>
+<pre class="sig"><b class="nm">hostPaintBounds</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#1004">^1004</a> A painter's pixels stay inside its box</strong> (assumption)</p>
+<p>A paint draw changes no pixel outside its rect (snapped to device pixels as rects are) within the clip in force, whatever its painter draws and whatever data, time or scale it is given; a paint naming no registered painter changes nothing. Checked offscreen against the same frame without its paint draws, with Yap's tape painter and painters whose triangles cover the whole target or land anywhere.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostPaintBounds.statement" data-line="181">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostPaintBounds.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostPaintBounds.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:181</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#1004">^1004</a> A painter's pixels stay inside its box): A paint draw changes no pixel outside its rect (snapped to device pixels as rects are) within the clip in force, whatever its painter draws and whatever data, time or scale it is given; a paint naming no registered painter changes nothing. Checked offscreen against the same frame without its paint draws, with Yap's tape painter and painters whose triangles cover the whole target or land anywhere.</p>
+</div>
+</section></details>
+</section>
+<section class="claim px" id="1005" data-line="105">
+<div class="head"><a class="id" href="#1005">^1005</a><h3>record reports started once its microphone is running, before any audio, or fails without it</h3><span class="pix muted">assume</span><span class="hl assumed">assumed</span></div>
+<div class="said"><b>Does</b><p>A record subscription's first event is started, sent once, only after the microphone's start has returned (the engine is running), and before every audio event of it, with the host's monotonic milliseconds (the clock of key events) read after the return; a microphone that can't start sends failed and never started. So an app that waits for started shows nothing for a microphone that fails, as Yap shows its overlay only once AudioCapture.start has returned.</p><dl class="ev"><dt><span class="m assumed pass" title="Recorded, never proved. Theorems that rely on it take it as a hypothesis.">assumed</span></dt><dd>Recorded, never proved. Theorems that rely on it take it as a hypothesis.</dd><dt><span class="m fuzzed gap" title="No check of the trusted-base fuzzer names it.">unchecked</span></dt><dd>No check of the trusted-base fuzzer names it.</dd></dl></div>
+
+<p class="srcline"><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:105</span> · <code>hostRecordStarted</code> · ledger: active</p>
+<details class="gen"><summary>3 generated declarations</summary><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostRecordStarted" data-line="105">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostRecordStarted"><span class="ns">Cairn.Fuzz.Trusted.Claims.</span>hostRecordStarted</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:105</span></div>
+<pre class="sig"><b class="nm">hostRecordStarted</b> : <a href="Cairn.Claims.Machine.html#Cairn.Claims.Assumption" title="Cairn.Claims.Assumption">Claims.Assumption</a></pre><div class="doc"><p><strong><a class="id" href="Cairn.Fuzz.Trusted.Claims.html#1005">^1005</a> record reports started once its microphone is running, before any audio, or fails without it</strong> (assumption)</p>
+<p>A record subscription's first event is started, sent once, only after the microphone's start has returned (the engine is running), and before every audio event of it, with the host's monotonic milliseconds (the clock of key events) read after the return; a microphone that can't start sends failed and never started. So an app that waits for started shows nothing for a microphone that fails, as Yap shows its overlay only once AudioCapture.start has returned.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostRecordStarted.statement" data-line="105">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostRecordStarted.statement"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostRecordStarted.</span>statement</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:105</span></div>
+<pre class="sig"><b class="nm">statement</b> : Prop</pre><div class="doc"><p>Assumed, never proved (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#1005">^1005</a> record reports started once its microphone is running, before any audio, or fails without it): A record subscription's first event is started, sent once, only after the microphone's start has returned (the engine is running), and before every audio event of it, with the host's monotonic milliseconds (the clock of key events) read after the return; a microphone that can't start sends failed and never started. So an app that waits for started shows nothing for a microphone that fails, as Yap shows its overlay only once AudioCapture.start has returned.</p>
+</div>
+</section><section class="decl gen" id="Cairn.Fuzz.Trusted.Claims.hostRecordStarted.info" data-line="105">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Trusted.Claims.hostRecordStarted.info"><span class="ns">Cairn.Fuzz.Trusted.Claims.hostRecordStarted.</span>info</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Trusted/Claims.lean:105</span></div>
+<pre class="sig"><b class="nm">info</b> : <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a></pre><div class="doc"><p>The human half of claim <a class="id" href="Cairn.Fuzz.Trusted.Claims.html#1005">^1005</a>.</p>
+</div>
+</section></details>
+</section>
+
+<div class="mdoc" data-line="75" hidden><div class="doc"><p>Yap's host effects (workstream T, docs/effects.md &quot;What Yap needs&quot;), ids 960–989.</p>
+</div></div><div class="mdoc" data-line="129" hidden><div class="doc"><p>Wrapped text (workstream V, docs/layout.md &quot;Wrapped text&quot;), ids 990–999.</p>
+</div></div><div class="mdoc" data-line="139" hidden><div class="doc"><p>Surfaces (workstream S, docs/surfaces.md): menus and overlay panels, ids 940–959.</p>
+</div></div><div class="mdoc" data-line="161" hidden><div class="doc"><p>Yap on Cairn (workstream W): opening files and URLs, other apps, other domains' defaults, ids 1000–.</p>
+</div></div><div class="mdoc" data-line="179" hidden><div class="doc"><p>Host-drawn content (workstream Y, docs/frame.md &quot;Draw records&quot;): ids 1004–1019 (<a class="id" href="Cairn.Fuzz.Trusted.Claims.html#1003">^1003</a> is the trusted makeDir claim).</p>
+</div></div>
+</div>
+</main></div>
+<footer>Generated by <code>make doc APP=Counter</code> from the code and the build. Nothing here is written by hand.</footer>
+<script src="search-index.js"></script>
+<script src="search.js"></script>
+<script type="module">
+// On the site, the headings get the meadow's sprigs and a "#" that copies a link to them
+// (site/public/scene.js); elsewhere, nothing.
+import("/scene.js").then((m) => { const main = document.querySelector("main"); m.mountSprigs(main); m.mountAnchors(main); }).catch(() => {});
+</script>
+</body>
+</html>

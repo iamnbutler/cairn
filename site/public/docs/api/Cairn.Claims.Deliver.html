@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cairn.Claims.Deliver · Cairn docs</title>
+<meta name="description" content="Cairn's API, generated from its code.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="doc.css">
+</head>
+<body>
+<nav class="bar"><a class="home" href="../../"><img src="icon.svg" alt="">Cairn</a><span class="sep">/</span><a href="index.html">Cairn docs</a><a href="claims.html">Claims</a><span class="search"><input id="search" type="search" placeholder="Search names, docs, ^N  ( / )" autocomplete="off" spellcheck="false"><div id="results" hidden></div></span></nav>
+<div class="layout"><aside class="toc"><div class="pix muted">Cairn.Claims.Deliver</div><a href="#theorems">Theorems <span class="n">5</span></a><ol><li><a href="#Cairn.Claims.deliver_effect">deliver_effect</a></li><li><a href="#Cairn.Claims.deliver_unclaimed">deliver_unclaimed</a></li><li><a href="#Cairn.Claims.deliver_run">deliver_run</a></li><li><a href="#Cairn.Claims.steps_reachable">steps_reachable</a></li><li><a href="#Cairn.Claims.steps_reachableAll">steps_reachableAll</a></li></ol></aside><main>
+<header class="page"><div class="eyebrow">Cairn · module</div><h1 class="mod">Cairn.Claims.Deliver</h1><p class="src">lean/Cairn/Claims/Deliver.lean</p></header>
+<div class="doc"><p>The claim guarantees, carried through the runtime.</p>
+<p><a href="Cairn.Runtime.Proofs.html#Cairn.Runtime.step_delivers_quiet"><code>Cairn.Runtime.step_delivers_quiet</code></a> says a runtime step passes <a href="Cairn.App.html#Cairn.App.update"><code>App.update</code></a> exactly the routed
+actions, via <a href="Cairn.Runtime.Step.html#Cairn.Runtime.deliver"><code>Runtime.deliver</code></a>, for an app that ignores the world (every machine's <code>toApp</code>). For an app whose update is a machine's, the lemmas here say what
+that means for a whole batch of actions: every effect came from an enabled move handler answering
+one of the actions, and a batch that names no move's claim changes nothing.</p>
+</div>
+<p class="imports"><span class="pix muted">Imports</span> <a href="Cairn.Claims.Machine.html">Cairn.Claims.Machine</a>, <a href="Cairn.Runtime.Step.html">Cairn.Runtime.Step</a>, <a href="Cairn.Runtime.WorldProofs.html">Cairn.Runtime.WorldProofs</a></p>
+<div class="order"><span class="pix muted">Order</span> <button type="button" data-order="kind" class="on">by kind</button><button type="button" data-order="source">as in the source</button></div>
+<div id="items">
+
+<h2 id="theorems">Theorems <span class="n">5</span></h2>
+<section class="decl" id="Cairn.Claims.deliver_effect" data-line="38">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Claims.deliver_effect"><span class="ns">Cairn.Claims.</span>deliver_effect</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Claims/Deliver.lean:38</span></div>
+<pre class="sig"><b class="nm">deliver_effect</b> {S : Type} (M : Machine S) {st : S} {acts : List <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a>}
+  {e : <a href="Cairn.Input.html#Cairn.Effect" title="Cairn.Effect">Effect</a>} (he : e ∈ (Runtime.deliver M.update st acts).snd) :
+  ∃ a,
+    a ∈ acts ∧
+      ∃ s m,
+        m ∈ M.moves ∧
+          ∃ h,
+            h ∈ m.handlers ∧
+              m.id = a.claim ∧
+                h.trigger = a.trigger ∧ m.enabled s a.key = <span title="Bool.true">true</span> ∧ e ∈ (h.apply s a).snd</pre><div class="doc"><p><strong>Every effect the runtime runs comes from a move.</strong> Each effect of delivering a batch of
+actions to a machine was emitted by an enabled handler of one of its moves, answering one of
+the actions (and owning its claim).</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Claims.deliver_unclaimed" data-line="62">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Claims.deliver_unclaimed"><span class="ns">Cairn.Claims.</span>deliver_unclaimed</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Claims/Deliver.lean:62</span></div>
+<pre class="sig"><b class="nm">deliver_unclaimed</b> {S : Type} (M : Machine S) {st : S} {acts : List <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a>}
+  (h : ∀ (a : <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a>), a ∈ acts → ∀ (m : Move S), m ∈ M.moves → m.id ≠ a.claim) :
+  Runtime.deliver M.update st acts = (st, [])</pre><div class="doc"><p><strong>No behaviour without a claim</strong>, through the runtime: a batch of actions none of which
+names a move's claim leaves the app state alone and runs no effects.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Claims.deliver_run" data-line="75">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Claims.deliver_run"><span class="ns">Cairn.Claims.</span>deliver_run</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Claims/Deliver.lean:75</span></div>
+<pre class="sig"><b class="nm">deliver_run</b> {S : Type} (M : Machine S) (st : S) (acts : List <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a>) :
+  (Runtime.deliver M.update st acts).fst = M.run st acts</pre><div class="doc"><p>Delivering a batch of actions to a machine runs them in order.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Claims.steps_reachable" data-line="81">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Claims.steps_reachable"><span class="ns">Cairn.Claims.</span>steps_reachable</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Claims/Deliver.lean:81</span></div>
+<pre class="sig"><b class="nm">steps_reachable</b> {S : Type} (M : Machine S) (surfaces : List (Surface S))
+  (claims : List <a href="Cairn.Claim.html#Cairn.ClaimInfo" title="Cairn.ClaimInfo">ClaimInfo</a>) (cfg : <a href="Cairn.Runtime.Step.html#Cairn.Runtime.Config" title="Cairn.Runtime.Config">Runtime.Config</a>) (size : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) (scale : <span title="Nat">Nat</span>)
+  (es : List <a href="Cairn.Input.html#Cairn.Event" title="Cairn.Event">Event</a>) (initFocus : Option <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a> := none)
+  (hq : ∀ (s : S) (m : <a href="Cairn.Effects.html#Cairn.Msg" title="Cairn.Msg">Msg</a>), (M.receive s m).fst = s := by intro _ _; rfl) :
+  M.Reachable
+    (Runtime.steps (M.toApp surfaces claims initFocus) cfg
+          (Runtime.start (M.toApp surfaces claims initFocus) cfg size scale) es).fst.app</pre><div class="doc"><p><strong>Invariants hold on screen.</strong> In an app whose update is a machine's, the app state of every
+runtime state reached from <code>start</code> by events is reachable in the machine, so every invariant
+(<a href="Cairn.Claims.Machine.html#Cairn.Claims.Invariant.reachable"><code>Invariant.reachable</code></a>) holds in it.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Claims.steps_reachableAll" data-line="109">
+<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Claims.steps_reachableAll"><span class="ns">Cairn.Claims.</span>steps_reachableAll</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Claims/Deliver.lean:109</span></div>
+<pre class="sig"><b class="nm">steps_reachableAll</b> {S : Type} (M : Machine S) (app : App S)
+  (hi : app.init = M.init) (hu : app.update = M.update) (hr : app.receive = M.receive)
+  (cfg : <a href="Cairn.Runtime.Step.html#Cairn.Runtime.Config" title="Cairn.Runtime.Config">Runtime.Config</a>) (size : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) (scale : <span title="Nat">Nat</span>) (es : List <a href="Cairn.Input.html#Cairn.Event" title="Cairn.Event">Event</a>) :
+  M.ReachableAll (Runtime.steps app cfg (Runtime.start app cfg size scale) es).fst.app</pre><div class="doc"><p><strong>Invariants hold on screen, with the world.</strong> In any app whose start, update and receive
+are a machine's (<code>M.toApp</code>, possibly with subscriptions and init effects added), the app state of
+every runtime state reached from <code>start</code> by any events (input, the clock, timers, replies,
+subscription events) is reachable in the machine by actions and messages, so every invariant
+(<a href="Cairn.Claims.Machine.html#Cairn.Claims.Invariant.reachableAll"><code>Invariant.reachableAll</code></a>) holds in it.</p>
+</div>
+</section>
+
+</div>
+</main></div>
+<footer>Generated by <code>make doc APP=Counter</code> from the code and the build. Nothing here is written by hand.</footer>
+<script src="search-index.js"></script>
+<script src="search.js"></script>
+<script type="module">
+// On the site, the headings get the meadow's sprigs and a "#" that copies a link to them
+// (site/public/scene.js); elsewhere, nothing.
+import("/scene.js").then((m) => { const main = document.querySelector("main"); m.mountSprigs(main); m.mountAnchors(main); }).catch(() => {});
+</script>
+</body>
+</html>

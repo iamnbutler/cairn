@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cairn.Runtime.Abi · Cairn docs</title>
+<meta name="description" content="Cairn's API, generated from its code.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="doc.css">
+</head>
+<body>
+<nav class="bar"><a class="home" href="../../"><img src="icon.svg" alt="">Cairn</a><span class="sep">/</span><a href="index.html">Cairn docs</a><a href="claims.html">Claims</a><span class="search"><input id="search" type="search" placeholder="Search names, docs, ^N  ( / )" autocomplete="off" spellcheck="false"><div id="results" hidden></div></span></nav>
+<div class="layout"><aside class="toc"><div class="pix muted">Cairn.Runtime.Abi</div><a href="#structures">Structures <span class="n">1</span></a><ol><li><a href="#Cairn.Runtime.Boundary">Boundary</a></li></ol><a href="#definitions">Definitions <span class="n">6</span></a><ol><li><a href="#Cairn.Runtime.initState">initState</a></li><li><a href="#Cairn.Runtime.stepBytes">stepBytes</a></li><li><a href="#Cairn.Runtime.panelUI">panelUI</a></li><li><a href="#Cairn.Runtime.surfaceFrame">surfaceFrame</a></li><li><a href="#Cairn.Runtime.frame">frame</a></li><li><a href="#Cairn.Runtime.frameBytes">frameBytes</a></li></ol></aside><main>
+<header class="page"><div class="eyebrow">Cairn · module</div><h1 class="mod">Cairn.Runtime.Abi</h1><p class="src">lean/Cairn/Runtime/Abi.lean</p></header>
+<div class="doc"><p>The Lean side of the app ABI. The host (workstream G) loads one app per binary and calls
+three exported functions; each app file defines them by applying these generic functions to
+its <a href="Cairn.App.html"><code>App</code></a>, a <a href="Cairn.Runtime.Step.html#Cairn.Runtime.Config"><code>Config</code></a> and a <a href="Cairn.Runtime.Abi.html#Cairn.Runtime.Boundary"><code>Boundary</code></a>:</p>
+<pre><code class="language-lean">@[export cairn_app_init]
+def appInit (w h scalePercent : UInt32) : Runtime.State MyApp.State :=
+  Runtime.initState MyApp.app cfg w h scalePercent
+@[export cairn_app_step]
+def appStep (s : Runtime.State MyApp.State) (events : ByteArray) : Runtime.State MyApp.State :=
+  Runtime.stepBytes MyApp.app cfg boundary s events
+@[export cairn_app_frame]
+def appFrame (s : Runtime.State MyApp.State) : ByteArray := Runtime.frameBytes boundary s
+</code></pre>
+<p>Lean 4.35 rejects <code>@&amp;</code> on <code>@[export]</code>, so every argument is owned: the host passes its
+reference to the state into <code>cairn_app_step</code> and keeps the one that comes back, and calls
+<code>lean_inc</code> on the state before <code>cairn_app_frame</code> if it keeps using it. See docs/runtime.md.</p>
+</div>
+<p class="imports"><span class="pix muted">Imports</span> <a href="Cairn.Runtime.Step.html">Cairn.Runtime.Step</a>, <a href="Cairn.Frame.html">Cairn.Frame</a>, <a href="Cairn.Frame.Menu.html">Cairn.Frame.Menu</a></p>
+<div class="order"><span class="pix muted">Order</span> <button type="button" data-order="kind" class="on">by kind</button><button type="button" data-order="source">as in the source</button></div>
+<div id="items">
+
+<h2 id="structures">Structures <span class="n">1</span></h2>
+<section class="decl" id="Cairn.Runtime.Boundary" data-line="32">
+<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.Runtime.Boundary"><span class="ns">Cairn.Runtime.</span>Boundary</a></h3><span class="src" title="source">lean/Cairn/Runtime/Abi.lean:32</span></div>
+<pre class="sig"><b class="nm">Boundary</b> : Type</pre><div class="doc"><p>The byte formats at the boundary: <a href="Cairn.Frame.Boundary.html#Cairn.Frame.boundary"><code>Cairn.Frame.boundary</code></a> (<a href="Cairn.Frame.Build.html#Cairn.Frame.ofLaid"><code>Frame.ofLaid</code></a> and the v1
+encoding, docs/frame.md).</p>
+</div><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.Runtime.Boundary.decode"><pre class="sig"><b class="nm">decode</b> : List <a href="Cairn.Input.html#Cairn.Event" title="Cairn.Event">Event</a></pre><div class="doc"><p>Host event bytes → events, in order.</p>
+</div></div><div class="member" id="Cairn.Runtime.Boundary.render"><pre class="sig"><b class="nm">render</b> : <a href="Cairn.Frame.html#Cairn.Canvas" title="Cairn.Canvas">Canvas</a></pre><div class="doc"><p>The draws, accessibility nodes and text input of a laid tree. It reads the <a href="Cairn.App.html#Cairn.UI"><code>UI</code></a> for the
+surface's size and focus (the caret, <a href="Cairn.Frame.html#Cairn.AxNode.focused"><code>AxNode.focused</code></a>, <code>textInput</code>). The runtime fills in the
+cursor, the other surfaces and the effects.</p>
+</div></div><div class="member" id="Cairn.Runtime.Boundary.encode"><pre class="sig"><b class="nm">encode</b> : <span title="ByteArray">ByteArray</span></pre></div></div>
+</section>
+<h2 id="definitions">Definitions <span class="n">6</span></h2>
+<section class="decl" id="Cairn.Runtime.initState" data-line="43">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.initState"><span class="ns">Cairn.Runtime.</span>initState</a></h3><span class="src" title="source">lean/Cairn/Runtime/Abi.lean:43</span></div>
+<pre class="sig"><b class="nm">initState</b> {S : Type} (app : App S) (cfg : <a href="Cairn.Runtime.Step.html#Cairn.Runtime.Config" title="Cairn.Runtime.Config">Config</a>)
+  (w h scalePercent : <span title="UInt32">UInt32</span>) : State S</pre>
+</section>
+<section class="decl" id="Cairn.Runtime.stepBytes" data-line="47">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.stepBytes"><span class="ns">Cairn.Runtime.</span>stepBytes</a></h3><span class="src" title="source">lean/Cairn/Runtime/Abi.lean:47</span></div>
+<pre class="sig"><b class="nm">stepBytes</b> {S : Type} (app : App S) (cfg : <a href="Cairn.Runtime.Step.html#Cairn.Runtime.Config" title="Cairn.Runtime.Config">Config</a>) (b : <a href="Cairn.Runtime.Abi.html#Cairn.Runtime.Boundary" title="Cairn.Runtime.Boundary">Boundary</a>) (s : State S)
+  (events : <span title="ByteArray">ByteArray</span>) : State S</pre><div class="doc"><p>Run a batch of events. The state's <code>effects</code> become this batch's effects.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.panelUI" data-line="53">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.panelUI"><span class="ns">Cairn.Runtime.</span>panelUI</a></h3><span class="src" title="source">lean/Cairn/Runtime/Abi.lean:53</span></div>
+<pre class="sig"><b class="nm">panelUI</b> (size : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) : <a href="Cairn.App.html#Cairn.UI" title="Cairn.UI">UI</a></pre><div class="doc"><p>A panel's <a href="Cairn.App.html#Cairn.UI"><code>UI</code></a>: its size, and nothing focused, hovered or pressed (it takes no input).</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.surfaceFrame" data-line="56">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.surfaceFrame"><span class="ns">Cairn.Runtime.</span>surfaceFrame</a></h3><span class="src" title="source">lean/Cairn/Runtime/Abi.lean:56</span></div>
+<pre class="sig"><b class="nm">surfaceFrame</b> {S : Type} (b : <a href="Cairn.Runtime.Abi.html#Cairn.Runtime.Boundary" title="Cairn.Runtime.Boundary">Boundary</a>) (s : State S) : <a href="Cairn.Runtime.Step.html#Cairn.Runtime.Shown" title="Cairn.Runtime.Shown">Shown</a> → <a href="Cairn.Frame.html#Cairn.SurfaceFrame" title="Cairn.SurfaceFrame">SurfaceFrame</a></pre><div class="doc"><p>One surface's record. The window shows the state's laid tree; a panel its own.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Runtime.frame" data-line="66">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.frame"><span class="ns">Cairn.Runtime.</span>frame</a></h3><span class="src" title="source">lean/Cairn/Runtime/Abi.lean:66</span></div>
+<pre class="sig"><b class="nm">frame</b> {S : Type} (b : <a href="Cairn.Runtime.Abi.html#Cairn.Runtime.Boundary" title="Cairn.Runtime.Boundary">Boundary</a>) (s : State S) : <a href="Cairn.Frame.html" title="Cairn.Frame">Frame</a></pre>
+</section>
+<section class="decl" id="Cairn.Runtime.frameBytes" data-line="70">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.frameBytes"><span class="ns">Cairn.Runtime.</span>frameBytes</a></h3><span class="src" title="source">lean/Cairn/Runtime/Abi.lean:70</span></div>
+<pre class="sig"><b class="nm">frameBytes</b> {S : Type} (b : <a href="Cairn.Runtime.Abi.html#Cairn.Runtime.Boundary" title="Cairn.Runtime.Boundary">Boundary</a>) (s : State S) : <span title="ByteArray">ByteArray</span></pre>
+</section>
+
+</div>
+</main></div>
+<footer>Generated by <code>make doc APP=Counter</code> from the code and the build. Nothing here is written by hand.</footer>
+<script src="search-index.js"></script>
+<script src="search.js"></script>
+<script type="module">
+// On the site, the headings get the meadow's sprigs and a "#" that copies a link to them
+// (site/public/scene.js); elsewhere, nothing.
+import("/scene.js").then((m) => { const main = document.querySelector("main"); m.mountSprigs(main); m.mountAnchors(main); }).catch(() => {});
+</script>
+</body>
+</html>

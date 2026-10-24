@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cairn.Fuzz.Collect · Cairn docs</title>
+<meta name="description" content="Cairn's API, generated from its code.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="doc.css">
+</head>
+<body>
+<nav class="bar"><a class="home" href="../../"><img src="icon.svg" alt="">Cairn</a><span class="sep">/</span><a href="index.html">Cairn docs</a><a href="claims.html">Claims</a><span class="search"><input id="search" type="search" placeholder="Search names, docs, ^N  ( / )" autocomplete="off" spellcheck="false"><div id="results" hidden></div></span></nav>
+<div class="layout"><aside class="toc"><div class="pix muted">Cairn.Fuzz.Collect</div><a href="#definitions">Definitions <span class="n">5</span></a><ol><li><a href="#Cairn.Fuzz.Collect.rel">rel</a></li><li><a href="#Cairn.Fuzz.Collect.last">last</a></li><li><a href="#Cairn.Fuzz.Collect.moduleOf">moduleOf</a></li><li><a href="#Cairn.Fuzz.Collect.constsOfType">constsOfType</a></li><li><a href="#Cairn.Fuzz.Collect.«termFuzz_targets%25»">«termFuzz_targets%»</a></li></ol></aside><main>
+<header class="page"><div class="eyebrow">Cairn · module</div><h1 class="mod">Cairn.Fuzz.Collect</h1><p class="src">lean/Cairn/Fuzz/Collect.lean</p></header>
+<div class="doc"><h1><code>fuzz_targets%</code>: every fuzzable app, found at compile time</h1>
+<p>Elaborates to a <code>List Cairn.Fuzz.Target</code>, one per <code>Machine</code> declared in an <code>Examples</code> module of
+the imported environment. For each machine it collects, from the claim registry and the
+environment:</p>
+<ul>
+<li>the <a href="Cairn.App.html"><code>App</code></a> of the same state type declared in the machine's module (preferring <code>&lt;ns&gt;.app</code>);</li>
+<li>the keyed moves of the machine's namespace;</li>
+<li>the invariants stated against it, with their <code>check</code> when <code>invariant</code> generated one;</li>
+<li>every claim the module declares;</li>
+<li><code>&lt;ns&gt;.fuzz : Cairn.Fuzz.Custom S</code>, if the app defines one.</li>
+</ul>
+<p>So an app needs no fuzz code: importing it from <code>Examples.lean</code> is enough. Compile time only
+(imports <code>Lean</code>); the <code>fuzz</code> executable is the only thing that uses it.</p>
+</div>
+<p class="imports"><span class="pix muted">Imports</span> <span class="muted">Lean</span>, <a href="Cairn.Claims.Registry.html">Cairn.Claims.Registry</a>, <a href="Cairn.Fuzz.Target.html">Cairn.Fuzz.Target</a></p>
+<div class="order"><span class="pix muted">Order</span> <button type="button" data-order="kind" class="on">by kind</button><button type="button" data-order="source">as in the source</button></div>
+<div id="items">
+
+<h2 id="definitions">Definitions <span class="n">5</span></h2>
+<section class="decl" id="Cairn.Fuzz.Collect.rel" data-line="24">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Collect.rel"><span class="ns">Cairn.Fuzz.Collect.</span>rel</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Collect.lean:24</span></div>
+<pre class="sig"><b class="nm">rel</b> (ns n : <span title="Lean.Name">Lean.Name</span>) : <span title="String">String</span></pre><div class="doc"><p><code>n</code> relative to namespace <code>ns</code>, as source text.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Fuzz.Collect.last" data-line="27">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Collect.last"><span class="ns">Cairn.Fuzz.Collect.</span>last</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Collect.lean:27</span></div>
+<pre class="sig"><b class="nm">last</b> (n : <span title="Lean.Name">Lean.Name</span>) : <span title="String">String</span></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Collect.moduleOf" data-line="31">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Collect.moduleOf"><span class="ns">Cairn.Fuzz.Collect.</span>moduleOf</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Collect.lean:31</span></div>
+<pre class="sig"><b class="nm">moduleOf</b> (env : <span title="Lean.Environment">Lean.Environment</span>) (n : <span title="Lean.Name">Lean.Name</span>) : Option <span title="Lean.Name">Lean.Name</span></pre>
+</section>
+<section class="decl" id="Cairn.Fuzz.Collect.constsOfType" data-line="35">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Collect.constsOfType"><span class="ns">Cairn.Fuzz.Collect.</span>constsOfType</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Collect.lean:35</span></div>
+<pre class="sig"><b class="nm">constsOfType</b> (env : <span title="Lean.Environment">Lean.Environment</span>) (head : <span title="Lean.Name">Lean.Name</span>) :
+  Array (<span title="Lean.Name">Lean.Name</span> × <span title="Lean.ConstantInfo">Lean.ConstantInfo</span>)</pre><div class="doc"><p>Constants of <code>Examples</code> modules whose type's head is <code>head</code>.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Fuzz.Collect.«termFuzz_targets%»" data-line="44">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Collect.«termFuzz_targets%25»"><span class="ns">Cairn.Fuzz.Collect.</span>«termFuzz_targets%»</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Collect.lean:44</span></div>
+<pre class="sig"><b class="nm">«termFuzz_targets%»</b> : <span title="Lean.ParserDescr">Lean.ParserDescr</span></pre>
+</section>
+
+</div>
+</main></div>
+<footer>Generated by <code>make doc APP=Counter</code> from the code and the build. Nothing here is written by hand.</footer>
+<script src="search-index.js"></script>
+<script src="search.js"></script>
+<script type="module">
+// On the site, the headings get the meadow's sprigs and a "#" that copies a link to them
+// (site/public/scene.js); elsewhere, nothing.
+import("/scene.js").then((m) => { const main = document.querySelector("main"); m.mountSprigs(main); m.mountAnchors(main); }).catch(() => {});
+</script>
+</body>
+</html>
