@@ -1,12 +1,12 @@
 {
   "app": "Todo",
-  "generated": "2026-10-24T01:46:30.221Z",
+  "generated": "2026-10-24T02:37:22.239Z",
   "inputs": {
-    "fuzz": "/Users/natebutler/code/cairn/.lane/trees/map-own/build/fuzz/Todo.json",
-    "trusted": "/Users/natebutler/code/cairn/.lane/trees/map-own/build/fuzz/trusted.json",
-    "conformance": "/Users/natebutler/code/cairn/.lane/trees/map-own/build/conformance/Todo.json",
+    "fuzz": "/Users/natebutler/code/cairn/build/fuzz/Todo.json",
+    "trusted": null,
+    "conformance": "/Users/natebutler/code/cairn/build/conformance/Todo.json",
     "capture": true,
-    "theoremsAudited": 3657
+    "theoremsAudited": 3764
   },
   "counts": {
     "kinds": [
@@ -96,7 +96,7 @@
           "kind": "tested",
           "state": "pass",
           "label": "tested 8.4k",
-          "detail": "8,388 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
+          "detail": "8,385 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
         },
         {
           "kind": "seen",
@@ -305,8 +305,8 @@
         {
           "kind": "tested",
           "state": "pass",
-          "label": "tested 136",
-          "detail": "136 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
+          "label": "tested 137",
+          "detail": "137 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
         },
         {
           "kind": "seen",
@@ -470,8 +470,8 @@
         {
           "kind": "tested",
           "state": "pass",
-          "label": "tested 185",
-          "detail": "185 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
+          "label": "tested 186",
+          "detail": "186 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
         },
         {
           "kind": "seen",
@@ -521,8 +521,8 @@
         {
           "kind": "tested",
           "state": "pass",
-          "label": "tested 165",
-          "detail": "165 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
+          "label": "tested 166",
+          "detail": "166 steps on the running app exercised it, and the frame, accessibility tree, effects and pixels matched the model."
         },
         {
           "kind": "seen",
@@ -746,7 +746,7 @@
           "kind": "fuzzed",
           "state": "gap",
           "label": "unchecked",
-          "detail": "No check of the trusted-base fuzzer names it."
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -1303,7 +1303,7 @@
     {
       "ref": "^214",
       "what": "unchecked",
-      "detail": "No check of the trusted-base fuzzer names it.",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
       "broken": false
     },
     {

@@ -1,12 +1,12 @@
 {
   "app": "Basics",
-  "generated": "2026-10-24T01:44:47.903Z",
+  "generated": "2026-10-24T02:33:26.475Z",
   "inputs": {
-    "fuzz": "/Users/natebutler/code/cairn/.lane/trees/map-own/build/fuzz/Basics.json",
-    "trusted": "/Users/natebutler/code/cairn/.lane/trees/map-own/build/fuzz/trusted.json",
-    "conformance": "/Users/natebutler/code/cairn/.lane/trees/map-own/build/conformance/Basics.json",
+    "fuzz": "/Users/natebutler/code/cairn/build/fuzz/Basics.json",
+    "trusted": null,
+    "conformance": "/Users/natebutler/code/cairn/build/conformance/Basics.json",
     "capture": true,
-    "theoremsAudited": 3657
+    "theoremsAudited": 3764
   },
   "counts": {
     "kinds": [
