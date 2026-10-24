@@ -24,7 +24,7 @@ installs `cairn` yet; build it from a Cairn checkout.
 
 | Command | What it does |
 |---|---|
-| `cairn new <name> [--lib]` | starts a package in a new directory: `cairn.toml`, an empty `claims.lock`, and `lean/` with a lakefile that sets the claim scope to `<name>` and requires Cairn. An app also gets `Package.swift` and `Sources/`; `--lib` makes a library without them. |
+| `cairn new <name> [--lib\|--bin]` | starts a package in a new directory: `cairn.toml` with its `kind`, an empty `claims.lock`, and `lean/` with a lakefile that sets the claim scope to `<name>` and requires Cairn. An app (`--bin`) also gets `Package.swift` and `Sources/`; a library (`--lib`) doesn't. With neither flag it asks which. |
 | `cairn add <name>[@<range>]` | adds a dependency from the registry to `cairn.toml` and the lakefile, replacing a `require … from git` of it. It prints the `Package.swift` line rather than editing Swift. With no range it uses `^` and the latest release. |
 | `cairn build [--release]` | `lake cache get` (prebuilt Lean from the registry, when it has it), `lake build`, Cairn's `cairn-link` to merge the Lean into one static library in `.cairn/lib/`, then `swift build`. |
 | `cairn doc [--private] [--open]` | the package's API docs, in `build/doc/<name>/`, the same pages as [Cairn's own](/docs/api/), with every claim on its module's page. |

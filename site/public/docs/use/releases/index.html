@@ -46,9 +46,28 @@ meaning in later versions, or is retired; it is never renumbered or reused.</li>
 <li><strong>The host protocol.</strong> The frame format carries its own version.</li>
 <li><strong>The Lean API</strong> has no stability promise before 1.0.</li>
 <li><strong>The toolchain.</strong> An app uses the Lean toolchain in Cairn's <code>lean/lean-toolchain</code> at the tag
-(<code>v4.35.0</code> for both releases so far), because Lake shares compiled modules only between
+(<code>v4.35.0</code> for every release so far), because Lake shares compiled modules only between
 identical toolchains.</li>
 </ul>
+<h2 id="v0-1-2">v0.1.2</h2>
+<p>24 October 2026.</p>
+<ul>
+<li><strong>Libraries and apps.</strong> <code>cairn.toml</code> has a <code>kind</code>: <code>&quot;lib&quot;</code>, which other packages can depend
+on, or <code>&quot;bin&quot;</code>, an app, which nothing can. It defaults to <code>&quot;lib&quot;</code>, and Cairn is one.
+<code>cairn new --lib</code> or <code>--bin</code> picks it, and <code>cairn new</code> asks with neither. <code>cairn publish</code>
+sends it, and <code>/packages/</code> lists apps under their own tab.</li>
+<li><strong>No uploaded docs.</strong> <code>cairn publish</code> no longer runs <code>cairn doc</code> or sends docs, and
+<code>--no-docs</code> is gone. HTML from a publisher would run as the registry's site, so a registry
+will build docs from the source instead, as docs.rs does.</li>
+<li><strong>Retiring a claim needs a major version.</strong> <code>lake exe ledger check</code> and <code>update</code> compare
+<code>claims.lock</code> with the last release's, found from the highest final <code>v&lt;version&gt;</code> tag that
+isn't after <code>cairn.toml</code>'s version. A claim that release had active can be retired, or moved,
+only in a new major version, or a new minor one while at 0.x. See
+<a href="/docs/use/claims/#retire"><code>retire</code></a>.</li>
+</ul>
+<p>No claim was retired or changed, and the Swift libraries are the same, so moving from v0.1.1 is
+a change of tag in the lakefile and <code>Package.swift</code>. An app that uses <code>cairn new</code> or
+<code>cairn publish</code> needs the <code>cairn</code> tool from this tag.</p>
 <h2 id="v0-1-1">v0.1.1</h2>
 <p>24 October 2026, at commit <code>ea72e75</code>.</p>
 <ul>

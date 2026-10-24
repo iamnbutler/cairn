@@ -8,7 +8,14 @@
 <language>en</language>
 <atom:link href="https://cairn.iamnbutler.workers.dev/feed.xml" rel="self" type="application/rss+xml"/>
 <image><url>https://cairn.iamnbutler.workers.dev/apple-touch-icon.png</url><title>Cairn</title><link>https://cairn.iamnbutler.workers.dev/</link></image>
-<lastBuildDate>Sat, 24 Oct 2026 19:35:06 GMT</lastBuildDate>
+<lastBuildDate>Sat, 24 Oct 2026 21:01:20 GMT</lastBuildDate>
+<item>
+<title>Cairn 0.1.2: libraries and apps</title>
+<link>https://cairn.iamnbutler.workers.dev/milestones/#cairn-0-1-2-libraries-and-apps</link>
+<guid isPermaLink="true">https://cairn.iamnbutler.workers.dev/milestones/#cairn-0-1-2-libraries-and-apps</guid>
+<pubDate>Sat, 24 Oct 2026 21:01:20 GMT</pubDate>
+<description>&lt;p&gt;Cairn 0.1.2 is out. A package is now a library or an app, as in Cargo: cairn.toml has kind = &amp;quot;lib&amp;quot; or &amp;quot;bin&amp;quot;, cairn new asks which, and /packages/ lists apps under their own tab (#103). Nothing can depend on an app.&lt;/p&gt;&lt;p&gt;cairn publish sends no docs. HTML from a publisher would run as the registry's site, so docs will be built from the source instead, as docs.rs does (#98).&lt;/p&gt;&lt;p&gt;The ledger now treats retiring a released claim as a breaking change: it needs a new major version, or a new minor one while at 0.x (#100). No claim changed in 0.1.2, so it is a patch release.&lt;/p&gt;&lt;p&gt;As of commit 86b1198, in the progress log of &lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#second-milestone-yap-on-cairn&quot;&gt;Second milestone: Yap on Cairn&lt;/a&gt;.&lt;/p&gt;</description>
+</item>
 <item>
 <title>Cairn is a package, and Yap moved out</title>
 <link>https://cairn.iamnbutler.workers.dev/milestones/#cairn-is-a-package-and-yap-moved-out</link>
@@ -63,7 +70,7 @@
   &lt;p&gt;Yap lives in its own repository now, yap-cairn, and depends on a tagged release of Cairn the
     way any app would. Getting it there made Cairn a package, with a &lt;code&gt;cairn&lt;/code&gt; command
     and claim ids scoped by package: Yap's are &lt;code&gt;yap^N&lt;/code&gt;.&lt;/p&gt;
-  &lt;p&gt;Progress so far:&lt;/p&gt;&lt;ul&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#cairn-is-a-package-and-yap-moved-out&quot;&gt;Cairn is a package, and Yap moved out&lt;/a&gt; (2026-10-24)&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#the-cairn-command-and-packages&quot;&gt;The cairn command and packages&lt;/a&gt; (2026-10-24)&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#developer-docs-and-the-api-reference&quot;&gt;Developer docs and the API reference&lt;/a&gt; (2026-10-24)&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#yap-against-the-original-under-instruments&quot;&gt;Yap against the original under Instruments&lt;/a&gt; (2026-10-24)&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#yap-on-cairn-the-overlay&quot;&gt;Yap on Cairn: the overlay&lt;/a&gt; (2026-10-24)&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#clock-effects&quot;&gt;Clock: effects&lt;/a&gt; (2026-10-23)&lt;/li&gt;&lt;/ul&gt;</description>
+  &lt;p&gt;Progress so far:&lt;/p&gt;&lt;ul&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#cairn-0-1-2-libraries-and-apps&quot;&gt;Cairn 0.1.2: libraries and apps&lt;/a&gt; (2026-10-24)&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#cairn-is-a-package-and-yap-moved-out&quot;&gt;Cairn is a package, and Yap moved out&lt;/a&gt; (2026-10-24)&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#the-cairn-command-and-packages&quot;&gt;The cairn command and packages&lt;/a&gt; (2026-10-24)&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#developer-docs-and-the-api-reference&quot;&gt;Developer docs and the API reference&lt;/a&gt; (2026-10-24)&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#yap-against-the-original-under-instruments&quot;&gt;Yap against the original under Instruments&lt;/a&gt; (2026-10-24)&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#yap-on-cairn-the-overlay&quot;&gt;Yap on Cairn: the overlay&lt;/a&gt; (2026-10-24)&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#clock-effects&quot;&gt;Clock: effects&lt;/a&gt; (2026-10-23)&lt;/li&gt;&lt;/ul&gt;</description>
 </item>
 <item>
 <title>Clock: effects</title>

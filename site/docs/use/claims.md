@@ -119,6 +119,11 @@ refer to it with `in ^P`.
 A tombstone. The claim is gone; its id stays issued. It needs the old kind, the old title, and a
 reason.
 
+Retiring a released claim is a breaking change. A claim the last release had active can be
+retired only in a new major version, or a new minor version while at 0.x: Cairn at 0.1.2 can
+retire one in 0.2.0, not in 0.1.3. `lake exe ledger check` finds the last release from the git
+tags and fails otherwise. A claim added since then can go in any version.
+
 <!-- include lean/Examples/Counter.lean#counter-retire -->
 
 ## What the build checks

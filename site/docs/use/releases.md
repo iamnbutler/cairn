@@ -17,8 +17,29 @@ are published.
 - **The host protocol.** The frame format carries its own version.
 - **The Lean API** has no stability promise before 1.0.
 - **The toolchain.** An app uses the Lean toolchain in Cairn's `lean/lean-toolchain` at the tag
-  (`v4.35.0` for both releases so far), because Lake shares compiled modules only between
+  (`v4.35.0` for every release so far), because Lake shares compiled modules only between
   identical toolchains.
+
+## v0.1.2
+
+24 October 2026.
+
+- **Libraries and apps.** `cairn.toml` has a `kind`: `"lib"`, which other packages can depend
+  on, or `"bin"`, an app, which nothing can. It defaults to `"lib"`, and Cairn is one.
+  `cairn new --lib` or `--bin` picks it, and `cairn new` asks with neither. `cairn publish`
+  sends it, and `/packages/` lists apps under their own tab.
+- **No uploaded docs.** `cairn publish` no longer runs `cairn doc` or sends docs, and
+  `--no-docs` is gone. HTML from a publisher would run as the registry's site, so a registry
+  will build docs from the source instead, as docs.rs does.
+- **Retiring a claim needs a major version.** `lake exe ledger check` and `update` compare
+  `claims.lock` with the last release's, found from the highest final `v<version>` tag that
+  isn't after `cairn.toml`'s version. A claim that release had active can be retired, or moved,
+  only in a new major version, or a new minor one while at 0.x. See
+  [`retire`](/docs/use/claims/#retire).
+
+No claim was retired or changed, and the Swift libraries are the same, so moving from v0.1.1 is
+a change of tag in the lakefile and `Package.swift`. An app that uses `cairn new` or
+`cairn publish` needs the `cairn` tool from this tag.
 
 ## v0.1.1
 
