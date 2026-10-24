@@ -137,6 +137,7 @@ describe("with a registry", () => {
 		dependencies: {},
 		claims: { active: 1, retired: 0, moved: 0 },
 		docs: true,
+		swift: true,
 	};
 	const answers = {
 		"/api/v1/packages?per_page=100": {
@@ -147,21 +148,17 @@ describe("with a registry", () => {
 				],
 			},
 		},
-		// A name has one owner; the site finds it by searching for the name.
-		"/api/v1/packages?q=hello&per_page=100": {
-			data: {
-				items: [
-					{ name: "hello_world", fullName: "zed/hello_world", version: "0.1.0" },
-					{ name: "hello", fullName: "carl/hello", version: "1.2.0" },
-				],
-			},
-		},
-		"/api/v1/packages?q=wave&per_page=100": { data: { items: [{ name: "wave", fullName: "acme/wave", kind: "bin", version: "0.3.0" }] } },
-		"/api/v1/packages?q=other&per_page=100": { data: { items: [] } },
+		// A name has one owner, which /api/v1/names/<name> answers; an unknown name is a 404.
+		"/api/v1/names/hello": { data: { owner: "carl", name: "hello" } },
+		"/api/v1/names/wave": { data: { owner: "acme", name: "wave" } },
+		"/api/v1/names/pure": { data: { owner: "carl", name: "pure" } },
 		"/api/v1/packages/carl/hello": { data: { name: "hello", fullName: "carl/hello", owner: "carl", description: "Says <b>hello</b>" } },
 		"/api/v1/packages/acme/wave": { data: { name: "wave", fullName: "acme/wave", owner: "acme", kind: "bin", description: "Waves" } },
 		"/api/v1/packages/acme/wave/versions?yanked=true": { data: [{ ...release, version: "0.3.0", kind: "bin", tag: "v0.3.0", publisher: "dee" }] },
 		"/api/v1/packages/carl/hello/versions?yanked=true": { data: [release] },
+		// A pure-Lean library, from a registry that may not say `swift` at all.
+		"/api/v1/packages/carl/pure": { data: { name: "pure", fullName: "carl/pure", owner: "carl", description: "Lean only" } },
+		"/api/v1/packages/carl/pure/versions?yanked=true": { data: [{ ...release, version: "0.1.0", tag: "v0.1.0", swift: undefined }] },
 		"/api/v1/packages/carl/hello/versions/1.2.0/claims": {
 			data: { claims: [{ id: 1, kind: "move", status: "active", statement: "-", title: "Wave" }] },
 		},
@@ -197,6 +194,7 @@ describe("with a registry", () => {
 		expect(page).toContain("cairn add hello@^1.2.0");
 		expect(page).toContain('version = "^1.2.0"');
 		expect(page).toContain('.package(url: "https://reg.test/git/carl/hello.git", from: "1.2.0")');
+		expect(page).toContain("the lakefile and SwiftPM lines");
 		expect(page).toContain("<dt>Owner</dt><dd>carl</dd>");
 		expect(page).toContain('scope = "carl"');
 		expect(page).not.toContain("Not from a registry yet");
@@ -206,6 +204,17 @@ describe("with a registry", () => {
 		expect(seen.length).toBeGreaterThan(0);
 		expect(seen.every((auth) => auth === null)).toBe(true);
 		expect(paths).not.toContain("/config.json");
+		expect(paths.filter((path) => path.includes("?q="))).toEqual([]);
+	});
+
+	test("prints a Package.swift line only for a version with a Swift package", async () => {
+		globalThis.fetch = fake;
+		const pure = await (await get("/packages/pure/", env)).text();
+		expect(pure).toContain("cairn add pure@^0.1.0");
+		expect(pure).toContain('scope = "carl"');
+		expect(pure).toContain("the lakefile line");
+		expect(pure).not.toContain(".package(url:");
+		expect(pure).not.toContain("<code>Package.swift</code>");
 	});
 
 	test("never fetches, proxies or renders docs from the registry", async () => {

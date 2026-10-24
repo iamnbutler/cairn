@@ -95,14 +95,15 @@ public struct Registry: Sendable {
     }
 
     /// The owner of a package, which its first publish fixed. The API reads a package only by
-    /// `<owner>/<name>`, so this searches for the name and takes the exact match.
+    /// `<owner>/<name>`, and a name has one owner, which `GET /api/v1/names/<name>` answers; nil
+    /// for a name the registry doesn't hold (404).
     public func owner(of name: String) async throws(CairnError) -> String? {
-        struct Item: Decodable { var name: String; var fullName: String }
-        struct Answer: Decodable { struct Found: Decodable { var items: [Item] }; var data: Found }
-        let (data, _) = try await send("GET", "api/v1/packages?q=\(name)&per_page=100")
-        guard let answer = try? JSONDecoder().decode(Answer.self, from: data) else { throw CairnError("the registry's search answer doesn't parse") }
-        guard let item = answer.data.items.first(where: { $0.name == name }), let slash = item.fullName.firstIndex(of: "/") else { return nil }
-        return String(item.fullName[..<slash])
+        guard Names.valid(name) else { return nil }
+        struct Answer: Decodable { struct Found: Decodable { var owner: String }; var data: Found }
+        let (data, status) = try await send("GET", "api/v1/names/\(name)", allow: [404])
+        if status == 404 { return nil }
+        guard let answer = try? JSONDecoder().decode(Answer.self, from: data) else { throw CairnError("the registry's answer for the name \(name) doesn't parse") }
+        return answer.data.owner
     }
 
     public struct Version: Decodable, Sendable {

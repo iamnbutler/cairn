@@ -61,7 +61,7 @@ Unknown tables and keys are errors. Three names must agree, and `cairn build` an
 | Command | What it does |
 |---|---|
 | `cairn new <name> [--lib\|--bin]` | writes `cairn.toml` with its `kind`, `claims.lock`, `lean/` (a lakefile.lean that sets the claim scope and requires Cairn), and for an app (`bin`) `Package.swift` and `Sources/`. With neither flag it asks which |
-| `cairn add [<owner>/]<name>[@<range>]` | adds the dependency to `cairn.toml` and puts `require "<owner>" / "<name>" @ "<range>"` (or a `[[require]]` with `scope` and `version`) in the lakefile, replacing a git require of it. It prints the `Package.swift` line instead of editing Swift. With no range, it uses `^` and the latest release. With no owner, it finds the name's owner with the registry's search. It needs no login |
+| `cairn add [<owner>/]<name>[@<range>]` | adds the dependency to `cairn.toml` and puts `require "<owner>" / "<name>" @ "<range>"` (or a `[[require]]` with `scope` and `version`) in the lakefile, replacing a git require of it. It prints the `Package.swift` line instead of editing Swift. With no range, it uses `^` and the latest release. With no owner, it asks the registry for the name's owner (`GET /api/v1/names/<name>`; a name has one owner). It needs no login |
 | `cairn build [--release]` | `lake cache get`, `lake build`, `cairn-link --lib <libs…> --out .cairn/lib/lib<name>.a`, `swift build` |
 | `cairn doc [--private] [--open]` | `lake exe doc --check` and `lake exe claims` on the package's libs, then `tools/doc/cairn-doc.ts` into `build/doc/<name>/`, with each dependency's modules linked to `/docs/<dep>/<version>/` |
 | `cairn publish [--owner <login>] [--dry-run]` | publishes the commit at tag `v<version>`, which must be HEAD with a clean tree, under `--owner` or else the login the token belongs to. It sends no docs. See below |
@@ -119,7 +119,9 @@ dependency at its resolved commit. A miss isn't an error; Lake builds locally. S
 4. `PUT /api/v1/packages/<owner>/<name>/versions/<version>` with `Authorization: Bearer
    <token>`, as every write below. The body is five sections, each a
    little-endian u32 length and its bytes: metadata JSON, pack, pack index, `claims.lock`, and
-   docs, which is always empty. The registry checks that the pack holds the commit and that the
+   docs, which is always empty. The metadata's `swift` says whether the tag has a
+   `Package.swift` in cairn.toml's `swift` directory; the site prints a SwiftPM line only for a
+   version that does. The registry checks that the pack holds the commit and that the
    ledger keeps every earlier version's ids, and answers 400 to a non-empty docs section.
 5. `lake build -o outputs.jsonl`, then upload each artifact the map names
    (`PUT …/artifacts/<hash>.art`) and the map itself

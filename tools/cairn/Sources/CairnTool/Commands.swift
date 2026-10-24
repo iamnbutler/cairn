@@ -326,9 +326,11 @@ public struct Commands {
         let toolchain = (try? String(contentsOf: project.lean.appending(path: "lean-toolchain"), encoding: .utf8))?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let readme = (try? String(contentsOf: root.appending(path: "README.md"), encoding: .utf8)).map { String($0.prefix(512 * 1024)) }
+        // From the tag, not the disk: an untracked Package.swift isn't published.
+        let swift = !((try? shell.capture(["git", "ls-tree", "--name-only", revision, "--", Publish.swiftManifest(m.swift)], in: root).text) ?? "").isEmpty
         let metadata = Publish.Metadata(
             name: m.name, version: m.version, kind: m.kind.rawValue, revision: revision, toolchain: toolchain, description: m.description,
-            license: m.license, lean: m.lean, libs: m.libs, dependencies: Dictionary(m.dependencies.map { ($0.name, $0.range) }) { $1 },
+            license: m.license, lean: m.lean, swift: swift, libs: m.libs, dependencies: Dictionary(m.dependencies.map { ($0.name, $0.range) }) { $1 },
             readme: readme)
         let claims = (try? Data(contentsOf: root.appending(path: m.claims))) ?? Data()
         let body = try Publish.body(metadata: metadata, pack: pack, index: index, claims: claims)
