@@ -1,12 +1,12 @@
 {
   "app": "Trusted",
-  "generated": "2026-10-24T02:09:00.920Z",
+  "generated": "2026-10-24T02:49:41.547Z",
   "inputs": {
-    "fuzz": "/Users/natebutler/code/cairn/.lane/trees/map-own/build/fuzz/Trusted.json",
-    "trusted": "/Users/natebutler/code/cairn/.lane/trees/map-own/build/fuzz/trusted.json",
+    "fuzz": null,
+    "trusted": null,
     "conformance": null,
     "capture": false,
-    "theoremsAudited": 3657
+    "theoremsAudited": 3764
   },
   "counts": {
     "kinds": [
@@ -18,8 +18,8 @@
       },
       {
         "kind": "fuzzed",
-        "have": 35,
-        "fail": 2,
+        "have": 0,
+        "fail": 0,
         "of": 37
       },
       {
@@ -42,8 +42,7 @@
       }
     ],
     "headlines": {
-      "assumed": 35,
-      "broken": 2
+      "assumed": 37
     }
   },
   "claims": [
@@ -62,9 +61,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 20k",
-          "detail": "The trusted-base fuzzer's `frame.decode` held in 20,000 cases, against Lean's proved side (seed 0)."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -89,9 +88,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 20k",
-          "detail": "The trusted-base fuzzer's `events.encode` held in 20,000 cases, against Lean's proved side (seed 0)."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -116,9 +115,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 20k",
-          "detail": "The trusted-base fuzzer's `text.index` held in 20,000 cases, against Lean's proved side (seed 0)."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -143,9 +142,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 4k",
-          "detail": "The trusted-base fuzzer's `text.shadow` held in 4,000 cases, against Lean's proved side (seed 0)."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -170,9 +169,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 4k",
-          "detail": "The trusted-base fuzzer's `text.input-client` held in 4,000 cases, against Lean's proved side (seed 0)."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -197,9 +196,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 20k",
-          "detail": "The trusted-base fuzzer's `text.metrics` held in 20,000 cases, against Lean's proved side (seed 0)."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -224,9 +223,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 11k",
-          "detail": "The trusted-base fuzzer's `text.metrics.carets` held in 11,205 cases, against Lean's proved side (seed 0)."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -251,9 +250,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 1k",
-          "detail": "The trusted-base fuzzer's `clock.monotonic` held in 1,000 cases, against Lean's proved side (seed 0)."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -278,9 +277,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 1k",
-          "detail": "The trusted-base fuzzer's `clock.wake` held in 1,000 cases, against Lean's proved side (seed 0)."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -305,9 +304,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 3.8k",
-          "detail": "The trusted-base fuzzer's `effects.read-file` held in 3,797 cases, against Lean's proved side (seed 0)."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -332,9 +331,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 5k",
-          "detail": "The trusted-base fuzzer's `effects.write-file` held in 5,000 cases, against Lean's proved side (seed 0)."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -359,9 +358,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 5k",
-          "detail": "The trusted-base fuzzer's `effects.sound` held in 5,000 cases, against Lean's proved side (seed 0)."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -386,9 +385,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 5k",
-          "detail": "The trusted-base fuzzer's `effects.http` held in 5,000 cases, against Lean's proved side (seed 0)."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -413,9 +412,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 1.0k",
-          "detail": "The trusted-base fuzzer's `effects.reply-once` held in 1,031 cases, against Lean's proved side (seed 0)."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -440,9 +439,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 969",
-          "detail": "The trusted-base fuzzer's `subs.every` held in 969 cases, against Lean's proved side (seed 0)."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -467,9 +466,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 2k",
-          "detail": "The trusted-base fuzzer's `menu.render` held in 2,000 cases, against Lean's proved side (seed 0)."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -494,9 +493,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 1.4k",
-          "detail": "The trusted-base fuzzer's `menu.select` held in 1,353 cases, against Lean's proved side (seed 0)."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -521,9 +520,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 2k",
-          "detail": "The trusted-base fuzzer's `menu.open-close` held in 2,000 cases, against Lean's proved side (seed 0)."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -548,9 +547,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 2k",
-          "detail": "The trusted-base fuzzer's `panel.inert` held in 2,000 cases, against Lean's proved side (seed 0)."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -575,9 +574,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 2k",
-          "detail": "The trusted-base fuzzer's `panel.place` held in 2,000 cases, against Lean's proved side (seed 0)."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -602,9 +601,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 244",
-          "detail": "The trusted-base fuzzer's `effects.append-file` held in 244 cases, against Lean's proved side (seed 0)."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -619,7 +618,7 @@
       "ref": "^961",
       "kind": "assume",
       "title": "listDir lists exactly the directory's names, sorted",
-      "headline": "broken",
+      "headline": "assumed",
       "evidence": [
         {
           "kind": "assumed",
@@ -629,9 +628,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "fail",
-          "label": "fuzz fails",
-          "detail": "The trusted-base check `effects.list-dir` failed in 61 of 256 cases: listDir differs from FileManager: [\"  padded  ä́क्षि\", \"אבג\", \"عربي\", \"i1️⃣日本語\", \"﻿bom\"] vs [\"  padded  ä́क्षि\", \"bom\", \"אבג\", \"عربي\", \"i1️⃣日本語\"]. Replay with `host/.build/release/CairnFuzzTrusted --replay fileops --case 34 --seed 5867409788454195753`."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -656,9 +655,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 256",
-          "detail": "The trusted-base fuzzer's `effects.delete-file` held in 256 cases, against Lean's proved side (seed 0)."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -673,7 +672,7 @@
       "ref": "^963",
       "kind": "assume",
       "title": "watchFile reports every change to its file, and nothing after its stop",
-      "headline": "broken",
+      "headline": "assumed",
       "evidence": [
         {
           "kind": "assumed",
@@ -683,9 +682,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "fail",
-          "label": "fuzz fails",
-          "detail": "The trusted-base check `subs.watch-file` failed in 2 of 244 cases: 2 changed for op 1, allowed 1…1. Replay with `host/.build/release/CairnFuzzTrusted --replay fileops --case 604 --seed 5867409788454196323`."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -710,9 +709,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 5k",
-          "detail": "The trusted-base fuzzer's `effects.frontmost-app` held in 5,000 cases, against Lean's proved side (seed 0)."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -737,9 +736,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 5k",
-          "detail": "The trusted-base fuzzer's `effects.permission` held in 5,000 cases, against Lean's proved side (seed 0)."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -764,9 +763,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 2.5k",
-          "detail": "The trusted-base fuzzer's `subs.record` held in 2,500 cases, against Lean's proved side (seed 0)."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -791,9 +790,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 2.5k",
-          "detail": "The trusted-base fuzzer's `effects.clip-wav` held in 2,500 cases, against Lean's proved side (seed 0)."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -818,9 +817,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 5k",
-          "detail": "The trusted-base fuzzer's `subs.global-key` held in 5,000 cases, against Lean's proved side (seed 0)."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -845,9 +844,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 5k",
-          "detail": "The trusted-base fuzzer's `effects.type-text` held in 5,000 cases, against Lean's proved side (seed 0)."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -872,9 +871,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 4.4k",
-          "detail": "The trusted-base fuzzer's `effects.upload` held in 4,398 cases, against Lean's proved side (seed 0)."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -899,9 +898,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 5k",
-          "detail": "The trusted-base fuzzer's `effects.secret` held in 5,000 cases, against Lean's proved side (seed 0)."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -926,9 +925,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 9.4k",
-          "detail": "The trusted-base fuzzer's `text.wrap.painted` held in 9,393 cases, against Lean's proved side (seed 0)."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -953,9 +952,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 5.0k",
-          "detail": "The trusted-base fuzzer's `text.wrap.coretext` held in 4,991 cases, against Lean's proved side (seed 0)."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -980,9 +979,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 5k",
-          "detail": "The trusted-base fuzzer's `effects.open-item` held in 5,000 cases, against Lean's proved side (seed 0)."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -1007,9 +1006,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 5k",
-          "detail": "The trusted-base fuzzer's `effects.app-running` held in 5,000 cases, against Lean's proved side (seed 0)."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -1034,9 +1033,9 @@
         },
         {
           "kind": "fuzzed",
-          "state": "pass",
-          "label": "fuzzed 5k",
-          "detail": "The trusted-base fuzzer's `effects.read-default` held in 5,000 cases, against Lean's proved side (seed 0)."
+          "state": "gap",
+          "label": "unchecked",
+          "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`)."
         }
       ],
       "theorems": [],
@@ -1049,16 +1048,226 @@
   ],
   "gaps": [
     {
+      "ref": "^901",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
+    },
+    {
+      "ref": "^902",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
+    },
+    {
+      "ref": "^903",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
+    },
+    {
+      "ref": "^904",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
+    },
+    {
+      "ref": "^905",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
+    },
+    {
+      "ref": "^906",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
+    },
+    {
+      "ref": "^907",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
+    },
+    {
+      "ref": "^908",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
+    },
+    {
+      "ref": "^909",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
+    },
+    {
+      "ref": "^910",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
+    },
+    {
+      "ref": "^911",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
+    },
+    {
+      "ref": "^912",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
+    },
+    {
+      "ref": "^913",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
+    },
+    {
+      "ref": "^914",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
+    },
+    {
+      "ref": "^915",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
+    },
+    {
+      "ref": "^940",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
+    },
+    {
+      "ref": "^941",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
+    },
+    {
+      "ref": "^942",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
+    },
+    {
+      "ref": "^943",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
+    },
+    {
+      "ref": "^944",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
+    },
+    {
+      "ref": "^960",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
+    },
+    {
       "ref": "^961",
-      "what": "fuzz fails",
-      "detail": "The trusted-base check `effects.list-dir` failed in 61 of 256 cases: listDir differs from FileManager: [\"  padded  ä́क्षि\", \"אבג\", \"عربي\", \"i1️⃣日本語\", \"﻿bom\"] vs [\"  padded  ä́क्षि\", \"bom\", \"אבג\", \"عربي\", \"i1️⃣日本語\"]. Replay with `host/.build/release/CairnFuzzTrusted --replay fileops --case 34 --seed 5867409788454195753`.",
-      "broken": true
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
+    },
+    {
+      "ref": "^962",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
     },
     {
       "ref": "^963",
-      "what": "fuzz fails",
-      "detail": "The trusted-base check `subs.watch-file` failed in 2 of 244 cases: 2 changed for op 1, allowed 1…1. Replay with `host/.build/release/CairnFuzzTrusted --replay fileops --case 604 --seed 5867409788454196323`.",
-      "broken": true
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
+    },
+    {
+      "ref": "^964",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
+    },
+    {
+      "ref": "^965",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
+    },
+    {
+      "ref": "^966",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
+    },
+    {
+      "ref": "^967",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
+    },
+    {
+      "ref": "^968",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
+    },
+    {
+      "ref": "^969",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
+    },
+    {
+      "ref": "^970",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
+    },
+    {
+      "ref": "^971",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
+    },
+    {
+      "ref": "^990",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
+    },
+    {
+      "ref": "^991",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
+    },
+    {
+      "ref": "^1000",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
+    },
+    {
+      "ref": "^1001",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
+    },
+    {
+      "ref": "^1002",
+      "what": "unchecked",
+      "detail": "Nothing checks it: no `build/fuzz/trusted.json` (`make fuzz-trusted`).",
+      "broken": false
     }
   ]
 }
