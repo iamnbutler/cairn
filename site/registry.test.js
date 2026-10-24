@@ -3,13 +3,13 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { route } from "./registry.js";
 
 const ORIGIN = "https://cairn.test";
+// The docs placeholder must not reach for any asset, so every asset fetch fails the test.
 const assets = {
 	async fetch(url) {
-		const path = new URL(url).pathname;
-		if (path === "/docs/api/" || path === "/docs/api/Cairn.UI") return new Response(`asset ${path}`);
-		return new Response("not found", { status: 404 });
+		throw new Error(`fetched asset ${url}`);
 	},
 };
+const PLACEHOLDER = "will be built by the registry from its source, like docs.rs. Not yet.";
 const get = (path, env = { ASSETS: assets }) => route(new Request(ORIGIN + path), env);
 
 describe("with the fixture", () => {
@@ -20,6 +20,7 @@ describe("with the fixture", () => {
 		expect(text).toContain("Sample data");
 		expect(text.indexOf('href="/packages/yap/"')).toBeLessThan(text.indexOf('href="/packages/cairn/"'));
 		expect(text).toContain('href="/docs/cairn/0.1.0/"');
+		expect(text).toContain('href="/docs/yap/0.1.0/"');
 	});
 
 	test("redirects to the slash form", async () => {
@@ -40,7 +41,7 @@ describe("with the fixture", () => {
 		const text = await (await get("/packages/cairn/0.1.0-rc.1/")).text();
 		expect(text).toContain("<dd>0.1.0-rc.1</dd>");
 		expect(text).toContain('<tr id="301" class="active">');
-		expect(text).not.toContain("API docs for");
+		expect(text).toContain('<a href="/docs/cairn/0.1.0-rc.1/">Docs for 0.1.0-rc.1</a>');
 	});
 
 	test("links a package's dependencies", async () => {
@@ -49,19 +50,24 @@ describe("with the fixture", () => {
 		expect(text).toContain("<code>yap^301</code>");
 	});
 
-	test("serves a version's docs from the committed API reference", async () => {
-		expect(await (await get("/docs/cairn/0.1.0/")).text()).toBe("asset /docs/api/");
-		expect(await (await get("/docs/cairn/0.1.0/Cairn.UI.html")).text()).toBe("asset /docs/api/Cairn.UI");
-		expect((await get("/docs/cairn/latest/Cairn.UI.html")).headers.get("location")).toBe(
-			`${ORIGIN}/docs/cairn/0.1.0/Cairn.UI.html`,
-		);
-		expect((await get("/docs/cairn/")).headers.get("location")).toBe(`${ORIGIN}/docs/cairn/0.1.0/`);
+	test("answers a version's docs with the placeholder, in the site's style", async () => {
+		for (const path of ["/docs/cairn/0.1.0/", "/docs/cairn/0.1.0-rc.1/", "/docs/yap/0.1.0/"]) {
+			const res = await get(path);
+			expect(res.status).toBe(200);
+			expect(res.headers.get("content-type")).toBe("text/html; charset=utf-8");
+			const text = await res.text();
+			expect(text).toContain(PLACEHOLDER);
+			expect(text).toContain('<link rel="stylesheet" href="/docs/docs.css">');
+			expect(text).toContain('<span class="todo">not yet</span>');
+		}
+		expect(await (await get("/docs/cairn/0.1.0/")).text()).toContain('href="/packages/cairn/0.1.0/"');
 	});
 
-	test("says when a version has no docs", async () => {
-		const res = await get("/docs/yap/0.1.0/");
-		expect(res.status).toBe(404);
-		expect(await res.text()).toContain("published without docs");
+	test("sends every path under a version, and latest, to the placeholder", async () => {
+		expect((await get("/docs/cairn/0.1.0/Cairn.UI.html")).headers.get("location")).toBe(`${ORIGIN}/docs/cairn/0.1.0/`);
+		expect((await get("/docs/cairn/0.1.0/a/b/index.html")).headers.get("location")).toBe(`${ORIGIN}/docs/cairn/0.1.0/`);
+		expect((await get("/docs/cairn/latest/Cairn.UI.html")).headers.get("location")).toBe(`${ORIGIN}/docs/cairn/0.1.0/`);
+		expect((await get("/docs/cairn/")).headers.get("location")).toBe(`${ORIGIN}/docs/cairn/0.1.0/`);
 	});
 
 	test("leaves everything else to the static site", async () => {
@@ -71,6 +77,7 @@ describe("with the fixture", () => {
 			"/packages/cairn/9.9.9/",
 			"/packages/cairn/0.1.0/extra/",
 			"/docs/nope/1.0.0/",
+			"/docs/cairn/9.9.9/",
 			"/docs/cairn/0.1.0/../../index.html",
 			"/docs/cairn/not-a-version/",
 			"/docs/docs.css",
@@ -104,7 +111,7 @@ describe("with a registry", () => {
 	};
 	const answers = {
 		"/config.json": { owner: "carl" },
-		"/api/v1/packages?per_page=100": { data: { items: [{ name: "hello", version: "1.2.0", description: "Says <b>hello</b>", docs: true }] } },
+		"/api/v1/packages?per_page=100": { data: { items: [{ name: "hello", version: "1.2.0", description: "Says <b>hello</b>" }] } },
 		"/api/v1/packages/carl/hello": { data: { name: "hello", description: "Says <b>hello</b>" } },
 		"/api/v1/packages/carl/hello/versions?yanked=true": { data: [release] },
 		"/api/v1/packages/carl/hello/versions/1.2.0/claims": {
@@ -112,12 +119,13 @@ describe("with a registry", () => {
 		},
 	};
 	const seen = [];
+	const paths = [];
 	const fake = async (url, init) => {
 		seen.push(new Headers(init?.headers).get("authorization"));
 		const path = url.replace("https://reg.test", "");
-		if (path === "/api/v1/packages/carl/hello/versions/1.2.0/docs/dist/index.html") {
-			return new Response("<h1>hello docs</h1>", { headers: { "content-type": "text/html" } });
-		}
+		paths.push(path);
+		// A registry that still served uploaded docs: the site must never ask for them.
+		if (path.includes("/docs")) return new Response("<script>alert(document.cookie)</script>", { headers: { "content-type": "text/html" } });
 		if (path in answers) return Response.json(answers[path]);
 		return Response.json({ error: { status: 404, message: "Not found" } }, { status: 404 });
 	};
@@ -129,16 +137,25 @@ describe("with a registry", () => {
 		expect(list).toContain("Says &lt;b&gt;hello&lt;/b&gt;");
 		const page = await (await get("/packages/hello/", env)).text();
 		expect(page).toContain("<code>hello^1</code>");
+		expect(page).toContain('<a href="/docs/hello/1.2.0/">Docs for 1.2.0</a>');
 		expect(page).toContain('.package(url: "https://reg.test/git/carl/hello.git", from: "1.2.0")');
 		expect(seen.every((auth) => auth === "Bearer t0ken")).toBe(true);
 	});
 
-	test("serves stored docs and 404s the rest", async () => {
+	test("never fetches, proxies or renders docs from the registry", async () => {
 		globalThis.fetch = fake;
+		paths.length = 0;
 		const doc = await get("/docs/hello/1.2.0/", env);
-		expect(await doc.text()).toBe("<h1>hello docs</h1>");
-		expect(doc.headers.get("content-type")).toBe("text/html");
-		expect(await get("/docs/hello/1.2.0/missing.html", env)).toBeUndefined();
+		expect(doc.status).toBe(200);
+		expect(doc.headers.get("content-type")).toBe("text/html; charset=utf-8");
+		const text = await doc.text();
+		expect(text).toContain(PLACEHOLDER);
+		expect(text).not.toContain("<script>alert");
+		expect((await get("/docs/hello/1.2.0/index.html", env)).headers.get("location")).toBe(`${ORIGIN}/docs/hello/1.2.0/`);
+		expect((await get("/docs/hello/latest/", env)).headers.get("location")).toBe(`${ORIGIN}/docs/hello/1.2.0/`);
+		expect(await get("/docs/hello/9.9.9/", env)).toBeUndefined();
+		expect(paths.length).toBeGreaterThan(0);
+		expect(paths.filter((path) => path.includes("/docs"))).toEqual([]);
 		expect(await get("/packages/other/", env)).toBeUndefined();
 	});
 });

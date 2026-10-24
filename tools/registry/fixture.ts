@@ -1,5 +1,5 @@
-// The registry fixture: what the Cairn site's /packages and /docs/<pkg>/<version>/ pages render
-// when no package registry is configured (site/registry.js). It has the shape of the nextpm
+// The registry fixture: what the Cairn site's /packages pages render when no package registry
+// is configured (site/registry.js). It has the shape of the nextpm
 // `cairn` kind's API (nextpm docs/adr/0005-cairn-kind.md) and is built from this repo's own
 // claims.lock: Cairn's claims, and Yap's (^300–^399), which move to the Yap package in #75.
 //
@@ -45,7 +45,6 @@ const version = (v: {
 	dependencies: Record<string, string>;
 	libs: string[];
 	claims: Claim[];
-	docs: boolean;
 	yanked?: boolean;
 }) => ({
 	version: v.version,
@@ -60,7 +59,6 @@ const version = (v: {
 	dependencies: v.dependencies,
 	libs: v.libs,
 	claims: summary(v.claims),
-	docs: v.docs,
 });
 
 const CAIRN = "A Lean, Swift and Metal UI stack where everything a person can do is a claim with a durable id and machine-checked evidence.";
@@ -83,7 +81,6 @@ const fixture = {
 					dependencies: {},
 					libs: ["Cairn"],
 					claims: cairnFinal,
-					docs: true,
 				}),
 				version({
 					version: "0.1.0-rc.1",
@@ -93,7 +90,6 @@ const fixture = {
 					dependencies: {},
 					libs: ["Cairn"],
 					claims: cairnRc,
-					docs: false,
 				}),
 			],
 			claims: { "0.1.0": cairnFinal, "0.1.0-rc.1": cairnRc },
@@ -110,7 +106,6 @@ const fixture = {
 					dependencies: { cairn: "^0.1.0" },
 					libs: ["Yap"],
 					claims: yap,
-					docs: false,
 				}),
 			],
 			claims: { "0.1.0": yap },

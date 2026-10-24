@@ -57,7 +57,7 @@ Unknown tables and keys are errors. Three names must agree, and `cairn build` an
 | `cairn add <name>[@<range>]` | adds the dependency to `cairn.toml` and puts `require "<owner>" / "<name>" @ "<range>"` (or a `[[require]]` with `scope` and `version`) in the lakefile, replacing a git require of it. It prints the `Package.swift` line instead of editing Swift. With no range, it uses `^` and the latest release |
 | `cairn build [--release]` | `lake cache get`, `lake build`, `cairn-link --lib <libs…> --out .cairn/lib/lib<name>.a`, `swift build` |
 | `cairn doc [--private] [--open]` | `lake exe doc --check` and `lake exe claims` on the package's libs, then `tools/doc/cairn-doc.ts` into `build/doc/<name>/`, with each dependency's modules linked to `/docs/<dep>/<version>/` |
-| `cairn publish [--no-docs] [--dry-run]` | publishes the commit at tag `v<version>`, which must be HEAD with a clean tree. See below |
+| `cairn publish [--dry-run]` | publishes the commit at tag `v<version>`, which must be HEAD with a clean tree. It sends no docs. See below |
 | `cairn login <url>` | checks a token (read from stdin) against the registry and saves it to `~/.config/cairn/credentials`, mode 0600 |
 | `cairn credential get` | a git credential helper that gives the token to git for the registry's host only, so SwiftPM can clone packages |
 
@@ -94,14 +94,23 @@ miss isn't an error; Lake builds locally.
 3. `git pack-objects --revs` from the tag's commit, excluding every published commit this clone
    has. The registry serves all of a package's packs over git's dumb HTTP protocol, so a clone
    gets the whole history.
-4. `cairn doc`, then tar and gzip `dist/`, `doc.json` and `claims.json`, unless `--no-docs`.
-5. `PUT /api/v1/packages/<owner>/<name>/versions/<version>`. The body is five sections, each a
-   little-endian u32 length and its bytes: metadata JSON, pack, pack index, `claims.lock`, docs.
-   The registry checks that the pack holds the commit, that the ledger keeps every earlier
-   version's ids, and that the docs paths are safe.
-6. `lake build -o outputs.jsonl`, then upload each artifact the map names
+4. `PUT /api/v1/packages/<owner>/<name>/versions/<version>`. The body is five sections, each a
+   little-endian u32 length and its bytes: metadata JSON, pack, pack index, `claims.lock`, and
+   docs, which is always empty. The registry checks that the pack holds the commit and that the
+   ledger keeps every earlier version's ids, and answers 400 to a non-empty docs section.
+5. `lake build -o outputs.jsonl`, then upload each artifact the map names
    (`PUT …/artifacts/<hash>.art`) and the map itself
    (`PUT …/build-outputs?rev=&platform=&toolchain=`). Lake's `lake cache put` only speaks S3.
+
+### Docs aren't uploaded
+
+A registry never accepts or serves docs a publisher uploads. Docs are HTML, and HTML served
+from an upload runs as the serving origin. So `cairn publish`
+doesn't run `cairn doc`, nextpm refuses a publish whose docs section isn't empty
+(githubnext/nextpm#23), and it has no docs route. The registry will build each version's docs
+from its published source with a builder it runs, as docs.rs does for crates. Until then the
+site's `/docs/<name>/<version>/` is a placeholder that says so, and `cairn doc` is for local
+docs only.
 
 ## Open questions
 

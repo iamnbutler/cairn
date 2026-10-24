@@ -1,8 +1,13 @@
-// The package pages: /packages/, /packages/<name>/[<version>/], and each version's `cairn doc`
-// output at /docs/<name>/<version>/. They render from a Cairn package registry, the nextpm
-// `cairn` kind (its ADR 0005), when the Worker has REGISTRY_URL and REGISTRY_TOKEN, and from
-// site/registry/fixture.json (tools/registry/fixture.ts) when it doesn't. Everything a registry
-// answers is escaped: a package's description is its publisher's text, not ours.
+// The package pages: /packages/ and /packages/<name>/[<version>/]. They render from a Cairn
+// package registry, the nextpm `cairn` kind (its ADR 0005), when the Worker has REGISTRY_URL and
+// REGISTRY_TOKEN, and from site/registry/fixture.json (tools/registry/fixture.ts) when it
+// doesn't. Everything a registry answers is escaped: a package's description is its publisher's
+// text, not ours.
+//
+// /docs/<name>/<version>/ is a placeholder. It never fetches, proxies or renders HTML from the
+// registry: HTML served from a publisher's upload would run as this origin, so a registry takes
+// no docs from publishers (nextpm#23) and will build them from the published source, as docs.rs
+// does. Only the JSON API is read, and only to know the package and version exist.
 import fixture from "./registry/fixture.json";
 
 const esc = (value) =>
@@ -45,14 +50,6 @@ function remote(base, token) {
 			const who = await owner();
 			return (await data(`/api/v1/packages/${encodeURIComponent(who)}/${name}/versions/${version}/claims`))?.claims ?? [];
 		},
-		async doc(name, version, path) {
-			const who = await owner();
-			const res = await get(`/api/v1/packages/${encodeURIComponent(who)}/${name}/versions/${version}/docs/dist/${path}`);
-			if (!res) return undefined;
-			const headers = new Headers({ "content-type": res.headers.get("content-type") ?? "application/octet-stream" });
-			headers.set("cache-control", "public, max-age=300");
-			return new Response(res.body, { headers });
-		},
 	};
 }
 
@@ -72,7 +69,6 @@ function local() {
 					license: latest.license,
 					updated: latest.date,
 					claims: latest.claims,
-					docs: latest.docs,
 				};
 			});
 			return all.sort((a, b) => b.updated.localeCompare(a.updated));
@@ -83,14 +79,6 @@ function local() {
 		},
 		async claims(name, version) {
 			return find(name)?.claims[version] ?? [];
-		},
-		// The fixture's Cairn docs are the API reference that `make site-api` commits.
-		async doc(name, version, path, assets, url) {
-			if (name !== "cairn" || version !== "0.1.0") return undefined;
-			// Static assets answer `/x.html` with a redirect to `/x`, so ask for the clean path.
-			const clean = path.replace(/(^|\/)index\.html$/, "$1").replace(/\.html$/, "");
-			const res = await assets.fetch(new URL(`/docs/api/${clean}`, url));
-			return res.ok ? res : undefined;
 		},
 	};
 }
@@ -136,7 +124,7 @@ function page({ title, lede, eyebrow, body, on = "packages" }) {
 </header>
 ${body}
 </main>
-<footer>Packages come from the Cairn package registry. Each version carries its source, its build, its docs and its claim ledger.</footer>
+<footer>Packages come from the Cairn package registry. Each version carries its source, its build and its claim ledger.</footer>
 <script type="module">
   import { mountAnchors } from "/scene.js";
   mountAnchors(document.querySelector("main"));
@@ -167,7 +155,7 @@ export async function listPage(src) {
 			(one) => `<li class="pkg px">
 <div class="head"><a class="name" href="/packages/${esc(one.name)}/">${esc(one.name)}</a><span class="ver">${esc(one.version)}</span></div>
 <p>${esc(one.description ?? "")}</p>
-<div class="meta">${counts(one.claims)}<span class="links">${one.docs ? `<a href="/docs/${esc(one.name)}/${esc(one.version)}/">Docs</a>` : ""}<a href="/packages/${esc(one.name)}/">Versions and claims</a></span></div>
+<div class="meta">${counts(one.claims)}<span class="links"><a href="/docs/${esc(one.name)}/${esc(one.version)}/">Docs</a><a href="/packages/${esc(one.name)}/">Versions and claims</a></span></div>
 </li>`,
 		)
 		.join("\n");
@@ -181,7 +169,7 @@ ${items.length ? `<ul class="pkgs">${cards}</ul>` : "<p>No package is published 
 	return page({
 		title: "Packages",
 		eyebrow: "Registry",
-		lede: "Cairn packages: libraries and apps, each version with its docs and the claims it makes.",
+		lede: "Cairn packages: libraries and apps, each version with the claims it makes.",
 		body,
 	});
 }
@@ -198,7 +186,7 @@ export async function packagePage(src, name, wanted) {
 	const deps = Object.entries(shown.dependencies ?? {});
 	const rows = pkg.versions
 		.map(
-			(v) => `<tr${v.version === shown.version ? ' class="on"' : ""}><td><a href="/packages/${esc(name)}/${esc(v.version)}/">${esc(v.version)}</a>${v.yanked ? ' <span class="chip retired">yanked</span>' : ""}</td><td>${esc(date(v.date))}</td><td><code title="${esc(v.revision)}">${esc(v.revision.slice(0, 10))}</code></td><td>${counts(v.claims)}</td><td>${v.docs ? `<a href="/docs/${esc(name)}/${esc(v.version)}/">docs</a>` : '<span class="muted">none</span>'}</td></tr>`,
+			(v) => `<tr${v.version === shown.version ? ' class="on"' : ""}><td><a href="/packages/${esc(name)}/${esc(v.version)}/">${esc(v.version)}</a>${v.yanked ? ' <span class="chip retired">yanked</span>' : ""}</td><td>${esc(date(v.date))}</td><td><code title="${esc(v.revision)}">${esc(v.revision.slice(0, 10))}</code></td><td>${counts(v.claims)}</td><td><a href="/docs/${esc(name)}/${esc(v.version)}/">docs</a></td></tr>`,
 		)
 		.join("\n");
 	const ledger = claims
@@ -215,7 +203,7 @@ export async function packagePage(src, name, wanted) {
 <div><dt>License</dt><dd>${esc(shown.license ?? "none")}</dd></div>
 <div><dt>Claims</dt><dd>${counts(shown.claims) || "none"}</dd></div>
 </dl>
-${shown.docs ? `<p class="go"><a href="/docs/${esc(name)}/${esc(shown.version)}/">API docs for ${esc(shown.version)}</a></p>` : ""}
+<p class="go"><a href="/docs/${esc(name)}/${esc(shown.version)}/">Docs for ${esc(shown.version)}</a></p>
 </div>
 <section class="prose wide">
 <h2 id="use">Use it</h2>
@@ -248,12 +236,17 @@ ${ledger}
 	});
 }
 
-function missing(name, version, why) {
+/** /docs/<name>/<version>/: a placeholder until the registry builds docs from source. */
+export function docsPage(name, version) {
 	return page({
 		title: `${name} ${version}`,
-		eyebrow: "Docs",
-		lede: why,
-		body: `<section class="prose"><p><a href="/packages/${esc(name)}/">See ${esc(name)}'s versions and claims.</a></p></section>`,
+		eyebrow: 'Docs<span class="todo">not yet</span>',
+		lede: `API docs for ${name} ${version}.`,
+		body: `<aside class="note"><div class="card px"><p class="label"><img src="/icon.svg" alt="">To do</p>
+<p>Docs for this version will be built by the registry from its source, like docs.rs. Not yet.</p>
+<p>Publishers don't upload docs. HTML served from an upload runs as the site that serves it, so the registry takes none and this site shows none.</p>
+</div></aside>
+<section class="prose"><p><a href="/packages/${esc(name)}/${esc(version)}/">See ${esc(name)} ${esc(version)}: its versions, how to depend on it, and its claims.</a></p></section>`,
 	});
 }
 
@@ -261,10 +254,10 @@ const html = (text, status = 200) =>
 	new Response(text, { status, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=60" } });
 
 /**
- * Answer a package page, or `undefined` for a path that isn't one. /docs/<name>/<version>/…
- * serves that version's `cairn doc` output; /docs/<name>/ and /docs/<name>/latest/ go to the
- * newest version. The Worker asks this only when no static file matched, so the docs pages
- * under site/public/docs/ always win.
+ * Answer a package page, or `undefined` for a path that isn't one. /docs/<name>/<version>/ is the
+ * docs placeholder, and any path under it goes there; /docs/<name>/ and /docs/<name>/latest/ go
+ * to the newest version's. The Worker asks this only when no static file matched, so the docs
+ * pages under site/public/docs/ always win.
  */
 export async function route(request, env) {
 	const url = new URL(request.url);
@@ -286,17 +279,13 @@ export async function route(request, env) {
 			const pkg = await src.pkg(name);
 			if (!pkg) return undefined;
 			const latest = latestOf(pkg.versions);
-			return Response.redirect(new URL(`/docs/${name}/${latest.version}/${rest.join("/")}`, url), 302);
+			return Response.redirect(new URL(`/docs/${name}/${latest.version}/`, url), 302);
 		}
 		if (!VERSION.test(version)) return undefined;
-		if (!rest.length) return Response.redirect(new URL(`/docs/${name}/${version}/`, url), 301);
-		const path = rest.join("/") || "index.html";
-		if (path.split("/").some((part) => part === ".." || part === ".")) return undefined;
 		const pkg = await src.pkg(name);
-		const found = pkg?.versions.find((v) => v.version === version);
-		if (!found) return undefined;
-		if (!found.docs) return html(missing(name, version, `${name} ${version} was published without docs.`), 404);
-		return (await src.doc(name, version, path, env.ASSETS, url)) ?? undefined;
+		if (!pkg?.versions.some((v) => v.version === version)) return undefined;
+		if (rest.length !== 1 || rest[0]) return Response.redirect(new URL(`/docs/${name}/${version}/`, url), 302);
+		return html(docsPage(name, version));
 	}
 	return undefined;
 }

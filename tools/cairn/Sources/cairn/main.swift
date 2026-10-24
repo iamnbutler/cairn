@@ -8,8 +8,7 @@ let usage = """
       cairn add <name>[@<range>]      depend on a package from the registry
       cairn build [--release]         lake cache get, lake build, cairn-link, swift build
       cairn doc [--private] [--open]  the package's docs, in build/doc/<name>/
-      cairn publish [--no-docs] [--dry-run]
-                                      publish the version at tag v<version>, its docs and its build
+      cairn publish [--dry-run]       publish the version at tag v<version> and its build
       cairn login <url>               save a registry token (read from stdin)
       cairn credential get            git credential helper for the registry
     """

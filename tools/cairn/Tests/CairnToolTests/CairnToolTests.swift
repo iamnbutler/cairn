@@ -110,6 +110,25 @@ import Testing
         #expect(Array(body) == [3, 0, 0, 0, 1, 2, 3, 0, 0, 0, 0, 1, 0, 0, 0, 9])
     }
 
+    /// Five sections, and the last, docs, empty: the registry builds docs from source and
+    /// refuses a publish that carries any (nextpm#23).
+    @Test func bodySendsNoDocs() throws {
+        let metadata = Publish.Metadata(
+            name: "hello", version: "1.0.0", revision: String(repeating: "a", count: 40), toolchain: "leanprover/lean4:v4.35.0",
+            description: nil, license: nil, lean: "lean", libs: ["Hello"], dependencies: [:], readme: nil)
+        let body = Array(try Publish.body(metadata: metadata, pack: Data([1]), index: Data([2, 2]), claims: Data([3, 3, 3])))
+        var sections: [[UInt8]] = []
+        var at = 0
+        while at < body.count {
+            let size = body[at..<at + 4].enumerated().reduce(0) { $0 | Int($1.element) << (8 * $1.offset) }
+            sections.append(Array(body[at + 4..<at + 4 + size]))
+            at += 4 + size
+        }
+        #expect(sections.count == 5)
+        #expect(sections[1...3] == [[1], [2, 2], [3, 3, 3]])
+        #expect(sections[4].isEmpty)
+    }
+
     @Test func artifactsFromOutputs() {
         let outputs = "\"2026-03-17\"\n[\"55b6cf8474f10fe7\",\"7526447641c97ec1.ltar\"]\n"
         #expect(Publish.artifacts(outputs) == ["55b6cf8474f10fe7", "7526447641c97ec1"])
