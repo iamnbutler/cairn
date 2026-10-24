@@ -90,6 +90,9 @@ theorem frame_trAsk (io : Io) (c : Cmd) : io.Frame (trAsk io c).1 := by
     cases o <;> (refine Io.frame_ask _ ?_ _; trivial)
   case markTyped => exact Io.Frame.of_eq rfl rfl rfl
   case play snd => refine Io.frame_ask _ ?_ _; trivial
+  case startRecording c =>
+    have h0 : io.Frame { io with held := c :: io.held } := Io.Frame.of_eq rfl rfl rfl
+    exact Io.frame_ask_of (Io.frame_ask_of h0 (p := .front c) trivial _) (p := .model) trivial _
   all_goals first
     | exact Io.Frame.refl _
     | (refine Io.frame_ask _ ?_ _; trivial)
