@@ -15,7 +15,7 @@ namespace Examples.Yap
 inductive Kind where
   | readConfig | readDictionary | listen | storePrefs | saveConfig | start | stop | transcribe
   | chunk | save | markTyped | type | play | wakeAt | listDays | deleteDays | loadRecent | copy
-  | overlay | opens
+  | overlay | begin | opens
 deriving DecidableEq, Repr
 
 def Cmd.kind : Cmd → Kind
@@ -37,6 +37,7 @@ def Cmd.kind : Cmd → Kind
   | .deleteDays _ => .deleteDays
   | .loadRecent _ => .loadRecent
   | .copy _ => .copy
+  | .overlay _ .begin => .begin
   | .overlay .. => .overlay
   | .open _ => .opens
 
@@ -99,27 +100,78 @@ theorem release_chorded_kinds (s : State) (h : s.chorded = true) :
     · exact Kinds.nil
     · exact drop_kinds _ _
 
-theorem press_kinds (s : State) (f : Option Target) : Kinds [.start, .overlay, .wakeAt] (press s f).2 := by
+theorem press_kinds (s : State) (f : Option Target) : Kinds [.start] (press s f).2 := by
   unfold press; kinds
+
+/-- The kinds of command a key event can lead to. -/
+def keyKinds : Key → List Kind
+  | .down .. => [.start]
+  | .up _ => [.play, .stop, .overlay, .transcribe, .wakeAt]
+  | .other => []
+
+/-- What any key event can lead to, and the wake for the ones left waiting. -/
+def drainKinds : List Kind := [.start, .play, .stop, .overlay, .transcribe, .wakeAt]
+
+theorem keyKinds_drain (k : Key) : ∀ x ∈ keyKinds k, x ∈ drainKinds := by
+  cases k <;> simp only [keyKinds] <;> decide
+
+theorem stepKey_kinds (s : State) (k : Key) : Kinds (keyKinds k) (stepKey s k).2 := by
+  cases k <;> simp only [stepKey, keyKinds]
+  case down => split; exact Kinds.nil; exact press_kinds _ _
+  case up => split; exact release_kinds _; exact Kinds.nil
+  case other => split <;> exact Kinds.nil
+
+theorem drain_kinds (s : State) (ks : List Key) : Kinds drainKinds (drain s ks).2 := by
+  induction ks generalizing s with
+  | nil => exact Kinds.nil
+  | cons k ks ih =>
+    simp only [drain]
+    have hk := (stepKey_kinds s k).mono (keyKinds_drain k)
+    split
+    · exact hk.append (ih _)
+    · refine hk.append ?_
+      split
+      · exact Kinds.nil
+      · simp [Kinds, Cmd.kind, drainKinds]
 
 theorem poll_kinds (s : State) (r : Recording) : Kinds [.overlay, .wakeAt, .chunk] (poll s r).2 := by
   unfold poll; kinds
 
-theorem tick_kinds (s : State) :
-    Kinds [.play, .stop, .overlay, .transcribe, .wakeAt, .chunk] (tick s).2 := by
-  unfold tick
+theorem tickRec_kinds (s : State) :
+    Kinds [.play, .stop, .overlay, .transcribe, .wakeAt, .chunk] (tickRec s).2 := by
+  unfold tickRec
   try dsimp only
   repeat' (split <;> try dsimp only)
   all_goals first
     | exact Kinds.nil
     | with_reducible exact (send_kinds _ _).mono (by decide)
     | with_reducible exact (poll_kinds _ _).mono (by decide)
+    | with_reducible exact (drop_kinds _ _).mono (by decide)
+
+theorem tick_kinds (s : State) :
+    Kinds [.start, .play, .stop, .overlay, .transcribe, .wakeAt, .chunk] (tick s).2 := by
+  unfold tick
+  split
+  · exact (tickRec_kinds _).mono (by decide)
+  · exact ((drain_kinds _ _).mono (by decide)).append ((tickRec_kinds _).mono (by decide))
 
 theorem audio_kinds (s : State) (c : Nat) (a : Audio) : Kinds [] (audio s c a).2 := by
   unfold audio; kinds
 
-theorem micFailed_kinds (s : State) (c : Nat) (e : String) : Kinds [.overlay] (micFailed s c e).2 := by
+theorem micFailed_kinds (s : State) (c : Nat) (e : String) :
+    Kinds [.overlay, .wakeAt] (micFailed s c e).2 := by
   unfold micFailed; kinds
+
+theorem micStarted_kinds (s : State) (c : Nat) : Kinds (.begin :: drainKinds) (micStarted s c).2 := by
+  unfold micStarted
+  split
+  · split
+    · refine Kinds.append ?_ ((drain_kinds _ _).mono (fun _ h => List.mem_cons_of_mem _ h))
+      split
+      · simp [Kinds, Cmd.kind, drainKinds]
+      · exact Kinds.nil
+    · exact Kinds.nil
+  · exact Kinds.nil
 
 theorem keep_kinds (s : State) (t : Transcript) : Kinds [.save, .listDays] (keep s t).2 := by
   unfold keep; kinds
@@ -166,8 +218,9 @@ theorem reply_kinds (s : State) (q : Nat) (x : Reply) :
     | with_reducible exact (typedOk_kinds _ _ _).mono (by decide)
     | with_reducible exact (typedFailed_kinds _ _ _ _).mono (by decide)
 
-theorem cancel_kinds (s : State) : Kinds [.stop, .overlay] (cancel s).2 := by
-  unfold cancel; kinds
+theorem cancel_kinds (s : State) : Kinds [.stop, .overlay, .wakeAt] (cancel s).2 := by
+  unfold cancel
+  refine Kinds.append (Kinds.append ?_ ?_) ?_ <;> kinds
 
 theorem setKey_kinds (s : State) (k : Hotkey) :
     Kinds [.play, .stop, .overlay, .transcribe, .wakeAt, .listen] (setKey s k).2 := by
@@ -175,10 +228,13 @@ theorem setKey_kinds (s : State) (k : Hotkey) :
   split
   · exact Kinds.nil
   · split
-    · refine Kinds.append ((release_kinds _).mono (by decide)) ?_
-      simp [Kinds, Cmd.kind]
     · refine Kinds.append Kinds.nil ?_
       simp [Kinds, Cmd.kind]
+    · split
+      · refine Kinds.append ((release_kinds _).mono (by decide)) ?_
+        simp [Kinds, Cmd.kind]
+      · refine Kinds.append Kinds.nil ?_
+        simp [Kinds, Cmd.kind]
 
 theorem setKey_chorded_kinds (s : State) (k : Hotkey) (h : s.chorded = true) :
     Kinds [.stop, .overlay, .listen] (setKey s k).2 := by
@@ -186,10 +242,13 @@ theorem setKey_chorded_kinds (s : State) (k : Hotkey) (h : s.chorded = true) :
   split
   · exact Kinds.nil
   · split
-    · refine Kinds.append (ks := [.stop, .overlay, .listen]) ((release_chorded_kinds { s with keyHeld := false } h).mono (by decide)) ?_
-      simp [Kinds, Cmd.kind]
     · refine Kinds.append Kinds.nil ?_
       simp [Kinds, Cmd.kind]
+    · split
+      · refine Kinds.append (ks := [.stop, .overlay, .listen]) ((release_chorded_kinds { s with keyHeld := false } h).mono (by decide)) ?_
+        simp [Kinds, Cmd.kind]
+      · refine Kinds.append Kinds.nil ?_
+        simp [Kinds, Cmd.kind]
 
 theorem applySettings_kinds (s : State) (cfg : Settings) {ks : List Kind}
     (h : ∀ k, Kinds ks (setKey { s with settings := cfg } k).2) : Kinds ks (applySettings s cfg).2 := by
@@ -224,7 +283,7 @@ theorem configured_chorded_kinds (s : State) (r : ConfigRead) (h : s.chorded = t
     · exact Kinds.nil
 
 theorem menu_kinds (s : State) (m : MenuAction) :
-    Kinds [.copy, .saveConfig, .storePrefs, .stop, .overlay, .opens] (menu s m).2 := by
+    Kinds [.copy, .saveConfig, .storePrefs, .stop, .overlay, .opens, .wakeAt] (menu s m).2 := by
   cases m <;> simp only [menu]
   case toggleEnabled =>
     split
@@ -238,31 +297,38 @@ theorem menu_kinds (s : State) (m : MenuAction) :
 /-- The kinds of command each input can lead to. -/
 def stepKinds : Input → List Kind
   | .launch _ => [.listen, .readConfig, .readDictionary]
-  | .keyDown .. => [.start, .overlay, .wakeAt]
+  | .keyDown .. => [.start]
   | .keyUp _ => [.play, .stop, .overlay, .transcribe, .wakeAt]
   | .otherKey => []
-  | .tick _ => [.play, .stop, .overlay, .transcribe, .wakeAt, .chunk]
+  | .tick _ => [.start, .play, .stop, .overlay, .transcribe, .wakeAt, .chunk]
   | .audio .. => []
-  | .micFailed .. => [.overlay]
+  | .micFailed .. => [.overlay, .wakeAt]
+  | .micStarted .. => .begin :: drainKinds
   | .reply .. => [.overlay, .save, .listDays, .type, .markTyped, .play, .wakeAt]
   | .config _ => [.play, .stop, .overlay, .transcribe, .wakeAt, .listen, .listDays, .loadRecent]
   | .dictionary _ => []
   | .transcriptDays .. => [.deleteDays]
   | .recentLoaded _ => []
   | .trust _ => []
-  | .menu _ => [.copy, .saveConfig, .storePrefs, .stop, .overlay, .opens]
+  | .menu _ => [.copy, .saveConfig, .storePrefs, .stop, .overlay, .opens, .wakeAt]
   | .front .. => []
   | .model _ => []
   | .keyLost => [.stop, .overlay]
 
+theorem keyIn_kinds (s : State) (k : Key) : Kinds (keyKinds k) (keyIn s k).2 := by
+  unfold keyIn; split
+  · exact Kinds.nil
+  · exact stepKey_kinds _ _
+
 theorem step_kinds (s : State) (i : Input) : Kinds (stepKinds i) (step s i).2 := by
   cases i <;> simp only [step, stepKinds]
-  case keyDown => split; exact Kinds.nil; exact press_kinds _ _
-  case keyUp => split; exact release_kinds _; exact Kinds.nil
-  case otherKey => split <;> exact Kinds.nil
+  case keyDown => exact keyIn_kinds _ _
+  case keyUp => exact keyIn_kinds _ _
+  case otherKey => exact keyIn_kinds _ _
   case tick => exact tick_kinds _
   case audio => exact audio_kinds _ _ _
   case micFailed => exact micFailed_kinds _ _ _
+  case micStarted => exact micStarted_kinds _ _
   case reply => exact reply_kinds _ _ _
   case config => exact configured_kinds _ _
   case menu => exact menu_kinds _ _
@@ -276,6 +342,41 @@ theorem kind_of_step {s : State} {i : Input} {c : Cmd} (hc : c ∈ (step s i).2)
 
 /-! ## A shortcut never sends -/
 
+/-- Key events that waited, handled after a shortcut began on a recording not hands free: the
+first release drops the recording, so none of them sends. -/
+theorem drain_chorded (s : State) (ks : List Key) (hk : s.keyHeld = true) (hc : s.chorded = true)
+    (hr : ∃ r, s.recording = some r ∧ r.latched = false) :
+    ∀ c ∈ (drain s ks).2, c.kind ≠ .transcribe := by
+  induction ks generalizing s with
+  | nil => intro c h; simp [drain] at h
+  | cons k ks ih =>
+    intro c h
+    cases k with
+    | down t f =>
+      simp only [drain, stepKey, hk, ↓reduceIte, List.nil_append] at h
+      refine ih _ ?_ ?_ ?_ c h
+      · rfl
+      · exact hc
+      · exact hr
+    | other =>
+      simp only [drain, stepKey, hk, ↓reduceIte, List.nil_append] at h
+      refine ih _ ?_ ?_ ?_ c h
+      · rfl
+      · rfl
+      · exact hr
+    | up t =>
+      obtain ⟨r, hr, hl⟩ := hr
+      have hrel : stepKey s (.up t) = drop { s with now := max s.now t, keyHeld := false } r := by
+        simp [stepKey, hk, release, hr, hc, hl]
+      simp only [drain, hrel] at h
+      split at h
+      · rename_i he; simp [drop, hr] at he
+      · rcases List.mem_append.1 h with h | h
+        · exact (drop_kinds _ _).not_mem (by simp) h
+        · split at h
+          · simp at h
+          · simp only [List.mem_singleton] at h; subst h; simp [Cmd.kind]
+
 /-- **A key used in a shortcut never sends.** While the dictation key is down and another key
 has gone down with it, nothing the host reports (its release, a key change in `config.json`,
 a reply, the menu) asks for a clip to be transcribed. Only the clock can, through the
@@ -285,13 +386,30 @@ theorem shortcut_never_sends (s : State) (i : Input) (hk : s.keyHeld = true)
     ∀ c ∈ (step s i).2, c.kind ≠ .transcribe := by
   intro c h
   cases i with
-  | keyDown t f => simp [step, hk] at h
+  | keyDown t f => simp only [step, keyIn] at h; split at h <;> simp [stepKey, hk] at h
   | keyUp t =>
-    simp only [step, hk, ite_true] at h
-    exact (release_chorded_kinds _ (by exact hc)).not_mem (by simp) h
+    simp only [step, keyIn] at h
+    split at h
+    · simp at h
+    · simp only [stepKey, hk, ite_true] at h
+      exact (release_chorded_kinds _ (by exact hc)).not_mem (by simp) h
+  | micStarted n t =>
+    simp only [step, micStarted] at h
+    split at h
+    · rename_i r hr
+      split at h
+      · rename_i hs
+        rcases List.mem_append.1 h with h | h
+        · split at h <;> simp at h <;> (rcases h with rfl | rfl) <;> simp [Cmd.kind]
+        · refine drain_chorded _ _ ?_ ?_ ⟨_, rfl, ?_⟩ c h
+          · exact hk
+          · exact hc
+          · rfl
+      · simp at h
+    · simp at h
   | tick t => exact absurd rfl (ht t)
   | config r => exact (configured_chorded_kinds _ _ hc).not_mem (by simp) h
-  | _ => exact (step_kinds _ _).not_mem (by simp [stepKinds]) h
+  | _ => exact (step_kinds _ _).not_mem (by simp [stepKinds, drainKinds]) h
 
 /-! ## Hold or tap -/
 
@@ -305,12 +423,14 @@ theorem send_now (s : State) (r : Recording) : (send s r).1.now = s.now := by
 after a shortcut): held under 300 ms, the recording latches hands free and will send itself
 10 minutes later; held 300 ms or more, it is sent (the recording ends). -/
 theorem hold_tap_split (s : State) (r : Recording) (t : Ms) (hr : s.recording = some r)
+    (hs : r.started = true) (hq : s.keys = [])
     (hl : r.latched = false) (hk : s.keyHeld = true) (hc : s.chorded = false) :
     (step s (.keyUp t)).1.recording =
       if max s.now t - s.pressedAt < tapLimit then
         some { r with latched := true, deadline := max s.now t + latchLimit }
       else none := by
-  simp only [step, hk, release, hr, hc, hl, Bool.not_false, Bool.true_and,
+  have hw : waiting s = false := by simp [waiting, starting, hr, hs, hq]
+  simp only [step, keyIn, hw, stepKey, hk, release, hr, hc, hl, Bool.not_false, Bool.true_and,
     Bool.false_eq_true, ↓reduceIte, decide_eq_true_eq]
   split
   · rfl
@@ -333,9 +453,10 @@ theorem poll_recording_ne (s : State) (r : Recording) : (poll s r).1.recording �
 /-- **A hands-free recording sends itself at its deadline, and the clock alone doesn't end it
 before.** -/
 theorem latch_deadline (s : State) (r : Recording) (t : Ms) (hr : s.recording = some r)
-    (hl : r.latched = true) :
+    (hs : r.started = true) (hq : s.keys = []) (hl : r.latched = true) :
     (step s (.tick t)).1.recording = none ↔ r.deadline ≤ max s.now t := by
-  simp only [step, tick, hr, hl, true_and]
+  simp only [step, tick, tickRec, hr, hl, hs, hq, List.isEmpty_nil, Bool.true_or, ↓reduceIte,
+    Bool.not_true, Bool.false_eq_true, true_and]
   split
   · simp only [send_recording, true_iff]; assumption
   · rename_i h
@@ -360,7 +481,7 @@ theorem retention_never_today (s : State) (i : Input) (ds : List Nat)
     · simp only [List.mem_singleton, Cmd.deleteDays.injEq] at h
       subst h
       exact ⟨today_not_deleted _ _ _, fun d hd => ⟨(mem_daysToDelete.1 hd).1, daysToDelete_lt hd⟩⟩
-  | _ => exact absurd rfl ((step_kinds _ _).not_mem (by simp [stepKinds, Cmd.kind]) h)
+  | _ => exact absurd rfl ((step_kinds _ _).not_mem (by simp [stepKinds, drainKinds, Cmd.kind]) h)
 
 /-! ## Typing: only a reply, once kept, never late -/
 
@@ -454,7 +575,7 @@ theorem step_type (s : State) (i : Input) {a n pid : Nat} {text : String} {ret :
   | reply q x =>
     obtain ⟨raw, cr, rfl, hl, he⟩ := reply_type s q x h
     exact ⟨q, raw, cr, rfl, hl, he⟩
-  | _ => exact absurd rfl ((step_kinds _ _).not_mem (by simp [stepKinds, Cmd.kind]) h)
+  | _ => exact absurd rfl ((step_kinds _ _).not_mem (by simp [stepKinds, drainKinds, Cmd.kind]) h)
 
 /-- **A transcript is saved before the command that types it.** When `step` types clip `n`'s
 transcript, the transcript is already at the front of the recent list, not flagged as typed;

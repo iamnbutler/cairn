@@ -102,6 +102,10 @@ assume ^966 hostRecord "record streams the levels of exactly the samples it keep
   does "While a record subscription runs, its audio events count every sample the clip keeps, in order, and their windows are the 20 ms levels (sum of squares and peak of each 320 samples) of those samples from the start of the clip, however the microphone split them; after its stop has been handled none is sent and the clip is finished; a microphone that can't start (no permission, no device) is one failed event and an empty clip, and the microphone is never started without the permission."
   check "subs.record"
 
+assume ^1005 hostRecordStarted "record reports started once its microphone is running, before any audio, or fails without it" where
+  does "A record subscription's first event is started, sent once, only after the microphone's start has returned (the engine is running), and before every audio event of it, with the host's monotonic milliseconds (the clock of key events) read after the return; a microphone that can't start sends failed and never started. So an app that waits for started shows nothing for a microphone that fails, as Yap shows its overlay only once AudioCapture.start has returned."
+  check "subs.record-start"
+
 assume ^967 hostClipWav "A clip's WAV for a range of windows holds exactly those samples" where
   does "An upload's wav part for clip c and windows s to e is a 16 kHz mono 16-bit RIFF/WAVE file of exactly samples 320 s to 320 e of the clip (to the end of the clip when e is none, waiting for a clip whose recording is being stopped); a range past the end or backwards is invalid, an unknown or forgotten clip notFound, and forgetClip answers done once and notFound after."
   check "effects.clip-wav"

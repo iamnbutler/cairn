@@ -439,6 +439,15 @@ installs no monitor, types into no app and reads no real secret.
   return no tap block is still running (if one were, its samples would be dropped by the
   stopped flag, but could still be appended to the clip after it finished). Not checked live:
   this session must not record.
+- **Fuzzed** (^1005 `subs.record-start`): with a fake microphone whose `start` blocks for a
+  while (sometimes delivering samples meanwhile) or fails, the subscription's first event is one
+  `started`, sent only after `start` returned and before every `audio` event, with a monotonic
+  time read no earlier than the return; a failing microphone sends `failed` and never `started`.
+  **Also assumed:** that `AVAudioEngine.start()` returning means the input is running (Yap's
+  `begin` relies on the same: it shows "Listening…" and the overlay once `capture.start`
+  returns), and that the `started` time and key events' times come from the same monotonic
+  clock. Lean waits for `started` before showing anything (^349) and replays the key events
+  that arrived meanwhile from that time (^351).
 - **Fuzzed** (^967 `effects.clip-wav`): every range is the header and exactly those samples;
   bad ranges, unknown and forgotten clips fail; a clip finishing while asked for is waited for;
   at most 8 clips are kept. **Also assumed:** a clip still recording after the one-second wait

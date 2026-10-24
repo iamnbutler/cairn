@@ -72,17 +72,17 @@ theorem mem_deletes {io : Io} {ds : List Nat} {e : Effect} (h : e ∈ (deletes i
 /-- The commands `tr` sends as the app's own requests. -/
 theorem tr_ask (io : Io) (c : Cmd)
     (h : c.kind ∉ [.transcribe, .chunk, .type, .save, .saveConfig, .deleteDays, .copy, .wakeAt,
-      .overlay]) :
+      .overlay, .begin]) :
     (tr io c).2 = (trAsk io c).2.map Ask.effect := by
-  cases c <;> first | rfl | simp [Cmd.kind] at h
+  cases c <;> first | rfl | (rename_i o; cases o <;> simp [Cmd.kind] at h) | simp [Cmd.kind] at h
 
 /-- **A `typeText` request is a `type` command**, sent as `2q`. -/
 theorem tr_typeText {io : Io} {c : Cmd} {id pid : Nat} {text : String} {ret : Bool}
     (h : Effect.request id (.typeText pid text ret) ∈ (tr io c).2) :
     ∃ q n, c = .type q n pid text ret ∧ id = 2 * q := by
   by_cases hk : c.kind ∈ [.transcribe, .chunk, .type, .save, .saveConfig, .deleteDays, .copy,
-      .wakeAt, .overlay]
-  · cases c <;> simp [Cmd.kind] at hk <;> simp only [tr] at h
+      .wakeAt, .overlay, .begin]
+  · cases c <;> (try simp [Cmd.kind] at hk) <;> simp only [tr] at h
     case type q n p t r =>
       simp only [List.mem_singleton, Effect.request.injEq, Request.typeText.injEq] at h
       obtain ⟨rfl, rfl, rfl, rfl⟩ := h
@@ -100,8 +100,8 @@ theorem tr_deleteFile {io : Io} {c : Cmd} {id : Nat} {path : String}
     (h : Effect.request id (.deleteFile path) ∈ (tr io c).2) :
     ∃ ds d, c = .deleteDays ds ∧ d ∈ ds ∧ path = dayPath d := by
   by_cases hk : c.kind ∈ [.transcribe, .chunk, .type, .save, .saveConfig, .deleteDays, .copy,
-      .wakeAt, .overlay]
-  · cases c <;> simp [Cmd.kind] at hk <;> simp only [tr] at h
+      .wakeAt, .overlay, .begin]
+  · cases c <;> (try simp [Cmd.kind] at hk) <;> simp only [tr] at h
     case deleteDays ds =>
       obtain ⟨_, d, hd, he⟩ := mem_deletes h
       simp only [Effect.request.injEq, Request.deleteFile.injEq] at he
@@ -121,8 +121,8 @@ theorem tr_upload {io : Io} {c : Cmd} {id : Nat} {r : Request} (h : Effect.reque
     (∃ q n pid text ret, c = .type q n pid text ret ∧ r = .typeText pid text ret) ∨
     (∃ ds path, c = .deleteDays ds ∧ r = .deleteFile path) := by
   by_cases hk : c.kind ∈ [.transcribe, .chunk, .type, .save, .saveConfig, .deleteDays, .copy,
-      .wakeAt, .overlay]
-  · cases c <;> simp [Cmd.kind] at hk <;> simp only [tr] at h
+      .wakeAt, .overlay, .begin]
+  · cases c <;> (try simp [Cmd.kind] at hk) <;> simp only [tr] at h
     case transcribe q n mo p =>
       simp only [List.mem_singleton, Effect.request.injEq] at h
       exact Or.inl ⟨q, n, mo, p, rfl, h.1, h.2⟩
@@ -414,7 +414,7 @@ theorem menuStep_no_upload (s : AppState) (a : MenuAction) {id : Nat} {r : Reque
     rcases tr_upload he hm with ⟨_, _, _, _, rfl, -⟩ | ⟨_, _, _, _, _, _, rfl, -⟩ |
       ⟨_, _, _, _, _, rfl, -⟩ | ⟨_, _, rfl, -⟩ <;> simp [Cmd.kind] at hk
 
-/-! ## ^312: hold or tap -/
+/-! ## ^351: hold or tap -/
 
 theorem receive_keyUp_core (s : AppState) (k : Nat) (mo : Option Nat) (t : Nat) :
     (receive s (.sub (.globalKey k mo) (.keyUp t))).1.core = (step s.core (.keyUp t)).1 := rfl
@@ -450,29 +450,8 @@ theorem app_new_recording (s : AppState) (m : Msg) {r' : Recording}
 
 theorem ends_after (s : State) (h : RecInv s) (t : Ms) (ht : s.now ≤ t) (w : Int) (u : Ms)
     (hu : t + latchLimit ≤ u) :
-    (step { (step s (.keyUp t)).1 with wall := w } (.tick u)).1.recording = none := by
-  have h1 := step_recInv s (.keyUp t) h
-  have hk : (step s (.keyUp t)).1.keyHeld = false := by
-    simp only [step]; split
-    · rw [release_keyHeld]
-    · simpa using ‹¬s.keyHeld = true›
-  have hn : (step s (.keyUp t)).1.now = t := by
-    simp only [step]; split
-    · rw [release_now]; exact Nat.max_eq_right ht
-    · exact Nat.max_eq_right ht
-  generalize (step s (.keyUp t)).1 = s1 at h1 hk hn
-  cases hr : s1.recording with
-  | none => simp [step, tick, hr]
-  | some r =>
-    obtain ⟨hl, hd⟩ := h1 r hr
-    have hlt : r.latched = true := by
-      cases hr' : r.latched
-      · simp [hl hr'] at hk
-      · rfl
-    have hdl : r.deadline ≤ max s1.now u := by
-      have := hd hlt; rw [hn] at this; exact Nat.le_trans (Nat.le_trans this hu) (Nat.le_max_right _ _)
-    simp only [step, tick, hr, hlt, hdl, and_self, ↓reduceIte]
-    exact send_recording _ _
+    (step { (step s (.keyUp t)).1 with wall := w } (.tick u)).1.recording = none :=
+  keyUp_tick_none s h t ht w u hu
 
 /-- **Every recording ends**, through the app: once the key's release is heard, the first clock
 ten minutes on finds no recording. -/

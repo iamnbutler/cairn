@@ -3,25 +3,42 @@ import CairnHost
 import Foundation
 
 /// A microphone that plays back synthetic samples from its own thread, in buffers of random
-/// sizes. Never the real one: `make check` records nothing.
+/// sizes. Never the real one: `make check` records nothing. Starting it takes `startUs`, as
+/// AVAudioEngine's `start` blocks until the engine runs; with `early`, its thread delivers
+/// while `start` is still blocked (a tap can fire before `start` returns).
 final class FakeMic: @unchecked Sendable {
     let buffers: [[Int16]]
     let pauseUs: UInt32
     let failure: ReplyError?
+    let startUs: UInt32
+    let early: Bool
     private let lock = NSLock()
     private var stopped = false
+    private var running_ = false
     private(set) var delivered: [Int16] = []
     private(set) var starts = 0
     private let finished = DispatchSemaphore(value: 0)
+    private var returned: UInt64 = 0
 
-    init(buffers: [[Int16]], pauseUs: UInt32, failure: ReplyError? = nil) {
+    init(buffers: [[Int16]], pauseUs: UInt32, failure: ReplyError? = nil, startUs: UInt32 = 0, early: Bool = false) {
         self.buffers = buffers; self.pauseUs = pauseUs; self.failure = failure
+        self.startUs = startUs; self.early = early
     }
+
+    /// `start` has returned and the microphone is not stopped.
+    var running: Bool { lock.lock(); defer { lock.unlock() }; return running_ }
+    /// When `start` returned, in the host's monotonic milliseconds.
+    var returnedMs: UInt64 { lock.lock(); defer { lock.unlock() }; return returned }
 
     var microphone: Microphone {
         Microphone { [self] onSamples throws(ReplyError) in
             lock.lock(); starts += 1; lock.unlock()
+            if !early, startUs > 0 { usleep(startUs) }
             if let failure { throw failure }
+            defer {
+                if early, startUs > 0 { usleep(startUs) }
+                lock.lock(); running_ = !stopped; returned = HostClock.monoMs(); lock.unlock()
+            }
             Thread.detachNewThread { [self] in
                 for b in buffers {
                     lock.lock()
@@ -36,7 +53,7 @@ final class FakeMic: @unchecked Sendable {
                 finished.signal()
             }
             return { [self] in
-                lock.lock(); stopped = true; lock.unlock()
+                lock.lock(); stopped = true; running_ = false; lock.unlock()
             }
         }
     }
@@ -54,6 +71,11 @@ final class FakeMic: @unchecked Sendable {
 ///   20 ms levels of that prefix; nothing is sent after the stop or reset returns; a microphone
 ///   that fails is one `failed` event with its fault and an empty finished clip. The level
 ///   meter gives the same windows however the samples are split.
+/// - `subs.record-start`: with a fake microphone that takes a while to start (delivering while
+///   it starts, or not), the subscription's first event is one `started`, sent only once the
+///   microphone's `start` has returned, and before every `audio`, with a monotonic time no
+///   earlier than the return; there is no other `started`;
+///   a microphone that fails to start sends `failed` and never `started`.
 /// - `effects.clip-wav`: `wav` of windows s..<e is a RIFF/WAVE header (checked field by field)
 ///   and exactly those samples; to the end includes a partial window; a clip still recording is
 ///   waited for; past the end or backwards is `invalid`, unknown `notFound`; `forgetClip`
@@ -66,6 +88,10 @@ final class AudioSuite: Suite {
             title: "`record` streams the levels of exactly the samples it keeps, and nothing after its stop",
             trusted: ["host/Sources/CairnHost/World.swift (record)", "AudioEffects.swift (LevelMeter, Clips)"],
             oracle: "a fake microphone's delivered samples and levels computed from them directly"),
+        "subs.record-start": CheckInfo(
+            title: "`record` reports `started` once its microphone is running, before any audio, or fails without it",
+            trusted: ["host/Sources/CairnHost/World.swift (record)"],
+            oracle: "a fake microphone that blocks in `start`, sometimes delivering meanwhile, and says when `start` returned"),
         "effects.clip-wav": CheckInfo(
             title: "A clip's WAV for a range of windows holds exactly those samples",
             trusted: ["host/Sources/CairnHost/AudioEffects.swift (Clips.wav, WAV)"],
@@ -159,12 +185,21 @@ final class AudioSuite: Suite {
         let c = "subs.record"
         let fail = g.chance(1, 8) ? ReplyError(g.elem([.denied, .notFound, .other]), "fake \(g.below(100))") : nil
         let samples = Self.signal(&g, g.range(0, 16000 * 2))
-        let mic = FakeMic(buffers: Self.split(&g, samples), pauseUs: UInt32(g.elem([0, 100, 1000, 3000])), failure: fail)
+        let startUs = UInt32(g.elem([0, 0, 2000, 20_000]))
+        let mic = FakeMic(buffers: Self.split(&g, samples), pauseUs: UInt32(g.elem([0, 100, 1000, 3000])), failure: fail,
+                          startUs: startUs, early: g.chance(1, 2))
         var d = Devices.inert
         d.microphone = mic.microphone
         let world = World(handlers: Handlers(table: [:]), devices: d)
         let sent = Locked<[Event]>([])
-        world.send = { es in sent.update { $0 += es } }
+        // Whether the microphone was running when each `started` was sent (^1005).
+        let startedRunning = Locked<[Bool]>([])
+        world.send = { es in
+            if es.contains(where: { if case .subEvent(_, .started) = $0 { true } else { false } }) {
+                startedRunning.update { $0.append(mic.running) }
+            }
+            sent.update { $0 += es }
+        }
         let id = UInt32(g.below(5)), clip = UInt32(truncatingIfNeeded: g.next())
         world.run([], [.start(id: id, .record(clip: clip))])
         usleep(UInt32(g.elem([0, 1000, 10_000, 40_000, 100_000])))
@@ -175,8 +210,12 @@ final class AudioSuite: Suite {
         usleep(15_000)
         r.expect(c, sent.value.count == atStop, "\(sent.value.count - atStop) events after the stop returned")
         r.expect(c, mic.startCount == 1, "the microphone started \(mic.startCount) times")
-        let events = sent.value
+        var events = sent.value
+        let s = "subs.record-start"
+        let starts = events.filter { if case .subEvent(_, .started) = $0 { true } else { false } }
         if let fail {
+            r.expect(s, starts.isEmpty, "a microphone that failed to start sent \(starts.count) started")
+            r.count(s, "failed")
             r.expect(c, events == [.subEvent(id: id, .failed(fail.fault, fail.message))], "a failing microphone sent \(events)")
             if !reset {
                 if case let .success(w) = world.clips.wav(clip, start: 0, stop: nil, wait: 0) {
@@ -186,6 +225,18 @@ final class AudioSuite: Suite {
             r.count(c, "failed")
             return
         }
+        let afterMs = HostClock.monoMs()
+        if case let .subEvent(eid, .started(t)) = events.first, eid == id {
+            r.expect(s, mic.returnedMs <= t && t <= afterMs,
+                     "started at \(t) ms, but start returned at \(mic.returnedMs) ms (now \(afterMs))")
+        } else {
+            r.fail(s, "the first event is \(String(describing: events.first)), not started")
+        }
+        r.expect(s, starts.count == 1, "\(starts.count) started events")
+        r.expect(s, startedRunning.value == [true], "started sent while the microphone was not running: \(startedRunning.value)")
+        r.count(s, "started")
+        if startUs > 0 { r.count(s, mic.early ? "slowEarly" : "slow") }
+        if case .subEvent(_, .started) = events.first { events.removeFirst() }
         var at = 0
         var windows: [Level] = []
         for e in events {

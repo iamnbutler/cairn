@@ -183,9 +183,10 @@ enum SwiftEvents {
 
     static func subEvent(_ g: inout SplitMix) -> SubEvent {
         let t = g.below(4) == 0 ? UInt64.max : UInt64(g.below(1 << 40))
-        switch g.below(7) {
+        switch g.below(8) {
         case 0: return .tick
         case 1: return .changed
+        case 7: return .started(t)
         case 2:
             return .audio(frames: nat(&g), peak: nat(&g), windows: (0..<g.below(5)).map { _ in
                 Level(sumSq: g.below(4) == 0 ? UInt64.max : UInt64(g.below(1 << 38)), peak: nat(&g)) })
@@ -211,5 +212,6 @@ enum SwiftEvents {
         .subEvent(id: 1, .audio(frames: .max, peak: 32768, windows: [Level(sumSq: .max, peak: 32767), Level(sumSq: 0, peak: 0)])),
         .subEvent(id: 2, .audio(frames: 0, peak: 0, windows: [])), .subEvent(id: 3, .keyDown(.max)),
         .subEvent(id: 4, .keyUp(0)), .subEvent(id: 5, .otherKey(1)), .subEvent(id: 6, .failed(.denied, "Accessibility")),
+        .subEvent(id: 7, .started(.max)),
     ]
 }

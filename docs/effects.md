@@ -219,7 +219,7 @@ Yap's machine (`lean/Examples/Yap/Model.lean`, PR #40) talks to the host through
 | `saveConfig req c` → `reply req` | request by id | `request req (.writeFile configPath json)` | implemented |
 | `save req t` (append to today's file) → `reply req` | request by id | `request req (.appendFile dayPath line)` | implemented |
 | `type req clip pid text ret` → `reply req` | request by id | `request req (.typeText pid text ret)`, reply `done` / `failed denied` | implemented |
-| `startRecording clip`, `stopRecording clip`, `Input.audio`, `Input.micFailed` | subscription | `Sub.record clip` while recording (start and stop are the subscription's); `SubEvent.audio` levels, `SubEvent.failed`; `forgetClip clip` when done | implemented |
+| `startRecording clip`, `Input.micStarted`, `stopRecording clip`, `Input.audio`, `Input.micFailed` | subscription | `Sub.record clip` while recording (start and stop are the subscription's); `SubEvent.started t` once the microphone runs (^1005), then `SubEvent.audio` levels, or `SubEvent.failed`; `forgetClip clip` when done | implemented |
 | `wakeAt t` → `Input.tick t` | timer | `setTimer name (t - now)`; the clock arrives with it (`Msg.clock`, then `Msg.timer`) | implemented |
 | `readConfig`, `readDictionary` → `Input.config`, `Input.dictionary` | request, then subscription | `readFile` now, `Sub.watchFile path` for changes (`SubEvent.changed`, then read again) | implemented |
 | `listen k` → `keyDown`, `keyUp`, `otherKey` | subscription | `Sub.globalKey code modifier` with `SubEvent.keyDown/keyUp/otherKey t` | implemented |
@@ -351,7 +351,7 @@ secret.
 
 | Effect | Answer | Host | Claim, check |
 |---|---|---|---|
-| `Sub.record clip` | `audio frames peak windows` events, or one `failed` | `AVAudioEngine` input tap converted to 16 kHz mono 16-bit (Yap's AudioCapture), samples kept in `Clips`, levels by `LevelMeter` | ^966 `subs.record` |
+| `Sub.record clip` | one `started t` (monotonic ms, once the engine's start has returned), then `audio frames peak windows` events; or one `failed` and no `started` | `AVAudioEngine` input tap converted to 16 kHz mono 16-bit (Yap's AudioCapture), samples kept in `Clips`, levels by `LevelMeter` | ^966 `subs.record`, ^1005 `subs.record-start` |
 | `upload …` with `.wav clip a b` parts, `forgetClip clip` | `http …`; `done` | `Clips.wav`: a 44-byte RIFF/WAVE header and samples `320a ..< 320b` | ^967 `effects.clip-wav` |
 | `Sub.globalKey code modifier` | `keyDown t`, `keyUp t`, `otherKey t` events | global and local `NSEvent` monitors, `KeyWatch` (Yap's PushToTalk) | ^968 `subs.global-key` |
 | `typeText pid text ret` | `done` | activate the app, then `CGEvent`s with Unicode payloads (Yap's TextInjector) | ^969 `effects.type-text` |
@@ -533,6 +533,7 @@ Each kind of host effect is an `assume` claim naming a check of the trusted-base
 | ^964 | `frontmostApp` answers the app in front | `effects.frontmost-app` |
 | ^965 | `permission` answers whether the app holds it, and prompts only when asked | `effects.permission` |
 | ^966 | `record` streams the levels of exactly the samples it keeps, and nothing after its stop | `subs.record` |
+| ^1005 | `record` reports `started` once its microphone is running, before any audio, or fails without it | `subs.record-start` |
 | ^967 | a clip's WAV for a range of windows holds exactly those samples | `effects.clip-wav` |
 | ^968 | `globalKey` reports the hotkey's press and release, and other keys while it is held | `subs.global-key` |
 | ^969 | `typeText` types exactly the text into that app, or nothing | `effects.type-text` |

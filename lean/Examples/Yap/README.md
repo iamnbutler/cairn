@@ -39,7 +39,11 @@ original Yap keeps its key) and ^347 (a mark waits for the appends) are new with
 | Id | Claim | Proved (model) | Fuzzed | Tested |
 |---|---|---|---|---|
 | ^311 | a shortcut never sends (only the clock can, for a latch's 10-min limit) | `shortcut_never_sends` | yes | yes |
-| ^312 | hold/tap split is exactly 300 ms | `hold_tap_split` | yes | 299 vs 300 ms |
+| ^312 | retired: the split timed from the key-up's own time; replaced by ^351 | | | |
+| ^348 | assumption: the host's `started` comes once the microphone runs (^1005) | stated | | |
+| ^349 | nothing shows (overlay, "Listening…") before the microphone runs | `step_begin`, `receive_ovInv` | yes | failing microphone, slow start |
+| ^350 | key events wait while the microphone starts | `app_keys_wait` | yes | yes |
+| ^351 | hold/tap split is exactly 300 ms, timed from the start's end for a waiting key-up | `hold_tap_split`, `micStarted_replay` | yes | 299 vs 300 ms, tap during a slow start |
 | ^313 | one recording at a time: start only when none, stop before it leaves | `step_start`, `step_ends` | yes | yes |
 | ^314 | every recording ends 10 min after the key is up | `step_recInv`, `recording_ends` | yes | yes |
 | ^315 | a transcript is kept, and its save issued, before the type command | `saved_before_typed` | yes | yes |
@@ -59,14 +63,14 @@ All of it is closed without `sorry` or compiler-trusting tactics, on the standar
 
 **Fuzzing.** `lake exe yapfuzz` plays a random host in two modes; the second (`AppFuzz.lean`)
 sends the app's `receive` messages and menu items, answers the requests it makes, and checks
-^311–^323, ^346 and ^347 as the app states them (docs/fuzz.md). The first plays it against `step`: key presses with random timings (taps,
+^311–^323, ^346, ^347 and ^349–^351 as the app states them (docs/fuzz.md). The first plays it against `step`: key presses with random timings (taps,
 holds, repeats, a release that never comes), shortcuts, ticks early, late and jumping (ten
-minutes forward, seconds back), audio loud, quiet and for the wrong clip, microphone failures,
+minutes forward, seconds back), audio loud, quiet and for the wrong clip, microphone starts slow or failing,
 replies slow, failed, duplicated, out of order, to nothing or never, config and dictionary
 edits (bad keys, unreadable files, 40 terms), day files and the menu. Every step is checked
 against each claim; failures are shrunk with ddmin and printed as a Lean list. It imports the
 model only, so it builds against a mutated model: dropping the cancel check (^317), not
-consuming a reply (^318), `≤` for `<` at 300 ms (^312), a 100-frame minimum (^323) and starting
+consuming a reply (^318), `≤` for `<` at 300 ms (^351), a 100-frame minimum (^323) and starting
 a second recording (^313) are each caught in 300 sequences and shrunk to 2–15 inputs.
 
 ## What the host must do (^330–^337)

@@ -149,8 +149,9 @@ inductive Sub where
   | every (ms : Nat)
   /-- `changed` whenever the file at `path` changes: written, replaced, created or removed. -/
   | watchFile (path : String)
-  /-- Record `clip` from the microphone while active, reporting `audio`; stopping it stops the
-  microphone. The host keeps the samples for `Part.wav`. Needs Microphone. -/
+  /-- Record `clip` from the microphone while active: `started` once the microphone is running,
+  then `audio`; or `failed` if it can't start. Stopping it stops the microphone. The host keeps
+  the samples for `Part.wav`. Needs Microphone. -/
   | record (clip : Nat)
   /-- The key with virtual key code `code` (with `modifier`, the `NSEvent.ModifierFlags` bit
   that tells a modifier key's press from its release): `keyDown`, `keyUp`, and `otherKey` for
@@ -175,6 +176,10 @@ inductive SubEvent where
   /-- `record`: `frames` more samples, their largest absolute value `peak`, and the 20 ms
   windows they complete, in order from the start of the clip. -/
   | audio (frames peak : Nat) (windows : List Level)
+  /-- `record`: the microphone is running, since monotonic milliseconds `t` (when its start
+  returned). Sent once, before any `audio`, and never after a `failed` that says it could not
+  start. -/
+  | started (t : Nat)
   /-- `globalKey`: the key went down or up, or another key went down while it was held, at
   monotonic milliseconds `t` (the clock of `Time.mono`). -/
   | keyDown (t : Nat)

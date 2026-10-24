@@ -1,6 +1,6 @@
 module
 
-public import Examples.Yap.Proofs
+public import Examples.Yap.Keys
 
 /-! # Yap: what is sent for transcription
 
@@ -16,6 +16,15 @@ namespace Examples.Yap
 def Sendable (d : Dictionary) (r : Recording) (n : Nat) (p : Option String) : Prop :=
   r.clip = n ∧ minimumFrames ≤ r.frames ∧ silencePeak ≤ r.peak ∧ r.target.isSome ∧
     p = d.promptFor none
+
+theorem Sendable.congr {d : Dictionary} {r r' : Recording} {n : Nat} {p : Option String}
+    (hc : r'.clip = r.clip) (hf : r'.frames = r.frames) (hp : r'.peak = r.peak)
+    (ht : r'.target = r.target) (h : Sendable d r n p) : Sendable d r' n p := by
+  rw [Sendable, hc, hf, hp, ht]; exact h
+
+theorem Sendable.of_same {d : Dictionary} {r r' : Recording} {n : Nat} {p : Option String}
+    (hs : r.Same r') (h : Sendable d r' n p) : Sendable d r n p := by
+  obtain ⟨_, _, rfl⟩ := hs; exact h
 
 theorem send_transcribe (s : State) (r : Recording) {q n : Nat} {m : String} {p : Option String}
     (h : Cmd.transcribe q n m p ∈ (send s r).2) : Sendable s.dict r n p := by
@@ -57,19 +66,94 @@ theorem poll_transcribe (s : State) (r : Recording) {q n : Nat} {m : String} {p 
     (h : Cmd.transcribe q n m p ∈ (poll s r).2) : False :=
   (poll_kinds s r).not_mem (by simp [Cmd.kind]) h rfl
 
+theorem tickRec_transcribe (s : State) {q n : Nat} {m : String} {p : Option String}
+    (h : Cmd.transcribe q n m p ∈ (tickRec s).2) :
+    ∃ r, s.recording = some r ∧ r.started = true ∧ Sendable s.dict r n p := by
+  unfold tickRec at h
+  split at h
+  · simp at h
+  · rename_i r hr
+    split at h
+    · split at h
+      · exact absurd rfl ((drop_kinds _ _).not_mem (by simp [Cmd.kind]) h)
+      · simp at h
+    · rename_i hst
+      refine ⟨r, hr, by simpa using hst, ?_⟩
+      split at h
+      · exact send_transcribe _ _ h
+      · split at h
+        · exact (poll_transcribe _ _ h).elim
+        · simp at h
+
+theorem stepKey_transcribe (s : State) (k : Key) {q n : Nat} {m : String} {p : Option String}
+    (h : Cmd.transcribe q n m p ∈ (stepKey s k).2) :
+    ∃ r, s.recording = some r ∧ Sendable s.dict r n p := by
+  cases k with
+  | up t =>
+    simp only [stepKey] at h
+    split at h
+    · exact release_transcribe { s with now := max s.now t, keyHeld := false } h
+    · simp at h
+  | _ => exact absurd rfl ((stepKey_kinds _ _).not_mem (by simp [keyKinds, Cmd.kind]) h)
+
+theorem drain_transcribe (s : State) (ks : List Key) {q n : Nat} {m : String} {p : Option String}
+    (h : Cmd.transcribe q n m p ∈ (drain s ks).2) :
+    ∃ r, s.recording = some r ∧ Sendable s.dict r n p := by
+  induction ks generalizing s with
+  | nil => simp [drain] at h
+  | cons k ks ih =>
+    simp only [drain] at h
+    split at h
+    · rename_i he
+      rcases List.mem_append.1 h with h | h
+      · exact stepKey_transcribe s k h
+      · obtain ⟨r', hr', hs⟩ := ih _ h
+        rw [(stepKey_frame s k).dict] at hs
+        rcases stepKey_some s k hr' with ⟨r, hr, hsm⟩ | ⟨h0, -⟩
+        · exact ⟨r, hr, hs.of_same hsm⟩
+        · rw [hr', h0] at he; cases he
+    · rcases List.mem_append.1 h with h | h
+      · exact stepKey_transcribe s k h
+      · split at h <;> simp at h
+
 theorem tick_transcribe (s : State) {q n : Nat} {m : String} {p : Option String}
     (h : Cmd.transcribe q n m p ∈ (tick s).2) :
     ∃ r, s.recording = some r ∧ Sendable s.dict r n p := by
   unfold tick at h
   split at h
-  · simp at h
+  · obtain ⟨r, hr, -, hs⟩ := tickRec_transcribe s h
+    exact ⟨r, hr, hs⟩
+  · rcases List.mem_append.1 h with h | h
+    · exact drain_transcribe { s with keys := [] } s.keys h
+    · obtain ⟨r', hr', hst, hs⟩ := tickRec_transcribe _ h
+      rw [(drain_frame _ _).1] at hs
+      rcases drain_some { s with keys := [] } s.keys hr' with ⟨r, hr, hsm⟩ | ⟨-, h2, -⟩
+      · exact ⟨r, hr, hs.of_same hsm⟩
+      · rw [hst] at h2; cases h2
+
+theorem micStarted_transcribe (s : State) (c : Nat) {q n : Nat} {m : String} {p : Option String}
+    (h : Cmd.transcribe q n m p ∈ (micStarted s c).2) :
+    ∃ r, s.recording = some r ∧ Sendable s.dict r n p := by
+  unfold micStarted at h
+  split at h
   · rename_i r hr
-    refine ⟨r, hr, ?_⟩
     split at h
-    · exact send_transcribe _ _ h
-    · split at h
-      · exact (poll_transcribe _ _ h).elim
-      · simp at h
+    · rcases List.mem_append.1 h with h | h
+      · split at h <;> simp at h
+      · obtain ⟨r', hr', hs⟩ := drain_transcribe _ _ h
+        simp only [Option.some.injEq] at hr'
+        subst hr'
+        exact ⟨r, hr, hs.congr rfl rfl rfl rfl⟩
+    · simp at h
+  · simp at h
+
+theorem keyIn_transcribe (s : State) (k : Key) {q n : Nat} {m : String} {p : Option String}
+    (h : Cmd.transcribe q n m p ∈ (keyIn s k).2) :
+    ∃ r, s.recording = some r ∧ Sendable s.dict r n p := by
+  unfold keyIn at h
+  split at h
+  · simp at h
+  · exact stepKey_transcribe s k h
 
 theorem setKey_transcribe (s : State) (k : Hotkey) {q n : Nat} {m : String} {p : Option String}
     (h : Cmd.transcribe q n m p ∈ (setKey s k).2) :
@@ -78,10 +162,12 @@ theorem setKey_transcribe (s : State) (k : Hotkey) {q n : Nat} {m : String} {p :
   split at h
   · simp at h
   · dsimp only at h
-    split at h
-    · rcases List.mem_append.1 h with h | h
-      · exact release_transcribe { s with keyHeld := false } h
+    rcases List.mem_append.1 h with h | h
+    · split at h
       · simp at h
+      · split at h
+        · exact release_transcribe { s with keyHeld := false } h
+        · simp at h
     · simp at h
 
 theorem configured_transcribe (s : State) (c : ConfigRead) {q n : Nat} {m : String}
@@ -110,18 +196,19 @@ theorem step_transcribe (s : State) (i : Input) {q n : Nat} {m : String} {p : Op
     (h : Cmd.transcribe q n m p ∈ (step s i).2) :
     ∃ r, s.recording = some r ∧ Sendable s.dict r n p := by
   cases i with
-  | keyUp t =>
-    simp only [step] at h
-    split at h
-    · obtain ⟨r, hr, hs⟩ := release_transcribe _ h
-      exact ⟨r, hr, hs⟩
-    · simp at h
+  | keyDown t f => exact keyIn_transcribe s _ h
+  | keyUp t => exact keyIn_transcribe s _ h
+  | otherKey => exact keyIn_transcribe s _ h
   | tick t =>
     simp only [step] at h
     obtain ⟨r, hr, hs⟩ := tick_transcribe _ h
     exact ⟨r, hr, hs⟩
+  | micStarted c t =>
+    simp only [step] at h
+    obtain ⟨r, hr, hs⟩ := micStarted_transcribe _ _ h
+    exact ⟨r, hr, hs⟩
   | config c => exact configured_transcribe _ _ h
-  | _ => exact absurd rfl ((step_kinds _ _).not_mem (by simp [stepKinds, Cmd.kind]) h)
+  | _ => exact absurd rfl ((step_kinds _ _).not_mem (by simp [stepKinds, drainKinds, Cmd.kind]) h)
 
 theorem poll_chunk (s : State) (r : Recording) {q n a b : Nat} {m : String} {p : Option String}
     (h : Cmd.transcribeChunk q n a b m p ∈ (poll s r).2) : ∃ ctx, p = s.dict.promptFor ctx := by
@@ -135,21 +222,41 @@ theorem poll_chunk (s : State) (r : Recording) {q n a b : Nat} {m : String} {p :
         or_false, false_or] at h
       exact ⟨_, h.2.2.2.2.2⟩
 
+theorem tickRec_chunk (s : State) {q n a b : Nat} {m : String} {p : Option String}
+    (h : Cmd.transcribeChunk q n a b m p ∈ (tickRec s).2) : ∃ ctx, p = s.dict.promptFor ctx := by
+  unfold tickRec at h
+  split at h
+  · simp at h
+  · split at h
+    · split at h
+      · exact absurd rfl ((drop_kinds _ _).not_mem (by simp [Cmd.kind]) h)
+      · simp at h
+    · split at h
+      · exact absurd rfl ((send_kinds _ _).not_mem (by simp [Cmd.kind]) h)
+      · split at h
+        · exact poll_chunk _ _ h
+        · simp at h
+
+theorem tick_chunk (s : State) {q n a b : Nat} {m : String} {p : Option String}
+    (h : Cmd.transcribeChunk q n a b m p ∈ (tick s).2) : ∃ ctx, p = s.dict.promptFor ctx := by
+  unfold tick at h
+  split at h
+  · exact tickRec_chunk s h
+  · rcases List.mem_append.1 h with h | h
+    · exact absurd rfl ((drain_kinds _ _).not_mem (by simp [drainKinds, Cmd.kind]) h)
+    · obtain ⟨ctx, he⟩ := tickRec_chunk _ h
+      rw [(drain_frame _ _).1] at he
+      exact ⟨ctx, he⟩
+
 /-- **Preview chunks are prompted with the dictionary too.** -/
 theorem step_chunk (s : State) (i : Input) {q n a b : Nat} {m : String} {p : Option String}
     (h : Cmd.transcribeChunk q n a b m p ∈ (step s i).2) : ∃ ctx, p = s.dict.promptFor ctx := by
   cases i with
   | tick t =>
-    simp only [step, tick] at h
-    split at h
-    · simp at h
-    · split at h
-      · exact absurd rfl ((send_kinds _ _).not_mem (by simp [Cmd.kind]) h)
-      · split at h
-        · obtain ⟨ctx, he⟩ := poll_chunk _ _ h
-          exact ⟨ctx, he⟩
-        · simp at h
-  | _ => exact absurd rfl ((step_kinds _ _).not_mem (by simp [stepKinds, Cmd.kind]) h)
+    simp only [step] at h
+    obtain ⟨ctx, he⟩ := tick_chunk _ h
+    exact ⟨ctx, he⟩
+  | _ => exact absurd rfl ((step_kinds _ _).not_mem (by simp [stepKinds, drainKinds, Cmd.kind]) h)
 
 /-- The prompt of a transcription command, if it is one. -/
 def Cmd.prompt? : Cmd → Option (Option String)

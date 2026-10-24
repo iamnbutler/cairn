@@ -292,8 +292,12 @@ public enum SubEvent: Equatable, Sendable {
     /// Monotonic milliseconds.
     case keyDown(UInt64), keyUp(UInt64), otherKey(UInt64)
     case failed(Fault, String)
+    /// `record`: the microphone is running, since these monotonic milliseconds. Once, before
+    /// any `audio`.
+    case started(UInt64)
 
-    /// `tick` 0, `changed` 1, `audio` 2, `keyDown` 3, `keyUp` 4, `otherKey` 5, `failed` 6.
+    /// `tick` 0, `changed` 1, `audio` 2, `keyDown` 3, `keyUp` 4, `otherKey` 5, `failed` 6,
+    /// `started` 7.
     public var code: UInt8 {
         switch self {
         case .tick: 0
@@ -303,6 +307,7 @@ public enum SubEvent: Equatable, Sendable {
         case .keyUp: 4
         case .otherKey: 5
         case .failed: 6
+        case .started: 7
         }
     }
 

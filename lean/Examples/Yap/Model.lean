@@ -121,6 +121,9 @@ inductive Input where
   | audio (clip : Nat) (a : Audio)
   /-- The microphone would not start for this clip. -/
   | micFailed (clip : Nat) (err : String)
+  /-- The microphone is running for this clip, since `t` (when its start returned): what Yap
+  waits for before it shows the overlay and handles the key again. -/
+  | micStarted (clip : Nat) (t : Ms)
   | reply (req : Nat) (r : Reply)
   | config (r : ConfigRead)
   /-- `dictionary.txt`'s contents (empty when there is no file). -/
@@ -202,6 +205,10 @@ deriving Repr, DecidableEq, Inhabited
 structure Recording where
   clip : Nat
   target : Option Target
+  /-- The microphone is running (`Input.micStarted`). Until then the recording is starting:
+  Yap's `begin` waits in `AudioCapture.start`, so the overlay isn't shown and the key's events
+  wait (`State.keys`). -/
+  started : Bool := false
   /-- Hands free, after a tap. -/
   latched : Bool := false
   /-- When a latched recording sends itself. -/
@@ -219,6 +226,13 @@ structure Recording where
   nextPoll : Ms := 0
   /-- The preview so far. -/
   heard : List String := []
+deriving Repr, DecidableEq, Inhabited
+
+/-- A key event that waits while the microphone starts. -/
+inductive Key where
+  | down (t : Ms) (front : Option Target)
+  | up (t : Ms)
+  | other
 deriving Repr, DecidableEq, Inhabited
 
 /-- A clip sent for transcription, with what it was sent under. -/
@@ -265,6 +279,10 @@ structure State where
   chorded : Bool := false
   pressedAt : Ms := 0
   recording : Option Recording := none
+  /-- Key events that came while the microphone was starting, oldest first: Yap's main thread
+  is busy in `AudioCapture.start` then, so it handles them once the start returns, in order,
+  and times each from then (`now` never goes back, so a tap during a slow start is a hold). -/
+  keys : List Key := []
   /-- Bumped by a cancel, so a transcript in flight is kept but not typed. -/
   turn : Nat := 0
   nextClip : Nat := 1
@@ -299,7 +317,19 @@ deriving Repr, DecidableEq, Inhabited
 
 /-- What the menu bar icon shows. -/
 def phase (s : State) : Phase :=
-  if s.recording.isSome then .recording else if transcribing s then .transcribing else .idle
+  if s.recording.any (·.started) then .recording else if transcribing s then .transcribing else .idle
+
+/-- The microphone is starting: a recording whose start hasn't been reported. -/
+def starting (s : State) : Bool := s.recording.any (!·.started)
+
+/-- Key events wait: the microphone is starting, or earlier ones are still waiting. -/
+def waiting (s : State) : Bool := starting s || !s.keys.isEmpty
+
+/-- A release that waited ten minutes (`latchLimit`) for a microphone that never started. -/
+def timedOut (s : State) : Bool :=
+  s.keys.any fun k => match k with
+    | .up u => decide (u + latchLimit ≤ s.now)
+    | _ => false
 
 def prefs (s : State) : Prefs := { enabled := s.enabled, submits := s.submits, model := s.model }
 
@@ -380,7 +410,8 @@ def release (s : State) : State × List Cmd :=
     else send s r
 
 /-- The key went down (`Yap.begin`): start a recording, or note the press that will end a
-latched one. -/
+latched one. The recording is starting until the host reports its microphone running
+(`micStarted`): only then does Yap say "Listening…" and show the overlay. -/
 def press (s : State) (front : Option Target) : State × List Cmd :=
   if !s.enabled then (s, [])
   else
@@ -389,10 +420,9 @@ def press (s : State) (front : Option Target) : State × List Cmd :=
     | some _ => (s, [])
     | none =>
       let c := s.nextClip
-      let live := s.settings.overlay
-      let r : Recording := { clip := c, target := front, live, nextPoll := s.now + pollMs }
-      ({ s with nextClip := c + 1, recording := some r, detail := "Listening…" },
-       [.startRecording c] ++ (if live then [.overlay c .begin, .wakeAt r.nextPoll] else []))
+      ({ s with nextClip := c + 1,
+                recording := some { clip := c, target := front, live := s.settings.overlay } },
+       [.startRecording c])
 
 /-- Look for a cut and send the chunk before it for the preview. -/
 def poll (s : State) (r : Recording) : State × List Cmd :=
@@ -412,14 +442,46 @@ def poll (s : State) (r : Recording) : State × List Cmd :=
        [mark, .transcribeChunk q r.clip (r.offset * Chunker.windowSamples) toS s.model
           (s.dict.promptFor (context r.heard))])
 
-/-- The clock (`s.now` is the time): the latch limit, then the preview. -/
-def tick (s : State) : State × List Cmd :=
+/-- A key event, as Yap's key monitor handles it (`s.now` not yet moved). -/
+def stepKey (s : State) : Key → State × List Cmd
+  | .down t front =>
+    let s := { s with now := max s.now t }
+    if s.keyHeld then (s, []) else press { s with keyHeld := true } front
+  | .up t =>
+    let s := { s with now := max s.now t }
+    if s.keyHeld then release { s with keyHeld := false } else (s, [])
+  | .other => if s.keyHeld then ({ s with chorded := true }, []) else (s, [])
+
+/-- Handle key events that waited, in order, until one starts or ends a recording; the rest
+wait for the next tick (or, after a start, for its microphone). -/
+def drain (s : State) : List Key → State × List Cmd
+  | [] => (s, [])
+  | k :: ks =>
+    let o := stepKey s k
+    if o.1.recording.isSome = s.recording.isSome then
+      let d := drain o.1 ks
+      (d.1, o.2 ++ d.2)
+    else ({ o.1 with keys := ks }, o.2 ++ (if ks.isEmpty then [] else [.wakeAt o.1.now]))
+
+/-- The clock for the recording (`s.now` is the time): the latch limit, then the preview. A
+recording still starting is dropped once a release has waited ten minutes for it. -/
+def tickRec (s : State) : State × List Cmd :=
   match s.recording with
   | none => (s, [])
   | some r =>
-    if r.latched ∧ r.deadline ≤ s.now then send s r
+    if !r.started then (if timedOut s then drop s r else (s, []))
+    else if r.latched ∧ r.deadline ≤ s.now then send s r
     else if r.live ∧ r.chunk = none ∧ r.nextPoll ≤ s.now then poll s r
     else (s, [])
+
+/-- The clock (`s.now` is the time): key events that waited for a microphone that has since
+started or failed, then the recording's clock. -/
+def tick (s : State) : State × List Cmd :=
+  if s.keys.isEmpty || starting s then tickRec s
+  else
+    let d := drain { s with keys := [] } s.keys
+    let t := tickRec d.1
+    (t.1, d.2 ++ t.2)
 
 def audio (s : State) (clip : Nat) (a : Audio) : State × List Cmd :=
   match s.recording with
@@ -430,11 +492,30 @@ def audio (s : State) (clip : Nat) (a : Audio) : State × List Cmd :=
     else (s, [])
   | none => (s, [])
 
+/-- The microphone failed. If it never started, Yap's `begin` says so and the overlay was never
+shown; the key events that waited are handled on the next tick. -/
 def micFailed (s : State) (clip : Nat) (err : String) : State × List Cmd :=
   match s.recording with
   | some r =>
     if r.clip = clip then
-      ({ s with recording := none, detail := s!"Microphone failed: {err}" }, [.overlay clip (.hide 0)])
+      if r.started then
+        ({ s with recording := none, detail := s!"Microphone failed: {err}" }, [.overlay clip (.hide 0)])
+      else
+        ({ s with recording := none, detail := s!"Microphone failed: {err}" },
+         if s.keys.isEmpty then [] else [.wakeAt s.now])
+    else (s, [])
+  | none => (s, [])
+
+/-- The microphone is running (`Yap.begin` once `AudioCapture.start` returns; `s.now` is when
+it did): "Listening…", the overlay and its preview, then the key events that waited, each timed
+from when it is handled, as Yap's main thread handles them only once the start returns. -/
+def micStarted (s : State) (clip : Nat) : State × List Cmd :=
+  match s.recording with
+  | some r =>
+    if r.clip = clip ∧ r.started = false then
+      let r' := { r with started := true, latched := false, nextPoll := s.now + pollMs }
+      let d := drain { s with recording := some r', keys := [], detail := "Listening…" } s.keys
+      (d.1, (if r.live then [.overlay clip .begin, .wakeAt r'.nextPoll] else []) ++ d.2)
     else (s, [])
   | none => (s, [])
 
@@ -549,13 +630,16 @@ def cancel (s : State) : State × List Cmd :=
     | some r => [Cmd.stopRecording r.clip]
     | none => []
   let hide := if 1 < s.nextClip then [Cmd.overlay (s.nextClip - 1) (.hide 0)] else []
-  ({ s with turn := s.turn + 1, recording := none, detail := ready s }, stop ++ hide)
+  let wake := if s.keys.isEmpty then [] else [Cmd.wakeAt s.now]
+  ({ s with turn := s.turn + 1, recording := none, detail := ready s }, stop ++ hide ++ wake)
 
-/-- A new key: listen for it, and a hold of the old one ends (its release would never come). -/
+/-- A new key: listen for it, and a hold of the old one ends (its release would never come). While
+key events wait, so does this release. -/
 def setKey (s : State) (k : Hotkey) : State × List Cmd :=
   if k = s.hotkey then (s, [])
   else
-    let r := if s.keyHeld then release { s with keyHeld := false } else (s, [])
+    let r := if waiting s then ({ s with keys := s.keys ++ [.up s.now] }, [])
+      else if s.keyHeld then release { s with keyHeld := false } else (s, [])
     ({ r.1 with hotkey := k }, r.2 ++ [.listen k])
 
 /-- `config.json` was read (`Yap.reloadConfig`). The first read also loads the recent list and
@@ -610,27 +694,29 @@ def setFront (s : State) (clip : Nat) (app : Target) : State :=
   { s with recording := s.recording.map fun r =>
       if r.clip = clip ∧ r.target = none then { r with target := some app } else r }
 
-/-- The key's listener stopped: the key is up, and a recording is dropped. -/
+/-- The key's listener stopped: the key is up, and a recording is dropped, with any key events
+still waiting. -/
 def keyLost (s : State) : State × List Cmd :=
   match s.recording with
-  | some r => let d := drop s r; ({ d.1 with keyHeld := false }, d.2)
-  | none => ({ s with keyHeld := false }, [])
+  | some r => let d := drop s r; ({ d.1 with keyHeld := false, keys := [] }, d.2)
+  | none => ({ s with keyHeld := false, keys := [] }, [])
+
+/-- A key event: handled now, or after the ones waiting. -/
+def keyIn (s : State) (k : Key) : State × List Cmd :=
+  if waiting s then ({ s with keys := s.keys ++ [k] }, []) else stepKey s k
 
 /-- **The machine.** Total and pure: every input in every state has an answer. -/
 def step (s : State) : Input → State × List Cmd
   | .launch p =>
     ({ s with enabled := p.enabled, submits := p.submits, model := p.model.getD defaultModel },
      [.listen s.hotkey, .readConfig, .readDictionary])
-  | .keyDown t front =>
-    let s := { s with now := max s.now t }
-    if s.keyHeld then (s, []) else press { s with keyHeld := true } front
-  | .keyUp t =>
-    let s := { s with now := max s.now t }
-    if s.keyHeld then release { s with keyHeld := false } else (s, [])
-  | .otherKey => if s.keyHeld then ({ s with chorded := true }, []) else (s, [])
+  | .keyDown t front => keyIn s (.down t front)
+  | .keyUp t => keyIn s (.up t)
+  | .otherKey => keyIn s .other
   | .tick t => tick { s with now := max s.now t }
   | .audio clip a => audio s clip a
   | .micFailed clip err => micFailed s clip err
+  | .micStarted clip t => micStarted { s with now := max s.now t } clip
   | .reply q x => reply s q x
   | .config r => configured s r
   | .dictionary text => ({ s with dict := Dictionary.parse text }, [])

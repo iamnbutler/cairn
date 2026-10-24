@@ -364,8 +364,10 @@ public final class World: @unchecked Sendable {
     }
 
     /// Records into `clip`: the samples into `clips` from the audio thread, their levels to
-    /// Lean from the queue. Fails with a `failed` event (and an empty, finished clip) when the
-    /// microphone can't start.
+    /// Lean from the queue. Once the microphone has started (`start` returned: the engine is
+    /// running), `started` with the monotonic time it returned, sent from the queue before any
+    /// `audio`, which the tap hops onto the same queue (^1005). Fails with a `failed` event and
+    /// no `started` (and an empty, finished clip) when the microphone can't start.
     private func record(_ id: UInt32, _ clip: UInt32) -> () -> Void {
         let live = Guarded(true)
         let meter = Guarded(LevelMeter())
@@ -386,6 +388,7 @@ public final class World: @unchecked Sendable {
                     self.send?([.subEvent(id: id, .audio(frames: UInt32(batch.count), peak: peak, windows: windows))])
                 }
             }
+            send?([.subEvent(id: id, .started(HostClock.monoMs()))])
             return {
                 live.value = false
                 stopMic()

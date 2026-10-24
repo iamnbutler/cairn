@@ -135,9 +135,10 @@ final class EventsSuite: Suite {
     }
 
     static func subEvent(_ g: inout SplitMix) -> SubEvent {
-        switch g.below(7) {
+        switch g.below(8) {
         case 0: return .tick
         case 1: return .changed
+        case 7: return .started(u64(&g))
         case 2:
             return .audio(frames: u32(&g), peak: u32(&g), windows: (0..<g.weighted([(4, { $0.below(4) }), (1, { $0.below(60) })])).map { _ in
                 Level(sumSq: u64(&g), peak: u32(&g)) })
