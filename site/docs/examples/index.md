@@ -2,11 +2,13 @@
 title: Cairn by Example
 nav: Cairn by Example
 eyebrow: Learn
-lede: Four apps from the repository, read through their source, from two buttons to an app used every day.
+lede: Four apps read through their source, from two buttons to an app used every day.
 ---
 
-Each example is a real app in `lean/Examples/` with a Swift executable in `host/Sources/`. The
-samples on these pages are included from that source.
+Counter, Basics and TodoMVC are real apps in Cairn's `lean/Examples/`, each with a Swift
+executable in `host/Sources/`, and the samples on their pages are included from that source.
+Yap lives in its own repository, `yap-cairn`, and depends on Cairn as a package, so its page
+describes its code instead of including it.
 
 | Example | What it shows | Run it |
 |---|---|---|

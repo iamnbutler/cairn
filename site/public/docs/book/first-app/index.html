@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Your first app · Cairn docs</title>
-<meta name="description" content="What a Cairn app is made of, how to run one, and how to add your own today.">
+<meta name="description" content="What a Cairn app is made of, how to run one, and how to start your own.">
 <link rel="icon" href="/favicon.ico" sizes="32x32">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -25,14 +25,14 @@
 <div class="layout">
 <details class="side" open>
 <summary>Contents</summary>
-<nav aria-label="Docs"><h2>Learn</h2><ul><li><a href="/docs/book/">The Cairn Book</a><ol><li><a href="/docs/book/first-app/" class="on" aria-current="page">Your first app</a></li><li><a href="/docs/book/moves-and-flows/">Moves and flows</a></li><li><a href="/docs/book/view-and-layout/">The view and layout</a></li><li><a href="/docs/book/proving/">Proving a claim</a></li><li><a href="/docs/book/effects/">Effects and the host</a></li><li><a href="/docs/book/shipping/">Shipping</a></li></ol></li><li><a href="/docs/examples/">Cairn by Example</a><ol><li><a href="/docs/examples/counter/">Counter</a></li><li><a href="/docs/examples/basics/">Basics</a></li><li><a href="/docs/examples/todo/">TodoMVC</a></li><li><a href="/docs/examples/yap/">Yap</a></li></ol></li></ul><h2>Use</h2><ul><li><a href="/docs/api/">API reference</a></li><li><a href="/docs/use/cairn-tool/">The cairn tool</a></li><li><a href="/docs/use/claims/">Claims reference</a></li><li><a href="/docs/use/evidence/">The evidence ladder</a></li><li><a href="/docs/use/errors/">Error index<span class="todo">to do</span></a></li><li><a href="/docs/use/releases/">Release notes<span class="todo">to do</span></a></li></ul><h2>Master</h2><ul><li><a href="/docs/master/trusted-base/">The trusted base</a></li><li><a href="/docs/master/host-protocol/">The host protocol</a></li><li><a href="/docs/master/host-effects/">Writing host effects</a></li><li><a href="/docs/master/profiling/">Profiling against a reference</a></li><li><a href="/docs/master/contributing/">Contributing</a></li></ul><h2>Evidence</h2><ul><li><a href="/docs/evidence/">The maps</a></li><li><a href="/map/counter/">Counter's map</a></li><li><a href="/map/basics/">Basics' map</a></li><li><a href="/map/todo/">TodoMVC's map</a></li><li><a href="/map/trusted/">The trusted base's map</a></li></ul></nav>
+<nav aria-label="Docs"><h2>Learn</h2><ul><li><a href="/docs/book/">The Cairn Book</a><ol><li><a href="/docs/book/first-app/" class="on" aria-current="page">Your first app</a></li><li><a href="/docs/book/moves-and-flows/">Moves and flows</a></li><li><a href="/docs/book/view-and-layout/">The view and layout</a></li><li><a href="/docs/book/proving/">Proving a claim</a></li><li><a href="/docs/book/effects/">Effects and the host</a></li><li><a href="/docs/book/shipping/">Shipping</a></li></ol></li><li><a href="/docs/examples/">Cairn by Example</a><ol><li><a href="/docs/examples/counter/">Counter</a></li><li><a href="/docs/examples/basics/">Basics</a></li><li><a href="/docs/examples/todo/">TodoMVC</a></li><li><a href="/docs/examples/yap/">Yap</a></li></ol></li></ul><h2>Use</h2><ul><li><a href="/docs/api/">API reference</a></li><li><a href="/docs/use/cairn-tool/">The cairn tool</a></li><li><a href="/docs/use/claims/">Claims reference</a></li><li><a href="/docs/use/evidence/">The evidence ladder</a></li><li><a href="/docs/use/errors/">Error index<span class="todo">to do</span></a></li><li><a href="/docs/use/releases/">Release notes</a></li></ul><h2>Master</h2><ul><li><a href="/docs/master/trusted-base/">The trusted base</a></li><li><a href="/docs/master/host-protocol/">The host protocol</a></li><li><a href="/docs/master/host-effects/">Writing host effects</a></li><li><a href="/docs/master/profiling/">Profiling against a reference</a></li><li><a href="/docs/master/contributing/">Contributing</a></li></ul><h2>Evidence</h2><ul><li><a href="/docs/evidence/">The maps</a></li><li><a href="/map/counter/">Counter's map</a></li><li><a href="/map/basics/">Basics' map</a></li><li><a href="/map/todo/">TodoMVC's map</a></li><li><a href="/map/trusted/">The trusted base's map</a></li></ul></nav>
 </details>
 <script>if (matchMedia("(max-width: 900px)").matches) document.querySelector("details.side").open = false;</script>
 <main>
 <header class="page">
 <p class="eyebrow">The Cairn Book · Chapter 1</p>
 <h1>Your first app</h1>
-<p class="lede">What a Cairn app is made of, how to run one, and how to add your own today.</p>
+<p class="lede">What a Cairn app is made of, how to run one, and how to start your own.</p>
 </header>
 <article class="prose">
 <h2 id="the-pieces">The pieces</h2>
@@ -136,13 +136,50 @@ frame. A small module holds them:</p>
 }</code></pre><figcaption><code>host/Sources/CairnCounter/main.swift</code>, lines 133–135</figcaption></figure>
 <p>That is the whole of the app's Swift that isn't a test. Everything else (threads, input, text
 input, accessibility, painting) is the shared host, <code>CairnHost</code>.</p>
-<h2 id="adding-your-own-app-today">Adding your own app, today</h2>
-<aside class="note"><div class="card px"><p class="label"><img src="/icon.svg" alt="">Today</p>
-<p>An app can't yet live in its own repository and depend on Cairn: that is
-<a href="https://github.com/iamnbutler/cairn/issues/75">issue #75</a>, and this section will be rewritten
-around it. There is no <code>cairn new</code>. Today you add an app beside the examples, by hand, in five
-places.</p>
-</div></aside>
+<h2 id="an-app-in-its-own-repository">An app in its own repository</h2>
+<p>An app lives in a repository of its own and depends on a tagged release of Cairn, the way
+<a href="/docs/examples/yap/">Yap</a> does. One tag pins both halves: the Lean package and the Swift
+libraries. Start one with <a href="/docs/use/cairn-tool/">the cairn tool</a>.</p>
+<p><code>cairn new hello</code> makes <code>hello/</code> with a <code>cairn.toml</code>, an empty <code>claims.lock</code>, and a <code>lean/</code>
+whose lakefile sets the claim scope to <code>hello</code>, so the app's ids are <code>hello^1</code>, <code>hello^2</code>, and so
+on. It also writes a <code>Package.swift</code> for the host. <code>cairn new hello --lib</code> makes a library
+instead, with no host.</p>
+<p><code>cairn add cairn</code> points the lakefile and <code>cairn.toml</code> at Cairn's latest release in the
+registry and prints the line for <code>Package.swift</code>. There is no public Cairn registry yet
+(<a href="https://github.com/iamnbutler/cairn/issues/97">issue #97</a>). Until there is, require Cairn from
+git at a tag, as Yap's lakefile does:</p>
+<pre><code class="language-lean">package yap where
+  leanOptions := #[⟨`autoImplicit, false⟩, ⟨`relaxedAutoImplicit, false⟩,
+    ⟨`weak.cairn.claims.scope, &quot;yap&quot;⟩]
+
+require cairn from git &quot;https://github.com/iamnbutler/cairn&quot; @ &quot;v0.1.1&quot; / &quot;lean&quot;
+
+@[default_target]
+lean_lib Yap where
+  roots := #[`Yap.Abi, `Yap]
+  defaultFacets := #[LeanLib.staticFacet]
+</code></pre>
+<p>Then depend on the same tag in <code>Package.swift</code>, and link the library that the build makes:</p>
+<pre><code class="language-swift">let lib = Context.packageDirectory + &quot;/.cairn/lib&quot;
+// dependencies:
+.package(url: &quot;https://github.com/iamnbutler/cairn&quot;, exact: &quot;0.1.1&quot;),
+// the app's executable:
+.executableTarget(name: &quot;CairnYap&quot;,
+    dependencies: [&quot;CYap&quot;, .product(name: &quot;CairnHost&quot;, package: &quot;cairn&quot;), /* … */],
+    linkerSettings: [.unsafeFlags([&quot;-L&quot; + lib, &quot;-lyap&quot;])]),
+</code></pre>
+<p><code>cairn build</code> builds the Lean, links it with Cairn's runtime into one static library in
+<code>.cairn/lib/</code>, and builds the host. By hand, that is:</p>
+<pre><code>cd lean &amp;&amp; lake build
+cd lean &amp;&amp; .lake/packages/cairn/bin/cairn-link --lib Yap --out ../.cairn/lib/libyap.a
+swift build
+</code></pre>
+<p>The app's <code>main.swift</code> hands its three exports to the host, as Counter's does above. The app
+declares those exports in a small C target of its own. Cairn's tools (the claim ledger, the
+axiom audit, the bundle script) run from the app's Lake directory against its own modules.</p>
+<h2 id="an-app-beside-the-examples">An app beside the examples</h2>
+<p>To work on Cairn itself, or to try something quickly without a package, add an app to the
+Cairn repository beside the examples. It goes in five places:</p>
 <ol>
 <li><strong>The Lean module</strong>, <code>lean/Examples/&lt;App&gt;.lean</code>, written like Counter: a <code>module</code> that
 <code>public import</code>s the runtime and only <code>meta import</code>s the claim commands, so the commands stay
@@ -180,8 +217,8 @@ the new ids with <code>cd lean &amp;&amp; lake exe ledger update</code>, and com
 it with <code>make demo DEMO=Cairn&lt;App&gt;</code>.</p>
 <p>Pick ids in a range of their own: the examples use ^1–^7 (Counter), ^101–^109 (Basics), ^201–^224
 (TodoMVC), ^401–^409 (Clock) and ^450 onwards (Tray); the trusted base uses ^900 and up, and
-^301–^399 moved with Yap to its own package. Ids are scoped per package: these are all <code>cairn^N</code>,
-and an app in its own repository has its own (<code>yap^301</code>), so it can number from ^1.</p>
+^301–^399 moved with Yap to its own package. Ids are scoped per package: these are all <code>cairn^N</code>.
+An app in its own repository has its own scope (<code>yap^301</code>), so it can number from ^1.</p>
 
 </article>
 <nav class="pager" aria-label="The Book"><a class="prev" rel="prev" href="/docs/book/"><small>Previous</small>The Cairn Book</a><a class="next" rel="next" href="/docs/book/moves-and-flows/"><small>Next</small>Moves and flows</a></nav>

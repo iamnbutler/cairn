@@ -25,22 +25,61 @@
 <div class="layout">
 <details class="side" open>
 <summary>Contents</summary>
-<nav aria-label="Docs"><h2>Learn</h2><ul><li><a href="/docs/book/">The Cairn Book</a><ol><li><a href="/docs/book/first-app/">Your first app</a></li><li><a href="/docs/book/moves-and-flows/">Moves and flows</a></li><li><a href="/docs/book/view-and-layout/">The view and layout</a></li><li><a href="/docs/book/proving/">Proving a claim</a></li><li><a href="/docs/book/effects/">Effects and the host</a></li><li><a href="/docs/book/shipping/">Shipping</a></li></ol></li><li><a href="/docs/examples/">Cairn by Example</a><ol><li><a href="/docs/examples/counter/">Counter</a></li><li><a href="/docs/examples/basics/">Basics</a></li><li><a href="/docs/examples/todo/">TodoMVC</a></li><li><a href="/docs/examples/yap/">Yap</a></li></ol></li></ul><h2>Use</h2><ul><li><a href="/docs/api/">API reference</a></li><li><a href="/docs/use/cairn-tool/">The cairn tool</a></li><li><a href="/docs/use/claims/">Claims reference</a></li><li><a href="/docs/use/evidence/">The evidence ladder</a></li><li><a href="/docs/use/errors/">Error index<span class="todo">to do</span></a></li><li><a href="/docs/use/releases/" class="on" aria-current="page">Release notes<span class="todo">to do</span></a></li></ul><h2>Master</h2><ul><li><a href="/docs/master/trusted-base/">The trusted base</a></li><li><a href="/docs/master/host-protocol/">The host protocol</a></li><li><a href="/docs/master/host-effects/">Writing host effects</a></li><li><a href="/docs/master/profiling/">Profiling against a reference</a></li><li><a href="/docs/master/contributing/">Contributing</a></li></ul><h2>Evidence</h2><ul><li><a href="/docs/evidence/">The maps</a></li><li><a href="/map/counter/">Counter's map</a></li><li><a href="/map/basics/">Basics' map</a></li><li><a href="/map/todo/">TodoMVC's map</a></li><li><a href="/map/trusted/">The trusted base's map</a></li></ul></nav>
+<nav aria-label="Docs"><h2>Learn</h2><ul><li><a href="/docs/book/">The Cairn Book</a><ol><li><a href="/docs/book/first-app/">Your first app</a></li><li><a href="/docs/book/moves-and-flows/">Moves and flows</a></li><li><a href="/docs/book/view-and-layout/">The view and layout</a></li><li><a href="/docs/book/proving/">Proving a claim</a></li><li><a href="/docs/book/effects/">Effects and the host</a></li><li><a href="/docs/book/shipping/">Shipping</a></li></ol></li><li><a href="/docs/examples/">Cairn by Example</a><ol><li><a href="/docs/examples/counter/">Counter</a></li><li><a href="/docs/examples/basics/">Basics</a></li><li><a href="/docs/examples/todo/">TodoMVC</a></li><li><a href="/docs/examples/yap/">Yap</a></li></ol></li></ul><h2>Use</h2><ul><li><a href="/docs/api/">API reference</a></li><li><a href="/docs/use/cairn-tool/">The cairn tool</a></li><li><a href="/docs/use/claims/">Claims reference</a></li><li><a href="/docs/use/evidence/">The evidence ladder</a></li><li><a href="/docs/use/errors/">Error index<span class="todo">to do</span></a></li><li><a href="/docs/use/releases/" class="on" aria-current="page">Release notes</a></li></ul><h2>Master</h2><ul><li><a href="/docs/master/trusted-base/">The trusted base</a></li><li><a href="/docs/master/host-protocol/">The host protocol</a></li><li><a href="/docs/master/host-effects/">Writing host effects</a></li><li><a href="/docs/master/profiling/">Profiling against a reference</a></li><li><a href="/docs/master/contributing/">Contributing</a></li></ul><h2>Evidence</h2><ul><li><a href="/docs/evidence/">The maps</a></li><li><a href="/map/counter/">Counter's map</a></li><li><a href="/map/basics/">Basics' map</a></li><li><a href="/map/todo/">TodoMVC's map</a></li><li><a href="/map/trusted/">The trusted base's map</a></li></ul></nav>
 </details>
 <script>if (matchMedia("(max-width: 900px)").matches) document.querySelector("details.side").open = false;</script>
 <main>
 <header class="page">
-<p class="eyebrow">Use<span class="todo">not written yet</span></p>
+<p class="eyebrow">Use</p>
 <h1>Release notes and compatibility</h1>
 <p class="lede">What changed in each version of Cairn, and what an app can rely on across versions.</p>
 </header>
 <article class="prose">
-<p>Apps outside this repository depend on Cairn at a tag, <code>vX.Y.Z</code> (pre-releases <code>vX.Y.Z-rc.N</code>), in
-both their lakefile and their <code>Package.swift</code>: one tag pins the Lean package, the Swift library
-products and Cairn's claims. The first app to do so is Yap (issue #75), at <code>v0.1.0</code>.</p>
-<p>What a version promises: Cairn's <code>claims.lock</code> at the tag is its contract. Every <code>cairn^N</code> in it
-keeps its meaning in later versions or is retired, never renumbered or reused. The host protocol's
-versions are in the frame format. The Lean API has no stability promise before 1.0.</p>
+<p>An app depends on Cairn at a tag, <code>vX.Y.Z</code>, in both its lakefile and its <code>Package.swift</code>. One tag
+pins the Lean package, the Swift library products and Cairn's claims. Release candidates are
+tags too (<code>vX.Y.Z-rc.N</code>), which an app can pin while it tries a change, but only final versions
+are published.</p>
+<h2 id="what-a-version-promises">What a version promises</h2>
+<ul>
+<li><strong>Claims.</strong> Cairn's <code>claims.lock</code> at the tag is its contract. Every <code>cairn^N</code> in it keeps its
+meaning in later versions, or is retired; it is never renumbered or reused.</li>
+<li><strong>The host protocol.</strong> The frame format carries its own version.</li>
+<li><strong>The Lean API</strong> has no stability promise before 1.0.</li>
+<li><strong>The toolchain.</strong> An app uses the Lean toolchain in Cairn's <code>lean/lean-toolchain</code> at the tag
+(<code>v4.35.0</code> for both releases so far), because Lake shares compiled modules only between
+identical toolchains.</li>
+</ul>
+<h2 id="v0-1-1">v0.1.1</h2>
+<p>24 October 2026, at commit <code>ea72e75</code>.</p>
+<ul>
+<li><strong><code>cairn doc</code> works in an app's own repository.</strong> In v0.1.0 it read its stylesheet and icon
+from the package it was documenting rather than from its own checkout of Cairn, so it failed
+for every package but Cairn itself.</li>
+<li><strong>The <code>cairn</code> command</strong> is in this release, in <code>tools/cairn</code>: <code>new</code>, <code>add</code>, <code>build</code>, <code>doc</code>,
+<code>publish</code> and <code>login</code>. See <a href="/docs/use/cairn-tool/">the cairn tool</a>.</li>
+</ul>
+<p>Nothing in the Lean package, the Swift libraries or <code>claims.lock</code> changed, so moving from v0.1.0
+is a change of tag in the lakefile and <code>Package.swift</code>, and nothing else.</p>
+<h2 id="v0-1-0">v0.1.0</h2>
+<p>24 October 2026, at commit <code>13ddd6c</code>. The first release.</p>
+<ul>
+<li><strong>Cairn is a package.</strong> An app in its own repository requires the Lean package from git with
+the tag and the <code>lean</code> subdirectory, and the Swift package at the same version. The root
+<code>Package.swift</code> has library products only (<code>CLean</code>, <code>CairnFrame</code>, <code>CairnRender</code>, <code>CairnHost</code>
+and <code>CairnCapture</code>). None of them use <code>unsafeFlags</code>, which SwiftPM refuses in a dependency, and
+none of them link Lean. Lean's C header is committed, so a checkout builds without a
+toolchain step.</li>
+<li><strong>One link step.</strong> <code>bin/cairn-link</code> merges Lean's runtime, Cairn's Lean library and the app's
+own into one static library for the host, and refuses a result with two <code>cairn_app_init</code>s.
+An app runs it from its Lake checkout of Cairn, and Cairn's own build uses it too.</li>
+<li><strong>Claim ids are scoped by package.</strong> Cairn's are <code>cairn^N</code>. An app sets its own scope in its
+lakefile, and its ids are then <code>yap^311</code> and so on. See
+<a href="/docs/use/claims/#scopes">Scopes</a>.</li>
+<li><strong>Yap moved out</strong> to its own repository, <code>yap-cairn</code>, the first app to depend on Cairn this
+way. Its Lean, proofs, fuzzers, Swift host and benches left with it. Cairn's <code>claims.lock</code>
+marks its 44 ids <code>moved:yap</code>, so they stay issued and can't come back.</li>
+</ul>
+<p>At this tag Cairn's <code>claims.lock</code> lists 146 ids: 100 active, 2 retired and 44 moved to Yap.</p>
 
 </article>
 

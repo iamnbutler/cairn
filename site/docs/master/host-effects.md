@@ -12,9 +12,9 @@ adding a new kind of request to Cairn itself.
 
 :::note Today
 Apps can't declare their own effects yet. The set of requests is fixed by Cairn, and adding one
-means changing Cairn: the Lean types, the encoding and the Swift host, as below. Letting an app
-bring its own effects is part of the planned `cairn` tool's work
-([#75](https://github.com/iamnbutler/cairn/issues/75)).
+means changing Cairn: the Lean types, the encoding and the Swift host, as below. An app in its
+own repository uses Cairn's effects and can't add one of its own; letting it is
+[issue #84](https://github.com/iamnbutler/cairn/issues/84).
 :::
 
 ## The pieces

@@ -10,15 +10,16 @@ text editing are pure Lean functions, and every thing a person can do is a **cla
 `^2`, a sentence saying what happens, a formal statement, and a proof that the code meets it. A
 thin Swift host runs the app on macOS and paints it with Metal.
 
-These docs are a first skeleton. Pages that today's code supports are written; the rest say what
-they will cover and what has to land first. Every code sample is included from a source file that
+These docs are young. Pages that today's code supports are written; the one that isn't says what
+it will cover and what has to land first. Every code sample is included from a source file that
 `make check` compiles, so a sample can't drift from the code it shows.
 
 :::note What works today
-Cairn is research, not a released library. There is no package to depend on yet: an app lives
-inside the Cairn repository, next to the examples, and you build it with the repository's
-`make` targets. Making Cairn a package an app can depend on is
-[issue #75](https://github.com/iamnbutler/cairn/issues/75).
+Cairn is research, and its API has no stability promise before 1.0. It is a package, though: an
+app lives in its own repository and depends on a tagged release (the latest is `v0.1.1`), and
+the `cairn` tool starts, builds and documents it. Yap is the first app built that way. Checking,
+fuzzing, mapping and bundling an app are still the Cairn repository's `make` targets; see
+[the cairn tool](/docs/use/cairn-tool/).
 :::
 
 ## Learn
@@ -31,12 +32,12 @@ inside the Cairn repository, next to the examples, and you build it with the rep
 ## Use
 
 <div class="shelf">
-<a href="/docs/use/api/"><b>API reference<i class="todo">to do</i></b><span>Generated from the code by <code>cairn doc</code>.</span></a>
-<a href="/docs/use/cairn-tool/"><b>The cairn tool</b><span>What it will do, and the make targets that do it today.</span></a>
+<a href="/docs/api/"><b>API reference</b><span>Every module, declaration and claim in Cairn, generated from the code by <code>cairn doc</code>.</span></a>
+<a href="/docs/use/cairn-tool/"><b>The cairn tool</b><span>Starting, building, documenting and publishing a package, and the make targets for the rest.</span></a>
 <a href="/docs/use/claims/"><b>Claims reference</b><span>Every claim kind, what each generates, and what the build checks.</span></a>
 <a href="/docs/use/evidence/"><b>The evidence ladder</b><span>Proved, fuzzed, tested, seen, assumed: how sure we are of each claim.</span></a>
 <a href="/docs/use/errors/"><b>Error index<i class="todo">to do</i></b><span>Every error the claim commands and the ledger report.</span></a>
-<a href="/docs/use/releases/"><b>Release notes<i class="todo">to do</i></b><span>Versions and compatibility, once there are versions.</span></a>
+<a href="/docs/use/releases/"><b>Release notes</b><span>What changed in each version, and what an app can rely on across them.</span></a>
 </div>
 
 ## Master

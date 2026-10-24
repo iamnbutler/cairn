@@ -6,8 +6,7 @@ lede: Every module, type and declaration in Cairn, and every claim it makes, gen
 ---
 
 The API reference is at **[/docs/api/](/docs/api/)**. It is generated, never written by hand:
-`cairn doc` run on Cairn itself, the way rustdoc documents a Rust crate
-([issue #74](https://github.com/iamnbutler/cairn/issues/74)).
+`cairn doc` run on Cairn itself, the way rustdoc documents a Rust crate.
 
 - **An index of modules**, nested by name, with the first sentence of each module's doc comment.
 - **A page per module**: its declarations grouped by kind (or in source order), each with its
@@ -20,7 +19,9 @@ The API reference is at **[/docs/api/](/docs/api/)**. It is generated, never wri
 Anchors don't change while the name doesn't: a declaration's is its full name
 (`Cairn.Layout.Core.html#Cairn.Layout.layout`), a claim's its number.
 
-To build the same docs for an app, run `make doc APP=Todo` (output in `build/doc/Todo/dist/`).
+To build the same docs for an app in its own repository, run `cairn doc` there (output in
+`build/doc/<name>/`). Inside the Cairn
+repository, `make doc APP=Todo` documents an example (output in `build/doc/Todo/dist/`), and
 `make site-api` regenerates `/docs/api/`. Lean code blocks in doc comments are doc tests: `make
 check` compiles them, and a ` ```lean ignore ` block is shown but not checked. The design is in
 `docs/doc.md`.

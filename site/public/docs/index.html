@@ -25,7 +25,7 @@
 <div class="layout">
 <details class="side" open>
 <summary>Contents</summary>
-<nav aria-label="Docs"><h2>Learn</h2><ul><li><a href="/docs/book/">The Cairn Book</a><ol><li><a href="/docs/book/first-app/">Your first app</a></li><li><a href="/docs/book/moves-and-flows/">Moves and flows</a></li><li><a href="/docs/book/view-and-layout/">The view and layout</a></li><li><a href="/docs/book/proving/">Proving a claim</a></li><li><a href="/docs/book/effects/">Effects and the host</a></li><li><a href="/docs/book/shipping/">Shipping</a></li></ol></li><li><a href="/docs/examples/">Cairn by Example</a><ol><li><a href="/docs/examples/counter/">Counter</a></li><li><a href="/docs/examples/basics/">Basics</a></li><li><a href="/docs/examples/todo/">TodoMVC</a></li><li><a href="/docs/examples/yap/">Yap</a></li></ol></li></ul><h2>Use</h2><ul><li><a href="/docs/api/">API reference</a></li><li><a href="/docs/use/cairn-tool/">The cairn tool</a></li><li><a href="/docs/use/claims/">Claims reference</a></li><li><a href="/docs/use/evidence/">The evidence ladder</a></li><li><a href="/docs/use/errors/">Error index<span class="todo">to do</span></a></li><li><a href="/docs/use/releases/">Release notes<span class="todo">to do</span></a></li></ul><h2>Master</h2><ul><li><a href="/docs/master/trusted-base/">The trusted base</a></li><li><a href="/docs/master/host-protocol/">The host protocol</a></li><li><a href="/docs/master/host-effects/">Writing host effects</a></li><li><a href="/docs/master/profiling/">Profiling against a reference</a></li><li><a href="/docs/master/contributing/">Contributing</a></li></ul><h2>Evidence</h2><ul><li><a href="/docs/evidence/">The maps</a></li><li><a href="/map/counter/">Counter's map</a></li><li><a href="/map/basics/">Basics' map</a></li><li><a href="/map/todo/">TodoMVC's map</a></li><li><a href="/map/trusted/">The trusted base's map</a></li></ul></nav>
+<nav aria-label="Docs"><h2>Learn</h2><ul><li><a href="/docs/book/">The Cairn Book</a><ol><li><a href="/docs/book/first-app/">Your first app</a></li><li><a href="/docs/book/moves-and-flows/">Moves and flows</a></li><li><a href="/docs/book/view-and-layout/">The view and layout</a></li><li><a href="/docs/book/proving/">Proving a claim</a></li><li><a href="/docs/book/effects/">Effects and the host</a></li><li><a href="/docs/book/shipping/">Shipping</a></li></ol></li><li><a href="/docs/examples/">Cairn by Example</a><ol><li><a href="/docs/examples/counter/">Counter</a></li><li><a href="/docs/examples/basics/">Basics</a></li><li><a href="/docs/examples/todo/">TodoMVC</a></li><li><a href="/docs/examples/yap/">Yap</a></li></ol></li></ul><h2>Use</h2><ul><li><a href="/docs/api/">API reference</a></li><li><a href="/docs/use/cairn-tool/">The cairn tool</a></li><li><a href="/docs/use/claims/">Claims reference</a></li><li><a href="/docs/use/evidence/">The evidence ladder</a></li><li><a href="/docs/use/errors/">Error index<span class="todo">to do</span></a></li><li><a href="/docs/use/releases/">Release notes</a></li></ul><h2>Master</h2><ul><li><a href="/docs/master/trusted-base/">The trusted base</a></li><li><a href="/docs/master/host-protocol/">The host protocol</a></li><li><a href="/docs/master/host-effects/">Writing host effects</a></li><li><a href="/docs/master/profiling/">Profiling against a reference</a></li><li><a href="/docs/master/contributing/">Contributing</a></li></ul><h2>Evidence</h2><ul><li><a href="/docs/evidence/">The maps</a></li><li><a href="/map/counter/">Counter's map</a></li><li><a href="/map/basics/">Basics' map</a></li><li><a href="/map/todo/">TodoMVC's map</a></li><li><a href="/map/trusted/">The trusted base's map</a></li></ul></nav>
 </details>
 <script>if (matchMedia("(max-width: 900px)").matches) document.querySelector("details.side").open = false;</script>
 <main>
@@ -39,14 +39,15 @@
 text editing are pure Lean functions, and every thing a person can do is a <strong>claim</strong>: an id like
 <code>^2</code>, a sentence saying what happens, a formal statement, and a proof that the code meets it. A
 thin Swift host runs the app on macOS and paints it with Metal.</p>
-<p>These docs are a first skeleton. Pages that today's code supports are written; the rest say what
-they will cover and what has to land first. Every code sample is included from a source file that
+<p>These docs are young. Pages that today's code supports are written; the one that isn't says what
+it will cover and what has to land first. Every code sample is included from a source file that
 <code>make check</code> compiles, so a sample can't drift from the code it shows.</p>
 <aside class="note"><div class="card px"><p class="label"><img src="/icon.svg" alt="">What works today</p>
-<p>Cairn is research, not a released library. There is no package to depend on yet: an app lives
-inside the Cairn repository, next to the examples, and you build it with the repository's
-<code>make</code> targets. Making Cairn a package an app can depend on is
-<a href="https://github.com/iamnbutler/cairn/issues/75">issue #75</a>.</p>
+<p>Cairn is research, and its API has no stability promise before 1.0. It is a package, though: an
+app lives in its own repository and depends on a tagged release (the latest is <code>v0.1.1</code>), and
+the <code>cairn</code> tool starts, builds and documents it. Yap is the first app built that way. Checking,
+fuzzing, mapping and bundling an app are still the Cairn repository's <code>make</code> targets; see
+<a href="/docs/use/cairn-tool/">the cairn tool</a>.</p>
 </div></aside>
 <h2 id="learn">Learn</h2>
 <div class="shelf">
@@ -55,12 +56,12 @@ inside the Cairn repository, next to the examples, and you build it with the rep
 </div>
 <h2 id="use">Use</h2>
 <div class="shelf">
-<a href="/docs/use/api/"><b>API reference<i class="todo">to do</i></b><span>Generated from the code by <code>cairn doc</code>.</span></a>
-<a href="/docs/use/cairn-tool/"><b>The cairn tool</b><span>What it will do, and the make targets that do it today.</span></a>
+<a href="/docs/api/"><b>API reference</b><span>Every module, declaration and claim in Cairn, generated from the code by <code>cairn doc</code>.</span></a>
+<a href="/docs/use/cairn-tool/"><b>The cairn tool</b><span>Starting, building, documenting and publishing a package, and the make targets for the rest.</span></a>
 <a href="/docs/use/claims/"><b>Claims reference</b><span>Every claim kind, what each generates, and what the build checks.</span></a>
 <a href="/docs/use/evidence/"><b>The evidence ladder</b><span>Proved, fuzzed, tested, seen, assumed: how sure we are of each claim.</span></a>
 <a href="/docs/use/errors/"><b>Error index<i class="todo">to do</i></b><span>Every error the claim commands and the ledger report.</span></a>
-<a href="/docs/use/releases/"><b>Release notes<i class="todo">to do</i></b><span>Versions and compatibility, once there are versions.</span></a>
+<a href="/docs/use/releases/"><b>Release notes</b><span>What changed in each version, and what an app can rely on across them.</span></a>
 </div>
 <h2 id="master">Master</h2>
 <div class="shelf">

@@ -18,7 +18,7 @@
 // Markdown with their links dropped, since they point into internal notes.
 //
 // Pages are listed in site/docs/nav.json, which is the sidebar. site/public/docs/api/ belongs to
-// `cairn doc` (#74): the build never writes or deletes it, and the sidebar links to it once it
+// `cairn doc` (#77): the build never writes or deletes it, and the sidebar links to it once it
 // has an index.html. Needs only bun.
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
@@ -31,10 +31,8 @@ const API = join(OUT, "api");
 const CHECK = process.argv.includes("--check");
 
 // The only GitHub links a public page may carry: the issues that unblock its TODO pages.
-const ALLOWED_LINKS = [
-	"https://github.com/iamnbutler/cairn/issues/74",
-	"https://github.com/iamnbutler/cairn/issues/75",
-];
+// Open issues the pages point at. Keep it to issues that are open: replace one when it closes.
+const ALLOWED_LINKS = [83, 84, 92, 93, 94, 95, 96, 97, 99].map((n) => `https://github.com/iamnbutler/cairn/issues/${n}`);
 
 const errors: string[] = [];
 const fail = (where: string, message: string) => errors.push(`${where}: ${message}`);

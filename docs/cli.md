@@ -6,10 +6,12 @@ the docs, and a Cairn package registry stores what you publish. That registry is
 `cairn` kind (nextpm `docs/adr/0005-cairn-kind.md`). It is its own SwiftPM package in
 `tools/cairn`, with no dependencies:
 
+<!-- region: cli-install -->
 ```
 cd tools/cairn && swift build -c release   # .build/release/cairn
 cd tools/cairn && swift test
 ```
+<!-- endregion: cli-install -->
 
 Status: started. `new`, `add`, `build`, `doc`, `publish`, `login` and `credential` work, with
 unit tests, and `add` and `publish --dry-run` have been run against a stand-in registry. Not

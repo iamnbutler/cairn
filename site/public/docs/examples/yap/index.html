@@ -25,7 +25,7 @@
 <div class="layout">
 <details class="side" open>
 <summary>Contents</summary>
-<nav aria-label="Docs"><h2>Learn</h2><ul><li><a href="/docs/book/">The Cairn Book</a><ol><li><a href="/docs/book/first-app/">Your first app</a></li><li><a href="/docs/book/moves-and-flows/">Moves and flows</a></li><li><a href="/docs/book/view-and-layout/">The view and layout</a></li><li><a href="/docs/book/proving/">Proving a claim</a></li><li><a href="/docs/book/effects/">Effects and the host</a></li><li><a href="/docs/book/shipping/">Shipping</a></li></ol></li><li><a href="/docs/examples/">Cairn by Example</a><ol><li><a href="/docs/examples/counter/">Counter</a></li><li><a href="/docs/examples/basics/">Basics</a></li><li><a href="/docs/examples/todo/">TodoMVC</a></li><li><a href="/docs/examples/yap/" class="on" aria-current="page">Yap</a></li></ol></li></ul><h2>Use</h2><ul><li><a href="/docs/api/">API reference</a></li><li><a href="/docs/use/cairn-tool/">The cairn tool</a></li><li><a href="/docs/use/claims/">Claims reference</a></li><li><a href="/docs/use/evidence/">The evidence ladder</a></li><li><a href="/docs/use/errors/">Error index<span class="todo">to do</span></a></li><li><a href="/docs/use/releases/">Release notes<span class="todo">to do</span></a></li></ul><h2>Master</h2><ul><li><a href="/docs/master/trusted-base/">The trusted base</a></li><li><a href="/docs/master/host-protocol/">The host protocol</a></li><li><a href="/docs/master/host-effects/">Writing host effects</a></li><li><a href="/docs/master/profiling/">Profiling against a reference</a></li><li><a href="/docs/master/contributing/">Contributing</a></li></ul><h2>Evidence</h2><ul><li><a href="/docs/evidence/">The maps</a></li><li><a href="/map/counter/">Counter's map</a></li><li><a href="/map/basics/">Basics' map</a></li><li><a href="/map/todo/">TodoMVC's map</a></li><li><a href="/map/trusted/">The trusted base's map</a></li></ul></nav>
+<nav aria-label="Docs"><h2>Learn</h2><ul><li><a href="/docs/book/">The Cairn Book</a><ol><li><a href="/docs/book/first-app/">Your first app</a></li><li><a href="/docs/book/moves-and-flows/">Moves and flows</a></li><li><a href="/docs/book/view-and-layout/">The view and layout</a></li><li><a href="/docs/book/proving/">Proving a claim</a></li><li><a href="/docs/book/effects/">Effects and the host</a></li><li><a href="/docs/book/shipping/">Shipping</a></li></ol></li><li><a href="/docs/examples/">Cairn by Example</a><ol><li><a href="/docs/examples/counter/">Counter</a></li><li><a href="/docs/examples/basics/">Basics</a></li><li><a href="/docs/examples/todo/">TodoMVC</a></li><li><a href="/docs/examples/yap/" class="on" aria-current="page">Yap</a></li></ol></li></ul><h2>Use</h2><ul><li><a href="/docs/api/">API reference</a></li><li><a href="/docs/use/cairn-tool/">The cairn tool</a></li><li><a href="/docs/use/claims/">Claims reference</a></li><li><a href="/docs/use/evidence/">The evidence ladder</a></li><li><a href="/docs/use/errors/">Error index<span class="todo">to do</span></a></li><li><a href="/docs/use/releases/">Release notes</a></li></ul><h2>Master</h2><ul><li><a href="/docs/master/trusted-base/">The trusted base</a></li><li><a href="/docs/master/host-protocol/">The host protocol</a></li><li><a href="/docs/master/host-effects/">Writing host effects</a></li><li><a href="/docs/master/profiling/">Profiling against a reference</a></li><li><a href="/docs/master/contributing/">Contributing</a></li></ul><h2>Evidence</h2><ul><li><a href="/docs/evidence/">The maps</a></li><li><a href="/map/counter/">Counter's map</a></li><li><a href="/map/basics/">Basics' map</a></li><li><a href="/map/todo/">TodoMVC's map</a></li><li><a href="/map/trusted/">The trusted base's map</a></li></ul></nav>
 </details>
 <script>if (matchMedia("(max-width: 900px)").matches) document.querySelector("details.side").open = false;</script>
 <main>
@@ -47,8 +47,7 @@ the two.</p>
 <p>This is the example to read for porting an existing app. It isn't a tutorial: the app is large,
 and these sections show the decisions that matter.</p>
 <p>Yap is also the first app that lives outside Cairn's repository. It is its own package, <code>yap-cairn</code>,
-which depends on a tagged Cairn the way any app would (<a href="/docs/use/releases/">Cairn as a package</a>
-and issue #75). Its claims are <code>yap^301</code> to <code>yap^399</code>, beside Cairn's own <code>cairn^N</code>. Because its
+which depends on Cairn <code>v0.1.0</code> the way any app would (<a href="/docs/use/releases/">release notes</a>). Its claims are <code>yap^301</code> to <code>yap^399</code>, beside Cairn's own <code>cairn^N</code>. Because its
 sources are no longer in this repository, this page can't include them yet: the parity table is
 <code>docs/yap-parity.md</code> and the claims are in <code>lean/Yap.lean</code>, both in that package.</p>
 <h2 id="the-original-is-the-spec">The original is the spec</h2>
@@ -81,8 +80,9 @@ However replies arrive (late, twice, out of order, or never), no clip is typed t
 <li>The parity table's open rows need decisions, chiefly whether the port should replace the
 original outright rather than sit beside it.</li>
 <li>Apps can't yet declare host effects of their own: the effects Yap needed were added to Cairn
-itself (<a href="https://github.com/iamnbutler/cairn/issues/75">issue #75</a>).</li>
-<li>This page can't include Yap's sources now that they live in their own package.</li>
+itself (<a href="https://github.com/iamnbutler/cairn/issues/84">issue #84</a>).</li>
+<li>This page can't include Yap's sources now that they live in their own package
+(<a href="https://github.com/iamnbutler/cairn/issues/83">issue #83</a>).</li>
 </ul>
 
 </article>
