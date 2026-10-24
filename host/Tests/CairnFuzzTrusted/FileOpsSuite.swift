@@ -19,7 +19,9 @@ import Foundation
 ///   `notFound`; a directory is `invalid` and stays; a read-only parent is `denied`.
 /// - `subs.watch-file`: every change (write in place, atomic replace, append, delete, create,
 ///   touch, chmod) brings `changed` within a few polls; an untouched file brings none; after
-///   the stop has been handled none at all.
+///   the stop has been handled none at all. The host reports a change once the file has held
+///   still for a poll, so an operation brings one `changed`, or one per system call that
+///   changes the file when a poll fits between them (`seenTwice` counts those).
 final class FileOpsSuite: Suite {
     let name = "fileops"
     let crashCheck = "effects.append-file"
@@ -366,8 +368,11 @@ final class FileOpsSuite: Suite {
                     h.truncateFile(atOffset: 0); h.write(Data("{\"key\":\"f13\"}".utf8)); h.closeFile()
                     changes = 2
                 } else { FileManager.default.createFile(atPath: path, contents: Data("{}".utf8)) }
-            case 1: try? Data("{\"x\":\(g.below(1000))}".utf8).write(to: URL(fileURLWithPath: path), options: .atomic)
-            case 2: _ = Files.append(path, [10])
+            case 1:  // Foundation touches the old file's metadata, then renames the new one over it
+                try? Data("{\"x\":\(g.below(1000))}".utf8).write(to: URL(fileURLWithPath: path), options: .atomic)
+                if exists { changes = 2 }
+            case 2: _ = Files.append(path, [10])  // a new file is created, then written
+                if !exists { changes = 2 }
             case 3:
                 if exists { unlink(path) } else { changes = 0 }
             case 4: FileManager.default.createFile(atPath: path, contents: Data())
@@ -395,6 +400,7 @@ final class FileOpsSuite: Suite {
             } else {
                 r.expect(c, !got.isEmpty && got.count <= changes, "\(got.count) changed for op \(op), allowed 1…\(changes)")
                 r.count(c, "changes")
+                if got.count > 1 { r.count(c, "seenTwice") }
             }
         }
         world.run([], [.stop(id: id)])

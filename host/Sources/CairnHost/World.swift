@@ -337,14 +337,21 @@ public final class World: @unchecked Sendable {
             return { t.cancel() }
         case let .watchFile(given):
             let path = watchPath(given)
-            var last = FileSignature.of(path)
+            // `reported` is the state Lean last heard about; `seen` the previous poll's. A change
+            // is reported once the file has held still for a whole poll, so one save (a burst
+            // of syscalls, and the metadata macOS writes just after: a new file's ctime moves
+            // again when its provenance attribute lands) is one `changed`, and Lean never hears
+            // about a half-done write (truncated, not yet written).
+            var reported = FileSignature.of(path)
+            var seen = reported
             let t = DispatchSource.makeTimerSource(queue: queue)
             let period = DispatchTimeInterval.milliseconds(max(1, watchPeriodMs))
             t.schedule(deadline: .now() + period, repeating: period, leeway: .milliseconds(5))
             t.setEventHandler { [weak self] in
                 let now = FileSignature.of(path)
-                guard now != last else { return }
-                last = now
+                defer { seen = now }
+                guard now == seen, now != reported else { return }
+                reported = now
                 self?.send?([.subEvent(id: id, .changed)])
             }
             t.resume()

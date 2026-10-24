@@ -345,8 +345,9 @@ in a scratch directory and never prompts.
   `done`; a second delete is `notFound`; a directory is `invalid` and stays; a read-only
   parent is `denied` and the file stays.
 - **Fuzzed** (^963 `subs.watch-file`): with polls of 5–20 ms, every write in place, atomic
-  replacement, append, deletion, creation, `touch` and `chmod` is followed by one or two
-  `changed` (a write in place can be seen half done) within a few polls, an untouched file or
+  replacement, append, deletion, creation, `touch` and `chmod` is followed by one `changed`
+  (two only when the operation's own system calls, such as truncate then write, land a whole
+  poll apart: the host reports a state once it has held for a poll) within a few polls, an untouched file or
   a changed sibling brings none, and after the stop is handled none comes. **Also assumed:** a
   change that restores every one of device, inode, size, modification and change time (to
   the nanosecond) inside one poll is not seen; the file system's clock makes that impossible

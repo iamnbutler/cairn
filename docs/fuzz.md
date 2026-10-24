@@ -436,6 +436,20 @@ Each fix is its own commit, with a regression test holding the minimal repro.
    APFS rejects names with unassigned code points or noncharacters (`EILSEQ`): 3 of the first
    200 cases. They are `failed invalid` now (and `ENAMETOOLONG` with them); the oracle makes
    the same names with POSIX calls to know which to expect.
+8. **The list-dir oracle lost a leading BOM** (`effects.list-dir`, 61 of 256 cases at seed 0,
+   N=20,000; the oracle was wrong). `FileManager.contentsOfDirectory(atPath:)` decodes names
+   as NSString does, which drops one leading U+FEFF: `"\u{FEFF}a"` comes back as `"a"`, a name
+   that isn't in the directory. `Files.list` reads `readdir`'s bytes, so its names are the
+   real ones and its order is UTF-8 byte order, as docs/effects.md promises. The oracle now
+   lists URLs and reads each one's file-system representation. Test:
+   `WorldTests.listDirKeepsALeadingBOM`.
+9. **One save could bring two `changed`** (`subs.watch-file`, 2 of 244 cases at seed 0,
+   N=20,000; fixed in `World.swift`). An atomic replace and an append that creates the file
+   each pass through two or three `stat` states within a millisecond (macOS moves the old
+   file's change time before the rename, and a new file's again when it attaches its
+   provenance attribute), and a poll that landed between them reported both. The host now
+   reports a state once it has held for a whole poll, which also keeps Lean from reading a
+   write in place half done.
 
 Also changed while writing the suites, found by reading rather than by a failing case: a reply
 checked against the world's generation and then sent outside the lock could arrive after
