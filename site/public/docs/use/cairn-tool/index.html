@@ -23,7 +23,7 @@
 <div class="layout">
 <details class="side" open>
 <summary>Contents</summary>
-<nav aria-label="Docs"><h2>Learn</h2><ul><li><a href="/docs/book/">The Cairn Book</a><ol><li><a href="/docs/book/first-app/">Your first app</a></li><li><a href="/docs/book/moves-and-flows/">Moves and flows</a></li><li><a href="/docs/book/view-and-layout/">The view and layout</a></li><li><a href="/docs/book/proving/">Proving a claim</a></li><li><a href="/docs/book/effects/">Effects and the host</a></li><li><a href="/docs/book/shipping/">Shipping</a></li></ol></li><li><a href="/docs/examples/">Cairn by Example</a><ol><li><a href="/docs/examples/counter/">Counter</a></li><li><a href="/docs/examples/basics/">Basics</a></li><li><a href="/docs/examples/todo/">TodoMVC</a></li><li><a href="/docs/examples/yap/">Yap</a></li></ol></li></ul><h2>Use</h2><ul><li><a href="/docs/use/api/">API reference<span class="todo">to do</span></a></li><li><a href="/docs/use/cairn-tool/" class="on" aria-current="page">The cairn tool</a></li><li><a href="/docs/use/claims/">Claims reference</a></li><li><a href="/docs/use/evidence/">The evidence ladder</a></li><li><a href="/docs/use/errors/">Error index<span class="todo">to do</span></a></li><li><a href="/docs/use/releases/">Release notes<span class="todo">to do</span></a></li></ul><h2>Master</h2><ul><li><a href="/docs/master/trusted-base/">The trusted base</a></li><li><a href="/docs/master/host-protocol/">The host protocol</a></li><li><a href="/docs/master/host-effects/">Writing host effects</a></li><li><a href="/docs/master/profiling/">Profiling against a reference</a></li><li><a href="/docs/master/contributing/">Contributing</a></li></ul><h2>Evidence</h2><ul><li><a href="/docs/evidence/">The maps</a></li><li><a href="/map/counter/">Counter's map</a></li><li><a href="/map/basics/">Basics' map</a></li><li><a href="/map/todo/">TodoMVC's map</a></li><li><a href="/map/trusted/">The trusted base's map</a></li></ul></nav>
+<nav aria-label="Docs"><h2>Learn</h2><ul><li><a href="/docs/book/">The Cairn Book</a><ol><li><a href="/docs/book/first-app/">Your first app</a></li><li><a href="/docs/book/moves-and-flows/">Moves and flows</a></li><li><a href="/docs/book/view-and-layout/">The view and layout</a></li><li><a href="/docs/book/proving/">Proving a claim</a></li><li><a href="/docs/book/effects/">Effects and the host</a></li><li><a href="/docs/book/shipping/">Shipping</a></li></ol></li><li><a href="/docs/examples/">Cairn by Example</a><ol><li><a href="/docs/examples/counter/">Counter</a></li><li><a href="/docs/examples/basics/">Basics</a></li><li><a href="/docs/examples/todo/">TodoMVC</a></li><li><a href="/docs/examples/yap/">Yap</a></li></ol></li></ul><h2>Use</h2><ul><li><a href="/docs/api/">API reference</a></li><li><a href="/docs/use/cairn-tool/" class="on" aria-current="page">The cairn tool</a></li><li><a href="/docs/use/claims/">Claims reference</a></li><li><a href="/docs/use/evidence/">The evidence ladder</a></li><li><a href="/docs/use/errors/">Error index<span class="todo">to do</span></a></li><li><a href="/docs/use/releases/">Release notes<span class="todo">to do</span></a></li></ul><h2>Master</h2><ul><li><a href="/docs/master/trusted-base/">The trusted base</a></li><li><a href="/docs/master/host-protocol/">The host protocol</a></li><li><a href="/docs/master/host-effects/">Writing host effects</a></li><li><a href="/docs/master/profiling/">Profiling against a reference</a></li><li><a href="/docs/master/contributing/">Contributing</a></li></ul><h2>Evidence</h2><ul><li><a href="/docs/evidence/">The maps</a></li><li><a href="/map/counter/">Counter's map</a></li><li><a href="/map/basics/">Basics' map</a></li><li><a href="/map/todo/">TodoMVC's map</a></li><li><a href="/map/trusted/">The trusted base's map</a></li></ul></nav>
 </details>
 <script>if (matchMedia("(max-width: 900px)").matches) document.querySelector("details.side").open = false;</script>
 <main>
@@ -67,7 +67,7 @@ DEMO ?= CairnTodo
 	cd host &amp;&amp; swift run $(DEMO)</code></pre><figcaption><code>Makefile</code>, lines 129–132</figcaption></figure>
 <h3 id="check">Check</h3>
 <figure class="code"><pre class="px"><code class="make"><span class="cm"># Everything a PR must pass.</span>
-<span class="kw">check</span>: lint audit ledger kernel test selftest fuzz-quick size fuzz-trusted-quick docs-check</code></pre><figcaption><code>Makefile</code>, lines 80–81</figcaption></figure>
+<span class="kw">check</span>: lint audit ledger kernel doctest test selftest fuzz-quick size fuzz-trusted-quick docs-check</code></pre><figcaption><code>Makefile</code>, lines 80–81</figcaption></figure>
 <figure class="code"><pre class="px"><code class="make"><span class="cm"># Drives each app headlessly through the host's real threads and accessibility mirror.</span>
 <span class="kw">selftest</span>: host
 	cd host &amp;&amp; swift run CairnCounter --selftest
@@ -80,14 +80,14 @@ DEMO ?= CairnTodo
 <figure class="code"><pre class="px"><code class="make"><span class="cm"># Claim-driven fuzzing (docs/fuzz.md): `make fuzz APP=Basics N=1000` runs N sequences from seed</span>
 <span class="cm"># SEED (default 0) and writes build/fuzz/$(APP).json, which `make map` reads.</span>
 <span class="kw">fuzz</span>: lean
-	cd lean &amp;&amp; lake build fuzz &amp;&amp; .lake/build/bin/fuzz $(APP) --seed $(or $(SEED),0) --iterations $(or $(N),200) --out ../build/fuzz</code></pre><figcaption><code>Makefile</code>, lines 261–264</figcaption></figure>
+	cd lean &amp;&amp; lake build fuzz &amp;&amp; .lake/build/bin/fuzz $(APP) --seed $(or $(SEED),0) --iterations $(or $(N),200) --out ../build/fuzz</code></pre><figcaption><code>Makefile</code>, lines 293–296</figcaption></figure>
 <figure class="code"><pre class="px"><code class="make"><span class="cm"># Conformance (docs/conformance.md): the Lean model's sequences replayed on the running app</span>
 <span class="cm"># through its debug socket. `make conformance APP=Basics [N=1000] [LEN=12] [SEED=1]` writes</span>
 <span class="cm"># build/conformance/$(APP).json (read by the map) and build/conformance/$(APP)/report.md.</span>
 <span class="cm"># Adding an app takes one file: tools/conformance/lean/Conformance/Apps/&lt;App&gt;.lean.</span>
 <span class="cm"># The generator links with system clang, not Lake: Lake's bundled lld can't read the SDK's</span>
 <span class="cm"># Swift .tbd files, and the host's Core Text metrics (CairnMetrics) must replace the weak</span>
-<span class="cm"># fallback in lean/c/text_host.c, hence -force_load.</span></code></pre><figcaption><code>Makefile</code>, lines 231–237</figcaption></figure>
+<span class="cm"># fallback in lean/c/text_host.c, hence -force_load.</span></code></pre><figcaption><code>Makefile</code>, lines 263–269</figcaption></figure>
 <h3 id="maps">Maps</h3>
 <figure class="code"><pre class="px"><code class="make"><span class="cm"># The map (docs/map.md): claims + evidence → build/map/$(APP)/dist/, Cairn's own pages, with</span>
 <span class="cm"># headless screenshots pinned from the frame's accessibility rects. `make map APP=Counter`. It</span>
@@ -113,7 +113,7 @@ MAPDIR = build/map/$(APP)
 <span class="cm"># against SIZE_LIMIT bytes. No host app links `Lean` (the compiler, about 100 MB), so each is a</span>
 <span class="cm"># few MB; crossing the limit almost always means something imported `Lean`.</span>
 SIZE_APPS = CairnCounter CairnBasics CairnTodo CairnClock CairnTray CairnYap
-SIZE_LIMIT = 5000000</code></pre><figcaption><code>Makefile</code>, lines 283–288</figcaption></figure>
+SIZE_LIMIT = 5000000</code></pre><figcaption><code>Makefile</code>, lines 315–320</figcaption></figure>
 
 </article>
 
