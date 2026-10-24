@@ -218,8 +218,6 @@ structure Io where
   marking : Option Mark := none
   /-- Lines a mark's rewrite lost, to append again (file, line). -/
   reappend : List (String × String) := []
-  /-- How many marks have started: each starts only when no append is in flight (^347). -/
-  marksStarted : Nat := 0
   /-- Clips the host holds samples for. -/
   held : List Nat := []
   overlay : Overlay := {}
@@ -469,8 +467,8 @@ def startMark (io : Io) : List Nat → Io × List (Nat × Ask)
   | c :: rest =>
     match io.saved.find? (·.1 == c) with
     | some (_, file, line) =>
-      let (io, a) := { io with marks := rest, marking := some { file := file },
-                               marksStarted := io.marksStarted + 1 }.ask (.markRead c file line) (.read file)
+      let (io, a) := { io with marks := rest, marking := some { file := file } }.ask
+        (.markRead c file line) (.read file)
       (io, [a])
     | none => startMark io rest
 
@@ -572,11 +570,18 @@ def needed (s : State) : List Nat :=
     | .chunk c _ => some c
     | _ => none
 
+/-- Ask the host to drop these clips' samples, in order. -/
+def forgetAll (io : Io) : List Nat → Io × List (Nat × Ask)
+  | [] => (io, [])
+  | c :: cs =>
+    let (io, a) := io.ask .ignore (.forget c)
+    let (io, as) := forgetAll io cs
+    (io, a :: as)
+
 /-- Let the host drop the samples of clips no longer needed. -/
 def forget (io : Io) (s : State) : Io × List (Nat × Ask) :=
-  let gone := io.held.filter (fun c => !(needed s).contains c)
-  let io := { io with held := io.held.filter (fun c => (needed s).contains c) }
-  gone.foldl (fun (io, as) c => let (io, a) := io.ask .ignore (.forget c); (io, as ++ [a])) (io, [])
+  forgetAll { io with held := io.held.filter (fun c => (needed s).contains c) }
+    (io.held.filter (fun c => !(needed s).contains c))
 
 /-- The end of a step: forget the samples no longer needed, then the marks' next requests. -/
 def collect (io : Io) (s : State) : Io × List (Nat × Ask) :=

@@ -11,6 +11,7 @@ public import Examples.Yap.Recent
 public import Examples.Yap.App
 public import Examples.Yap.View
 public import Examples.Yap.AppProofs
+public import Examples.Yap.MarkProofs
 
 /-! # Yap on Cairn: the app and its claims
 
@@ -50,7 +51,8 @@ theorems at the end of this file).
 | ^343 | move | grant the microphone |
 | ^344 | move | open the menu |
 | ^345 | place | the overlay panel |
-| ^346 | invariant | the key is left alone while the original Yap runs | -/
+| ^346 | invariant | the key is left alone while the original Yap runs |
+| ^347 | invariant | a typed transcript is marked on disk only after its append is answered ok | -/
 
 @[expose] public section
 
@@ -358,6 +360,29 @@ invariant ^346 leaveOriginal "The original Yap keeps its key" for machine where
   init := fun h k mo => leave_original _ h k mo
   step := fun _ _ _ h k mo => leave_original _ h k mo
   receive := fun _ _ _ h k mo => leave_original _ h k mo
+
+invariant ^347 markAfterAppend "A mark waits for the appends" for machine where
+  does "Yap marks a typed transcript's line in its day file (`\"typed\":true`) by rewriting the file, and the host runs requests concurrently, so a line is only known to be there once its append is answered. The app keeps the day-file appends it has sent and not heard back from (`Io.appends`): every append it sends is kept, with its line, and one leaves only when a reply with its id arrives; a line is saved for marking only when the reply to its append says it worked; and a mark's read goes out only for a saved line, when no append is in flight after the message, so never before its own append is answered nor in the same frame as another. The menu starts no mark and drops no append (`receive_tracks`, `receive_answers`, `receive_saves`, `receive_marks`, `menuStep_marks`). That a typed transcript then ends up marked on disk is fuzzed, not proved (`yapfuzz`, app mode)."
+  holds s := (∀ m id f d, Effect.request id (.appendFile f d) ∈ (receive s m).2 →
+      ∃ k line, (id, k, f, line) ∈ (receive s m).1.io.appends ∧ d = line.toUTF8) ∧
+    (∀ m x, x ∈ s.io.appends → x ∉ (receive s m).1.io.appends → ∃ r, m = .reply x.1 r) ∧
+    (∀ m e, e ∈ (receive s m).1.io.saved → e ∉ s.io.saved →
+      ∃ id r, m = .reply id r ∧ r.ok = true ∧ (id, some e.1, e.2.1, e.2.2) ∈ s.io.appends) ∧
+    (∀ m id c f l, (id, Pend.markRead c f l) ∈ (receive s m).1.io.pending →
+      (id, Pend.markRead c f l) ∉ s.io.pending →
+      (receive s m).1.io.appends = [] ∧ (c, f, l) ∈ (receive s m).1.io.saved) ∧
+    (∀ a, s.io.Frame (menuStep s a).1.io ∧
+      ∀ id f d, Effect.request id (.appendFile f d) ∈ (menuStep s a).2 →
+        ∃ k line, (id, k, f, line) ∈ (menuStep s a).1.io.appends ∧ d = line.toUTF8)
+  init := ⟨fun m _ _ _ h => receive_tracks _ m h, fun m _ hx hn => receive_answers _ m hx hn,
+    fun m _ he hn => receive_saves _ m he hn, fun m _ _ _ _ h hn => receive_marks _ m h hn,
+    fun a => menuStep_marks _ a⟩
+  step := fun _ _ _ => ⟨fun m _ _ _ h => receive_tracks _ m h, fun m _ hx hn => receive_answers _ m hx hn,
+    fun m _ he hn => receive_saves _ m he hn, fun m _ _ _ _ h hn => receive_marks _ m h hn,
+    fun a => menuStep_marks _ a⟩
+  receive := fun _ _ _ => ⟨fun m _ _ _ h => receive_tracks _ m h, fun m _ hx hn => receive_answers _ m hx hn,
+    fun m _ he hn => receive_saves _ m he hn, fun m _ _ _ _ h hn => receive_marks _ m h hn,
+    fun a => menuStep_marks _ a⟩
 
 /-! ## What the host does -/
 
