@@ -213,7 +213,10 @@ public struct Commands {
         let project = try project()
         let name = project.manifest.name
         let dir = project.root.appending(path: "build/doc/\(name)")
-        let env = lakeEnv(Registry.current())
+        // With the artifact cache on, Lake keeps .olean files in the cache, not in the build
+        // directory, and the doc and claims tools import modules from the build directory.
+        var env = lakeEnv(Registry.current())
+        env["LAKE_ARTIFACT_CACHE"] = "false"
         let modules = name == "cairn"
             ? ["Cairn", "Cairn.Claims", "Cairn.Fuzz", "Cairn.Fuzz.Trusted.Claims", "Cairn.Fuzz.Trusted.Export"]
             : project.manifest.libs

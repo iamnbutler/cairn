@@ -110,10 +110,11 @@ const pages = render({
 	inputs,
 });
 for (const [file, content] of Object.entries(pages)) writeFileSync(join(DIST, file), content);
-cpSync(join(root, "tools/map/style.css"), join(DIST, "style.css"));
+// The tool's own assets come from its Cairn checkout, not --root, which is the package documented.
+cpSync(join(import.meta.dir, "../map/style.css"), join(DIST, "style.css"));
 cpSync(join(import.meta.dir, "doc.css"), join(DIST, "doc.css"));
 cpSync(join(import.meta.dir, "search.js"), join(DIST, "search.js"));
-cpSync(join(root, "site/public/icon.svg"), join(DIST, "icon.svg"));
+cpSync(join(import.meta.dir, "../../site/public/icon.svg"), join(DIST, "icon.svg"));
 
 const bytes = [...new Bun.Glob("**/*").scanSync({ cwd: DIST })].reduce((n, f) => n + Bun.file(join(DIST, f)).size, 0);
 console.log(
