@@ -58,8 +58,11 @@ lint:
 
 # Swift tests: renderer goldens, pixel probes, text metrics (offscreen; needs a Metal device),
 # and the host's unit tests (index conversion, text-input shadow, input mapping, NSTextInputClient).
+# CairnRenderTests run one at a time: Core Text's synchronous calls to fontd, made from many test
+# threads at once, sometimes never get a reply, and the whole run hangs. The rest stay parallel.
 test: lean corpus
-	cd host && swift test
+	cd host && swift test --skip CairnRenderTests
+	cd host && swift test --filter CairnRenderTests --no-parallel
 	cd lean && .lake/build/bin/framecorpus verify ../build/corpus
 
 # The frame/event corpus (docs/frame.md): Lean writes frames, event batches and their canonical
