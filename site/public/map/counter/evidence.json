@@ -1,12 +1,12 @@
 {
   "app": "Counter",
-  "generated": "2026-10-24T02:28:56.456Z",
+  "generated": "2026-10-24T04:47:45.448Z",
   "inputs": {
     "fuzz": "/Users/natebutler/code/cairn/build/fuzz/Counter.json",
     "trusted": null,
     "conformance": "/Users/natebutler/code/cairn/build/conformance/Counter.json",
     "capture": true,
-    "theoremsAudited": 3764
+    "theoremsAudited": 3848
   },
   "counts": {
     "kinds": [
