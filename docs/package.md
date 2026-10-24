@@ -30,7 +30,11 @@ lean/<App>/…           the app (Lean modules)
 Package.swift          at the repository root (SwiftPM resolves git dependencies only there)
 host/Sources/…         the Swift executable, the app's C exports, its painters
 claims.lock            the app's own claim ids
+cairn.toml             name, version, libs and paths for the `cairn` CLI (docs/cli.md)
 ```
+
+`cairn.toml`'s `name` has to match the lakefile's package name and its claim
+scope. Cairn's own `cairn.toml` sits at this repository's root.
 
 The lakefile:
 
