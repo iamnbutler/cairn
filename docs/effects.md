@@ -142,6 +142,7 @@ inductive Request where
   | openItem (target : String)                       -- Yap on Cairn, below
   | appRunning (bundleId : String)
   | readDefault (domain key : String)
+  | makeDir (path : String)
 
 inductive Part where
   | bytes (b : ByteArray)
@@ -152,7 +153,7 @@ structure Secret where
 
 inductive Reply where
   | done                                              -- writeFile, appendFile, deleteFile, playSound,
-                                                      -- typeText, forgetClip, openItem
+                                                      -- typeText, forgetClip, openItem, makeDir
   | bytes (data : ByteArray)                          -- readFile, readDefault
   | http (status : Nat) (headers : List (String × String)) (body : ByteArray)   -- http, upload
   | failed (fault : Fault) (message : String)          -- any request
@@ -285,7 +286,7 @@ check that touches nothing outside a scratch directory and prompts no one.
 
 | Effect | Answer | Host | Claim, check |
 |---|---|---|---|
-| `appendFile path data` | `done` | `open(O_APPEND\|O_CREAT, 0600)` after creating parent directories, then `write` until every byte is out | ^960 `effects.append-file` |
+| `appendFile path data` | `done` | `open(O_APPEND\|O_CREAT, 0600)` after creating parent directories (mode 700), then `write` until every byte is out; a failure says what Foundation says for that errno | ^960 `effects.append-file` |
 | `listDir path` | `names` | `readdir`, without `.`, `..` and names that aren't UTF-8, sorted by UTF-8 bytes | ^961 `effects.list-dir` |
 | `deleteFile path` | `done` | `lstat`, then `unlink`; a directory is `failed invalid` and stays | ^962 `effects.delete-file` |
 | `Sub.watchFile path` | `changed` events | polls `stat` every 250 ms on the world's queue | ^963 `subs.watch-file` |
@@ -294,12 +295,14 @@ check that touches nothing outside a scratch directory and prompts no one.
 | `openItem target` | `done` | `NSWorkspace.open`: a URL with a scheme as it is, a path (`~/` expanded) only when it exists | ^1000 `effects.open-item` |
 | `appRunning bundleId` | `flag running` | `NSRunningApplication.runningApplications(withBundleIdentifier:)`, not terminated | ^1001 `effects.app-running` |
 | `readDefault domain key` | `bytes text` | `CFPreferencesCopyAppValue`: a string as UTF-8, a boolean `1`/`0`, a number in decimal | ^1002 `effects.read-default` |
+| `makeDir path` | `done` | `FileManager.createDirectory`, intermediates, mode 700; `done` if it is there | ^1003 `effects.make-dir` |
 
 The last three came with Yap on Cairn (workstream W, docs/yap.md): Open Transcripts Folder,
 Edit Dictionary and Edit Settings open files, the Accessibility and Microphone items open
 System Settings; Yap (Cairn) leaves the dictation key alone while the original Yap
 (`dev.yap.Yap`) runs; and it reads the model the original keeps in its defaults. `readDefault`
-only reads: Yap (Cairn) keeps its own settings in a file.
+only reads: Yap (Cairn) keeps its own settings in a file. `makeDir` is Open Transcripts Folder's
+first step, as Yap creates the folder (mode 700) before opening it (docs/yap-parity.md).
 
 Decisions, and why:
 
@@ -407,14 +410,15 @@ Decisions, and why:
 ### Permissions
 
 Each needs a TCC permission, and without it fails with an ordinary `failed` instead of
-touching anything (so asking without the permission never shows a system prompt by accident;
-an app asks with `permission p true`):
+touching anything (an app asks with `permission p true`). The one exception is the microphone
+while undecided: `record` starts the engine, which shows the system's prompt, as Yap's first
+recording does (docs/yap-parity.md).
 
 | Effect | Permission (TCC service) | Without it |
 |---|---|---|
 | `typeText` | Accessibility (`kTCCServiceAccessibility`): posting events into other apps | reply `failed denied`; nothing posted (checked with `AXIsProcessTrusted` first, since untrusted events are dropped silently) |
 | `Sub.globalKey` | Accessibility: `NSEvent` global monitors see key events only for a trusted app | event `failed denied`; no monitor installed |
-| `Sub.record` | Microphone (`kTCCServiceMicrophone`) | event `failed denied`; the engine is never started (starting it while undecided would show the prompt) |
+| `Sub.record` | Microphone (`kTCCServiceMicrophone`) | refused or restricted: event `failed denied` ("Microphone access is not granted"), the engine never started; undecided: the engine starts and the system prompts, as in Yap |
 
 The app that holds them must be a bundle with `NSMicrophoneUsageDescription` in its
 `Info.plist` (without it the system ends the process when it opens the microphone), the
@@ -533,6 +537,7 @@ Each kind of host effect is an `assume` claim naming a check of the trusted-base
 | ^1000 | `openItem` opens exactly the URL or existing file it names | `effects.open-item` |
 | ^1001 | `appRunning` answers whether an app with that bundle id runs | `effects.app-running` |
 | ^1002 | `readDefault` answers the default's value as text | `effects.read-default` |
+| ^1003 | `makeDir` makes a private directory and its parents | `effects.make-dir` |
 
 The new records are also covered by ^901 and ^902 (the Swift codecs against Lean's), whose
 generators now produce them. The suites (`clock`, `world`, `files`, `http`, `sound`, `fileops`, `system`, `audio`, `input`, `upload` in

@@ -166,6 +166,7 @@ func fakeWorld(home: String, mic: FakeMic, keys: FakeKeys, log: Log) -> World {
     h.table[7] = { _, reply in reply(.app(pid: 4242, name: "Notes")) }
     h.table[8] = { _, reply in reply(.flag(true)) }
     h.table[12] = { r, reply in if case let .openItem(t) = r { log.opened.update { $0.append(t) }; reply(.done) } }
+    h.table[15] = { r, reply in if case let .makeDir(p) = r { reply(Files.makeDir(moved(p))) } }
     h.table[13] = { r, reply in
         if case let .appRunning(b) = r { reply(.flag(b == "dev.yap.Yap" && log.originalRunning.value)) }
     }

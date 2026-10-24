@@ -168,4 +168,8 @@ assume ^1002 hostReadDefault "readDefault answers the default's value as text" w
   does "readDefault answers the value CFPreferences holds for the key in the domain as UTF-8 bytes: a string as it is, a boolean as 1 or 0, a number as its decimal text; a missing value is notFound, any other type and an empty domain or key invalid. It never writes a default."
   check "effects.read-default"
 
+assume ^1003 hostMakeDir "makeDir makes a private directory and its parents" where
+  does "makeDir answers done only when the path is then a directory, each directory it made mode 700 whatever the umask, one already there done and left as it was; a file in the way, a path under a file, a read-only parent, NUL and the empty path fail."
+  check "effects.make-dir"
+
 end Cairn.Fuzz.Trusted.Claims

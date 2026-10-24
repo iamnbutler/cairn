@@ -98,6 +98,7 @@ public enum DebugJSON {
         case .openItem(let t): "open \(t)"
         case .appRunning(let b): "appRunning \(b)"
         case let .readDefault(d, k): "readDefault \(d) \(k)"
+        case .makeDir(let p): "makeDir \(p)"
         }
     }
 

@@ -198,12 +198,15 @@ public struct Microphone: Sendable {
     }
 
     /// The default input device through AVAudioEngine, converted to 16 kHz mono 16-bit as in
-    /// Yap's AudioCapture (no voice processing). Needs the microphone permission: without it
-    /// this fails `denied` and never starts the engine, since starting it would show the
-    /// system's prompt (an app asks with the `permission` request instead).
+    /// Yap's AudioCapture (no voice processing). Not yet asked, starting the engine shows the
+    /// system's prompt, as Yap's first recording does. Refused (denied or restricted), it fails
+    /// `denied` without starting: Yap records silence then and says "Heard nothing"
+    /// (iamnbutler/yap#11). A failure to start is Yap's text, the error's own description.
     public static let live = Microphone { onSamples throws(ReplyError) in
-        guard AVCaptureDevice.authorizationStatus(for: .audio) == .authorized else {
-            throw ReplyError(.denied, "the microphone permission is not granted")
+        switch AVCaptureDevice.authorizationStatus(for: .audio) {
+        case .denied, .restricted:
+            throw ReplyError(.denied, "Microphone access is not granted")
+        default: break
         }
         let engine = AVAudioEngine()
         let input = engine.inputNode
@@ -226,7 +229,7 @@ public struct Microphone: Sendable {
         engine.prepare()
         do { try engine.start() } catch {
             input.removeTap(onBus: 0)
-            throw ReplyError(.other, "the microphone did not start: \(error.localizedDescription)")
+            throw ReplyError(.other, error.localizedDescription)
         }
         let held = EngineBox(engine)
         return { held.stop() }

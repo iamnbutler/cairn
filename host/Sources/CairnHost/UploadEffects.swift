@@ -32,7 +32,8 @@ public struct SecretSource: Sendable {
     public func resolve(_ s: Secret) -> Result<String, ReplyError> {
         if let v = environment(s.name), !v.isEmpty { return .success(v) }
         if let text = readFile(s.file), let v = Self.parseDotEnv(text)[s.name], !v.isEmpty { return .success(v) }
-        return .failure(ReplyError(.notFound, "no \(s.name) in the environment or \(s.file)"))
+        // Yap's `Secrets.MissingKey` text, with the file's full path.
+        return .failure(ReplyError(.notFound, "No \(s.name) in the environment or \(Files.expand(s.file))"))
     }
 
     /// Yap's `Secrets.parseDotEnv`: `KEY=value` lines, `#` comments, an optional `export `,

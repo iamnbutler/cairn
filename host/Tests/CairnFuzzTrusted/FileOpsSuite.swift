@@ -12,6 +12,9 @@ import Foundation
 /// - `effects.list-dir`: exactly the names made (files, directories, links), sorted by UTF-8
 ///   bytes, the same bytes `readdir` gives; missing is `notFound`, a file `invalid`, an
 ///   unreadable directory `denied`.
+/// - `effects.make-dir`: after `done` the path is a directory, each directory made is mode 700
+///   (a umask doesn't widen or narrow it), one already there is `done` and left as it was; a
+///   file in the way, a path under a file, NUL and the empty path fail.
 /// - `effects.delete-file`: a file or a link (not its target) is gone after `done`; again is
 ///   `notFound`; a directory is `invalid` and stays; a read-only parent is `denied`.
 /// - `subs.watch-file`: every change (write in place, atomic replace, append, delete, create,
@@ -29,6 +32,10 @@ final class FileOpsSuite: Suite {
             title: "`listDir` lists exactly the directory's names, sorted",
             trusted: ["host/Sources/CairnHost/FileEffects.swift (Files.list)"],
             oracle: "the names the case created, and FileManager.contentsOfDirectory"),
+        "effects.make-dir": CheckInfo(
+            title: "`makeDir` makes a private directory and its parents",
+            trusted: ["host/Sources/CairnHost/FileEffects.swift (Files.makeDir)"],
+            oracle: "stat of each component before and after"),
         "effects.delete-file": CheckInfo(
             title: "`deleteFile` removes a file or link and never a directory",
             trusted: ["host/Sources/CairnHost/FileEffects.swift (Files.delete)"],
@@ -57,10 +64,11 @@ final class FileOpsSuite: Suite {
             }
             try? FileManager.default.removeItem(atPath: root)
         }
-        switch g.below(4) {
+        switch g.below(5) {
         case 0: append(&g, r, root)
         case 1: list(&g, r, root)
         case 2: delete(&g, r, root)
+        case 3: makeDir(&g, r, root)
         default: watch(&g, r, root)
         }
     }
@@ -83,6 +91,8 @@ final class FileOpsSuite: Suite {
         }
         try? FileManager.default.removeItem(atPath: root + "-oracle")
         r.expect(c, isFailure(Files.append("", [1]), .invalid), "appendFile to the empty path")
+        // The directories it will make, each to be mode 700 (Yap's transcript folder is).
+        let made = (1..<parts.count).map { root + "/" + parts[0..<$0].joined(separator: "/") }
 
         var want: [UInt8] = []
         for i in 0..<g.range(1, 5) {
@@ -95,6 +105,10 @@ final class FileOpsSuite: Suite {
                 var st = stat()
                 stat(path, &st)
                 r.expect(c, st.st_mode & 0o777 == 0o600, "a new file has mode \(String(st.st_mode & 0o777, radix: 8)), not 600")
+                for d in made {
+                    stat(d, &st)
+                    r.expect(c, st.st_mode & 0o777 == 0o700, "a made directory has mode \(String(st.st_mode & 0o777, radix: 8)), not 700")
+                }
             }
             r.count(c, "bytes", bytes.count)
         }
@@ -154,6 +168,54 @@ final class FileOpsSuite: Suite {
         r.expect(c, contents(path) == before, "a failed append changed the file")
     }
 
+    // MARK: makeDir
+
+    func makeDir(_ g: inout SplitMix, _ r: Recorder, _ root: String) {
+        let c = "effects.make-dir"
+        let parts = (0..<g.range(1, 4)).map { _ in FilesSuite.component(&g) }
+        let path = root + "/" + parts.joined(separator: "/")
+        r.expect(c, isFailure(Files.makeDir(""), .invalid), "makeDir of the empty path")
+        if path.utf8.contains(0) {
+            r.expect(c, isFailure(Files.makeDir(path), .invalid), "makeDir of a path with NUL")
+            return
+        }
+        if FilesSuite.posixRefuses(root + "-oracle", parts) != nil {
+            try? FileManager.default.removeItem(atPath: root + "-oracle")
+            r.expect(c, isFailure(Files.makeDir(path)), "makeDir of a refused name")
+            r.count(c, "refusedNames")
+            return
+        }
+        try? FileManager.default.removeItem(atPath: root + "-oracle")
+        let dirs = (1...parts.count).map { root + "/" + parts[0..<$0].joined(separator: "/") }
+        // Some of the way there already, at a mode it must keep.
+        let pre = g.below(parts.count)
+        for d in dirs.prefix(pre) { mkdir(d, 0o755); chmod(d, 0o755) }
+        func mode(_ p: String) -> mode_t { var st = stat(); stat(p, &st); return st.st_mode & 0o777 }
+        let old = umask(g.elem([0o022, 0o077, 0o000]))
+        let reply = Files.makeDir(path)
+        umask(old)
+        guard r.expect(c, reply == .done, "makeDir: \(reply)") else { return }
+        r.expect(c, isDir(path), "after `done` there is no directory")
+        for (i, d) in dirs.enumerated() {
+            let want: mode_t = i < pre ? 0o755 : 0o700
+            r.expect(c, mode(d) == want, "\(i < pre ? "an existing" : "a made") directory is mode \(String(mode(d), radix: 8)), not \(String(want, radix: 8))")
+        }
+        r.expect(c, Files.makeDir(path) == .done, "makeDir again: \(Files.makeDir(path))")
+        r.count(c, "made", parts.count - pre)
+        // In the way: a file, or a path under one.
+        let file = path + "/f"
+        FileManager.default.createFile(atPath: file, contents: Data([1]))
+        r.expect(c, isFailure(Files.makeDir(file)), "makeDir over a file: \(Files.makeDir(file))")
+        r.expect(c, isFailure(Files.makeDir(file + "/d")), "makeDir under a file: \(Files.makeDir(file + "/d"))")
+        r.expect(c, !isDir(file), "a file became a directory")
+        if g.chance(1, 4), getuid() != 0 {
+            chmod(path, 0o555)
+            r.expect(c, isFailure(Files.makeDir(path + "/d"), .denied), "makeDir in a read-only directory: \(Files.makeDir(path + "/d"))")
+            chmod(path, 0o700)
+            r.count(c, "permissions")
+        }
+    }
+
     // MARK: listDir
 
     func list(_ g: inout SplitMix, _ r: Recorder, _ root: String) {
@@ -180,10 +242,17 @@ final class FileOpsSuite: Suite {
             r.fail(c, "listDir of a directory: \(Files.list(dir))")
             return
         }
-        let fm = ((try? FileManager.default.contentsOfDirectory(atPath: dir)) ?? [])
-            .sorted { $0.utf8.lexicographicallyPrecedes($1.utf8) }
-        r.expect(c, names.map { Array($0.utf8) } == fm.map { Array($0.utf8) },
-                 "listDir differs from FileManager: \(names.prefix(5)) vs \(fm.prefix(5))")
+        // FileManager drops a name's leading U+FEFF (readdir and `listDir` keep it), so it is
+        // compared without one.
+        func unBOM(_ n: String) -> String {
+            n.unicodeScalars.first == "\u{FEFF}" ? String(String.UnicodeScalarView(n.unicodeScalars.dropFirst())) : n
+        }
+        let byBytes: (String, String) -> Bool = { $0.utf8.lexicographicallyPrecedes($1.utf8) }
+        let fm = ((try? FileManager.default.contentsOfDirectory(atPath: dir)) ?? []).sorted(by: byBytes)
+        let listed = names.map(unBOM).sorted(by: byBytes)
+        let i = Array(zip(listed, fm)).firstIndex { Array($0.0.utf8) != Array($0.1.utf8) } ?? min(listed.count, fm.count)
+        r.expect(c, listed.map { Array($0.utf8) } == fm.map { Array($0.utf8) },
+                 "listDir differs from FileManager at \(i) of \(listed.count) and \(fm.count): \(listed.dropFirst(i).prefix(2).map { Array($0.unicodeScalars) }) vs \(fm.dropFirst(i).prefix(2).map { Array($0.unicodeScalars) })")
         r.expect(c, Set(names) == made, "listDir has \(names.count) names; the case made \(made.count)")
         r.expect(c, zip(names, names.dropFirst()).allSatisfy { $0.utf8.lexicographicallyPrecedes($1.utf8) },
                  "listDir's names are not strictly sorted by UTF-8 bytes")

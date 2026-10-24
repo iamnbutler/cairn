@@ -14,7 +14,7 @@ It is a drop-in for the original: the same files, the same model, the same key.
 |---|---|---|
 | App | `/Applications/Yap.app`, `dev.yap.Yap` | `/Applications/Yap (Cairn).app`, `dev.yap.cairn` |
 | Files | `~/Library/Application Support/yap/`: `secrets.env`, `dictionary.txt`, `config.json`, `transcripts/YYYY-MM-DD.jsonl` | the same files |
-| Model | `defaults read dev.yap.Yap model`, default `gpt-transcribe` | read from the same place, at launch |
+| Model | `defaults read dev.yap.Yap model`, default `gpt-transcribe` | read from the same place, as each recording starts |
 | Dictate with key, Press Return | its `UserDefaults` | read from the original's defaults at first launch, then kept in `~/Library/Application Support/Cairn/Yap/prefs.json` (it never writes the original's defaults) |
 
 ## Build and install
@@ -155,11 +155,12 @@ open a text editor. Record the macOS version and the result of each line.
 
 ## Differences from the original
 
-The model's differences (saved before typed, a failed type moving to the front, ASCII case
-folding, …) are in `lean/Examples/Yap/README.md`. The app adds:
+docs/yap-parity.md audits every behaviour against the original, with the bugs the port fixes
+(each filed on iamnbutler/yap) and the differences still open. The model's are in
+`lean/Examples/Yap/README.md`. The app adds:
 
-- the model is read at launch only (`defaults read dev.yap.Yap model`); changing it needs a
-  relaunch;
+- the model (`defaults read dev.yap.Yap model`) is read again as each recording starts, as
+  Yap's preview reads it (Yap reads it for the clip at key-up);
 - Dictate with Key and Press Return After Dictating start from the original's defaults, then
   live in Cairn's `prefs.json`;
 - it stands aside for the original Yap (^346);

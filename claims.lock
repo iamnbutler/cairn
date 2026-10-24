@@ -50,19 +50,19 @@
 308	move	active	3ae37860f0471301	Edit Dictionary
 309	move	active	bd78e8985f7ae69c	Edit Settings
 310	move	active	affcac8293e81fcf	Grant Accessibility Access
-311	invariant	active	c3236f9d021ca25e	A shortcut never sends
-312	invariant	active	7c0fcf87a116643b	Hold to talk, tap to latch: 300 ms
-313	invariant	active	8bffc38dfc26e0c5	One recording at a time
-314	invariant	active	c68562853df9572a	Every recording ends
-315	invariant	active	7cb38e5b8ee36ee3	Kept before it is typed
-316	invariant	active	5fd7fec3a37c30b5	A failed type is kept and flagged
-317	invariant	active	d9c7f4e89dfb91c7	Late and cancelled replies never type
-318	invariant	active	0875da47f052ce3d	Each clip is typed at most once
-319	invariant	active	561f8c0682c814ba	Fixes replace whole words
-320	invariant	active	1271758eccf51966	Retention never deletes today
-321	invariant	active	fa416e703c6191e8	Only the first 25 terms are sent
+311	invariant	active	c5376fcd6f0bacb7	A shortcut never sends
+312	invariant	active	748ac0af2701ba3c	Hold to talk, tap to latch: 300 ms
+313	invariant	active	1dde52ed894217a6	One recording at a time
+314	invariant	active	a08fc4c82294662c	Every recording ends
+315	invariant	active	a28b17315d030e29	Kept before it is typed
+316	invariant	active	898a720f78a7dc15	A failed type is kept and flagged
+317	invariant	active	5481ad1013341119	Late and cancelled replies never type
+318	invariant	active	5a14ca4ff573c54d	Each clip is typed at most once
+319	invariant	active	cb777cbb5a63b5a9	Fixes replace whole words
+320	invariant	active	5bf556268be0c2e0	Retention never deletes today
+321	invariant	active	84c530deb868d627	Only the first 25 terms are sent
 322	invariant	active	df82bb5021439b6f	Recent Transcripts holds five
-323	invariant	active	ccf93e1a72bb84d7	Too short, silent or nowhere to type: never sent
+323	invariant	active	e21df6547331b76e	Too short, silent or nowhere to type: never sent
 330	assume	active	-	The host reports the dictation key and every other key
 331	assume	active	-	The host delivers the ticks it is asked for
 332	assume	active	-	The host answers requests by id, in order of commands
@@ -77,8 +77,8 @@
 343	move	active	a64749d31c1646a5	Grant Microphone Access
 344	move	active	9f7ae1916a6c4e2f	Open the menu
 345	place	active	-	Overlay panel
-346	invariant	active	6ebc082e7d8cd446	The original Yap keeps its key
-347	invariant	active	9a8d8e1982e8ceb4	A mark waits for the appends
+346	invariant	active	6874b1dbcd054944	The original Yap keeps its key
+347	invariant	active	5d61d993c3a84fee	A mark waits for the appends
 401	move	active	1b77afe95aa65f24	Start / Stop
 402	move	active	6750765048a4300d	Lap
 403	move	active	b3e0b25d90f70b6f	Reset
@@ -138,3 +138,4 @@
 1000	assume	active	-	openItem opens exactly the URL or existing file it names
 1001	assume	active	-	appRunning answers whether an app with that bundle id runs
 1002	assume	active	-	readDefault answers the default's value as text
+1003	assume	active	-	makeDir makes a private directory and its parents

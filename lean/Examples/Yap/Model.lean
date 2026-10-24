@@ -4,6 +4,7 @@ public import Examples.Yap.Dictionary
 public import Examples.Yap.Chunker
 public import Examples.Yap.Hotkey
 public import Examples.Yap.Retention
+public import Examples.Yap.Graphemes
 
 /-! # Yap: the dictation machine
 
@@ -134,6 +135,8 @@ inductive Input where
   /-- The app that was in front when the key went down for this clip, reported after the
   `keyDown` (the host asks once the recording has started). -/
   | front (clip : Nat) (target : Target)
+  /-- The `model` default, read as each recording starts (`none` when it isn't set). -/
+  | model (m : Option String)
   /-- The key can no longer be heard (its listener stopped): the key is up, and a recording in
   progress is dropped, not sent. -/
   | keyLost
@@ -226,6 +229,8 @@ structure ClipReq where
   target : Target
   submits : Bool
   fixes : List Fix
+  /-- `State.now` when it was sent, for the round trip. -/
+  sentAt : Ms := 0
 deriving Repr, DecidableEq, Inhabited
 
 /-- What a request in flight was for. -/
@@ -233,7 +238,8 @@ inductive Req where
   | clip (c : ClipReq)
   | chunk (clip : Nat) (fixes : List Fix)
   | type (clip : Nat) (t : Transcript)
-  | save
+  /-- Saving a transcript: the clip's, if it has one. -/
+  | save (clip : Option Nat)
   | config
 deriving Repr, DecidableEq, Inhabited
 
@@ -268,6 +274,11 @@ structure State where
   recent : List Transcript := []
   /-- The menu's status line. -/
   detail : String := ""
+  /-- How long each clip being typed took to transcribe (ms), for "Typed …". -/
+  trips : List (Nat × Ms) := []
+  /-- Saves that failed while their clip was being typed: the message waits for the typing,
+  as Yap saves once typing is over and so says so last. -/
+  unsaved : List (Nat × String) := []
 deriving Repr, DecidableEq, Inhabited
 
 /-! ## Queries -/
@@ -292,16 +303,40 @@ def phase (s : State) : Phase :=
 
 def prefs (s : State) : Prefs := { enabled := s.enabled, submits := s.submits, model := s.model }
 
-/-- "1.5" for 24,000 samples. -/
+/-- The double nearest `n / d` (`0 < n`, `0 < d`) as `q * 2^k` with `2^52 ≤ q < 2^53`: what
+Swift's division of two doubles holding `n` and `d` (both below 2^53) gives. -/
+def nearestDouble (n d : Nat) : Nat × Int :=
+  -- 2^k ≤ n/d < 2^(k+1) for k = log2 n - log2 d or one below.
+  let k : Int := (n.log2 : Int) - d.log2 - (if n * 2 ^ d.log2 < d * 2 ^ n.log2 then 1 else 0)
+  let e : Int := k - 52
+  let (a, b) := if 0 ≤ e then (n, d * 2 ^ e.toNat) else (n * 2 ^ (-e).toNat, d)
+  let q := a / b
+  let r := a % b
+  let q := if 2 * r < b then q else if b < 2 * r then q + 1 else if q % 2 = 0 then q else q + 1
+  if q = 2 ^ 53 then (2 ^ 52, e + 1) else (q, e)
+
+/-- "1.5" for 24,000 samples: `String(format: "%.1f", Double(frames) / 16000)`. A tie in the
+tenths (`frames` an odd multiple of 800) goes the way the double nearest the quotient lies,
+and to even when the double is the tie itself (0.75). -/
 def seconds (frames : Nat) : String :=
-  let tenths := (frames * 10 + 8000) / 16000
+  let tenths := frames / 1600
+  let up :=
+    if frames % 1600 < 800 then false
+    else if 800 < frames % 1600 then true
+    else
+      -- Rounds as the double nearest frames/16000 lies; exactly on the tie, to even.
+      let (q, e) := nearestDouble frames 16000
+      let (x, y) := if 0 ≤ e then (q * 2 ^ e.toNat * 16000, frames)
+                    else (q * 16000, frames * 2 ^ (-e).toNat)
+      if y < x then true else if x < y then false else tenths % 2 = 1
+  let tenths := if up then tenths + 1 else tenths
   s!"{tenths / 10}.{tenths % 10}"
 
 /-- The preview's context for the next chunk: the end of what came before. -/
 def context (heard : List String) : Option String :=
   let prev := " ".intercalate heard
   if prev.isEmpty then none
-  else some ("Continues from: \"" ++ String.ofList (prev.toList.drop (prev.length - 200)) ++ "\"")
+  else some ("Continues from: \"" ++ Graphemes.takeEnd 200 prev ++ "\"")
 
 /-! ## The machine -/
 
@@ -320,7 +355,8 @@ def send (s : State) (r : Recording) : State × List Cmd :=
       let q := s.nextReq
       ({ s with nextReq := q + 1,
                 reqs := (q, .clip { clip := r.clip, turn := s.turn, target := app,
-                                    submits := s.submits, fixes := s.dict.fixes }) :: s.reqs,
+                                    submits := s.submits, fixes := s.dict.fixes,
+                                    sentAt := s.now }) :: s.reqs,
                 detail := s!"Transcribing {seconds r.frames}s…" },
        stop ++ [.overlay r.clip (.phase .transcribing),
                 .transcribe q r.clip s.model (s.dict.promptFor none)])
@@ -407,7 +443,7 @@ kept (`Yap.remember`), then prune old days. -/
 def keep (s : State) (t : Transcript) : State × List Cmd :=
   let s := { s with recent := remember t s.recent }
   if s.settings.keepTranscripts then
-    ({ s with nextReq := s.nextReq + 1, reqs := (s.nextReq, .save) :: s.reqs }, [.save s.nextReq t, .listDays])
+    ({ s with nextReq := s.nextReq + 1, reqs := (s.nextReq, .save t.clip) :: s.reqs }, [.save s.nextReq t, .listDays])
   else (s, [])
 
 /-- Type the transcript into the app that was in front, with a trailing space so the next
@@ -428,7 +464,7 @@ def transcribed (s : State) (c : ClipReq) (raw : String) : State × List Cmd :=
                             date := s.wall }
     let k := keep s t
     if c.turn = s.turn then
-      let y := typeIt k.1 c t
+      let y := typeIt { k.1 with trips := (c.clip, s.now - c.sentAt) :: k.1.trips } c t
       (y.1, k.2 ++ y.2)
     else k
 
@@ -442,15 +478,31 @@ the newest too). -/
 def flagFailed (clip : Nat) (t : Transcript) (recent : List Transcript) : List Transcript :=
   remember { t with typed := false } (recent.filter (·.clip != some clip))
 
+/-- The status line once a clip's typing is over: `said`, unless the clip's save failed
+meanwhile, which Yap reports after it (it saves once typing is over). -/
+def typingSaid (s : State) (clip : Nat) (said : String) : String :=
+  ((s.unsaved.lookup clip).map (s!"Couldn't save the transcript: {·}")).getD said
+
+/-- "Typed N characters": N counts what Swift calls characters, grapheme clusters. -/
 def typedOk (s : State) (clip : Nat) (t : Transcript) : State × List Cmd :=
-  ({ s with recent := setTyped clip true s.recent, detail := s!"Typed {t.text.length} characters" },
+  ({ s with recent := setTyped clip true s.recent,
+            detail := typingSaid s clip
+              s!"Typed {Graphemes.count t.text} characters ({(s.trips.lookup clip).getD 0}ms round trip)",
+            trips := s.trips.filter (·.1 != clip), unsaved := s.unsaved.filter (·.1 != clip) },
    (if s.settings.keepTranscripts then [Cmd.markTyped clip] else []) ++
      [.overlay clip (.phase .typed), .overlay clip (.hide 1500)])
 
 def typedFailed (s : State) (clip : Nat) (t : Transcript) (err : String) : State × List Cmd :=
   ({ s with recent := flagFailed clip t s.recent,
-            detail := s!"Couldn't type it ({err}). It's in Recent Transcripts." },
+            detail := typingSaid s clip s!"Couldn't type it ({err}). It's in Recent Transcripts.",
+            trips := s.trips.filter (·.1 != clip), unsaved := s.unsaved.filter (·.1 != clip) },
    [.play .basso, .overlay clip (.phase .failed), .overlay clip (.hide 4000)])
+
+/-- The clip whose save this is, if it is still being typed. -/
+def typing (s : State) : Option Nat → Option Nat
+  | some n => if s.reqs.any (fun p => match p.2 with | .type m _ => m == n | _ => false)
+              then some n else none
+  | none => none
 
 /-- A preview chunk came back: add it to the preview if it is still this recording's. -/
 def chunkDone (s : State) (clip q : Nat) (text : Option String) : State × List Cmd :=
@@ -480,8 +532,13 @@ def reply (s : State) (q : Nat) (x : Reply) : State × List Cmd :=
     | .chunk clip _, .failed _ => chunkDone s clip q none
     | .type clip t, .ok _ => typedOk s clip t
     | .type clip t, .failed e => typedFailed s clip t e
-    | .save, .ok _ => (s, [])
-    | .save, .failed e => ({ s with detail := s!"Couldn't save the transcript: {e}" }, [])
+    | .save _, .ok _ => (s, [])
+    | .save c, .failed e =>
+      -- While its clip is being typed, the message waits for the typing to be over.
+      ({ s with detail := if (typing s c).isSome then s.detail else s!"Couldn't save the transcript: {e}",
+                unsaved := match typing s c with
+                  | some n => (n, e) :: s.unsaved
+                  | none => s.unsaved }, [])
     | .config, .ok _ => (s, [])
     | .config, .failed e => ({ s with detail := s!"Couldn't save settings: {e}" }, [])
 
@@ -584,6 +641,7 @@ def step (s : State) : Input → State × List Cmd
   | .trust b => ({ s with trusted := b }, [])
   | .menu m => menu s m
   | .front clip app => (setFront s clip app, [])
+  | .model m => ({ s with model := m.getD defaultModel }, [])
   | .keyLost => keyLost s
 
 /-- The state after a sequence of inputs. -/

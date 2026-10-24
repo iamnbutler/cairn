@@ -91,6 +91,9 @@ inductive Request where
   /-- The value of `key` in the defaults domain `domain` (`defaults read domain key`), as UTF-8
   text: a string as it is, a number or a boolean as its text (booleans as `1` or `0`). -/
   | readDefault (domain key : String)
+  /-- Create the directory and its missing parents, each private (mode 700); `done` if it is
+  already a directory. -/
+  | makeDir (path : String)
 deriving Repr, BEq, Inhabited
 
 /-- The kind of a request, without its payload: what the runtime remembers while it is
@@ -98,7 +101,7 @@ pending. -/
 inductive Request.Kind where
   | readFile | writeFile | playSound | http
   | appendFile | listDir | deleteFile | frontmostApp | permission
-  | typeText | upload | forgetClip | openItem | appRunning | readDefault
+  | typeText | upload | forgetClip | openItem | appRunning | readDefault | makeDir
 deriving Repr, DecidableEq, Inhabited
 
 def Request.kind : Request → Request.Kind
@@ -108,9 +111,10 @@ def Request.kind : Request → Request.Kind
   | .frontmostApp => .frontmostApp | .permission .. => .permission
   | .typeText .. => .typeText | .upload .. => .upload | .forgetClip .. => .forgetClip
   | .openItem .. => .openItem | .appRunning .. => .appRunning | .readDefault .. => .readDefault
+  | .makeDir .. => .makeDir
 
 inductive Reply where
-  /-- `writeFile`, `appendFile`, `deleteFile` and `playSound` succeeded. -/
+  /-- `writeFile`, `appendFile`, `deleteFile`, `makeDir` and `playSound` succeeded. -/
   | done
   /-- `readFile`'s contents, or `readDefault`'s value. -/
   | bytes (data : ByteArray)
@@ -131,7 +135,7 @@ def Reply.answers : Request.Kind → Reply → Bool
   | _, .failed .. => true
   | .readFile, .bytes _ => true
   | .writeFile, .done | .playSound, .done | .appendFile, .done | .deleteFile, .done => true
-  | .typeText, .done | .forgetClip, .done | .openItem, .done => true
+  | .typeText, .done | .forgetClip, .done | .openItem, .done | .makeDir, .done => true
   | .readDefault, .bytes _ => true
   | .http, .http .. | .upload, .http .. => true
   | .listDir, .names _ => true

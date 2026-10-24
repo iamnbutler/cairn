@@ -61,13 +61,13 @@ def Request.Kind.code : Request.Kind → UInt8
   | .readFile => 0 | .writeFile => 1 | .playSound => 2 | .http => 3
   | .appendFile => 4 | .listDir => 5 | .deleteFile => 6 | .frontmostApp => 7 | .permission => 8
   | .typeText => 9 | .upload => 10 | .forgetClip => 11
-  | .openItem => 12 | .appRunning => 13 | .readDefault => 14
+  | .openItem => 12 | .appRunning => 13 | .readDefault => 14 | .makeDir => 15
 
 def Request.Kind.ofCode : UInt8 → Option Request.Kind
   | 0 => some .readFile | 1 => some .writeFile | 2 => some .playSound | 3 => some .http
   | 4 => some .appendFile | 5 => some .listDir | 6 => some .deleteFile | 7 => some .frontmostApp
   | 8 => some .permission | 9 => some .typeText | 10 => some .upload | 11 => some .forgetClip
-  | 12 => some .openItem | 13 => some .appRunning | 14 => some .readDefault
+  | 12 => some .openItem | 13 => some .appRunning | 14 => some .readDefault | 15 => some .makeDir
   | _ => none
 
 @[simp] theorem Request.Kind.ofCode_code (k : Request.Kind) :
@@ -244,7 +244,7 @@ def fitsRequest : Request → Bool
   | .playSound n => fs n
   | .http m u hs b t => fs m && fs u && fitsHeaders hs && fb b && fu t
   | .appendFile p d => fs p && fb d
-  | .listDir p | .deleteFile p => fs p
+  | .listDir p | .deleteFile p | .makeDir p => fs p
   | .frontmostApp | .permission .. => true
   | .typeText pid t _ => fu pid && fs t
   | .upload m u hs sec body t =>
@@ -376,6 +376,7 @@ def requestBody : Request → List UInt8
   | .openItem t => str t
   | .appRunning b => str b
   | .readDefault d k => str d ++ str k
+  | .makeDir p => str p
 
 def effect : Effect → List UInt8
   | .setClipboard s => [0] ++ pad 3 ++ str s
@@ -600,6 +601,7 @@ def requestBody : Request.Kind → Dec Request
   | .readDefault => do
     let d ← str
     return .readDefault d (← str)
+  | .makeDir => do return .makeDir (← str)
 
 def effect : Dec Effect := do
   match (← byte) with
@@ -926,6 +928,9 @@ theorem requestBody_enc {q : Request} (h : fitsRequest q = true) (r : List UInt8
     simp only [fitsRequest, Bool.and_eq_true, fs_iff] at h
     simp only [Request.kind, requestBody, Enc.requestBody, List.append_assoc, bind_apply,
         str_enc h.1, str_enc h.2, pure_apply]
+  | makeDir p =>
+    simp only [fitsRequest, fs_iff] at h
+    simp only [Request.kind, requestBody, Enc.requestBody, bind_apply, str_enc h, pure_apply]
 
 theorem effect_enc {x : Effect} (h : fitsEffect x = true) (r : List UInt8) :
     effect (Enc.effect x ++ r) = some (x, r) := by
@@ -1134,7 +1139,7 @@ def requestBody : Request → Nat
   | .playSound n => str n
   | .http m u hs b _ => 4 + str m + str u + headers hs + bytes b
   | .appendFile p d => str p + bytes d
-  | .listDir p | .deleteFile p => str p
+  | .listDir p | .deleteFile p | .makeDir p => str p
   | .frontmostApp => 0
   | .permission .. => 4
   | .typeText _ t _ => 8 + str t
@@ -1340,7 +1345,7 @@ def requestBody (b : ByteArray) : Request → ByteArray
   | .playSound n => str b n
   | .http m u hs body t => bytes (headers (str (str (u32 b t) m) u) hs) body
   | .appendFile p d => bytes (str b p) d
-  | .listDir p | .deleteFile p => str b p
+  | .listDir p | .deleteFile p | .makeDir p => str b p
   | .frontmostApp => b
   | .permission p prompt => pad (bool (b.push (Permission.code p)) prompt) 2
   | .typeText pid t r => str (pad (bool (u32 b pid) r) 3) t

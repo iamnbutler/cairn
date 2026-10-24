@@ -522,11 +522,12 @@ theorem app_failed_type_flagged (s : AppState) (q c : Nat) (t : Transcript) (e :
     (h : s.core.reqs.lookup q = some (.type c t)) :
     (receive s (.reply (2 * q) (.failed f e))).1.core.recent.head? = some { t with typed := false } ∧
       ∃ id, Effect.request id (.playSound "Basso") ∈ (receive s (.reply (2 * q) (.failed f e))).2 := by
-  have hp : (prep s (.reply (2 * q) (.failed f e))).input = some (.reply q (.failed e)) := by
+  have hp : (prep s (.reply (2 * q) (.failed f e))).input =
+      some (.reply q (.failed (typeFault t.app f e))) := by
     rw [prep_input_eq]; simp [prepMsg, coreReply, h]
   have hco : coreAt s (prep s (.reply (2 * q) (.failed f e))) = s.core := by
     simp [coreAt, prep_wall, prepMsg]
-  obtain ⟨h1, h2⟩ := failed_type_flagged s.core q c t e h
+  obtain ⟨h1, h2⟩ := failed_type_flagged s.core q c t (typeFault t.app f e) h
   rw [receive_some hp, hco]
   refine ⟨h1, ?_⟩
   obtain ⟨io', hio⟩ := trAll_of_mem (io := (prep s (.reply (2 * q) (.failed f e))).io) h2

@@ -80,35 +80,43 @@ asked; type into the given process and say whether it worked; report `config.jso
 
 ## Differences from Swift Yap, and why
 
-- **Saved before typed.** Yap's README says "every transcript is saved before Yap tries to type
-  it", and `remember`'s doc comment agrees, but `send()` calls `remember` *after*
-  `TextInjector.type` returns (Yap.swift, the end of `send`'s task). If the app quits or hangs
-  while typing, the transcript is lost. The model follows the README: it keeps and saves first,
-  then types, then issues `markTyped` when typing succeeds. That is ^315.
+The original is the spec; docs/yap-parity.md audits every behaviour against it. The model
+differs only where Swift Yap has a bug, each filed on iamnbutler/yap:
+
+- **Saved before typed** ([yap#6](https://github.com/iamnbutler/yap/issues/6)). Yap's README
+  says "every transcript is saved before Yap tries to type it", but `send()` calls `remember`
+  *after* `TextInjector.type` returns. The model keeps and saves first, then types, then issues
+  `markTyped` when typing succeeds (^315). A failed type therefore moves the transcript to the
+  front again (`flagFailed`), which gives the order Swift's late `remember` gives.
+- **A shortcut ends the recording** ([yap#8](https://github.com/iamnbutler/yap/issues/8)).
+  Swift stops the capture but `finish` leaves the state `.recording`, so Yap is stuck until a
+  long press. The model goes back to idle (^311).
+- **Several clips in flight** ([yap#9](https://github.com/iamnbutler/yap/issues/9)). Swift shows
+  idle as soon as the first finishes; the model's phase is derived from the requests still in
+  flight. Overlapping clips type in reply order.
+- **A refused microphone** ([yap#11](https://github.com/iamnbutler/yap/issues/11)) is
+  "Microphone failed: …", not a silent recording and "Heard nothing".
+
+Not differences, only stated:
+
 - **A held recording has no limit.** Only a latched recording times out at ten minutes, as in
-  Swift. So "every recording ends" holds once the key is up (^314); a key held forever records
-  forever. Not changed, only stated.
-- **A failed type moves to the front.** Swift remembers the transcript once typing is over, so
-  a failed one is newest; the model kept it before typing, so it moves it to the front again
-  when typing fails (`flagFailed`), with the same result.
-- **Several clips in flight.** Swift shows idle as soon as the first finishes; the model's phase
-  is derived from the requests still in flight. Overlapping clips type in reply order.
+  Swift. So "every recording ends" holds once the key is up (^314).
 - **"Heard nothing" after a cancel.** Swift sets the status line from an empty transcript even
-  after a cancel; the model does the same (not worth a difference), but a failed transcription
-  after a cancel leaves the status line alone, as Swift does.
-- **Dictionary and config are watched, not read per clip.** Swift reads `dictionary.txt` per
-  clip; the model asks the host to report it on change, and a clip uses the fixes in force when
-  it was sent.
-- **Text.** Case folding is ASCII only (Swift's `.caseInsensitive` folds more), `\w` is
-  approximated (letters, digits, `_`, `-`, and non-ASCII outside a punctuation list), and the
-  preview context is the last 200 scalars. "Typed N characters" omits the round-trip time (no
-  wall clock in the model).
+  after a cancel, and so does the model; a failed transcription after a cancel leaves the
+  status line alone, as Swift does.
+- **Text is Swift's.** Character counts, the 60-character preview and the 200-character context
+  are grapheme clusters (`Graphemes.lean`, Swift's own break rules); fixes match as ICU's
+  case-insensitive `(?<![\w-])…(?![\w-])` does (`Fold.lean`); "Transcribing N.Ns…" is `%.1f`;
+  "Typed N characters (Nms round trip)". The tables come from Swift and ICU themselves
+  (`tools/yap-tables/`).
 - **The chunker is integers.** Swift's RMS in `Double` becomes a comparison of sums of squares;
   the constants (23 pause windows, cuts between 60 and 500 windows, an 11-window tail) are
   Swift's.
 - **Latch timer.** Swift's starts at the tap's key-up; so does the model's deadline. A shortcut
   during a latch is ignored and the recording goes on, as in Swift; a key change in
   `config.json` mid-hold releases the old key.
+- **Open** (docs/yap-parity.md, "Open"): the dictionary is reported on change rather than read
+  per clip, and the model is read at key-down rather than key-up.
 
 ## On the framework
 

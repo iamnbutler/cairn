@@ -261,6 +261,7 @@ extension Frame {
             case 14:
                 let domain = try er.string()
                 req = .readDefault(domain: domain, key: try er.string())
+            case 15: req = .makeDir(path: try er.string())
             default: throw FrameDecodeError.badCode(kind, at: at)
             }
             return .request(id: id, req)

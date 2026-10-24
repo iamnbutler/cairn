@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
 	<!-- Not dev.yap.Yap: the original keeps its own identity, TCC grants and defaults. -->
 	<key>CFBundleIdentifier</key>
 	<string>dev.yap.cairn</string>
@@ -18,11 +22,12 @@
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>LSMinimumSystemVersion</key>
-	<string>14.0</string>
+	<string>26.0</string>
 	<!-- A menu bar app: no Dock icon, even before the host's code runs. -->
 	<key>LSUIElement</key>
 	<true/>
+	<!-- Yap's text, word for word (project.yml), Right Command though the key is configurable. -->
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Yap (Cairn) listens while you hold or tap the dictation key.</string>
+	<string>Yap listens while you hold or tap Right Command.</string>
 </dict>
 </plist>
