@@ -5,7 +5,7 @@ LEAN_PREFIX = $(shell cd lean && lean --print-prefix)
 LIB = build/lib/libcairn_lean.a
 VENDOR = host/Sources/CLean/vendor/lean
 
-.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest demo fixture clean record site site-maps map map-trusted conformance fuzz fuzz-quick fuzz-yap size fuzz-trusted fuzz-trusted-quick bundle yap yap-install bench-yap-apps bench-yap-overlay bench-yap docs-site docs-check
+.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest demo fixture clean record site site-maps map map-trusted doc doctest site-api conformance fuzz fuzz-quick fuzz-yap size fuzz-trusted fuzz-trusted-quick bundle yap yap-install bench-yap-apps bench-yap-overlay bench-yap docs-site docs-check
 
 # region: make-apps
 # build/lib/libcairn_lean.a: the framework (`Cairn`) and Lean's runtime, linked by every host
@@ -78,7 +78,7 @@ corpus: lean
 
 # region: make-check
 # Everything a PR must pass.
-check: lint audit ledger kernel test selftest fuzz-quick size fuzz-trusted-quick docs-check
+check: lint audit ledger kernel doctest test selftest fuzz-quick size fuzz-trusted-quick docs-check
 # endregion: make-check
 
 bench: lean
@@ -226,6 +226,38 @@ map-trusted: lean
 	cd lean && lake exe claims Cairn.Fuzz.Trusted.Claims > ../build/map/Trusted/claims.json
 	cd lean && lake env .lake/build/bin/audit --json ../build/map/Trusted/audit.json > /dev/null
 	bun tools/map/cairn-map.ts build --app Trusted --name "Trusted base" --dir build/map/Trusted
+
+# cairn doc (docs/doc.md): a package's API and claims from its code, rustdoc-style.
+# `make doc APP=Todo` documents Examples.Todo and its submodules; `make doc PKG=Cairn` documents
+# the framework (DOC_CAIRN), which is the developer docs' API reference. Writes
+# build/doc/<name>/dist/. PRIVATE=1 shows private declarations; OPEN=1 opens the index. Claims
+# carry the evidence already in build/ (`make fuzz`, `make conformance`, `make map` for the
+# screenshots), as on the map. Doc tests (Lean code blocks in doc comments) run first and fail
+# the build.
+DOC_CAIRN = Cairn Cairn.Claims Cairn.Fuzz Cairn.Fuzz.Trusted.Claims Cairn.Fuzz.Trusted.Export
+DOC_NAME = $(or $(PKG),$(APP))
+DOCDIR = build/doc/$(DOC_NAME)
+DOC_MODULES = $(if $(PKG),$(if $(filter Cairn,$(PKG)),$(DOC_CAIRN),$(PKG)),Examples.$(APP) $(shell cd lean && find Examples/$(APP) -name '*.lean' 2>/dev/null | sed 's/\.lean$$//; s|/|.|g'))
+doc:
+	@[ -n "$(DOC_NAME)" ] || { echo "doc: APP=<App> or PKG=Cairn"; exit 1; }
+	mkdir -p $(DOCDIR)
+	cd lean && lake build && lake build doc claims
+	cd lean && lake exe doc --check $(DOC_MODULES) > ../$(DOCDIR)/doc.json
+	cd lean && lake exe claims $(DOC_MODULES) > ../$(DOCDIR)/claims.json
+	bun tools/doc/cairn-doc.ts --name $(DOC_NAME) --dir $(DOCDIR) $(if $(APP),--app $(APP) --link Cairn.=../Cairn/) \
+		$(if $(PRIVATE),--private) $(if $(OPEN),--open)
+
+# Cairn's docs as the developer docs' API reference, site/public/docs/api/ (committed; the
+# docs build in tools/docs links to it and never writes it). Deploying is still `make site`.
+site-api:
+	$(MAKE) doc PKG=Cairn
+	rm -rf site/public/docs/api && mkdir -p site/public/docs
+	cp -R build/doc/Cairn/dist site/public/docs/api
+
+# Doc tests alone, for `make check`: every Lean code block in a doc comment in Cairn and the
+# examples elaborates (docs/doc.md, "Doc tests").
+doctest: lean
+	cd lean && lake build doc && lake exe doc --check $(DOC_CAIRN) Examples > /dev/null
 
 # region: make-conformance
 # Conformance (docs/conformance.md): the Lean model's sequences replayed on the running app
