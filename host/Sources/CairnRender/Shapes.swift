@@ -1,6 +1,7 @@
 import CairnFrame
 import CoreGraphics
 import Foundation
+import Accelerate
 import Metal
 
 /// `shape` draws: a rounded rect with circular or continuous corners, an optional fill, an
@@ -45,6 +46,7 @@ final class ShapeCache {
     /// Device-pixel geometry of a shape: the corner radius, the border width (the rect shader's
     /// rule: rounded half down, at least 1 px), the shadow's blur and offset.
     struct Geometry {
+        /// `blur` is the shadow's Gaussian standard deviation.
         var radius: CGFloat, border: CGFloat, blur: CGFloat, dx: CGFloat, dy: CGFloat
         /// Room around the shape the shadow can reach.
         var pad: Int { shadowPad }
@@ -53,17 +55,19 @@ final class ShapeCache {
         var cornerReach = 0
     }
 
-    /// SwiftUI's `shadow(radius:)` as a Core Graphics blur: fitted to SwiftUI's own rendering
-    /// (docs/render.md, "Shapes").
-    static let blurPerRadius: CGFloat = 1.0
+    /// SwiftUI's `shadow(radius:)` as a Gaussian's standard deviation in device pixels: about the
+    /// radius, fitted to the original Yap's overlay on screen (σ = 1.05 r; docs/yap.md, "Overlay
+    /// parity"). SwiftUI's blur is not exactly Gaussian: against its `ImageRenderer` this is
+    /// within a level or two along edges and up to 7 near corners (ShapeTests.shadowsAreSwiftUIs).
+    static func blur(radius: UInt32, scale: CGFloat) -> CGFloat { 1.05 * CGFloat(radius) * scale }
 
     static func geometry(radius: UInt32, border: Border?, corner: Corner, shadow: Shadow?, scale: Float) -> Geometry {
         let s = CGFloat(scale)
         var g = Geometry(radius: CGFloat(radius) * s,
                          border: border.map { $0.width == 0 ? 0 : max(1, CGFloat(Renderer.edgeLength($0.width, scale))) } ?? 0,
-                         blur: shadow.map { CGFloat($0.radius) * s * blurPerRadius } ?? 0,
+                         blur: shadow.map { blur(radius: $0.radius, scale: s) } ?? 0,
                          dx: shadow.map { CGFloat($0.x) * s } ?? 0, dy: shadow.map { CGFloat($0.y) * s } ?? 0)
-        if shadow != nil { g.shadowPad = Int((2 * g.blur + abs(g.dx) + abs(g.dy)).rounded(.up)) + 2 }
+        if shadow != nil { g.shadowPad = Int((3 * g.blur + abs(g.dx) + abs(g.dy)).rounded(.up)) + 2 }
         g.cornerReach = Int((g.radius * (corner == .continuous ? ContinuousCorners.extent : 1)).rounded(.up)) + 1
         return g
     }
@@ -137,13 +141,14 @@ final class ShapeCache {
                                                         CGFloat(c.b) / 255, CGFloat(c.a) / 255])!
             }
             if let fill {
-                if let shadow {
-                    ctx.setShadow(offset: CGSize(width: g.dx, height: -g.dy), blur: g.blur, color: cg(shadow.color))
+                if let shadow, g.blur > 0 || g.dx != 0 || g.dy != 0 {
+                    ctx.flush()
+                    Self.paintShadow(into: buf, tw: tw, th: th, g: g, shape: path(rect, radius: g.radius, corner: corner),
+                                     color: shadow.color)
                 }
                 ctx.addPath(path(rect, radius: g.radius, corner: corner))
                 ctx.setFillColor(cg(fill))
                 ctx.fillPath()
-                ctx.setShadow(offset: .zero, blur: 0, color: nil)
             }
             if let border, g.border > 0 {
                 // Inside the shape, as SwiftUI's strokeBorder: the outline inset by half the width.
@@ -162,6 +167,50 @@ final class ShapeCache {
         guard let t = device.makeTexture(descriptor: d) else { return nil }
         t.replace(region: MTLRegionMake2D(0, 0, tw, th), mipmapLevel: 0, withBytes: bytes, bytesPerRow: tw * 4)
         return t
+    }
+
+    /// The shape's silhouette, moved by the offset, blurred with a Gaussian of standard
+    /// deviation `g.blur` (two separable passes, zero outside the texture), in `color`, written
+    /// premultiplied BGRA into `buf` (which holds nothing yet).
+    static func paintShadow(into buf: UnsafeMutableRawBufferPointer, tw: Int, th: Int, g: Geometry, shape: CGPath,
+                            color: Color) {
+        var mask = [Float](repeating: 0, count: tw * th)
+        var bytes = [UInt8](repeating: 0, count: tw * th)
+        bytes.withUnsafeMutableBytes { m in
+            guard let ctx = CGContext(data: m.baseAddress, width: tw, height: th, bitsPerComponent: 8, bytesPerRow: tw,
+                                      space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.alphaOnly.rawValue)
+            else { return }
+            ctx.translateBy(x: g.dx, y: CGFloat(th) - g.dy)
+            ctx.scaleBy(x: 1, y: -1)
+            ctx.addPath(shape)
+            ctx.fillPath()
+        }
+        for i in 0..<(tw * th) { mask[i] = Float(bytes[i]) / 255 }
+        if g.blur > 0 {
+            let n = Int((3 * g.blur).rounded(.up))
+            var k = (-n...n).map { Float(exp(-Double($0 * $0) / (2 * Double(g.blur * g.blur)))) }
+            let sum = k.reduce(0, +)
+            k = k.map { $0 / sum }
+            var out = [Float](repeating: 0, count: tw * th)
+            mask.withUnsafeMutableBytes { src in
+                out.withUnsafeMutableBytes { dst in
+                    var s = vImage_Buffer(data: src.baseAddress, height: vImagePixelCount(th), width: vImagePixelCount(tw), rowBytes: tw * 4)
+                    var d = vImage_Buffer(data: dst.baseAddress, height: vImagePixelCount(th), width: vImagePixelCount(tw), rowBytes: tw * 4)
+                    _ = vImageSepConvolve_PlanarF(&s, &d, nil, 0, 0, k, UInt32(k.count), k, UInt32(k.count), 0, 0,
+                                                  vImage_Flags(kvImageBackgroundColorFill))
+                }
+            }
+            mask = out
+        }
+        let a = Float(color.a) / 255
+        let px = buf.bindMemory(to: UInt8.self)
+        for i in 0..<(tw * th) {
+            let v = min(1, max(0, mask[i])) * a
+            px[i * 4 + 0] = UInt8((Float(color.b) * v).rounded())
+            px[i * 4 + 1] = UInt8((Float(color.g) * v).rounded())
+            px[i * 4 + 2] = UInt8((Float(color.r) * v).rounded())
+            px[i * 4 + 3] = UInt8((255 * v).rounded())
+        }
     }
 
     static func path(_ r: CGRect, radius: CGFloat, corner: Corner) -> CGPath {

@@ -73,8 +73,7 @@ import Testing
                     }
                 }
             }
-            // Core Graphics' blur is not exactly translation-invariant across image sizes: at one
-            // size a few shadow pixels round one level apart (measured: 300×213).
+            // The fill's antialiasing and the blur's float sums can round one level apart.
             #expect(worst <= 1, "\(w)×\(h): sliced differs from whole by \(worst)")
         }
     }
@@ -87,6 +86,68 @@ import Testing
         let below = img.pixel(140, 2 * 82).r, above = img.pixel(140, 2 * 18 - 1).r
         #expect(below < above, "below \(below) above \(above)")
         #expect(img.pixel(140, 100) == rgb(0xffffff))
+    }
+
+    /// SwiftUI's rendering of a view, at 2x, as straight alpha (or the brightest channel) per pixel.
+    @MainActor static func swiftUI<V: View>(_ v: V, alpha: Bool = true) -> (w: Int, h: Int, values: [Int]) {
+        let r = ImageRenderer(content: v)
+        r.scale = 2
+        let img = r.cgImage!
+        let w = img.width, h = img.height
+        var b = [UInt8](repeating: 0, count: w * h * 4)
+        let ctx = CGContext(data: &b, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+                            space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        ctx.draw(img, in: CGRect(x: 0, y: 0, width: w, height: h))
+        return (w, h, (0..<(w * h)).map { i in alpha ? Int(b[i * 4 + 3]) : Int(max(b[i * 4], b[i * 4 + 1], b[i * 4 + 2])) })
+    }
+
+    /// A shape's shadow is SwiftUI's `shadow(color:radius:x:y:)` outside the shape, for small and
+    /// large radii. SwiftUI's blur is not exactly Gaussian; they differ by a few levels near
+    /// corners (measured worst: 7 at radii 3 and 30).
+    @MainActor @Test func shadowsAreSwiftUIs() throws {
+        for (radius, y, opacity) in [(3, 0, 0.8), (6, 2, 0.5), (14, 4, 0.35), (30, 4, 0.5)] {
+            let theirs = Self.swiftUI(Rectangle().fill(SwiftUI.Color.white).frame(width: 200, height: 100)
+                .shadow(color: .black.opacity(opacity), radius: CGFloat(radius), y: CGFloat(y)).padding(100))
+            let d = Draw.shape(R(100, 100, 200, 100), fill: rgb(0xffffff), radius: 0, border: nil, corner: .circular,
+                               shadow: Shadow(color: Color(r: 0, g: 0, b: 0, a: UInt8((opacity * 255).rounded())),
+                                              radius: UInt32(radius), x: 0, y: Int32(y)))
+            let ours = try withRenderer { r -> CairnRender.Image in
+                r.clearColor = Color(r: 0, g: 0, b: 0, a: 0)
+                defer { r.clearColor = Color(r: 255, g: 255, b: 255) }
+                return try r.image(frame(400, 300, [d]), scale: 2)
+            }
+            #expect(ours.width == theirs.w && ours.height == theirs.h)
+            var worst = 0
+            for py in 0..<ours.height {
+                for px in 0..<ours.width where !(px >= 200 && px < 600 && py >= 200 && py < 400) {
+                    worst = max(worst, abs(Int(ours.bgra[(py * ours.width + px) * 4 + 3]) - theirs.values[py * theirs.w + px]))
+                }
+            }
+            #expect(worst <= 7, "radius \(radius): shadow differs from SwiftUI's by \(worst) levels")
+        }
+    }
+
+    /// Text is thickened as AppKit and SwiftUI thicken it (font smoothing): the ink of light and
+    /// coloured text on black is SwiftUI's to within 2%.
+    @MainActor @Test func textInkIsSwiftUIs() throws {
+        guard FontSmoothing.enabled else { return }
+        for (c, size, weight) in [((0.93, 0.91, 0.86), 22, 200), ((1.0, 0.30, 0.18), 10, 600), ((0.5, 0.5, 0.5), 14, 400)] {
+            let theirs = Self.swiftUI(SwiftUI.Text("0:07 REC typed")
+                .font(.system(size: CGFloat(size), weight: weight == 200 ? .thin : weight == 600 ? .semibold : .regular))
+                .foregroundStyle(SwiftUI.Color(red: c.0, green: c.1, blue: c.2))
+                .padding(10).background(SwiftUI.Color.black), alpha: false)
+            let color = Color(r: UInt8((c.0 * 255).rounded()), g: UInt8((c.1 * 255).rounded()), b: UInt8((c.2 * 255).rounded()))
+            let ours = try withRenderer { r -> CairnRender.Image in
+                r.clearColor = Color(r: 0, g: 0, b: 0)
+                defer { r.clearColor = Color(r: 255, g: 255, b: 255) }
+                return try r.image(frame(200, 60, [text(10, 30, "0:07 REC typed", font: Font(size: UInt32(size), weight: UInt32(weight)), color: color)]), scale: 2)
+            }
+            let inkOurs = (0..<(ours.width * ours.height)).reduce(0) { $0 + Int(max(ours.bgra[$1 * 4], ours.bgra[$1 * 4 + 1], ours.bgra[$1 * 4 + 2])) }
+            let inkTheirs = theirs.values.reduce(0, +)
+            let ratio = Double(inkOurs) / Double(inkTheirs)
+            #expect(abs(ratio - 1) < 0.02, "\(size) pt weight \(weight) in \(c): ink \(inkOurs) vs SwiftUI's \(inkTheirs)")
+        }
     }
 
     @Test func unregisteredPainterPaintsNothing() throws {

@@ -211,7 +211,7 @@ that name, feeding it the scalars, the arrays and the seconds since `origin`, ev
 while the draw is on screen. It paints nothing outside its box (trusted, `render.paint.bounds`)
 and nothing at all if no painter has the name. `shape` is a rounded rect drawn by Core Graphics:
 continuous corners, a border inside the edge, and a shadow (blur radius in points, offset)
-under the fill.
+under the fill, blurred as SwiftUI's `shadow(color:radius:x:y:)` is.
 
 `pushClip` intersects the clip with its rect until the matching `popClip`. Frames from
 `Frame.ofLaid` are balanced (`balanced_ofLaid`).

@@ -113,7 +113,7 @@ text paints its glyphs at the positions Core Text gives, relative to its baselin
 **Evidence.** Golden images at 1x, 1.5x and 2x with tolerances; pixel-probe tests (exact fills,
 borders, clips, order, seams, antialiasing width); `Renderer.probe` for conformance checks that
 each control's box is painted (workstream J). Choices that affect only the look, not what is
-painted where: grayscale antialiasing with font smoothing off, gamma-space blending into
+painted where: grayscale antialiasing with the system's font smoothing (its level picked from the text colour), gamma-space blending into
 `bgra8Unorm`, sRGB colours (the host must set the layer's colour space to sRGB).
 
 **Also assumed.** Frames have balanced `pushClip`/`popClip`; an extra `popClip` is ignored and
@@ -386,7 +386,9 @@ A `paint` draw (docs/frame.md) hands a box to a painter: a Metal shader the app 
 the host (`Painters.register`) and the Swift that feeds it the draw's integers and the time.
 Yap's tape display is the original Yap's `Overlay.metal`, unchanged
 (`host/Sources/CairnYapPaint/YapTape.swift`). A `shape` draw is a rounded rect drawn by Core
-Graphics: continuous corners, an inside border and a drop shadow.
+Graphics: continuous corners, an inside border, and a drop shadow blurred with a Gaussian of
+σ = 1.05 × radius (Accelerate), fitted to SwiftUI's `shadow(radius:)` (`shadowsAreSwiftUIs`:
+within 7 levels).
 
 **What is assumed.** ^1004 `hostPaintBounds`: a paint draw changes no pixel outside its box
 (snapped to device pixels as rects are) within the clip in force. The renderer sets the

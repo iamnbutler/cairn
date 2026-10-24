@@ -315,6 +315,7 @@ public final class Renderer {
                             batches: inout [Batch], stats: inout RenderStats) {
         let line = TextSystem.shared.shape(font, string)
         let tint = premultiplied(color)
+        let smoothing = FontSmoothing.key(color)
         let s = Double(scale)
         let bins = GlyphAtlas.subpixelBins
         for run in line.runs {
@@ -330,7 +331,8 @@ public final class Renderer {
                     bin = Int(((ox - bx) * Double(bins)).rounded())
                     if bin == bins { bin = 0; bx += 1 }
                 }
-                let g = atlas.glyph(run.font, run.glyphs[i], bin: bin, scale: scale, isColor: run.isColor)
+                let g = atlas.glyph(run.font, run.glyphs[i], bin: bin, scale: scale, isColor: run.isColor,
+                                    smoothing: smoothing)
                 guard g.page >= 0 else { continue }
                 glyphs.append(GlyphInstance(
                     rect: SIMD4(Float(bx) + Float(g.left), Float(oy) - Float(g.top), Float(g.w), Float(g.h)),
