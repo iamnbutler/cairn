@@ -228,7 +228,8 @@ final class FileOpsSuite: Suite {
         var made = Set<String>()
         for _ in 0..<g.weighted([(1, { _ in 0 }), (4, { $0.range(1, 12) }), (1, { $0.range(100, 300) })]) {
             let n = FilesSuite.component(&g)
-            if n.utf8.contains(0) || made.contains(where: { $0.lowercased() == n.lowercased() }) { continue }
+            // A "/" makes it a path, not a name ("/x" under `dir` is "x"), so it isn't one to list.
+            if n.utf8.contains(0) || n.utf8.contains(UInt8(ascii: "/")) || made.contains(where: { $0.lowercased() == n.lowercased() }) { continue }
             let p = dir + "/" + n
             let ok: Bool = switch g.below(4) {
             case 0: mkdir(p, 0o755) == 0
@@ -254,7 +255,7 @@ final class FileOpsSuite: Suite {
             .sorted { $0.utf8.lexicographicallyPrecedes($1.utf8) }
         r.expect(c, names.map { Array($0.utf8) } == fm.map { Array($0.utf8) },
                  "listDir differs from FileManager: \(names.prefix(5)) vs \(fm.prefix(5))")
-        r.expect(c, Set(names) == made, "listDir has \(names.count) names; the case made \(made.count)")
+        r.expect(c, Set(names) == made, "listDir has \(names.count) names; the case made \(made.count); only listed: \(Set(names).subtracting(made).map { Array($0.unicodeScalars.map(\.value)) }), only made: \(made.subtracting(names).map { Array($0.unicodeScalars.map(\.value)) })")
         r.expect(c, zip(names, names.dropFirst()).allSatisfy { $0.utf8.lexicographicallyPrecedes($1.utf8) },
                  "listDir's names are not strictly sorted by UTF-8 bytes")
         r.count(c, "names", names.count)
