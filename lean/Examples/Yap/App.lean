@@ -125,7 +125,8 @@ inductive Pend where
   /-- Marking the clip's line typed: read the day file `file`, which has `line`. -/
   | markRead (clip : Nat) (file line : String)
   | markWrite (file : String)
-  /-- After a mark's rewrite: lines appended to `file` while it ran must still be there. -/
+  /-- After a mark's rewrite: lines whose appends to `file` landed while it ran must still be
+  there. -/
   | verify (file : String) (lines : List String)
   | ignore
 deriving Repr, Inhabited
@@ -166,6 +167,25 @@ def bootAsks : List (Nat × Ask) :=
    (9, .permission .accessibility false), (11, .permission .microphone false),
    (13, .running originalBundle)]
 
+/-- Where a mark (rewriting a day file with one line marked typed) is. -/
+inductive MarkPhase where
+  /-- Its read or its write is out. -/
+  | rewriting
+  /-- Its write is answered: it checks the file once no append is in flight. -/
+  | settling
+  /-- Its check (a read of the file) is out. -/
+  | verifying
+deriving Repr, DecidableEq, Inhabited
+
+/-- A mark in progress. -/
+structure Mark where
+  file : String
+  phase : MarkPhase := .rewriting
+  /-- Lines whose appends to `file` were answered ok since the mark's read was sent: the
+  rewrite may have lost them, so they are checked when it is done. -/
+  landed : List String := []
+deriving Repr, Inhabited
+
 structure Io where
   /-- The next id for the app's own requests: odd, so never a machine request's `2q`. -/
   nextId : Nat := 15
@@ -185,12 +205,21 @@ structure Io where
   micGranted : Option Bool := none
   /-- A problem of the app's own (opening a file), for the menu. -/
   note : String := ""
-  /-- Transcripts appended to day files: clip, file and line, newest first. -/
+  /-- Appends to day files in flight: request id, clip (none for a line appended again after
+  a mark), file and line, newest first. An entry leaves only when its reply arrives
+  (`Io.landed`). Requests run concurrently on the host (docs/effects.md), so a line is in its
+  file only once its append is answered. -/
+  appends : List (Nat × Option Nat × String × String) := []
+  /-- Transcripts whose appends were answered ok: clip, file and line, newest first. -/
   saved : List (Nat × String × String) := []
   /-- Clips whose lines are waiting to be marked typed, oldest first. -/
   marks : List Nat := []
-  /-- A mark in progress, and the lines appended (file, line) since it began. -/
-  marking : Option (List (String × String)) := none
+  /-- The mark in progress. -/
+  marking : Option Mark := none
+  /-- Lines a mark's rewrite lost, to append again (file, line). -/
+  reappend : List (String × String) := []
+  /-- How many marks have started: each starts only when no append is in flight (^347). -/
+  marksStarted : Nat := 0
   /-- Clips the host holds samples for. -/
   held : List Nat := []
   overlay : Overlay := {}
@@ -221,6 +250,28 @@ def take (io : Io) (id : Nat) : Option (Pend × Io) :=
   (io.pending.lookup id).map fun p => (p, { io with pending := io.pending.filter (·.1 != id) })
 
 def asking (io : Io) (f : Pend → Bool) : Bool := io.pending.any (f ·.2)
+
+/-- Whether a reply says a request worked. -/
+def _root_.Cairn.Reply.ok : Cairn.Reply → Bool
+  | .failed .. => false
+  | _ => true
+
+/-- The reply `r` to request `id` is in: if `id` was an append to a day file, it is no longer in
+flight; if it worked, its line is in the file, so its clip can be marked, and a mark running
+checks the line when it is done. A failed append is dropped: its line isn't there (the machine
+reports the failure), so its clip's mark is dropped too (`startMark`). -/
+def landed (io : Io) (id : Nat) (r : Cairn.Reply) : Io :=
+  match io.appends.find? (·.1 == id) with
+  | none => io
+  | some (_, clip, file, line) =>
+    { io with
+      appends := io.appends.filter (·.1 != id)
+      saved := match r.ok, clip with
+        | true, some c => ((c, file, line) :: io.saved).take 20
+        | _, _ => io.saved
+      marking := if r.ok then io.marking.map (fun m =>
+          if m.file = file ∧ m.phase ≠ .verifying then { m with landed := m.landed ++ [line] } else m)
+        else io.marking }
 
 end Io
 
@@ -391,20 +442,66 @@ def Overlay.hear (o : Overlay) (c : Nat) (ls : List Level) : Overlay :=
 
 /-! ## Commands to effects -/
 
-/-- Start the next mark, if none is running. -/
+/-! ### Marking a line typed
+
+A typed transcript's line in its day file is rewritten with `"typed":true`: read the file,
+replace the line, write the file (atomically). That races with appends: requests run
+concurrently on the host and nothing orders their completion (docs/effects.md), so a line is
+only known to be in its file once its append is answered, and an append in flight while the
+file is rewritten can be lost. So:
+
+* a mark starts only when no append is in flight (`nextMark`; ^347), so its clip's own append
+  has been answered, and answered ok, or the clip isn't in `saved` and its mark is dropped;
+* once its write is answered, it waits again for the appends in flight, then reads the file
+  and appends again any line that landed while it ran and is gone (`Pend.verify`);
+* a line that still can't be found, or a read or write that fails, leaves a note in the menu
+  (`markNote`) rather than vanishing.
+
+This all runs at the end of each message (`prep` for messages the machine doesn't hear,
+`collect` for those it does), so a mark never starts in the same frame as an append. -/
+
+def markNote (file why : String) : String := s!"Couldn't mark a transcript typed in {file}: {why}"
+
+/-- Start the next mark whose clip's line is saved; a clip whose append failed has nothing to
+mark and is dropped. Called only when no append is in flight. -/
+def startMark (io : Io) : List Nat → Io × List (Nat × Ask)
+  | [] => ({ io with marks := [] }, [])
+  | c :: rest =>
+    match io.saved.find? (·.1 == c) with
+    | some (_, file, line) =>
+      let (io, a) := { io with marks := rest, marking := some { file := file },
+                               marksStarted := io.marksStarted + 1 }.ask (.markRead c file line) (.read file)
+      (io, [a])
+    | none => startMark io rest
+
+/-- Append again the lines a mark's rewrite lost; each is an append in flight. -/
+def reappendAll (io : Io) : List (String × String) → Io × List (Nat × Ask)
+  | [] => ({ io with reappend := [] }, [])
+  | (f, l) :: rest =>
+    let (io, a) := io.ask .ignore (.append f l)
+    let (io, as) := reappendAll { io with appends := (a.1, none, f, l) :: io.appends } rest
+    (io, a :: as)
+
+/-- Once no append is in flight: check a settled mark's file, or start the next mark. -/
+def nextMark (io : Io) : Io × List (Nat × Ask) :=
+  if io.appends.isEmpty then
+    match io.marking with
+    | none => startMark io io.marks
+    | some m =>
+      if m.phase = .settling then
+        if m.landed.isEmpty then startMark { io with marking := none } io.marks
+        else
+          let (io, a) := { io with marking := some { m with phase := .verifying } }.ask
+            (.verify m.file m.landed) (.read m.file)
+          (io, [a])
+      else (io, [])
+  else (io, [])
+
+/-- The marks' next requests, at the end of a message. -/
 def pumpMarks (io : Io) : Io × List (Nat × Ask) :=
-  match io.marking with
-  | some _ => (io, [])
-  | none => go io io.marks
-where
-  go (io : Io) : List Nat → Io × List (Nat × Ask)
-    | [] => ({ io with marks := [] }, [])
-    | c :: rest =>
-      match io.saved.find? (·.1 == c) with
-      | some (_, file, line) =>
-        let (io, a) := { io with marks := rest, marking := some [] }.ask (.markRead c file line) (.read file)
-        (io, [a])
-      | none => go io rest
+  let r := reappendAll io io.reappend
+  let n := nextMark r.1
+  (n.1, r.2 ++ n.2)
 
 /-- The machine's commands that become the app's own requests. -/
 def trAsk (io : Io) : Cmd → Io × List (Nat × Ask)
@@ -420,7 +517,7 @@ def trAsk (io : Io) : Cmd → Io × List (Nat × Ask)
     let (io, a) := io.ask .ignore (.sound name); (io, [a])
   | .listDays => let (io, a) := io.ask .days (.list transcriptsDir); (io, [a])
   | .loadRecent n => let (io, a) := io.ask (.recentList n) (.list transcriptsDir); (io, [a])
-  | .markTyped c => pumpMarks { io with marks := io.marks ++ [c] }
+  | .markTyped c => ({ io with marks := io.marks ++ [c] }, [])
   | .open o =>
     let (p, a) : Pend × Ask := match o with
       | .transcriptsFolder => (.opening transcriptsDir, .openItem transcriptsDir)
@@ -449,10 +546,7 @@ def tr (io : Io) : Cmd → Io × List Effect
   | .save q t =>
     let file := dayPath (Dates.localDay t.date io.zone)
     let line := transcriptLine t ++ "\n"
-    let saved := match t.clip with
-      | some c => ((c, file, line) :: io.saved).take 20
-      | none => io.saved
-    ({ io with saved, marking := io.marking.map (· ++ [(file, line)]) },
+    ({ io with appends := (2 * q, t.clip, file, line) :: io.appends },
      [.request (2 * q) (.appendFile file line.toUTF8)])
   | .saveConfig q c => (io, [.request (2 * q) (.writeFile configPath (configText c).toUTF8)])
   | .deleteDays ds => deletes io ds
@@ -479,10 +573,16 @@ def needed (s : State) : List Nat :=
     | _ => none
 
 /-- Let the host drop the samples of clips no longer needed. -/
-def collect (io : Io) (s : State) : Io × List (Nat × Ask) :=
+def forget (io : Io) (s : State) : Io × List (Nat × Ask) :=
   let gone := io.held.filter (fun c => !(needed s).contains c)
   let io := { io with held := io.held.filter (fun c => (needed s).contains c) }
   gone.foldl (fun (io, as) c => let (io, a) := io.ask .ignore (.forget c); (io, as ++ [a])) (io, [])
+
+/-- The end of a step: forget the samples no longer needed, then the marks' next requests. -/
+def collect (io : Io) (s : State) : Io × List (Nat × Ask) :=
+  let f := forget io s
+  let p := pumpMarks f.1
+  (p.1, f.2 ++ p.2)
 
 /-! ## Messages to inputs -/
 
@@ -520,15 +620,10 @@ def replaceLast (content line line' : String) : Option String :=
       | none => if l = target then some ((line'.dropEnd 1).toString :: rest) else none
   (go ls).map ("\n".intercalate ·)
 
-/-- A mark is done: check the lines appended while it ran, then start the next. -/
-def markDone (io : Io) (file : String) : Prep :=
-  let lines := ((io.marking.getD []).filter (·.1 == file)).map (·.2)
-  if lines.isEmpty then
-    let (io, as) := pumpMarks { io with marking := none }
-    { io, asks := as }
-  else
-    let (io, a) := io.ask (.verify file lines) (.read file)
-    { io, asks := [a] }
+/-- A mark's rewrite is over (written, or given up): it settles, and is checked once no append
+is in flight (`nextMark`). -/
+def markDone (io : Io) : Prep :=
+  { io := { io with marking := io.marking.map ({ · with phase := .settling }) } }
 
 /-- The launch input, once every launch read is back. -/
 def booted (io : Io) : Prep :=
@@ -638,18 +733,25 @@ def ownReply (s : AppState) (p : Pend) (io : Io) (r : Cairn.Reply) : Prep :=
         let (io, a) := { io with saved := io.saved.filter (·.1 != c) }.ask (.markWrite file)
           (.write file content)
         { io, asks := [a] }
-      | none => markDone io file
-    | _ => markDone io file
-  | .markWrite file => markDone io file
+      | none =>
+        -- Its append was answered ok, so the line was there: something else changed the file
+        -- (an edit, a half-written line before it). The transcript stays untyped on disk.
+        markDone { io with saved := io.saved.filter (·.1 != c),
+                           note := markNote file "its line isn't there" }
+    | .failed _ m => markDone { io with note := markNote file m }
+    | _ => markDone io
+  | .markWrite file =>
+    match r with
+    | .failed _ m => markDone { io with note := markNote file m }
+    | _ => markDone io
   | .verify file lines =>
-    let present := match r with
-      | .bytes d => (utf8 d).splitOn "\n"
-      | _ => []
-    let missing := lines.filter fun l => !present.contains (l.dropEnd 1).toString
-    let (io, as) := missing.foldl (fun (io, as) l =>
-      let (io, a) := io.ask .ignore (.append file l); (io, as ++ [a])) (io, [])
-    let (io, bs) := pumpMarks { io with marking := none }
-    { io, asks := as ++ bs }
+    match r with
+    | .bytes d =>
+      let present := (utf8 d).splitOn "\n"
+      let missing := lines.filter fun l => !present.contains (l.dropEnd 1).toString
+      { io := { io with marking := none, reappend := io.reappend ++ missing.map (file, ·) } }
+    | .failed _ m => { io := { io with marking := none, note := markNote file m } }
+    | _ => { io := { io with marking := none } }
   | .ignore => { io }
 
 /-- Check the permissions and the original Yap, unless a check is still out. -/
@@ -661,7 +763,8 @@ def checks (io : Io) : Io × List (Nat × Ask) :=
     let (io, c) := io.ask .original (.running originalBundle)
     (io, [a, b, c])
 
-def prep (s : AppState) : Msg → Prep
+/-- What a message is, before the marks' next requests. -/
+def prepMsg (s : AppState) : Msg → Prep
   | .clock t =>
     { io := { s.io with mono := t.mono, wall := t.wall, zone := t.zone },
       input := some (.tick t.mono), wall := some t.wall }
@@ -670,10 +773,11 @@ def prep (s : AppState) : Msg → Prep
       { io := { s.io with overlay := { s.io.overlay with shown := false } } }
     else { io := s.io, input := some (.tick s.io.mono) }
   | .reply id r =>
-    if id % 2 = 0 then { io := s.io, input := some (.reply (id / 2) (coreReply s.core (id / 2) r)) }
-    else match s.io.take id with
+    let io := s.io.landed id r
+    if id % 2 = 0 then { io, input := some (.reply (id / 2) (coreReply s.core (id / 2) r)) }
+    else match io.take id with
       | some (p, io) => ownReply s p io r
-      | none => { io := s.io }
+      | none => { io }
   | .sub (.every _) .tick => let (io, as) := checks s.io; { io, asks := as }
   | .sub (.watchFile p) .changed =>
     if p = configPath then let (io, a) := s.io.ask .config (.read configPath); { io, asks := [a] }
@@ -691,6 +795,14 @@ def prep (s : AppState) : Msg → Prep
   | .sub (.globalKey ..) (.otherKey _) => { io := s.io, input := some .otherKey }
   | .sub (.globalKey ..) (.failed _ _) => { io := s.io, input := some .keyLost }
   | .sub _ _ => { io := s.io }
+
+/-- What a message is to the app. When the machine hears nothing, the marks' next requests come
+last here; otherwise they come last in `collect`. -/
+def prep (s : AppState) (m : Msg) : Prep :=
+  let p := prepMsg s m
+  match p.input with
+  | none => let k := pumpMarks p.io; { p with io := k.1, asks := p.asks ++ k.2 }
+  | some _ => p
 
 /-! ## The app's `receive` -/
 

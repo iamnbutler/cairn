@@ -251,8 +251,7 @@ theorem nextRecent_input (io : Io) (n : Nat) (rest : List String) (acc : List Tr
     · exact Or.inr ⟨_, rfl⟩
     · exact Or.inl rfl
 
-theorem markDone_input (io : Io) (f : String) : (markDone io f).input = none := by
-  unfold markDone; dsimp only; split <;> rfl
+theorem markDone_input (io : Io) : (markDone io).input = none := rfl
 
 theorem ownReply_input {s : AppState} {p : Pend} {io : Io} {r : Cairn.Reply} {i : Input}
     (h : (ownReply s p io r).input = some i) : OwnIn io r i := by
@@ -276,7 +275,9 @@ theorem ownReply_input {s : AppState} {p : Pend} {io : Io} {r : Cairn.Reply} {i 
       · cases h
       · rw [markDone_input] at h; cases h
     · rw [markDone_input] at h; cases h
-  case markWrite => rw [markDone_input] at h; cases h
+    · rw [markDone_input] at h; cases h
+  case markWrite => split at h <;> (rw [markDone_input] at h; cases h)
+  case verify => split at h <;> cases h
   all_goals (repeat' (split at h)) <;> (try simp only [Option.some.injEq] at h) <;> (try subst h) <;> (first | trivial | (cases h) | skip)
 
 theorem take_clock {io : Io} {id : Nat} {p : Pend} {io' : Io} (h : io.take id = some (p, io')) :
@@ -295,17 +296,28 @@ def MsgIn (s : AppState) (m : Msg) : Input → Prop
       today = (Dates.localDay s.io.wall s.io.zone).toNat ∧ days = ns.filterMap Dates.parseDayFile
   | _ => True
 
+theorem prep_input_eq (s : AppState) (m : Msg) : (prep s m).input = (prepMsg s m).input := by
+  simp only [prep]; split <;> simp_all
+
+theorem prep_wall (s : AppState) (m : Msg) : (prep s m).wall = (prepMsg s m).wall := by
+  simp only [prep]; split <;> rfl
+
+theorem landed_clock (io : Io) (id : Nat) (r : Cairn.Reply) :
+    (io.landed id r).wall = io.wall ∧ (io.landed id r).zone = io.zone := by
+  unfold Io.landed; split <;> exact ⟨rfl, rfl⟩
+
 theorem prep_input {s : AppState} {m : Msg} {i : Input} (h : (prep s m).input = some i) :
     MsgIn s m i := by
+  rw [prep_input_eq] at h
   cases m with
-  | clock t => simp only [prep, Option.some.injEq] at h; subst h; exact Or.inl ⟨t, rfl⟩
+  | clock t => simp only [prepMsg, Option.some.injEq] at h; subst h; exact Or.inl ⟨t, rfl⟩
   | timer n =>
-    simp only [prep] at h
+    simp only [prepMsg] at h
     split at h
     · cases h
     · simp only [Option.some.injEq] at h; subst h; exact Or.inr ⟨n, rfl⟩
   | reply id r =>
-    simp only [prep] at h
+    simp only [prepMsg] at h
     split at h
     · rename_i he
       simp only [Option.some.injEq] at h; subst h
@@ -314,12 +326,13 @@ theorem prep_input {s : AppState} {m : Msg} {i : Input} (h : (prep s m).input = 
       · rename_i p io ht
         have hi := ownReply_input h
         obtain ⟨hw, hz⟩ := take_clock ht
+        obtain ⟨hw', hz'⟩ := landed_clock s.io id r
         cases i <;> simp only [OwnIn] at hi <;> try trivial
         obtain ⟨ns, rfl, rfl, rfl⟩ := hi
-        exact ⟨id, ns, rfl, by rw [hw, hz], rfl⟩
+        exact ⟨id, ns, rfl, by rw [hw, hz, hw', hz'], rfl⟩
       · cases h
   | sub x e =>
-    cases x <;> cases e <;> simp only [prep] at h <;>
+    cases x <;> cases e <;> simp only [prepMsg] at h <;>
       (try split at h) <;> (try split at h) <;> (try simp only [Option.some.injEq] at h) <;>
       (try subst h) <;> first | trivial | cases h
 
@@ -510,8 +523,9 @@ theorem app_failed_type_flagged (s : AppState) (q c : Nat) (t : Transcript) (e :
     (receive s (.reply (2 * q) (.failed f e))).1.core.recent.head? = some { t with typed := false } ∧
       ∃ id, Effect.request id (.playSound "Basso") ∈ (receive s (.reply (2 * q) (.failed f e))).2 := by
   have hp : (prep s (.reply (2 * q) (.failed f e))).input = some (.reply q (.failed e)) := by
-    simp [prep, coreReply, h]
-  have hco : coreAt s (prep s (.reply (2 * q) (.failed f e))) = s.core := by simp [coreAt, prep]
+    rw [prep_input_eq]; simp [prepMsg, coreReply, h]
+  have hco : coreAt s (prep s (.reply (2 * q) (.failed f e))) = s.core := by
+    simp [coreAt, prep_wall, prepMsg]
   obtain ⟨h1, h2⟩ := failed_type_flagged s.core q c t e h
   rw [receive_some hp, hco]
   refine ⟨h1, ?_⟩
