@@ -47,6 +47,11 @@ public struct Project: Sendable {
 public struct Commands {
     public var shell = Shell()
     public var cwd = URL(filePath: FileManager.default.currentDirectoryPath)
+    /// Ask the person a question and read the answer, or `nil` at the end of input.
+    public var ask: (String) -> String? = { question in
+        FileHandle.standardError.write(Data(question.utf8))
+        return readLine(strippingNewline: true)
+    }
     public init() {}
 
     func project() throws(CairnError) -> Project { try Project.find(from: cwd) }
@@ -60,16 +65,20 @@ public struct Commands {
 
     // MARK: new
 
-    /// `cairn new <name> [--lib]`: a package with a Lake package in lean/ that requires Cairn, a
-    /// claims.lock, and for an app (the default) a SwiftPM executable that links it.
+    /// `cairn new <name> [--lib | --bin]`: a package with a Lake package in lean/ that requires
+    /// Cairn, a claims.lock, and for an app (`bin`) a SwiftPM executable that links it. With
+    /// neither flag it asks which, as `kind` in cairn.toml says.
     public func new(_ args: [String]) throws(CairnError) {
-        guard let name = args.first, !name.hasPrefix("-") else { throw CairnError("usage: cairn new <name> [--lib]") }
+        guard let name = args.first, !name.hasPrefix("-") else { throw CairnError("usage: cairn new <name> [--lib | --bin]") }
         guard Names.valid(name) else { throw CairnError("`\(name)` isn't a package name: lowercase letters, digits and _, starting with a letter") }
-        let lib = args.contains("--lib")
+        guard !(args.contains("--lib") && args.contains("--bin")) else { throw CairnError("a package is a --lib or a --bin, not both") }
         let dir = cwd.appending(path: name)
         guard !FileManager.default.fileExists(atPath: dir.path) else { throw CairnError("\(name)/ already exists") }
+        let kind: Kind = try args.contains("--lib") ? .lib : args.contains("--bin") ? .bin : askKind(name)
+        let lib = kind == .lib
         let module = name.split(separator: "_").map { $0.prefix(1).uppercased() + $0.dropFirst() }.joined()
         var manifest = Manifest(name: name, version: "0.1.0")
+        manifest.kind = kind
         manifest.libs = [module]
         manifest.license = "MIT"
         manifest.dependencies = [("cairn", "^0.1.0")]
@@ -138,6 +147,20 @@ public struct Commands {
         } catch { throw CairnError("couldn't write \(name)/: \(error.localizedDescription)") }
         _ = try? shell.capture(["git", "init", "-q"], in: dir, check: false)
         print("Created \(name)/. Next: `cd \(name) && cairn add cairn`, which points the lakefile and Package.swift at your registry, then `cairn build`.")
+    }
+
+    /// Ask whether a new package is a library or an app, until the answer is one of them.
+    func askKind(_ name: String) throws(CairnError) -> Kind {
+        while true {
+            guard let answer = ask("Is \(name) a library other packages depend on (lib), or an app (bin)? [lib/bin] ") else {
+                throw CairnError("say which: `cairn new \(name) --lib` or `cairn new \(name) --bin`")
+            }
+            switch answer.trimmingCharacters(in: .whitespaces).lowercased() {
+            case "lib", "library", "l": return .lib
+            case "bin", "app", "b", "a": return .bin
+            default: continue
+            }
+        }
     }
 
     // MARK: add
@@ -290,7 +313,7 @@ public struct Commands {
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let readme = (try? String(contentsOf: root.appending(path: "README.md"), encoding: .utf8)).map { String($0.prefix(512 * 1024)) }
         let metadata = Publish.Metadata(
-            name: m.name, version: m.version, revision: revision, toolchain: toolchain, description: m.description,
+            name: m.name, version: m.version, kind: m.kind.rawValue, revision: revision, toolchain: toolchain, description: m.description,
             license: m.license, lean: m.lean, libs: m.libs, dependencies: Dictionary(m.dependencies.map { ($0.name, $0.range) }) { $1 },
             readme: readme)
         let claims = (try? Data(contentsOf: root.appending(path: m.claims))) ?? Data()

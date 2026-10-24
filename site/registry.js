@@ -8,6 +8,10 @@
 // registry: HTML served from a publisher's upload would run as this origin, so a registry takes
 // no docs from publishers (nextpm#23) and will build them from the published source, as docs.rs
 // does. Only the JSON API is read, and only to know the package and version exist.
+//
+// A package is a library (`kind = "lib"` in cairn.toml) or an app (`kind = "bin"`), as Cargo has
+// it. /packages/ shows the libraries and /packages/?tab=apps the apps; a registry that doesn't
+// say (nextpm before kinds) means a library.
 import fixture from "./registry/fixture.json";
 
 const esc = (value) =>
@@ -15,6 +19,9 @@ const esc = (value) =>
 
 const NAME = /^[a-z][a-z0-9_]{0,63}$/;
 const VERSION = /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/;
+
+/** `lib` or `bin`: anything but `bin` is a library. */
+const kindOf = (one) => (one?.kind === "bin" ? "bin" : "lib");
 
 /** The registry's API, or the fixture with the same answers. */
 export function source(env) {
@@ -44,7 +51,7 @@ function remote(base, token) {
 			const pkg = await data(`/api/v1/packages/${encodeURIComponent(who)}/${name}`);
 			if (!pkg) return undefined;
 			const versions = (await data(`/api/v1/packages/${encodeURIComponent(who)}/${name}/versions?yanked=true`)) ?? [];
-			return { name, owner: who, description: pkg.description, versions };
+			return { name, owner: who, description: pkg.description, kind: kindOf(pkg), versions };
 		},
 		async claims(name, version) {
 			const who = await owner();
@@ -65,6 +72,7 @@ function local() {
 					name: one.name,
 					fullName: `${fixture.owner}/${one.name}`,
 					version: latest.version,
+					kind: kindOf(latest),
 					description: latest.description,
 					license: latest.license,
 					updated: latest.date,
@@ -75,7 +83,8 @@ function local() {
 		},
 		async pkg(name) {
 			const one = find(name);
-			return one && { name, owner: fixture.owner, description: latestOf(one.versions).description, versions: one.versions };
+			const latest = one && latestOf(one.versions);
+			return one && { name, owner: fixture.owner, description: latest.description, kind: kindOf(latest), versions: one.versions };
 		},
 		async claims(name, version) {
 			return find(name)?.claims[version] ?? [];
@@ -147,9 +156,19 @@ function counts(claims) {
 	return `<span class="chips">${chip(claims.active, "active", "active")}${chip(claims.retired, "retired", "retired")}${chip(claims.moved, "moved", "moved")}</span>`;
 }
 
-/** /packages/: every package of the registry, newest release first. */
-export async function listPage(src) {
-	const items = await src.list();
+const TABS = { lib: { title: "Libraries", tab: "", none: "No library is published yet." }, bin: { title: "Apps", tab: "?tab=apps", none: "No app is published yet." } };
+
+/** /packages/: the registry's libraries, or with `kind` "bin" its apps, newest release first. */
+export async function listPage(src, kind = "lib") {
+	const all = await src.list();
+	const items = all.filter((one) => kindOf(one) === kind);
+	const tabs = Object.entries(TABS)
+		.map(([k, t]) => {
+			const n = all.filter((one) => kindOf(one) === k).length;
+			const on = k === kind;
+			return `<a href="/packages/${t.tab}"${on ? ' class="on" aria-current="page"' : ""}>${t.title} <span class="n">${n}</span></a>`;
+		})
+		.join("");
 	const cards = items
 		.map(
 			(one) => `<li class="pkg px">
@@ -161,15 +180,16 @@ export async function listPage(src) {
 		.join("\n");
 	const body = `${sample(src)}
 <section class="prose wide">
-<h2 id="all">All packages</h2>
-${items.length ? `<ul class="pkgs">${cards}</ul>` : "<p>No package is published yet.</p>"}
+<nav class="tabs" aria-label="Package kinds">${tabs}</nav>
+<h2 id="all">${TABS[kind].title}</h2>
+${items.length ? `<ul class="pkgs">${cards}</ul>` : `<p>${TABS[kind].none}</p>`}
 <h2 id="use">Use one</h2>
-<p>An app requires a package in its <code>cairn.toml</code>, and <code>cairn build</code> resolves it from the registry, downloads its prebuilt Lean code, and links it. A version's id never moves: its tag, its commit, and its claims stay as published.</p>
+<p>${kind === "bin" ? "An app is something to run, not to depend on: clone it from the registry and <code>cairn build</code> it. Only a library can be a dependency, and the registry refuses a version that depends on an app." : "An app requires a library in its <code>cairn.toml</code>, and <code>cairn build</code> resolves it from the registry, downloads its prebuilt Lean code, and links it."} A version's id never moves: its tag, its commit, and its claims stay as published.</p>
 </section>`;
 	return page({
 		title: "Packages",
 		eyebrow: "Registry",
-		lede: "Cairn packages: libraries and apps, each version with the claims it makes.",
+		lede: "Cairn packages: libraries to build on and apps to run, each version with the claims it makes.",
 		body,
 	});
 }
@@ -183,6 +203,7 @@ export async function packagePage(src, name, wanted) {
 	if (!shown) return undefined;
 	const claims = await src.claims(name, shown.version);
 	const range = `^${shown.version.replace(/-.*$/, "")}`;
+	const app = kindOf(shown.kind ? shown : pkg) === "bin";
 	const deps = Object.entries(shown.dependencies ?? {});
 	const rows = pkg.versions
 		.map(
@@ -196,6 +217,7 @@ export async function packagePage(src, name, wanted) {
 		.join("\n");
 	const body = `${sample(src)}
 <div class="facts px"><dl>
+<div><dt>Kind</dt><dd>${app ? "App" : "Library"}</dd></div>
 <div><dt>Version</dt><dd>${esc(shown.version)}${shown.yanked ? ' <span class="chip retired">yanked</span>' : ""}</dd></div>
 <div><dt>Published</dt><dd>${esc(date(shown.date))}${shown.publisher ? ` by ${esc(shown.publisher)}` : ""}</dd></div>
 <div><dt>Commit</dt><dd><code>${esc(shown.revision.slice(0, 12))}</code> at <code>${esc(shown.tag ?? `v${shown.version}`)}</code></dd></div>
@@ -206,7 +228,13 @@ export async function packagePage(src, name, wanted) {
 <p class="go"><a href="/docs/${esc(name)}/${esc(shown.version)}/">Docs for ${esc(shown.version)}</a></p>
 </div>
 <section class="prose wide">
-<h2 id="use">Use it</h2>
+${
+	app
+		? `<h2 id="use">Build it</h2>
+<p>${esc(name)} is an app: nothing can depend on it. Clone it from the registry and build it with the <code>cairn</code> tool:</p>
+<figure class="code"><pre><code>git clone ${esc(src.git(name))}
+cd ${esc(name)} &amp;&amp; git checkout ${esc(shown.tag ?? `v${shown.version}`)} &amp;&amp; cairn build --release</code></pre></figure>`
+		: `<h2 id="use">Use it</h2>
 <p>With the <code>cairn</code> tool:</p>
 <figure class="code"><pre><code>cairn add ${esc(name)}@${esc(range)}</code></pre></figure>
 <p>Which writes <code>cairn.toml</code>, and the lakefile and SwiftPM lines that it keeps in step:</p>
@@ -216,7 +244,8 @@ ${esc(name)} = "${esc(range)}"</code></pre><figcaption><code>cairn.toml</code></
 name = "${esc(name)}"
 scope = "${esc(pkg.owner)}"
 version = "${esc(range)}"</code></pre><figcaption><code>lean/lakefile.toml</code></figcaption></figure>
-<figure class="code"><pre><code>.package(url: "${esc(src.git(name))}", from: "${esc(shown.version.replace(/-.*$/, ""))}")</code></pre><figcaption><code>Package.swift</code></figcaption></figure>
+<figure class="code"><pre><code>.package(url: "${esc(src.git(name))}", from: "${esc(shown.version.replace(/-.*$/, ""))}")</code></pre><figcaption><code>Package.swift</code></figcaption></figure>`
+}
 ${deps.length ? `<h2 id="deps">Depends on</h2><ul>${deps.map(([dep, r]) => `<li><a href="/packages/${esc(dep)}/"><code>${esc(dep)}</code></a> <code>${esc(r)}</code></li>`).join("")}</ul>` : ""}
 <h2 id="versions">Versions</h2>
 <div class="wrap"><table><thead><tr><th>Version</th><th>Published</th><th>Commit</th><th>Claims</th><th>Docs</th></tr></thead><tbody>
@@ -266,7 +295,7 @@ export async function route(request, env) {
 	if (parts[0] === "packages") {
 		if (parts.length === 1) return Response.redirect(new URL("/packages/", url), 301);
 		const [, name = "", version = "", ...rest] = parts;
-		if (!name && !version) return html(await listPage(src));
+		if (!name && !version) return html(await listPage(src, url.searchParams.get("tab") === "apps" ? "bin" : "lib"));
 		if (rest.length > 1 || rest[0]) return undefined;
 		if (!url.pathname.endsWith("/")) return Response.redirect(new URL(`${url.pathname}/`, url), 301);
 		if (version && !VERSION.test(version)) return undefined;

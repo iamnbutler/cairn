@@ -1,10 +1,19 @@
 import Foundation
 
+/// What a package builds, as Cargo has it: a library that other packages depend on, or a binary
+/// (an app, as the site calls it) that nothing can depend on. The registry refuses a dependency
+/// on a `bin`.
+public enum Kind: String, Sendable, CaseIterable {
+    case lib, bin
+}
+
 /// A package's `cairn.toml` (docs/cli.md, "cairn.toml"). The name is the Lake package's name and
 /// the claim scope, so `yap^301` reads the same in the code, the ledger and the registry.
 public struct Manifest: Equatable, Sendable {
     public var name: String
     public var version: String
+    /// `lib` or `bin`. A manifest from before kinds has none, and is a `lib`.
+    public var kind = Kind.lib
     public var description: String?
     public var license: String?
     /// The Lake package's directory, relative to the repository root.
@@ -23,13 +32,13 @@ public struct Manifest: Equatable, Sendable {
     }
 
     public static func == (a: Manifest, b: Manifest) -> Bool {
-        a.name == b.name && a.version == b.version && a.description == b.description
+        a.name == b.name && a.version == b.version && a.kind == b.kind && a.description == b.description
             && a.license == b.license && a.lean == b.lean && a.libs == b.libs && a.swift == b.swift
             && a.claims == b.claims && a.dependencies.map(\.name) == b.dependencies.map(\.name)
             && a.dependencies.map(\.range) == b.dependencies.map(\.range)
     }
 
-    static let packageKeys: Set = ["name", "version", "description", "license", "lean", "libs", "swift", "claims"]
+    static let packageKeys: Set = ["name", "version", "kind", "description", "license", "lean", "libs", "swift", "claims"]
 
     /// Parse `cairn.toml`. Unknown tables and keys are errors, so a typo never goes unnoticed.
     public static func parse(_ text: String) throws(CairnError) -> Manifest {
@@ -55,6 +64,10 @@ public struct Manifest: Equatable, Sendable {
         }
         guard Names.version(version) else { throw CairnError("cairn.toml: `\(version)` isn't a version like 0.1.0 or 0.1.0-rc.1") }
         var out = Manifest(name: name, version: version)
+        if let kind = try string("kind") {
+            guard let known = Kind(rawValue: kind) else { throw CairnError("cairn.toml: `kind` is \"lib\" or \"bin\", not \"\(kind)\"") }
+            out.kind = known
+        }
         out.description = try string("description")
         out.license = try string("license")
         out.lean = try string("lean") ?? out.lean
@@ -76,7 +89,7 @@ public struct Manifest: Equatable, Sendable {
 
     /// The file's text, in a fixed order; what `cairn new` and `cairn add` write.
     public func render() -> String {
-        var lines = ["[package]", "name = \(Toml.quote(name))", "version = \(Toml.quote(version))"]
+        var lines = ["[package]", "name = \(Toml.quote(name))", "version = \(Toml.quote(version))", "kind = \(Toml.quote(kind.rawValue))"]
         if let description { lines.append("description = \(Toml.quote(description))") }
         if let license { lines.append("license = \(Toml.quote(license))") }
         if lean != "lean" { lines.append("lean = \(Toml.quote(lean))") }

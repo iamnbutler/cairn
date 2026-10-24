@@ -4,7 +4,8 @@ import Foundation
 let usage = """
     cairn: build, document and publish Cairn packages (docs/cli.md)
 
-      cairn new <name> [--lib]        start a package: lean/, claims.lock, cairn.toml, Package.swift
+      cairn new <name> [--lib|--bin]  start a library or an app: lean/, claims.lock, cairn.toml,
+                                      and for an app Package.swift (asks which with neither)
       cairn add <name>[@<range>]      depend on a package from the registry
       cairn build [--release]         lake cache get, lake build, cairn-link, swift build
       cairn doc [--private] [--open]  the package's docs, in build/doc/<name>/

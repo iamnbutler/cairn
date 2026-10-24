@@ -3,6 +3,7 @@
 [package]
 name = "cairn"
 version = "0.1.1"
+kind = "lib"
 description = "Native macOS apps whose behaviour is proved in Lean."
 license = "MIT"
 lean = "lean"
