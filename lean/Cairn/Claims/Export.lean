@@ -53,7 +53,8 @@ unsafe def claimJson (env : Environment) (e : Entry) : IO Json := do
   let ev ← e.evidence.mapM fun (r, n) => evidenceJson env r n
   let opt (o : Option String) : Json := match o with | some s => s | none => Json.null
   return Json.mkObj [
-    ("id", e.info.id), ("ref", s!"^{e.info.id}"), ("kind", e.info.kind.name),
+    ("id", e.info.id), ("ref", s!"^{e.info.id}"), ("scope", e.scope), ("qualified", e.ref),
+    ("kind", e.info.kind.name),
     ("title", e.info.title), ("does", e.info.does), ("sees", e.info.sees),
     ("place", match e.info.place with | some p => toJson p | none => Json.null),
     ("retired", opt e.info.retired),

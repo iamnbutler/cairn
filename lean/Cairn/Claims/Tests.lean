@@ -143,7 +143,7 @@ elab "#reject " cmd:command : command => do
 namespace Bad
 
 /--
-error: claim id ^9101 is already issued: ^9101 move “Increment” (Cairn.Claims.Tests.inc, module Cairn.Claims.Tests). Ids are never reused; take a new one
+error: claim id cairn^9101 is already issued: cairn^9101 move “Increment” (Cairn.Claims.Tests.inc, module Cairn.Claims.Tests). Ids are never reused; take a new one
 -/
 #guard_msgs in
 #reject move ^9101 again (s : St) "Increment again" where
@@ -196,7 +196,7 @@ error: unknown place ^9999: declare it with `place ^9999 …` first
   does "Inside a place that does not exist."
 
 /--
-error: ^9101 is not a place: ^9101 move “Increment” (Cairn.Claims.Tests.inc, module Cairn.Claims.Tests)
+error: ^9101 is not a place: cairn^9101 move “Increment” (Cairn.Claims.Tests.inc, module Cairn.Claims.Tests)
 -/
 #guard_msgs in
 #reject move ^9124 inMove (s : St) "In a move" in ^9101 where
@@ -233,7 +233,7 @@ is false
   witness press ^9102
 
 /--
-error: a witness step names a move, and ^9100 is not one: ^9100 place “Main” (Cairn.Claims.Tests.main, module Cairn.Claims.Tests)
+error: a witness step names a move, and ^9100 is not one: cairn^9100 place “Main” (Cairn.Claims.Tests.main, module Cairn.Claims.Tests)
 -/
 #guard_msgs in
 #reject flow ^9127 notAMove "Through a place" for machine where
@@ -270,4 +270,55 @@ error: `on edit` names its text operation: `on edit (op : TextOp)`
     sound := by intro; trivial
 
 end Bad
+
+/-! Scopes (`cairn.claims.scope`): another package issues its own `^9101`, which is not Cairn's;
+inside that scope `^9101` is taken, and `in ^9100` doesn't see Cairn's place. -/
+namespace Scoped
+
+set_option cairn.claims.scope "other" in
+move ^9101 inc (s : St) "Increment, in another package" where
+  does "Press +."
+  sees "n goes up."
+  on press
+    apply := { n := s.n + 1 }
+    post s' := s'.n = s.n + 1
+    sound := by intro; rfl
+
+open Lean in
+#eval show MetaM Unit from do
+  let some e := lookup? (← getEnv) "other" 9101 | throwError "other^9101 should be issued"
+  unless e.ref == "other^9101" && e.decl == `Cairn.Claims.Tests.Scoped.inc do
+    throwError "other^9101 is {e.label}"
+  unless (← getEnv).contains `Cairn.Claims.Issued.«other^9101» do
+    throwError "other^9101 should have its Issued declaration"
+  let some c := lookup? (← getEnv) "cairn" 9101 | throwError "cairn^9101 should still be issued"
+  unless c.decl == `Cairn.Claims.Tests.inc do throwError "cairn^9101 is {c.label}"
+
+/--
+error: claim id other^9101 is already issued: other^9101 move “Increment, in another package” (Cairn.Claims.Tests.Scoped.inc, module Cairn.Claims.Tests). Ids are never reused; take a new one
+-/
+#guard_msgs in
+set_option cairn.claims.scope "other" in
+#reject move ^9101 again (s : St) "Again" where
+  does "Press +."
+  sees "n goes up."
+  on press
+    apply := s
+    post _ := True
+    sound := by intro; trivial
+
+/--
+error: unknown place ^9100: declare it with `place ^9100 …` first
+-/
+#guard_msgs in
+set_option cairn.claims.scope "other" in
+#reject move ^9102 placed (s : St) "Placed in Cairn's place" in ^9100 where
+  does "Press."
+  sees "Nothing."
+  on press
+    apply := s
+    post _ := True
+    sound := by intro; trivial
+
+end Scoped
 end Cairn.Claims.Tests
