@@ -165,7 +165,7 @@ def subEvent : SubEvent → String
   | .keyUp t => s!"4 {t}"
   | .otherKey t => s!"5 {t}"
   | .failed f m => s!"6 {Fault.code f} {str m}"
-  | .started => "7"
+  | .started t => s!"7 {t}"
 
 def event : Event → String
   | .surface p e => s!"surface {p} " ++ event e

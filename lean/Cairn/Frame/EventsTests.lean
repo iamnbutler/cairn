@@ -81,7 +81,7 @@ private def events : Array Event := #[.pointerMove ⟨-1, 2⟩,
   .reply 10 (.flag true), .subEvent 4 (.audio 160 900 [⟨123456789012, 900⟩, ⟨0, 0⟩]),
   .subEvent 4 (.audio 0 0 []), .subEvent 5 (.keyDown 18446744073709551615), .subEvent 5 (.keyUp 0),
   .subEvent 5 (.otherKey 7), .subEvent 4 (.failed .denied "no microphone"),
-  .subEvent 4 .started,
+  .subEvent 4 (.started 18446744073709551615), .subEvent 4 (.started 0),
   .surface 3 (.pointerDown ⟨1, 2⟩ .primary 1 {}), .surface 4294967295 .copy,
   .menuOpen 450, .menuClose 450, .menuSelect 450 ⟨453, 1⟩]
 

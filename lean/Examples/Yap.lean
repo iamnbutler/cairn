@@ -12,6 +12,7 @@ public import Examples.Yap.App
 public import Examples.Yap.View
 public import Examples.Yap.AppProofs
 public import Examples.Yap.MarkProofs
+public import Examples.Yap.MicStart
 
 /-! # Yap on Cairn: the app and its claims
 
@@ -33,7 +34,7 @@ theorems at the end of this file).
 | ^301 | place | the menu bar menu |
 | ^302–^310 | move | the menu items (^303 keyed by position) |
 | ^311 | invariant | a shortcut never sends |
-| ^312 | invariant | the hold/tap split is exactly 300 ms |
+| ^312 | retired | was the hold/tap split, timed from the key's own events |
 | ^313 | invariant | one recording at a time |
 | ^314 | invariant | every recording ends: ten minutes after the key is up |
 | ^315 | invariant | a transcript is kept (and saved) before it is typed |
@@ -53,6 +54,10 @@ theorems at the end of this file).
 | ^345 | retired | was the overlay panel with a bar waveform and four lines |
 | ^346 | invariant | the key is left alone while the original Yap runs |
 | ^347 | invariant | a typed transcript is marked on disk only after its append is answered ok |
+| ^348 | assume | the host reports the microphone's start, or its failure, before any audio |
+| ^349 | invariant | the overlay shows a recording only once its microphone has started |
+| ^350 | invariant | key events wait while the microphone starts |
+| ^351 | invariant | the hold/tap split is exactly 300 ms, timed as the original's |
 | ^399 | place | the overlay panel, as the original's | -/
 
 @[expose] public section
@@ -196,7 +201,7 @@ def machine : Machine AppState := { init := {}, moves := moves%, receive }
 /-- What every menu item keeps, every move keeps: the menu, Quit, and the moves that only ask
 the host something. -/
 theorem machine_preserves {P : AppState → Prop} (h : ∀ s a, P s → P (menuStep s a).1)
-    (hio : ∀ s io, P s → P { s with io }) :
+    (hio : ∀ s io, io.overlay = s.io.overlay → P s → P { s with io }) :
     ∀ s a, P s → P (machine.update s a).1 :=
   machine.preserves <|
     Move.all_cons (copyLast.preserves _ fun _ _ hs => hs)
@@ -209,8 +214,8 @@ theorem machine_preserves {P : AppState → Prop} (h : ∀ s a, P s → P (menuS
     (Move.all_cons (editSettings.preserves _ fun s hs => h s _ hs)
     (Move.all_cons (grantAccess.preserves _ fun s _ hs => h s _ hs)
     (Move.all_cons (quit.preserves _ fun _ hs => hs)
-    (Move.all_cons (grantMic.preserves _ fun s _ hs => hio s _ hs)
-    (Move.all_cons (openMenu.preserves _ fun s hs => hio s _ hs) Move.all_nil)))))))))))
+    (Move.all_cons (grantMic.preserves _ fun s _ hs => hio s _ rfl hs)
+    (Move.all_cons (openMenu.preserves _ fun s hs => hio s _ (checks_overlay _) hs) Move.all_nil)))))))))))
 
 /-- A property of the machine's state and the typed log, kept by `step` and the menu, is kept by
 every move and by `receive`. -/
@@ -218,7 +223,7 @@ theorem Keeps.machine {Q : State → List Nat → Prop} (hq : Keeps Q) :
     (∀ s a, Q s.core s.typed → Q (machine.update s a).1.core (machine.update s a).1.typed) ∧
       ∀ s m, Q s.core s.typed → Q (machine.receive s m).1.core (machine.receive s m).1.typed :=
   ⟨machine_preserves (P := fun s => Q s.core s.typed) (fun s a h => hq.menuStep s a h)
-      (fun _ _ h => h),
+      (fun _ _ _ h => h),
     fun s m h => hq.receive s m h⟩
 
 /-! ## Dictation -/
@@ -236,17 +241,43 @@ invariant ^311 shortcutNeverSends "A shortcut never sends" for machine where
   receive := fun _ _ _ => ⟨fun hk hc m hcl hti _ _ h => app_shortcut_never_sends _ m hk hc hcl hti h,
     fun a _ _ h => menuStep_no_upload _ a h⟩
 
-invariant ^312 holdTapSplit "Hold to talk, tap to latch: 300 ms" for machine where
-  does "Releasing the key ends a press that began a recording, not part of a shortcut: held for less than 300 ms it was a tap, and the recording goes on hands free with its deadline ten minutes on; held 300 ms or more, the recording ends and is sent (`hold_tap_split`)."
-  holds s := ∀ r t k mo, s.core.recording = some r → r.latched = false → s.core.keyHeld = true →
-    s.core.chorded = false →
-    (receive s (.sub (.globalKey k mo) (.keyUp t))).1.core.recording =
-      if max s.core.now t - s.core.pressedAt < tapLimit then
-        some { r with latched := true, deadline := max s.core.now t + latchLimit }
-      else none
-  init := fun r t _ _ => hold_tap_split _ r t
-  step := fun _ _ _ r t _ _ => hold_tap_split _ r t
-  receive := fun _ _ _ r t _ _ => hold_tap_split _ r t
+retire ^312 invariant "Hold to talk, tap to latch: 300 ms" because "Key events now wait while the microphone starts, and the ones that waited are timed from when the start finished, as in the original (^351); the hold/tap split is restated there for a recording whose microphone is running."
+
+invariant ^351 holdTapSplit "Hold to talk, tap to latch: 300 ms, timed as the original" for machine where
+  does "Releasing the key ends a press that began a recording, not part of a shortcut: held for less than 300 ms it was a tap, and the recording goes on hands free with its deadline ten minutes on; held 300 ms or more, the recording ends and is sent (`hold_tap_split`). As in the original, whose main thread is busy in `engine.start()` until the microphone runs, a release that comes while the microphone is starting waits, and is timed from when the start finished, not from its own timestamp: a tap during a slow start (one that ends 300 ms or more after the press) is a hold (`micStarted_replay`)."
+  holds s := (∀ r t k mo, s.core.recording = some r → r.started = true → s.core.keys = [] →
+      r.latched = false → s.core.keyHeld = true → s.core.chorded = false →
+      (receive s (.sub (.globalKey k mo) (.keyUp t))).1.core.recording =
+        if max s.core.now t - s.core.pressedAt < tapLimit then
+          some { r with latched := true, deadline := max s.core.now t + latchLimit }
+        else none) ∧
+    ∀ r c t u, s.core.recording = some r → r.clip = c → r.started = false → s.core.keys = [.up t] →
+      t ≤ u → s.core.keyHeld = true → s.core.chorded = false →
+      (receive s (.sub (.record c) (.started u))).1.core.recording =
+        if max s.core.now u - s.core.pressedAt < tapLimit then
+          some { r with started := true, nextPoll := max s.core.now u + pollMs, latched := true,
+                        deadline := max s.core.now u + latchLimit }
+        else none
+  init := ⟨fun r t _ _ => hold_tap_split _ r t, fun r c t u => micStarted_replay _ r c t u⟩
+  step := fun _ _ _ => ⟨fun r t _ _ => hold_tap_split _ r t, fun r c t u => micStarted_replay _ r c t u⟩
+  receive := fun _ _ _ => ⟨fun r t _ _ => hold_tap_split _ r t,
+    fun r c t u => micStarted_replay _ r c t u⟩
+
+invariant ^349 overlayAfterMic "The overlay waits for the microphone" for machine where
+  does "As in the original, whose `begin` shows the overlay only once `AudioCapture.start` has returned: the overlay never shows a recording whose microphone hasn't started, so a microphone that fails to start never shows it. Only the host's report that the clip's microphone started (`micStarted`) begins the overlay (`step_begin`); every recording's clip, and the overlay's, is one numbered so far, so a new recording is never the overlay's clip (`OvInv`, `receive_ovInv`, `menuStep_ovInv`)."
+  holds s := OvInv s
+  init := ovInv_init
+  step := machine_preserves (fun s a h => menuStep_ovInv s a h) (fun s io hio h =>
+    ⟨h.1, by rw [hio]; exact h.2.1, fun r hr hs hc => h.2.2 r hr (hio ▸ hs) (hio ▸ hc)⟩)
+  receive := fun s m h => receive_ovInv s m h
+
+invariant ^350 keysWaitForMic "Keys wait for the microphone" for machine where
+  does "While a recording's microphone is starting, a key going down or up, or another key, leaves the recording as it is: the event waits, and is handled once the host reports the start (or its failure), as the original's main thread handles key events only once `engine.start()` returns (`app_keys_wait`). Only the key's listener failing ends it."
+  holds s := ∀ r k mo e, s.core.recording = some r → r.started = false → (∀ f m, e ≠ .failed f m) →
+    (receive s (.sub (.globalKey k mo) e)).1.core.recording = some r
+  init := fun r k mo e => app_keys_wait _ r k mo e
+  step := fun _ _ _ r k mo e => app_keys_wait _ r k mo e
+  receive := fun _ _ _ r k mo e => app_keys_wait _ r k mo e
 
 invariant ^313 oneRecording "One recording at a time" for machine where
   does "The app records exactly while the machine has a recording: one `record` subscription, for its clip. Whatever the host reports, a recording the machine didn't have is the next clip, started when there was none; the menu only ever stops one (`record_sub_iff`, `app_new_recording`, `step_new_recording`)."
@@ -261,7 +292,7 @@ invariant ^313 oneRecording "One recording at a time" for machine where
     fun a => menu_recording _ a⟩
 
 invariant ^314 recordingEnds "Every recording ends" for machine where
-  does "A recording is either held down or hands free with its deadline at most ten minutes away; so once the key's release is heard and the clock reads ten minutes on, there is no recording. A recording held down has no limit, as in Swift Yap (`step_recInv`, `app_recording_ends`)."
+  does "A recording is either held down or hands free with its deadline at most ten minutes away; so once the key's release is heard and the clock reads ten minutes on, there is no recording. A release that comes while the microphone is starting waits for the start; if the start is never reported, the recording is given up ten minutes after that release (the original would wait forever: see docs/yap-parity.md). A recording held down has no limit, as in Swift Yap (`step_recInv`, `keyUp_tick_none`, `app_recording_ends`)."
   holds s := RecInv s.core ∧ ∀ t k mo (tm : Time), s.core.now ≤ t → t + latchLimit ≤ tm.mono →
     (receive (receive s (.sub (.globalKey k mo) (.keyUp t))).1 (.clock tm)).1.core.recording = none
   init := ⟨recInv_init, fun t k mo tm => app_recording_ends _ recInv_init t k mo tm⟩
@@ -412,6 +443,9 @@ assume ^336 hostFiles "The host reports config.json and dictionary.txt when they
 
 assume ^337 hostDays "The host lists day files and today by the local calendar" where
   does "After `listDays`, the host reports today's day number and the day files there are, as day numbers on the same calendar, and deletes exactly the files named by `deleteDays`."
+
+assume ^348 hostMicStart "The host reports the microphone's start or its failure" where
+  does "After `startRecording`, the host starts the microphone and reports, once, that it is running (`started`, with its monotonic clock in milliseconds read after the start returned: the clock of key events) or that it failed (`micFailed`), before any audio of the clip. A start that never returns is never reported; the app then gives the recording up ten minutes after a release waits for it."
 
 /-! ## Flows -/
 

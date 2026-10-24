@@ -11,9 +11,10 @@ good and bad, OpenAI's transcripts and errors, typing that works or fails, the o
 starting and quitting; and replies late, twice, for nothing, or never.
 
 After every step it checks the claims as the app states them (`Examples.Yap`, over
-`AppState`, what `receive` returns), as runnable predicates: ^311, ^313–^323, ^346 and ^347.
-^312 is an equation about one message from one state, checked when a key-up comes in the state
-it names. A failing sequence is shrunk as in the host mode.
+`AppState`, what `receive` returns), as runnable predicates: ^311, ^313–^323, ^346, ^347 and
+^349–^351. ^351 is an equation about one message from one state, checked when a key-up, or the
+start of a microphone a key-up waited for, comes in the state it names. The microphone's start
+is reported late, or fails, as often as not soon. A failing sequence is shrunk as in the host mode.
 
 The host keeps the day files' contents: an append, a write or a delete changes them when its
 answer says it worked, and a read of a day file gives what is there. Requests are answered in
@@ -242,8 +243,15 @@ def nextStep (s : AppState) (h : Host) : Gen Step := do
           (2, do return .otherKey h.mono), (1, do return .failed .denied "gone")]))
       | none => return .msg (.clock h.time)),
     (24, do match rec_ with
-      | some r => Gen.weighted [(12, do return .msg (.sub r (← audioEvent))),
-                                (1, do return .msg (.sub r (.failed .denied "no microphone")))]
+      | some r =>
+        if s.core.recording.any (!·.started) then
+          -- The microphone is starting: reported now, later (other messages first), or failed.
+          Gen.weighted [(8, do return .msg (.sub r (.started (← later)))),
+                        (2, do return .msg (.sub r (.failed .other "no input device"))),
+                        (1, do return .msg (.sub r (.failed .denied "no microphone")))]
+        else Gen.weighted [(12, do return .msg (.sub r (← audioEvent))),
+                           (1, do return .msg (.sub r (.started (← later)))),
+                           (1, do return .msg (.sub r (.failed .denied "no microphone")))]
       | none => return .msg (.sub (.record (← Gen.range 0 4)) (← audioEvent))),
     (2, do return .msg (.sub (.every pollEveryMs) .tick)),
     (2, do return .msg (.sub (.watchFile (← Gen.elem [configPath, dictionaryPath])) .changed)),
@@ -286,14 +294,40 @@ def a311 : Check := fun s st _ es =>
     | .menu _ => some ((requests es).all fun (_, r) => !isUpload r)
     | _ => none
 
-def a312 : Check := fun s st s' _ =>
+def a351 : Check := fun s st s' _ =>
   match st, s.core.recording with
   | .msg (.sub (.globalKey ..) (.keyUp t)), some r =>
-    if !r.latched && s.core.keyHeld && !s.core.chorded then
+    if r.started && s.core.keys.isEmpty && !r.latched && s.core.keyHeld && !s.core.chorded then
       some (s'.core.recording == if max s.core.now t - s.core.pressedAt < tapLimit then
           some { r with latched := true, deadline := max s.core.now t + latchLimit }
         else none)
     else none
+  | .msg (.sub (.record c) (.started u)), some r =>
+    match s.core.keys with
+    | [.up t] =>
+      if r.clip == c && !r.started && t ≤ u && s.core.keyHeld && !s.core.chorded then
+        some (s'.core.recording == if max s.core.now u - s.core.pressedAt < tapLimit then
+            some { r with started := true, nextPoll := max s.core.now u + pollMs, latched := true,
+                          deadline := max s.core.now u + latchLimit }
+          else none)
+      else none
+    | _ => none
+  | _, _ => none
+
+/-- ^349 (`OvInv`), as a `Bool`. -/
+def ovOk (s : AppState) : Bool :=
+  s.core.recording.all (fun r => r.clip < s.core.nextClip) && s.io.overlay.clip < s.core.nextClip &&
+    s.core.recording.all fun r => !(s.io.overlay.shown && s.io.overlay.clip == r.clip) || r.started
+
+def a349 : Check := fun _ _ s' _ => some (ovOk s')
+
+def a350 : Check := fun s st s' _ =>
+  match s.core.recording, st with
+  | some r, .msg (.sub (.globalKey ..) e) =>
+    if r.started then none else
+    match e with
+    | .failed .. => none
+    | _ => some (s'.core.recording == some r)
   | _, _ => none
 
 def a313 : Check := fun s _ s' _ =>
@@ -430,8 +464,9 @@ def hostChecks (h' : Host) (s' : AppState) (es : List Effect) : List (Nat × Opt
   [(347, a347 h' s' es), (347, a347disk h')]
 
 def checks : List (Nat × Check) :=
-  [(311, a311), (312, a312), (313, a313), (314, a314), (315, a315), (316, a316), (317, a317),
-   (318, a318), (319, a319), (320, a320), (321, a321), (322, a322), (323, a323), (346, a346)]
+  [(311, a311), (351, a351), (313, a313), (314, a314), (315, a315), (316, a316), (317, a317),
+   (318, a318), (319, a319), (320, a320), (321, a321), (322, a322), (323, a323), (346, a346),
+   (349, a349), (350, a350)]
 
 def claimIds : List Nat := checks.map (·.1) ++ [347]
 

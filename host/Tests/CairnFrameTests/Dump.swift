@@ -162,7 +162,7 @@ enum Dump {
         case let .keyUp(t): return "4 \(t)"
         case let .otherKey(t): return "5 \(t)"
         case let .failed(f, m): return "6 \(f.rawValue) \(str(m))"
-        case .started: return "7"
+        case let .started(t): return "7 \(t)"
         }
     }
 
@@ -365,7 +365,7 @@ enum DumpParser {
             case 6:
                 guard let f = Fault(rawValue: try u8()) else { throw Bad(line: line) }
                 return .subEvent(id: id, .failed(f, try t.string()))
-            case 7: return .subEvent(id: id, .started)
+            case 7: return .subEvent(id: id, .started(try u64()))
             default: throw Bad(line: line)
             }
         default: throw Bad(line: line)

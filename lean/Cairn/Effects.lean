@@ -176,9 +176,10 @@ inductive SubEvent where
   /-- `record`: `frames` more samples, their largest absolute value `peak`, and the 20 ms
   windows they complete, in order from the start of the clip. -/
   | audio (frames peak : Nat) (windows : List Level)
-  /-- `record`: the microphone is running. Sent once, before any `audio`, and never after a
-  `failed` that says it could not start. -/
-  | started
+  /-- `record`: the microphone is running, since monotonic milliseconds `t` (when its start
+  returned). Sent once, before any `audio`, and never after a `failed` that says it could not
+  start. -/
+  | started (t : Nat)
   /-- `globalKey`: the key went down or up, or another key went down while it was held, at
   monotonic milliseconds `t` (the clock of `Time.mono`). -/
   | keyDown (t : Nat)

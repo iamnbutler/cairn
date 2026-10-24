@@ -53,7 +53,7 @@ def Reply.faultCode : Reply → UInt8
 `started` 7. -/
 def SubEvent.code : SubEvent → UInt8
   | .tick => 0 | .changed => 1 | .audio .. => 2 | .keyDown _ => 3 | .keyUp _ => 4
-  | .otherKey _ => 5 | .failed .. => 6 | .started => 7
+  | .otherKey _ => 5 | .failed .. => 6 | .started _ => 7
 
 def SubEvent.faultCode : SubEvent → UInt8
   | .failed f _ => Fault.code f
@@ -64,9 +64,9 @@ def fitsTime (t : Time) : Bool := fu64 t.mono && fi64 t.wall && fi t.zone
 def fitsLevel (l : Level) : Bool := fu64 l.sumSq && fu l.peak
 
 def fitsSubEvent : SubEvent → Bool
-  | .tick | .changed | .started => true
+  | .tick | .changed => true
   | .audio n pk ws => fu n && fu pk && fu ws.length && ws.all fitsLevel
-  | .keyDown t | .keyUp t | .otherKey t => fu64 t
+  | .keyDown t | .keyUp t | .otherKey t | .started t => fu64 t
   | .failed _ m => fs m
 
 def fitsReply : Reply → Bool
@@ -115,9 +115,9 @@ def level (l : Level) : List UInt8 := u64 l.sumSq ++ u32 l.peak
 
 /-- A subscription event's fields after its record head and id. -/
 def subEventBody : SubEvent → List UInt8
-  | .tick | .changed | .started => []
+  | .tick | .changed => []
   | .audio n pk ws => u32 n ++ u32 pk ++ u32 ws.length ++ ws.flatMap level
-  | .keyDown t | .keyUp t | .otherKey t => u64 t
+  | .keyDown t | .keyUp t | .otherKey t | .started t => u64 t
   | .failed _ m => str m
 
 def event : Event → List UInt8
@@ -214,7 +214,7 @@ def subEventBody (code fault : UInt8) : Dec SubEvent :=
   | 6 => do
     let some f := Fault.ofCode fault | fail
     return .failed f (← str)
-  | 7 => if fault = 0 then pure .started else fail
+  | 7 => if fault = 0 then do return .started (← u64) else fail
   | _ => fail
 
 /-- Read a record head, then the rest of the record by its tag. -/
@@ -353,14 +353,14 @@ theorem subEventBody_enc {e : SubEvent} (h : fitsSubEvent e = true) (r : List UI
     subEventBody (SubEvent.code e) (SubEvent.faultCode e) (Enc.subEventBody e ++ r) =
       some (e, r) := by
   cases e with
-  | tick | changed | started => rfl
+  | tick | changed => rfl
   | audio n pk ws =>
     simp only [fitsSubEvent, Bool.and_eq_true, fu_iff, List.all_eq_true] at h
     obtain ⟨⟨⟨hn, hp⟩, hc⟩, hw⟩ := h
     simp only [subEventBody, SubEvent.code, SubEvent.faultCode, Enc.subEventBody, ↓reduceIte,
         List.append_assoc, bind_apply, u32_enc hn, u32_enc hp, u32_enc hc]
     rw [count_enc ws (fun l hl => level_enc (hw l hl)) r]; rfl
-  | keyDown t | keyUp t | otherKey t =>
+  | keyDown t | keyUp t | otherKey t | started t =>
     simp only [fitsSubEvent, fu64_iff] at h
     simp only [subEventBody, SubEvent.code, SubEvent.faultCode, Enc.subEventBody, ↓reduceIte,
         bind_apply, u64_enc h, pure_apply]

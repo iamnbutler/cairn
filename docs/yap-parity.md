@@ -76,11 +76,14 @@ prints the table that goes into the Lean file.
 | Peak of `Int16.min` | counted as `Int16.max` (L511) | the same | same |
 | Begin | target = frontmost app, recorder reset, "Listening…" (L231–263) | the same, `startRecording` asks for the front app | same |
 | Microphone fails to start | "Microphone failed: <error.localizedDescription>" (L259–262) | was "the microphone did not start: …"; now the error's own description | fixed |
+| "Listening…" and the overlay | only once `capture.start` returns: `try engine.start()` (AudioCapture.swift L46) runs on the main thread, then `state = .recording`, "Listening…", `overlay.begin` and the preview (L250–257); a start that throws never touches the overlay (L258–261) | was at key-down, so a failing microphone flashed the overlay; now after the host's `started` event (^1005, ^348), and only then (^349) | fixed |
+| Keys during the start | the main thread is in `engine.start()`, so key events wait and are handled once it returns; `end()` times the press as `pressedAt.duration(to: .now)` when it runs (L278), so a tap during a slow start is a hold | key events wait while the microphone starts (^350) and are handled once it is reported, timed from when the start finished, not from their own timestamps (^351); after a failed start they are handled on the next tick, as the original handles them once `begin` returns | fixed |
+| A start that never returns | the main thread waits in `engine.start()` for ever: no keys, no menu | a release that waits for it gives the recording up ten minutes later, so every recording ends (^314); held down, it waits like the original | bug fix (a bound the proof of ^314 needs; no issue filed yet) |
 | Microphone not yet asked | starting the engine shows the system prompt | the host returned `denied` without starting; now it starts the engine, which prompts | fixed |
 | Microphone refused | the engine records silence and says "Heard nothing" (L310–313) | "Microphone failed: Microphone access is not granted" and a "Microphone Is Off: Grant It…" item | bug fix, [yap#11](https://github.com/iamnbutler/yap/issues/11) |
 | Shortcut while holding | stops capture, `finish(ready)`, but `finish` leaves `.recording` (L267–276, L449–452), so Yap is stuck | back to idle (^311) | bug fix, [yap#8](https://github.com/iamnbutler/yap/issues/8) |
 | Shortcut during a latch | ignored, recording goes on (L270) | the same | same |
-| Tap latches | Tink, "Recording hands free. Tap K to send.", timer from key-up (L277–289) | the same (^312) | same |
+| Tap latches | Tink, "Recording hands free. Tap K to send.", timer from key-up (L277–289) | the same (^351) | same |
 | Latched send | Pop (L293–296) | the same | same |
 | Too short, silent, no target | "Too short to send", "Heard nothing", "No app to type into" (L306–317) | the same (^323) | same |
 | Transcribing line | `"Transcribing \(String(format: "%.1f", seconds))s…"` (L321) | was a truncating decimal; now `%.1f` through the nearest double, ties to even | fixed |
@@ -219,7 +222,7 @@ prints the table that goes into the Lean file.
 |---|---|---|---|
 | Pixels and motion | Overlay.swift, Overlay.metal | View.lean's overlay and the `yap.tape` painter; matched in every phase, with what still differs listed ([docs/yap.md](yap.md#overlay-parity)) | fixed (yap-overlay) |
 | Hide after typed and after failure | 1.5 s and 4 s (Yap.swift L357, L362) | the same | same |
-| A microphone failure | hides the panel without showing it | shows it, then hides it | open |
+| A microphone failure | never shows the panel (Yap.swift L258–261) | was shown, then hidden; now never shown (^349) | fixed |
 
 ## Open
 
@@ -244,18 +247,18 @@ match the original, but matching it costs something the brief didn't settle.
    from 20 ms windows. This changes the waveform's cadence (Y).
 7. **Recent labels across a DST change.** The port formats times with the zone offset at
    launch.
-8. **When the overlay appears.** Yap shows it after `capture.start` returns, so a microphone that
-   can't start never shows it. The port shows it with the key-down, while the host starts the
-   microphone, and hides it on the `failed` event. Matching needs a "started" event on
-   `Sub.record` (an ABI change and a new trusted check); showing on the first audio instead would
-   come a buffer later than Yap.
+8. ~~**When the overlay appears.**~~ Fixed. `Sub.record` now reports `started` (event code 7,
+   with the host's monotonic milliseconds read after the start returned; ^1005, fuzzed by
+   `subs.record-start`). The machine says "Listening…" and shows the overlay only then (^349),
+   key events wait meanwhile (^350) and are timed from the start's end (^351), as the original's
+   main thread handles them. See Dictation and Overlay above.
 
 ## Counts
 
 | Status | Rows |
 |---|---|
-| same | 57 |
-| fixed (#56 and yap-overlay) | 37 |
-| bug fix (intentional; yap#6 and #8–#15) | 9 |
-| open (needs Nate) | 8 |
+| same | 58 |
+| fixed (#56, yap-overlay and yap-mic-start) | 40 |
+| bug fix (intentional; yap#6 and #8–#15, and the start that never returns) | 10 |
+| open (needs Nate) | 7 |
 | Y (overlay pixels) | 0 |

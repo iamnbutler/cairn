@@ -292,8 +292,9 @@ public enum SubEvent: Equatable, Sendable {
     /// Monotonic milliseconds.
     case keyDown(UInt64), keyUp(UInt64), otherKey(UInt64)
     case failed(Fault, String)
-    /// `record`: the microphone is running. Once, before any `audio`.
-    case started
+    /// `record`: the microphone is running, since these monotonic milliseconds. Once, before
+    /// any `audio`.
+    case started(UInt64)
 
     /// `tick` 0, `changed` 1, `audio` 2, `keyDown` 3, `keyUp` 4, `otherKey` 5, `failed` 6,
     /// `started` 7.

@@ -16,8 +16,22 @@ def hush (windows : Nat) : Audio :=
   { frames := windows * 320, peak := 20, windows := List.replicate windows ⟨320 * 10 * 10, 20⟩ }
 
 def boot : List Input := [.launch {}, .config .missing, .dictionary "", .trust true]
-def cmds (is : List Input) : List Cmd := (exec init is).2
-def st (is : List Input) : State := run init is
+
+/-- The inputs as a host whose microphone starts at once delivers them: each start is reported
+right after the input that asked for it, at the machine's time. -/
+def instant (s : State) : List Input → List Input
+  | [] => []
+  | i :: is =>
+    let o := step s i
+    let starts := o.2.filterMap fun | .startRecording n => some (Input.micStarted n o.1.now) | _ => none
+    i :: starts ++ instant (run o.1 starts) is
+
+/-- Commands and state with the microphone starting at once (`instant`); `cmds0` and `st0` take
+the inputs as they are, for starts that are slow or fail. -/
+def cmds0 (is : List Input) : List Cmd := (exec init is).2
+def st0 (is : List Input) : State := run init is
+def cmds (is : List Input) : List Cmd := cmds0 (instant init is)
+def st (is : List Input) : State := st0 (instant init is)
 def has (is : List Input) (c : Cmd) : Bool := (cmds is).contains c
 def sends (cs : List Cmd) : Bool := cs.any fun | .transcribe .. => true | _ => false
 def types (cs : List Cmd) : List (Nat × String × Bool) :=
@@ -288,5 +302,50 @@ def lateChunk : List Input := preview ++ [.keyUp 3000, .reply 1 (.ok "chunk"), .
 #guard (cmds (boot ++ [.menu .copyLast])).length == (cmds boot).length
 #guard (cmds (typed ++ [.menu (.copyRecent 0)])).getLast? == some (.copy "hello world")
 #guard (cmds (boot ++ [.trust false, .menu .grantAccess])).getLast? == some (.open .accessibility)
+
+/-! ### Nothing shows before the microphone runs (`Yap.begin`) -/
+
+-- The key goes down: the microphone is asked to start, and nothing else happens yet.
+def pressed : List Input := boot ++ [.keyDown 1000 (some front)]
+#guard (cmds0 pressed).drop (cmds0 boot).length == [.startRecording 1]
+#guard phase (st0 pressed) == .idle && (st0 pressed).detail != "Listening…"
+-- Once it runs: "Listening…", the overlay and its preview.
+def running : List Input := pressed ++ [.micStarted 1 1040]
+#guard (cmds0 running).drop (cmds0 pressed).length == [.overlay 1 .begin, .wakeAt (1040 + pollMs)]
+#guard phase (st0 running) == .recording && (st0 running).detail == "Listening…"
+-- A microphone that fails to start says so, and the overlay is never shown.
+def micDown : List Input := pressed ++ [.micFailed 1 "busy"]
+#guard (cmds0 micDown).drop (cmds0 boot).length == [.startRecording 1]
+#guard (st0 micDown).recording.isNone && (st0 micDown).detail == "Microphone failed: busy"
+-- A start for another clip, or a second report, changes nothing.
+#guard (st0 (pressed ++ [.micStarted 7 1040])).recording.map (·.started) == some false
+#guard (cmds0 (running ++ [.micStarted 1 1050])).length == (cmds0 running).length
+
+/-! ### Key events wait for the start, and are timed from its end -/
+
+-- A tap while the microphone starts waits for it.
+def slowTap : List Input := pressed ++ [.keyUp 1100]
+#guard (st0 slowTap).recording.map (·.started) == some false && (st0 slowTap).keys.length == 1
+-- The start ends 200 ms after the press: the release is handled then, a tap, hands free.
+#guard ((st0 (slowTap ++ [.micStarted 1 1200])).recording.map (·.latched)) == some true
+#guard ((st0 (slowTap ++ [.micStarted 1 1200])).recording.map (·.deadline)) == some 601200
+-- The start ends 400 ms after the press: as in the original, the tap is a hold, and ends it.
+#guard (st0 (slowTap ++ [.micStarted 1 1400])).recording.isNone
+#guard (cmds0 (slowTap ++ [.micStarted 1 1400])).contains (.stopRecording 1)
+-- The overlay begins before the waiting release is handled, as the original's does.
+#guard ((cmds0 (slowTap ++ [.micStarted 1 1400])).drop (cmds0 slowTap).length).head? ==
+  some (.overlay 1 .begin)
+-- A start that fails: the waiting events are handled on the next tick, so a press that
+-- followed starts a new recording.
+def failThenPress : List Input := slowTap ++ [.keyDown 1150 (some front), .micFailed 1 "busy"]
+#guard (cmds0 failThenPress).getLast? == some (.wakeAt 1000)
+#guard (st0 (failThenPress ++ [.tick 1160])).recording.map (·.clip) == some 2
+#guard (cmds0 (failThenPress ++ [.tick 1160])).getLast? == some (.startRecording 2)
+-- A start that never comes: given up ten minutes after the release that waits for it.
+#guard (st0 (slowTap ++ [.tick (1100 + latchLimit - 1)])).recording.isSome
+#guard (st0 (slowTap ++ [.tick (1100 + latchLimit)])).recording.isNone
+#guard (cmds0 (slowTap ++ [.tick (1100 + latchLimit)])).contains (.stopRecording 1)
+-- Held down while it starts: no limit, as before.
+#guard (st0 (pressed ++ [.tick 99999999])).recording.isSome
 
 end Examples.Yap.Tests

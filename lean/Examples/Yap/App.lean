@@ -950,6 +950,7 @@ def prepMsg (s : AppState) : Msg → Prep
   | .sub (.record c) (.audio frames peak ws) =>
     { io := { s.io with overlay := s.io.overlay.hear c s.io.mono ws },
       input := some (.audio c { frames, peak, windows := ws.map fun l => ⟨l.sumSq, l.peak⟩ }) }
+  | .sub (.record c) (.started t) => { io := s.io, input := some (.micStarted c t) }
   | .sub (.record c) (.failed f m) =>
     { io := if f = .denied then { s.io with micGranted := some false } else s.io,
       input := some (.micFailed c m) }

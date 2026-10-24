@@ -103,7 +103,7 @@ assume ^966 hostRecord "record streams the levels of exactly the samples it keep
   check "subs.record"
 
 assume ^1005 hostRecordStarted "record reports started once its microphone is running, before any audio, or fails without it" where
-  does "A record subscription's first event is started, sent once, only after the microphone's start has returned (the engine is running), and before every audio event of it; a microphone that can't start sends failed and never started. So an app that waits for started shows nothing for a microphone that fails, as Yap shows its overlay only once AudioCapture.start has returned."
+  does "A record subscription's first event is started, sent once, only after the microphone's start has returned (the engine is running), and before every audio event of it, with the host's monotonic milliseconds (the clock of key events) read after the return; a microphone that can't start sends failed and never started. So an app that waits for started shows nothing for a microphone that fails, as Yap shows its overlay only once AudioCapture.start has returned."
   check "subs.record-start"
 
 assume ^967 hostClipWav "A clip's WAV for a range of windows holds exactly those samples" where

@@ -200,7 +200,7 @@ def subEvent : Gen SubEvent := do
   match ← below 8 with
   | 0 => return .tick
   | 1 => return .changed
-  | 7 => return .started
+  | 7 => return .started (← u64)
   | 2 => return .audio (← nat) (← nat) (← array 6 (do return ⟨← u64, ← nat⟩)).toList
   | 3 => return .keyDown (← u64)
   | 4 => return .keyUp (← u64)
@@ -388,7 +388,7 @@ def edgeEvents : Array Event := #[
   .subEvent 1 (.audio 4294967295 32768 [⟨18446744073709551615, 32767⟩, ⟨0, 0⟩]),
   .subEvent 2 (.audio 0 0 []), .subEvent 3 (.keyDown 18446744073709551615), .subEvent 4 (.keyUp 0),
   .subEvent 5 (.otherKey 1), .subEvent 6 (.failed .denied "Accessibility"),
-  .subEvent 7 (.failed .other ""), .subEvent 8 .started,
+  .subEvent 7 (.failed .other ""), .subEvent 8 (.started 18446744073709551615),
   .surface 4294967295 (.key (.char 'q') { command := true }), .surface 0 .pointerExit,
   .menuOpen 4294967295, .menuClose 0, .menuSelect 450 ⟨4294967295, 4294967295⟩]
 

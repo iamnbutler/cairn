@@ -33,15 +33,59 @@ theorem release_small (s : State) (h : Small s) : Small (release s).1 := by
 theorem press_small (s : State) (f : Option Target) (h : Small s) : Small (press s f).1 := by
   unfold press; small h
 
-theorem tick_small (s : State) (h : Small s) : Small (tick s).1 := by
-  unfold tick
+theorem stepKey_small (s : State) (k : Key) (h : Small s) : Small (stepKey s k).1 := by
+  cases k with
+  | down t f =>
+    simp only [stepKey]; split
+    · exact h
+    · exact press_small { s with now := max s.now t, keyHeld := true } f h
+  | up t =>
+    simp only [stepKey]; split
+    · exact release_small { s with now := max s.now t, keyHeld := false } h
+    · exact h
+  | other => simp only [stepKey]; split <;> exact h
+
+theorem drain_small (s : State) (ks : List Key) (h : Small s) : Small (drain s ks).1 := by
+  induction ks generalizing s with
+  | nil => exact h
+  | cons k ks ih =>
+    simp only [drain]
+    split
+    · exact ih _ (stepKey_small s k h)
+    · exact stepKey_small s k h
+
+theorem tickRec_small (s : State) (h : Small s) : Small (tickRec s).1 := by
+  unfold tickRec
   split
   · exact h
   · split
-    · exact send_small _ _ h
     · split
-      · unfold poll; small h
       · exact h
+      · exact h
+    · split
+      · exact send_small _ _ h
+      · split
+        · unfold poll; small h
+        · exact h
+
+theorem tick_small (s : State) (h : Small s) : Small (tick s).1 := by
+  unfold tick
+  split
+  · exact tickRec_small _ h
+  · exact tickRec_small _ (drain_small { s with keys := [] } _ h)
+
+theorem micStarted_small (s : State) (c : Nat) (h : Small s) : Small (micStarted s c).1 := by
+  unfold micStarted
+  split
+  · split
+    · exact drain_small _ _ h
+    · exact h
+  · exact h
+
+theorem keyIn_small (s : State) (k : Key) (h : Small s) : Small (keyIn s k).1 := by
+  unfold keyIn; split
+  · exact h
+  · exact stepKey_small _ _ h
 
 theorem keep_small (s : State) (t : Transcript) : Small (keep s t).1 := by
   unfold keep; dsimp only; split <;> exact remember_length _ _
@@ -75,8 +119,10 @@ theorem setKey_small (s : State) (k : Hotkey) (h : Small s) : Small (setKey s k)
   · exact h
   · dsimp only
     split
-    · exact release_small { s with keyHeld := false } h
     · exact h
+    · split
+      · exact release_small { s with keyHeld := false } h
+      · exact h
 
 theorem configured_small (s : State) (c : ConfigRead) (h : Small s) : Small (configured s c).1 := by
   unfold configured readConfig
@@ -99,15 +145,10 @@ theorem menu_small (s : State) (m : MenuAction) (h : Small s) : Small (menu s m)
 /-- **The recent list never holds more than five transcripts.** -/
 theorem step_small (s : State) (i : Input) (h : Small s) : Small (step s i).1 := by
   cases i with
-  | keyDown t f =>
-    simp only [step]; split
-    · exact h
-    · exact press_small { s with now := max s.now t, keyHeld := true } f h
-  | keyUp t =>
-    simp only [step]; split
-    · exact release_small { s with now := max s.now t, keyHeld := false } h
-    · exact h
-  | otherKey => simp only [step]; split <;> exact h
+  | keyDown t f => exact keyIn_small _ _ h
+  | keyUp t => exact keyIn_small _ _ h
+  | otherKey => exact keyIn_small _ _ h
+  | micStarted c t => exact micStarted_small _ _ h
   | tick t => exact tick_small { s with now := max s.now t } h
   | audio c a => unfold step audio; small h
   | micFailed c e => unfold step micFailed; small h

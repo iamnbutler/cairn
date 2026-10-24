@@ -18,6 +18,7 @@ final class FakeMic: @unchecked Sendable {
     private(set) var delivered: [Int16] = []
     private(set) var starts = 0
     private let finished = DispatchSemaphore(value: 0)
+    private var returned: UInt64 = 0
 
     init(buffers: [[Int16]], pauseUs: UInt32, failure: ReplyError? = nil, startUs: UInt32 = 0, early: Bool = false) {
         self.buffers = buffers; self.pauseUs = pauseUs; self.failure = failure
@@ -26,6 +27,8 @@ final class FakeMic: @unchecked Sendable {
 
     /// `start` has returned and the microphone is not stopped.
     var running: Bool { lock.lock(); defer { lock.unlock() }; return running_ }
+    /// When `start` returned, in the host's monotonic milliseconds.
+    var returnedMs: UInt64 { lock.lock(); defer { lock.unlock() }; return returned }
 
     var microphone: Microphone {
         Microphone { [self] onSamples throws(ReplyError) in
@@ -34,7 +37,7 @@ final class FakeMic: @unchecked Sendable {
             if let failure { throw failure }
             defer {
                 if early, startUs > 0 { usleep(startUs) }
-                lock.lock(); running_ = !stopped; lock.unlock()
+                lock.lock(); running_ = !stopped; returned = HostClock.monoMs(); lock.unlock()
             }
             Thread.detachNewThread { [self] in
                 for b in buffers {
@@ -70,7 +73,8 @@ final class FakeMic: @unchecked Sendable {
 ///   meter gives the same windows however the samples are split.
 /// - `subs.record-start`: with a fake microphone that takes a while to start (delivering while
 ///   it starts, or not), the subscription's first event is one `started`, sent only once the
-///   microphone's `start` has returned, and before every `audio`; there is no other `started`;
+///   microphone's `start` has returned, and before every `audio`, with a monotonic time no
+///   earlier than the return; there is no other `started`;
 ///   a microphone that fails to start sends `failed` and never `started`.
 /// - `effects.clip-wav`: `wav` of windows s..<e is a RIFF/WAVE header (checked field by field)
 ///   and exactly those samples; to the end includes a partial window; a clip still recording is
@@ -221,12 +225,18 @@ final class AudioSuite: Suite {
             r.count(c, "failed")
             return
         }
-        r.expect(s, events.first == .subEvent(id: id, .started), "the first event is \(String(describing: events.first)), not started")
+        let afterMs = HostClock.monoMs()
+        if case let .subEvent(eid, .started(t)) = events.first, eid == id {
+            r.expect(s, mic.returnedMs <= t && t <= afterMs,
+                     "started at \(t) ms, but start returned at \(mic.returnedMs) ms (now \(afterMs))")
+        } else {
+            r.fail(s, "the first event is \(String(describing: events.first)), not started")
+        }
         r.expect(s, starts.count == 1, "\(starts.count) started events")
         r.expect(s, startedRunning.value == [true], "started sent while the microphone was not running: \(startedRunning.value)")
         r.count(s, "started")
         if startUs > 0 { r.count(s, mic.early ? "slowEarly" : "slow") }
-        if events.first == .subEvent(id: id, .started) { events.removeFirst() }
+        if case .subEvent(_, .started) = events.first { events.removeFirst() }
         var at = 0
         var windows: [Level] = []
         for e in events {

@@ -72,6 +72,22 @@ theorem Rel.trans_same {s : State} {o o' : State × List Cmd} (h : Rel s o)
     (hl : live o'.1 = live o.1) : Rel s o' := by
   rw [Rel, hn, ht, hl]; exact h
 
+theorem fresh_add {a b c : Nat} (h₁ : a ≤ b) (h₂ : b ≤ c) (n : Nat) :
+    fresh b c n + fresh a b n ≤ fresh a c n := by
+  unfold fresh
+  split <;> split <;> split <;> omega
+
+theorem Rel.comp {s : State} {o₁ o₂ : State × List Cmd} (ha : Rel s o₁) (hb : Rel o₁.1 o₂) :
+    Rel s (o₂.1, o₁.2 ++ o₂.2) := by
+  obtain ⟨h₁, h₂⟩ := ha
+  obtain ⟨h₃, h₄⟩ := hb
+  refine ⟨Nat.le_trans h₁ h₃, fun n => ?_⟩
+  simp only [typedClips_append, List.count_append]
+  have := h₂ n
+  have := h₄ n
+  have := fresh_add h₁ h₃ n
+  omega
+
 theorem live_none {s : State} (h : s.recording = none) : live s = clipsOf s.reqs := by
   simp [live, h]
 
@@ -115,10 +131,7 @@ theorem press_rel (s : State) (f : Option Target) : Rel s (press s f) := by
     · exact Rel.of rfl rfl (List.Sublist.refl _)
     · rename_i hr
       refine ⟨by simp, fun n => ?_⟩
-      have ht : typedClips ([Cmd.startRecording s.nextClip] ++
-          (if s.settings.overlay = true then
-            [Cmd.overlay s.nextClip OverlayCmd.begin, Cmd.wakeAt (s.now + pollMs)] else [])) = [] := by
-        split <;> simp [typedClips]
+      have ht : typedClips [Cmd.startRecording s.nextClip] = [] := by simp [typedClips]
       rw [ht]
       simp only [live, hr, Option.map_some, Option.toList_some, Option.map_none, Option.toList_none,
         List.singleton_append, List.nil_append, List.count_nil, Nat.zero_add, List.count_cons,
@@ -131,16 +144,72 @@ theorem poll_rel (s : State) (r : Recording) (hr : s.recording = some r) : Rel s
   all_goals refine Rel.of rfl (by simp [typedClips]) ?_
   all_goals simp [live, hr, clipsOf]
 
-theorem tick_rel (s : State) : Rel s (tick s) := by
-  unfold tick
+theorem stepKey_rel (s : State) (k : Key) : Rel s (stepKey s k) := by
+  cases k with
+  | down t f =>
+    simp only [stepKey]
+    split
+    · exact Rel.of rfl rfl (List.Sublist.refl _)
+    · exact Rel.congr (s' := { s with now := max s.now t, keyHeld := true }) rfl rfl (press_rel _ _)
+  | up t =>
+    simp only [stepKey]
+    split
+    · exact Rel.congr (s' := { s with now := max s.now t, keyHeld := false }) rfl rfl (release_rel _)
+    · exact Rel.of rfl rfl (List.Sublist.refl _)
+  | other => simp only [stepKey]; split <;> exact Rel.of rfl rfl (List.Sublist.refl _)
+
+theorem drain_rel (s : State) (ks : List Key) : Rel s (drain s ks) := by
+  induction ks generalizing s with
+  | nil => exact Rel.of rfl rfl (List.Sublist.refl _)
+  | cons k ks ih =>
+    simp only [drain]
+    split
+    · exact Rel.comp (stepKey_rel s k) (ih _)
+    · refine Rel.trans_same (stepKey_rel s k) rfl ?_ rfl
+      rw [typedClips_append]
+      split <;> simp [typedClips]
+
+theorem tickRec_rel (s : State) : Rel s (tickRec s) := by
+  unfold tickRec
   split
   · exact Rel.of rfl rfl (List.Sublist.refl _)
   · rename_i r hr
     split
-    · exact send_rel _ _ hr
     · split
-      · exact poll_rel _ _ hr
+      · exact drop_rel _ _ hr
       · exact Rel.of rfl rfl (List.Sublist.refl _)
+    · split
+      · exact send_rel _ _ hr
+      · split
+        · exact poll_rel _ _ hr
+        · exact Rel.of rfl rfl (List.Sublist.refl _)
+
+theorem tick_rel (s : State) : Rel s (tick s) := by
+  unfold tick
+  split
+  · exact tickRec_rel _
+  · exact Rel.comp (Rel.congr (s' := { s with keys := [] }) rfl rfl (drain_rel _ _)) (tickRec_rel _)
+
+theorem micStarted_rel (s : State) (c : Nat) : Rel s (micStarted s c) := by
+  unfold micStarted
+  split
+  · rename_i r hr
+    split
+    · have hd := drain_rel { s with
+          recording := some { r with started := true, latched := false, nextPoll := s.now + pollMs },
+          keys := [], detail := "Listening…" } s.keys
+      have := Rel.congr (s := s) (by exact rfl) (by simp [live, hr]) hd
+      refine Rel.trans_same this rfl ?_ rfl
+      rw [typedClips_append]
+      split <;> simp [typedClips]
+    · exact Rel.of rfl rfl (List.Sublist.refl _)
+  · exact Rel.of rfl rfl (List.Sublist.refl _)
+
+theorem keyIn_rel (s : State) (k : Key) : Rel s (keyIn s k) := by
+  unfold keyIn
+  split
+  · exact Rel.of rfl rfl (by simp [live])
+  · exact stepKey_rel _ _
 
 theorem audio_rel (s : State) (c : Nat) (a : Audio) : Rel s (audio s c a) := by
   unfold audio
@@ -156,7 +225,9 @@ theorem micFailed_rel (s : State) (c : Nat) (e : String) : Rel s (micFailed s c 
   split
   · rename_i r hr
     split
-    · exact Rel.of rfl rfl (by simp [live, hr])
+    · split
+      · exact Rel.of rfl (by simp [typedClips]) (by simp [live, hr])
+      · exact Rel.of rfl (by split <;> simp [typedClips]) (by simp [live, hr])
     · exact Rel.of rfl rfl (List.Sublist.refl _)
   · exact Rel.of rfl rfl (List.Sublist.refl _)
 
@@ -270,10 +341,12 @@ theorem setKey_rel (s : State) (k : Hotkey) : Rel s (setKey s k) := by
   · exact Rel.of rfl rfl (List.Sublist.refl _)
   · dsimp only
     split
-    · refine Rel.trans_same (Rel.congr (s' := { s with keyHeld := false }) rfl rfl
-        (release_rel _)) rfl ?_ rfl
-      simp [typedClips]
-    · exact Rel.of rfl (by simp [typedClips]) (List.Sublist.refl _)
+    · exact Rel.of rfl (by simp [typedClips]) (by simp [live])
+    · split
+      · refine Rel.trans_same (Rel.congr (s' := { s with keyHeld := false }) rfl rfl
+          (release_rel _)) rfl ?_ rfl
+        simp [typedClips]
+      · exact Rel.of rfl (by simp [typedClips]) (List.Sublist.refl _)
 
 theorem applySettings_rel (s : State) (cfg : Settings) : Rel s (applySettings s cfg) := by
   unfold applySettings
@@ -324,18 +397,12 @@ theorem keyLost_rel (s : State) : Rel s (keyLost s) := by
 
 theorem step_rel (s : State) (i : Input) : Rel s (step s i) := by
   cases i with
-  | keyDown t f =>
-    simp only [step]
-    split
-    · exact Rel.of rfl rfl (List.Sublist.refl _)
-    · exact Rel.congr (s' := { s with now := max s.now t, keyHeld := true }) rfl rfl (press_rel _ _)
-  | keyUp t =>
-    simp only [step]
-    split
-    · exact Rel.congr (s' := { s with now := max s.now t, keyHeld := false }) rfl rfl (release_rel _)
-    · exact Rel.of rfl rfl (List.Sublist.refl _)
-  | otherKey => simp only [step]; split <;> exact Rel.of rfl rfl (List.Sublist.refl _)
+  | keyDown t f => exact keyIn_rel _ _
+  | keyUp t => exact keyIn_rel _ _
+  | otherKey => exact keyIn_rel _ _
   | tick t => exact Rel.congr (s' := { s with now := max s.now t }) rfl rfl (tick_rel _)
+  | micStarted c t =>
+    exact Rel.congr (s' := { s with now := max s.now t }) rfl rfl (micStarted_rel _ _)
   | audio c a => exact audio_rel _ _ _
   | micFailed c e => exact micFailed_rel _ _ _
   | reply q x => exact reply_rel _ _ _
@@ -346,11 +413,6 @@ theorem step_rel (s : State) (i : Input) : Rel s (step s i) := by
   | front c a => exact Rel.of rfl rfl (by rw [show (step s (.front c a)).1 = setFront s c a from rfl, setFront_live]; exact List.Sublist.refl _)
   | keyLost => exact keyLost_rel s
   | _ => exact Rel.of rfl (by simp [step, typedClips]) (List.Sublist.refl _)
-
-theorem fresh_add {a b c : Nat} (h₁ : a ≤ b) (h₂ : b ≤ c) (n : Nat) :
-    fresh b c n + fresh a b n ≤ fresh a c n := by
-  unfold fresh
-  split <;> split <;> split <;> omega
 
 theorem exec_rel (s : State) (is : List Input) : Rel s (exec s is) := by
   induction is generalizing s with

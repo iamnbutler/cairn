@@ -104,6 +104,9 @@ structure Host where
   clock : Nat := 0
   answered : Array Nat := #[]
   wakes : List Nat := []
+  /-- Clips whose microphone it was asked to start and hasn't reported on: it reports the start
+  (or a failure) when it gets to it, so a start may be slow, and key events come meanwhile. -/
+  starting : List Nat := []
 deriving Inhabited
 
 def reqOf : Cmd → Option Nat
@@ -134,7 +137,12 @@ def input (s : State) (h : Host) : Gen Input := do
   let clip := match s.recording with
     | some r => r.clip
     | none => s.nextClip - 1
-  Gen.weighted [
+  let started : List (Nat × Gen Input) := match h.starting with
+    | [] => []
+    | c :: _ =>
+      [(12, do return .micStarted c (← later h)),
+       (2, do return .micFailed c (← Gen.elem ["no input device", "The operation couldn't be completed."]))]
+  Gen.weighted <| started ++ [
     (14, do return .keyDown (← later h) (← target)),
     (14, do return .keyUp (← later h)),
     (4, do return .otherKey),
@@ -168,13 +176,19 @@ def input (s : State) (h : Host) : Gen Input := do
 
 def Host.after (h : Host) (i : Input) (cs : List Cmd) : Host :=
   let clock := match i with
-    | .keyDown t _ | .keyUp t | .tick t => t
+    | .keyDown t _ | .keyUp t | .tick t | .micStarted _ t => t
     | _ => h.clock
+  let reported := match i with
+    | .micStarted c _ | .micFailed c _ => [c]
+    | _ => []
+  let stopped := cs.filterMap fun | .stopRecording c => some c | _ => none
+  let starting := (h.starting ++ cs.filterMap fun | .startRecording c => some c | _ => none).filter
+    fun c => !reported.contains c && !stopped.contains c
   let answered := match i with
     | .reply q _ => if h.answered.contains q then h.answered else h.answered.push q
     | _ => h.answered
   let wakes := (cs.filterMap wakeOf ++ h.wakes).filter (· + latchLimit ≥ clock) |>.take 8
-  { clock, answered, wakes }
+  { clock, answered, wakes, starting }
 
 /-! ## The checks: each claim as a predicate on one step -/
 
@@ -194,7 +208,8 @@ def isTranscribe : Cmd → Bool
 def recOk (s : State) : Bool :=
   match s.recording with
   | none => true
-  | some r => (r.latched || s.keyHeld) && (!r.latched || decide (r.deadline ≤ s.now + latchLimit))
+  | some r => (r.latched || s.keyHeld) && (!r.latched || decide (r.deadline ≤ s.now + latchLimit)) &&
+      (r.started || !r.latched) && (s.keys.isEmpty || !r.started)
 
 def first25 (d : Dictionary) : Dictionary := { d with terms := d.terms.take promptLimit }
 
@@ -208,20 +223,56 @@ abbrev Check := State → Input → State → List Cmd → Option Bool
 def c311 : Check := fun s i _ cs =>
   if s.keyHeld && s.chorded && !isTick i then some (cs.all (!isTranscribe ·)) else none
 
-def c312 : Check := fun s i s' _ =>
+/-- ^351: the hold/tap split, for a release handled at once, or one that waited for the start
+and is timed from when it finished. -/
+def c351 : Check := fun s i s' _ =>
   match i, s.recording with
   | .keyUp t, some r =>
-    if !r.latched && s.keyHeld && !s.chorded then
+    if r.started && s.keys.isEmpty && !r.latched && s.keyHeld && !s.chorded then
       some (s'.recording == if max s.now t - s.pressedAt < tapLimit then
           some { r with latched := true, deadline := max s.now t + latchLimit }
         else none)
     else none
+  | .micStarted c u, some r =>
+    match s.keys with
+    | [.up t] =>
+      if r.clip == c && !r.started && t ≤ u && s.keyHeld && !s.chorded then
+        some (s'.recording == if max s.now u - s.pressedAt < tapLimit then
+            some { r with started := true, nextPoll := max s.now u + pollMs, latched := true,
+                          deadline := max s.now u + latchLimit }
+          else none)
+      else none
+    | _ => none
   | _, _ => none
+
+def isBegin : Cmd → Option Nat
+  | .overlay n .begin => some n
+  | _ => none
+
+/-- ^349, of `step`: only the microphone's start begins the overlay, for the recording's clip,
+and the recording it leaves, if any, is started. -/
+def c349 : Check := fun s i s' cs =>
+  let begins := cs.filterMap isBegin
+  if begins.isEmpty then none else
+  some <| match i, s.recording with
+    | .micStarted _ _, some r => begins.all (· == r.clip) && s'.recording.all (·.started)
+    | _, _ => false
+
+/-- ^350: while the microphone starts, key events leave the recording as it is. -/
+def c350 : Check := fun s i s' _ =>
+  match s.recording with
+  | some r =>
+    if r.started then none else
+    match i with
+    | .keyDown .. | .keyUp _ | .otherKey => some (s'.recording == some r)
+    | _ => none
+  | none => none
 
 def c313 : Check := fun s i s' cs =>
   let starts := cs.filterMap fun | .startRecording n => some n | _ => none
   let startOk := starts.all fun n =>
-    s.recording.isNone && n == s.nextClip && s'.recording.map (·.clip) == some n &&
+    s.recording.isNone && n == s.nextClip &&
+      (s'.recording.map (·.clip) == some n || cs.contains (.stopRecording n)) &&
       s'.nextClip == n + 1
   let endOk := match s.recording with
     | some r => s'.recording.map (·.clip) == some r.clip || cs.contains (.stopRecording r.clip) ||
@@ -300,10 +351,11 @@ def c323 : Check := fun s _ _ cs =>
 
 /-- The per-step checks, by claim id. ^318 is checked over the run. -/
 def checks : List (Nat × Check) :=
-  [(311, c311), (312, c312), (313, c313), (314, c314), (315, c315), (316, c316), (317, c317),
-   (319, c319), (320, c320), (321, c321), (322, c322), (323, c323)]
+  [(311, c311), (351, c351), (313, c313), (314, c314), (315, c315), (316, c316), (317, c317),
+   (319, c319), (320, c320), (321, c321), (322, c322), (323, c323), (349, c349), (350, c350)]
 
-def claimIds : List Nat := [311, 312, 313, 314, 315, 316, 317, 318, 319, 320, 321, 322, 323]
+def claimIds : List Nat :=
+  [311, 313, 314, 315, 316, 317, 318, 319, 320, 321, 322, 323, 349, 350, 351]
 
 /-! ## Running a sequence -/
 
@@ -414,7 +466,6 @@ partial def ddmin (claim : Nat) (is : List Input) : List Input :=
 
 def claimTitle : Nat → String
   | 311 => "A shortcut never sends"
-  | 312 => "Hold to talk, tap to latch: 300 ms"
   | 313 => "One recording at a time"
   | 314 => "Every recording ends"
   | 315 => "Kept before it is typed"
@@ -426,6 +477,9 @@ def claimTitle : Nat → String
   | 321 => "Only the first 25 terms are sent"
   | 322 => "Recent Transcripts holds five"
   | 323 => "Too short, silent or nowhere to type: never sent"
+  | 349 => "The overlay waits for the microphone"
+  | 350 => "Keys wait for the microphone"
+  | 351 => "Hold to talk, tap to latch: 300 ms, timed as the original"
   | _ => ""
 
 def inputsLean (is : List Input) : String :=

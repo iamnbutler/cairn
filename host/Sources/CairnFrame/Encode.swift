@@ -57,11 +57,11 @@ extension Event {
             if case let .failed(f, _) = e { head(20, e.code, f.rawValue) } else { head(20, e.code) }
             u32(id)
             switch e {
-            case .tick, .changed, .started: break
+            case .tick, .changed: break
             case let .audio(n, pk, ws):
                 u32(n); u32(pk); u32(UInt32(ws.count))
                 for w in ws { u64(w.sumSq); u32(w.peak) }
-            case let .keyDown(t), let .keyUp(t), let .otherKey(t): u64(t)
+            case let .keyDown(t), let .keyUp(t), let .otherKey(t), let .started(t): u64(t)
             case let .failed(_, m): str(m)
             }
         case let .surface(p, e): head(21); u32(p); e.encode(into: &out)

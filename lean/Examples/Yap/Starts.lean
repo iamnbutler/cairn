@@ -39,6 +39,20 @@ theorem mono {s : State} {o o' : State × List Cmd} (h : Starts s o) (hr : o'.1.
     (hc : ∀ c ∈ o.2, c ∈ o'.2) : Starts s o' := fun r' hr' =>
   (h r' (hr ▸ hr')).imp_right (hc _)
 
+theorem comp {s : State} {o₁ o₂ : State × List Cmd} (h₁ : Starts s o₁) (h₂ : Starts o₁.1 o₂) :
+    Starts s (o₂.1, o₁.2 ++ o₂.2) := by
+  intro r' hr'
+  rcases h₂ r' hr' with h | h
+  · cases hr : o₁.1.recording with
+    | none => rw [hr] at h; cases h
+    | some r =>
+      rw [hr] at h
+      simp only [Option.map_some, Option.some.injEq] at h
+      rcases h₁ r hr with h1 | h1
+      · left; rw [h1, h]
+      · right; rw [← h]; exact List.mem_append_left _ h1
+  · right; exact List.mem_append_right _ h
+
 end Starts
 
 theorem send_starts (s : State) (r : Recording) : Starts s (send s r) := Starts.none (send_recording s r)
@@ -74,16 +88,70 @@ theorem poll_starts (s : State) (r : Recording) (hr : s.recording = some r) : St
   obtain ⟨r', h', hc, -⟩ := poll_recording s r
   exact Starts.clip (by rw [h', hr]; simp [hc])
 
-theorem tick_starts (s : State) : Starts s (tick s) := by
-  unfold tick
+theorem stepKey_starts (s : State) (k : Key) : Starts s (stepKey s k) := by
+  cases k with
+  | down t f =>
+    simp only [stepKey]
+    split
+    · exact Starts.same rfl
+    · exact Starts.of_rec (s' := { s with now := max s.now t, keyHeld := true }) rfl (press_starts _ _)
+  | up t =>
+    simp only [stepKey]
+    split
+    · exact Starts.of_rec (s' := { s with now := max s.now t, keyHeld := false }) rfl (release_starts _)
+    · exact Starts.same rfl
+  | other => simp only [stepKey]; split <;> exact Starts.same rfl
+
+theorem drain_starts (s : State) (ks : List Key) : Starts s (drain s ks) := by
+  induction ks generalizing s with
+  | nil => exact Starts.same rfl
+  | cons k ks ih =>
+    simp only [drain]
+    split
+    · exact Starts.comp (stepKey_starts s k) (ih _)
+    · exact (stepKey_starts s k).mono rfl (fun _ hc => List.mem_append_left _ hc)
+
+theorem tickRec_starts (s : State) : Starts s (tickRec s) := by
+  unfold tickRec
   split
   · exact Starts.same rfl
   · rename_i r hr
     split
-    · exact send_starts _ _
     · split
-      · exact poll_starts s r hr
+      · exact drop_starts _ _
       · exact Starts.same rfl
+    · split
+      · exact send_starts _ _
+      · split
+        · exact poll_starts s r hr
+        · exact Starts.same rfl
+
+theorem tick_starts (s : State) : Starts s (tick s) := by
+  unfold tick
+  split
+  · exact tickRec_starts _
+  · exact Starts.comp (Starts.of_rec (s' := { s with keys := [] }) rfl (drain_starts _ _))
+      (tickRec_starts _)
+
+theorem micStarted_starts (s : State) (c : Nat) : Starts s (micStarted s c) := by
+  unfold micStarted
+  split
+  · rename_i r hr
+    split
+    · intro r' hr'
+      rcases drain_starts { s with
+          recording := some { r with started := true, latched := false, nextPoll := s.now + pollMs },
+          keys := [], detail := "Listening…" } s.keys r' hr' with h | h
+      · left; rw [hr]; simpa using h
+      · right; exact List.mem_append_right _ h
+    · exact Starts.same rfl
+  · exact Starts.same rfl
+
+theorem keyIn_starts (s : State) (k : Key) : Starts s (keyIn s k) := by
+  unfold keyIn
+  split
+  · exact Starts.same rfl
+  · exact stepKey_starts _ _
 
 theorem audio_starts (s : State) (c : Nat) (a : Audio) : Starts s (audio s c a) := by
   unfold audio
@@ -98,7 +166,7 @@ theorem micFailed_starts (s : State) (c : Nat) (e : String) : Starts s (micFaile
   unfold micFailed
   split
   · split
-    · exact Starts.none rfl
+    · split <;> exact Starts.none rfl
     · exact Starts.same rfl
   · exact Starts.same rfl
 
@@ -135,9 +203,11 @@ theorem setKey_starts (s : State) (k : Hotkey) : Starts s (setKey s k) := by
   · exact Starts.same rfl
   · dsimp only
     split
-    · exact (Starts.of_rec (s' := { s with keyHeld := false }) rfl (release_starts _)).mono rfl
-        (fun c hc => List.mem_append_left _ hc)
     · exact Starts.same rfl
+    · split
+      · exact (Starts.of_rec (s' := { s with keyHeld := false }) rfl (release_starts _)).mono rfl
+          (fun c hc => List.mem_append_left _ hc)
+      · exact Starts.same rfl
 
 theorem applySettings_starts (s : State) (cfg : Settings) : Starts s (applySettings s cfg) := by
   unfold applySettings
@@ -171,18 +241,12 @@ theorem menu_starts (s : State) (m : MenuAction) : Starts s (menu s m) := by
 
 theorem step_starts (s : State) (i : Input) : Starts s (step s i) := by
   cases i with
-  | keyDown t f =>
-    simp only [step]
-    split
-    · exact Starts.same rfl
-    · exact Starts.of_rec (s' := { s with now := max s.now t, keyHeld := true }) rfl (press_starts _ _)
-  | keyUp t =>
-    simp only [step]
-    split
-    · exact Starts.of_rec (s' := { s with now := max s.now t, keyHeld := false }) rfl (release_starts _)
-    · exact Starts.same rfl
-  | otherKey => simp only [step]; split <;> exact Starts.same rfl
+  | keyDown t f => exact keyIn_starts _ _
+  | keyUp t => exact keyIn_starts _ _
+  | otherKey => exact keyIn_starts _ _
   | tick t => exact Starts.of_rec (s' := { s with now := max s.now t }) rfl (tick_starts _)
+  | micStarted c t =>
+    exact Starts.of_rec (s' := { s with now := max s.now t }) rfl (micStarted_starts _ _)
   | audio c a => exact audio_starts _ _ _
   | micFailed c e => exact micFailed_starts _ _ _
   | reply q x => exact reply_starts _ _ _
