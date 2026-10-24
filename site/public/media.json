@@ -7,8 +7,8 @@
       "The ledger now treats retiring a released claim as a breaking change: it needs a new major version, or a new minor one while at 0.x (#100). No claim changed in 0.1.2, so it is a patch release."
     ],
     "date": "2026-10-24",
-    "published": "2026-10-24T21:01:20Z",
-    "commit": "86b1198",
+    "published": "2026-10-24T21:11:09Z",
+    "commit": "597dea8",
     "milestone": "m2"
   },
   {
