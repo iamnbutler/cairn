@@ -4,6 +4,7 @@ public import Examples.Yap.Dictionary
 public import Examples.Yap.Chunker
 public import Examples.Yap.Hotkey
 public import Examples.Yap.Retention
+public import Examples.Yap.Graphemes
 
 /-! # Yap: the dictation machine
 
@@ -335,7 +336,7 @@ def seconds (frames : Nat) : String :=
 def context (heard : List String) : Option String :=
   let prev := " ".intercalate heard
   if prev.isEmpty then none
-  else some ("Continues from: \"" ++ String.ofList (prev.toList.drop (prev.length - 200)) ++ "\"")
+  else some ("Continues from: \"" ++ Graphemes.takeEnd 200 prev ++ "\"")
 
 /-! ## The machine -/
 
@@ -486,7 +487,7 @@ def typingSaid (s : State) (clip : Nat) (said : String) : String :=
 def typedOk (s : State) (clip : Nat) (t : Transcript) : State × List Cmd :=
   ({ s with recent := setTyped clip true s.recent,
             detail := typingSaid s clip
-              s!"Typed {t.text.length} characters ({(s.trips.lookup clip).getD 0}ms round trip)",
+              s!"Typed {Graphemes.count t.text} characters ({(s.trips.lookup clip).getD 0}ms round trip)",
             trips := s.trips.filter (·.1 != clip), unsaved := s.unsaved.filter (·.1 != clip) },
    (if s.settings.keepTranscripts then [Cmd.markTyped clip] else []) ++
      [.overlay clip (.phase .typed), .overlay clip (.hide 1500)])

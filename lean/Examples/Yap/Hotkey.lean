@@ -55,10 +55,13 @@ def aliases : List (String × String) := [
 def functionKeys : List Nat :=
   [122, 120, 99, 118, 96, 97, 98, 100, 101, 109, 103, 111, 105, 107, 113, 106, 64, 79, 80, 90]
 
-/-- Lowercase, without spaces, dashes and underscores. -/
+/-- Lowercase, without spaces, dashes and underscores. Swift's `lowercased()` is Unicode's, but
+the only character it takes to ASCII from outside it is the Kelvin sign (U+212A to `k`); every
+other one stays outside ASCII, so it can't make a name Yap knows either way. -/
 def normalize (s : String) : String :=
   String.ofList (s.toList.filterMap fun c =>
-    if c == ' ' || c == '-' || c == '_' then none else some c.toLower)
+    if c == ' ' || c == '-' || c == '_' then none
+    else if c.val == 0x212A then some 'k' else some c.toLower)
 
 def modifierNamed (n : String) : Option Hotkey :=
   modifiers.find? (normalize ·.name == n)

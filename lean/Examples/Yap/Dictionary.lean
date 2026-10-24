@@ -1,5 +1,8 @@
 module
 
+public import Examples.Yap.Graphemes
+public import Examples.Yap.Fold
+
 /-! # Yap: the dictionary
 
 Mirrors `DictationDictionary.swift` (Yap's `Packages/Core`): `dictionary.txt` holds terms, sent
@@ -11,39 +14,46 @@ may do to a text: copy it, except that some case-insensitive occurrences of `hea
 word character on either side become `written`. `replaceWord_replaces` proves the
 implementation stays inside that, for every fix and text: a fix never rewrites part of a word.
 
-Where this differs from Swift (see `Examples/Yap/README.md`): matching folds ASCII case only,
-and "word character" is ICU's `[\w-]` exactly in ASCII and approximated above it. -/
+Matching is ICU's: full case folding, and `[\w-]` from ICU's own tables (`Examples.Yap.Fold`). -/
 
 @[expose] public section
 
 namespace Examples.Yap
 
-/-- Swift's `CharacterSet.whitespaces`: tab and the Unicode space separators. -/
+/-- Swift's `CharacterSet.whitespaces`: tab, the Unicode space separators, and U+200B (read
+off `CharacterSet.whitespaces.contains` for every scalar). -/
 def isSpace (c : Char) : Bool :=
   c == ' ' || c == '\t' || c.val == 0xA0 || c.val == 0x1680 ||
-    (0x2000 ≤ c.val && c.val ≤ 0x200A) || c.val == 0x202F || c.val == 0x205F || c.val == 0x3000
+    (0x2000 ≤ c.val && c.val ≤ 0x200B) || c.val == 0x202F || c.val == 0x205F || c.val == 0x3000
 
 /-- Swift's `Character.isNewline`. -/
 def isNewline (c : Char) : Bool :=
   c == '\n' || c == '\r' || c.val == 0x0B || c.val == 0x0C || c.val == 0x85 ||
     c.val == 0x2028 || c.val == 0x2029
 
-/-- Punctuation and symbols above ASCII that are not `\w`: Latin-1's (except the letters
-ª µ º), General Punctuation (except the joiners U+200C and U+200D, which `\w` includes), and
-CJK punctuation. An approximation of ICU's `\w` outside ASCII. -/
-def nonWordAbove (c : Char) : Bool :=
-  let v := c.val
-  (0xA0 ≤ v && v ≤ 0xBF && v != 0xAA && v != 0xB5 && v != 0xBA) || v == 0xD7 || v == 0xF7 ||
-    (0x2000 ≤ v && v ≤ 0x206F && v != 0x200C && v != 0x200D) || (0x3000 ≤ v && v ≤ 0x3003) ||
-    (0x3008 ≤ v && v ≤ 0x3011) || (0x3014 ≤ v && v ≤ 0x301F) || (0xFF01 ≤ v && v ≤ 0xFF0F) ||
-    v == 0xFEFF || isNewline c
+/-- A character the fix pattern's `(?<![\w-])` and `(?![\w-])` refuse next to a match: what
+ICU's `[\w-]` matches. -/
+def isWordChar (c : Char) : Bool := Fold.isWord c
 
-/-- A character the fix pattern's `(?<![\w-])` and `(?![\w-])` refuse next to a match. -/
-def isWordChar (c : Char) : Bool :=
-  c.isAlphanum || c == '_' || c == '-' || (0x80 ≤ c.val && !nonWordAbove c)
+/-- Case-insensitive equality as ICU's matcher has it: the same full case folding. -/
+def sameFold (a b : List Char) : Bool := a.flatMap Fold.fold == b.flatMap Fold.fold
 
-/-- Case-insensitive equality, folding ASCII case. -/
-def sameFold (a b : List Char) : Bool := a.map Char.toLower == b.map Char.toLower
+/-- How many characters at the front of `xs` match `h` case-insensitively (0 for none): at most
+as many as `h` folds to, as each character folds to at least one. -/
+def spanLen (h xs : List Char) : Nat :=
+  ((List.range ((h.flatMap Fold.fold).length + 1)).find? fun n =>
+    n ≠ 0 && n ≤ xs.length && sameFold (xs.take n) h).getD 0
+
+theorem spanLen_fold {h xs : List Char} (hn : 0 < spanLen h xs) :
+    sameFold (xs.take (spanLen h xs)) h = true := by
+  unfold spanLen at hn ⊢
+  cases hf : (List.range ((h.flatMap Fold.fold).length + 1)).find? (fun n =>
+      n ≠ 0 && n ≤ xs.length && sameFold (xs.take n) h) with
+  | none => rw [hf] at hn; simp at hn
+  | some n =>
+    have := List.find?_some hf
+    simp only [Bool.and_eq_true, decide_eq_true_eq] at this
+    exact this.2
 
 /-- No word character just before. -/
 def boundaryBefore : Option Char → Bool
@@ -70,26 +80,27 @@ the character before the text (the lookbehind sees the original text, not the re
 def replaceWord (h w : List Char) (prev : Option Char) : List Char → List Char
   | [] => []
   | c :: cs =>
-    if h ≠ [] ∧ boundaryBefore prev = true ∧ sameFold ((c :: cs).take h.length) h = true ∧
-        boundaryAfter ((c :: cs).drop h.length) = true then
-      w ++ replaceWord h w ((c :: cs).take h.length).getLast? ((c :: cs).drop h.length)
+    if 0 < spanLen h (c :: cs) ∧ boundaryBefore prev = true ∧
+        boundaryAfter ((c :: cs).drop (spanLen h (c :: cs))) = true then
+      w ++ replaceWord h w ((c :: cs).take (spanLen h (c :: cs))).getLast?
+        ((c :: cs).drop (spanLen h (c :: cs)))
     else c :: replaceWord h w (some c) cs
 termination_by xs => xs.length
 decreasing_by
   all_goals simp_wf
   · rename_i hc
-    have : 0 < h.length := List.length_pos_iff.2 hc.1
+    have := hc.1
     omega
 
 /-- **What a fix may do.** The output copies the input, except that some spans are replaced by
-`w`; each such span is `h` up to ASCII case, and has no word character on either side in the
-input. -/
+`w`; each such span is `h` up to case (the same full case folding), and has no word character
+on either side in the input. -/
 inductive Replaces (h w : List Char) : Option Char → List Char → List Char → Prop
   | nil (prev : Option Char) : Replaces h w prev [] []
   | keep (prev : Option Char) (c : Char) (cs out : List Char) :
       Replaces h w (some c) cs out → Replaces h w prev (c :: cs) (c :: out)
   | swap (prev : Option Char) (span rest out : List Char) :
-      span ≠ [] → span.map Char.toLower = h.map Char.toLower → boundaryBefore prev = true →
+      span ≠ [] → sameFold span h = true → boundaryBefore prev = true →
       boundaryAfter rest = true → Replaces h w span.getLast? rest out →
       Replaces h w prev (span ++ rest) (w ++ out)
 
@@ -109,10 +120,10 @@ theorem replaceWord_replaces (h w : List Char) (prev : Option Char) (xs : List C
   | case1 prev => rw [replaceWord]; exact .nil prev
   | case2 prev c cs hc ih =>
     rw [replaceWord, ite_eq_left hc]
-    obtain ⟨hne, hb, hs, ha⟩ := hc
-    have hspan : (c :: cs).take h.length ≠ [] :=
-      take_ne_nil (List.length_pos_iff.2 hne) (List.cons_ne_nil c cs)
-    have := Replaces.swap prev _ _ _ hspan (by simpa [sameFold] using hs) hb ha ih
+    obtain ⟨hne, hb, ha⟩ := hc
+    have hspan : (c :: cs).take (spanLen h (c :: cs)) ≠ [] :=
+      take_ne_nil hne (List.cons_ne_nil c cs)
+    have := Replaces.swap prev _ _ _ hspan (spanLen_fold hne) hb ha ih
     rwa [List.take_append_drop] at this
   | case3 prev c cs hc ih =>
     rw [replaceWord, ite_eq_right hc]
@@ -191,15 +202,21 @@ def splitWhen (p : Char → Bool) : List Char → List (List Char)
       | [] => [[c]]
       | l :: ls => (c :: l) :: ls
 
-/-- The text before and after the first `=>`. -/
-def breakArrow : List Char → Option (List Char × List Char)
+/-- The characters before and after the first `=` `>` pair of characters. -/
+def breakArrowAt : List (List Char) → Option (List (List Char) × List (List Char))
   | [] => none
-  | '=' :: '>' :: rest => some ([], rest)
-  | c :: cs => (breakArrow cs).map fun p => (c :: p.1, p.2)
+  | ['='] :: ['>'] :: rest => some ([], rest)
+  | c :: cs => (breakArrowAt cs).map fun p => (c :: p.1, p.2)
+
+/-- The text before and after the first `=>` that `range(of: "=>")` finds: one that starts and
+ends on character boundaries, so not `=>` with a combining mark on the `>`. -/
+def breakArrow (line : List Char) : Option (List Char × List Char) :=
+  (breakArrowAt (Graphemes.clusters line)).map fun (a, b) => (a.flatten, b.flatten)
 
 def parseLine (d : Dictionary) (raw : List Char) : Dictionary :=
   let line := trimBy isSpace raw
-  if line.isEmpty || line.head? == some '#' then d
+  -- `hasPrefix("#")` is about characters: `#` with a combining mark isn't a comment.
+  if line.isEmpty || (Graphemes.clusters line).head? == some ['#'] then d
   else match breakArrow line with
     | some (h, w) =>
       let h := trimBy isSpace h

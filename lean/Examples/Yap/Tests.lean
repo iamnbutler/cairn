@@ -155,6 +155,44 @@ def noKeep : List Input := boot ++ [.menu .toggleKeep, .reply 1 (.ok ""), .keyDo
 #guard seconds 7200 == "0.5" && seconds 10400 == "0.7" && seconds 12000 == "0.8"
 #guard seconds 13600 == "0.8" && seconds 28000 == "1.8" && seconds 15200 == "0.9"
 
+/-! ### Characters as Swift counts them (each checked against Swift) -/
+
+#guard Graphemes.count "héllo" == 5 && Graphemes.count "he\u0301llo" == 5
+#guard Graphemes.count "👍🏽 ok" == 4 && Graphemes.count "👨‍👩‍👧" == 1 && Graphemes.count "🇫🇷🇩🇪" == 2
+#guard Graphemes.count "a\r\nb" == 3 && Graphemes.count "क्षि" == 1 && Graphemes.count "한글" == 2
+-- Swift's GB9c knows six viramas: Balinese doesn't join.
+#guard Graphemes.count "\u1B13\u1B44\u1B13" == 2
+#guard Graphemes.take 2 "🇫🇷🇩🇪🇮🇹" == "🇫🇷🇩🇪" && Graphemes.takeEnd 2 "x🇫🇷🇩🇪🇮🇹" == "🇩🇪🇮🇹"
+#guard Graphemes.takeEnd 1 "ae\u0301" == "e\u0301" && Graphemes.takeEnd 9 "ab" == "ab"
+-- "Typed N characters" counts characters, not scalars.
+#guard (st (hold ++ [.reply 1 (.ok "👨‍👩‍👧 e\u0301"), .reply 3 (.ok "")])).detail ==
+  "Typed 3 characters (0ms round trip)"
+-- The preview's context is the last 200 characters.
+#guard context [String.ofList (List.replicate 199 'a') ++ "e\u0301"] ==
+  some ("Continues from: \"" ++ String.ofList (List.replicate 199 'a') ++ "e\u0301\"")
+
+/-! ### `dictionary.txt` as Swift reads it (each checked against Swift) -/
+
+-- `range(of: "=>")` only matches on character boundaries.
+#guard Dictionary.parse "a=>\u0301b\n" == { terms := ["a=>\u0301b"] }
+#guard Dictionary.parse "a=>\u0301=>b\n" == { fixes := [⟨"a=>\u0301", "b"⟩] }
+#guard Dictionary.parse "\u0600=>x" == { terms := ["\u0600=>x"] }
+-- `hasPrefix("#")`: a `#` with a combining mark is a term, not a comment.
+#guard Dictionary.parse "#\u0301x\n#y" == { terms := ["#\u0301x"] }
+-- Trimming is by scalar, and U+200B is whitespace to Foundation.
+#guard Dictionary.parse " \u0301abc \n\u200Bx\u200B" == { terms := ["\u0301abc", "x"] }
+
+/-! ### Fixes match as ICU does (each checked against `NSRegularExpression`) -/
+
+-- Full case folding: ß matches SS, the Kelvin sign k, ΐ its capital with marks; f doesn't match ﬀ.
+#guard applyFixes [⟨"ß", "ss"⟩] "STRASSE STRASSE" == "STRASSE STRASSE"
+#guard applyFixes [⟨"strasse", "Straße"⟩] "STRAẞE" == "Straße"
+#guard applyFixes [⟨"kilo", "k"⟩] "\u212AILO" == "k"
+#guard applyFixes [⟨"\u0390", "x"⟩] "\u0399\u0308\u0301" == "x"
+#guard applyFixes [⟨"f", "x"⟩] "\uFB00" == "\uFB00" && applyFixes [⟨"\uFB00", "x"⟩] "FF" == "x"
+-- `[\w-]` is ICU's: an emoji is not a word character, ‿ (connector punctuation) is.
+#guard applyFixes [⟨"1", "x"⟩] "😀1" == "😀x" && applyFixes [⟨"a", "x"⟩] "a‿" == "a‿"
+
 /-! ### The model default, read as each recording starts -/
 
 def modelHold (m : Option String) : List Input :=
@@ -212,6 +250,9 @@ def keyChange : List Input := boot ++ [.keyDown 1000 (some front), .audio 1 (lou
 #guard Hotkey.parse "RCMD" == some Hotkey.rightCommand
 #guard Hotkey.parse "keycode:105" == some ⟨105, none, "Key 105"⟩
 #guard Hotkey.parse "keycode:61" == some ⟨61, some Hotkey.optionFlag, "Right Option"⟩
+-- `lowercased()` takes the Kelvin sign to `k` (and nothing else outside ASCII into it).
+#guard Hotkey.parse "\u212AEYCODE:61" == some ⟨61, some Hotkey.optionFlag, "Right Option"⟩
+#guard Hotkey.parse "r\u0130ghtcommand" == none
 #guard Hotkey.parse "F21" == none && Hotkey.parse "f13" == some ⟨105, none, "F13"⟩
 -- The overlay off: no preview.
 #guard !(has (boot ++ [.config (.ok { overlay := some false }), .keyDown 1000 (some front)]) (.overlay 1 .begin))

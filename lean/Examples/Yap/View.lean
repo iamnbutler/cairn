@@ -44,7 +44,7 @@ its app, and the text on one line, cut at 60 characters. -/
 def recentLabel (zone : Int) (t : Transcript) : String :=
   let words := (t.text.split (fun c => isNewline c)).toList.map (·.toString) |>.filter (· ≠ "")
   let line := " ".intercalate words
-  let preview := if line.length > 60 then String.ofList (line.toList.take 60) ++ "…" else line
+  let preview := if Graphemes.count line > 60 then Graphemes.take 60 line ++ "…" else line
   s!"{Dates.shortTime t.date zone}  {if t.typed then "" else "⚠︎ "}{preview}"
 
 /-- Items `k`, `k + 1`, … for these transcripts. -/
