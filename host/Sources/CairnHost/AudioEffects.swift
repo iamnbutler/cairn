@@ -201,7 +201,7 @@ public struct Microphone: Sendable {
     /// Yap's AudioCapture (no voice processing). Not yet asked, starting the engine shows the
     /// system's prompt, as Yap's first recording does. Refused (denied or restricted), it fails
     /// `denied` without starting: Yap records silence then and says "Heard nothing"
-    /// (iamnbutler/yap#9). A failure to start is Yap's text, the error's own description.
+    /// (iamnbutler/yap#11). A failure to start is Yap's text, the error's own description.
     public static let live = Microphone { onSamples throws(ReplyError) in
         switch AVCaptureDevice.authorizationStatus(for: .audio) {
         case .denied, .restricted:

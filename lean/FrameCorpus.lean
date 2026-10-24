@@ -113,7 +113,7 @@ def part : Gen Part := do
   if ← coin then return .bytes (← bytes) else return .wav (← nat) (← nat) (← opt nat)
 
 def request : Gen Request := do
-  match ← below 15 with
+  match ← below 16 with
   | 0 => return .readFile (← str)
   | 1 => return .writeFile (← str) (← bytes)
   | 2 => return .playSound (← str)
@@ -130,6 +130,7 @@ def request : Gen Request := do
   | 11 => return .openItem (← str)
   | 12 => return .appRunning (← str)
   | 13 => return .readDefault (← str) (← str)
+  | 14 => return .makeDir (← str)
   | _ => return .http (← str) (← str) (← headers) (← bytes) (← nat)
 
 def effect : Gen Effect := do
@@ -321,7 +322,8 @@ def maxFrame : Frame where
        .bytes ByteArray.empty] 4294967295),
     .request 10 (.upload "" "" [("", "")] none [] 0),
     .request 11 (.openItem "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"),
-    .request 12 (.appRunning ""), .request 13 (.readDefault "dev.yap.Yap" "日本🙂")]
+    .request 12 (.appRunning ""), .request 13 (.readDefault "dev.yap.Yap" "日本🙂"),
+    .request 14 (.makeDir "~/Library/Application Support/yap/transcripts")]
   subs := #[.start 4294967295 (.every 0), .stop 0, .start 1 (.watchFile "~/a 🙂.json"),
     .start 2 (.record 4294967295), .start 3 (.globalKey 63 none), .start 4 (.globalKey 0 (some 4294967295))]
   wake := some 18446744073709551615

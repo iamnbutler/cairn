@@ -133,9 +133,7 @@ enum Dump {
         case let .openItem(t): return "open \(str(t))"
         case let .appRunning(b): return "appRunning \(str(b))"
         case let .readDefault(d, k): return "readDefault \(str(d)) \(str(k))"
-        case let .openItem(t): return "open \(str(t))"
-        case let .appRunning(b): return "appRunning \(str(b))"
-        case let .readDefault(d, k): return "readDefault \(str(d)) \(str(k))"
+        case let .makeDir(p): return "makeDir \(str(p))"
         }
     }
 

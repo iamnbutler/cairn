@@ -164,6 +164,8 @@ public enum Request: Equatable, Sendable {
     case appRunning(bundleId: String)
     /// A value from another domain's defaults, as text.
     case readDefault(domain: String, key: String)
+    /// Create a directory and its missing parents, private (mode 700).
+    case makeDir(path: String)
 
     /// The kind code on the wire (`Request.Kind.code`).
     public var kindCode: UInt8 {
@@ -183,6 +185,7 @@ public enum Request: Equatable, Sendable {
         case .openItem: 12
         case .appRunning: 13
         case .readDefault: 14
+        case .makeDir: 15
         }
     }
 }

@@ -329,10 +329,16 @@ in a scratch directory and never prompts.
   read-only file, NUL and refused names fail and leave the file as it was. **Also assumed:**
   an append that fails part way (a full disk, an I/O error) can leave a prefix of its bytes;
   this is not fuzzed (it needs a full disk). Lean's reader of a JSON-lines file must treat a
-  bad line as one lost entry.
+  bad line as one lost entry. Directories it makes are mode 700 (fuzzed with ^960); a failure's
+  message is Foundation's text for the errno, as Yap shows it (`Files.appendFailure`; not
+  checked against Foundation's own failing calls, which need a full disk).
+- **Fuzzed** (^1003 `effects.make-dir`): after `done` the path is a directory; each directory
+  made is mode 700 whatever the umask, and one already there keeps its mode; again is `done`;
+  over a file, under a file, a read-only parent, NUL and the empty path fail.
 - **Fuzzed** (^961 `effects.list-dir`): exactly the names made (files, directories, links,
   random Unicode), sorted by UTF-8 bytes, byte for byte what `FileManager` lists; missing is
-  `notFound`, a file `invalid`, unreadable `denied`. **Also assumed:** a name that is not
+  `notFound`, a file `invalid`, unreadable `denied`. (FileManager drops a leading U+FEFF from a
+  name and `readdir` doesn't, so that comparison ignores one.) **Also assumed:** a name that is not
   valid UTF-8 is left out (APFS has none; other file systems might).
 - **Fuzzed** (^962 `effects.delete-file`): a file or a link (never its target) is gone after
   `done`; a second delete is `notFound`; a directory is `invalid` and stays; a read-only

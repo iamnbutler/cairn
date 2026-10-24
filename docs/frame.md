@@ -251,6 +251,7 @@ Request kinds and their fields:
 | 12 | openItem | string target |
 | 13 | appRunning | string bundleId |
 | 14 | readDefault | string domain, string key |
+| 15 | makeDir | string path |
 
 An upload's `secret` is `[0, 0, 0, 0]` for none, or `[1, 0, 0, 0]` and four strings: the header
 name, the scheme written before the value (`"Bearer "`), the `KEY=value` file and the key. Only
@@ -447,6 +448,7 @@ request ID appendFile "PATH" BYTES | request ID listDir "PATH" | request ID dele
 request ID frontmostApp | request ID permission CODE PROMPT
 request ID typeText PID RETURN "TEXT" | request ID forgetClip CLIP
 request ID open "TARGET" | request ID appRunning "ID" | request ID readDefault "DOMAIN" "KEY"
+request ID makeDir "PATH"
 request ID upload "METHOD" "URL" timeout=MS HEADERS secret=none|"HEADER" "SCHEME" "FILE" "NAME" parts=N PART…
 subs N
 start ID every MS | start ID watchFile "PATH" | start ID record CLIP

@@ -46,6 +46,7 @@ public struct Handlers: Sendable {
         12: { r, reply in if case let .openItem(t) = r { reply(Opening.open(t)) } },
         13: { r, reply in if case let .appRunning(b) = r { reply(Opening.running(b)) } },
         14: { r, reply in if case let .readDefault(d, k) = r { reply(Opening.readDefault(d, k)) } },
+        15: { r, reply in if case let .makeDir(p) = r { reply(Files.makeDir(p)) } },
     ])
 }
 
@@ -154,13 +155,14 @@ public enum Files {
     }
 
     /// Replaces the file atomically (a temporary file in the same directory, then rename), after
-    /// creating missing parent directories.
+    /// creating missing parent directories (mode 700, as Yap makes its folders).
     public static func write(_ path: String, _ bytes: [UInt8]) -> Reply {
         if let bad = invalid(path) { return bad }
         let url = URL(fileURLWithPath: expand(path))
         do {
             try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
-                                                    withIntermediateDirectories: true)
+                                                    withIntermediateDirectories: true,
+                                                    attributes: [.posixPermissions: 0o700])
             try Data(bytes).write(to: url, options: .atomic)
             return .done
         } catch {

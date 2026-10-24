@@ -92,6 +92,7 @@ inductive Ask where
   | running (bundleId : String)
   | readDefault (domain key : String)
   | openItem (target : String)
+  | makeDir (path : String)
   | sound (name : String)
   | forget (clip : Nat)
 deriving Repr, Inhabited
@@ -106,6 +107,7 @@ def Ask.request : Ask → Request
   | .running b => .appRunning b
   | .readDefault d k => .readDefault d k
   | .openItem t => .openItem t
+  | .makeDir p => .makeDir p
   | .sound n => .playSound n
   | .forget c => .forgetClip c
 
@@ -136,6 +138,8 @@ inductive Pend where
   | ensure (path data target : String)
   /-- Wrote the template: now open `target`. -/
   | create (target : String)
+  /-- Made the folder `target` (or failed to: Yap's `try?`): now open it. -/
+  | makingDir (target : String)
   | opening (target : String)
   /-- Marking the clip's line typed: read the day file `file`, which has `line`. -/
   | markRead (clip : Nat) (file line : String)
@@ -612,7 +616,7 @@ def trAsk (io : Io) : Cmd → Io × List (Nat × Ask)
   | .markTyped c => ({ io with marks := io.marks ++ [c] }, [])
   | .open o =>
     let (p, a) : Pend × Ask := match o with
-      | .transcriptsFolder => (.opening transcriptsDir, .openItem transcriptsDir)
+      | .transcriptsFolder => (.makingDir transcriptsDir, .makeDir transcriptsDir)
       | .accessibility => (.opening accessibilitySettings, .openItem accessibilitySettings)
       | .dictionary => (.ensure dictionaryPath dictionaryTemplate dictionaryPath, .read dictionaryPath)
       | .settings => (.ensure configPath "" configPath, .read configPath)
@@ -825,6 +829,9 @@ def ownReply (s : AppState) (p : Pend) (io : Io) (r : Cairn.Reply) : Prep :=
     | _ =>
       let (io, a) := io.ask (.opening target) (.openItem target)
       { io, asks := [a] }
+  | .makingDir target =>
+    let (io, a) := io.ask (.opening target) (.openItem target)
+    { io, asks := [a] }
   | .opening target =>
     match r with
     | .failed _ m => { io := { io with note := faultNote target m } }

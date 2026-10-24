@@ -198,6 +198,7 @@ def requestKind : Request → String
   | .openItem t => s!"open {t}"
   | .appRunning b => s!"appRunning {b}"
   | .readDefault d k => s!"readDefault {d} {k}"
+  | .makeDir p => s!"makeDir {p}"
 
 def jeffect : Effect → String
   | .setClipboard s => jobj [("clipboard", jstr s)]

@@ -52,7 +52,7 @@ private def frame : Frame where
       [.bytes ⟨#[1, 2]⟩, .wav 3 0 none, .wav 3 2 (some 5)] 30000),
     .request 17 (.upload "GET" "" [] none [] 0), .request 18 (.forgetClip 3),
     .request 19 (.openItem "~/Library/Application Support/yap"), .request 20 (.appRunning "dev.yap.Yap"),
-    .request 21 (.readDefault "dev.yap.Yap" "model")]
+    .request 21 (.readDefault "dev.yap.Yap" "model"), .request 22 (.makeDir "~/a/b")]
   subs := #[.start 1 (.every 50), .stop 0, .start 2 (.watchFile "~/c.json"), .start 3 (.record 7),
     .start 4 (.globalKey 63 none), .start 5 (.globalKey 49 (some 55))]
   wake := some 18446744073709551615

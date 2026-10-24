@@ -81,6 +81,7 @@ def request : Request → String
   | .openItem t => s!"open {str t}"
   | .appRunning b => s!"appRunning {str b}"
   | .readDefault d k => s!"readDefault {str d} {str k}"
+  | .makeDir p => s!"makeDir {str p}"
 
 def effect : Effect → String
   | .setClipboard s => s!"clipboard {str s}"

@@ -67,6 +67,12 @@ open Examples.Yap Cairn
 #guard (trAsk {} (.startRecording 3)).2.map (·.2.request) == [.frontmostApp, .readDefault originalBundle "model"]
 #guard (ownReply default .model {} (.bytes "whisper-1".toUTF8)).input == some (.model (some "whisper-1"))
 #guard (ownReply default .model {} (.failed .notFound "")).input == some (.model none)
+-- Open Transcripts Folder makes the folder first (mode 700), then opens it, whether or not the
+-- making worked (Yap's `try? createDirectory`, then `open`).
+#guard (trAsk {} (.open .transcriptsFolder)).2.map (·.2.request) == [.makeDir transcriptsDir]
+#guard ((ownReply default (.makingDir transcriptsDir) {} (.failed .denied "")).asks.map (·.2.request))
+  == [.openItem transcriptsDir]
+#guard ((ownReply default (.makingDir transcriptsDir) {} .done).asks.map (·.2.request)) == [.openItem transcriptsDir]
 def boot1 : Boot :=
   { prefs := some none, model := some (some "whisper-1"), enabled := some (some false), submits := some none }
 def boot2 : Boot :=
