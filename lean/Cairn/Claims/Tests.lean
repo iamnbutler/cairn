@@ -1,4 +1,5 @@
 import Cairn.Claims
+import Cairn.Claims.Release
 
 /-! Tests for the claim commands: a small machine that uses every command, and one failing
 declaration per compile-time check, with the error it must give.
@@ -322,3 +323,43 @@ set_option cairn.claims.scope "other" in
 
 end Scoped
 end Cairn.Claims.Tests
+
+/-! Retiring needs a major version (`Cairn.Claims.Release`, docs/claims.md). -/
+section Release
+open Cairn.Claims.Release
+
+private def v (s : String) : Version := (Version.parse? s).getD default
+
+#guard Version.parse? "1.2.3" == some { major := 1, minor := 2, patch := 3 }
+#guard Version.parse? "0.1.0-rc.1" == some { major := 0, minor := 1, patch := 0, pre := "rc.1" }
+#guard (Version.parse? "0.1.0-rc-2").map (·.pre) == some "rc-2"
+#guard Version.parse? "1.2" == none && Version.parse? "1.2.x" == none && Version.parse? "1.2.3-" == none
+#guard (v "0.1.0-rc.1").render == "0.1.0-rc.1"
+
+-- A new major version breaks, and while at 0.x a new minor version does too.
+#guard breaking (v "1.4.2") (v "2.0.0") && breaking (v "1.4.2") (v "2.0.0-rc.1")
+#guard !breaking (v "1.4.2") (v "1.5.0") && !breaking (v "1.4.2") (v "1.4.3")
+#guard breaking (v "0.1.1") (v "0.2.0") && breaking (v "0.9.0") (v "1.0.0")
+#guard !breaking (v "0.1.1") (v "0.1.2") && !breaking (v "0.1.1") (v "0.1.1")
+#guard !breaking (v "2.0.0") (v "1.9.0")
+#guard (needed (v "0.1.1")).render == "0.2.0" && (needed (v "1.4.2")).render == "2.0.0"
+
+-- The release to compare against: the highest final tag that isn't after the current version.
+#guard latest ["v0.1.0", "v0.1.1", "v0.2.0-rc.1", "x1.0.0"] (v "0.2.0") == some (v "0.1.1")
+#guard latest ["v0.1.0", "v0.1.1", "v0.3.0"] (v "0.2.0") == some (v "0.1.1")
+#guard latest ["v0.1.0", "v0.1.1"] (v "0.1.1") == some (v "0.1.1")
+#guard latest ["v0.1.0-rc.1"] (v "0.1.0") == none && latest [] (v "0.1.0") == none
+
+-- ^2 was released active and is retired now: blocked in a patch, allowed in a breaking version.
+-- ^5 ended but was never released active, so it can go in any version.
+#guard blocked (v "0.1.1") (v "0.1.2") [1, 2, 3] [2, 5] == [2]
+#guard blocked (v "0.1.1") (v "0.1.1") [1, 2, 3] [2] == [2]
+#guard blocked (v "0.1.1") (v "0.2.0") [1, 2, 3] [2, 5] == []
+#guard blocked (v "1.2.0") (v "1.3.0") [1, 2, 3] [2] == [2]
+#guard blocked (v "1.2.0") (v "2.0.0") [1, 2, 3] [2] == []
+#guard blocked (v "1.2.0") (v "1.3.0") [1, 2, 3] [5] == []
+
+#guard manifestVersion? "# c\n[package]\nname = \"cairn\"\nversion = \"0.1.1\" # x\n" == some "0.1.1"
+#guard manifestVersion? "[dependencies]\nversion = \"1.0.0\"\n[package]\nname = \"a\"\n" == none
+
+end Release

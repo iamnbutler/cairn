@@ -1,4 +1,5 @@
 import Cairn.Claims.Tool
+import Cairn.Claims.Release
 
 /-! `lake exe ledger check|update [--accept] [--lock PATH] [--root MODULE]…`
 
@@ -10,6 +11,12 @@ retired, a hash of its formal statement and its title. Ids are the contract, so:
   an id twice, when a claim has no description, and when the code has an id the lock doesn't or
   retires one the lock still has as active (run `update` for both). It warns when a claim's formal statement or title changed: give it a new id,
   or `update --accept` if the meaning is the same.
+- `check` and `update` also fail when the code retires a claim, or the lock marks it moved, that
+  the package's last release had active, unless `cairn.toml`'s version is a breaking one after that
+  release: a new major version, or a new minor version while at 0.x (`Cairn.Claims.Release`). The
+  release is the highest final `v<version>` tag that isn't after the current version, and its
+  `claims.lock` comes from git. With no `cairn.toml` beside the lock, or no tag, there's nothing
+  to check. `--version V` stands in for `cairn.toml`'s version.
 - `move <scope> <id>…` marks ids that left this package for another as `moved:<scope>`: they must
   be in the lock and gone from this scope's code.
 - `update` appends new ids, marks newly retired ones, and with `--accept` records changed
@@ -146,12 +153,57 @@ def update (env : Environment) (scope : String) (locked : Array Line) (accept : 
     unless lockedIds.contains e.info.id do out := out.push (lineOf env e)
   return out
 
+/-- The ids of `scope` that have ended, retired in the code or retired or moved in the lock
+(`locked`, before `update` writes it). -/
+def ended (env : Environment) (scope : String) (locked : Array Line) : List ClaimId :=
+  let code := inScope env scope
+  let inCode := code.filterMap fun e => if e.info.retired.isSome then some e.info.id else none
+  let inLock := locked.filterMap fun l =>
+    if (l.retired || l.moved.isSome) && !code.any (·.info.id == l.id) then some l.id else none
+  (inCode ++ inLock).toList
+
+/-- The errors for ids retired without a breaking version (`Release.blocked`): `released` is the
+last release and its ledger, `current` the version in `cairn.toml`. -/
+def retirements (env : Environment) (scope : String) (locked : Array Line)
+    (released : Release.Version) (before : Array Line) (current : Release.Version) : Array String :=
+  let active := (before.filter fun l => !l.retired && l.moved.isNone).map (·.id)
+  let blocked := Release.blocked released current active.toList (ended env scope locked)
+  blocked.toArray.map fun id =>
+    let title := (before.find? (·.id == id)).map (·.title) |>.getD ""
+    s!"^{id} “{title}” was active in {released}, so retiring or moving it needs a new major version (a new minor version while at 0.x), not {current}: set version = \"{Release.needed released}\" or later in cairn.toml"
+
+/-- The last release beside `lock`, from its git tags, and that release's `claims.lock`, for
+`retirements`; `none` when there is no `cairn.toml` (and no `--version`) or no released tag. -/
+def lastRelease (lock : System.FilePath) (version? : Option String) :
+    IO (Option (Release.Version × Array Line × Release.Version)) := do
+  let dir := lock.parent.getD "."
+  let dir : System.FilePath := if dir.toString.isEmpty then "." else dir
+  let version? ← match version? with
+    | some v => pure (some v)
+    | none =>
+      let toml := dir / "cairn.toml"
+      if ← toml.pathExists then pure (Release.manifestVersion? (← IO.FS.readFile toml)) else pure none
+  let some text := version? | return none
+  let some current := Release.Version.parse? text
+    | throw <| IO.userError s!"`{text}` isn't a version like 0.1.0"
+  let tags ← IO.Process.output { cmd := "git", args := #["tag", "--list", "v*"], cwd := dir }
+  if tags.exitCode != 0 then return none
+  let some released := Release.latest (tags.stdout.splitOn "\n") current | return none
+  let name := lock.fileName.getD "claims.lock"
+  let shown ← IO.Process.output
+    { cmd := "git", args := #["show", s!"v{released}:./{name}"], cwd := dir }
+  -- A release from before the package had a ledger promised no claims.
+  if shown.exitCode != 0 then return some (released, #[], current)
+  match parse shown.stdout with
+  | .ok before => return some (released, before, current)
+  | .error e => throw <| IO.userError s!"v{released}'s {e}"
+
 def defaultLock : IO System.FilePath := do
   if ← System.FilePath.pathExists "lakefile.lean" then return "../claims.lock"
   return "claims.lock"
 
 def usage : String :=
-  "usage: lake exe ledger (check | update [--accept] | move <scope> <id>…) [--lock PATH] [--scope NAME] [--root MODULE]…"
+  "usage: lake exe ledger (check | update [--accept] | move <scope> <id>…) [--lock PATH] [--scope NAME] [--root MODULE]… [--version V]"
 
 unsafe def main (args : List String) : IO UInt32 := do
   let mut cmd := none
@@ -160,6 +212,7 @@ unsafe def main (args : List String) : IO UInt32 := do
   let mut roots : List Name := []
   let mut scope := "cairn"
   let mut operands : List String := []
+  let mut version : Option String := none
   let mut rest := args
   while !rest.isEmpty do
     match rest with
@@ -167,6 +220,7 @@ unsafe def main (args : List String) : IO UInt32 := do
     | "--lock" :: p :: r => lock := p; rest := r
     | "--root" :: m :: r => roots := roots ++ [m.toName]; rest := r
     | "--scope" :: s :: r => scope := s; rest := r
+    | "--version" :: v :: r => version := some v; rest := r
     | c :: r => if cmd.isNone then cmd := some c; rest := r else
         if cmd == some "move" then operands := operands ++ [c]; rest := r else
         IO.eprintln usage; return 2
@@ -177,7 +231,12 @@ unsafe def main (args : List String) : IO UInt32 := do
   let locked ← match parse text with
     | .ok ls => pure ls
     | .error e => IO.eprintln s!"ledger: {e}"; return 1
-  let r := compare env scope locked
+  let mut r := compare env scope locked
+  if cmd == some "check" || cmd == some "update" then
+    match ← lastRelease lock version with
+    | some (released, before, current) =>
+      for e in retirements env scope locked released before current do r := r.err e
+    | none => pure ()
   for w in r.warnings do IO.eprintln s!"ledger: warning: {w}"
   match cmd with
   | some "check" =>
