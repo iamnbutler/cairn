@@ -53,7 +53,7 @@ def recentItems (zone : Int) (k : Nat) : List Transcript → List MenuItem
   | t :: ts => .button (recentRef k) (recentLabel zone t) :: recentItems zone (k + 1) ts
 
 def statusLines (s : AppState) : List MenuItem :=
-  [.info (if s.core.detail.isEmpty then "Starting…" else s.core.detail)] ++
+  [.info (if s.core.detail.isEmpty then ready s.core else s.core.detail)] ++
   (if s.io.original == some true then
      [.info s!"Yap is running. Quit it to dictate with {s.core.hotkey.name} here."]
    else []) ++

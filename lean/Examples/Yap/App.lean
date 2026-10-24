@@ -58,7 +58,7 @@ def transcriptionURL : String := "https://api.openai.com/v1/audio/transcriptions
 def transcriptionTimeoutMs : Nat := 30000
 def boundary : String := "yap-cairn-boundary-7d1e5c3a"
 def dictionaryTemplate : String :=
-  "# Yap dictionary. One term per line; only the first 25 are sent.\n# \"heard => written\" fixes a mishearing after transcription.\n\n"
+  "# Yap dictionary. One term per line; only the first 25 are sent.\n# \"heard => written\" fixes a mishearing after transcription.\n"
 /-- How often the app checks its permissions and whether the original Yap is running. -/
 def pollEveryMs : Nat := 2000
 
@@ -160,11 +160,12 @@ structure Boot where
   submits : Option (Option Bool) := none
 deriving Repr, Inhabited
 
-/-- The launch requests, sent with the first clock (`initEffects`), under fixed odd ids. -/
+/-- The launch requests, sent with the first clock (`initEffects`), under fixed odd ids. Yap's
+`start` asks for Accessibility with the system prompt (`ensureAccessibilityPermission()`). -/
 def bootAsks : List (Nat × Ask) :=
   [(1, .read prefsPath), (3, .readDefault originalBundle "model"),
    (5, .readDefault originalBundle "enabled"), (7, .readDefault originalBundle "submits"),
-   (9, .permission .accessibility false), (11, .permission .microphone false),
+   (9, .permission .accessibility true), (11, .permission .microphone false),
    (13, .running originalBundle)]
 
 /-- Where a mark (rewriting a day file with one line marked typed) is. -/
@@ -277,6 +278,46 @@ end Io
 
 def utf8 (d : ByteArray) : String := (String.fromUTF8? d).getD ""
 
+/-- A text file as `String(contentsOf:encoding: .utf8)` reads it: one leading byte order mark
+dropped; none if it isn't UTF-8. -/
+def readUtf8 (d : ByteArray) : Option String :=
+  (String.fromUTF8? d).map fun t => if t.startsWith "\uFEFF" then (t.drop 1).toString else t
+
+/-- The scalar a well-formed UTF-8 sequence of 2 to 4 bytes starts with `b` takes, and the
+range its second byte must be in (Unicode's table 3-7). -/
+def utf8Lead (b : Nat) : Option (Nat × Nat × Nat × Nat) :=
+  if 0xC2 ≤ b ∧ b ≤ 0xDF then some (1, b - 0xC0, 0x80, 0xBF)
+  else if b = 0xE0 then some (2, b - 0xE0, 0xA0, 0xBF)
+  else if (0xE1 ≤ b ∧ b ≤ 0xEC) ∨ b = 0xEE ∨ b = 0xEF then some (2, b - 0xE0, 0x80, 0xBF)
+  else if b = 0xED then some (2, b - 0xE0, 0x80, 0x9F)
+  else if b = 0xF0 then some (3, b - 0xF0, 0x90, 0xBF)
+  else if 0xF1 ≤ b ∧ b ≤ 0xF3 then some (3, b - 0xF0, 0x80, 0xBF)
+  else if b = 0xF4 then some (3, b - 0xF0, 0x80, 0x8F)
+  else none
+
+/-- `String(decoding:as: UTF8.self)`: each maximal ill-formed subpart becomes U+FFFD. -/
+def utf8Lossy (bs : List UInt8) : String :=
+  String.ofList (go bs.length bs [])
+where
+  go : Nat → List UInt8 → List Char → List Char
+  | 0, _, acc => acc.reverse
+  | _ + 1, [], acc => acc.reverse
+  | fuel + 1, b :: rest, acc =>
+    if b.toNat < 0x80 then go fuel rest (Char.ofNat b.toNat :: acc)
+    else match utf8Lead b.toNat with
+      | none => go fuel rest ('\uFFFD' :: acc)
+      | some (n, v, lo, hi) =>
+        -- Continuation bytes: the second in `[lo, hi]`, the rest in `[0x80, 0xBF]`.
+        let rec cont : Nat → Nat → Bool → List UInt8 → Option Nat × List UInt8
+          | 0, v, _, r => (some v, r)
+          | k + 1, v, first, c :: r =>
+            let ok := if first then lo ≤ c.toNat ∧ c.toNat ≤ hi else 0x80 ≤ c.toNat ∧ c.toNat ≤ 0xBF
+            if ok then cont k (v * 64 + (c.toNat - 0x80)) false r else (none, c :: r)
+          | _ + 1, _, _, [] => (none, [])
+        match cont n v true rest with
+        | (some v, r) => go fuel r (Char.ofNat v :: acc)
+        | (none, r) => go fuel r ('\uFFFD' :: acc)
+
 /-- One transcript as a line of its day file, as Yap's `TranscriptLog` writes it: sorted keys,
 no `app` when there is none, the date in ISO 8601 UTC. -/
 def transcriptLine (t : Transcript) : String :=
@@ -285,50 +326,67 @@ def transcriptLine (t : Transcript) : String :=
       | none => []) ++
     [("date", .str (Dates.iso t.date)), ("text", .str t.text), ("typed", .bool t.typed)])
 
-/-- A day file's line read back: none unless it has a text, a date and `typed`. -/
+/-- A day file's line read back, as `JSONDecoder` decodes Yap's `Transcript`: none unless it is
+an object with a text, an ISO 8601 date (`Dates.parseIso`) and `typed`, and an `app` that is a
+string, null or left out. -/
 def parseTranscript (line : String) : Option Transcript := do
-  let j ← Json.parse line
-  let text ← (j.field "text").bind Json.Json.getStr
-  let date ← ((j.field "date").bind Json.Json.getStr).bind Dates.parseIso
-  let typed ← (j.field "typed").bind Json.Json.getBool
-  let app := (j.field "app").bind Json.Json.getStr
-  some { clip := none, text, app, typed, date }
+  let j ← Json.parseBytes line.toUTF8
+  match j with
+  | .obj _ =>
+    let text ← (j.field "text").bind Json.Json.getStr
+    let date ← ((j.field "date").bind Json.Json.getStr).bind Dates.parseIso
+    let typed ← (j.field "typed").bind Json.Json.getBool
+    let app ← match j.field "app" with
+      | none | some .null => some none
+      | some v => v.getStr.map some
+    some { clip := none, text, app, typed, date }
+  | _ => none
 
-/-- A day file's transcripts, newest (last) first, skipping lines that don't parse. -/
+/-- The line breaks a day file is split at: Swift's `Character.isNewline` but for U+0085,
+U+2028 and U+2029, which `JSONEncoder` leaves unescaped inside a transcript's text (Yap splits
+at them too, and loses the transcript; docs/yap-parity.md). The others can't be in a line
+`JSONEncoder` wrote. -/
+def isLineBreak (c : Char) : Bool := c == '\n' || c == '\r' || c.val == 0x0B || c.val == 0x0C
+
+/-- A day file's transcripts, newest (last) first, skipping lines that don't parse; nothing if
+the file isn't UTF-8. -/
 def fileTranscripts (data : ByteArray) : List Transcript :=
-  ((utf8 data).splitOn "\n").reverse.filterMap parseTranscript
+  match readUtf8 data with
+  | some t => ((splitWhen isLineBreak t.toList).map String.ofList).reverse.filterMap parseTranscript
+  | none => []
 
 /-- `config.json` as Yap's `Config.save` writes it: pretty, sorted keys. -/
 def configText (c : Settings) : String :=
   Json.pretty [("keepTranscripts", .bool c.keepTranscripts), ("key", .str c.key),
     ("overlay", .bool c.overlay), ("retentionDays", .int c.retentionDays)]
 
-/-- A field of `config.json`: absent is none; the wrong type makes the file unreadable. -/
-def fieldOf {α : Type} (j : Json) (k : String) (get : Json → Option α) (what : String) :
-    Except String (Option α) :=
-  match j.field k with
-  | none => .ok none
-  | some v => match get v with
-    | some x => .ok (some x)
-    | none => .error s!"\"{k}\" should be {what}"
+/-- `DecodingError`'s `localizedDescription`s, in English. -/
+def notInFormat : String := "The data couldn’t be read because it isn’t in the correct format."
+def isMissing : String := "The data couldn’t be read because it is missing."
 
+/-- A field of `config.json` (`decodeIfPresent`): left out or null is none; the wrong type
+makes the file unreadable. -/
+def fieldOf {α : Type} (j : Json) (k : String) (get : Json → Option α) : Option (Option α) :=
+  match j.field k with
+  | none | some .null => some none
+  | some v => (get v).map some
+
+/-- `config.json` as Yap's `Config.load` decodes it with `JSONDecoder`: the error is
+`DecodingError`'s description. -/
 def parseConfig (data : ByteArray) : ConfigRead :=
-  match String.fromUTF8? data with
-  | none => .unreadable "not UTF-8"
-  | some text =>
-    match Json.parse text with
-    | some j@(.obj _) =>
-      let r : Except String ConfigFile := do
-        let keepTranscripts ← fieldOf j "keepTranscripts" Json.Json.getBool "true or false"
-        let retentionDays ← fieldOf j "retentionDays" Json.Json.getInt "a whole number"
-        let overlay ← fieldOf j "overlay" Json.Json.getBool "true or false"
-        let key ← fieldOf j "key" Json.Json.getStr "a string"
-        pure { keepTranscripts, retentionDays, overlay, key }
-      match r with
-      | .ok f => .ok f
-      | .error e => .unreadable e
-    | some _ => .unreadable "not a JSON object"
-    | none => .unreadable "not valid JSON"
+  match Json.parseBytes data with
+  | some j@(.obj _) =>
+    let r : Option ConfigFile := do
+      let keepTranscripts ← fieldOf j "keepTranscripts" Json.Json.getBool
+      let retentionDays ← fieldOf j "retentionDays" Json.Json.getInt
+      let overlay ← fieldOf j "overlay" Json.Json.getBool
+      let key ← fieldOf j "key" Json.Json.getStr
+      pure { keepTranscripts, retentionDays, overlay, key }
+    match r with
+    | some f => .ok f
+    | none => .unreadable notInFormat
+  | some .null => .unreadable isMissing
+  | _ => .unreadable notInFormat
 
 def prefsText (enabled submits : Bool) : String :=
   Json.compact [("enabled", .bool enabled), ("submits", .bool submits)] ++ "\n"
@@ -337,12 +395,12 @@ def parsePrefs (data : ByteArray) : Option (Option Bool × Option Bool) := do
   let j ← Json.parse (utf8 data)
   some (((j.field "enabled").bind Json.Json.getBool), ((j.field "submits").bind Json.Json.getBool))
 
-/-- A boolean default as `readDefault` gives it. -/
-def parseFlag (data : ByteArray) : Option Bool :=
-  match (utf8 data).trimAscii.toString with
-  | "1" | "true" | "YES" => some true
-  | "0" | "false" | "NO" => some false
-  | _ => none
+/-- A boolean default as `UserDefaults.bool(forKey:)` reads the text `readDefault` gives: "1",
+or "yes" or "true" in any case, is true; anything else is false. -/
+def parseFlag (data : ByteArray) : Bool :=
+  match (utf8 data).toList.map Char.toLower with
+  | ['1'] | ['y', 'e', 's'] | ['t', 'r', 'u', 'e'] => true
+  | _ => false
 
 /-- The machine's launch input, once every launch read is back. Toggles come from prefs.json,
 else from the original's defaults, else Yap's defaults (on, no Return). -/
@@ -352,8 +410,7 @@ def launchPrefs (b : Boot) : Option Prefs := do
   let e ← b.enabled
   let u ← b.submits
   let (pe, pu) := p.getD (none, none)
-  some { enabled := (pe <|> e).getD true, submits := (pu <|> u).getD false,
-         model := m.bind fun x => if x.isEmpty then none else some x }
+  some { enabled := (pe <|> e).getD true, submits := (pu <|> u).getD false, model := m }
 
 /-! ### The transcription request
 
@@ -388,25 +445,44 @@ def _root_.Cairn.Request.wholeClip : Request → Option Nat
   | .upload _ _ _ _ [_, .wav c 0 none, _] _ => some c
   | _ => none
 
-/-- What OpenAI said: the transcript, or Yap's error text. -/
+/-- What OpenAI said: the transcript, or Yap's error text (`OpenAITranscription.decode`): a
+2xx's `{"text": …}` as `JSONDecoder` decodes it, else `OpenAI <status>: ` and the error's
+message, or the body's first 500 bytes. -/
 def transcriptReply : Cairn.Reply → Reply
   | .http status _ body =>
-    let text := utf8 body
+    let j := Json.parseBytes body
     if 200 ≤ status ∧ status < 300 then
-      match (Json.parse text).bind (·.field "text") |>.bind Json.Json.getStr with
-      | some t => .ok t
-      | none => .failed "OpenAI sent no transcript"
+      match j with
+      | some j@(.obj _) =>
+        match j.field "text" with
+        | some (.str t) => .ok t
+        | none | some .null => .failed isMissing
+        | some _ => .failed notInFormat
+      | some .null => .failed isMissing
+      | _ => .failed notInFormat
     else
-      match (Json.parse text).bind (·.field "error") |>.bind (·.field "message") |>.bind Json.Json.getStr with
+      match j.bind (·.field "error") |>.bind (·.field "message") |>.bind Json.Json.getStr with
       | some m => .failed s!"OpenAI {status}: {m}"
-      | none => .failed s!"OpenAI {status}: {String.ofList (text.toList.take 500)}"
+      | none => .failed s!"OpenAI {status}: {utf8Lossy (body.toList.take 500)}"
   | .failed _ m => .failed m
   | _ => .failed "unexpected reply"
+
+/-- Why typing failed, in Yap's words (`TextInjector.Failure`): the host's faults are the
+same checks in the same order, its texts the framework's. -/
+def typeFault (app : Option String) : Fault → String → String
+  | .invalid, _ => "nothing to type"
+  | .denied, _ => "Accessibility is not granted, so Yap cannot type"
+  | .notFound, _ => "that app is no longer running"
+  | .other, _ => s!"{app.getD "that app"} would not come to the front"
+  | _, m => m
 
 /-- A reply to machine request `q`, in the machine's terms. -/
 def coreReply (s : State) (q : Nat) (r : Cairn.Reply) : Reply :=
   match s.reqs.lookup q with
   | some (.clip _) | some (.chunk _ _) => transcriptReply r
+  | some (.type _ t) => match r with
+    | .failed f m => .failed (typeFault t.app f m)
+    | _ => .ok ""
   | _ => match r with
     | .failed _ m => .failed m
     | _ => .ok ""
@@ -645,12 +721,11 @@ def ownReply (s : AppState) (p : Pend) (io : Io) (r : Cairn.Reply) : Prep :=
   | .config =>
     { io, input := some (.config (match r with
         | .bytes d => parseConfig d
-        | .failed .notFound _ => .missing
-        | .failed _ m => .unreadable m
-        | _ => .unreadable "unexpected reply")) }
+        -- `Config.load`: a file that can't be read at all is the defaults.
+        | _ => .missing)) }
   | .dictionary =>
     { io, input := some (.dictionary (match r with
-        | .bytes d => utf8 d
+        | .bytes d => (readUtf8 d).getD ""
         | _ => "")) }
   | .bootPrefs =>
     booted { io with boot := { io.boot with prefs := some (match r with
@@ -658,15 +733,17 @@ def ownReply (s : AppState) (p : Pend) (io : Io) (r : Cairn.Reply) : Prep :=
       | _ => none) } }
   | .bootModel =>
     booted { io with boot := { io.boot with model := some (match r with
-      | .bytes d => some (utf8 d).trimAscii.toString
+      | .bytes d => some (utf8 d)
       | _ => none) } }
   | .bootEnabled =>
     booted { io with boot := { io.boot with enabled := some (match r with
-      | .bytes d => parseFlag d
+      | .bytes d => some (parseFlag d)
+      | .failed .invalid _ => some false
       | _ => none) } }
   | .bootSubmits =>
     booted { io with boot := { io.boot with submits := some (match r with
-      | .bytes d => parseFlag d
+      | .bytes d => some (parseFlag d)
+      | .failed .invalid _ => some false
       | _ => none) } }
   | .front c =>
     match r with
@@ -692,8 +769,10 @@ def ownReply (s : AppState) (p : Pend) (io : Io) (r : Cairn.Reply) : Prep :=
     | .flag b => { io, input := some (.trust b) }
     | _ => { io }
   | .mic =>
+    -- Granted clears the warning; not granted may only mean not asked yet, which the first
+    -- recording asks (as Yap's does), so only a recording that was refused sets it.
     match r with
-    | .flag b => { io := { io with micGranted := some b } }
+    | .flag true => { io := { io with micGranted := some true } }
     | _ => { io }
   | .micAsk =>
     match r with
@@ -841,10 +920,12 @@ def menuStep (s : AppState) (a : MenuAction) : AppState × List Effect :=
 
 /-! ## Subscriptions -/
 
-/-- The app listens for the key once launched, while Dictate with Key is on and the host has
-said the original Yap is not running. -/
+/-- The app listens for the key once launched, while Dictate with Key is on, Accessibility is
+granted and the host has said the original Yap is not running. Yap's key monitor starts
+regardless and hears nothing until Accessibility is granted; a `globalKey` subscription fails
+without it, so it starts (again) once the grant is seen. -/
 def wantsKey (s : AppState) : Bool :=
-  s.io.launched && s.core.enabled && s.io.original == some false
+  s.io.launched && s.core.enabled && s.core.trusted && s.io.original == some false
 
 def subscriptions (s : AppState) : List Sub :=
   [.every pollEveryMs] ++
