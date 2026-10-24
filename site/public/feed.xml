@@ -8,13 +8,13 @@
 <language>en</language>
 <atom:link href="https://cairn.iamnbutler.workers.dev/feed.xml" rel="self" type="application/rss+xml"/>
 <image><url>https://cairn.iamnbutler.workers.dev/apple-touch-icon.png</url><title>Cairn</title><link>https://cairn.iamnbutler.workers.dev/</link></image>
-<lastBuildDate>Sat, 24 Oct 2026 21:01:20 GMT</lastBuildDate>
+<lastBuildDate>Sat, 24 Oct 2026 21:11:09 GMT</lastBuildDate>
 <item>
 <title>Cairn 0.1.2: libraries and apps</title>
 <link>https://cairn.iamnbutler.workers.dev/milestones/#cairn-0-1-2-libraries-and-apps</link>
 <guid isPermaLink="true">https://cairn.iamnbutler.workers.dev/milestones/#cairn-0-1-2-libraries-and-apps</guid>
-<pubDate>Sat, 24 Oct 2026 21:01:20 GMT</pubDate>
-<description>&lt;p&gt;Cairn 0.1.2 is out. A package is now a library or an app, as in Cargo: cairn.toml has kind = &amp;quot;lib&amp;quot; or &amp;quot;bin&amp;quot;, cairn new asks which, and /packages/ lists apps under their own tab (#103). Nothing can depend on an app.&lt;/p&gt;&lt;p&gt;cairn publish sends no docs. HTML from a publisher would run as the registry's site, so docs will be built from the source instead, as docs.rs does (#98).&lt;/p&gt;&lt;p&gt;The ledger now treats retiring a released claim as a breaking change: it needs a new major version, or a new minor one while at 0.x (#100). No claim changed in 0.1.2, so it is a patch release.&lt;/p&gt;&lt;p&gt;As of commit 86b1198, in the progress log of &lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#second-milestone-yap-on-cairn&quot;&gt;Second milestone: Yap on Cairn&lt;/a&gt;.&lt;/p&gt;</description>
+<pubDate>Sat, 24 Oct 2026 21:11:09 GMT</pubDate>
+<description>&lt;p&gt;Cairn 0.1.2 is out. A package is now a library or an app, as in Cargo: cairn.toml has kind = &amp;quot;lib&amp;quot; or &amp;quot;bin&amp;quot;, cairn new asks which, and /packages/ lists apps under their own tab (#103). Nothing can depend on an app.&lt;/p&gt;&lt;p&gt;cairn publish sends no docs. HTML from a publisher would run as the registry's site, so docs will be built from the source instead, as docs.rs does (#98).&lt;/p&gt;&lt;p&gt;The ledger now treats retiring a released claim as a breaking change: it needs a new major version, or a new minor one while at 0.x (#100). No claim changed in 0.1.2, so it is a patch release.&lt;/p&gt;&lt;p&gt;As of commit 597dea8, in the progress log of &lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#second-milestone-yap-on-cairn&quot;&gt;Second milestone: Yap on Cairn&lt;/a&gt;.&lt;/p&gt;</description>
 </item>
 <item>
 <title>Cairn is a package, and Yap moved out</title>

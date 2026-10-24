@@ -22,7 +22,7 @@ are published.
 
 ## v0.1.2
 
-24 October 2026.
+24 October 2026, at commit `597dea8`.
 
 - **Libraries and apps.** `cairn.toml` has a `kind`: `"lib"`, which other packages can depend
   on, or `"bin"`, an app, which nothing can. It defaults to `"lib"`, and Cairn is one.

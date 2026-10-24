@@ -20,7 +20,7 @@ describe("with the fixture", () => {
 		expect(text).toContain("Sample data");
 		expect(text).toContain('<a href="/packages/" class="on" aria-current="page">Libraries <span class="n">1</span></a>');
 		expect(text).toContain('<a href="/packages/?tab=apps">Apps <span class="n">1</span></a>');
-		expect(text).toContain('href="/docs/cairn/0.1.1/"');
+		expect(text).toContain('href="/docs/cairn/0.1.2/"');
 		expect(text).not.toContain('href="/packages/yap/"');
 		const apps = await (await get("/packages/?tab=apps")).text();
 		expect(apps).toContain('<a href="/packages/?tab=apps" class="on" aria-current="page">Apps <span class="n">1</span></a>');
@@ -37,8 +37,8 @@ describe("with the fixture", () => {
 
 	test("shows the latest release with its ledger and install lines", async () => {
 		const text = await (await get("/packages/cairn/")).text();
-		expect(text).toContain("<dd>0.1.1</dd>");
-		expect(text).toContain('version = "^0.1.1"');
+		expect(text).toContain("<dd>0.1.2</dd>");
+		expect(text).toContain('version = "^0.1.2"');
 		expect(text).toContain('<tr id="301" class="moved">');
 		expect(text).toContain("<code>cairn^1</code>");
 	});
@@ -60,7 +60,7 @@ describe("with the fixture", () => {
 	test("tells a library, which apps depend on, from an app, which they build", async () => {
 		const lib = await (await get("/packages/cairn/")).text();
 		expect(lib).toContain("<dt>Kind</dt><dd>Library</dd>");
-		expect(lib).toContain("cairn add cairn@^0.1.1");
+		expect(lib).toContain("cairn add cairn@^0.1.2");
 		const app = await (await get("/packages/yap/")).text();
 		expect(app).toContain("<dt>Kind</dt><dd>App</dd>");
 		expect(app).toContain("yap is an app: nothing can depend on it.");
@@ -70,7 +70,7 @@ describe("with the fixture", () => {
 	});
 
 	test("answers a version's docs with the placeholder, in the site's style", async () => {
-		for (const path of ["/docs/cairn/0.1.1/", "/docs/cairn/0.1.0/", "/docs/yap/0.1.0/"]) {
+		for (const path of ["/docs/cairn/0.1.2/", "/docs/cairn/0.1.1/", "/docs/cairn/0.1.0/", "/docs/yap/0.1.0/"]) {
 			const res = await get(path);
 			expect(res.status).toBe(200);
 			expect(res.headers.get("content-type")).toBe("text/html; charset=utf-8");
@@ -85,8 +85,8 @@ describe("with the fixture", () => {
 	test("sends every path under a version, and latest, to the placeholder", async () => {
 		expect((await get("/docs/cairn/0.1.0/Cairn.UI.html")).headers.get("location")).toBe(`${ORIGIN}/docs/cairn/0.1.0/`);
 		expect((await get("/docs/cairn/0.1.0/a/b/index.html")).headers.get("location")).toBe(`${ORIGIN}/docs/cairn/0.1.0/`);
-		expect((await get("/docs/cairn/latest/Cairn.UI.html")).headers.get("location")).toBe(`${ORIGIN}/docs/cairn/0.1.1/`);
-		expect((await get("/docs/cairn/")).headers.get("location")).toBe(`${ORIGIN}/docs/cairn/0.1.1/`);
+		expect((await get("/docs/cairn/latest/Cairn.UI.html")).headers.get("location")).toBe(`${ORIGIN}/docs/cairn/0.1.2/`);
+		expect((await get("/docs/cairn/")).headers.get("location")).toBe(`${ORIGIN}/docs/cairn/0.1.2/`);
 	});
 
 	test("leaves everything else to the static site", async () => {
