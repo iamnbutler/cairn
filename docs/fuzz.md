@@ -216,9 +216,15 @@ and in `make fuzz-quick`) plays a random host instead, in two modes, and writes 
   (files there or not, config.json and dictionary.txt good and bad, OpenAI's transcripts and
   errors, typing that fails), late, twice, out of order or never; fires the subscriptions the
   app has on (the key, the microphone, file watches, the poll) and some it doesn't; and starts
-  and quits the original Yap. It checks ^311–^323 and ^346 as `Examples.Yap` states them over
-  `AppState` and effects. Dropping the original-Yap test from `wantsKey` is caught as ^346
-  within 50 steps and shrunk.
+  and quits the original Yap. It keeps the day files' contents (an append, a write or a delete
+  lands when its answer says it worked; a read gives what is there) and answers requests in
+  any order, as the host's concurrent requests finish, so an append can land after the read
+  that marks its line. It checks ^311–^323, ^346 and ^347 as `Examples.Yap` states them over
+  `AppState` and effects, and ^347 on disk: once every request is answered, each transcript
+  typed while kept, whose append worked, is `"typed":true` (a mark the app gives up on must
+  say so in the menu). Dropping the original-Yap test from `wantsKey` is caught as ^346
+  within 50 steps and shrunk; marking before the append is answered (the code before ^347) is
+  caught in about one sequence in ten of 300 steps.
 
 Each claim's entry has `hostSteps` and `appSteps`; `steps` is their sum.
 
@@ -448,9 +454,15 @@ and in `make fuzz-quick`) plays a random host instead, in two modes, and writes 
   (files there or not, config.json and dictionary.txt good and bad, OpenAI's transcripts and
   errors, typing that fails), late, twice, out of order or never; fires the subscriptions the
   app has on (the key, the microphone, file watches, the poll) and some it doesn't; and starts
-  and quits the original Yap. It checks ^311–^323 and ^346 as `Examples.Yap` states them over
-  `AppState` and effects. Dropping the original-Yap test from `wantsKey` is caught as ^346
-  within 50 steps and shrunk.
+  and quits the original Yap. It keeps the day files' contents (an append, a write or a delete
+  lands when its answer says it worked; a read gives what is there) and answers requests in
+  any order, as the host's concurrent requests finish, so an append can land after the read
+  that marks its line. It checks ^311–^323, ^346 and ^347 as `Examples.Yap` states them over
+  `AppState` and effects, and ^347 on disk: once every request is answered, each transcript
+  typed while kept, whose append worked, is `"typed":true` (a mark the app gives up on must
+  say so in the menu). Dropping the original-Yap test from `wantsKey` is caught as ^346
+  within 50 steps and shrunk; marking before the append is answered (the code before ^347) is
+  caught in about one sequence in ten of 300 steps.
 
 Each claim's entry has `hostSteps` and `appSteps`; `steps` is their sum.
 

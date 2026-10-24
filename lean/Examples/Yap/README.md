@@ -34,7 +34,7 @@ The claims are stated over the app machine (`Examples/Yap.lean`): the menu items
 `invariant` over `AppState` whose `holds` quantifies over every message the host can send
 (`receive`) and every menu item (`menuStep`), so `steps_reachableAll` covers runtime steps. Each
 cites an `app_*` theorem in `AppProofs.lean`, proved from the model theorem below. ^346 (the
-original Yap keeps its key) is new with the app.
+original Yap keeps its key) and ^347 (a mark waits for the appends) are new with the app.
 
 | Id | Claim | Proved (model) | Fuzzed | Tested |
 |---|---|---|---|---|
@@ -53,12 +53,13 @@ original Yap keeps its key) is new with the app.
 | ^323 | too short, silent or no app: never sent | `step_transcribe` | yes | yes |
 | ^330–^337 | assumptions about the host (keys, ticks, request ids, audio, typing, files, days) | stated | | |
 | ^340, ^341 | flows through the menu | `decide` | | |
+| ^347 | a mark (`"typed":true` on disk) waits for the appends | `receive_marks` and friends (`MarkProofs.lean`, of the app, not the model) | yes, with a host that keeps the day files and answers in any order | yes |
 
 All of it is closed without `sorry` or compiler-trusting tactics, on the standard three axioms (`make audit`).
 
 **Fuzzing.** `lake exe yapfuzz` plays a random host in two modes; the second (`AppFuzz.lean`)
 sends the app's `receive` messages and menu items, answers the requests it makes, and checks
-^311–^323 and ^346 as the app states them (docs/fuzz.md). The first plays it against `step`: key presses with random timings (taps,
+^311–^323, ^346 and ^347 as the app states them (docs/fuzz.md). The first plays it against `step`: key presses with random timings (taps,
 holds, repeats, a release that never comes), shortcuts, ticks early, late and jumping (ten
 minutes forward, seconds back), audio loud, quiet and for the wrong clip, microphone failures,
 replies slow, failed, duplicated, out of order, to nothing or never, config and dictionary

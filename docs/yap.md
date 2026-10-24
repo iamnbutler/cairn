@@ -3,7 +3,7 @@
 M2 step 3 (GOAL.md): Yap, the push-to-talk dictation app at `~/code/yap`, as a Cairn app. Its
 state is the dictation machine's (`lean/Examples/Yap/Model.lean`) plus what the app keeps
 around it (`AppState`, `lean/Examples/Yap/App.lean`); the menu bar item and the overlay are
-Lean views (`View.lean`); the claims (^301–^346, `lean/Examples/Yap.lean`) are stated over the
+Lean views (`View.lean`); the claims (^301–^347, `lean/Examples/Yap.lean`) are stated over the
 app machine and proved through its `receive` (`AppProofs.lean`). The Swift side
 (`host/Sources/CairnYap/main.swift`) only builds the world: the real microphone, keyboard,
 typing and network, or fakes for the self test.
@@ -141,7 +141,7 @@ open a text editor. Record the macOS version and the result of each line.
    each kind an `assume` claim with trusted fuzz checks (docs/effects.md, docs/trusted.md,
    ^1000–^1002 added for this app).
 3. **Surfaces.** Done (docs/surfaces.md); Yap's menu and overlay are built on them.
-4. **Claims and proofs.** Done, now over the app machine: ^311–^323 and ^346 are invariants of
+4. **Claims and proofs.** Done, now over the app machine: ^311–^323, ^346 and ^347 are invariants of
    `Examples.Yap.machine` proved through `receive` and `menuStep`; the menu moves and flows
    (^340, ^341) as in M1.
 5. **Fuzzed.** Done: the model and the app against a random host, and the host's effects in
@@ -162,4 +162,14 @@ folding, …) are in `lean/Examples/Yap/README.md`. The app adds:
   relaunch;
 - Dictate with Key and Press Return After Dictating start from the original's defaults, then
   live in Cairn's `prefs.json`;
-- it stands aside for the original Yap (^346).
+- it stands aside for the original Yap (^346);
+- a typed transcript is marked `"typed":true` in its day file only once the append that wrote
+  its line is answered (^347). The host runs requests concurrently and nothing orders their
+  completion (docs/effects.md), so marking as soon as the type was answered could read the file
+  before the line landed and leave it `"typed":false` (the self test caught it, two runs in
+  three). A mark waits until no append is in flight, and a mark's rewrite is checked once the
+  appends sent meanwhile are answered, re-appending any line it lost. If the append failed,
+  there is no line and no mark. If the line still isn't there after its append worked (the file
+  was edited), or the mark's read or write fails, the menu says "Couldn't mark a transcript
+  typed in …" instead of dropping it silently; the transcript stays `"typed":false` on disk
+  and in Recent after a relaunch.
