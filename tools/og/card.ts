@@ -3,6 +3,8 @@
 // line below it, over assets/og/scene.png: the homepage's scene and shade with no text, drawn by
 // `make og-scene` after a change to the scene.
 
+import { svg } from "../../site/icons.ts";
+
 export type Args = { label: string; title: string; line?: string };
 type Style = Record<string, string | number>;
 type El = { type: string; props: { style?: Style; children?: Child | Child[]; [attr: string]: unknown } };
@@ -19,7 +21,7 @@ const FONTS = [
 	{ name: "Pixelify Sans", weight: 600, src: "fonts/pixelify-sans-latin-600-normal.woff" },
 ] as const;
 const SCENE = "og/scene.png";
-const ICON = "og/icon.svg";
+const ICON = `data:image/svg+xml;base64,${Buffer.from(svg()).toString("base64")}`;
 
 /** The card's tree, its images named by their paths under site/web/assets. */
 function card({ label, title, line }: Args): El {

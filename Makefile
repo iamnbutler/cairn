@@ -188,6 +188,7 @@ site-dist: site-build
 	@if [ -e build/site/docs/api ]; then echo "site-dist: something else wrote docs/api/"; exit 1; fi
 	cp -R build/doc/Cairn/dist build/site/docs/api
 	bun tools/site/pages.ts build/site
+	bun site/icons.ts build/site
 
 # Deploy the microsite (site/) to Cloudflare.
 site: site-dist
