@@ -35,6 +35,7 @@ def two : List Event := typed ++ clickOn (run typed) addRef
 -- Blank text adds nothing, by Enter or by Add.
 #guard texts (st (two ++ clickOn (run two) fieldRef ++ [.insertText "   ", .key .enter {}])) ==
   texts (st two)
+-- region: basics-tests-delete
 -- Toggle item 1, then delete item 2.
 def toggled : List Event := two ++ clickOn (run two) (toggleRef 1)
 #guard texts (st toggled) == [(1, "milk", true), (2, "eggs", false)]
@@ -42,6 +43,7 @@ def toggled : List Event := two ++ clickOn (run two) (toggleRef 1)
 def deleted : List Event := toggled ++ clickOn (run toggled) (deleteRef 2)
 #guard texts (st deleted) == [(1, "milk", true)]
 #guard footer (st deleted) == "0 items left"
+-- endregion: basics-tests-delete
 -- Tab order: field, Add, then each item's checkbox and delete button.
 #guard (tabOrder (run two).laid).map (·.ref) ==
   [fieldRef, addRef, toggleRef 1, deleteRef 1, toggleRef 2, deleteRef 2]

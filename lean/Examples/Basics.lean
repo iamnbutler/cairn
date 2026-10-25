@@ -104,11 +104,13 @@ def toggle (k : Nat) (s : State) : State :=
   | some it =>
     { s with items := s.items.map (flip k), left := if it.done then s.left + 1 else s.left - 1 }
 
+-- region: basics-delete
 def delete (k : Nat) (s : State) : State :=
   match s.items.find? (·.id = k) with
   | none => s
   | some it =>
     { s with items := s.items.filter (·.id ≠ k), left := if it.done then s.left else s.left - 1 }
+-- endregion: basics-delete
 
 theorem toggle_items (k : Nat) (s : State) (h : has s k = true) :
     (toggle k s).items = s.items.map (flip k) := by
@@ -151,10 +153,12 @@ instance Ascending.decidable : (lo : Nat) → (xs : List Item) → Decidable (As
     have := Ascending.decidable i.id is
     inferInstanceAs (Decidable (lo < i.id ∧ Ascending i.id is))
 
+-- region: basics-inv
 /-- ^105's statement: the count is right, and ids are distinct, positive and below `nextId`
 (which is positive). -/
 def Inv (s : State) : Prop :=
   s.left = undone s.items ∧ Ascending 0 s.items ∧ (∀ i ∈ s.items, i.id < s.nextId) ∧ 0 < s.nextId
+-- endregion: basics-inv
 
 theorem undone_append (xs ys : List Item) : undone (xs ++ ys) = undone xs + undone ys := by
   induction xs with

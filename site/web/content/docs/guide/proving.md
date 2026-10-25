@@ -84,6 +84,8 @@ These hold for every proof that counts as evidence, and `make check` enforces th
 - **No escape hatches**: `native_decide`, `bv_decide`, `implemented_by`, `debug.skipKernelTC` and
   `axiom` are rejected by a lint, and every declaration is replayed through the kernel.
 
+What a proof still leaves you to trust, and what the other kinds of evidence add, is on
+[How much to trust a claim](/docs/reference/trust/).
 For proofs about geometry, `omega` does most of the work, since layout is integers. For bounded
 enumerations, `decide +kernel`. For lists of nodes, write recursion structurally: `children.map f`
 makes a definition that `rfl` and `decide` can't see through.
