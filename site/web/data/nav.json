@@ -1,0 +1,46 @@
+[
+	{
+		"section": "Guides",
+		"items": [
+			{
+				"page": "guide/index",
+				"children": ["guide/first-app", "guide/moves-and-flows", "guide/view-and-layout", "guide/proving", "guide/effects", "guide/shipping"]
+			},
+			{
+				"page": "examples/index",
+				"children": ["examples/counter", "examples/basics", "examples/todo", "examples/yap"]
+			}
+		]
+	},
+	{
+		"section": "Reference",
+		"items": [
+			{ "page": "reference/api" },
+			{ "page": "reference/cairn-tool" },
+			{ "page": "reference/claims" },
+			{ "page": "reference/evidence" },
+			{ "page": "reference/errors" },
+			{ "page": "reference/releases" }
+		]
+	},
+	{
+		"section": "Internals",
+		"items": [
+			{ "page": "internals/trusted-base" },
+			{ "page": "internals/host-protocol" },
+			{ "page": "internals/host-effects" },
+			{ "page": "internals/profiling" },
+			{ "page": "internals/contributing" }
+		]
+	},
+	{
+		"section": "Evidence",
+		"items": [
+			{ "page": "evidence/index" },
+			{ "href": "/map/counter/", "title": "Counter's map" },
+			{ "href": "/map/basics/", "title": "Basics' map" },
+			{ "href": "/map/todo/", "title": "TodoMVC's map" },
+			{ "href": "/map/trusted/", "title": "The trusted base's map" }
+		]
+	}
+]
