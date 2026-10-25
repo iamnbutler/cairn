@@ -5,8 +5,8 @@
 #
 # --feature makes it the video at the top of the site. --milestone puts it in that
 # milestone's progress log (default m2, the current one; see GOAL.md). Run from the repo root,
-# then run make site-feed (the video is an item of the RSS feed), commit site/public/media.json
-# and site/public/feed.xml, and deploy the site (make site).
+# then commit site/public/media.json and deploy the site (make site), which builds the RSS feed
+# with the video as an item.
 set -eu
 in=$1; title=$2; caption=$3; shift 3
 feature=; milestone=m2

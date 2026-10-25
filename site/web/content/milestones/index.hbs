@@ -1,37 +1,12 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Milestones · Cairn</title>
-<meta name="description" content="Cairn's milestones: what each one sets out to show, and the videos and notes of the work as it lands.">
-<link rel="icon" href="/favicon.ico" sizes="32x32">
-<link rel="icon" href="/icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/site.css">
-<link rel="alternate" type="application/rss+xml" title="Cairn" href="/feed.xml">
-<!-- og -->
-<!-- og card {"name":"milestones","label":"Cairn","title":"Milestones","line":"What each one sets out to show, and the work as it lands."} -->
-<meta property="og:type" content="website">
-<meta property="og:site_name" content="Cairn">
-<meta property="og:title" content="Milestones · Cairn">
-<meta property="og:description" content="Cairn's milestones: what each one sets out to show, and the videos and notes of the work as it lands.">
-<meta property="og:url" content="https://cairn.iamnbutler.workers.dev/milestones/">
-<meta property="og:image" content="https://cairn.iamnbutler.workers.dev/og/milestones.png">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Milestones, over a pixel cairn on a meadow by a lake at night">
-<meta name="twitter:card" content="summary_large_image">
-<!-- /og -->
-</head>
-<body>
-<!-- The posts here are the source of the feed: tools/site/build.ts (make site-feed) turns each
-     article.post into an item of /feed.xml, with its h2's id as the permalink and its time as the
-     date, and the newest into the homepage's pointer. Put a new milestone on top, with the time
-     it was published, then run make site-feed. Heading ids are links people have; never change one. -->
+---
+title: Milestones
+description: "Cairn's milestones: what each one sets out to show, and the videos and notes of the work as it lands."
+card: { label: Cairn, title: Milestones, line: "What each one sets out to show, and the work as it lands." }
+---
+<!-- The posts here are the source of the feed: lib/site.ts turns each article.post into an item
+     of /feed.xml, with its h2's id as the permalink and its time as the date, and the newest into
+     the homepage's pointer. Put a new milestone on top, with the time it was published. Heading
+     ids are links people have; never change one. -->
 <header class="scene">
   <canvas id="scene" aria-hidden="true"></canvas>
   <div class="title"><h1>Milestones</h1><nav class="links" aria-label="Site"><a href="/">Home</a><a href="/milestones/" aria-current="page">Milestones</a><a href="/docs/">Docs</a><a href="/packages/">Packages</a><a href="/docs/evidence/">Maps</a></nav></div>
@@ -119,5 +94,3 @@
     if (target) target.scrollIntoView();
   }).catch(() => { for (const log of main.querySelectorAll("[id^=log-]")) log.innerHTML = '<li class="meta">Could not load the video list.</li>'; });
 </script>
-</body>
-</html>

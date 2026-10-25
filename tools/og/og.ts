@@ -1,9 +1,9 @@
 // Link previews: the Open Graph and Twitter tags every page carries, and the card each one shows.
-// The docs write their own tags and cards (site/web, built by bongo). These tags are
-// stamped by tools/site/build.ts into the pages it doesn't generate: the homepage, /milestones/,
-// and the copied output of the map and cairn doc. The package pages (site/registry.js) run in the
-// Worker and write them too. Each tag block names its card in an `<!-- og card {…} -->` comment;
-// render.ts reads those to draw site/public/og/<name>.png.
+// The docs, the homepage and /milestones/ write their own tags and cards (site/web, built by
+// bongo). These tags are stamped by tools/site/build.ts into the copied output of the map and
+// cairn doc, and the package pages (site/registry.js) write them in the Worker. Each tag block
+// names its card in an `<!-- og card {…} -->` comment; bongo reads those (site/web/lib/og.ts) and
+// draws og/<name>.png with the same satori partial as every other card.
 
 export const ORIGIN = "https://cairn.iamnbutler.workers.dev";
 
@@ -13,8 +13,6 @@ export type Card = { name: string; label: string; title: string; line?: string }
 // The cards pages share. The package pages are drawn by the Worker from live data, so they share
 // one; so do the API reference's module pages.
 export const CARDS = {
-	home: { name: "home", label: "", title: "Cairn", line: "Mac apps where every action is a claim, with machine-checked evidence." },
-	milestones: { name: "milestones", label: "Cairn", title: "Milestones", line: "What each one sets out to show, and the work as it lands." },
 	packages: { name: "packages", label: "Cairn", title: "Packages", line: "Libraries to build on and apps to run, with the claims they make." },
 	api: { name: "api", label: "Cairn docs", title: "API reference", line: "Every module, declaration and claim, generated from the code." },
 } satisfies Record<string, Card>;

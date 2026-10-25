@@ -1,0 +1,3 @@
+{{#each $utils.ogCards() as c}}
+{{ await $assets.render('og/card', 'og/' + c.name + '.png', { args: { label: c.label, title: c.title, line: c.line ?? '' } }) }}
+{{/each}}

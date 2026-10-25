@@ -12,7 +12,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ title }}</title>
 {{#if lede}}<meta name="description" content="{{ desc }}">{{/if}}
-{{#var card = await $assets.render('og/card')}}
+{{#var card = await $assets.render('og/card', undefined, { args: { label: String(p.eyebrow ?? ''), title: $page.title, line: '' } })}}
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Cairn">
 <meta property="og:title" content="{{ title }}">

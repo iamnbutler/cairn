@@ -137,7 +137,7 @@ them.
 
 The build fails if a claim's id is on no page.
 
-**Look.** The pages use the site's palette and type (`site/public/index.html`): the night colours,
+**Look.** The pages use the site's palette and type (`site/public/site.css`): the night colours,
 Pixelify Sans for headings and labels, a serif for prose, stepped corners on panels and frames,
 and the site's `icon.svg`, which the build copies into `dist/`. Each kind of evidence has one
 colour everywhere it appears (a filled chip when it passes, a dashed empty chip for a gap, red
