@@ -51,7 +51,7 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
 
 ## v0.2.5
 
-25 October 2026.
+25 October 2026, at commit `ea05c5e`.
 
 - **Closing the window quits the app cleanly.** The window delegate now owns the window
   (`isReleasedWhenClosed = false`), and on close it shuts the view down (engine, `World`,

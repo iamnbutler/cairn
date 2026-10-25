@@ -1,5 +1,17 @@
 [
   {
+    "title": "Cairn 0.2.5: closing the window quits cleanly",
+    "text": [
+      "Cairn 0.2.5 is out on the public registry as iamnbutler/cairn. Closing an app's window now quits it cleanly: the window delegate owns the window and shuts the view down before the app terminates. Before, AppKit also released the window on close, and a frame landing afterwards reached the freed window; Pairs 0.1.2 crashed that way. make selftest closes a real window with input, a timer and frames in flight (#199).",
+      "cairn builds fetch registry dependencies at the commit the manifest pins and turn Lake's lazy fetches off when every git dependency is on a registry: a stale checkout on Pairs went from 92 s to 4 s (#198). The tray's tick-rate selftest asserts the wall-clock rate on real hardware only (#195).",
+      "The registry checked its claims export, 122 claims, against the ledger and serves it for the claim pages. claims.lock is the same as 0.2.4's: no claim was retired, moved, changed or added, so it is a patch release."
+    ],
+    "date": "2026-10-25",
+    "published": "2026-10-25T12:14:23Z",
+    "commit": "ea05c5e",
+    "milestone": "m3"
+  },
+  {
     "title": "Cairn 0.2.4, with a fuzzer that plays the host",
     "text": [
       "Cairn 0.2.4 is out on the public registry as iamnbutler/cairn. cairn fuzz now plays the host's side: it answers requests late and in any order, replies to cancelled ones, fires timers, moves the clock, sends subscription events and evicts images, within what the trusted claims allow, and checks that every image a frame draws is one the host holds (#189).",
