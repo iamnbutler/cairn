@@ -203,17 +203,19 @@ clean:
 # region: make-capture
 # Headless screenshots of an app (docs/claim-pages.md): each flow's witness and each move no
 # flow presses, from the frame's own pixels, with pins from its accessibility rects. Writes
-# build/capture/$(APP)/; `make doc APP=…` shows them. `make capture APP=Counter`. Kept for a
-# per-claim visual export on the claim pages, which doesn't exist yet.
+# build/capture/$(APP)/, and the shots into build/map/$(APP)/capture/, where `make doc APP=…`
+# reads them. `make capture APP=Counter`. Kept for a per-claim visual export on the claim pages,
+# which doesn't exist yet.
 APP ?= Counter
 CAPDIR = build/capture/$(APP)
+SHOTS = build/map/$(APP)/capture
 capture: host
 	mkdir -p $(CAPDIR)
 	cd lean && lake build claims
 	cd lean && lake exe claims Examples.$(APP) > ../$(CAPDIR)/claims.json
 	bun tools/map/capture-script.ts --claims $(CAPDIR)/claims.json > $(CAPDIR)/script.json
-	rm -rf $(CAPDIR)/shots
-	cd host && swift run Cairn$(APP) --map-capture ../$(CAPDIR)/script.json ../$(CAPDIR)/shots
+	rm -rf $(SHOTS) && mkdir -p $(dir $(SHOTS))
+	cd host && swift run Cairn$(APP) --map-capture ../$(CAPDIR)/script.json ../$(SHOTS)
 # endregion: make-capture
 
 # cairn doc (docs/doc.md): a package's API and claims from its code, rustdoc-style.

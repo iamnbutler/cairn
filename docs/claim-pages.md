@@ -90,7 +90,7 @@ A claim's page leaves room for a picture of it: its place with its control highl
 or SVG at `…/claims/<id>/<file>`. That isn't built. The pieces it can reuse are kept:
 
 ```sh
-make capture APP=Counter     # headless screenshots → build/capture/Counter/shots/
+make capture APP=Counter     # headless screenshots → build/map/Counter/capture/, which cairn doc reads
 ```
 
 `tools/map/capture-script.ts` turns an app's export into a script: the initial state, each

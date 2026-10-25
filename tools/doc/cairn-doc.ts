@@ -4,11 +4,11 @@
 //       [--link Cairn.=../../Cairn/dist/] [--open]
 //
 // Reads <dir>/doc.json (lake exe doc), <dir>/claims.json (lake exe claims), claims.lock, and for
-// --app the build's evidence: build/fuzz/<App>.json, build/fuzz/trusted.json, build/conformance/<App>.json and the
-// capture, build/capture/<App>/shots/ (make capture). Writes the pages to <dir>/dist/.
+// --app the same evidence the map reads: build/fuzz/<App>.json, build/fuzz/trusted.json, build/conformance/<App>.json and the
+// map's capture, build/map/<App>/capture/. Writes the pages to <dir>/dist/.
 //
-// The claims' evidence comes from tools/map/evidence.ts, so its statuses are the same ones the
-// map used. render.ts draws the pages. Nothing in the output is typed by hand.
+// The claims' evidence comes from tools/map/evidence.ts, so a claim reads the same here as on
+// the map. render.ts draws the pages. Nothing in the output is typed by hand.
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
@@ -46,7 +46,7 @@ const app = opts.app;
 
 const doc = json<DocJson>(join(DIR, "doc.json"));
 const claims = maybe<{ claims: Claim[] }>(join(DIR, "claims.json"))?.claims ?? [];
-// What the old map took from `lake exe audit`, the doc export already has: each theorem's axioms
+// What the map takes from `lake exe audit`, the doc export already has: each theorem's axioms
 // beyond the standard three (the same `collectAxioms`), for the package's own theorems.
 const audit: Audit = {
 	theorems: Object.fromEntries(doc.decls.filter((d) => d.axioms).map((d) => [d.name, { ok: d.axioms!.length === 0, extraAxioms: d.axioms! }])),
@@ -61,10 +61,10 @@ const lock: Lock[] = readFileSync(join(root, "claims.lock"), "utf8")
 const fuzz = app ? maybe<Fuzz>(join(root, "build/fuzz", `${app}.json`)) : null;
 const trusted = maybe<Trusted>(join(root, "build/fuzz/trusted.json"));
 const conformance = app ? maybe<Conformance>(join(root, "build/conformance", `${app}.json`)) : null;
-const captureDir = app ? join(root, "build/capture", app, "shots") : "";
+const captureDir = app ? join(root, "build/map", app, "capture") : "";
 const capture = app ? maybe<Capture>(join(captureDir, "capture.json")) : null;
 
-// Screenshots from `make capture`, as WebP when cwebp is installed.
+// Screenshots from the map's capture, as WebP when cwebp is installed (as on the map).
 rmSync(DIST, { recursive: true, force: true });
 mkdirSync(DIST, { recursive: true });
 const webp = Bun.which("cwebp");
@@ -92,7 +92,7 @@ for (const r of rows) {
 const inputs = [
 	app && claims.some((c) => c.kind !== "assume") ? (fuzz ? `fuzz: ${fuzz.iterations.toLocaleString("en")} sequences` : "fuzz: not run") : "",
 	app && claims.some((c) => c.kind !== "assume") ? (conformance ? `conformance: ${conformance.runs?.toLocaleString("en") ?? "?"} walks` : `conformance: ${conformable ? "not run" : "no generator"}`) : "",
-	app && claims.some((c) => c.kind !== "assume") ? (capture ? "capture: make capture" : "capture: not run (make capture)") : "",
+	app && claims.some((c) => c.kind !== "assume") ? (capture ? "capture: from the map" : "capture: not run (make map)") : "",
 	claims.some((c) => c.kind === "assume") && trusted ? `trusted base: ${Object.keys(trusted.checks ?? {}).length} checks` : "",
 ].filter(Boolean);
 

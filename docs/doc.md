@@ -129,7 +129,7 @@ For `APP=Todo` the modules are `Examples.Todo` and every file under `lean/Exampl
 base's modules; the tool executables `Cairn.Claims.Export`, `Ledger`, `Tool`, `Tests` and
 `Cairn.Doc.Export` are left out). Evidence is whatever `build/` already has:
 `build/fuzz/<App>.json`, `build/fuzz/trusted.json`, `build/conformance/<App>.json`, and
-`make capture`'s screenshots in `build/capture/<App>/shots/`. Proved comes from the export's own axiom
+`make capture`'s screenshots in `build/map/<App>/capture/`. Proved comes from the export's own axiom
 check, so `make doc` doesn't need the whole-package audit (60 s).
 
 Sizes on this build: Cairn 59 modules with pages, 2,124 declarations (1,924 listed: the public
