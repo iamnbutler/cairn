@@ -24,7 +24,7 @@ let todo = LeanApp(
 let size = Size(w: 560, h: 720)
 let args = CommandLine.arguments
 
-// `--map-capture <script.json> <out dir>`: headless screenshots with pins for the map (docs/map.md).
+// `--map-capture <script.json> <out dir>`: headless screenshots with pins (`make capture`, docs/claim-pages.md).
 if let code = MapCapture.main(args, size: size, core: { LeanCore(todo) }) { exit(code) }
 
 func fail(_ msg: String) -> Never {

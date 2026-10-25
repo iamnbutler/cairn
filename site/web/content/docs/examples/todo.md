@@ -27,7 +27,7 @@ claim or to code; each claim's `does` names the requirements it covers.
 | ^216–^224 | flow | witnessed paths through the app |
 | ^225 | invariant | the listed rows are the todos the filter accepts, in order |
 
-Its map: [/map/todo/](/map/todo/). Run it with `make demo`.
+Its claims: [Todos window](/packages/cairn/claims/201/). Run it with `make demo`.
 
 ## Editing in place
 

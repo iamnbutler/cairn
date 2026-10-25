@@ -39,7 +39,7 @@ let package = Package(
         // The generic AppKit host: threads, input, text input, accessibility, effects.
         .target(name: "CairnHost", dependencies: ["CLean", "CairnFrame", "CairnRender"]),
 
-        // Headless screenshots with pins for the map (tools/map): each app executable calls
+        // Headless screenshots with pins (`make capture`): each app executable calls
         // MapCapture.main, since each links its own app.
         .target(name: "CairnCapture", dependencies: ["CairnHost", "CairnFrame", "CairnRender"]),
 

@@ -5,7 +5,7 @@ LEAN_PREFIX = $(shell cd lean && lean --print-prefix)
 LIB = build/lib/libcairn_lean.a
 VENDOR = host/Sources/CLean/vendor/lean
 
-.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest demo fixture clean record site site-maps map map-trusted doc doctest conformance fuzz fuzz-quick size fuzz-trusted fuzz-trusted-quick bundle site-build site-dist registry-check new-check cairn-tool fixture-build fixture-ledger examples-check examples-audit examples-doctest examples-selftest examples-fuzz-quick examples-size examples-bench
+.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest demo fixture clean record site capture doc doctest conformance fuzz fuzz-quick size fuzz-trusted fuzz-trusted-quick bundle site-build site-dist registry-check new-check cairn-tool fixture-build fixture-ledger examples-check examples-audit examples-doctest examples-selftest examples-fuzz-quick examples-size examples-bench
 
 # region: make-apps
 # build/lib/libcairn_lean.a: the framework (`Cairn`) and Lean's runtime, linked by every host
@@ -153,25 +153,6 @@ build/bin/record: tools/record/main.swift
 	mkdir -p build/bin
 	swiftc -O $< -o $@
 
-# Copy the Counter, Basics and Todo maps, and the trusted base's, into the microsite
-# (site/public/map/<app>/, site/public/map/trusted/), building them
-# first with fresh evidence: fuzzing for each, and conformance for each app with a generator
-# (it shows the app's window while it runs; CONFORMANCE=0 skips it and keeps any earlier run).
-# A failing fuzz or conformance run doesn't stop it: the failure is evidence, and the map shows it.
-MAP_APPS = Counter Basics Todo
-site-maps:
-	@for a in $(MAP_APPS); do \
-		$(MAKE) fuzz APP=$$a N=1000 || echo "site-maps: fuzzing $$a failed; its map shows it"; \
-		if [ "$(CONFORMANCE)" != 0 ] && [ -f lean/Examples/$$a/Conformance.lean ]; then \
-			$(MAKE) conformance APP=$$a || echo "site-maps: conformance on $$a failed; its map shows it"; fi; \
-		$(MAKE) map APP=$$a || exit 1; \
-	done
-	$(MAKE) fuzz-trusted || echo "site-maps: the trusted-base fuzzer failed; its map shows it"
-	$(MAKE) map-trusted
-	rm -rf site/public/map && mkdir -p site/public/map
-	@for a in $(MAP_APPS); do cp -R build/map/$$a/dist site/public/map/$$(echo $$a | tr A-Z a-z); done
-	cp -R build/map/Trusted/dist site/public/map/trusted
-
 # The site's pages, built by bongo (site/web/bongo.config.ts) into site/web/public/: the developer
 # docs (content/docs/*.md), the homepage, /milestones/ and /feed.xml, each page with a link
 # preview card. Docs code is included from source by region; a missing file or region, a fenced
@@ -219,38 +200,28 @@ site: site-dist
 clean:
 	rm -rf build lean/.lake host/.build .build $(FIXTURE)/lean/.lake $(FIXTURE)/.build $(FIXTURE)/.cairn $(FIXTURE)/build
 
-# region: make-map
-# The map (docs/map.md): claims + evidence → build/map/$(APP)/dist/, Cairn's own pages, with
-# headless screenshots pinned from the frame's accessibility rects. `make map APP=Counter`. It
-# reads build/fuzz/ and build/conformance/ if `make fuzz` or `make conformance` ran first.
+# region: make-capture
+# Headless screenshots of an app (docs/claim-pages.md): each flow's witness and each move no
+# flow presses, from the frame's own pixels, with pins from its accessibility rects. Writes
+# build/capture/$(APP)/; `make doc APP=…` shows them. `make capture APP=Counter`. Kept for a
+# per-claim visual export on the claim pages, which doesn't exist yet.
 APP ?= Counter
-MAPDIR = build/map/$(APP)
-map: host
-	mkdir -p $(MAPDIR)
-	cd lean && lake build claims audit
-	cd lean && lake exe claims Examples.$(APP) > ../$(MAPDIR)/claims.json
-	cd lean && lake env .lake/build/bin/audit --json ../$(MAPDIR)/audit.json > /dev/null
-	bun tools/map/cairn-map.ts script --claims $(MAPDIR)/claims.json > $(MAPDIR)/script.json
-	rm -rf $(MAPDIR)/capture
-	cd host && swift run Cairn$(APP) --map-capture ../$(MAPDIR)/script.json ../$(MAPDIR)/capture
-	bun tools/map/cairn-map.ts build --app $(APP) --dir $(MAPDIR)
-# endregion: make-map
-
-# The trusted base's assumptions (Cairn.Fuzz.Trusted.Claims) as a map of their own: no app, so
-# no capture; the evidence is build/fuzz/trusted.json from `make fuzz-trusted`.
-map-trusted: lean
-	mkdir -p build/map/Trusted
-	cd lean && lake build claims audit CairnTrusted
-	cd lean && lake exe claims Cairn.Fuzz.Trusted.Claims > ../build/map/Trusted/claims.json
-	cd lean && lake env .lake/build/bin/audit --json ../build/map/Trusted/audit.json > /dev/null
-	bun tools/map/cairn-map.ts build --app Trusted --name "Trusted base" --dir build/map/Trusted
+CAPDIR = build/capture/$(APP)
+capture: host
+	mkdir -p $(CAPDIR)
+	cd lean && lake build claims
+	cd lean && lake exe claims Examples.$(APP) > ../$(CAPDIR)/claims.json
+	bun tools/map/capture-script.ts --claims $(CAPDIR)/claims.json > $(CAPDIR)/script.json
+	rm -rf $(CAPDIR)/shots
+	cd host && swift run Cairn$(APP) --map-capture ../$(CAPDIR)/script.json ../$(CAPDIR)/shots
+# endregion: make-capture
 
 # cairn doc (docs/doc.md): a package's API and claims from its code, rustdoc-style.
 # `make doc APP=Todo` documents Examples.Todo and its submodules; `make doc PKG=Cairn` documents
 # the framework (DOC_CAIRN), which is the developer docs' API reference. Writes
 # build/doc/<name>/dist/. PRIVATE=1 shows private declarations; OPEN=1 opens the index. Claims
-# carry the evidence already in build/ (`make fuzz`, `make conformance`, `make map` for the
-# screenshots), as on the map. Doc tests (Lean code blocks in doc comments) run first and fail
+# carry the evidence already in build/ (`make fuzz`, `make conformance`, `make capture` for the
+# screenshots). Doc tests (Lean code blocks in doc comments) run first and fail
 # the build.
 DOC_CAIRN = Cairn CairnAll Cairn.Claims Cairn.Fuzz Cairn.Fuzz.Trusted.Claims Cairn.Fuzz.Trusted.Export
 DOC_NAME = $(or $(PKG),$(APP))
@@ -273,7 +244,7 @@ doctest: lean
 # region: make-conformance
 # Conformance (docs/conformance.md): the Lean model's sequences replayed on the running app
 # through its debug socket. `make conformance APP=Basics [N=1000] [LEN=12] [SEED=1]` writes
-# build/conformance/$(APP).json (read by the map) and build/conformance/$(APP)/report.md.
+# build/conformance/$(APP).json (read by `make doc`) and build/conformance/$(APP)/report.md.
 # Adding an example takes one file: lean/Examples/<App>/Conformance.lean. An app package runs
 # `cairn conformance` instead (test/fixture: `cd test/fixture && cairn conformance`).
 # The generator links with system clang, not Lake: Lake's bundled lld can't read the SDK's
@@ -303,7 +274,7 @@ conformance: lean
 
 # region: make-fuzz
 # Claim-driven fuzzing (docs/fuzz.md): `make fuzz APP=Basics N=1000` runs N sequences from seed
-# SEED (default 0) and writes build/fuzz/$(APP).json, which `make map` reads.
+# SEED (default 0) and writes build/fuzz/$(APP).json, which `make doc` reads.
 fuzz: lean
 	cd lean && lake build fuzz && .lake/build/bin/fuzz $(APP) --seed $(or $(SEED),0) --iterations $(or $(N),200) --out ../build/fuzz
 # endregion: make-fuzz

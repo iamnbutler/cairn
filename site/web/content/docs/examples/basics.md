@@ -19,7 +19,7 @@ every reachable state.
 | ^106 | place | the window |
 | ^107–^109 | flow | add and finish; blank text adds nothing; add, then delete |
 
-Its map: [/map/basics/](/map/basics/). Run it with `make demo DEMO=CairnBasics`.
+Its claims: [Basics window](/packages/cairn/claims/106/). Run it with `make demo DEMO=CairnBasics`.
 
 ## State
 

@@ -12,7 +12,7 @@ evidence. Read [GOAL.md](GOAL.md) for what we are building now (M2; M1 is in doc
   and the debug socket. No application logic.
 - `docs/`: design docs, the frame format (`frame.md`) and the trusted base (`trusted.md`).
 - `research/`: sourced notes on prior art, one folder per source.
-- `tools/`: the conformance driver, map generation, audits, and the `cairn` CLI (`tools/cairn`).
+- `tools/`: the conformance driver, the app capture, audits, and the `cairn` CLI (`tools/cairn`).
 - `test/fixture/`: Cairn's own app, a package of its own (scope `fixture`, its own claims.lock).
   The framework's checks run on it with the `cairn` CLI; the examples are checked separately
   (`examples-check`) and nothing outside them imports them.

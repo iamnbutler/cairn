@@ -21,5 +21,5 @@ Two more apps in the repository aren't written up yet: **Clock**, a stopwatch th
 for effects (the guide's [effects chapter](/docs/guide/effects/) uses it), and **Tray**, a menu bar
 item with an overlay panel, the example for surfaces.
 
-Counter, Basics and TodoMVC each have a published [map](/docs/evidence/): every claim, its
-evidence, and screenshots.
+Counter, Basics and TodoMVC each have [claim pages](/docs/evidence/): every claim, its place
+and its proofs.

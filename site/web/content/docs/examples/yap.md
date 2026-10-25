@@ -55,7 +55,7 @@ However replies arrive (late, twice, out of order, or never), no clip is typed t
 
 ## What's not covered yet
 
-- Yap's map isn't published.
+- Yap's claim pages appear once it is published to the registry.
 - The parity table's open rows need decisions, chiefly whether the port should replace the
   original outright rather than sit beside it.
 - Apps can't yet declare host effects of their own: the effects Yap needed were added to Cairn

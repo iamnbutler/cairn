@@ -6,7 +6,7 @@ lede: A count, an Increment button, and a Reset button that is there only when t
 ---
 
 Counter is the smallest complete Cairn app. Every part of the stack is in it: claims, a view,
-proofs that reach the screen, runtime tests, a Swift host, a self test and a map.
+proofs that reach the screen, runtime tests, a Swift host, a self test and claim pages.
 [Your first app](/docs/guide/first-app/) walks through it in order; this page is the reference.
 
 | Id | Kind | What |
@@ -18,7 +18,7 @@ proofs that reach the screen, runtime tests, a Swift host, a self test and a map
 | ^6 | retired | an invariant the runtime made pointless |
 | ^7 | assume | the host reports clicks where they happen |
 
-Its map: [/map/counter/](/map/counter/).
+Its claims: [Counter window](/packages/cairn/claims/3/).
 
 ## The model and its claims
 

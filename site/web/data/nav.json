@@ -37,10 +37,10 @@
 		"section": "Evidence",
 		"items": [
 			{ "page": "evidence/index" },
-			{ "href": "/map/counter/", "title": "Counter's map" },
-			{ "href": "/map/basics/", "title": "Basics' map" },
-			{ "href": "/map/todo/", "title": "TodoMVC's map" },
-			{ "href": "/map/trusted/", "title": "The trusted base's map" }
+			{ "href": "/packages/cairn/claims/3/", "title": "Counter's claims" },
+			{ "href": "/packages/cairn/claims/106/", "title": "Basics' claims" },
+			{ "href": "/packages/cairn/claims/201/", "title": "TodoMVC's claims" },
+			{ "href": "/packages/cairn/claims/#assumptions", "title": "The trusted base's claims" }
 		]
 	}
 ]

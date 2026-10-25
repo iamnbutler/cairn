@@ -21,7 +21,7 @@
 //   model    the generator's own findings (presence, and a press delivering exactly that press)
 //
 // Then it replays every flow's witness from `lake exe claims` the same way. It writes
-// build/conformance/<App>.json in the map's shape (docs/map.md) and <App>/report.md, with a
+// build/conformance/<App>.json in the shape tools/map/evidence.ts reads and <App>/report.md, with a
 // shrunk, re-verified repro for each distinct failure.
 //
 // Privacy: input goes only into the app's own view through its socket (no CGEvent, no window
@@ -492,7 +492,7 @@ async function main() {
 	c.close();
 	stopApp();
 
-	// build/conformance/<App>.json, in the map's shape (docs/map.md).
+	// build/conformance/<App>.json, in the shape tools/map/evidence.ts reads.
 	const commit = spawnSync("git", ["rev-parse", "--short", "HEAD"]).stdout.toString().trim();
 	const claims: Record<string, { pass: boolean; runs: number; note?: string; known?: Record<string, number> }> = {};
 	for (const [ref, t] of [...tally].sort()) {

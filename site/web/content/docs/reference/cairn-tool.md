@@ -59,7 +59,6 @@ in it:
 |---|---|---|
 | `cairn run` | open the app in a window | `make demo DEMO=Cairn<App>` |
 | `cairn check` | everything a change must pass | `make check` |
-| `cairn map` | build the app's map | `make map APP=<App>` |
 | `cairn bundle --sign` | a signed `.app` | `make bundle APP=<App> SIGN=<identity>`, or Cairn's `tools/bundle/bundle.sh` from an app's own repository |
 | `cairn doctor` | check the toolchain | none |
 
@@ -85,9 +84,9 @@ Run them from the root of the Cairn repository. Each is shown as it is in the Ma
 
 <bongo:include src="Makefile#make-conformance" />
 
-### Maps
+### Capture
 
-<bongo:include src="Makefile#make-map" />
+<bongo:include src="Makefile#make-capture" />
 
 ### Ship
 

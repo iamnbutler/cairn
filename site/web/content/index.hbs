@@ -59,8 +59,8 @@ card: { label: "", title: Cairn, line: "Mac apps where every action is a claim, 
     <ol class="callouts">
       <li>The id, <code>^2</code>, then a Lean name, a title and the place the control appears in:
         <code>^3</code>, the counter's window.</li>
-      <li>The human half: what the person does and what they see. Reviewers read it, and the map is
-        built from it.</li>
+      <li>The human half: what the person does and what they see. Reviewers read it, and its claim
+        page shows it.</li>
       <li>When the move is available. Lean proves Reset's button is on screen exactly when this holds.</li>
       <li>What pressing it does. The app's update is assembled from its moves and nothing else.</li>
       <li>The claim, formally: afterwards the count is zero and Reset is gone.</li>
@@ -97,7 +97,7 @@ card: { label: "", title: Cairn, line: "Mac apps where every action is a claim, 
   </table>
 
   <h3 class="sub" id="how-sure-we-are">How sure we are</h3>
-  <p>Every claim carries its evidence, and the map shows which kind. Strongest first:</p>
+  <p>Every claim carries its evidence, and its claim page shows which kind. Strongest first:</p>
   <ul class="trail ladder">
     <li><b>Proved.</b> Lean's kernel checked the proof, using only the three standard axioms;
       <code>make check</code> audits every theorem.</li>
@@ -107,10 +107,11 @@ card: { label: "", title: Cairn, line: "Mac apps where every action is a claim, 
       so every use shows.</li>
     <li><b>Seen.</b> A screenshot of the real app with the claim's control pinned on it.</li>
   </ul>
-  <p>The map turns this into pages: every claim an app makes, with its evidence and screenshots of
-    the real app, generated from the build and nothing written by hand. See the maps for the
-    <a href="/map/counter/">counter</a>, <a href="/map/basics/">Basics</a>,
-    <a href="/map/todo/">TodoMVC</a> and the <a href="/map/trusted/">trusted base</a>.</p>
+  <p>Every package on the registry gets claim pages: every claim it makes, grouped by place, with
+    its proofs, generated from what it published and nothing written by hand. See Cairn's for the
+    <a href="/packages/cairn/claims/3/">counter</a>, <a href="/packages/cairn/claims/106/">Basics</a>,
+    <a href="/packages/cairn/claims/201/">TodoMVC</a> and the
+    <a href="/packages/cairn/claims/#assumptions">trusted base</a>.</p>
 
 </main>
 

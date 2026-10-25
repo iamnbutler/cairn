@@ -2,13 +2,13 @@
 title: Shipping
 nav: Shipping
 eyebrow: Building an app · Chapter 6
-lede: Checking an app, putting it in a signed bundle, and publishing its map.
+lede: Checking an app, putting it in a signed bundle, and publishing it with its claim pages.
 ---
 
 <bongo:note label="Today">
-The checks, bundles and maps here run through the Cairn repository's Makefile, for the apps
-that live in it. An app in its own repository builds with `cairn build`, but checking, bundling
-and mapping it from the `cairn` tool are still planned; Yap's repository has its own make targets
+The checks and bundles here run through the Cairn repository's Makefile, for the apps
+that live in it. An app in its own repository builds with `cairn build`, but checking and bundling
+it from the `cairn` tool are still planned; Yap's repository has its own make targets
 that call Cairn's tools. See [the cairn tool](/docs/reference/cairn-tool/).
 </bongo:note>
 
@@ -62,10 +62,9 @@ signature, so a differently signed build is a new app and has to be granted agai
 passes it to Cairn's `tools/bundle/bundle.sh`, which an app outside this repository runs from its
 Lake checkout of Cairn.
 
-## Publish the map
+## Publish it
 
-The map is a set of pages generated from an app's claims and the build's evidence: one row per
-claim, its proofs, fuzz and conformance results, and screenshots taken from the app's own frames.
-Nothing on it is written by hand. See [the evidence ladder](/docs/reference/evidence/).
-
-<bongo:include src="Makefile#make-map" />
+`cairn publish` sends a tagged version to the registry with its claims export, and the site
+renders its [claim pages](/docs/evidence/) from that: every claim, grouped by place, with its
+proofs, a flow's steps and where it's defined. Nothing on them is written by hand. See
+[the evidence ladder](/docs/reference/evidence/) and [the cairn tool](/docs/reference/cairn-tool/).

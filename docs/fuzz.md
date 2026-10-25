@@ -199,16 +199,16 @@ exercised it), `not runnable: no Decidable instance`, `n/a` (flows, places, assu
 ```
 
 Action steps have exactly the shape of a flow's witness in `lake exe claims` (`trigger`, `ref`,
-`claim`, `key`, `op`), which the map capture already replays, with `op` extended to every
+`claim`, `key`, `op`), which the capture already replays, with `op` extended to every
 `TextOp` (`extend`, `selStart`, `selLen`). Raw pointer steps carry the point and the control it
 hit in the model (`hit`), so a driver whose metrics differ (Core Text, not the fuzzer's) can
 retarget by ref.
 
-## Evidence on the map
+## Evidence in the docs
 
-`tools/map` reads `build/fuzz/<App>.json`: a move or invariant that held in every sequence gets
-a `fuzzed N` chip (N sequences), between proved and tested on the map's ladder (docs/map.md,
-"Evidence"). A failure makes the claim `broken`, with the failure and its replay command as a
+`tools/map/evidence.ts` (used by `cairn doc`) reads `build/fuzz/<App>.json`: a move or invariant that held in every sequence gets
+a `fuzzed N` chip (N sequences), between proved and tested on the evidence ladder
+(site/web/content/docs/reference/evidence.md). The claim pages don't show it yet (#95). A failure makes the claim `broken`, with the failure and its replay command as a
 gap. A claim the fuzzer didn't reach, or can't run, is a gap.
 
 ## Results

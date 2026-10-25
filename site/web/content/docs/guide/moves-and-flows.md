@@ -24,8 +24,8 @@ Reading it top to bottom:
 
 - `move ^1 increment (s : State) "Increment" in ^3`: the id, a Lean name, the state's name, the
   title, and the place the control appears in.
-- `does` and `sees`: what a person does and what follows. Reviewers read these, and the
-  [map](/docs/reference/evidence/) is built from them. Both are required.
+- `does` and `sees`: what a person does and what follows. Reviewers read these, and its
+  [claim pages](/docs/evidence/) show them. Both are required.
 - `on press`: one block per kind of action the move answers. The triggers are `press`,
   `doublePress`, `submit`, `cancel`, `blur` and `edit`, which also binds the text operation.
 - `apply`: the new state. Use `emit` instead when the move also asks the host to do something;
@@ -69,7 +69,7 @@ A witness step names a control: `press ^1`, `press ^103#1`, `edit ^101 (.insert 
 
 <bongo:include src="lean/Examples/Basics.lean#basics-flows" />
 
-Flows are also what the map replays to take screenshots, and what the conformance driver replays
+Flows are also what the capture replays to take screenshots, and what the conformance driver replays
 against the running app.
 
 ## Invariants
