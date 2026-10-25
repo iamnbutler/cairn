@@ -51,7 +51,7 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
 
 ## v0.3.0
 
-25 October 2026.
+25 October 2026, at commit `60c4483`.
 
 A minor version: it moves the example apps' claims out of Cairn, retires claims, removes
 modules and changes the frame format, so apps need the changes under "Upgrading to v0.3.0"

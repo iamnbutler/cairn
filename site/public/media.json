@@ -1,5 +1,17 @@
 [
   {
+    "title": "Cairn 0.3.0: the example apps leave, Keychain secrets, secure fields and scroll boxes",
+    "text": [
+      "Cairn 0.3.0 is out on the public registry as iamnbutler/cairn. The example apps (Counter, Basics, Todo, Clock, Tray, Gallery) live in their own package, cairn_examples, and their 71 claims keep their numbers there: cairn^202 is now cairn_examples^202, marked moved:cairn_examples in Cairn's ledger, which now holds only framework claims (#219).",
+      "A secret can live in the Keychain, and http can capture reply fields into it before Lean sees the body (#216). Text.SecureField shows bullets, never puts its text on the clipboard, in undo history or in any frame dump, and the host turns on secure event input while it has focus (#217). Style.scroll lays out scroll boxes, with proofs that what shows stays inside the box and a control is pressed only where it shows (#218). The frame format is version 11, and the 0.1.3 shims are gone.",
+      "The registry's ledger check accepted 0.2.5 to 0.3.0: moving and retiring released claims needs a new minor while at 0.x, and 0.2.6 would have been refused. It checked the claims export, 53 claims, against the ledger and serves it for the claim pages. Apps upgrade by naming an environment secret's source, matching http with eight arguments and importing Cairn.Abi for Cairn.Frame.Boundary."
+    ],
+    "date": "2026-10-25",
+    "published": "2026-10-25T22:40:44Z",
+    "commit": "60c4483",
+    "milestone": "m4"
+  },
+  {
     "image": "/m/images/8e152cdadfa259a1.png",
     "title": "Secure text field",
     "caption": "The fixture's Passcode field after typing seven characters: the frame holds seven bullets, never the text, and the host gives it the AXSecureTextField role with no value. An offscreen render of the frame (Renderer.image).",
