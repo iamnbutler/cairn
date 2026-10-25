@@ -64,7 +64,7 @@ Unknown tables and keys are errors. Three names must agree, and `cairn build` an
 |---|---|
 | `cairn new <name> [--lib\|--bin]` | writes `cairn.toml` with its `kind`, `claims.lock`, `lean/` (a lakefile.lean that sets the claim scope and requires Cairn, and a `module` that does `public import Cairn`), and for an app (`bin`) a working one: a window with a count and a Count button (a place and a move), its exports (`lean/<Module>/Abi.lean`), `Package.swift`, a C target declaring its initializer and a host with `--selftest`. With neither flag it asks which. `make new-check` (in `make check`) builds a new app against the checkout and runs its selftest and ledger |
 | `cairn add [<owner>/]<name>[@<range>]` | adds the dependency to `cairn.toml` and puts `require "<owner>" / "<name>" @ "<range>"` (or a `[[require]]` with `scope` and `version`) in the lakefile, replacing a git require of it. It prints the `Package.swift` line instead of editing Swift. With no range, it uses `^` and the latest release. With no owner, it asks the registry for the name's owner (`GET /api/v1/names/<name>`; a name has one owner). It needs no login |
-| `cairn build [--release]` | `lake cache get`, `lake build`, `cairn-link --lib <libs…> --out .cairn/lib/lib<name>.a` for an app (cairn-link adds each dependency's `libs`; it comes from the Cairn checkout `lean/lake-manifest.json` names, a fetched one or a `require cairn from "<path>"`), `swift build` |
+| `cairn build [--app A] [--product P] [--release]` | `lake cache get`, `lake build`, `cairn-link --lib <libs…> --out .cairn/lib/lib<name>.a` for an app (cairn-link adds each dependency's `libs`; it comes from the Cairn checkout `lean/lake-manifest.json` names, a fetched one or a `require cairn from "<path>"`), `swift build`. In a package of several apps it links and builds one (see "Several apps") |
 | `cairn doc [--private] [--open]` | `lake exe doc --check` and `lake exe claims` on the package's libs, then `tools/doc/cairn-doc.ts` into `build/doc/<name>/`, with each dependency's modules linked to `/docs/<dep>/<version>/` |
 | `cairn publish [--owner <login>] [--dry-run]` | publishes the commit at tag `v<version>`, which must be HEAD with a clean tree, under `--owner` or else the login the token belongs to. It sends no docs. See below |
 | `cairn login` | reads a nexthub token with `package:write` from stdin, checks it with the registry (`GET /-/whoami`), and saves it with the registry's URL to `~/.config/cairn/credentials`, mode 0600. Only `cairn publish` uses it |
@@ -106,12 +106,25 @@ package of its own that requires the checkout by path.
 |---|---|
 | `cairn fuzz [<target>…] [--iterations N] [--seed S] [--steps K] [--out DIR] [-v]` | `lake build fuzz`, then the fuzzer (docs/fuzz.md) on every machine `--list` names, or the ones given, into `build/fuzz/<target>.json`. The package declares the executable: `lean_exe fuzz` whose root imports the app, `Cairn.Fuzz.Collect` and `Cairn.Fuzz.Main` and defines `main` over `fuzz_targets%` (test/fixture/lean/FuzzMain.lean) |
 | `cairn claims [<module>…] [--ledger] [--out FILE]` | `lake exe claims` on the package's `libs`, or the modules given: every claim as JSON, on stdout or into the file. `--ledger` exports exactly the package's own claims (its scope), as `cairn publish` sends them |
-| `cairn bench [--product P]` | a release build, then the app's own `<product> --bench` with `LEAN_ABORT_ON_NONLINEAR=1`. The host decides what it measures |
-| `cairn size [--product P]… [--limit BYTES]` | a release build of each executable with a link map, stripped into `build/size/` and attributed by Cairn's `tools/size/size.ts` (Lean runtime, Cairn, the app's `libs`, Swift host, shaders); fails over the limit, 5,000,000 bytes by default (bench/size.md) |
-| `cairn conformance [--module M] [--product P] [--n N] [--length L] [--seed S]` | the model replayed on the running app (docs/conformance.md): links the generator from the module `M`, by default `<App>.Conformance` with `<App>` the first of `libs`, with the app's merged library and the host's Core Text metrics, then runs Cairn's driver. Writes `build/conformance/<App>.json` and `build/conformance/<App>/report.md`. The app's window opens while it runs |
+| `cairn bench [--app A] [--product P]` | a release build, then the app's own `<product> --bench` with `LEAN_ABORT_ON_NONLINEAR=1`. The host decides what it measures |
+| `cairn size [--app A] [--product P]… [--limit BYTES]` | a release build of each executable with a link map, stripped into `build/size/` (`build/size/<App>/` in a package of several apps) and attributed by Cairn's `tools/size/size.ts` (Lean runtime, Cairn, the app's `libs`, Swift host, shaders); fails over the limit, 5,000,000 bytes by default (bench/size.md) |
+| `cairn conformance [--app A] [--module M] [--product P] [--n N] [--length L] [--seed S]` | the model replayed on the running app (docs/conformance.md): links the generator from the module `M`, by default `<App>.Conformance` with `<App>` the app, with the app's merged library and the host's Core Text metrics, then runs Cairn's driver. Writes `build/conformance/<App>.json` and `build/conformance/<App>/report.md`. The app's window opens while it runs |
 
-`--product` defaults to the only executable product of the package's `Package.swift`.
-`cairn doc` (above) is the sixth: it already took a package.
+`--product` defaults to the only executable product of the package's `Package.swift`, else to
+the one named after the app (`<App>` or `Cairn<App>`). `cairn doc` (above) is the sixth: it
+already took a package.
+
+### Several apps
+
+A package can hold several apps, as iamnbutler/cairn_examples does: each `lean_lib` in `libs`
+whose static library defines `cairn_app_init` is one. v1 apps all export `cairn_app_*`, so an
+executable links exactly one, and `cairn build`, `cairn size`, `cairn bench` and
+`cairn conformance` link one at a time: `--app <Lib>`, which defaults to the only app and is
+required when there are several (the error lists them). The app's archive holds it and the
+`libs` that aren't apps. With one app it is `.cairn/lib/lib<name>.a`; with several, each app's is
+`.cairn/lib/lib<name>_<app, lowercased>.a` (`libcairn_examples_counter.a`), which its
+executable's `linkerSettings` name. `cairn claims --ledger`, `cairn publish` and `cairn doc`
+still read every lib in `libs`.
 
 ### Versions and tags
 

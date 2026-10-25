@@ -42,14 +42,43 @@ public struct Project: Sendable {
         return package.standardizedFileURL.deletingLastPathComponent()
     }
 
-    /// `cairn build`'s link step: `bin/cairn-link` from the Cairn that Lake fetched, with this
-    /// package's `libs` (cairn-link adds every dependency's own), into .cairn/lib/lib<name>.a.
-    /// None for a lib: an app links it. Cairn's own `make lean` writes build/lib/libcairn_lean.a,
-    /// and a second copy here would only drift.
-    public var linkCommand: [String]? {
-        guard manifest.kind == .bin, !manifest.libs.isEmpty else { return nil }
-        let out = root.appending(path: ".cairn/lib/lib\(manifest.name).a")
-        return [cairn.appending(path: "bin/cairn-link").path] + manifest.libs.flatMap { ["--lib", $0] } + ["--out", out.path]
+    /// Whether `cairn build` links the Lean side: an app with `libs`. A lib links nothing (an app
+    /// links its `libs`), and Cairn's own `make lean` writes build/lib/libcairn_lean.a.
+    public var links: Bool { manifest.kind == .bin && !manifest.libs.isEmpty }
+
+    /// The app to link, of the package's apps (the `libs` that define `cairn_app_init`): the one
+    /// given (`--app`), else the only one. A package can hold several apps (cairn_examples).
+    public static func pick(app given: String?, among apps: [String]) throws(CairnError) -> String {
+        if let given {
+            guard apps.contains(given) else {
+                throw CairnError("`\(given)` isn't an app of this package; its apps (the `libs` that define cairn_app_init) are \(apps.isEmpty ? "none" : apps.joined(separator: ", "))")
+            }
+            return given
+        }
+        switch apps.count {
+        case 0: throw CairnError("no library in cairn.toml's `libs` defines cairn_app_init, an app's exports (docs/runtime.md)")
+        case 1: return apps[0]
+        default: throw CairnError("this package has several apps (\(apps.joined(separator: ", "))); pick one with --app")
+        }
+    }
+
+    /// What `app` links: it and every lib of `libs` that isn't an app, in `libs` order.
+    public func linked(app: String, apps: [String]) -> [String] {
+        manifest.libs.filter { $0 == app || !apps.contains($0) }
+    }
+
+    /// The archive `cairn build` links `app` into: .cairn/lib/lib<name>.a for the only app, and
+    /// lib<name>_<app, lowercased>.a in a package of several (libcairn_examples_counter.a).
+    public func archive(app: String, apps: [String]) -> URL {
+        let file = apps.count > 1 ? "lib\(manifest.name)_\(app.lowercased()).a" : "lib\(manifest.name).a"
+        return root.appending(path: ".cairn/lib/\(file)")
+    }
+
+    /// `cairn build`'s link step: `bin/cairn-link` from the Cairn that Lake fetched, with what
+    /// `app` links (cairn-link adds every dependency's own `libs`), into its archive.
+    public func linkCommand(app: String, apps: [String]) -> [String] {
+        [cairn.appending(path: "bin/cairn-link").path] + linked(app: app, apps: apps).flatMap { ["--lib", $0] }
+            + ["--out", archive(app: app, apps: apps).path]
     }
 
     /// The modules `cairn doc` and `cairn claims` read: the package's `libs`, or for Cairn
@@ -187,18 +216,38 @@ public struct Commands {
 
     // MARK: build
 
-    /// `cairn build [--release]`: `lake cache get`, `lake build`, `cairn-link`, `swift build`.
+    /// `cairn build [--app A] [--product P] [--release]`: `lake cache get`, `lake build`,
+    /// `cairn-link` for the app, `swift build`. In a package of several apps, it links and builds
+    /// one: `--app`, and its executable (`product`).
     public func build(_ args: [String]) throws(CairnError) {
+        let a = try Arguments(args, options: ["--app", "--product"], flags: ["--release"], usage: "usage: cairn build [--app A] [--product P] [--release]")
         let project = try project()
-        try buildLean(project)
+        let linked = try buildLean(project, app: a.value("--app"))
         let package = project.swift.appending(path: "Package.swift")
         guard FileManager.default.fileExists(atPath: package.path) else { return }
-        try shell.run(["swift", "build"] + (args.contains("--release") ? ["-c", "release"] : []), in: project.swift)
+        let release = a.flags.contains("--release") ? ["-c", "release"] : []
+        if linked?.several == true || a.options["--product"] != nil {
+            for p in try product(project, a, app: linked?.app) {
+                try shell.run(["swift", "build"] + release + ["--product", p], in: project.swift)
+            }
+        } else {
+            try shell.run(["swift", "build"] + release, in: project.swift)
+        }
+    }
+
+    /// The app `buildLean` linked: its library, what it linked, and its archive.
+    struct Linked {
+        var app: String
+        var libs: [String]
+        var archive: URL
+        /// Whether the package holds several apps.
+        var several: Bool
     }
 
     /// `cairn build` up to SwiftPM: the name check, `lake cache get`, `lake build`, and for an app
-    /// `cairn-link`.
-    func buildLean(_ project: Project) throws(CairnError) {
+    /// `cairn-link` of the one `app` names (`Project.pick`).
+    @discardableResult
+    func buildLean(_ project: Project, app given: String? = nil) throws(CairnError) -> Linked? {
         try project.agree()
         let env = lakeEnv(registry())
         guard shell.has("lake") else { throw CairnError("lake isn't on PATH; install elan (AGENTS.md, Toolchain)") }
@@ -209,13 +258,30 @@ public struct Commands {
         }
         try shell.run(["lake", "build"], in: project.lean, env: env)
         let package = project.swift.appending(path: "Package.swift")
-        guard FileManager.default.fileExists(atPath: package.path) else { return }
-        if let command = project.linkCommand {
-            guard FileManager.default.isExecutableFile(atPath: command[0]) else {
-                throw CairnError("\(command[0]) is missing: Cairn 0.1.0 or later ships it (docs/package.md)")
-            }
-            try shell.run(command, in: project.lean, env: env)
+        guard FileManager.default.fileExists(atPath: package.path), project.links else { return nil }
+        let link = project.cairn.appending(path: "bin/cairn-link").path
+        guard FileManager.default.isExecutableFile(atPath: link) else {
+            throw CairnError("\(link) is missing: Cairn 0.1.0 or later ships it (docs/package.md)")
         }
+        let apps = try apps(project, env: env)
+        let app = try Project.pick(app: given, among: apps)
+        try shell.run(project.linkCommand(app: app, apps: apps), in: project.lean, env: env)
+        return Linked(app: app, libs: project.linked(app: app, apps: apps), archive: project.archive(app: app, apps: apps), several: apps.count > 1)
+    }
+
+    /// The package's apps: the `libs` whose static library defines `cairn_app_init`, in `libs`
+    /// order. `lake query` builds each one's static facet, as cairn-link does.
+    func apps(_ project: Project, env: [String: String]) throws(CairnError) -> [String] {
+        let libs = project.manifest.libs
+        let paths = try shell.capture(["lake", "query"] + libs.map { "\($0):static" }, in: project.lean, env: env).text
+            .split(separator: "\n").suffix(libs.count).map(String.init)
+        guard paths.count == libs.count else { throw CairnError("`lake query` printed no archive for some of \(libs.joined(separator: ", "))") }
+        var apps: [String] = []
+        for (lib, path) in zip(libs, paths) {
+            let symbols = try shell.capture(["nm", "-gU", path], in: project.lean, check: false).text
+            if symbols.split(separator: "\n").contains(where: { $0.hasSuffix(" _cairn_app_init") }) { apps.append(lib) }
+        }
+        return apps
     }
 
     // MARK: doc

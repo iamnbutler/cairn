@@ -230,10 +230,44 @@ import Testing
     }
 
     /// An app links its own `libs` with Cairn's cairn-link; cairn-link adds its dependencies'.
+    /// A lib that isn't an app (`YapCore`) goes into the app's archive.
     @Test func appLinksItsLibs() throws {
-        let app = try project("[package]\nname = \"yap\"\nversion = \"0.1.0\"\nkind = \"bin\"\nlibs = [\"Yap\", \"YapAbi\"]\n")
-        #expect(app.linkCommand == ["/work/app/lean/.lake/packages/cairn/bin/cairn-link",
-                                    "--lib", "Yap", "--lib", "YapAbi", "--out", "/work/app/.cairn/lib/libyap.a"])
+        let app = try project("[package]\nname = \"yap\"\nversion = \"0.1.0\"\nkind = \"bin\"\nlibs = [\"Yap\", \"YapCore\"]\n")
+        #expect(app.links)
+        #expect(try Project.pick(app: nil, among: ["Yap"]) == "Yap")
+        #expect(app.linkCommand(app: "Yap", apps: ["Yap"]) == ["/work/app/lean/.lake/packages/cairn/bin/cairn-link",
+                                    "--lib", "Yap", "--lib", "YapCore", "--out", "/work/app/.cairn/lib/libyap.a"])
+    }
+
+    /// A package of several apps (cairn#173, cairn_examples) links one at a time, `--app`, into
+    /// an archive of its own, with the libs that aren't apps.
+    @Test func severalApps() throws {
+        let pkg = try project("[package]\nname = \"cairn_examples\"\nversion = \"0.1.0\"\nkind = \"bin\"\nlibs = [\"Counter\", \"Shared\", \"Todo\"]\n")
+        let apps = ["Counter", "Todo"]
+        #expect(try Project.pick(app: "Todo", among: apps) == "Todo")
+        #expect(throws: CairnError("this package has several apps (Counter, Todo); pick one with --app")) {
+            try Project.pick(app: nil, among: apps)
+        }
+        #expect(throws: CairnError("`Shared` isn't an app of this package; its apps (the `libs` that define cairn_app_init) are Counter, Todo")) {
+            try Project.pick(app: "Shared", among: apps)
+        }
+        #expect(throws: CairnError("no library in cairn.toml's `libs` defines cairn_app_init, an app's exports (docs/runtime.md)")) {
+            try Project.pick(app: nil, among: [])
+        }
+        #expect(pkg.linked(app: "Todo", apps: apps) == ["Shared", "Todo"])
+        #expect(pkg.linkCommand(app: "Todo", apps: apps) == ["/work/app/lean/.lake/packages/cairn/bin/cairn-link",
+                                    "--lib", "Shared", "--lib", "Todo", "--out", "/work/app/.cairn/lib/libcairn_examples_todo.a"])
+        #expect(pkg.archive(app: "Counter", apps: ["Counter"]).lastPathComponent == "libcairn_examples.a")
+    }
+
+    /// Each app's executable: the only one, the one named after the app, or `Cairn<App>`.
+    @Test func productForApp() throws {
+        #expect(try SwiftPackage.product(for: "Counter", among: ["Host"]) == "Host")
+        #expect(try SwiftPackage.product(for: "Counter", among: ["CairnCounter", "CairnTodo"]) == "CairnCounter")
+        #expect(try SwiftPackage.product(for: "Todo", among: ["Todo", "CairnTodo"]) == "Todo")
+        #expect(throws: CairnError.self) { try SwiftPackage.product(for: nil, among: ["A", "B"]) }
+        #expect(throws: CairnError.self) { try SwiftPackage.product(for: "Clock", among: ["A", "B"]) }
+        #expect(throws: CairnError.self) { try SwiftPackage.product(for: "A", among: []) }
     }
 
     /// A lib has nothing to link: the apps that depend on it link its `libs`. Cairn's own
@@ -244,7 +278,7 @@ import Testing
         "[package]\nname = \"tool\"\nversion = \"0.1.0\"\nkind = \"bin\"\nlibs = []\n",
     ])
     func libsAndEmptyAppsLinkNothing(_ text: String) throws {
-        #expect(try project(text).linkCommand == nil)
+        #expect(try !project(text).links)
     }
 
     /// What `cairn doc` links a dependency's modules under. Cairn 0.1.3's cairn.toml lists no libs.

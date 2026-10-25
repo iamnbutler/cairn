@@ -8,7 +8,8 @@ let usage = """
                                       and for an app Package.swift (asks which with neither)
       cairn add [<owner>/]<name>[@<range>]
                                       depend on a package from the registry
-      cairn build [--release]         lake cache get, lake build, cairn-link, swift build
+      cairn build [--app A] [--release]
+                                      lake cache get, lake build, cairn-link, swift build
       cairn doc [--private] [--open]  the package's docs, in build/doc/<name>/
       cairn publish [--owner <login>] [--dry-run]
                                       publish the version at tag v<version> and its build,
@@ -20,11 +21,14 @@ let usage = """
                                       claim-driven fuzzing (`lean_exe fuzz`), build/fuzz/
       cairn claims [<module>…] [--out FILE]
                                       every claim as JSON (lake exe claims)
-      cairn bench [--product P]       release build, then the app's own --bench
-      cairn size [--product P]… [--limit BYTES]
+      cairn bench [--app A] [--product P]
+                                      release build, then the app's own --bench
+      cairn size [--app A] [--product P]… [--limit BYTES]
                                       stripped release size, attributed, under a limit
-      cairn conformance [--module M] [--product P] [--n N] [--length L] [--seed S]
+      cairn conformance [--app A] [--module M] [--product P] [--n N] [--length L] [--seed S]
                                       the Lean model replayed on the running app
+
+    --app picks the app in a package of several: the `libs` that define cairn_app_init.
 
     The registry is https://cairn.registry.nexthub.sh, which anyone reads with no login;
     CAIRN_REGISTRY overrides it. CAIRN_TOKEN overrides the saved token.
