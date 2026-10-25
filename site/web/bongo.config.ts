@@ -6,6 +6,7 @@ const mdLoader = md.$loaders!.md as Loader;
 
 import { codeBlock, esc, include } from "./lib/source";
 import { checkLinks, inline, pager, sidebar } from "./lib/docs";
+import { feed, latest, movedIds } from "./lib/site";
 
 export default {
 	$site: {
@@ -14,7 +15,7 @@ export default {
 		url: "https://cairn.iamnbutler.workers.dev/",
 		description: "Research into user interfaces where every action a person can take is a claim with a durable id and machine-checked evidence.",
 	},
-	$utils: { inline, checkLinks, sidebar, pager },
+	$utils: { inline, checkLinks, sidebar, pager, feed, latest, movedIds },
 	$partials: {
 		// <bongo:include src="lean/Examples/Counter.lean#counter-reset" />
 		include(args: { src: string }) {
@@ -57,7 +58,8 @@ export default {
 	},
 	$hooks: {
 		transform(text, ctx) {
-			if (ctx.kind !== "page") return text;
+			// A docs table scrolls on its own on a narrow screen.
+			if (ctx.kind !== "page" || !ctx.path.startsWith("/docs/")) return text;
 			return text.replace(/<table>/g, '<div class="wrap"><table>').replace(/<\/table>/g, "</table></div>");
 		},
 	},

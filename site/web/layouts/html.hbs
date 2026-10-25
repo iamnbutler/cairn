@@ -1,0 +1,42 @@
+{{#var p = $page.params}}
+{{#var home = $page.path === '/'}}
+{{#var title = home ? $page.title : $page.title + ' · Cairn'}}
+{{#var card = await $assets.render('og/card', undefined, { args: p.card })}}
+<!doctype html>
+<html lang="{{ $site.lang }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ title }}</title>
+<meta name="description" content="{{ p.description }}">
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/site.css">
+<link rel="alternate" type="application/rss+xml" title="Cairn" href="/feed.xml">
+{{#if home}}
+<script>
+  // The milestones moved to /milestones/. A link from before the move to one of their sections
+  // here goes on to the same section there; the server never sees the hash, so this runs before
+  // the page draws. lib/site.ts lists the ids.
+  if ({{{ JSON.stringify($utils.movedIds($page.content)) }}}.includes(decodeURIComponent(location.hash.slice(1)))) location.replace(`/milestones/${location.hash}`);
+</script>
+{{/if}}
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Cairn">
+<meta property="og:title" content="{{ title }}">
+<meta property="og:description" content="{{ p.description }}">
+<meta property="og:url" content="{{ $page.url }}">
+<meta property="og:image" content="{{ $utils.url.abs(card) }}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="{{ p.card.title }}, over a pixel cairn on a meadow by a lake at night">
+<meta name="twitter:card" content="summary_large_image">
+</head>
+<body>
+{{{ $page.content }}}
+</body>
+</html>

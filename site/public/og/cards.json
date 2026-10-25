@@ -5,12 +5,6 @@
 		"title": "API reference",
 		"line": "Every module, declaration and claim, generated from the code."
 	},
-	"home": {
-		"name": "home",
-		"label": "",
-		"title": "Cairn",
-		"line": "Mac apps where every action is a claim, with machine-checked evidence."
-	},
 	"map-basics": {
 		"name": "map-basics",
 		"label": "Maps",
@@ -85,12 +79,6 @@
 		"name": "map-trusted-guarantees",
 		"label": "Trusted base map",
 		"title": "Invariants and assumptions"
-	},
-	"milestones": {
-		"name": "milestones",
-		"label": "Cairn",
-		"title": "Milestones",
-		"line": "What each one sets out to show, and the work as it lands."
 	},
 	"packages": {
 		"name": "packages",

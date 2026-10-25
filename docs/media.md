@@ -3,15 +3,16 @@
 The microsite at https://cairn.iamnbutler.workers.dev shows what Cairn is and a dated log of demo
 videos. Record a video whenever something new works on screen.
 
-- `site/`: a Cloudflare Worker. `public/` is the static page; `/m/<key>` is served from the
+- `site/`: a Cloudflare Worker. `public/` holds the static files and `web/` the pages bongo builds
+  (the homepage, `/milestones/`, the docs and the feed); `/m/<key>` is served from the
   `cairn-media` R2 bucket with range requests (video seeking, Safari) and immutable caching.
   `public/media.json` lists the videos and notes, newest first; the homepage shows the featured one and
   `/milestones/` renders each milestone's progress log from it.
 - `/feed.xml` is the RSS feed: one item per milestone (from the `article.post`s in
-  `public/milestones/index.html`) and one per video or note (from `media.json`). `make site-feed`
-  (`tools/site/build.ts`) writes it, and the homepage's pointer to the latest milestone and its
-  list of ids that moved to `/milestones/`; `make site-feed-check`, part of `make check` and run
-  before `make site` deploys, fails when either is stale.
+  `web/content/milestones/index.hbs`) and one per video or note (from `media.json`).
+  `site/web/lib/site.ts` builds it when bongo builds the site (`make site-build`, run by `make
+  site`), along with the homepage's pointer to the latest milestone and its list of ids that
+  moved to `/milestones/`. None of them is committed.
 - `make record` builds `build/bin/record`, which records **one window only** through
   ScreenCaptureKit's desktop-independent window filter. Never record the screen or a region:
   other apps' windows hold private content.
@@ -39,7 +40,7 @@ videos. Record a video whenever something new works on screen.
   its date and commit, and the feed makes it an item. Write it like the captions: plain,
   concrete and short, with every number taken from the PR or the repository. Never dress a note
   up as a video.
-- Run `make site-feed`, then commit `media.json` and `feed.xml` in a lane and merge them. Then deploy **only from an up-to-date main**:
+- Commit `media.json` in a lane and merge it. Then deploy **only from an up-to-date main**:
   `git pull --ff-only` in the main checkout, then `make site`. Never deploy from a lane: the live
   site must always match main, or one session's deploy overwrites another's work (the site's
   design and the video list are edited by different sessions).
