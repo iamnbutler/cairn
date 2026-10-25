@@ -85,6 +85,15 @@ def listOf {α : Type} (n : Nat) (g : Gen α) : Gen (List α) := do
 
 end Gen
 
+/-- One step the fuzzer took, for `Custom.relations`: the state before, the message the host
+sent if the step was the host's (`none` for a person's operation), the state after, and the
+effects the step put on the frame. -/
+structure Transition (S : Type) where
+  before : S
+  msg : Option Msg
+  after : S
+  effects : List Effect
+
 /-- What an app may add to the fuzzer, by defining `fuzz : Cairn.Fuzz.Custom State` in its
 namespace (docs/fuzz.md). Every field has a default. -/
 structure Custom (S : Type) where
@@ -107,10 +116,11 @@ structure Custom (S : Type) where
   /-- Events for the fuzzer's host to send an active subscription; `none` keeps the default. -/
   subEvents : S → Sub → Option (Gen SubEvent) := fun _ _ => none
   /-- Checks over one step, for claims stated about every step rather than every state (a
-  reply to a request not waited for changes nothing; scores only improve): given the state
-  before, the message the host sent if the step was the host's (`none` for a person's), and the
-  state after. Counted under the claim as `relation`. -/
-  relations : List (ClaimId × (S → Option Msg → S → Bool)) := []
+  reply to a request not waited for changes nothing; scores only improve). Counted under the
+  claim as `relation`. A message the runtime drops (a reply to a cancelled or unknown id, an
+  event from a stopped subscription) is also given straight to `receive`, so a claim about
+  every message is checked on those too. -/
+  relations : List (ClaimId × (Transition S → Bool)) := []
   /-- Checks once a sequence ends and the host has answered everything outstanding (with
   `replies` or the default): every load finished, nothing still waiting. Counted under the
   claim as `drained`. -/

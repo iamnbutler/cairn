@@ -357,6 +357,10 @@ structure Performed (S : Type) where
   dropped : Bool := false
   /-- The message the host sent, for a host's move (`Custom.relations`). -/
   msg : Option Msg := none
+  /-- The effects the operation's steps put on the frame. -/
+  effects : List Effect := []
+  /-- Whether the runtime dropped the host's message without delivering it. -/
+  msgDropped : Bool := false
 
 /-- Perform an operation: through the runtime with an `App`, or straight into the machine.
 A person's operation is one batch, stamped with the host's clock (^908); a host's move is its
@@ -384,6 +388,13 @@ def perform (t : Target) (setup : Setup) (w : World t.S) (op : Op) : IO (Perform
       let mut acts : Array Action := #[]
       let mut maxNs := 0
       let mut dropped := false
+      let mut effects : Array Effect := #[]
+      -- Whether the runtime will drop the host's message: a reply to an id it doesn't hold, or
+      -- an event of a subscription it stopped.
+      let msgDropped := match op with
+        | .host (.reply id r) | .host (.stray id r) => (w.rt.world.takeReply id r).isNone
+        | .host (.late ..) => true
+        | _ => false
       -- The control a press means, so the first pointerDown can be checked for a T33 drop.
       let pressed? : Option ControlRef := match op with
         | .act (.press c) | .act (.doublePress c) => some c
@@ -403,8 +414,10 @@ def perform (t : Target) (setup : Setup) (w : World t.S) (op : Op) : IO (Perform
           if routed.any (· matches .blur _) && hitRef rt'.laid p != some c then dropped := true
         acts := acts ++ routed.toArray
         host := host.after rt.world.subs rt' effs
+        effects := effects ++ effs.toArray
         rt := { rt' with subCmds := #[] }
-      return { world := { w with rt, host }, acts := acts.toList, ran := true, maxNs, dropped, msg }
+      return { world := { w with rt, host }, acts := acts.toList, ran := true, maxNs, dropped, msg,
+               effects := effects.toList, msgDropped }
 
 /-! ## Checks -/
 
@@ -619,12 +632,14 @@ def genSetup (t : Target) (seed : Nat) : Setup × Rng :=
 
 /-- The app's checks over one step (`Custom.relations`), from state `s0` by the host's message
 `msg` (`none` for a person's operation) to `s1`. -/
-def relationChecks (t : Target) (s0 : t.S) (msg : Option Msg) (s1 : t.S) (stepIx : Nat) :
+def relationChecks (t : Target) (tr : Transition t.S) (stepIx : Nat) (direct : Bool := false) :
     List Ran × List Failure :=
-  let sent := match msg with | some m => s!" (the host sent {reprStr m})" | none => ""
+  let sent := match tr.msg with
+    | some m => s!" (the host sent {reprStr m}{if direct then ", which the runtime drops, straight to receive" else ""})"
+    | none => ""
   t.custom.relations.foldl (fun (ran, fs) (id, rel) =>
     (ran ++ [(id, "relation")],
-     if rel s0 msg s1 then fs
+     if rel tr then fs
      else fs ++ [mkFail "relation" ⟨id, 0⟩ stepIx s!"^{id} fails over this step{sent}"]))
     ([], [])
 
@@ -735,9 +750,15 @@ def runSeq (t : Target) (setup : Setup) (src : Source) (stats : Stats := {})
     if p.maxNs > t.budgetNs then over := over.push (i, p.maxNs)
     let act? := match op with | .act a => if p.ran then some a else none | _ => none
     let (ran, fs) := checks t setup w act? p.acts i p.dropped
-    let (ran, fs) := if p.ran then
-        let (r2, f2) := relationChecks t s0 p.msg w.rt.app i
-        (ran ++ r2, fs ++ f2)
+    let (ran, fs) := if p.ran && !t.custom.relations.isEmpty then
+        let (r2, f2) := relationChecks t { before := s0, msg := p.msg, after := w.rt.app, effects := p.effects } i
+        -- A message the runtime dropped is also given to `receive` directly.
+        let (r3, f3) := match p.msg, p.msgDropped with
+          | some m, true =>
+            let (s1, es) := t.runApp.receive s0 m
+            relationChecks t { before := s0, msg := some m, after := s1, effects := es } i true
+          | _, _ => ([], [])
+        (ran ++ r2 ++ r3, fs ++ f2 ++ f3)
       else (ran, fs)
     if t.app.isSome then
       let min := t.minSize setup.metrics.metrics w.rt.app w.rt.ui

@@ -6,8 +6,8 @@ import Cairn.UI.Images
 A toy app that asks for a file over HTTP and an image at launch, sets a timer and ticks every
 100 ms, run through `runSeq`: the host answers both (the HTTP one with the app's own reply,
 `Custom.replies`), fires the timer, ticks, and the frame draws the image once it is ready
-(checked against what the host holds). `Custom.relations` and `Custom.drained` run, and a
-relation that fails is reported. Ids 99xx are local to this file and never issued. -/
+(checked against what the host holds). `Custom.relations` and `Custom.drained` run, a relation
+that fails is reported, and so is one that fails only on a message the runtime drops. Ids 99xx are local to this file and never issued. -/
 
 namespace Cairn.Fuzz.HostTests
 open Cairn Cairn.Fuzz
@@ -41,7 +41,7 @@ def app : App S where
     .request 1 (.loadImage "a.png" false), .setTimer "t" 50]
   claims := []
 
-def target (rels : List (ClaimId × (S → Option Msg → S → Bool))) : Target :=
+def target (rels : List (ClaimId × (Transition S → Bool))) : Target :=
   { name := "Toy", module := "Cairn.Fuzz.HostTests", ns := "Cairn.Fuzz.HostTests",
     machineDecl := "machine", appDecl := some "app", S := S, machine, app := some app,
     keyed := [], invariants := [], claims := [],
@@ -52,16 +52,16 @@ def target (rels : List (ClaimId × (S → Option Msg → S → Bool))) : Target
       relations := rels
       drained := [(9902, fun s => s.replies == 2 && s.body == some "{}".toUTF8)] } }
 
-def run (rels : List (ClaimId × (S → Option Msg → S → Bool))) (seed : Nat) : IO Outcome := do
+def run (rels : List (ClaimId × (Transition S → Bool))) (seed : Nat) : IO Outcome := do
   let t := target rels
   let (setup, rng) := genSetup t seed
   runSeq t setup (.gen rng 200)
 
 /-- Replies only ever add one. -/
-def oneAtATime : S → Option Msg → S → Bool := fun s _ s' => s'.replies ≤ s.replies + 1
+def oneAtATime (t : Transition S) : Bool := t.after.replies ≤ t.before.replies + 1
 
 /-- Wrong on purpose: says no reply ever arrives. -/
-def noReplies : S → Option Msg → S → Bool := fun _ m _ => !(m matches some (.reply ..))
+def noReplies (t : Transition S) : Bool := !(t.msg matches some (.reply ..))
 
 #eval show IO Unit from do
   let mut host : HostStats := {}
@@ -72,6 +72,22 @@ def noReplies : S → Option Msg → S → Bool := fun _ m _ => !(m matches some
     host := host.add o.host
   unless host.replies ≥ 40 && host.wakes > 0 && host.timersDue > 0 && host.subEvents > 0 do
     throw (IO.userError s!"the host did too little: {reprStr host}")
+
+/-- The toy counts every reply, even to an id it never asked with: the runtime never delivers
+one, but a relation about every message sees it, since dropped messages are also given straight
+to `receive`. -/
+def strangersIgnored (t : Transition S) : Bool :=
+  match t.msg with
+  | some (.reply id _) => id ≤ 1 || t.after.replies == t.before.replies
+  | _ => true
+
+#eval show IO Unit from do
+  let mut found := false
+  for seed in [0:40] do
+    let o ← run [(9904, strangersIgnored)] seed
+    if o.failure.any (fun f => f.check == "relation" && f.claim == 9904 &&
+        (f.message.splitOn "straight to receive").length > 1) then found := true
+  unless found do throw (IO.userError "a relation should see replies the runtime drops")
 
 #eval show IO Unit from do
   let o ← run [(9903, noReplies)] 0
