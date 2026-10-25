@@ -4,7 +4,7 @@ import Cairn.Fuzz.Target
 
 /-! # `fuzz_targets%`: every fuzzable app, found at compile time
 
-Elaborates to a `List Cairn.Fuzz.Target`, one per `Machine` declared in an app module (`appModule`: `Examples`, or an app package's own) of
+Elaborates to a `List Cairn.Fuzz.Target`, one per `Machine` declared in an app module (`appModule`: an app package's own) of
 the imported environment. For each machine it collects, from the claim registry and the
 environment:
 
@@ -14,7 +14,8 @@ environment:
 - every claim the module declares;
 - `<ns>.fuzz : Cairn.Fuzz.Custom S`, if the app defines one.
 
-So an app needs no fuzz code: importing it from `Examples.lean` is enough. Compile time only
+So an app needs no fuzz code: importing it from its `lean_exe fuzz` root is enough (Cairn's
+test/fixture/lean/FuzzMain.lean). Compile time only
 (imports `Lean`); the `fuzz` executable is the only thing that uses it. -/
 
 namespace Cairn.Fuzz.Collect
@@ -31,8 +32,8 @@ def last (n : Name) : String := match n with
 def moduleOf (env : Environment) (n : Name) : Option Name :=
   env.getModuleIdxFor? n |>.map fun i => env.header.moduleNames[i.toNat]!
 
-/-- Modules that hold apps: anything but Cairn itself and Lean's libraries. In this repository
-that is `Examples`; in an app's package, the app's own modules (`Yap.*`). -/
+/-- Modules that hold apps: anything but Cairn itself and Lean's libraries, so an app package's
+own modules (`Fixture.*`, `Yap.*`, and Cairn's examples, `Examples.*`). -/
 def appModule (m : Name) : Bool :=
   ![`Cairn, `Init, `Std, `Lean, `Lake].contains m.getRoot
 

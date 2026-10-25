@@ -5,7 +5,7 @@ LEAN_PREFIX = $(shell cd lean && lean --print-prefix)
 LIB = build/lib/libcairn_lean.a
 VENDOR = host/Sources/CLean/vendor/lean
 
-.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest demo fixture clean record site site-maps map map-trusted doc doctest conformance fuzz fuzz-quick size fuzz-trusted fuzz-trusted-quick bundle site-build site-dist registry-check new-check
+.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest demo fixture clean record site site-maps map map-trusted doc doctest conformance fuzz fuzz-quick size fuzz-trusted fuzz-trusted-quick bundle site-build site-dist registry-check new-check cairn-tool fixture-build fixture-ledger examples-check examples-audit examples-doctest examples-selftest examples-fuzz-quick examples-size examples-bench
 
 # region: make-apps
 # build/lib/libcairn_lean.a: the framework (`Cairn`) and Lean's runtime, linked by every host
@@ -37,12 +37,12 @@ host: lean
 build: host
 
 audit: lean
-	cd lean && lake build audit && lake env .lake/build/bin/audit
+	cd lean && lake build audit && lake env .lake/build/bin/audit CairnAll Cairn.Fuzz
 
 # Claim ids: every id in claims.lock is still issued (or retired), none is reused, and every
 # claim in the code is locked. See docs/claims.md.
 ledger: lean
-	cd lean && lake exe ledger check
+	cd lean && lake exe ledger check --root CairnAll --root Cairn.Fuzz.Trusted.Claims $(EXAMPLES_LEDGER)
 
 # Replay every declaration through the kernel. Catches proofs that skipped kernel checking
 # (debug.skipKernelTC), which #print axioms and the audit cannot see. The sandboxed mode needs
@@ -53,7 +53,7 @@ kernel: lean
 # Constructs that bypass the kernel or swap in unchecked code (research/lean/), and import cycles
 # between directories of lean/ (docs/packages-and-std.md, "The graph").
 lint:
-	@! grep -rnE 'implemented_by|skipKernelTC|native_decide|bv_decide|^\s*axiom ' lean/Cairn lean/Examples \
+	@! grep -rnE 'implemented_by|skipKernelTC|native_decide|bv_decide|^\s*axiom ' lean/Cairn $(wildcard lean/Examples) $(FIXTURE)/lean/Fixture $(FIXTURE)/lean/*.lean \
 	  || (echo "lint: forbidden construct (see AGENTS.md, Lean rules)"; exit 1)
 	@bun tools/lint/dircycles.ts lean
 
@@ -76,14 +76,37 @@ corpus: lean
 	cd lean && .lake/build/bin/framecorpus gen ../$(CORPUS)
 
 # region: make-check
-# Everything a PR must pass.
-check: lint audit ledger kernel doctest test selftest fuzz-quick size fuzz-trusted-quick site-build registry-check new-check
+# Everything a PR must pass. The framework's checks run on test/fixture, Cairn's own app;
+# examples-check (at the end of this file) checks the example apps.
+check: lint audit ledger kernel doctest test selftest fuzz-quick size fuzz-trusted-quick fixture-ledger site-build registry-check new-check examples-check
 # endregion: make-check
 
-bench: lean
+# region: make-fixture
+# test/fixture: Cairn's own app (test/fixture/README.md), a package of its own that requires this
+# checkout by path. The framework's per-app checks (selftest, fuzz-quick, size, bench) run on it
+# through the `cairn` CLI, as an app in its own repository runs them (docs/cli.md, "Checks").
+FIXTURE = test/fixture
+CAIRN = $(CURDIR)/tools/cairn/.build/release/cairn
+
+cairn-tool:
+	cd tools/cairn && swift build -c release -q
+
+fixture-build: lean cairn-tool
+	cd $(FIXTURE) && $(CAIRN) build
+# endregion: make-fixture
+
+# The fixture's claims, scope `fixture`, in test/fixture/claims.lock (none in Cairn's ledger),
+# and its theorems' axioms. `cairn build` turns Lake's artifact cache on, which keeps .olean
+# files out of the build directory, and the ledger imports from there: turn it off.
+fixture-ledger: fixture-build
+	cd $(FIXTURE)/lean && export LAKE_ARTIFACT_CACHE=false && lake build -q \
+	  && lake exe ledger check --scope fixture --root Checks --lock ../claims.lock && lake exe audit Checks
+
+# The layout bench (bench/layout.md), the fixture's input → frame bench (`cairn bench`), and the
+# renderer's. The examples' benches are examples-bench.
+bench: lean cairn-tool
 	cd lean && lake build bench && .lake/build/bin/bench
-	cd host && swift run -c release CairnBasics --bench
-	cd host && LEAN_ABORT_ON_NONLINEAR=1 swift run -c release CairnTodo --bench
+	cd $(FIXTURE) && $(CAIRN) bench
 	cd host && CAIRN_BENCH=1 swift test -c release -Xswiftc -enable-testing --filter RenderBench
 
 # What recording costs: the level stream in Lean and the host, and WAV extraction
@@ -99,14 +122,10 @@ bench-frame: lean
 	cd host && CAIRN_BENCH=1 swift test -c release -Xswiftc -enable-testing --filter DecodeBench
 
 # region: make-selftest
-# Drives each app headlessly through the host's real threads and accessibility mirror.
-selftest: host
-	cd host && swift run CairnCounter --selftest
-	cd host && swift run CairnBasics --selftest
-	cd host && swift run CairnTodo --selftest
-	cd host && swift run CairnClock --selftest
-	cd host && swift run CairnTray --selftest
-	cd host && swift run CairnGallery --selftest
+# Drives the fixture headlessly through the host's real threads, timers and accessibility
+# mirror; examples-selftest does each example app.
+selftest: fixture-build
+	cd $(FIXTURE) && $$(swift build --show-bin-path)/Fixture --selftest
 # endregion: make-selftest
 
 # region: make-demo
@@ -143,7 +162,7 @@ MAP_APPS = Counter Basics Todo
 site-maps:
 	@for a in $(MAP_APPS); do \
 		$(MAKE) fuzz APP=$$a N=1000 || echo "site-maps: fuzzing $$a failed; its map shows it"; \
-		if [ "$(CONFORMANCE)" != 0 ] && [ -f tools/conformance/lean/Conformance/Apps/$$a.lean ]; then \
+		if [ "$(CONFORMANCE)" != 0 ] && [ -f lean/Examples/$$a/Conformance.lean ]; then \
 			$(MAKE) conformance APP=$$a || echo "site-maps: conformance on $$a failed; its map shows it"; fi; \
 		$(MAKE) map APP=$$a || exit 1; \
 	done
@@ -195,7 +214,7 @@ site: site-dist
 	cd site && npx -y wrangler@4 deploy
 
 clean:
-	rm -rf build lean/.lake host/.build .build
+	rm -rf build lean/.lake host/.build .build $(FIXTURE)/lean/.lake $(FIXTURE)/.build $(FIXTURE)/.cairn $(FIXTURE)/build
 
 # region: make-map
 # The map (docs/map.md): claims + evidence → build/map/$(APP)/dist/, Cairn's own pages, with
@@ -243,16 +262,17 @@ doc:
 	bun tools/doc/cairn-doc.ts --name $(DOC_NAME) --dir $(DOCDIR) $(if $(PKG),,--app $(APP) --link Cairn.=../../Cairn/dist/) \
 		$(if $(PRIVATE),--private) $(if $(OPEN),--open)
 
-# Doc tests alone, for `make check`: every Lean code block in a doc comment in Cairn and the
-# examples elaborates (docs/doc.md, "Doc tests").
+# Doc tests alone, for `make check`: every Lean code block in a doc comment in Cairn elaborates
+# (docs/doc.md, "Doc tests"). examples-doctest does the examples'.
 doctest: lean
-	cd lean && lake build doc && lake exe doc --check $(DOC_CAIRN) Examples > /dev/null
+	cd lean && lake build doc && lake exe doc --check $(DOC_CAIRN) > /dev/null
 
 # region: make-conformance
 # Conformance (docs/conformance.md): the Lean model's sequences replayed on the running app
 # through its debug socket. `make conformance APP=Basics [N=1000] [LEN=12] [SEED=1]` writes
 # build/conformance/$(APP).json (read by the map) and build/conformance/$(APP)/report.md.
-# Adding an app takes one file: tools/conformance/lean/Conformance/Apps/<App>.lean.
+# Adding an example takes one file: lean/Examples/<App>/Conformance.lean. An app package runs
+# `cairn conformance` instead (test/fixture: `cd test/fixture && cairn conformance`).
 # The generator links with system clang, not Lake: Lake's bundled lld can't read the SDK's
 # Swift .tbd files, and the host's Core Text metrics (CairnMetrics) must replace the weak
 # fallback in lean/c/text_host.c, hence -force_load.
@@ -263,14 +283,14 @@ CONF_LIB = $(patsubst $(APP):%,%,$(filter $(APP):%,$(APPS)))
 SDK = $(shell xcrun --show-sdk-path)
 conformance: lean
 	@[ -n "$(CONF_LIB)" ] || { echo "conformance: $(APP) is not in APPS"; exit 1; }
-	@[ -f tools/conformance/lean/Conformance/Apps/$(APP).lean ] || { echo "conformance: no tools/conformance/lean/Conformance/Apps/$(APP).lean"; exit 1; }
+	@[ -f lean/Examples/$(APP)/Conformance.lean ] || { echo "conformance: no lean/Examples/$(APP)/Conformance.lean"; exit 1; }
 	cd host && swift build --product Cairn$(APP) && swift build --product CairnMetrics
-	cd lean && lake build Conformance.Apps.$(APP) claims
+	cd lean && lake build Examples.$(APP).Conformance claims
 	mkdir -p $(CONFDIR)/$(APP)
 	cd lean && lake exe claims Examples.$(APP) > ../$(CONFDIR)/$(APP)/claims.json
-	clang -O2 -I$(LEAN_PREFIX)/include -DCAIRN_APP_INIT=runtime_initialize_cairn_Conformance_Apps_$(APP) \
+	clang -O2 -I$(LEAN_PREFIX)/include -DCAIRN_APP_INIT=runtime_initialize_cairn_Examples_$(APP)_Conformance \
 		tools/conformance/gen_main.c \
-		$$(cd lean && lake query +Conformance.Gen:c.o +Conformance.Apps.$(APP):c.o 2>/dev/null) \
+		$$(cd lean && lake query +Conformance.Gen:c.o +Examples.$(APP).Conformance:c.o 2>/dev/null) \
 		build/lib/libcairn_app_$(CONF_LIB).a $(LIB) \
 		-Wl,-force_load,$$(cd host && swift build --show-bin-path)/libCairnMetrics.a \
 		-L$(SDK)/usr/lib/swift -lc++ -o $(CONFDIR)/$(APP)/gen
@@ -285,23 +305,26 @@ fuzz: lean
 	cd lean && lake build fuzz && .lake/build/bin/fuzz $(APP) --seed $(or $(SEED),0) --iterations $(or $(N),200) --out ../build/fuzz
 # endregion: make-fuzz
 
-# The quick run in `make check`: every app, 200 sequences of 50 steps (about a second).
-# Written to build/fuzz/quick/ so it doesn't replace a longer run's evidence.
-FUZZ_APPS = Counter Basics Todo
-fuzz-quick: lean
-	cd lean && lake build fuzz
-	@for a in $(FUZZ_APPS); do (cd lean && .lake/build/bin/fuzz $$a --iterations 200 --out ../build/fuzz/quick) || exit 1; done
+# The quick run in `make check`: the fixture, 200 sequences of 50 steps (about a second), with
+# `cairn fuzz`. Written to test/fixture/build/fuzz/quick/ so it doesn't replace a longer run's
+# evidence. examples-fuzz-quick does the examples.
+fuzz-quick: lean cairn-tool
+	cd $(FIXTURE) && $(CAIRN) fuzz --iterations 200 --out build/fuzz/quick
 
 
 # region: make-size
 # Binary size (bench/size.md): each app executable built for release with a link map, stripped
 # into build/size/, attributed (Lean runtime, Cairn, the app, Swift host, shaders), and checked
 # against SIZE_LIMIT bytes. No host app links `Lean` (the compiler, about 100 MB), so each is a
-# few MB; crossing the limit almost always means something imported `Lean`.
+# few MB; crossing the limit almost always means something imported `Lean`. `size` is the
+# fixture's, with `cairn size` (test/fixture/build/size/); examples-size is the examples'.
 SIZE_APPS = CairnCounter CairnBasics CairnTodo CairnClock CairnTray CairnGallery
 SIZE_LIMIT = 5000000
 # endregion: make-size
-size: lean
+size: lean cairn-tool
+	cd $(FIXTURE) && $(CAIRN) size --limit $(SIZE_LIMIT)
+
+examples-size: lean
 	mkdir -p build/size
 	cd host && for a in $(SIZE_APPS); do \
 		swift build -c release --product $$a -Xlinker -map -Xlinker $(CURDIR)/build/size/$$a.map || exit 1; done
@@ -333,3 +356,37 @@ fuzz-trusted-quick: lean
 # commit it. The cards themselves are drawn by satori when bongo builds (tools/og/card.ts).
 og-scene:
 	bun tools/og/scene.ts
+
+# region: make-examples
+# The example apps (lean/Examples, host/Sources/Cairn<App>): checked here until they move to
+# their own repository (#137). Nothing above needs them: the framework's checks run on
+# test/fixture. Their claims are still in Cairn's ledger (`ledger` reads EXAMPLES_LEDGER).
+EXAMPLES_LEDGER = --root Examples
+examples-check: examples-audit examples-doctest examples-selftest examples-fuzz-quick examples-size
+
+examples-audit: lean
+	cd lean && lake build audit && lake env .lake/build/bin/audit Examples
+
+examples-doctest: lean
+	cd lean && lake build doc && lake exe doc --check Examples > /dev/null
+
+# Drives each example headlessly through the host's real threads and accessibility mirror.
+examples-selftest: host
+	cd host && swift run CairnCounter --selftest
+	cd host && swift run CairnBasics --selftest
+	cd host && swift run CairnTodo --selftest
+	cd host && swift run CairnClock --selftest
+	cd host && swift run CairnTray --selftest
+	cd host && swift run CairnGallery --selftest
+
+# 200 sequences of 50 steps on each of FUZZ_APPS, into build/fuzz/quick/.
+FUZZ_APPS = Counter Basics Todo
+examples-fuzz-quick: lean
+	cd lean && lake build fuzz
+	@for a in $(FUZZ_APPS); do (cd lean && .lake/build/bin/fuzz $$a --iterations 200 --out ../build/fuzz/quick) || exit 1; done
+
+# Basics' and TodoMVC's input → frame benches (bench/basics.md, bench/todo.md).
+examples-bench: host
+	cd host && swift run -c release CairnBasics --bench
+	cd host && LEAN_ABORT_ON_NONLINEAR=1 swift run -c release CairnTodo --bench
+# endregion: make-examples

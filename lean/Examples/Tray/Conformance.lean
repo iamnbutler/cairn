@@ -7,5 +7,5 @@ public import Examples.Tray.Abi
 status-item gesture: opening the menu, choosing an item, or choosing a greyed-out one. -/
 
 @[export cairn_conformance_run]
-public def Conformance.Apps.Tray.run (args : List String) : IO UInt32 :=
-  Conformance.run Examples.Tray.machine Examples.Tray.app Examples.Tray.cfg args
+public def Examples.Tray.Conformance.run (args : List String) : IO UInt32 :=
+  _root_.Conformance.run Examples.Tray.machine Examples.Tray.app Examples.Tray.cfg args

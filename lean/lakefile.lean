@@ -174,9 +174,10 @@ lean_exe framecorpus where
   root := `FrameCorpus
 
 /-- The conformance generator (tools/conformance, docs/conformance.md): walks an app's model and
-writes move sequences with the frames the app must show. One module per app under
-`Conformance.Apps`; `make conformance` links one with that app's library and the host's Core
-Text metrics. Never linked into the host. -/
+writes move sequences with the frames the app must show. Each app has an entry-point module of
+its own (`Examples.<App>.Conformance`, an app package's `<App>.Conformance`), which `make
+conformance` and `cairn conformance` link with that app's library and the host's Core Text
+metrics. Never linked into the host. -/
 @[default_target]
 lean_lib Conformance where
   srcDir := "../tools/conformance/lean"
@@ -193,9 +194,11 @@ lean_lib CairnFuzz where
     .one `Cairn.Fuzz.Walk, .one `Cairn.Fuzz.Shrink, .one `Cairn.Fuzz.Collect, .one `Cairn.Fuzz.Main,
     .one `Cairn.Fuzz]
 
-/-- `lake exe fuzz <App> [--seed S] [--iterations N] [--steps K]` (docs/fuzz.md). -/
+/-- `lake exe fuzz <App> [--seed S] [--iterations N] [--steps K]` (docs/fuzz.md): the fuzzer on
+the example apps, for `make fuzz APP=…` and the maps. Cairn's own checks fuzz test/fixture with
+`cairn fuzz`, which builds that package's `fuzz`. -/
 lean_exe fuzz where
-  root := `FuzzMain
+  root := `Examples.FuzzMain
 
 /-- Lean's side of the trusted-base fuzzer (docs/fuzz.md, "Trusted base"): generators, the
 proved decoders' verdicts and a one-field app, exported over C for the Swift executable
