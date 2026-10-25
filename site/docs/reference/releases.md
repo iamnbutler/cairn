@@ -22,7 +22,7 @@ are published.
 
 ## v0.1.3
 
-24 October 2026.
+24 October 2026, at commit `aea142c`.
 
 - **Three modules moved, with shims.** `Cairn.Frame.Boundary` is now `Cairn.Abi`,
   `Cairn.Runtime.Hit` is `Cairn.UI.Hit` and `Cairn.Text.Metrics` is `Cairn.Font`. The old names

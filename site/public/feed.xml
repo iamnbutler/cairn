@@ -8,7 +8,40 @@
 <language>en</language>
 <atom:link href="https://cairn.iamnbutler.workers.dev/feed.xml" rel="self" type="application/rss+xml"/>
 <image><url>https://cairn.iamnbutler.workers.dev/apple-touch-icon.png</url><title>Cairn</title><link>https://cairn.iamnbutler.workers.dev/</link></image>
-<lastBuildDate>Sat, 24 Oct 2026 21:11:09 GMT</lastBuildDate>
+<lastBuildDate>Sun, 25 Oct 2026 00:43:00 GMT</lastBuildDate>
+<item>
+<title>Third milestone: Pairs</title>
+<link>https://cairn.iamnbutler.workers.dev/milestones/#third-milestone-pairs</link>
+<guid isPermaLink="true">https://cairn.iamnbutler.workers.dev/milestones/#third-milestone-pairs</guid>
+<pubDate>Sun, 25 Oct 2026 00:43:00 GMT</pubDate>
+<description>&lt;p&gt;Can an app be built from packages alone, with images and requests it doesn't control? Pairs
+    is a memory game: a grid of face-down cards, flip two, keep them if they match. Decks are theme
+    packs, a JSON manifest and a set of images, from a folder or a URL. It is small enough to
+    finish, and it needs what the Bluesky client after it will: images, JSON and many requests in
+    flight at once.&lt;/p&gt;
+  &lt;ol&gt;
+    &lt;li&gt;Images in Cairn: an image node whose size Lean knows before the pixels arrive, and an
+      effect that loads one. The host decodes and paints; Lean never holds pixels.&lt;/li&gt;
+    &lt;li&gt;JSON as its own package, &lt;code&gt;cairn_batteries&lt;/code&gt;, with a proof that decoding what
+      was encoded gives it back.&lt;/li&gt;
+    &lt;li&gt;Requests in flight: at most 6 at once, and switching packs cancels the rest. A late reply
+      for an old pack never changes the board.&lt;/li&gt;
+    &lt;li&gt;A grid that follows the window, proved for every width: no two cards overlap and every
+      card is inside it.&lt;/li&gt;
+    &lt;li&gt;Proofs about the game: the deal has every face exactly twice, at most two unmatched cards
+      are face up, and every game can be won.&lt;/li&gt;
+  &lt;/ol&gt;
+  &lt;p&gt;Pairs lives in its own repository and is built only through the package path:
+    &lt;code&gt;cairn new pairs --bin&lt;/code&gt;, &lt;code&gt;cairn add&lt;/code&gt; and &lt;code&gt;cairn build&lt;/code&gt;.&lt;/p&gt;
+  </description>
+</item>
+<item>
+<title>Cairn 0.1.3, on the public registry</title>
+<link>https://cairn.iamnbutler.workers.dev/milestones/#cairn-0-1-3-on-the-public-registry</link>
+<guid isPermaLink="true">https://cairn.iamnbutler.workers.dev/milestones/#cairn-0-1-3-on-the-public-registry</guid>
+<pubDate>Sun, 25 Oct 2026 00:39:27 GMT</pubDate>
+<description>&lt;p&gt;Cairn 0.1.3 is out, and it is on the public registry at cairn.registry.nexthub.sh as iamnbutler/cairn, next to 0.1.2. Reading it needs no login: cairn add cairn finds the owner by name and writes the version range, and Lake fetches Cairn from the registry's git (#107, #109). /packages/ now reads the registry itself instead of sample data (#111).&lt;/p&gt;&lt;p&gt;The Cairn library is now only what an app links: 31 modules. Proofs, claims, fuzzing and tools are their own Lake libraries, so libcairn_Cairn.a went from 3.67 to 2.78 MB (#114). Three modules moved so the directories in lean/ have no cycles, and make lint now fails on one; the old names stay as shims until 0.2.0 (#110).&lt;/p&gt;&lt;p&gt;No claim changed, so it is a patch release. Yap moved to it with only its tag changed.&lt;/p&gt;&lt;p&gt;As of commit aea142c, in the progress log of &lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#second-milestone-yap-on-cairn&quot;&gt;Second milestone: Yap on Cairn&lt;/a&gt;.&lt;/p&gt;</description>
+</item>
 <item>
 <title>Cairn 0.1.2: libraries and apps</title>
 <link>https://cairn.iamnbutler.workers.dev/milestones/#cairn-0-1-2-libraries-and-apps</link>
@@ -70,7 +103,7 @@
   &lt;p&gt;Yap lives in its own repository now, yap-cairn, and depends on a tagged release of Cairn the
     way any app would. Getting it there made Cairn a package, with a &lt;code&gt;cairn&lt;/code&gt; command
     and claim ids scoped by package: Yap's are &lt;code&gt;yap^N&lt;/code&gt;.&lt;/p&gt;
-  &lt;p&gt;Progress so far:&lt;/p&gt;&lt;ul&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#cairn-0-1-2-libraries-and-apps&quot;&gt;Cairn 0.1.2: libraries and apps&lt;/a&gt; (2026-10-24)&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#cairn-is-a-package-and-yap-moved-out&quot;&gt;Cairn is a package, and Yap moved out&lt;/a&gt; (2026-10-24)&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#the-cairn-command-and-packages&quot;&gt;The cairn command and packages&lt;/a&gt; (2026-10-24)&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#developer-docs-and-the-api-reference&quot;&gt;Developer docs and the API reference&lt;/a&gt; (2026-10-24)&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#yap-against-the-original-under-instruments&quot;&gt;Yap against the original under Instruments&lt;/a&gt; (2026-10-24)&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#yap-on-cairn-the-overlay&quot;&gt;Yap on Cairn: the overlay&lt;/a&gt; (2026-10-24)&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#clock-effects&quot;&gt;Clock: effects&lt;/a&gt; (2026-10-23)&lt;/li&gt;&lt;/ul&gt;</description>
+  &lt;p&gt;Progress so far:&lt;/p&gt;&lt;ul&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#cairn-0-1-3-on-the-public-registry&quot;&gt;Cairn 0.1.3, on the public registry&lt;/a&gt; (2026-10-24)&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#cairn-0-1-2-libraries-and-apps&quot;&gt;Cairn 0.1.2: libraries and apps&lt;/a&gt; (2026-10-24)&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#cairn-is-a-package-and-yap-moved-out&quot;&gt;Cairn is a package, and Yap moved out&lt;/a&gt; (2026-10-24)&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#the-cairn-command-and-packages&quot;&gt;The cairn command and packages&lt;/a&gt; (2026-10-24)&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#developer-docs-and-the-api-reference&quot;&gt;Developer docs and the API reference&lt;/a&gt; (2026-10-24)&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#yap-against-the-original-under-instruments&quot;&gt;Yap against the original under Instruments&lt;/a&gt; (2026-10-24)&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#yap-on-cairn-the-overlay&quot;&gt;Yap on Cairn: the overlay&lt;/a&gt; (2026-10-24)&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#clock-effects&quot;&gt;Clock: effects&lt;/a&gt; (2026-10-23)&lt;/li&gt;&lt;/ul&gt;</description>
 </item>
 <item>
 <title>Clock: effects</title>
