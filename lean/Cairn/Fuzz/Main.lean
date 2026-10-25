@@ -110,6 +110,8 @@ def stepJson (tr : Traced) : Json :=
   | .move p => Json.mkObj [("event", "move"), ("x", toJson p.x), ("y", toJson p.y), ("hit", hit)]
   | .tab back => Json.mkObj [("event", "key"), ("key", "tab"), ("shift", toJson back)]
   | .key k m => Json.mkObj [("event", "key"), ("key", Json.str (keyName k)), ("shift", toJson m.shift)]
+  | .scroll p dx dy => Json.mkObj [("event", "scroll"), ("x", toJson p.x), ("y", toJson p.y),
+      ("dx", toJson dx), ("dy", toJson dy), ("hit", hit)]
   | .resize z => Json.mkObj [("event", "resize"), ("w", toJson z.w), ("h", toJson z.h)]
   | .exit => Json.mkObj [("event", "pointerExit")]
   | .windowFocus b => Json.mkObj [("event", "windowFocus"), ("focused", toJson b)]

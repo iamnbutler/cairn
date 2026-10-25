@@ -10,6 +10,7 @@ names a control on screen, and every control names a claim.
 | `Hit.lean` | `Target`, hit entries, `hitTarget`/`hitTest`, `Reaches`, `LayoutFacts`, hit-level pressable |
 | `Step.lean` | `Config`, `State`, `route`, `settle`, `step`, `steps`, `start`, `cursor` |
 | `Proofs.lean` | soundness of focus/hover/press, no action without a control, step-level pressable |
+| `ScrollProofs.lean` | the clamp, a scroll leaves the app alone, appear exactly, Tab reveals |
 | `Abi.lean` | `Boundary`, `initState`, `stepBytes`, `frameBytes` (the Lean side of the app ABI) |
 | `Tests.lean` | `#guard` checks on a small app |
 
@@ -22,7 +23,7 @@ structure Config where
 
 structure State (S : Type) where
   app : S              -- the app's state
-  ui : UI              -- size, hover, pressed, focus, window focus; `view` reads it
+  ui : UI              -- size, hover, pressed, focus, window focus, scroll offsets; `view` reads it
   clicks : Nat         -- click count of the pointerDown that started the press
   pointer : Option Point
   scale : Nat          -- backing scale × 100
@@ -30,6 +31,8 @@ structure State (S : Type) where
   effects : Array Effect  -- effects of the last `stepBytes` batch
   world : World        -- clock, timers, pending requests, active subscriptions (effects.md)
   subCmds : Array SubCmd  -- subscription commands of the last `stepBytes` batch
+  surfaces : List Shown   -- what each surface shows (docs/surfaces.md)
+  seen : List ControlRef  -- the `appear` controls that showed at the last frame event
 ```
 
 ## Hit testing
@@ -66,7 +69,8 @@ the current time before any delivery (docs/effects.md, "Order within a step"). T
 2. re-runs `view` with the new `UI` and lays it out (`relayout`);
 3. repairs the `UI` against the new tree (`fixUI`): hover becomes whatever the pointer is over
    now, focus survives only if its control is still there and focusable, press only if its
-   control is still there;
+   control is still there, and each scroll offset only if its box is still there, clamped to
+   it (see "Scrolling");
 4. if the repair changed what `view` saw (a hover reveal, a focus ring), views and lays out
    again, up to `settleFuel` (2) more times (`settle`). The stored `UI` is always the routed one
    repaired against the stored tree, so the soundness theorem holds whether or not it converged.
@@ -86,7 +90,7 @@ records the commands for the frame (`diffSubs`). If an event delivers nothing an
 | `pointerUp p` on the pressed control, not a field | `press c`, or `doublePress c` when the down had clicks = 2 |
 | `pointerUp p` anywhere else | nothing (slide-off cancels); pressed := none either way |
 | `pointerExit` | hover := none; the pointer is forgotten |
-| `scroll` | nothing (no scrolling in M1) |
+| `scroll p dx dy` | moves the innermost scroll box under `p` by `dy` (a row: `dx`), clamped; no action (see "Scrolling") |
 
 The caret index from a click is the nearest entry of `metrics.offsets font text` to
 `p.x - textOrigin.x`, the earlier on a tie. A double click therefore delivers `press` then
@@ -119,7 +123,7 @@ controls are unless their role is `group`, `text`, `heading` or `list`.
   select `[a, b)`: `edit c (setCaret a' false)`, `edit c (setCaret b' true)` with `a'`, `b'`
   clamped to the field's text length, then the insert or composition.
 - **Focused button-like control `c`:** Enter or space (`insertText " "`) → `press c`.
-- Nothing focused: keys and text do nothing.
+- Nothing focused: keys and text do nothing, except the scroll keys (see "Scrolling").
 
 Blur is delivered only for fields (it's how an edit is committed); focus moving between buttons
 is UI state only. When a focused control disappears from the tree, focus is dropped without a
@@ -132,6 +136,58 @@ first tree.
 
 `resize` sets `ui.size`, `scale` sets `State.scale`, `windowFocus b` sets `ui.windowFocused` and,
 when the window loses focus, clears the press (its pointerUp won't arrive).
+
+## Scrolling
+
+The runtime owns the offset of every scroll box (docs/layout.md, "Scroll boxes") that names
+itself with `Style.scrollRef`, as it owns focus: offsets live in `UI.scroll : List (ControlRef ×
+Int)`, keyed by the box's ref, and the view reads them. A box's ref is usually a `place`
+claim's (`⟨14, 0⟩` in the fixture); it is not a control and has no move.
+
+```lean
+.box (ui.scrolling rowsRef { height := .fixed 160 }) none rows
+-- = { scroll := some (ui.scrollOf rowsRef), scrollRef := some rowsRef, .. }
+```
+
+A box with no offset yet is at 0. What moves an offset:
+
+- **The wheel and the trackpad.** `scroll p dx dy` moves the innermost box whose visible part
+  holds `p` (the last in paint order, `scrollerAt`) by `dy`, or by `dx` in a row. Positive is
+  toward the end of the content (the host's sign, trusted as ^1012). A box at its end doesn't
+  pass the rest to the box around it.
+- **Keys**, when no control takes them: nothing is focused, or the focused control is not a
+  field and the key isn't Enter or space. They move the innermost box around the focused control,
+  else the box under the pointer. Page Down / Page Up and space / shift-space move a page (the
+  viewport less a 40-point line, at least a line); Home and End go to the ends; the arrows along
+  the box's axis move a line, with command to the ends.
+- **Tab.** Focusing a control by Tab moves every box around it, innermost first, by the least
+  that puts the control wholly in view (its start, if it is longer than the box): `revealIn`.
+  Focus by click or by `Effect.focus` doesn't scroll.
+
+Every offset is clamped to `[0, max 0 (content − viewport)]`, where `viewport` is the box's
+length along its axis and `content` the distance from its unscrolled start to the furthest
+child's end plus the end padding (`Scroller`). The clamp is in `fixUI`, so it holds after every
+step, against the tree just laid: when content shrinks, the offset follows it. An offset whose
+box has left the tree is dropped. A scroll is never an action: `update` never sees it, and the
+app's state, the world and the effects are unchanged by it (`step_scroll`).
+
+## Appear
+
+A control with `Control.appear := true` tells the app when it comes on screen: the runtime
+delivers `Action.appear c`, a move like any other (trigger `appear`, `on appear` in a move), when
+`c` has a visible part (`rect ∩ clip` nonempty) and didn't at the last frame, or wasn't in the
+tree. It is how an app hears that the end of a list is in view and loads more.
+
+"The last frame" is the end of the last batch. `steps` runs a batch's events, then two
+`Event.frame`s (`frameEvents`). A frame event is the runtime's own: the host never sends one, it
+has no encoding, and nothing else routes to it. It compares the appear controls showing now
+(`appearRefs`) with `State.seen`, the ones that showed at the last frame event, delivers an
+`appear` for each new one in paint order, and records the current ones. The second frame event
+hears what the first one's delivery brought on screen. So a control that comes and goes within
+one batch is never heard, and one that stays on screen is heard once, until it leaves.
+
+A control is on screen only while its move is enabled (each app's presence claims), so `appear`
+fires when a marked control becomes visible, or becomes enabled while visible.
 
 ## Theorems
 
@@ -151,6 +207,18 @@ All in `Cairn.Runtime`; none assume anything about the layout function.
   control of the tree on screen; hover and press are none or controls of it.
 - **M1 apps are unchanged.** `step_delivers_quiet`: for an app whose `receive` ignores every
   message, a step's state is what folding `update` over the routed actions gives, as before.
+- **Offsets are clamped.** `start_clamped`, `step_clamped`, `steps_clamped`: every offset in
+  `ui.scroll` belongs to a scroll box of the tree on screen and lies within `[0, max 0 (content
+  − viewport)]` of it (`Clamped`).
+- **A scroll changes no app state.** `step_scroll`: a `scroll` event leaves the app's state and
+  the world unchanged and issues no effects. Appear moves come only from frame events
+  (`route_appear`).
+- **Appear, exactly.** `appear_iff`: a frame event routes `appear c` exactly when `c` is an
+  `appear` control with a nonempty visible part now and was not one at the last frame event;
+  `step_frame_seen`, `step_seen_other`: only a frame event changes `seen`, to the current
+  ones; `step_frame_delivers`: `update` gets those moves, in order.
+- **Tab reveals.** `revealOff_shows`: from a clamped offset, the new offset puts a rect that
+  fits in the box wholly inside it.
 - **Time, timers, replies, subscriptions.** `step_clock`, `steps_book`, `step_reply`,
   `step_sub_ignored`, `diffSubs_*`: see docs/effects.md, "Theorems".
 

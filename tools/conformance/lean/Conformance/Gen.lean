@@ -240,6 +240,7 @@ def actionName : Action → String
   | .press c => s!"press {refLabel c}" | .doublePress c => s!"doublePress {refLabel c}"
   | .edit c op => s!"edit {refLabel c} ({opName op})" | .submit c => s!"submit {refLabel c}"
   | .cancel c => s!"cancel {refLabel c}" | .blur c => s!"blur {refLabel c}"
+  | .appear c => s!"appear {refLabel c}"
 
 def keyName : Key → String
   | .enter => "enter" | .escape => "escape" | .tab => "tab" | .backspace => "backspace"
@@ -272,6 +273,7 @@ def eventName : Event → String
   | .surface p e => s!"surface {p} " ++ eventName e
   | .menuOpen p => s!"menuOpen {p}" | .menuClose p => s!"menuClose {p}"
   | .menuSelect p r => s!"menuSelect {p} {refLabel r}"
+  | .frame => "frame"
 
 /-! ## Gestures
 
@@ -511,11 +513,11 @@ def choices (M : Machine S) (s : Runtime.State S) (f : Frame) (r : Rng) : Array 
 
 /-! ## Running the model -/
 
-/-- Runs events one at a time, as `Runtime.steps` does, and collects the actions `route`
-delivers for each (`Runtime.step_delivers`: exactly what `update` sees). -/
+/-- Runs events one at a time, then the frame events, as `Runtime.steps` does, and collects
+the actions `route` delivers for each (`Runtime.step_delivers`: exactly what `update` sees). -/
 def runEvents (app : App S) (cfg : Config) (s : Runtime.State S) (es : List Event) :
     Runtime.State S × List Action × List Effect :=
-  es.foldl (fun (s, acts, effs) e =>
+  (es ++ frameEvents).foldl (fun (s, acts, effs) e =>
     let (_, a) := route cfg.metrics s e
     let (s', ef) := step app cfg s e
     (s', acts ++ a, effs ++ ef)) (s, [], [])

@@ -37,8 +37,10 @@ move ^2 reset (s : State) "Reset" in ^3 where
   A `Prop` is decided. This is what presence theorems talk about ("^2's control is on screen
   iff `reset.enabled s`").
 - One `on <trigger>` block per kind of action the move answers: `press`, `doublePress`,
-  `submit`, `cancel`, `blur`, or `edit (op : TextOp)`, which binds the text operation. A text
-  field's claim typically has `on edit` and `on submit`.
+  `submit`, `cancel`, `blur`, `appear`, or `edit (op : TextOp)`, which binds the text
+  operation. A text field's claim typically has `on edit` and `on submit`. `appear` is
+  delivered by the runtime when a control marked `Control.appear` comes on screen
+  (docs/runtime.md, "Appear"), for instance the end of a list that loads more.
 - In each block: `apply := newState`, or `emit := (newState, effects)` when it asks the host to
   do something (clipboard, beep); `post s' := P`, the formal statement relating the state before
   (`s`), the key and op if any, and the state after (`s'`); and `sound := proof`.

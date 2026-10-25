@@ -75,6 +75,9 @@ structure State (S : Type) where
   subCmds : Array SubCmd := #[]
   /-- What each of the app's surfaces shows, in the app's order. -/
   surfaces : List Shown := []
+  /-- The controls marked `Control.appear` that had a visible part at the last `Event.frame`
+  (`appearRefs`): an appear move is delivered for those that have one now and aren't here. -/
+  seen : List ControlRef := []
 
 /-! ## Fields -/
 
@@ -134,6 +137,156 @@ def replaceOps (t : Target) : Option (Nat × Nat) → List TextOp
   | none => []
   | some (a, b) => [.setCaret (min a (fieldLength t)) false, .setCaret (min b (fieldLength t)) true]
 
+/-! ## Scrolling (docs/runtime.md, "Scrolling")
+
+The runtime owns the offset of every scroll box with a `Style.scrollRef`, as it owns focus: it
+keeps them in `UI.scroll`, the wheel, the trackpad and the scroll keys move them, Tab into a box
+brings the focus into view, and `fixUI` clamps them to the box's content after every layout. The
+view only reads them (`UI.scrollOf`, `UI.scrolling`); a scroll never reaches `update`. -/
+
+/-- A scroll box whose offset the runtime owns, as laid. -/
+structure Scroller where
+  ref : ControlRef
+  /-- The box's rect, and what of it shows (`rect ∩ clip`). -/
+  rect : Rect
+  visible : Rect
+  /-- A row scrolls sideways; a column or a stack up and down. -/
+  horiz : Bool
+  /-- The box's length along its axis. -/
+  viewport : Int
+  /-- The content's length along the axis, from the box's start unscrolled to the furthest
+  child's end plus the end padding (just the padding with no children). -/
+  content : Int
+  /-- The offset the view laid it at (`Style.scroll`). -/
+  offset : Int
+deriving Inhabited
+
+/-- The furthest an offset can go: `max 0 (content − viewport)`. -/
+def Scroller.limit (sc : Scroller) : Int := max 0 (sc.content - sc.viewport)
+
+def mainStart (h : Bool) (q : Rect) : Int := if h then q.x else q.y
+def mainLen (h : Bool) (q : Rect) : Int := if h then q.w else q.h
+
+/-- The content's length of a box laid at `r` and scrolled by `o` (`Scroller.content`): its
+children's rects are moved back by `o`, so their ends unscrolled are their ends plus `o`. -/
+def contentLen (h : Bool) (r : Rect) (pad : Insets) (o : Int) (kids : List Laid) : Int :=
+  let padStart := if h then pad.left else pad.top
+  let padEnd := if h then pad.right else pad.bottom
+  (kids.foldl (fun m k => max m (mainStart h k.rect + mainLen h k.rect + o - mainStart h r))
+    padStart) + padEnd
+
+/-- The scroller a laid node is, if it is a scroll box with a `scrollRef`. -/
+def scrollerOf : Laid → Option Scroller
+  | .box r clip st _ kids =>
+    match st.scroll, st.scrollRef with
+    | some o, some ref =>
+      let h := Layout.Axis.horiz st.axis
+      some { ref, rect := r, visible := r.inter clip, horiz := h, viewport := mainLen h r,
+             content := contentLen h r st.padding o kids, offset := o }
+    | _, _ => none
+  | _ => none
+
+mutual
+/-- Every scroller in the tree, in paint order (an outer box before the boxes inside it). -/
+def scrollersOf : Laid → List Scroller
+  | l@(.box _ _ _ _ kids) => (scrollerOf l).toList ++ scrollersList kids
+  | _ => []
+def scrollersList : List Laid → List Scroller
+  | [] => []
+  | l :: ls => scrollersOf l ++ scrollersList ls
+end
+
+mutual
+/-- The scrollers around the first control `r` in paint order, outermost first; `none` when
+`r` isn't in the tree. -/
+def around (r : ControlRef) : Laid → Option (List Scroller)
+  | l@(.box _ _ _ c kids) =>
+    if c.any (fun k => decide (k.ref = r)) then some []
+    else (aroundList r kids).map ((scrollerOf l).toList ++ ·)
+  | .field _ _ _ _ c .. => if decide (c.ref = r) then some [] else none
+  | .text .. => none
+def aroundList (r : ControlRef) : List Laid → Option (List Scroller)
+  | [] => none
+  | l :: ls => (around r l).orElse fun _ => aroundList r ls
+end
+
+/-- The topmost scroller whose visible part holds `p`: the innermost one there. -/
+def scrollerAt (laid : Laid) (p : Point) : Option Scroller :=
+  (scrollersOf laid).reverse.find? (·.visible.contains p)
+
+def clampOff (o lim : Int) : Int := max 0 (min o lim)
+
+/-- The offsets of `offs` whose box is in the tree, each clamped to its box; the rest dropped. -/
+def clampScroll (scs : List Scroller) (offs : List (ControlRef × Int)) :
+    List (ControlRef × Int) :=
+  offs.filterMap fun e =>
+    (scs.find? fun sc => decide (sc.ref = e.1)).map fun sc => (e.1, clampOff e.2 sc.limit)
+
+/-- Set box `r`'s offset to `o`; the same `UI` when it already is `o`. -/
+def _root_.Cairn.UI.setScroll (ui : UI) (r : ControlRef) (o : Int) : UI :=
+  if ui.scrollOf r = o then ui
+  else { ui with scroll := (r, o) :: ui.scroll.filter fun e => !decide (e.1 = r) }
+
+/-- Move `sc` to `o`, clamped. -/
+def _root_.Cairn.UI.scrollTo (ui : UI) (sc : Scroller) (o : Int) : UI :=
+  ui.setScroll sc.ref (clampOff o sc.limit)
+
+/-- How far an arrow key scrolls, in points. -/
+def lineStep : Int := 40
+
+/-- How far a page key scrolls: the viewport less a line, so a line stays in view. -/
+def Scroller.page (sc : Scroller) : Int := max lineStep (sc.viewport - lineStep)
+
+/-- Where a key moves `sc` from `cur`, if it is a scroll key for it: page up and down, space and
+shift-space by a page; home and end to the ends; the arrows along its axis by a line (with
+command, to the ends). -/
+def keyScroll (sc : Scroller) (cur : Int) (k : Key) (mods : Mods) : Option Int :=
+  let along (back : Bool) : Option Int :=
+    some (if mods.command then (if back then 0 else sc.limit)
+          else if back then cur - lineStep else cur + lineStep)
+  match k with
+  | .pageDown => some (cur + sc.page)
+  | .pageUp => some (cur - sc.page)
+  | .home => some 0
+  | .finish => some sc.limit
+  | .char ' ' => some (if mods.shift then cur - sc.page else cur + sc.page)
+  | .down => if sc.horiz then none else along false
+  | .up => if sc.horiz then none else along true
+  | .right => if sc.horiz then along false else none
+  | .left => if sc.horiz then along true else none
+  | _ => none
+
+/-- The offset that brings `q` (a rect laid with `sc` at `cur`) into `sc`'s view: the least
+move that puts its start and end inside the box, its start when it is longer than the box. -/
+def revealOff (sc : Scroller) (cur : Int) (q : Rect) : Int :=
+  let a := mainStart sc.horiz q - mainStart sc.horiz sc.rect
+  let b := a + mainLen sc.horiz q
+  let d := if a < 0 then a else if sc.viewport < b then min a (b - sc.viewport) else 0
+  clampOff (cur + d) sc.limit
+
+/-- Bring `q` into view in each of `chain` (outermost first), innermost first: each box moves
+it, then the next box out sees it moved. -/
+def revealIn (chain : List Scroller) (ui : UI) (q : Rect) : UI :=
+  (chain.foldr (fun sc (acc : UI × Rect) =>
+    let (ui, q) := acc
+    let cur := ui.scrollOf sc.ref
+    let o := revealOff sc cur q
+    let d := o - cur
+    (ui.setScroll sc.ref o,
+     if sc.horiz then { q with x := q.x - d } else { q with y := q.y - d }))
+    (ui, q)).1
+
+/-! ## Appear -/
+
+/-- The controls marked `Control.appear` with a visible part, in paint order. -/
+def appearRefs (laid : Laid) : List ControlRef :=
+  (targets laid).filterMap fun t =>
+    if t.control.appear && decide t.visible.nonempty then some t.ref else none
+
+/-- The appear moves of a frame: one for each control in `appearRefs laid` not in `seen`. -/
+def appearing (laid : Laid) (seen : List ControlRef) : List Action :=
+  ((appearRefs laid).filter fun r => !seen.contains r).map .appear
+
 /-! ## Routing -/
 
 variable {S : Type}
@@ -185,12 +338,41 @@ def tabTarget (s : State S) (back : Bool) : Option Target :=
   | none => if back then order.getLast? else order.head?
   | some i => order[(if back then i + order.length - 1 else i + 1) % order.length]?
 
+/-- Tab and shift-Tab: focus the next (or previous) focusable control, scrolling every scroll box
+around it so that it is in view. -/
 def tab (s : State S) (back : Bool) : State S × List Action :=
   match tabTarget s back with
   | none => (s, [])
   | some t =>
-    ({ s with ui := { s.ui with focus := some t.ref } },
+    ({ s with ui := revealIn ((around t.ref s.laid).getD []) { s.ui with focus := some t.ref }
+                     t.node.rect },
      leave s (some t.ref) ++ (if t.isField then [.edit t.ref .selectAll] else []))
+
+/-- A wheel or trackpad scroll at `p`: moves the innermost scroll box there along its axis
+(`dx` in a row, `dy` otherwise; positive toward the end, trusted ^1012), clamped. -/
+def wheel (s : State S) (p : Point) (dx dy : Int) : State S :=
+  match scrollerAt s.laid p with
+  | some sc =>
+    { s with ui := s.ui.scrollTo sc (s.ui.scrollOf sc.ref + if sc.horiz then dx else dy) }
+  | none => s
+
+/-- The scroll box the keys move: the innermost one around the focused control, else the one
+under the pointer. -/
+def keyScroller (s : State S) : Option Scroller :=
+  ((s.ui.focus.bind fun r => around r s.laid).bind List.getLast?).orElse fun _ =>
+    s.pointer.bind (scrollerAt s.laid)
+
+/-- A key that no control takes (nothing focused, or a focused control that isn't a field and
+doesn't press on it) scrolls `keyScroller`, if it is a scroll key for it. -/
+def keyScrollState (s : State S) (k : Key) (mods : Mods) : State S :=
+  if (keyActions s k mods).isEmpty && !((focused s).any (·.isField)) then
+    match keyScroller s with
+    | some sc =>
+      match keyScroll sc (s.ui.scrollOf sc.ref) k mods with
+      | some o => { s with ui := s.ui.scrollTo sc o }
+      | none => s
+    | none => s
+  else s
 
 def withPointer (s : State S) (p : Point) : State S :=
   { s with pointer := some p, ui := { s.ui with hover := hitRef s.laid p } }
@@ -228,9 +410,9 @@ def route (m : TextMetrics) (s : State S) : Event → State S × List Action
     | _, _ => (s', [])
   | .pointerUp p .secondary _ => (withPointer s p, [])
   | .pointerExit => ({ s with pointer := none, ui := { s.ui with hover := none } }, [])
-  | .scroll .. => (s, [])
+  | .scroll p dx dy => (wheel s p dx dy, [])
   | .key .tab mods => tab s mods.shift
-  | .key k mods => (s, keyActions s k mods)
+  | .key k mods => (keyScrollState s k mods, keyActions s k mods)
   | .insertText str rep => (s, textActions s str rep)
   | .setMarked str a b rep => (s, onField s fun t => replaceOps t rep ++ [TextOp.setMarked str a b])
   | .unmark => (s, onField s fun _ => [.unmark])
@@ -257,30 +439,34 @@ def route (m : TextMetrics) (s : State S) : Event → State S × List Action
     (s, match Shown.statusOf p s.surfaces with
         | some it => if r ∈ MenuItem.enabledRefs it.menu then [.press r] else []
         | none => [])
+  | .frame => ({ s with seen := appearRefs s.laid }, appearing s.laid s.seen)
 
 /-! ## Committing -/
 
 /-- Structural equality on `UI`, decided field by field (the derived `BEq` isn't lawful). -/
 def UI.same (a b : UI) : Bool :=
   decide (a.size = b.size) && decide (a.hover = b.hover) && decide (a.pressed = b.pressed) &&
-    decide (a.focus = b.focus) && decide (a.windowFocused = b.windowFocused)
+    decide (a.focus = b.focus) && decide (a.windowFocused = b.windowFocused) &&
+    decide (a.scroll = b.scroll)
 
 theorem UI.same_eq {a b : UI} (h : UI.same a b = true) : a = b := by
   cases a; cases b
   simp only [UI.same, Bool.and_eq_true, decide_eq_true_eq] at h
-  obtain ⟨⟨⟨⟨h1, h2⟩, h3⟩, h4⟩, h5⟩ := h
-  subst h1 h2 h3 h4 h5; rfl
+  obtain ⟨⟨⟨⟨⟨h1, h2⟩, h3⟩, h4⟩, h5⟩, h6⟩ := h
+  subst h1 h2 h3 h4 h5 h6; rfl
 
 def relayout (app : App S) (cfg : Config) (st : S) (ui : UI) : Laid :=
   cfg.layout cfg.metrics ui.size (app.view st ui)
 
-/-- Repair interaction state against a new tree: hover is what the pointer is over, and focus
-and press survive only if their control does. -/
+/-- Repair interaction state against a new tree: hover is what the pointer is over, focus
+and press survive only if their control does, and scroll offsets only if their box does, clamped
+to its content. -/
 def fixUI (laid : Laid) (pointer : Option Point) (ui : UI) : UI :=
   { ui with
     hover := pointer.bind (hitRef laid)
     focus := ui.focus.filter (focusableIn laid)
-    pressed := ui.pressed.filter (present laid) }
+    pressed := ui.pressed.filter (present laid)
+    scroll := clampScroll (scrollersOf laid) ui.scroll }
 
 /-- View and lay out, repair `ui0` against the result, and repeat while the repair changes
 what the view saw (hover reveals, focus rings), up to `fuel` more times. The result is always
@@ -429,9 +615,14 @@ def step (app : App S) (cfg : Config) (s : State S) (e : Event) : State S × Lis
   ({ s1 with app := c.app, ui, laid, world := { c.world with subs, nextSub := next },
              subCmds := s1.subCmds ++ cmds.toArray, surfaces }, c.effs)
 
-/-- A batch of events, in order. -/
+/-- What `steps` runs after a batch's events: two frame events, so that what an appear move's
+own delivery brings into view is heard in the same batch (docs/runtime.md, "Appear"). -/
+def frameEvents : List Event := [.frame, .frame]
+
+/-- A batch of events, in order, then `frameEvents`. -/
 def steps (app : App S) (cfg : Config) (s : State S) (es : List Event) : State S × List Effect :=
-  es.foldl (fun (s, effs) e => let (s', e') := step app cfg s e; (s', effs ++ e')) (s, [])
+  (es ++ frameEvents).foldl (fun (s, effs) e => let (s', e') := step app cfg s e; (s', effs ++ e'))
+    (s, [])
 
 /-- The first state: the app's `init` at a window size, laid out, with the app's `initFocus`
 if that control is focusable. -/

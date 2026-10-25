@@ -199,7 +199,8 @@ See [host.md](host.md) for how each piece works.
   positions.
 - **Scroll.** Positive `dy` means toward the end of the content. A line is 16 points for
   line-based devices. Fractions are carried, so Lean's total scroll is within one point of
-  AppKit's.
+  AppKit's. Load-bearing since #203: the runtime moves a scroll box by exactly these numbers
+  (^1012, "Scrolling (M4)" below).
 - **Key mapping.**
   - With a text field focused, AppKit's key bindings (`interpretKeyEvents`) decide which
     command a key is, and `KeyMapping`'s selector table turns the command into a Lean event.
@@ -909,6 +910,43 @@ Carbon (`EnableSecureEventInput`, `DisableSecureEventInput`, `IsSecureEventInput
 - **Tested**: the fixture's self test types into its Passcode field (`^9`) and checks the frame
   carries bullets and `secure`, the AX element is an `AXSecureTextField` with no value, and Enter
   clears it.
+
+## Scrolling (M4)
+
+The runtime owns every scroll box's offset (docs/runtime.md, "Scrolling"); Lean proves each
+offset stays within `[0, max 0 (content − viewport)]` after every step (`step_clamped`) and that
+a scroll changes no app state (`step_scroll`). Which way and how far a gesture moves the box
+is the host's.
+
+### The host reports scrolls where they happen, toward the end positive (`assume`, ^1012)
+
+**What is assumed.**
+- ^1012 `hostScroll`: for each `scrollWheel` AppKit gives the view, the host sends `scroll p dx
+  dy` at the logical point under the pointer (flipped, rounded down), with AppKit's
+  `scrollingDeltaX`/`scrollingDeltaY` negated (positive toward the end: right, down) and times
+  16 for line deltas (`hasPreciseScrollingDeltas` false). Fractions carry to the next event and
+  are dropped when a gesture begins, so a gesture's total in Lean is within a point of AppKit's.
+  The engine may coalesce consecutive scrolls into one with the summed deltas.
+
+**Also assumed, not fuzzed.** That AppKit's deltas already include the person's natural-scrolling
+setting, so "negated" means "the way the content should move"; that momentum events arrive as
+more `scrollWheel`s (the host treats them like any other); and that AppKit delivers
+`scrollWheel` to the view under the pointer.
+
+**Trusted code.** `host/Sources/CairnHost/HostView.swift` (`scrollWheel`, `point`),
+`host/Sources/CairnHost/Scroll.swift` (`ScrollAccumulator`), `host/Sources/CairnHost/Engine.swift`
+(queue, coalescing).
+
+**Evidence.**
+- **Fuzzed** (^1012 `pointer.scroll`, `ScrollSuite`): one gesture a case, in a window of random
+  size, at a random point with fractional coordinates and edges: 1–30 events of trackpad pixel
+  deltas (phase `began`, then `changed`) or mouse-wheel line deltas in 1/64ths, along either
+  axis or both, made with `CGEvent(scrollWheelEvent2Source:)` and read back as `NSEvent`s so
+  the deltas, precision and phase are AppKit's. What the app's core receives is only `scroll`
+  events at the oracle point, summing to within one point of the negated (and scaled) deltas,
+  with the sign of a total of a point or more.
+- **Tested**: the fixture's self test scrolls its rows 1,616 points through the engine and
+  checks rows 51 to 56 show and are pressed where they show.
 
 ## Conformance (workstream J)
 

@@ -103,8 +103,10 @@ always inside the clip it cuts down (see "Contract changes").
 - `Laid` keeps the real rects, which may lie anywhere above, below or beside the box. What
   shows of a node is its visible part, `rect ∩ clip` (`Laid.visible`, `Target.visible`); it is
   empty for a child scrolled wholly out.
-- The offset is a number the view supplies. Layout doesn't clamp it or remember it: owning it,
-  wheel and keys, and scrolling the focus into view are the runtime's (#203).
+- The offset is a number the view supplies. Layout doesn't clamp it or remember it: the runtime
+  owns it, moves it by wheel and keys, clamps it, and scrolls the focus into view, for every box
+  that names itself with `Style.scrollRef` (docs/runtime.md, "Scrolling"). A view passes the
+  runtime's offset with `ui.scrolling ref style`.
 
 What the rest of the pipeline does with a scroll box:
 
@@ -133,8 +135,9 @@ three below; the rest is in `Proofs.lean` and `Bridge.lean`:
 
 These are theorems, not claims: a Cairn claim is a move, place, flow or invariant of an app's
 machine, or an `assume` about the host, and a framework theorem has no machine. The test fixture
-(test/fixture) has a scroll box of 200 rows at a fixed offset, and its claims `fixture^11` to
-`fixture^13` state the three for it, in every state.
+(test/fixture) has a scroll box of 200 rows at the runtime's offset, and its claims `fixture^12`,
+`fixture^13` and `fixture^15` state the three for it, in every state and at every offset
+(`fixture^11` stated the first at a fixed offset, before the runtime owned it, and is retired).
 
 ## Grids
 

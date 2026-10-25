@@ -440,9 +440,16 @@ error. `button` is `0` primary, `1` secondary.
   `menuOpen` is a press on the item's `control`. `menuSelect` names the status item's place and
   the chosen item's control ref.
 - **Global events.** `clock`, `reply` and `subEvent` belong to the app, not to a surface.
+- **Scroll.** `dx` and `dy` are whole logical points, positive toward the end of the content
+  (right, down), with the host's fractions carried (docs/trusted.md, "Scroll"; ^1012). The
+  runtime moves the scroll box under the point by them (docs/runtime.md, "Scrolling").
+- **No `frame` record.** `Event.frame`, which `steps` runs after every batch to deliver
+  `appear` moves (docs/runtime.md, "Appear"), is the runtime's own: it has no tag, the encoder
+  writes nothing for it (`fitsEvent .frame = false`), and the decoder never produces it.
 
 Version 1 had tags 0–20 only. Reply code 7 came with frames v5 and subscription event 8 with v8;
-the batch format is unchanged, so events stay at version 2.
+the batch format is unchanged, so events stay at version 2. Runtime scroll offsets and `appear`
+(#203) changed no record: frames stay at 11 and events at 2.
 
 Lean drops a batch that fails to decode, whole (`Frame.boundary`): the host's encoder is
 checked against Lean's decoder, so a bad batch means a host bug.

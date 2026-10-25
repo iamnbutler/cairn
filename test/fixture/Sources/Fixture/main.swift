@@ -13,6 +13,8 @@ import QuartzCore
 //   Fixture               open the window
 //   Fixture --selftest    drive the host headlessly through its real threads and check it
 //   Fixture --bench       input → frame and frame size with 10 and 1,000 items
+//   Fixture --scroll-shots <dir>   offscreen renders of the scroll box: at the top, scrolled,
+//                         and at the end (docs/media.md, "Stills")
 
 // region: fixture-leanapp
 let fixture = LeanApp(
@@ -168,9 +170,14 @@ enum SelfTest {
         if view.shadowDivergences.count != 0 { fail("text shadow diverged: \(view.shadowDivergences)") }
 
         // region: fixture-selftest-scroll
-        // The scroll box (^10): the frame has a node for every row, draws only the six that show
-        // (rows 51 to 56 at its offset), and the mirror exposes only those, under an AXScrollArea.
+        // The scroll box (^14 holds the rows, ^10): it opens at the top; a scroll of 1,616 points
+        // over it (50½ rows) moves it there, and the app hears nothing of it. Then the frame has a
+        // node for every row, draws only the six that show (rows 51 to 56), and the mirror exposes
+        // only those, under an AXScrollArea.
         f = settle()
+        guard let box = f.ax.first(where: { $0.role == .scrollArea }) else { fail("no scroll area in the frame") }
+        expect("first row showing at the top", f.ax.first { $0.control?.claim == 10 && $0.rect.h > 0 }?.control?.label ?? "", "^10#1")
+        f = settle(engine.send([.scroll(center(box.rect), dx: 0, dy: 1616)]))
         expect("row nodes in the frame", f.ax.filter { $0.control?.claim == 10 }.count, 200)
         guard let area = elements().first(where: { $0.accessibilityRole() == .scrollArea }) else { fail("no AXScrollArea") }
         let shown = (area.accessibilityChildren() ?? []).compactMap { ($0 as? NSAccessibilityElement)?.accessibilityIdentifier() }
@@ -242,6 +249,37 @@ enum Bench {
             cairn_lean_dec(state)
         }
     }
+}
+
+/// Offscreen renders of the scroll box (^14) through the real engine: at the top, after a scroll
+/// of 1,616 points over it, and after one to the end, where the end line (^16) has heard
+/// `appear`. PNGs at 2×, no window.
+@MainActor
+enum ScrollShots {
+    static func run(_ dir: String) {
+        let engine = Engine(size: size, scalePercent: 200) { LeanCore(fixture) }
+        engine.start()
+        guard var f = engine.wait(through: 0)?.frame else { fail("no first frame") }
+        guard let box = f.ax.first(where: { $0.role == .scrollArea })?.rect else { fail("no scroll area") }
+        let renderer = try! Renderer()
+        try! FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
+        func shot(_ name: String) {
+            let url = URL(fileURLWithPath: dir).appendingPathComponent(name + ".png")
+            try! renderer.image(f, scale: 2).writePNG(to: url)
+            print(url.path)
+        }
+        shot("scroll-top")
+        f = engine.wait(through: engine.send([.pointerMove(center(box)), .scroll(center(box), dx: 0, dy: 1616)]))!.frame
+        shot("scroll-1616")
+        f = engine.wait(through: engine.send([.scroll(center(box), dx: 0, dy: 100_000)]))!.frame
+        shot("scroll-end")
+        engine.stop()
+    }
+}
+
+if let i = args.firstIndex(of: "--scroll-shots"), i + 1 < args.count {
+    MainActor.assumeIsolated { ScrollShots.run(args[i + 1]) }
+    exit(0)
 }
 
 if args.contains("--selftest") {

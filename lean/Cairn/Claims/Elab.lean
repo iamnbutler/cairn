@@ -287,7 +287,8 @@ def docOf (doc? : Option Syntax) (fallback : String) : CommandElabM String :=
 def triggers : List (String × Name) :=
   [("press", ``Cairn.Trigger.press), ("doublePress", ``Cairn.Trigger.doublePress),
    ("edit", ``Cairn.Trigger.edit), ("submit", ``Cairn.Trigger.submit),
-   ("cancel", ``Cairn.Trigger.cancel), ("blur", ``Cairn.Trigger.blur)]
+   ("cancel", ``Cairn.Trigger.cancel), ("blur", ``Cairn.Trigger.blur),
+   ("appear", ``Cairn.Trigger.appear)]
 
 /-! ### `move` -/
 

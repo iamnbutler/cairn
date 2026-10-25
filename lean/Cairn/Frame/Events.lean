@@ -96,6 +96,7 @@ def fitsEvent : Event → Bool
   | .surface p e => fu p && e.isLocal && fitsEvent e
   | .menuOpen p | .menuClose p => fu p
   | .menuSelect p r => fu p && fitsRef r
+  | .frame => false
   | _ => true
 
 namespace Enc
@@ -152,6 +153,7 @@ def event : Event → List UInt8
   | .menuOpen p => head 22 0 0 ++ u32 p
   | .menuClose p => head 23 0 0 ++ u32 p
   | .menuSelect p r => head 24 0 0 ++ u32 p ++ ref r
+  | .frame => []
 
 def eventsMagic : List UInt8 := [0x43, 0x41, 0x45, 0x56] -- "CAEV"
 
@@ -464,6 +466,7 @@ theorem plain_enc {e : Event} (h : fitsEvent e = true) (hs : e.isSurface = false
     simp only [plain, headed, body, Enc.event, Enc.head, List.cons_append, List.nil_append,
         List.append_assoc, bind_apply, byte_cons, hz, u32_enc h.1, ref_enc h.2, pure_apply]
   | pointerExit | unmark | copy | cut | selectAll | undo | redo => rfl
+  | frame => simp only [fitsEvent, Bool.false_eq_true] at h
 
 /-- On a record whose tag isn't `surface`'s, `event` is `plain`. -/
 theorem event_eq_plain (t : UInt8) (l : List UInt8) (ht : t ≠ 21) :
@@ -478,7 +481,8 @@ theorem event_enc {e : Event} (h : fitsEvent e = true) (r : List UInt8) :
     have : ∃ t l, Enc.event e ++ r = t :: l ∧ t ≠ 21 := by
       cases e <;> first
         | exact ⟨_, _, rfl, by decide⟩
-        | simp only [Event.isSurface, Bool.true_eq_false] at hs
+        | (simp only [Event.isSurface, Bool.true_eq_false] at hs; done)
+        | exact absurd h (by simp only [fitsEvent, Bool.false_eq_true, not_false_eq_true])
     obtain ⟨t, l, he, ht⟩ := this
     rw [he, event_eq_plain t l ht, ← he]
     exact plain_enc h hs r

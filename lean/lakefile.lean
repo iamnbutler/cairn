@@ -52,7 +52,7 @@ lean_lib Cairn where
 def proofs : Array Lean.Name := #[`Cairn.Text.Proofs, `Cairn.Text.WrapProofs, `Cairn.Text.FieldTests,
     `Cairn.Layout.Proofs, `Cairn.Layout.Bridge, `Cairn.Layout.Check, `Cairn.Layout.Rigid,
     `Cairn.Layout.Para, `Cairn.Layout.Grid, `Cairn.Layout.Tests, `Cairn.Layout.Scroll,
-    `Cairn.Runtime.Proofs, `Cairn.Runtime.WorldProofs, `Cairn.Runtime.InFlight,
+    `Cairn.Runtime.Proofs, `Cairn.Runtime.ScrollProofs, `Cairn.Runtime.WorldProofs, `Cairn.Runtime.InFlight,
     `Cairn.Claims.Deliver,
     `Cairn.Frame.Layout, `Cairn.Frame.EventsTests, `Cairn.Frame.BuildTests, `Cairn.Abi.Tests]
 

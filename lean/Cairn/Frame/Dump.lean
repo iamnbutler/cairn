@@ -199,6 +199,7 @@ def event : Event → String
   | .menuOpen p => s!"menuOpen {p}"
   | .menuClose p => s!"menuClose {p}"
   | .menuSelect p r => s!"menuSelect {p} {ref r}"
+  | .frame => "frame"
   | .pointerMove p => s!"move {p.x} {p.y}"
   | .pointerDown p b clicks m => s!"down {p.x} {p.y} {Button.code b} {clicks} {Mods.code m}"
   | .pointerUp p b m => s!"up {p.x} {p.y} {Button.code b} {Mods.code m}"

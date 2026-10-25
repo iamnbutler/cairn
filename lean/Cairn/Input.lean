@@ -69,6 +69,10 @@ inductive Event where
   | menuClose (place : ClaimId)
   /-- The person chose the item `ref` in the status item `place`'s menu. -/
   | menuSelect (place : ClaimId) (ref : ControlRef)
+  /-- The runtime's own, never the host's (it has no encoding): the end of a batch, before the
+  frame is drawn. `Runtime.steps` runs it after every batch; it compares what is on screen with
+  the last frame and delivers `Action.appear` (docs/runtime.md, "Appear"). -/
+  | frame
 deriving Repr, BEq, Inhabited
 
 /-- The events from the world (`clock`, `reply`, `subEvent`); every other event is input. -/
@@ -90,7 +94,7 @@ def Event.isSurface : Event → Bool
 scale, focus). Only these may be addressed to a surface with `Event.surface`. -/
 def Event.isLocal : Event → Bool
   | .clock _ | .reply .. | .subEvent .. | .surface .. | .menuOpen _ | .menuClose _
-  | .menuSelect .. => false
+  | .menuSelect .. | .frame => false
   | _ => true
 
 /-- Edits to a text field's model. The runtime turns key and text events into these; the
@@ -119,11 +123,15 @@ inductive Action where
   | submit (c : ControlRef)
   | cancel (c : ControlRef)
   | blur (c : ControlRef)
+  /-- The control `c`, marked `Control.appear`, came on screen: at the end of a batch it has a
+  visible part, and at the end of the last batch it had none or wasn't there. The runtime's, not
+  a person's: no pointer or key makes it directly (docs/runtime.md, "Appear"). -/
+  | appear (c : ControlRef)
 deriving Repr, BEq, Inhabited
 -- endregion: input-action
 
 def Action.control : Action → ControlRef
-  | .press c | .doublePress c | .edit c _ | .submit c | .cancel c | .blur c => c
+  | .press c | .doublePress c | .edit c _ | .submit c | .cancel c | .blur c | .appear c => c
 
 inductive Cursor where
   | arrow | pointer | text
