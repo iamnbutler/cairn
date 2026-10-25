@@ -208,6 +208,9 @@ end Lift
 theorem Rect.inside_refl (r : Rect) : r.inside r := by
   unfold Rect.inside; omega
 
+theorem Rect.inside_trans {a b c : Rect} (hab : a.inside b) (hbc : b.inside c) : a.inside c := by
+  unfold Rect.inside at *; omega
+
 theorem Rect.inter_inside {a : Rect} (b : Rect) (hw : 0 ≤ a.w) (hh : 0 ≤ a.h) :
     (a.inter b).inside a := by
   unfold Rect.inter Rect.inside; simp only; omega
@@ -374,13 +377,63 @@ theorem lineRects_pairwise (h : Bool) (st : Style) (c : Rect) (items : List Item
   (Line.go_pairwise (lineOf h st c items) (leftover_nonneg h st c items)
     (fun _ => spacing_nonneg _ _ _ _ _) _ _ _ _).imp (disjoint_of_main _)
 
+/-! ### Scrolling moves rects without changing their size -/
+
+@[simp] theorem _root_.Cairn.Rect.scrollBy_w (h : Bool) (o : Int) (q : Rect) :
+    (q.scrollBy h o).w = q.w := by
+  unfold Rect.scrollBy; split <;> rfl
+
+@[simp] theorem _root_.Cairn.Rect.scrollBy_h (h : Bool) (o : Int) (q : Rect) :
+    (q.scrollBy h o).h = q.h := by
+  unfold Rect.scrollBy; split <;> rfl
+
+@[simp] theorem mainOf_scrollBy (h h' : Bool) (o : Int) (q : Rect) :
+    mainOf h (q.scrollBy h' o) = mainOf h q := by
+  unfold mainOf; split <;> simp only [Rect.scrollBy_w, Rect.scrollBy_h]
+
+theorem _root_.Cairn.Rect.scrollBy_disjoint (h : Bool) (o : Int) {a b : Rect}
+    (hd : a.disjoint b) : (a.scrollBy h o).disjoint (b.scrollBy h o) := by
+  unfold Rect.disjoint at *; unfold Rect.scrollBy
+  cases h <;> simp only [Bool.false_eq_true, ↓reduceIte] <;> omega
+
+theorem scrolled_length (st : Style) (rs : List Rect) : (scrolled st rs).length = rs.length := by
+  unfold scrolled; split <;> simp only [List.length_map]
+
+theorem mem_scrolled {st : Style} {rs : List Rect} {q : Rect} (hq : q ∈ scrolled st rs) :
+    ∃ q' ∈ rs, q.w = q'.w ∧ q.h = q'.h := by
+  unfold scrolled at hq; split at hq
+  · exact ⟨q, hq, rfl, rfl⟩
+  · obtain ⟨q', hq', rfl⟩ := List.mem_map.1 hq
+    exact ⟨q', hq', Rect.scrollBy_w _ _ _, Rect.scrollBy_h _ _ _⟩
+
+theorem scrolled_pairwise (st : Style) {rs : List Rect}
+    (h : rs.Pairwise fun a b => a.disjoint b) :
+    (scrolled st rs).Pairwise fun a b => a.disjoint b := by
+  unfold scrolled; split
+  · exact h
+  · exact List.pairwise_map.2 (h.imp (Rect.scrollBy_disjoint _ _))
+
+theorem scrolled_none {st : Style} (h : st.scroll = none) (rs : List Rect) :
+    scrolled st rs = rs := by
+  simp only [scrolled, h]
+
+theorem map_mainOf_scrolled (h : Bool) (st : Style) (rs : List Rect) :
+    (scrolled st rs).map (mainOf h) = rs.map (mainOf h) := by
+  unfold scrolled; split
+  · rfl
+  · simp only [List.map_map, Function.comp_def, mainOf_scrollBy]
+
+theorem placeRects_length (st : Style) (r : Rect) (items : List Item) :
+    (placeRects st r items).length = items.length := by
+  unfold placeRects; split <;> simp only [lineRects_length, stackRects, List.length_map]
+
 theorem childRects_length (st : Style) (r : Rect) (items : List Item) :
     (childRects st r items).length = items.length := by
-  unfold childRects; split <;> simp only [lineRects_length, stackRects, List.length_map]
+  simp only [childRects, scrolled_length, placeRects_length]
 
-theorem childRects_nonneg (st : Style) (r : Rect) (items : List Item) :
-    ∀ q ∈ childRects st r items, 0 ≤ q.w ∧ 0 ≤ q.h := by
-  unfold childRects; split
+theorem placeRects_nonneg (st : Style) (r : Rect) (items : List Item) :
+    ∀ q ∈ placeRects st r items, 0 ≤ q.w ∧ 0 ≤ q.h := by
+  unfold placeRects; split
   · exact lineRects_nonneg _ _ _ _
   · exact lineRects_nonneg _ _ _ _
   · simp only [stackRects, List.mem_map]
@@ -388,12 +441,23 @@ theorem childRects_nonneg (st : Style) (r : Rect) (items : List Item) :
     exact ⟨crossPlace_nonneg _ (r.inset st.padding).x (Int.le_max_left 0 _) _ _ _,
       crossPlace_nonneg _ (r.inset st.padding).y (Int.le_max_left 0 _) _ _ _⟩
 
+theorem childRects_nonneg (st : Style) (r : Rect) (items : List Item) :
+    ∀ q ∈ childRects st r items, 0 ≤ q.w ∧ 0 ≤ q.h := by
+  intro q hq
+  obtain ⟨q', hq', hw, hh⟩ := mem_scrolled hq
+  rw [hw, hh]; exact placeRects_nonneg st r items q' hq'
+
+theorem placeRects_line (st : Style) (r : Rect) (items : List Item) (hax : st.axis ≠ .stack) :
+    placeRects st r items = lineRects (Axis.horiz st.axis) st (r.inset st.padding) items := by
+  unfold placeRects Axis.horiz
+  cases h : st.axis <;> simp_all
+
 theorem childRects_pairwise (st : Style) (r : Rect) (items : List Item) (hax : st.axis ≠ .stack) :
     (childRects st r items).Pairwise fun a b => a.disjoint b := by
-  unfold childRects; split
-  · exact lineRects_pairwise _ _ _ _
-  · exact lineRects_pairwise _ _ _ _
-  · contradiction
+  unfold childRects
+  apply scrolled_pairwise
+  rw [placeRects_line st r items hax]
+  exact lineRects_pairwise _ _ _ _
 
 theorem kid_rect_mem {m : TextMetrics} {c : Rect} {rs : List Rect} {ss : List Sized}
     (h : rs.length = ss.length) {k : Laid} (hk : k ∈ arrangeList m c rs ss) : k.rect ∈ rs := by
@@ -543,9 +607,8 @@ theorem arrange_fillExact (m : TextMetrics) (c r : Rect) (s : Sized) :
     have hlen : (childRects st r (kids.map Sized.item)).length = kids.length := by
       simp only [childRects_length, List.length_map]
     have hcr : childRects st r (kids.map Sized.item) =
-        lineRects (Axis.horiz st.axis) st (r.inset st.padding) (kids.map Sized.item) := by
-      unfold childRects; cases hx : st.axis <;> simp_all only [ne_eq, reduceCtorEq,
-          not_false_eq_true, Axis.horiz, not_true_eq_false]
+        scrolled st (lineRects (Axis.horiz st.axis) st (r.inset st.padding) (kids.map Sized.item)) := by
+      rw [childRects, placeRects_line st r _ hax]
     have hps : (arrangeList m (innerClip st c r) (childRects st r (kids.map Sized.item)) kids).map
         (fun k => ((if Axis.horiz st.axis then k.sizings.1 else k.sizings.2),
           mainOf (Axis.horiz st.axis) k.rect)) =
@@ -554,6 +617,8 @@ theorem arrange_fillExact (m : TextMetrics) (c r : Rect) (s : Sized) :
       rw [arrangeList_map m _ (fun sz q => ((if Axis.horiz st.axis then sz.1 else sz.2),
         mainOf (Axis.horiz st.axis) q)) _ _ hlen, hcr]
       simp only [mainPairs, Item.mainSizing, List.zipWith_map_left, Sized.item]
+      unfold scrolled
+      rcases st.scroll with _ | o <;> simp only [List.zipWith_map_right, mainOf_scrollBy]
     rw [hps]
     have hl : (mainPairs (Axis.horiz st.axis) (kids.map Sized.item)
         (lineRects (Axis.horiz st.axis) st (r.inset st.padding) (kids.map Sized.item))).length =
@@ -654,6 +719,10 @@ def crossOf (h : Bool) (r : Rect) : Int := if h then r.h else r.w
 
 @[simp] theorem mkRect_crossOf (h : Bool) (p s cp cs : Int) :
     crossOf h (mkRect h p s cp cs) = cs := by cases h <;> rfl
+
+@[simp] theorem crossOf_scrollBy (h h' : Bool) (o : Int) (q : Rect) :
+    crossOf h (q.scrollBy h' o) = crossOf h q := by
+  unfold crossOf; split <;> simp only [Rect.scrollBy_w, Rect.scrollBy_h]
 
 /-- `sp i + sp (i+1) + … + sp (i+n-1)`. -/
 def spSum (sp : Nat → Int) : Nat → Nat → Int
@@ -840,7 +909,7 @@ theorem arrange_childrenInside (m : TextMetrics) (c r : Rect) (s : Sized) :
   cases s with
   | box st ctl sz kids =>
     simp only [arrange, ChildrenInside]
-    intro hsize hfit k hk
+    intro hscroll hsize hfit k hk
     have hlen : (childRects st r (kids.map Sized.item)).length = kids.length := by
       simp only [childRects_length, List.length_map]
     have hrs := arrangeList_rects m (innerClip st c r) _ kids hlen
@@ -856,13 +925,14 @@ theorem arrange_childrenInside (m : TextMetrics) (c r : Rect) (s : Sized) :
     cases hx : st.axis with
     | stack =>
       have e : childRects st r (kids.map Sized.item) =
-          stackRects st (r.inset st.padding) (kids.map Sized.item) := by simp only [childRects, hx]
+          stackRects st (r.inset st.padding) (kids.map Sized.item) := by
+        simp only [childRects, placeRects, scrolled_none hscroll, hx]
       rw [e] at hmem hsize'
       exact stackRects_inside _ _ _ hsize' _ hmem
     | row | column =>
       have e : childRects st r (kids.map Sized.item) =
           lineRects (Axis.horiz st.axis) st (r.inset st.padding) (kids.map Sized.item) := by
-        simp only [childRects, hx, Axis.horiz]
+        simp only [childRects, placeRects, scrolled_none hscroll, hx, Axis.horiz]
       rw [e] at hmem hsize' hrs
       refine lineRects_inside _ st _ _ (fun q hq => ?_) ?_ _ hmem
       · have := hsize' q hq; simp only [crossOf]; split <;> omega
@@ -880,6 +950,104 @@ theorem layout_childrenInside (m : TextMetrics) (w : Size) (n : Node) :
     (layout m w n).Everywhere ChildrenInside :=
   arrange_everywhere' m _ (arrange_childrenInside m) _ _ _
 
+/-! ## Scroll boxes -/
+
+theorem placeRects_scroll (st : Style) (s : Option Int) (r : Rect) (items : List Item) :
+    placeRects { st with scroll := s } r items = placeRects st r items := by
+  cases st; rfl
+
+/-- A scroll box's children are where the same box without `scroll` puts them (`placeRects`:
+in a column, one under the other), moved back by the offset along the box's axis. -/
+theorem childRects_scroll {st : Style} {o : Int} (ho : st.scroll = some o) (r : Rect)
+    (items : List Item) :
+    childRects st r items =
+      (childRects { st with scroll := none } r items).map (Rect.scrollBy (Axis.horiz st.axis) o) := by
+  simp only [childRects, scrolled, ho, placeRects_scroll]
+
+/-- **Scrolled children.** Every child of a scroll box with offset `o` is laid at the rect the
+same box gives it when it doesn't scroll, moved back by `o` along the box's axis: in a column (or
+a stack), the same `x`, width and height, and `y` less `o`; in a row, `x` less `o`. -/
+theorem arrange_scroll (m : TextMetrics) (c r : Rect) {st : Style} (ctl : Option Control)
+    (sz : Size) (kids : List Sized) {o : Int} (ho : st.scroll = some o) :
+    (arrange m c r (.box st ctl sz kids)).children.map Laid.rect =
+      ((arrange m c r (.box { st with scroll := none } ctl sz kids)).children.map Laid.rect).map
+        (Rect.scrollBy (Axis.horiz st.axis) o) := by
+  simp only [arrange_children_box]
+  rw [arrangeList_rects _ _ _ _ (by simp only [childRects_length, List.length_map]),
+    arrangeList_rects _ _ _ _ (by simp only [childRects_length, List.length_map])]
+  exact childRects_scroll ho r _
+
+/-- Measuring doesn't read `scroll`: a box measures the same with any offset, or none. -/
+theorem measure_scroll (m : TextMetrics) (aw : Int) (st : Style) (s : Option Int)
+    (ctl : Option Control) (kids : List Node) :
+    measure m aw (.box { st with scroll := s } ctl kids) =
+      .box { st with scroll := s } ctl (measure m aw (.box st ctl kids)).size
+        (measureList m (innerAvail st aw) kids) := by
+  cases st; rfl
+
+/-- In a column, scrolling by `o` moves a rect up by `o` and changes nothing else. -/
+theorem scrollBy_column (o : Int) (q : Rect) : q.scrollBy false o = ⟨q.x, q.y - o, q.w, q.h⟩ := rfl
+
+theorem _root_.Cairn.Laid.Everywhere.and {P Q : Laid → Prop} {l : Laid} (hp : l.Everywhere P)
+    (hq : l.Everywhere Q) : l.Everywhere fun x => P x ∧ Q x := by
+  revert hq
+  induction hp with
+  | intro hP _ ih => exact fun hq => .intro ⟨hP, hq.here⟩ fun k hk => ih k hk (hq.child hk)
+
+theorem _root_.Cairn.Laid.Everywhere.imp {P Q : Laid → Prop} {l : Laid} (hp : l.Everywhere P)
+    (f : ∀ x, P x → Q x) : l.Everywhere Q := by
+  induction hp with
+  | intro hP _ ih => exact .intro (f _ hP) ih
+
+/-- A fact holding everywhere holds everywhere at every node's subtree. -/
+theorem _root_.Cairn.Laid.Everywhere.tails {P : Laid → Prop} {l : Laid} (hp : l.Everywhere P) :
+    l.Everywhere fun d => d.Everywhere P := by
+  induction hp with
+  | intro hP hK ih => exact .intro (.intro hP hK) ih
+
+theorem Rect.inter_inside_of_nonempty {a b : Rect} (h : (a.inter b).nonempty) :
+    (a.inter b).inside b := by
+  unfold Rect.nonempty Rect.inter at h; unfold Rect.inter Rect.inside; simp only at *; omega
+
+theorem Rect.nonempty_of_inside {a b : Rect} (hi : a.inside b) (h : a.nonempty) : b.nonempty := by
+  unfold Rect.inside at hi; unfold Rect.nonempty at *; omega
+
+/-- Clips only shrink going down: below a node whose clip is inside `R`, every clip is. -/
+theorem clip_inside_everywhere {R : Rect} {l : Laid} (hE : l.Everywhere ClipInside) :
+    l.clip.inside R → l.Everywhere fun d => d.clip.inside R := by
+  induction hE with
+  | intro hP _ ih =>
+    exact fun hR => .intro hR fun k hk => ih k hk (Rect.inside_trans (hP.2.2 k hk) hR)
+
+/-- A nonempty visible part lies inside the node's clip. -/
+theorem visible_inside_clip {d : Laid} (h : d.visible.nonempty) : d.visible.inside d.clip :=
+  Rect.inter_inside_of_nonempty h
+
+theorem clipContained_of {l : Laid} (hE : l.Everywhere ClipInside) (hcc : ChildClips l) :
+    ClipContained l := by
+  cases l with
+  | box r c st ctl kids =>
+    intro hclips k hk
+    have hkc : k.clip = c.inter r := by
+      rw [hcc k (by simp only [Laid.children, hk])]
+      simp only [Laid.innerClip, innerClip, hclips, ↓reduceIte]
+    have hkE := hE.child (k := k) (by simp only [Laid.children, hk])
+    refine (clip_inside_everywhere (R := k.clip) hkE (Rect.inside_refl _)).imp fun d hd hne => ?_
+    have hv := visible_inside_clip hne
+    have hK : k.clip.nonempty := Rect.nonempty_of_inside (Rect.inside_trans hv hd) hne
+    rw [hkc] at hd hK
+    exact Rect.inside_trans (Rect.inside_trans hv hd) (Rect.inter_inside_of_nonempty hK)
+  | text => trivial
+  | field => trivial
+
+/-- **Clips hold what is under them.** In every box of the laid-out tree that clips, so in
+every scroll box, every nonempty visible part of every node below it is inside the box's
+rect. -/
+theorem layout_clipContained (m : TextMetrics) (w : Size) (n : Node) :
+    (layout m w n).Everywhere ClipContained :=
+  ((layout_clipInside m w n).tails.and (layout_childClips m w n)).imp fun _ h =>
+    clipContained_of h.1 h.2
+
 /-! ## Everything together -/
 
 /-- **Layout facts.** For valid metrics, every window and every view, `layout` satisfies all of
@@ -895,6 +1063,7 @@ theorem facts {m : TextMetrics} (hm : m.Valid) (w : Size) (n : Node) :
   siblingsDisjoint := layout_siblingsDisjoint m w n
   fillExact := layout_fillExact m w n
   childrenInside := layout_childrenInside m w n
+  clipContained := layout_clipContained m w n
   caretPlaced := layout_caretPlaced hm w n
 
 /-! ## Images -/

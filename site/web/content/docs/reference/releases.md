@@ -91,6 +91,18 @@ format.
   `conformance`, `fuzz`, `doc APP=` and `examples-*` targets are gone; the per-app checks run
   on test/fixture with the `cairn` CLI. `CLean`'s header no longer declares the examples'
   initializers.
+- **Scroll boxes** ([#202](https://github.com/iamnbutler/cairn/issues/202)). `Style.scroll :
+  Option Int`: `some o` lays a box's children out as its axis says, moves them back by `o` and
+  clips them. `Pressable`, `layout_good` and `hitTest_center_of_pressable` now speak of a
+  control's visible part (`rect ∩ clip`); without scroll boxes it is the whole rect
+  (`visible_eq_rect`, `hitTest_center_of_fitsIn_flat`). `Cairn.Layout.Scroll` proves, for every
+  scroll box, that its children are the unscrolled ones moved back by the offset, that they stay
+  apart and show only inside the box, and that a control is pressed at the centre of what shows
+  of it and nowhere if nothing does. The frame draws only a scroll box's visible children and
+  gives it an accessibility node of role `scrollArea`; the host's mirror leaves out what is
+  scrolled away. The test fixture has a scroll box of 200 rows (`fixture^10`–`^13`).
+- **Frame format version 11.** Adds the `scrollArea` role (10). A host and a Lean library must
+  both be at 11; version 10 never shipped in a release.
 - **The 0.1.3 shims are gone.** `Cairn.Frame.Boundary`, `Cairn.Runtime.Hit` and
   `Cairn.Text.Metrics` no longer exist; import `Cairn.Abi`, `Cairn.UI.Hit` and `Cairn.Font`.
 - **Upgrading.** Write an environment secret as
@@ -100,6 +112,9 @@ format.
   `| .http m u hs b t _ _ _ =>` or `| .http m u ..`. Exhaustive matches on `Request` need a `forgetSecret` case.
   Replace an import of a shim with its module (Yap's `Cairn.Frame.Boundary` is `Cairn.Abi`). An
   app that cited a Cairn example claim (`cairn^202`) cites `cairn_examples^202`.
+  `hitTest_center_of_fitsIn` takes `t.visible.nonempty`; use `hitTest_center_of_fitsIn_flat`
+  with `(n.scrolls = false)` for the old statement. Exhaustive matches on `Role` need a
+  `scrollArea` case.
 
 ## v0.2.5
 

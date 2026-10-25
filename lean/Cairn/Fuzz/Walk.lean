@@ -282,6 +282,8 @@ def opToEvents (rt : Runtime.State S) : Op → Option (List Event)
       | .press _ => statusPress rt c
       | _ => none
     | some tg =>
+      -- A control scrolled out of view can't be clicked: skip the operation.
+      if !decide tg.visible.nonempty then none else
       let p := tg.visible.center
       let focus := if rt.ui.focus = some c then [] else clickEvents p 1
       match a with
@@ -571,6 +573,8 @@ def checks (t : Target) (setup : Setup) (w : World t.S) (act? : Option Action)
     let mut anyPointer := none
     for tg in ts do
       if tg.isField then continue
+      -- Scrolled out of view: no part of it to press (`not_hit_of_hidden`).
+      unless decide tg.visible.nonempty do continue
       let some mv := t.move? tg.ref.claim | continue
       unless isPointer mv && mv.enabled s tg.ref.key do continue
       if anyPointer.isNone then anyPointer := some tg.ref
@@ -580,7 +584,7 @@ def checks (t : Target) (setup : Setup) (w : World t.S) (act? : Option Action)
         fails := fails.push <| mkFail "pressable" tg.ref stepIx
           s!"{tg.ref.label}'s centre {reprStr tg.visible.center} hits {reprStr (hit.map (·.label))} at {size.w}×{size.h}"
     if let some r := anyPointer then
-      unless checkPressable size laid && controlsNonempty laid do
+      unless checkPressable size laid && controlRectsNonempty laid do
         -- Blame the first control inside the first node that breaks a condition.
         let (why, r) := match firstBad laid with
           | some (why, n) => (why, (n.controls.head?.map fun (c : Control) => c.ref).getD r)
@@ -609,7 +613,7 @@ def candidates (t : Target) (w : World t.S) : List (ControlRef × Trigger × Boo
       match t.move? tg.ref.claim with
       | none => []
       | some mv =>
-        if !mv.enabled s tg.ref.key then [] else
+        if !mv.enabled s tg.ref.key || !decide tg.visible.nonempty then [] else
         mv.triggers.filterMap fun tr =>
           let ok := if tg.isField then tr != .press && tr != .doublePress
                     else tr == .press || tr == .doublePress
@@ -641,6 +645,7 @@ def genAct (t : Target) (w : World t.S) : Gen (Option (List Op)) := do
 
 def genPoint (w : World S) : Gen Point := do
   let ts := targets w.rt.laid
+  let ts := ts.filter fun tg => decide tg.visible.nonempty
   if !ts.isEmpty && (← Gen.bool) then
     let tg ← Gen.elem ts
     let c := tg.visible.center

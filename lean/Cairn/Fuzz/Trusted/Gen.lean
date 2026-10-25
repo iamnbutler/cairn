@@ -108,7 +108,8 @@ def draw : Gen Draw := do
   | _ => return .popClip
 
 def role : Gen Role :=
-  Gen.elem [.group, .button, .checkbox, .text, .textField, .link, .list, .listItem, .heading, .tab]
+  Gen.elem [.group, .button, .checkbox, .text, .textField, .link, .list, .listItem, .heading, .tab,
+    .scrollArea]
 
 def axNode : Gen AxNode := do
   return { control := ← opt ref, role := ← role, rect := ← rect, label := ← str, value := ← str,

@@ -126,7 +126,7 @@ theorem row_rects (m : TextMetrics) (aw : Int) (clip : Rect) (x y : Int) (W H n 
     exact cellNode_item m _ _ _ c
   simp only [rowNode, rowStyle, Layout.measure, arrange_children_box]
   rw [arrangeList_rects]
-  · simp only [childRects]
+  · simp only [childRects, placeRects, scrolled]
     rw [lineRects_uniform true _ _ _ (cellItem (g.cardW W H n) (g.cardH W H n)) (g.cardW W H n)
       (g.cardH W H n) rfl rfl rfl rfl (hitems _)]
     rw [List.length_map, measureList_eq_map, List.length_map, List.range'_eq_map_range,
@@ -142,7 +142,7 @@ theorem row_rects (m : TextMetrics) (aw : Int) (clip : Rect) (x y : Int) (W H n 
     simp only [Function.comp, mkRect, ↓reduceIte, rowRect, Rect.inset, cell,
       hdiv, hmod, Rect.mk.injEq]
     refine ⟨?_, ?_, trivial, trivial⟩ <;> push_cast <;> omega
-  · simp only [childRects, lineRects, Line.go_length, List.length_map]
+  · simp only [childRects, placeRects, scrolled, lineRects, Line.go_length, List.length_map]
 
 theorem chunksAux_length_le {α : Type} (c : Nat) (hc : 1 ≤ c) :
     ∀ (fuel : Nat) (xs : List α) (row : List α), row ∈ chunksAux c fuel xs →
@@ -204,7 +204,8 @@ theorem node_children {α : Type} (m : TextMetrics) (aw : Int) (clip r : Rect) (
           (g.cardH W H xs.length) (card (g.cardW W H xs.length) (g.cardH W H xs.length) x))) := by
   simp only [node, style, Layout.measure, arrange_children_box]
   rw [measureList_eq_map, arrangeList_zipWith]
-  · simp only [childRects, innerClip, Bool.false_eq_true, ↓reduceIte]
+  · simp only [childRects, placeRects, scrolled, innerClip, Style.clips, Bool.false_eq_true,
+      Bool.or_false, Option.isSome_none, ↓reduceIte]
     rw [lineRects_uniform false _ _ _ (cellItem (g.usedW W H xs.length) (g.cardH W H xs.length))
       (g.cardH W H xs.length) (g.usedW W H xs.length) rfl rfl rfl rfl (by
         intro it hit
@@ -220,7 +221,7 @@ theorem node_children {α : Type} (m : TextMetrics) (aw : Int) (clip r : Rect) (
     simp only [mkRect, Bool.false_eq_true, ↓reduceIte, Rect.inset, rowRect,
       Rect.mk.injEq]
     refine ⟨trivial, ?_, trivial, trivial⟩; omega
-  · simp only [childRects, lineRects, Line.go_length, List.length_map]
+  · simp only [childRects, placeRects, scrolled, lineRects, Line.go_length, List.length_map]
 
 /-- **The cells land on `Grid.rects`.** Laid out by the ordinary layout pass, wherever its
 parent puts it, the grid's cells are exactly `rects` at the grid's origin, in order. -/

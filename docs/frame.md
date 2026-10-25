@@ -1,4 +1,4 @@
-# Frame and event format: frames v10, events v2
+# Frame and event format: frames v11, events v2
 
 Two byte buffers cross the boundary between Lean and the Swift host, and nothing else does:
 
@@ -75,7 +75,7 @@ Swift's model uses `Int32` and `UInt32` for these fields, so every Swift value f
 ```
 offset  size  field
 0       4     magic "CAFR" (43 41 46 52)
-4       2     u16 version = 9
+4       2     u16 version = 11
 6       2     u16 flags = 0
 8       4+4   surfaces: u32 count, u32 byteLength, then the surface records
 .       4+4   effects: u32 count, u32 byteLength, then the effect records
@@ -94,7 +94,7 @@ minimum size to the surface record; version 8 added the `imageCache` subscriptio
 added the Keychain secret source (`[2, 0, 0, 0]`), `http`'s secret and captures, and the
 `forgetSecret` request (kind 17). An `upload` with no secret or an environment secret is the
 same bytes in versions 8 and 9. Version 10 added the `secure` flags to accessibility and
-text-input records and `redact` to requests.
+text-input records and `redact` to requests. Version 11 added the `scrollArea` role (10).
 
 ### Surface records
 
@@ -364,6 +364,7 @@ reaches the deadline. A deadline in the past means at once.
 | checkbox | 2 | | listItem | 7 |
 | text | 3 | | heading | 8 |
 | textField | 4 | | tab | 9 |
+| | | | scrollArea | 10 |
 
 ## Events
 
@@ -452,15 +453,19 @@ checked against Lean's decoder, so a bad batch means a host bug.
 (`Boundary.frame` in `Runtime/Abi.lean` builds one surface record per `Shown` surface). Focus comes from `ui.focus`, the runtime's one source of truth.
 
 - **Draws**, back to front, depth first. A box paints one `rect` (only if it has a background
-  or a border), then its children, wrapped in `pushClip`/`popClip` of its rect when it clips.
-  Text paints one `text` at its baseline origin `(rect.x, baseline)`. A field paints its
+  or a border), then its children, wrapped in `pushClip`/`popClip` of its rect when it clips
+  (`clip`, or any scroll box). A scroll box paints only the children whose visible rect is
+  non-empty. Text paints one `text` at its baseline origin `(rect.x, baseline)`. A field paints its
   background and border, then, clipped to its rect: one rect per selection rect in
   `Frame.selectionColor` (accent blue at 30%), its text (or its placeholder at half alpha when
   the text is empty), and a caret rect in the text colour when it is focused and its selection
   is empty.
 - **Accessibility.** One node per control (a box with a control, or a field) and per text, in
-  paint order. A node's parent is the nearest enclosing control; its rect is its laid rect
-  intersected with its clip. Text nodes have role `text` and the content as label. Fields have
+  paint order, and one per scroll box without a control (role `scrollArea`, no label). A node's
+  parent is the nearest enclosing control or scroll box; its rect is its laid rect intersected
+  with its clip, so a control scrolled out of view has an empty rect. It keeps its node (the
+  frame has every control); the host exposes no node with an empty rect under a scroll area,
+  nor anything under such a node (docs/trusted.md). Text nodes have role `text` and the content as label. Fields have
   role `textField` and their text as value; `focused` is `ui.focus == some ref`.
 - **Text input** describes the first field, in paint order, whose control has focus.
 

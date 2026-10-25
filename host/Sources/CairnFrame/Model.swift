@@ -96,7 +96,7 @@ public enum Draw: Equatable, Sendable {
 }
 
 public enum Role: UInt8, Sendable {
-    case group, button, checkbox, text, textField, link, list, listItem, heading, tab
+    case group, button, checkbox, text, textField, link, list, listItem, heading, tab, scrollArea
 }
 
 public struct ControlRef: Hashable, Sendable {

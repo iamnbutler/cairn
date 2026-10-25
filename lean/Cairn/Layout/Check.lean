@@ -22,16 +22,21 @@ def insideB (r o : Rect) : Bool :=
   decide (o.x ≤ r.x) && decide (r.x + r.w ≤ o.x + o.w) && decide (o.y ≤ r.y) &&
     decide (r.y + r.h ≤ o.y + o.h)
 
+def padB (p : Insets) : Bool :=
+  decide (0 ≤ p.top) && decide (0 ≤ p.right) && decide (0 ≤ p.bottom) && decide (0 ≤ p.left)
+
 def fitsB : Laid → Bool
   | .box r _ st _ kids =>
     let content := r.inset st.padding
     (st.clip && kids.all (·.isText)) ||
-    ((decide (0 ≤ st.padding.top) && decide (0 ≤ st.padding.right) &&
-      decide (0 ≤ st.padding.bottom) && decide (0 ≤ st.padding.left)) &&
+    (padB st.padding &&
     kids.all (fun k => decide (k.rect.w ≤ content.w) && decide (k.rect.h ≤ content.h)) &&
     (decide (st.axis = .stack) ||
       decide ((kids.map fun k => mainOf (Axis.horiz st.axis) k.rect).sum + gaps st.gap kids.length
-        ≤ mainOf (Axis.horiz st.axis) content)))
+        ≤ mainOf (Axis.horiz st.axis) content))) ||
+    (st.scroll.isSome && padB st.padding &&
+      kids.all fun k => decide (crossOf (Axis.horiz st.axis) k.rect ≤
+        crossOf (Axis.horiz st.axis) content))
   | _ => true
 
 def stackTopB : Laid → Bool
@@ -57,8 +62,14 @@ end
 def checkPressable (w : Size) (l : Laid) : Bool :=
   insideB l.rect (windowRect w) && allB fitsB l && allB stackTopB l && allB controlLeafB l
 
-/-- Every control's rect is nonempty. -/
+/-- Every control's visible part (`rect ∩ clip`) is nonempty. -/
 def controlsNonempty (l : Laid) : Bool :=
+  (targets l).all fun t => decide (0 < t.visible.w) && decide (0 < t.visible.h)
+
+/-- Every control's rect is nonempty. Its visible part may still be empty under a scroll box
+(scrolled out of view), where the fuzzer checks only the controls it can see; anywhere else a
+tree that passes `checkPressable` shows each control whole (`visible_eq_rect`). -/
+def controlRectsNonempty (l : Laid) : Bool :=
   (targets l).all fun t => decide (0 < t.node.rect.w) && decide (0 < t.node.rect.h)
 
 /-! ## Soundness -/
@@ -87,13 +98,15 @@ end
 
 theorem fits_of_fitsB : ∀ l, fitsB l = true → Fits l
   | .box r c st ctl kids, h => by
-    simp only [fitsB, Bool.and_eq_true, Bool.or_eq_true, decide_eq_true_eq, List.all_eq_true] at h
-    rcases h with ⟨hc, ht⟩ | ⟨⟨hpad, hk⟩, hm⟩
+    simp only [fitsB, padB, Bool.and_eq_true, Bool.or_eq_true, decide_eq_true_eq,
+      List.all_eq_true] at h
+    rcases h with (⟨hc, ht⟩ | ⟨⟨hpad, hk⟩, hm⟩) | ⟨⟨hs, hpad⟩, hk⟩
     · exact .inl ⟨hc, ht⟩
-    refine .inr ⟨by omega, fun k hk' => hk k hk', fun hs => ?_⟩
-    rcases hm with hm | hm
-    · exact absurd hm hs
-    · exact hm
+    · refine .inr (.inl ⟨by omega, fun k hk' => hk k hk', fun hs => ?_⟩)
+      rcases hm with hm | hm
+      · exact absurd hm hs
+      · exact hm
+    · exact .inr (.inr ⟨hs, by omega, hk⟩)
   | .text .., _ => trivial
   | .field .., _ => trivial
 
@@ -123,7 +136,8 @@ theorem pressable_of_check {w : Size} {l : Laid} (h : checkPressable w l = true)
   exact ⟨inside_of_insideB hi, everywhere_of_allB fits_of_fitsB l hf,
     everywhere_of_allB stackTop_of_stackTopB l hs, everywhere_of_allB controlLeaf_of_controlLeafB l hc⟩
 
-/-- **Every control is pressable at its centre**, for a laid-out view the checker accepts. -/
+/-- **Every control is pressable at its centre**, for a laid-out view the checker accepts: the
+centre of its visible part, which the checker asks to be nonempty. -/
 theorem hitTest_center_of_check {m : TextMetrics} {w : Size} {n : Node}
     (h : (checkPressable w (layout m w n) && controlsNonempty (layout m w n)) = true) :
     ∀ t ∈ targets (layout m w n), hitTest (layout m w n) t.visible.center = some t.control := by

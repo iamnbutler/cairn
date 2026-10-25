@@ -3,7 +3,7 @@ module
 public import Cairn.Frame
 public import Cairn.Frame.Bytes
 
-/-! Frame byte format (docs/frame.md; version 10): specification encoder `Wire.Enc.frame`, decoder
+/-! Frame byte format (docs/frame.md; version 11): specification encoder `Wire.Enc.frame`, decoder
 `Wire.Dec.frame`, the executable encoder `encodeFrame` (proved equal to the specification and
 installed with `@[csimp]`), and the round trip `decodeFrame_encodeFrame`.
 
@@ -29,12 +29,12 @@ namespace Cairn.Wire
 
 def Role.code : Role → UInt8
   | .group => 0 | .button => 1 | .checkbox => 2 | .text => 3 | .textField => 4
-  | .link => 5 | .list => 6 | .listItem => 7 | .heading => 8 | .tab => 9
+  | .link => 5 | .list => 6 | .listItem => 7 | .heading => 8 | .tab => 9 | .scrollArea => 10
 
 def Role.ofCode : UInt8 → Option Role
   | 0 => some .group | 1 => some .button | 2 => some .checkbox | 3 => some .text
   | 4 => some .textField | 5 => some .link | 6 => some .list | 7 => some .listItem
-  | 8 => some .heading | 9 => some .tab | _ => none
+  | 8 => some .heading | 9 => some .tab | 10 => some .scrollArea | _ => none
 
 @[simp] theorem Role.ofCode_code (r : Role) : Role.ofCode (Role.code r) = some r := by
   cases r <;> rfl
@@ -501,8 +501,8 @@ def surface (s : SurfaceFrame) : List UInt8 :=
     u32 s.place ++ u32 s.anchor.offset ++ size s.minSize ++ str s.title ++ canvas s.canvas ++
     status s.status
 
-/-- Magic, version 10, flags 0. -/
-def header : List UInt8 := magic ++ [10, 0, 0, 0]
+/-- Magic, version 11, flags 0. -/
+def header : List UInt8 := magic ++ [11, 0, 0, 0]
 
 def frame (f : Frame) : List UInt8 :=
   header ++ list surface f.surfaces.toList ++ list effect f.effects.toList ++

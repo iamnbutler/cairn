@@ -51,6 +51,8 @@ def disjoint (a b : Rect) : Prop :=
 
 def nonempty (r : Rect) : Prop := 0 < r.w ∧ 0 < r.h
 
+instance (r : Rect) : Decidable r.nonempty := by unfold nonempty; infer_instance
+
 def inset (r : Rect) (i : Insets) : Rect :=
   ⟨r.x + i.left, r.y + i.top, r.w - i.left - i.right, r.h - i.top - i.bottom⟩
 

@@ -14,7 +14,8 @@ points (origin top-left, y down). The code is in `lean/Cairn/Layout/`:
 | `Tests.lean` | `#guard` checks on concrete trees with `TextMetrics.mono` |
 
 It is a small subset of flexbox. Anything not described here is not supported in M1:
-text wraps only in `Node.para` (below); there is no shrinking, no min/max sizes and no scrolling containers.
+text wraps only in `Node.para` (below); there is no shrinking and no min/max sizes. Scroll boxes
+(below) scroll by an offset the view gives them.
 
 ## Two passes
 
@@ -84,11 +85,56 @@ covers the content box, and `center` on both centres the child.
 ## Clips
 
 Each `Laid` node's `clip` is the region it may paint in: the intersection of the rects of all
-its clipping ancestors (`style.clip`), starting from the window rect at the root. A node does
+its clipping ancestors (`style.clip`, or a scroll box), starting from the window rect at the root. A node does
 not clip itself, only its children; its visible part is `rect.inter clip`.
 
 `Rect.inter` places an empty intersection inside its first argument, so an intersection is
 always inside the clip it cuts down (see "Contract changes").
+
+## Scroll boxes
+
+`Style.scroll : Option Int` makes a box a scroll box. With `scroll := some o`:
+
+- The box lays its children out as its axis says (a stack stacks them), with the box's own
+  rect, padding and gap, exactly as it would without `scroll`; then it moves every child back by
+  `o` along its axis: up in a column or stack, left in a row (`Rect.scrollBy`, `scrolled`).
+- A scroll box always clips (`Style.clips = clip || scroll.isSome`), so each child's clip is the
+  box's clip cut down to the box's rect.
+- `Laid` keeps the real rects, which may lie anywhere above, below or beside the box. What
+  shows of a node is its visible part, `rect ∩ clip` (`Laid.visible`, `Target.visible`); it is
+  empty for a child scrolled wholly out.
+- The offset is a number the view supplies. Layout doesn't clamp it or remember it: owning it,
+  wheel and keys, and scrolling the focus into view are the runtime's (#203).
+
+What the rest of the pipeline does with a scroll box:
+
+| Where | What |
+|---|---|
+| hit testing | tests the visible part, so a pointer outside the box never reaches a scrolled child |
+| frame (`Frame/Build.lean`) | draws only the children whose visible part is nonempty, inside the box's clip |
+| AX tree | the box gets a node of its own, role `scrollArea` (AXScrollArea), parenting its children; the host exposes only children with a nonempty rect (`docs/trusted.md`) |
+| `Fits` | a scroll box fits when its padding is non-negative and each child fits across its axis; along the axis the children may run past the box |
+
+Theorems, for every scroll box, any children, any metrics and any window. `Scroll.lean` has the
+three below; the rest is in `Proofs.lean` and `Bridge.lean`:
+
+- `scroll_rects`, `scroll_column_rects`: the children are where the same box without `scroll`
+  puts them, moved back by the offset (in a column, `y` less the offset; `x`, width and height
+  unchanged). They rest on `arrange_scroll` and `measure_scroll` (`scroll` doesn't change
+  measuring).
+- `layout_scrollApart`: in a row or column scroll box, the children's rects are pairwise disjoint
+  and every nonempty visible part under the box is inside it. It rests on
+  `layout_siblingsDisjoint` (moving every sibling by the same offset keeps them apart) and
+  `layout_clipContained` (`Facts.clipContained`: under every clipping box, every nonempty visible
+  part is inside the box's rect).
+- `pressed_where_visible`: in a `Pressable` view, a control with a nonempty visible part is hit
+  at that part's centre (`hitTest_center_of_pressable`), and one with an empty visible part is
+  the hit at no point (`not_hit_of_hidden`).
+
+These are theorems, not claims: a Cairn claim is a move, place, flow or invariant of an app's
+machine, or an `assume` about the host, and a framework theorem has no machine. The test fixture
+(test/fixture) has a scroll box of 200 rows at a fixed offset, and its claims `fixture^11` to
+`fixture^13` state the three for it, in every state.
 
 ## Grids
 
@@ -221,10 +267,11 @@ of it. `l.Everywhere P` means `P` holds at every node of `l`.
 | `rootOrigin` | `layout_rootOrigin` | the root's rect starts at the origin |
 | `childClips` | `layout_childClips` | each child's clip is its parent's clip, intersected with the parent's rect if the parent clips |
 | `clipInside` | `layout_clipInside` | every clip has non-negative size and contains each child's clip |
+| `clipContained` | `layout_clipContained` | under a box that clips (every scroll box), every nonempty visible part of every node is inside the box's rect |
 | `rectNonneg` | `layout_rectNonneg` | every rect has non-negative size |
 | `siblingsDisjoint` | `layout_siblingsDisjoint` | in a row or column, earlier children's rects end before later ones start, so distinct children are disjoint (index form: `SiblingsDisjoint.get`) |
 | `fillExact` | `layout_fillExact` | in a row or column with a fill child, if the other children, gaps and padding fit, children + gaps + padding equal the parent's main length exactly |
-| `childrenInside` | `layout_childrenInside` | if a container's children fit its content box (each in size, and in a row or column all of them plus gaps along the main axis), every child's rect is inside the content box |
+| `childrenInside` | `layout_childrenInside` | if a container doesn't scroll and its children fit its content box (each in size, and in a row or column all of them plus gaps along the main axis), every child's rect is inside the content box |
 | `caretPlaced` | `layout_caretPlaced` | in each field, `caret.x = textOrigin.x + offs[caret]`, `textOrigin.x ≤ caret.x ≤ textOrigin.x + width`, the caret is 1 wide and a line high, it is inside the content box whenever that is at least 1 wide, and the selection is empty when collapsed and otherwise spans the offsets of its ends |
 
 Also `TextMetrics.mono_valid : TextMetrics.mono.Valid`.
@@ -245,7 +292,7 @@ arithmetic.
 ## Bridge to the runtime
 
 The runtime's pressability theorems (`Cairn.Runtime.hitTest_center`, `click_center_presses`)
-assume `Cairn.Runtime.LayoutFacts laid t`: the control's visible rect is nonempty and a pointer
+assume `Cairn.Runtime.LayoutFacts laid t`: the control's visible rect (`rect ∩ clip`) is nonempty and a pointer
 at its centre reaches it, which means no other target's visible rect covers that point later in
 paint order. `Bridge.lean` proves this for every control of `layout m w n` under four
 conditions an app can check of its laid-out view, packaged as `Pressable w l`:
@@ -253,7 +300,7 @@ conditions an app can check of its laid-out view, packaged as `Pressable w l`:
 | Field | Condition |
 |---|---|
 | `rootInside` | the root's rect is inside the window rect (the window is at least the view's size) |
-| `fits` | everywhere, either the box clips and holds only text (a label: the text may overflow, the clip holds it), or padding is non-negative, each child is no larger than its parent's content box, and in a row or column the children plus gaps fit along the main axis (`Fits`) |
+| `fits` | everywhere, either the box clips and holds only text (a label: the text may overflow, the clip holds it), or padding is non-negative, each child is no larger than its parent's content box, and in a row or column the children plus gaps fit along the main axis, or the box scrolls, its padding is non-negative and each child fits across its axis (`Fits`) |
 | `stackTop` | in a stack, only the last child may contain controls (`StackTop`) |
 | `controlLeaf` | a box with a control has no controls below it (`ControlLeaf`), so a label inside a button routes to the button |
 
@@ -261,9 +308,12 @@ Theorems:
 
 - `reaches_of_pressable`: a pointer at *any* point of a control's visible rect reaches it.
 - `layoutFacts_of_pressable (hp : Pressable w (layout m w n)) (ht : t ∈ targets (layout m w n))
-  (hne : t.node.rect.nonempty) : LayoutFacts (layout m w n) t`. Under these conditions the
-  visible rect is the whole rect.
-- `hitTest_center_of_pressable`: so `hitTest` at the control's centre returns it.
+  (hne : t.visible.nonempty) : LayoutFacts (layout m w n) t`.
+- `hitTest_center_of_pressable`: so `hitTest` at the centre of the control's visible part
+  returns it.
+- `not_hit_of_hidden`: a control with an empty visible part is hit nowhere.
+- `visible_eq_rect`: in a view with no scroll boxes (`NoScroll` everywhere, from
+  `layout_noScroll` when `n.scrolls = false`), the visible part is the whole rect.
 
 The conditions are stated on the laid-out tree, not on the `Node`, because "fits" depends on
 the window and the metrics. For a concrete view, window and metrics, `Check.lean` decides them
@@ -283,12 +333,16 @@ controls have positive size. Rows and columns only; stacks aren't covered.
   any `TextMetrics`, meets `Fits`, `StackTop` and `ControlLeaf` everywhere, and every control's
   rect is nonempty.
 - `hitTest_center_of_fitsIn`: for a `fill × fill` root that fits the window, hit testing at
-  the centre of every control returns that control.
+  the centre of every control's visible part, when that is nonempty, returns that control.
+- `hitTest_center_of_fitsIn_flat`: if the view also has no scroll boxes (`Node.scrolls`), every
+  control is visible whole and hit at its centre.
+- `FitsIn.line` asks that the children fit along the main axis only when the box doesn't
+  scroll.
 - `exampleList_pressable`: a column of any number of 44-point buttons with any labels is
   pressable whenever the window is wider than zero and at least `44 · k` tall.
 
-The honest limit: a list fits only while it fits the window (there is no scrolling yet), and
-labels are clipped rather than wrapped. A para fits anywhere (`FitsIn.para`): it clips its
+The honest limit: a list outside a scroll box fits only while it fits the window, and labels are
+clipped rather than wrapped. A para fits anywhere (`FitsIn.para`): it clips its
 lines.
 
 The runtime uses this layout: `Cairn.Runtime.Config.layout` defaults to

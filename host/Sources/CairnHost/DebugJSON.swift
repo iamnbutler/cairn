@@ -48,6 +48,7 @@ public enum DebugJSON {
         case .listItem: "listItem"
         case .heading: "heading"
         case .tab: "tab"
+        case .scrollArea: "scrollArea"
         }
     }
 

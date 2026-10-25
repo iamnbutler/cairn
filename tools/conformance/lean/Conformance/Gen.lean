@@ -70,7 +70,7 @@ def refLabel (c : ControlRef) : String :=
 def roleName : Role → String
   | .group => "group" | .button => "button" | .checkbox => "checkbox" | .text => "text"
   | .textField => "textField" | .link => "link" | .list => "list" | .listItem => "listItem"
-  | .heading => "heading" | .tab => "tab"
+  | .heading => "heading" | .tab => "tab" | .scrollArea => "scrollArea"
 
 def cursorName : Cursor → String
   | .arrow => "arrow" | .pointer => "pointer" | .text => "text"

@@ -15,6 +15,8 @@ What it covers, in one window (lean/Fixture.lean):
 - text: a heading, a wrapped paragraph (`Node.para`), a text field with Enter, and a secure
   field (Passcode, `^9`) whose Enter sends it in a redacted request;
 - hit testing: buttons, and keyed rows (`^4#k`, `^5#k`) that come and go;
+- scroll boxes: a box of 200 keyed rows (`^10#k`) at a fixed offset, with Cairn's scroll-box
+  theorems stated for it as claims ^11–^13 (lean/Checks/Scroll.lean);
 - effects: Flash sets a timer, and the timer's message comes back through `receive`;
 - claims: places, moves (press, edit, submit, keyed, emit), an invariant with a runnable check, a
   flow; its own scope `fixture` and its own claims.lock, so nothing here is in Cairn's ledger.

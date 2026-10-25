@@ -99,7 +99,7 @@ inductive FitsIn : Node → Int → Int → Prop
   | line {st : Style} {ctl : Option Control} {kids : List Node} {w h : Int} :
       st.axis ≠ .stack → PadOk st.padding → 0 ≤ contentW st w → 0 ≤ contentH st h →
       (ctl.isSome = true → 0 < w ∧ 0 < h ∧ Node.controlsList kids = []) →
-      lineBase (Axis.horiz st.axis) st.gap kids ≤ mainIn (Axis.horiz st.axis) st w h →
+      (st.scroll = none → lineBase (Axis.horiz st.axis) st.gap kids ≤ mainIn (Axis.horiz st.axis) st w h) →
       (∀ k ∈ kids, (nodeSizings k).1.isHug = false ∧ (nodeSizings k).2.isHug = false ∧
         fixedOf (crossSz (Axis.horiz st.axis) k) ≤ crossIn (Axis.horiz st.axis) st w h) →
       (∀ k ∈ kids, ∀ len : Int,
@@ -231,9 +231,9 @@ theorem mainSz_hug (h : Bool) (k : Node) (h1 : (nodeSizings k).1.isHug = false)
   cases h <;> simp only [mainSz, crossSz, Bool.false_eq_true, ↓reduceIte, h1, h2, and_self]
 
 theorem childRects_line (st : Style) (r : Rect) (items : List Item) (hax : st.axis ≠ .stack) :
-    childRects st r items = lineRects (Axis.horiz st.axis) st (r.inset st.padding) items := by
-  unfold childRects Axis.horiz
-  cases h : st.axis <;> simp_all
+    childRects st r items =
+      scrolled st (lineRects (Axis.horiz st.axis) st (r.inset st.padding) items) := by
+  rw [childRects, placeRects_line st r items hax]
 
 theorem rect_wh (h : Bool) (q : Rect) :
     q.w = wOf h (mainOf h q) (crossOf h q) ∧ q.h = hOf h (mainOf h q) (crossOf h q) := by
@@ -374,14 +374,17 @@ theorem fitsIn_arrange (m : TextMetrics) {n : Node} {w h : Int} (hf : FitsIn n w
     intro aw c r hrw hrh
     simp only [measure, arrange, measureList_eq_map]
     generalize innerAvail st aw = a'
-    -- The line, its items and its rects.
-    generalize hH : Axis.horiz st.axis = H at hbase hkids ih
+    -- The line, its items and its rects: `rs` where the line places them, `rs'` once a scroll
+    -- box's offset has moved them (the same lengths).
     have hitems : (kids.map (measure m a')).map Sized.item = kids.map fun k => (measure m a' k).item := by
       simp only [List.map_map, Function.comp_def]
-    rw [hitems, childRects_line st r _ hax, hH]
+    rw [hitems, childRects_line st r _ hax]
+    generalize hH : Axis.horiz st.axis = H at hbase hkids ih
     generalize hrs : lineRects H st (r.inset st.padding) (kids.map fun k => (measure m a' k).item) = rs
     have hlen : rs.length = kids.length := by
       rw [← hrs, lineRects_length, List.length_map]
+    generalize hrs' : scrolled st rs = rs'
+    have hlen' : rs'.length = kids.length := by rw [← hrs', scrolled_length, hlen]
     obtain ⟨hcm, hcc⟩ := mainOf_content H st r
     rw [hrw, hrh] at hcm hcc
     have hrigid : ∀ k ∈ kids, (mainSz H k).isHug = false ∧ (crossSz H k).isHug = false :=
@@ -390,10 +393,10 @@ theorem fitsIn_arrange (m : TextMetrics) {n : Node} {w h : Int} (hf : FitsIn n w
         (kids.map fun k => fixedOf (mainSz H k)).sum :=
       baseSum_rigid H m a' kids fun k hk => (hrigid k hk).1
     have hfc := fillCount_eq H m a' kids
-    -- Leftover space: exactly the content length minus the fixed lengths and gaps.
+    -- Leftover space: the content length minus the fixed lengths and gaps, floored at zero.
     have hL : leftover H st (r.inset st.padding) (kids.map fun k => (measure m a' k).item) =
-        mainIn H st w h - lineBase H st.gap kids := by
-      unfold leftover; rw [hbs, hcm, List.length_map]; unfold lineBase at hbase ⊢; omega
+        max 0 (mainIn H st w h - lineBase H st.gap kids) := by
+      unfold leftover; rw [hbs, hcm, List.length_map]; unfold lineBase; omega
     -- Each child's rect.
     have hdims : ∀ p ∈ List.zip kids rs,
         (∃ len : Int, mainOf H p.2 = len ∧
@@ -416,7 +419,7 @@ theorem fitsIn_arrange (m : TextMetrics) {n : Node} {w h : Int} (hf : FitsIn n w
         have hpos : 0 < lineFills H kids := by
           unfold lineFills
           exact List.length_pos_of_mem (List.mem_filter.2 ⟨hk, by simp only [hfill, Sizing.isFill]⟩)
-        exact fillShare_ge hpos j'
+        exact Int.le_trans (Int.ediv_le_ediv (by omega) (Int.le_max_right 0 _)) (fillShare_ge hpos j')
       · intro n hn
         rw [hmain, mainSize_fixed (hms.trans hn)]
       · rw [hcross, hcs, crossPlace_len _ _ _ _ _ _ (hrigid _ hk).2]
@@ -425,58 +428,89 @@ theorem fitsIn_arrange (m : TextMetrics) {n : Node} {w h : Int} (hf : FitsIn n w
         rw [← hcc] at hci ⊢
         simp only [crossOf] at hci ⊢
         congr 1; omega
+    -- Scrolling moves the rects but keeps their lengths.
+    have hdims' : ∀ p ∈ List.zip kids rs',
+        (∃ len : Int, mainOf H p.2 = len ∧
+          (mainSz H p.1 = .fill →
+            (mainIn H st w h - lineBase H st.gap kids) / ((lineFills H kids : Nat) : Int) ≤ len) ∧
+          (∀ n : Nat, mainSz H p.1 = .fixed n → len = n)) ∧
+        crossOf H p.2 = lenIn (crossSz H p.1) (crossIn H st w h) := by
+      intro p hp
+      rw [← hrs'] at hp
+      unfold scrolled at hp
+      split at hp
+      · exact hdims p hp
+      · rw [List.zip_map_right, List.mem_map] at hp
+        obtain ⟨q, hq, rfl⟩ := hp
+        obtain ⟨⟨len, h1, h2, h3⟩, h4⟩ := hdims q hq
+        refine ⟨⟨len, ?_, h2, h3⟩, ?_⟩
+        · simp only [Prod.map_snd, mainOf_scrollBy, h1]
+        · simp only [Prod.map_snd, crossOf_scrollBy, h4, Prod.map_fst, id_eq]
     -- The children, each where `mem_arrangeList` puts it.
-    have hkid : ∀ k' ∈ arrangeList m (innerClip st c r) rs (kids.map (measure m a')),
+    have hkid : ∀ k' ∈ arrangeList m (innerClip st c r) rs' (kids.map (measure m a')),
         k'.Everywhere NodeOk ∧ (∀ t ∈ targetsOf k', t.node.rect.nonempty) ∧
-        ∃ p ∈ List.zip kids rs, k' = arrange m (innerClip st c r) p.2 (measure m a' p.1) := by
+        ∃ p ∈ List.zip kids rs', k' = arrange m (innerClip st c r) p.2 (measure m a' p.1) := by
       intro k' hk'
-      obtain ⟨p, hp, rfl⟩ := mem_arrangeList m a' _ rs kids hlen k' hk'
-      obtain ⟨⟨len, hlen', hfill, hfix⟩, hcross⟩ := hdims p hp
+      obtain ⟨p, hp, rfl⟩ := mem_arrangeList m a' _ rs' kids hlen' k' hk'
+      obtain ⟨⟨len, hlen', hfill, hfix⟩, hcross⟩ := hdims' p hp
       have hk := (List.of_mem_zip hp).1
       obtain ⟨hw', hh'⟩ := rect_wh H p.2
       have := ih p.1 hk len hfill hfix a' (innerClip st c r) p.2
         (by rw [hw', hlen', hcross]) (by rw [hh', hlen', hcross])
       exact ⟨this.1, this.2, p, hp, rfl⟩
     -- Lengths: every main length is non-negative, and they add up to what the line uses.
-    have hrsnn : ∀ q ∈ rs, 0 ≤ mainOf H q := by
+    have hrsnn : ∀ q ∈ rs', 0 ≤ mainOf H q := by
       intro q hq
-      rw [← hrs] at hq
-      have := lineRects_nonneg H st _ _ q hq
+      rw [← hrs'] at hq
+      obtain ⟨q', hq', hw, hh⟩ := mem_scrolled hq
+      rw [← hrs] at hq'
+      have := lineRects_nonneg H st _ _ q' hq'
       cases H <;> simp only [mainOf, Bool.false_eq_true, ↓reduceIte] <;> omega
-    have hsum : (rs.map (mainOf H)).sum + gaps st.gap kids.length ≤ mainIn H st w h := by
-      rw [← hrs, lineRects_sum, hbs, hfc, hL]
-      unfold lineBase at hbase ⊢
-      split <;> omega
-    have hrects : (arrangeList m (innerClip st c r) rs (kids.map (measure m a'))).map Laid.rect = rs :=
-      arrangeList_rects m _ rs _ (by simp only [List.length_map, hlen])
-    have hkidrect : ∀ k' ∈ arrangeList m (innerClip st c r) rs (kids.map (measure m a')),
-        k'.rect ∈ rs := fun k' hk' => by rw [← hrects]; exact List.mem_map_of_mem hk'
-    refine ⟨.intro ⟨.inr ?_, ?_, ?_⟩ ?_, ?_⟩
-    · -- `Fits`: padding, every child inside the content box, and the main axis.
-      refine ⟨hpad, fun k' hk' => ?_, fun _ => ?_⟩
+    have hrects : (arrangeList m (innerClip st c r) rs' (kids.map (measure m a'))).map Laid.rect = rs' :=
+      arrangeList_rects m _ rs' _ (by simp only [List.length_map, hlen'])
+    have hkidrect : ∀ k' ∈ arrangeList m (innerClip st c r) rs' (kids.map (measure m a')),
+        k'.rect ∈ rs' := fun k' hk' => by rw [← hrects]; exact List.mem_map_of_mem hk'
+    -- Across the axis every child fits the content box.
+    have hcle : ∀ k' ∈ arrangeList m (innerClip st c r) rs' (kids.map (measure m a')),
+        crossOf H k'.rect ≤ crossOf H (r.inset st.padding) := by
+      intro k' hk'
+      obtain ⟨p, hp, rfl⟩ := (hkid k' hk').2.2
+      obtain ⟨-, hcross⟩ := hdims' p hp
+      rw [arrange_rect, hcross, hcc]
+      have := (hkids p.1 (List.of_mem_zip hp).1).2.2
+      have := (hrigid p.1 (List.of_mem_zip hp).1).2
+      cases hs : crossSz H p.1 <;> simp_all [lenIn, fixedOf, Sizing.isHug]
+    refine ⟨.intro ⟨?_, ?_, ?_⟩ ?_, ?_⟩
+    · -- `Fits`: a scroll box's children fit across it; any other line's fit both ways.
+      cases hsc : st.scroll with
+      | some o =>
+        refine .inr (.inr ⟨by rw [hsc]; rfl, hpad, fun k' hk' => ?_⟩)
+        rw [hH]; exact hcle k' hk'
+      | none =>
+      have hsum : (rs'.map (mainOf H)).sum + gaps st.gap kids.length ≤ mainIn H st w h := by
+        rw [← hrs', map_mainOf_scrolled, ← hrs, lineRects_sum, hbs, hfc, hL]
+        have hb := hbase hsc
+        unfold lineBase at hb ⊢
+        split <;> omega
+      refine .inr (.inl ⟨hpad, fun k' hk' => ?_, fun _ => ?_⟩)
       · obtain ⟨p, hp, rfl⟩ := (hkid k' hk').2.2
-        obtain ⟨⟨len, hlen', -, -⟩, hcross⟩ := hdims p hp
         have hq := (List.of_mem_zip hp).2
         have hmle : mainOf H p.2 ≤ mainIn H st w h := by
-          have := le_sum_of_mem (l := rs.map (mainOf H))
+          have := le_sum_of_mem (l := rs'.map (mainOf H))
             (fun x hx => by obtain ⟨q, hq, rfl⟩ := List.mem_map.1 hx; exact hrsnn q hq)
             (List.mem_map_of_mem hq)
           have : 0 ≤ gaps st.gap kids.length := by unfold gaps; omega
           omega
-        have hcle : crossOf H p.2 ≤ crossIn H st w h := by
-          rw [hcross]
-          have := (hkids p.1 (List.of_mem_zip hp).1).2.2
-          have := (hrigid p.1 (List.of_mem_zip hp).1).2
-          cases hs : crossSz H p.1 <;> simp_all [lenIn, fixedOf, Sizing.isHug]
-        obtain ⟨hcm', hcc'⟩ := mainOf_content H st r
-        rw [hrw, hrh] at hcm' hcc'
+        have hc := hcle _ hk'
+        rw [arrange_rect] at hc
+        obtain ⟨hcm', -⟩ := mainOf_content H st r
+        rw [hrw, hrh] at hcm'
         simp only [arrange_rect]
         rw [← hcm'] at hmle
-        rw [← hcc'] at hcle
         cases H <;> simp_all [mainOf, crossOf]
       · rw [hH]
-        have : ((arrangeList m (innerClip st c r) rs (kids.map (measure m a'))).map
-            fun k => mainOf H k.rect) = rs.map (mainOf H) := by
+        have : ((arrangeList m (innerClip st c r) rs' (kids.map (measure m a'))).map
+            fun k => mainOf H k.rect) = rs'.map (mainOf H) := by
           have e := congrArg (List.map (mainOf H)) hrects
           rw [List.map_map] at e; exact e
         rw [this, (mainOf_content _ st r).1, hrw, hrh, arrangeList_length, List.length_map]
@@ -498,30 +532,53 @@ theorem fitsIn_arrange (m : TextMetrics) {n : Node} {w h : Int} (hf : FitsIn n w
       · obtain ⟨l, hl, ht⟩ := mem_targetsList ht
         exact (hkid l hl).2.1 t ht
 
-theorem _root_.Cairn.Laid.Everywhere.imp {P Q : Laid → Prop} {l : Laid} (hp : l.Everywhere P)
-    (f : ∀ x, P x → Q x) : l.Everywhere Q := by
-  induction hp with
-  | intro hP _ ih => exact .intro (f _ hP) ih
-
-/-- **Pressable, for a rigid root.** If the root fills the window and fits in it, every control
-of the laid-out view is pressable at its centre, for every text metrics. -/
-theorem hitTest_center_of_fitsIn {m : TextMetrics} {w : Size} {st : Style}
+/-- A rigid root that fills the window and fits in it lays out pressable. -/
+theorem pressable_of_fitsIn {m : TextMetrics} {w : Size} {st : Style}
     {ctl : Option Control} {kids : List Node}
     (hw : st.width = .fill) (hh : st.height = .fill)
     (hf : FitsIn (.box st ctl kids) (max 0 w.w) (max 0 w.h)) :
-    ∀ t ∈ targets (layout m w (.box st ctl kids)),
-      hitTest (layout m w (.box st ctl kids)) t.visible.center = some t.control := by
+    Pressable w (layout m w (.box st ctl kids)) := by
   have hl : layout m w (.box st ctl kids) =
       arrange m (windowRect w) (windowRect w) (measure m (windowRect w).w (.box st ctl kids)) := by
     simp only [layout, rootRect, measure, Sized.sizings, hw, hh, Sizing.isFill, ↓reduceIte,
       windowRect]
-  obtain ⟨hE, hne⟩ := fitsIn_arrange m hf _ (windowRect w) (windowRect w) rfl rfl
-  rw [← hl] at hE hne
-  have hp : Pressable w (layout m w (.box st ctl kids)) :=
-    ⟨by rw [hl, arrange_rect]; exact Rect.inside_refl _,
+  obtain ⟨hE, -⟩ := fitsIn_arrange m hf _ (windowRect w) (windowRect w) rfl rfl
+  rw [← hl] at hE
+  exact ⟨by rw [hl, arrange_rect]; exact Rect.inside_refl _,
      hE.imp fun _ h => h.1, hE.imp fun _ h => h.2.1, hE.imp fun _ h => h.2.2⟩
+
+/-- **Pressable, for a rigid root.** If the root fills the window and fits in it, every control
+of the laid-out view with a visible part is pressable at that part's centre, for every text
+metrics. (Outside a scroll box the visible part is the whole rect: `visible_eq_rect`.) -/
+theorem hitTest_center_of_fitsIn {m : TextMetrics} {w : Size} {st : Style}
+    {ctl : Option Control} {kids : List Node}
+    (hw : st.width = .fill) (hh : st.height = .fill)
+    (hf : FitsIn (.box st ctl kids) (max 0 w.w) (max 0 w.h)) :
+    ∀ t ∈ targets (layout m w (.box st ctl kids)), t.visible.nonempty →
+      hitTest (layout m w (.box st ctl kids)) t.visible.center = some t.control := by
+  intro t ht hv
+  exact hitTest_center_of_pressable (pressable_of_fitsIn hw hh hf) ht hv
+
+/-- **Pressable, for a rigid root without scroll boxes**: then every control is visible whole,
+so every control of the laid-out view is pressable at its centre, for every text metrics. -/
+theorem hitTest_center_of_fitsIn_flat {m : TextMetrics} {w : Size} {st : Style}
+    {ctl : Option Control} {kids : List Node}
+    (hw : st.width = .fill) (hh : st.height = .fill)
+    (hf : FitsIn (.box st ctl kids) (max 0 w.w) (max 0 w.h))
+    (hs : (Node.box st ctl kids).scrolls = false) :
+    ∀ t ∈ targets (layout m w (.box st ctl kids)),
+      hitTest (layout m w (.box st ctl kids)) t.visible.center = some t.control := by
   intro t ht
-  exact hitTest_center_of_pressable hp ht (hne t ht)
+  have hp := pressable_of_fitsIn (m := m) hw hh hf
+  refine hitTest_center_of_pressable hp ht ?_
+  rw [visible_eq_rect hp (layout_noScroll m w hs) ht]
+  have hl : layout m w (.box st ctl kids) =
+      arrange m (windowRect w) (windowRect w) (measure m (windowRect w).w (.box st ctl kids)) := by
+    simp only [layout, rootRect, measure, Sized.sizings, hw, hh, Sizing.isFill, ↓reduceIte,
+      windowRect]
+  obtain ⟨-, hne⟩ := fitsIn_arrange m hf _ (windowRect w) (windowRect w) rfl rfl
+  rw [← hl] at hne
+  exact hne t ht
 
 /-! ## Example: a list of any length
 
@@ -559,7 +616,8 @@ theorem exampleList_fitsIn (labels : List String) {w h : Int} (hw : 0 < w)
   · simp only [contentW]; omega
   · simp only [contentH]
     have := Int.natCast_nonneg labels.length; omega
-  · simp only [lineBase, Axis.horiz, hsum _ hmem, List.length_mapIdx, gaps, Nat.zero_mul,
+  · intro _
+    simp only [lineBase, Axis.horiz, hsum _ hmem, List.length_mapIdx, gaps, Nat.zero_mul,
       Int.natCast_zero, Int.add_zero, mainIn, contentH, Bool.false_eq_true, ↓reduceIte]
     omega
   · intro k hk
@@ -580,6 +638,11 @@ theorem exampleList_pressable (m : TextMetrics) (labels : List String) (w : Size
     (hh : 44 * (labels.length : Int) ≤ w.h) :
     ∀ t ∈ targets (layout m w (exampleList labels)),
       hitTest (layout m w (exampleList labels)) t.visible.center = some t.control :=
-  hitTest_center_of_fitsIn rfl rfl (exampleList_fitsIn labels (by omega) (by omega))
+  hitTest_center_of_fitsIn_flat rfl rfl (exampleList_fitsIn labels (by omega) (by omega)) (by
+    simp only [Node.scrolls, Option.isSome_none, Bool.false_or]
+    refine Node.scrollsList_of_forall fun k hk => ?_
+    obtain ⟨i, hi, rfl⟩ := List.mem_iff_getElem.1 hk
+    simp only [List.getElem_mapIdx, exampleRow, Node.scrolls, Node.scrollsList,
+      Option.isSome_none, Bool.or_self])
 
 end Cairn.Layout
