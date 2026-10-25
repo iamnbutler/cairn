@@ -51,7 +51,7 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
 
 ## v0.2.3
 
-25 October 2026.
+25 October 2026, at commit `8ecf96e`.
 
 - **Several apps in one package.** Each `lean_lib` in `libs` whose library defines
   `cairn_app_init` is an app, and `cairn build`, `size`, `bench` and `conformance` take
