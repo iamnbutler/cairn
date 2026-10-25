@@ -22,7 +22,7 @@ relevance: 5
 
 # Surfaces: status menus and overlay panels
 
-Sources for [docs/surfaces.md](../../docs/surfaces.md) (M2, GOAL.md "Done means" item 3). Most
+Sources for [docs/surfaces.md](../../docs/surfaces.md) (M2, docs/goals/m2.md "Done means" item 3). Most
 AppKit facts are quoted from the **macOS 27.0 SDK headers** (`xcrun --show-sdk-path`, then
 `System/Library/Frameworks/AppKit.framework/Headers/`), cited as "SDK 27.0 X.h". Apple's doc
 pages don't render to text; their JSON form (`developer.apple.com/tutorials/data/documentation/<path>.json`)
