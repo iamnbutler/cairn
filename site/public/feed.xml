@@ -8,13 +8,20 @@
 <language>en</language>
 <atom:link href="https://cairn.iamnbutler.workers.dev/feed.xml" rel="self" type="application/rss+xml"/>
 <image><url>https://cairn.iamnbutler.workers.dev/apple-touch-icon.png</url><title>Cairn</title><link>https://cairn.iamnbutler.workers.dev/</link></image>
-<lastBuildDate>Sun, 25 Oct 2026 00:53:44 GMT</lastBuildDate>
+<lastBuildDate>Sun, 25 Oct 2026 01:01:40 GMT</lastBuildDate>
+<item>
+<title>cairn_json, the first package outside the cairn repository</title>
+<link>https://cairn.iamnbutler.workers.dev/milestones/#cairn-json-the-first-package-outside-the-cairn-repository</link>
+<guid isPermaLink="true">https://cairn.iamnbutler.workers.dev/milestones/#cairn-json-the-first-package-outside-the-cairn-repository</guid>
+<pubDate>Sun, 25 Oct 2026 01:01:40 GMT</pubDate>
+<description>&lt;p&gt;Yap's JSON parser and encoder is now its own registry package, cairn_json 0.1.0, in iamnbutler/cairn_json. It requires cairn ^0.1.2 from the registry, is pure Lean with no Swift and no extern, and leaves Yap's date arithmetic for a later cairn_date.&lt;/p&gt;&lt;p&gt;The library is 491 lines. 793 lines of proofs hold 49 theorems: decode (encode v) = some v and decode (pretty v) = some v for every value nested at most 512 deep, and that more fuel never changes what the parser answers. decode is total by construction, with no partial def. The axiom audit allows only propext, Classical.choice and Quot.sound, and the kernel replays every declaration.&lt;/p&gt;&lt;p&gt;A trusted fuzz check compares it with Foundation's JSONSerialization: 220,164 documents per seed (valid, mutated, UTF-16 and UTF-32, random bytes and 164 edge cases), 5 seeds, 0 unexplained differences. The known ones are listed in its docs/trusted.md: numbers Foundation can't hold, a leading U+FEFF Foundation drops from strings, short UTF-16 and UTF-32 documents without a byte order mark, invalid UTF-8, and nesting 513 deep.&lt;/p&gt;&lt;p&gt;The commit is cairn_json's.&lt;/p&gt;&lt;p&gt;As of commit bf6a0e7, in the progress log of &lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#third-milestone-pairs&quot;&gt;Third milestone: Pairs&lt;/a&gt;.&lt;/p&gt;</description>
+</item>
 <item>
 <title>cairn-link links each dependency's libraries</title>
 <link>https://cairn.iamnbutler.workers.dev/milestones/#cairn-link-links-each-dependency-s-libraries</link>
 <guid isPermaLink="true">https://cairn.iamnbutler.workers.dev/milestones/#cairn-link-links-each-dependency-s-libraries</guid>
 <pubDate>Sun, 25 Oct 2026 00:53:44 GMT</pubDate>
-<description>&lt;p&gt;bin/cairn-link no longer links Cairn's library by name (#118). It reads lake-manifest.json, finds the cairn.toml beside each dependency, transitive ones included, and links the Lean libraries that package lists under libs. Cairn's own cairn.toml now lists Cairn, so an app gets the same archive as before, and a library like cairn_batteries can be linked the same way.&lt;/p&gt;&lt;p&gt;It refuses a Lean module that ends up in two archives, which would be a duplicate symbol, and a dependency that is an app. A dependency with no cairn.toml is linked not at all; if linked code imports it, cairn-link names the package and says to give it one.&lt;/p&gt;&lt;p&gt;Checked with a throwaway app that depends on Cairn and on a second library package with its own libs: it links, and a small C program draws a frame through both. Yap builds against it with its existing --lib Yap and passes its selftest.&lt;/p&gt;&lt;p&gt;As of commit 1e1b640, in the progress log of &lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#third-milestone-pairs&quot;&gt;Third milestone: Pairs&lt;/a&gt;.&lt;/p&gt;</description>
+<description>&lt;p&gt;bin/cairn-link no longer links Cairn's library by name (#118). It reads lake-manifest.json, finds the cairn.toml beside each dependency, transitive ones included, and links the Lean libraries that package lists under libs. Cairn's own cairn.toml now lists Cairn, so an app gets the same archive as before, and a library like cairn_json can be linked the same way.&lt;/p&gt;&lt;p&gt;It refuses a Lean module that ends up in two archives, which would be a duplicate symbol, and a dependency that is an app. A dependency with no cairn.toml is linked not at all; if linked code imports it, cairn-link names the package and says to give it one.&lt;/p&gt;&lt;p&gt;Checked with a throwaway app that depends on Cairn and on a second library package with its own libs: it links, and a small C program draws a frame through both. Yap builds against it with its existing --lib Yap and passes its selftest.&lt;/p&gt;&lt;p&gt;As of commit 1e1b640, in the progress log of &lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#third-milestone-pairs&quot;&gt;Third milestone: Pairs&lt;/a&gt;.&lt;/p&gt;</description>
 </item>
 <item>
 <title>Third milestone: Pairs</title>
@@ -29,7 +36,7 @@
   &lt;ol&gt;
     &lt;li&gt;Images in Cairn: an image node whose size Lean knows before the pixels arrive, and an
       effect that loads one. The host decodes and paints; Lean never holds pixels.&lt;/li&gt;
-    &lt;li&gt;JSON as its own package, &lt;code&gt;cairn_batteries&lt;/code&gt;, with a proof that decoding what
+    &lt;li&gt;JSON as its own package, &lt;code&gt;cairn_json&lt;/code&gt;, with a proof that decoding what
       was encoded gives it back.&lt;/li&gt;
     &lt;li&gt;Requests in flight: at most 6 at once, and switching packs cancels the rest. A late reply
       for an old pack never changes the board.&lt;/li&gt;
@@ -40,7 +47,7 @@
   &lt;/ol&gt;
   &lt;p&gt;Pairs lives in its own repository and is built only through the package path:
     &lt;code&gt;cairn new pairs --bin&lt;/code&gt;, &lt;code&gt;cairn add&lt;/code&gt; and &lt;code&gt;cairn build&lt;/code&gt;.&lt;/p&gt;
-  &lt;p&gt;Progress so far:&lt;/p&gt;&lt;ul&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#cairn-link-links-each-dependency-s-libraries&quot;&gt;cairn-link links each dependency's libraries&lt;/a&gt; (2026-10-24)&lt;/li&gt;&lt;/ul&gt;</description>
+  &lt;p&gt;Progress so far:&lt;/p&gt;&lt;ul&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#cairn-json-the-first-package-outside-the-cairn-repository&quot;&gt;cairn_json, the first package outside the cairn repository&lt;/a&gt; (2026-10-24)&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#cairn-link-links-each-dependency-s-libraries&quot;&gt;cairn-link links each dependency's libraries&lt;/a&gt; (2026-10-24)&lt;/li&gt;&lt;/ul&gt;</description>
 </item>
 <item>
 <title>Cairn 0.1.3, on the public registry</title>
