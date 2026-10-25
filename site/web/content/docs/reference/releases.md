@@ -49,6 +49,26 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
 - **Its evidence.** What a claim reads as depends on the build that computed it. See
   [how much to trust a claim](/docs/reference/trust/).
 
+## v0.2.4
+
+25 October 2026.
+
+- **The fuzzer plays the host.** `cairn fuzz` answers the requests an app's frames make (late,
+  in any order, one in six failed), replies to cancelled ones, fires timers at the frame's
+  `wake`, moves the clock, sends subscription events and evicts images under an
+  `imageCache`'s budget, all within what the trusted claims allow (^908, ^909, ^914, ^915,
+  ^1006, ^1009, ^1011). A seed replays its host moves exactly. A new check runs after every
+  step: every image the frame draws is one the host holds.
+- **`Custom` takes more of an app.** `replies` and `subEvents` generate the replies and
+  subscription events an app expects; `relations` checks claims stated about every step as
+  relations over a transition; `drained` checks a state after the host has answered everything
+  outstanding; and `outstanding` checks the app's bookkeeping, after every step, against the
+  ids of the requests the runtime still holds for it. See `docs/fuzz.md`.
+
+No claim was retired, moved or changed, and none is new: `claims.lock` is the same as v0.2.3's,
+so it is a patch release. Moving from v0.2.3 is a change of tag in the lakefile and
+`Package.swift`.
+
 ## v0.2.3
 
 25 October 2026, at commit `8ecf96e`.
