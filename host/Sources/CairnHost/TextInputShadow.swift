@@ -8,12 +8,16 @@ public struct FieldState: Equatable, Sendable, CustomStringConvertible {
     public var text: String
     public var selection: Range<Int>
     public var marked: Range<Int>?
+    /// A secure field: its text is one bullet per scalar, here as in Lean's frame.
+    public var secure: Bool
 
-    public init(control: ControlRef, text: String, selection: Range<Int>, marked: Range<Int>?) {
+    public init(control: ControlRef, text: String, selection: Range<Int>, marked: Range<Int>?,
+                secure: Bool = false) {
         self.control = control
         self.text = text
         self.selection = selection
         self.marked = marked
+        self.secure = secure
     }
 
     public init(_ t: TextInput) {
@@ -23,7 +27,8 @@ public struct FieldState: Equatable, Sendable, CustomStringConvertible {
             return lo..<hi
         }
         self.init(control: t.control, text: t.text, selection: clamp(t.selection.start, t.selection.end),
-                  marked: t.marked.flatMap { $0.start == $0.end ? nil : clamp($0.start, $0.end) })
+                  marked: t.marked.flatMap { $0.start == $0.end ? nil : clamp($0.start, $0.end) },
+                  secure: t.secure)
     }
 
     public var description: String {
@@ -40,12 +45,15 @@ public struct FieldState: Equatable, Sendable, CustomStringConvertible {
         }
     }
 
-    /// Replaces scalar range `r` (clamped) with `s`, line breaks flattened; returns where `s`
-    /// starts.
+    /// What a secure field shows for each scalar (Lean's `Cairn.Text.bullet`).
+    static let bullet: Unicode.Scalar = "\u{2022}"
+
+    /// Replaces scalar range `r` (clamped) with `s`, line breaks flattened (each scalar a bullet
+    /// in a secure field, which is all its frame shows); returns where `s` starts.
     fileprivate mutating func replace(_ r: Range<Int>, with s: String) -> Int {
         var scalars = Array(text.unicodeScalars)
         let lo = min(r.lowerBound, scalars.count), hi = min(max(r.upperBound, lo), scalars.count)
-        scalars.replaceSubrange(lo..<hi, with: s.unicodeScalars.map(Self.flatten))
+        scalars.replaceSubrange(lo..<hi, with: s.unicodeScalars.map { secure ? Self.bullet : Self.flatten($0) })
         var u = String.UnicodeScalarView()
         u.append(contentsOf: scalars)
         text = String(u)

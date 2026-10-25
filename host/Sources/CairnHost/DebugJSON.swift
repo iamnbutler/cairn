@@ -54,13 +54,14 @@ public enum DebugJSON {
     static func ax(_ n: AxNode) -> [String: Any] {
         ["role": roleName(n.role), "control": opt(n.control) { $0.label }, "parent": opt(n.parent) { $0 },
          "rect": rect(n.rect), "label": n.label, "value": n.value, "focused": n.focused,
-         "selected": n.selected, "checked": opt(n.checked) { $0 }]
+         "selected": n.selected, "checked": opt(n.checked) { $0 }, "secure": n.secure]
     }
 
     static func textInput(_ t: TextInput) -> [String: Any] {
         ["control": t.control.label, "rect": rect(t.rect), "caret": rect(t.caret), "text": t.text,
          "selection": [Int(t.selection.start), Int(t.selection.end)],
-         "marked": opt(t.marked) { [Int($0.start), Int($0.end)] }, "origin": point(t.textOrigin)]
+         "marked": opt(t.marked) { [Int($0.start), Int($0.end)] }, "origin": point(t.textOrigin),
+         "secure": t.secure]
     }
 
     static func cursorName(_ c: Cursor) -> String {
@@ -99,8 +100,9 @@ public enum DebugJSON {
         case let .writeFile(p, d): "writeFile \(p) (\(d.count) bytes)"
         case .playSound(let n): "playSound \(n)"
         // Never the secret's value nor a captured one: the header's name and how many fields.
-        case let .http(m, u, _, _, _, s, cap):
-            "http \(m) \(u)\(s.map { " secret \($0.header)" } ?? "")\(cap.isEmpty ? "" : " capture \(cap.count)")"
+        // A redacted request (a secure field's text) shows no URL.
+        case let .http(m, u, _, _, _, s, cap, red):
+            "http \(m) \(red ? "<redacted>" : u)\(s.map { " secret \($0.header)" } ?? "")\(cap.isEmpty ? "" : " capture \(cap.count)")"
         case let .appendFile(p, d): "appendFile \(p) (\(d.count) bytes)"
         case .listDir(let p): "listDir \(p)"
         case .deleteFile(let p): "deleteFile \(p)"

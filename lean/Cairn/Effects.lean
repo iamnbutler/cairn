@@ -80,10 +80,12 @@ inductive Request where
   the Keychain item `account` and its value replaced by `""` in the body Lean receives; all or
   nothing: a body that isn't a JSON object, or a listed field that is missing, repeated or not
   a string, answers `failed invalid` and writes nothing. Other replies pass through as they
-  came. -/
+  came. With `redact`, the request carries a secret the person typed (a secure field's text,
+  `Cairn.Text.SecureField`): every dump, log and report prints its URL, headers and body as
+  `<redacted N bytes>`, and the host sends it as given. -/
   | http (method url : String) (headers : List (String × String)) (body : ByteArray)
       (timeoutMs : Nat) (secret : Option Secret := none)
-      (capture : List (String × String) := [])
+      (capture : List (String × String) := []) (redact : Bool := false)
   /-- Append to the file, creating it (mode 600) and missing parent directories. -/
   | appendFile (path : String) (data : ByteArray)
   /-- The names in a directory (not `.` and `..`), sorted by their UTF-8 bytes. -/
@@ -145,6 +147,11 @@ def Request.kind : Request → Request.Kind
   | .typeText .. => .typeText | .upload .. => .upload | .forgetClip .. => .forgetClip
   | .openItem .. => .openItem | .appRunning .. => .appRunning | .readDefault .. => .readDefault
   | .makeDir .. => .makeDir | .loadImage .. => .loadImage | .forgetSecret .. => .forgetSecret
+
+/-- Whether the request is marked as carrying a typed secret (`http`'s `redact`). -/
+def Request.redact : Request → Bool
+  | .http _ _ _ _ _ _ _ r => r
+  | _ => false
 
 /-- The kinds that count toward the cap on requests in flight (`App.maxInFlight`, docs/effects.md
 "Requests in flight"): the ones that can take seconds on the network. The others (files, sounds,

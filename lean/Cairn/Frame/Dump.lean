@@ -1,9 +1,17 @@
 import Cairn.Frame.Events
+import Cairn.Frame.Build
+import Cairn.Text.Field
 
 /-! A canonical text dump of frames and events (docs/frame.md, "Canonical dump"). The Swift
 decoder's tests print the same format and compare it line for line with Lean's, and it is a
 readable form for the debug socket. Strings print printable ASCII as itself and every other
-Unicode scalar, `"` and `\` as `\u{HEX}`. -/
+Unicode scalar, `"` and `\` as `\u{HEX}`.
+
+Secrets a person typed never print. A secure field's text is bullets before it reaches a frame
+(`Cairn.Text.SecureField.view`), so its draws and text input print one `\u{2022}` per scalar and
+its accessibility node no value (`secure_frame`: a dump depends on a secure field's text only
+through its length). A request marked `redact` prints its URL, headers and body as
+`<redacted N bytes>`, `N` their UTF-8 and byte lengths together. -/
 
 namespace Cairn.Dump
 
@@ -52,14 +60,14 @@ def draw : Draw → String
 def ax (n : AxNode) : String :=
   s!"node role={Role.code n.role} control={opt ref n.control} parent={opt toString n.parent} " ++
     s!"rect={rect n.rect} focused={bit n.focused} selected={bit n.selected} " ++
-    s!"checked={opt bit n.checked} label={str n.label} value={str n.value}"
+    s!"checked={opt bit n.checked} secure={bit n.secure} label={str n.label} value={str n.value}"
 
 def textInput : Option TextInput → String
   | none => "textInput none"
   | some t =>
     s!"textInput control={ref t.control} rect={rect t.rect} caret={rect t.caret} " ++
       s!"selection={range t.selection} marked={opt range t.marked} " ++
-      s!"origin={t.textOrigin.x} {t.textOrigin.y} text={str t.text}"
+      s!"origin={t.textOrigin.x} {t.textOrigin.y} secure={bit t.secure} text={str t.text}"
 
 /-- Bytes as `x` and two lowercase hex digits each. -/
 def bytes (b : ByteArray) : String :=
@@ -77,11 +85,18 @@ def secret (s : Secret) : String :=
   | .env f n => s!"{str f} {str n}"
   | .keychain a => s!"keychain {str a}"
 
+/-- The bytes a redacted request hides: its URL, header names and values, and body. -/
+def redactedBytes (u : String) (hs : List (String × String)) (b : ByteArray) : Nat :=
+  u.utf8ByteSize + hs.foldl (fun n (k, v) => n + k.utf8ByteSize + v.utf8ByteSize) 0 + b.size
+
 def request : Request → String
+  | .http m u hs b t sec cap true =>
+    s!"http {str m} timeout={t} <redacted {redactedBytes u hs b} bytes> secret={opt secret sec} " ++
+      s!"capture={cap.length}" ++ cap.foldl (fun acc (k, v) => acc ++ s!" {str k} {str v}") ""
   | .readFile p => s!"readFile {str p}"
   | .writeFile p d => s!"writeFile {str p} {bytes d}"
   | .playSound n => s!"sound {str n}"
-  | .http m u hs b t sec cap =>
+  | .http m u hs b t sec cap false =>
     s!"http {str m} {str u} timeout={t} {headers hs} body={bytes b} secret={opt secret sec} " ++
       s!"capture={cap.length}" ++ cap.foldl (fun acc (k, v) => acc ++ s!" {str k} {str v}") ""
   | .appendFile p d => s!"appendFile {str p} {bytes d}"
@@ -212,5 +227,38 @@ def events (es : Array Event) : String := Id.run do
   return out
 
 #guard str "a\"é🙂\\" == "\"a\\u{22}\\u{E9}\\u{1F642}\\u{5C}\""
+
+/-! ## Secrets -/
+
+/-- **No secure text in a dump.** However a frame is built from a secure field's view, its dump
+is the same for any two fields that agree on everything but which scalars were typed
+(`Text.SecureField.Agree`): the dump carries the text's length and nothing else of it. -/
+theorem secure_frame (render : FieldView → Frame) {f g : Text.SecureField} (h : f.Agree g)
+    (focused : Bool) : frame (render (f.view focused)) = frame (render (g.view focused)) := by
+  rw [Text.SecureField.view_agree h focused]
+
+/-- The same for a single canvas, as the debug socket and the decoder tests print it. -/
+theorem secure_canvas (render : FieldView → Canvas) {f g : Text.SecureField} (h : f.Agree g)
+    (focused : Bool) : canvas (render (f.view focused)) = canvas (render (g.view focused)) := by
+  rw [Text.SecureField.view_agree h focused]
+
+/-- Whether `needle` occurs in `s`. -/
+def occurs (needle s : String) : Bool := (s.splitOn needle).length > 1
+
+namespace Examples
+private def pw : Text.SecureField := (Text.SecureField.empty "Password").applyAll [.insert "hunter2"]
+private def ctl : Control := { ref := ⟨9, 0⟩, role := .textField, label := "Password" }
+private def win : Rect := ⟨0, 0, 400, 300⟩
+private def laid (v : FieldView) : Laid :=
+  .field ⟨10, 40, 200, 24⟩ win {} {} ctl v ⟨14, 57⟩ ⟨44, 44, 1, 16⟩ []
+private def dumped : String := canvas (Frame.ofLaid { focus := some ⟨9, 0⟩ } (laid (pw.view true)))
+#guard !occurs "hunter2" dumped
+#guard occurs "secure=1" dumped
+#guard occurs "value=\"\"" dumped
+#guard occurs (str (Text.bullets 7)) dumped
+#guard request (.http "POST" "https://x/a" [("K", "v")] "hunter2".toUTF8 30 (redact := true)) ==
+  "http \"POST\" timeout=30 <redacted 20 bytes> secret=none capture=0"
+#guard !occurs "hunter2" (request (.http "POST" "https://x/hunter2" [] "hunter2".toUTF8 30 (redact := true)))
+end Examples
 
 end Cairn.Dump

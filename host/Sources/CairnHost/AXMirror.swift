@@ -188,8 +188,10 @@ final class AXNodeElement: NSAccessibilityElement, @unchecked Sendable {
 
     override func accessibilityRole() -> NSAccessibility.Role? { Self.role(node.role) }
 
+    /// A secure field is an `AXSecureTextField`, as `NSSecureTextField` is.
     override func accessibilitySubrole() -> NSAccessibility.Subrole? {
-        node.role == .tab ? NSAccessibility.Subrole(rawValue: "AXTabButton") : nil
+        if node.secure { return .secureTextField }
+        return node.role == .tab ? NSAccessibility.Subrole(rawValue: "AXTabButton") : nil
     }
 
     override func accessibilityRoleDescription() -> String? {
@@ -217,8 +219,10 @@ final class AXNodeElement: NSAccessibilityElement, @unchecked Sendable {
     override func accessibilityLabel() -> String? { node.label.isEmpty ? nil : node.label }
     override func accessibilityTitle() -> String? { node.role == .button || node.role == .heading ? node.label : nil }
 
+    /// A secure field exposes no value, no text and no selection: not even its bullets.
     override func accessibilityValue() -> Any? {
-        switch node.role {
+        if node.secure { return nil }
+        return switch node.role {
         case .checkbox, .tab: (node.checked ?? node.selected) ? 1 : 0
         case .textField: field?.text ?? node.value
         case .text: node.value.isEmpty ? node.label : node.value
@@ -232,12 +236,12 @@ final class AXNodeElement: NSAccessibilityElement, @unchecked Sendable {
 
     // MARK: Text fields (the focused one answers from the frame's text input)
 
-    private var text: String { field?.text ?? node.value }
+    private var text: String { node.secure ? "" : field?.text ?? node.value }
 
     override func accessibilityNumberOfCharacters() -> Int { text.utf16.count }
 
     override func accessibilitySelectedTextRange() -> NSRange {
-        guard let f = field else { return NSRange(location: text.utf16.count, length: 0) }
+        guard !node.secure, let f = field else { return NSRange(location: text.utf16.count, length: 0) }
         return TextIndex(f.text).nsRange(scalars: Int(f.selection.start), Int(f.selection.end))
     }
 

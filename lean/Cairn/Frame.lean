@@ -39,6 +39,9 @@ structure AxNode where
   focused : Bool := false
   selected : Bool := false
   checked : Option Bool := none
+  /-- A secure field (`FieldView.secure`): the host shows an `AXSecureTextField` and exposes
+  no value (`value` is empty). -/
+  secure : Bool := false
 deriving Repr, BEq, Inhabited
 
 /-- Everything `NSTextInputClient` may ask about the focused field, answered without Lean. -/
@@ -52,6 +55,9 @@ structure TextInput where
   /-- The left end of the text's baseline, in window coordinates, after any horizontal
   scroll: where scalar 0 starts. -/
   textOrigin : Point := ⟨0, 0⟩
+  /-- The field is secure (`FieldView.secure`): `text` is bullets, and the host turns on secure
+  event input while it has focus. -/
+  secure : Bool := false
 deriving Repr, BEq, Inhabited
 
 /-- What one Metal surface (the window, a panel) shows: M1's frame without the app-wide parts. -/
