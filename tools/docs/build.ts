@@ -32,7 +32,7 @@ const CHECK = process.argv.includes("--check");
 
 // The only GitHub links a public page may carry: the issues that unblock its TODO pages.
 // Open issues the pages point at. Keep it to issues that are open: replace one when it closes.
-const ALLOWED_LINKS = [83, 84, 92, 93, 94, 95, 96, 97, 99].map((n) => `https://github.com/iamnbutler/cairn/issues/${n}`);
+const ALLOWED_LINKS = [83, 84, 94, 95, 99].map((n) => `https://github.com/iamnbutler/cairn/issues/${n}`);
 
 const errors: string[] = [];
 const fail = (where: string, message: string) => errors.push(`${where}: ${message}`);
