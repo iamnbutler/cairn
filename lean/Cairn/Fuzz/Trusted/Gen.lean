@@ -170,8 +170,8 @@ def request : Gen Request := do
   | 14 => return .makeDir (← str)
   | 15 => return .loadImage (← str) (← Gen.chance 1 2)
   | 16 => return .forgetSecret (← str)
-  | _ => return .http (← str) (← str) (← headers) (← bytes) (← u32) (← opt secret) (← headers)
-      (← Gen.bool)
+  | _ =>
+    return .http (← str) (← str) (← headers) (← bytes) (← u32) (← opt secret) (← headers) (← Gen.bool)
 
 def effect : Gen Effect := do
   match ← Gen.below 8 with
