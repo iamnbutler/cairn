@@ -49,48 +49,41 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
 - **Its evidence.** What a claim reads as depends on the build that computed it. See
   [how much to trust a claim](/docs/reference/trust/).
 
-## v0.3.0 (unreleased)
+## v0.3.0
 
-The next minor version: it retires and moves claims, removes modules and changes the frame
-format.
+25 October 2026.
 
-- **Secrets in the Keychain** ([#205](https://github.com/iamnbutler/cairn/issues/205)). A
-  `Secret` now has a `source`: `.env file name` (what `Secret` was before) or `.keychain
-  account`, a generic password item under the app's bundle identifier. `Request.http` gains
-  `secret` and `capture` (both defaulted, so `.http m u hs body t` still builds the same
-  request): a 2xx JSON object reply's listed top-level string fields are written to Keychain
-  items and blanked before Lean sees the body. `Request.forgetSecret account` deletes an item.
-  A request carrying a secret no longer follows redirects. New `assume` claims ^972 (the
-  Keychain store) and ^973 (capture); ^913 and ^971 are retired as ^974 and ^975.
-- **Frame format version 9.** Adds the Keychain secret (`[2, 0, 0, 0]`), `http`'s secret and
-  captures, and request kind 17. A host and a Lean library must both be at 9; an `upload` with
-  no secret or an environment secret is encoded as before.
-- **Secure text fields** ([#206](https://github.com/iamnbutler/cairn/issues/206)).
-  `Text.SecureField` wraps a field: its view shows one bullet per scalar
-  (`FieldView.secure := true`), copy and cut beep and never set the clipboard, and it keeps no
-  undo history (proved in `Cairn.Text.Proofs`). The host gives it the `AXSecureTextField` role
-  with no value and turns on secure event input while it has focus (new `assume` claim ^1020).
-  `Request.http` gains `redact` (defaulted to `false`): a redacted request dumps as
-  `<redacted N bytes>` in `Frame.Dump`, the debug socket and fuzz output. A dump of a frame
-  holds none of a secure field's text (`secure_frame` in `Cairn.Frame.Dump`). The fuzzer plants text in
-  secure fields and fails if it appears in any dump. The Todo example's ^225 is retired as ^226, which moved to
-  `cairn_examples` with the rest of Todo (below).
-- **Frame format version 10.** Adds the secure flag to accessibility nodes and text inputs and
-  `http`'s redact flag. A host and a Lean library must both be at 10; version 9 never shipped
-  in a release.
+A minor version: it moves the example apps' claims out of Cairn, retires claims, removes
+modules and changes the frame format, so apps need the changes under "Upgrading to v0.3.0"
+below.
+
 - **The example apps are out of Cairn** ([#137](https://github.com/iamnbutler/cairn/issues/137)).
   Counter, Basics, Todo, Clock, Tray and Gallery are in their own package,
   [`cairn_examples`](/packages/cairn_examples/), which requires Cairn from the registry like any
   app. Their 71 claims keep their numbers and statements there and are `moved:cairn_examples` in
   Cairn's `claims.lock` (^1–^5, ^101–^109, ^201–^226 but for ^213–^215 and ^225, ^401–^409,
   ^450–^462, ^501–^513): `cairn^202` is now `cairn_examples^202`. ^6, ^213, ^215 and ^225 stay
-  retired, and ^7 and ^214 stay in Cairn's trusted base. Cairn's ledger now holds only
-  framework claims. The ledger counts a move like a retirement, so it needs this minor version
-  (`Cairn.Claims.LedgerTests`). `lean/Examples`, the `Examples` Lake library, the host's
-  `Cairn<App>` executables, the `/try/` pages and the Makefile's `demo`, `bundle`, `capture`,
+  retired, and ^7 and ^214 stay in Cairn's trusted base, so Cairn's ledger now holds only
+  framework claims. `lean/Examples`, the `Examples` Lake library, the host's `Cairn<App>`
+  executables, the `/try/` pages and the Makefile's `demo`, `bundle`, `capture`,
   `conformance`, `fuzz`, `doc APP=` and `examples-*` targets are gone; the per-app checks run
   on test/fixture with the `cairn` CLI. `CLean`'s header no longer declares the examples'
   initializers.
+- **Secrets in the Keychain** ([#205](https://github.com/iamnbutler/cairn/issues/205)). A
+  `Secret` now has a `source`: `.env file name` (what `Secret` was before) or `.keychain
+  account`, a generic password item under the app's bundle identifier. `Request.http` gains
+  `secret` and `capture`: a 2xx JSON object reply's listed top-level string fields are written
+  to Keychain items and blanked before Lean sees the body. `Request.forgetSecret account`
+  deletes an item. A request carrying a secret no longer follows redirects.
+- **Secure text fields** ([#206](https://github.com/iamnbutler/cairn/issues/206)).
+  `Text.SecureField` wraps a field: its view shows one bullet per scalar
+  (`FieldView.secure := true`), copy and cut beep and never set the clipboard, and it keeps no
+  undo history (proved in `Cairn.Text.Proofs`). The host gives it the `AXSecureTextField` role
+  with no value and turns on secure event input while it has focus. `Request.http` gains
+  `redact`: a redacted request dumps as `<redacted N bytes>` in `Frame.Dump`, the debug socket
+  and fuzz output, and a dump of a frame holds none of a secure field's text (`secure_frame` in
+  `Cairn.Frame.Dump`). The fuzzer plants text in secure fields and fails if it appears in any
+  dump.
 - **Scroll boxes** ([#202](https://github.com/iamnbutler/cairn/issues/202)). `Style.scroll :
   Option Int`: `some o` lays a box's children out as its axis says, moves them back by `o` and
   clips them. `Pressable`, `layout_good` and `hitTest_center_of_pressable` now speak of a
@@ -101,20 +94,38 @@ format.
   of it and nowhere if nothing does. The frame draws only a scroll box's visible children and
   gives it an accessibility node of role `scrollArea`; the host's mirror leaves out what is
   scrolled away. The test fixture has a scroll box of 200 rows (`fixture^10`–`^13`).
-- **Frame format version 11.** Adds the `scrollArea` role (10). A host and a Lean library must
-  both be at 11; version 10 never shipped in a release.
+- **Frame format version 11** (`docs/frame.md`). It adds the Keychain secret source
+  (`[2, 0, 0, 0]`), `http`'s secret, captures and redact flag, the `forgetSecret` request
+  (kind 17), the `secure` flag on accessibility and text-input records, and the `scrollArea`
+  role (10). A host and a Lean library must both be at 11. Versions 9 and 10 were steps on main
+  and never shipped in a release. An `upload` with no secret or an environment secret is
+  encoded as before.
 - **The 0.1.3 shims are gone.** `Cairn.Frame.Boundary`, `Cairn.Runtime.Hit` and
   `Cairn.Text.Metrics` no longer exist; import `Cairn.Abi`, `Cairn.UI.Hit` and `Cairn.Font`.
-- **Upgrading.** Write an environment secret as
-  `{ header, scheme, source := .env file name }` (Yap's `apiKey`; its `upload` is unchanged
-  otherwise). A pattern that lists `http`'s five arguments (`| .http m u hs b t =>`) now matches
-  only requests with no secret, no captures and no redaction: write
-  `| .http m u hs b t _ _ _ =>` or `| .http m u ..`. Exhaustive matches on `Request` need a `forgetSecret` case.
-  Replace an import of a shim with its module (Yap's `Cairn.Frame.Boundary` is `Cairn.Abi`). An
-  app that cited a Cairn example claim (`cairn^202`) cites `cairn_examples^202`.
-  `hitTest_center_of_fitsIn` takes `t.visible.nonempty`; use `hitTest_center_of_fitsIn_flat`
-  with `(n.scrolls = false)` for the old statement. Exhaustive matches on `Role` need a
-  `scrollArea` case.
+
+**Claims.** 71 ids moved to `cairn_examples` (above). ^913 and ^971 are retired and reissued
+as ^974 and ^975, now that a secret can come from the Keychain. New `assume` claims: ^972 (the
+Keychain store), ^973 (captured reply fields) and ^1020 (secure event input). The Todo
+example's ^225 is retired as ^226, which moved with Todo. The ledger counts a move like a
+retirement (`Cairn.Claims.LedgerTests`), which is why this is a minor version.
+
+### Upgrading to v0.3.0
+
+Change the tag in the lakefile and `Package.swift`, then:
+
+- **Environment secrets name their source.** Write `{ header, scheme, source := .env file name }`
+  (Yap's `apiKey`; its `upload` is otherwise unchanged).
+- **`http` patterns take eight arguments.** `secret`, `capture` and `redact` are defaulted, so
+  `.http m u hs body t` still builds the same request, but a pattern that lists five
+  (`| .http m u hs b t =>`) now matches only requests with no secret, no captures and no
+  redaction. Write `| .http m u hs b t _ _ _ =>` or `| .http m u ..`. Exhaustive matches on
+  `Request` need a `forgetSecret` case, and on `Role` a `scrollArea` case.
+- **Shim imports.** Replace an import of a removed shim with its module: Yap's
+  `Cairn.Frame.Boundary` is `Cairn.Abi`.
+- **Example claims.** An app that cited a Cairn example claim (`cairn^202`) cites
+  `cairn_examples^202`.
+- **Hit testing.** `hitTest_center_of_fitsIn` takes `t.visible.nonempty`; use
+  `hitTest_center_of_fitsIn_flat` with `(n.scrolls = false)` for the old statement.
 
 ## v0.2.5
 
