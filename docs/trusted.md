@@ -6,7 +6,7 @@ entries in the section of the workstream that introduces the assumption.
 
 Items marked **Fuzzed** are also checked by the trusted-base fuzzer (`make fuzz-trusted`,
 docs/fuzz.md "Trusted base"), against Lean's proved side or an independent oracle, and are
-declared as `assume` claims ^901–^915, ^940–^944, ^960–^971 and ^1000–^1008 in `lean/Cairn/Fuzz/Trusted/Claims.lean`, each naming its
+declared as `assume` claims ^901–^915, ^940–^944, ^960–^971 and ^1000–^1009 in `lean/Cairn/Fuzz/Trusted/Claims.lean`, each naming its
 check; `build/fuzz/trusted.json` holds the evidence. Items not marked are checked only by the
 tests and reviews they list.
 
@@ -466,6 +466,37 @@ bundle. Redirects, caching and cookies are Foundation's (an ephemeral session, a
   of the destination has that quadrant's colour.
 - **Tested**: Gallery's self test (`swift run CairnGallery --selftest`) loads its five local
   sources through the real handler and renders them.
+
+### Cancelling a request (`assume`, ^1009)
+
+`cancelRequest id` (docs/effects.md, "Requests in flight") asks the host to stop a request it
+was sent. Lean's runtime proves the cap, the queue and that the cancelled request's answer
+reaches no app; what it relies on from the host is that the answer still comes.
+
+**What is assumed.**
+- ^1009 `hostCancelRequest`: a cancelled request is still answered exactly once; if its work is
+  running it is stopped (an `http` or a `loadImage` from a URL has its `URLSession` task
+  cancelled) and answered promptly, `failed`; a request cancelled before its handler starts is
+  answered `failed other "cancelled"` without running; a cancelled `loadImage` with `reload`
+  leaves the image the store held for its source; a cancel of an id already answered, or never
+  sent, changes nothing.
+
+**Also assumed, not fuzzed.** Kinds without a stop (file reads and writes, `typeText`,
+`upload`'s part assembly) run to the end and answer as usual; only their answer is ignored.
+`upload` cancels its `URLSession` task like `http`.
+
+**Trusted code.** `host/Sources/CairnHost/World.swift` (`Cancellation`, `World.run`,
+`World.perform`, `HTTP.run`), `host/Sources/CairnHost/ImageEffects.swift`, `URLSession`.
+
+**Evidence.**
+- **Fuzzed** (^1009 `effects.cancel`): 1–12 `http` and `loadImage` requests a case, served by a
+  `URLProtocol` stub that holds some open until they are stopped; cancels in the same frame,
+  while running and after the answer, and cancels of ids never sent. Every request answers
+  exactly once; every held load that started was stopped and answered `failed`; cancelled
+  reloads keep the stored image; stray cancels are answered by nothing.
+- **Tested**: Gallery's self test asks for 24 thumbnails from a slow stub server, checks it
+  never serves more than six at once, cancels mid-load and checks the stopped requests ended at
+  the server and the queued ones never reached it.
 
 ## Yap's devices: recording, keys, typing, uploads (workstream T)
 

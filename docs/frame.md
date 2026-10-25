@@ -1,4 +1,4 @@
-# Frame and event format: frames v5, events v2
+# Frame and event format: frames v6, events v2
 
 Two byte buffers cross the boundary between Lean and the Swift host, and nothing else does:
 
@@ -75,7 +75,7 @@ Swift's model uses `Int32` and `UInt32` for these fields, so every Swift value f
 ```
 offset  size  field
 0       4     magic "CAFR" (43 41 46 52)
-4       2     u16 version = 5
+4       2     u16 version = 6
 6       2     u16 flags = 0
 8       4+4   surfaces: u32 count, u32 byteLength, then the surface records
 .       4+4   effects: u32 count, u32 byteLength, then the effect records
@@ -89,7 +89,7 @@ after the effects; version 2 added `subs` and `wake` and the effect records 3–
 replaced the single window (size, draws, ax, text input, cursor after the header) with the list
 of surface records; version 4 added the font's width, tracking and tabular digits to the text
 record and the `paint` and `shape` draws; version 5 added the `image` draw and the `loadImage`
-request (kind 16).
+request (kind 16); version 6 added the `cancelRequest` effect (7).
 
 ### Surface records
 
@@ -276,6 +276,7 @@ setTimer      [3, 0, 0, 0]     4 u32 ms  8 string name                 8 + strin
 cancelTimer   [4, 0, 0, 0]     4 string name                           4 + string
 request       [5, kind, 0, 0]  4 u32 id  8 request fields              8 + fields
 quit          [6, 0, 0, 0]                                                   4 bytes
+cancelRequest [7, 0, 0, 0]     4 u32 id                                     8 bytes
 ```
 
 Request kinds and their fields:
@@ -310,7 +311,9 @@ those 20 ms windows.
 Effects run once, in order, after the frame that carries them. `focus`, `setTimer` and
 `cancelTimer` are the runtime's (focus has moved and the timer table has changed when the
 frame is built; the host ignores them; they are on the frame for tools and tests). `request`
-is run by the host's handler table and answered by a `reply` event; `quit` ends the app.
+is run by the host's handler table and answered by a `reply` event; `cancelRequest` asks the
+host to stop the work of request `id` if it is still running (the request is still answered,
+once; docs/effects.md, "Requests in flight"); `quit` ends the app.
 
 ### Subscription commands and wake
 

@@ -210,6 +210,52 @@ to a scratch directory and plays no sound). Adding a kind is a constructor in `R
 proof extended), a `Reply.answers` case, and one handler. Each handler is an `assume` claim
 with a fuzz check (below).
 
+### Requests in flight
+
+An app can have many requests outstanding; the runtime sends at most a few at once and the app
+can cancel any of them (`lean/Cairn/Runtime/World.lean`, proofs in `Runtime/InFlight.lean`).
+
+```lean
+| cancelRequest (id : Nat)      -- an Effect: stop request `id`, wherever it is
+
+structure App (S : Type) where
+  …
+  maxInFlight : Nat := 6        -- capped requests with the host at once (at least 1)
+```
+
+- **Capped kinds** are the ones that hold a connection or decode work: `http`, `upload` and
+  `loadImage` (`Request.Kind.capped`). Other kinds are sent at once, as before.
+- **The queue.** A capped request that would exceed the cap waits in the runtime's queue, in
+  the order it was asked, under the id the app chose. As replies free slots, the oldest
+  waiting requests that fit are sent (`promote`), in that same step's frame. Waiting is
+  invisible to the app: it already has the id, and the reply arrives as before.
+- **Cancel.** `cancelRequest id` on a queued request drops it: the host never hears of it and
+  nothing is delivered. On a request already sent, the runtime puts `cancelRequest id` on the
+  frame and marks the id *stopping*. The host stops the work if it can (the `URLSession` task
+  is cancelled, an image load leaves the store as it was) and still answers the request once,
+  usually `failed other "cancelled"`; that answer reaches no app, and it is what frees the
+  slot. Until it arrives the cancelled request keeps its slot, so the host never has more
+  than `maxInFlight` capped requests running, and a new request under the same id waits.
+  A cancel of an id the runtime doesn't know is dropped.
+- **Superseded requests.** An app that asks again under a fresh id (Gallery's Reload) and
+  cancels the old one gets no late answer for the old id; one that keeps its own table of
+  outstanding ids, as `Cairn.UI.Images` does, ignores an answer it no longer waits for anyway.
+  `Images.cancel`, `cancelAll` and `cancelWhere` return the `cancelRequest` effects for the
+  loads they stop waiting for.
+
+What is proved, for every app (`InFlight.lean`):
+
+| Theorem | Statement |
+|---|---|
+| `step_cap`, `steps_cap` | the capped requests with the host (sent, or cancelled and not yet answered) never number more than the cap, and the cap is `max 1 app.maxInFlight` for good |
+| `step_settled`, `steps_fine`, `queued_blocked` | the tables stay well formed (`World.Fine`), and after every event no queued request could have been sent: each is held by the cap or by its id's cancelled request still being with the host |
+| `step_wait_le`, `step_drains` | **every queued request is eventually sent or cancelled**: a count of what is ahead of it (`World.ahead`) never grows, and the host's reply to one of its blockers takes it out of the queue or shrinks that count |
+| `step_reply_cancelled` | the reply to a cancelled request changes nothing in the app and frees its slot |
+| `Book.cancel_blocks` (with `steps_book`) | no reply to a cancelled id is delivered until that id is requested again |
+
+The liveness theorem assumes the host answers every request it was sent (^914) and, after a
+cancel, still answers it once (^1009).
+
 ### What Yap needs next, and where it slots in
 
 Yap's machine (yap-cairn's `lean/Yap/Model.lean`, PR #40) talks to the host through its own
@@ -598,7 +644,8 @@ Each kind of host effect is an `assume` claim naming a check of the trusted-base
 | ^1006 | `loadImage` answers the image's pixel size, or the fault | `effects.load-image` |
 | ^1007 | an image's pixels stay inside its box | `render.image.bounds` |
 | ^1008 | an image is drawn where its oriented pixels are | `render.image.pixels` |
+| ^1009 | `cancelRequest` stops a running request's work; it is still answered once | `effects.cancel` |
 
 The new records are also covered by ^901 and ^902 (the Swift codecs against Lean's), whose
-generators now produce them. The suites (`clock`, `world`, `files`, `http`, `sound`, `fileops`, `system`, `audio`, `input`, `upload`, `image` in
+generators now produce them. The suites (`clock`, `world`, `files`, `http`, `sound`, `fileops`, `system`, `audio`, `input`, `upload`, `image`, `cancel` in
 `host/Tests/CairnFuzzTrusted`) are described in docs/fuzz.md.
