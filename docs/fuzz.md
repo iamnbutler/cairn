@@ -61,10 +61,12 @@ definitions at the head of its body). An invariant without one is reported as "n
 A run is `--iterations N` sequences of `--steps K` operations. Each sequence starts from the
 app's `init` with its own window size and text metrics:
 
-- **Window size:** random, at least the app's minimum. The minimum is the root's preferred size
-  in the current state (`measure`), or the app's `Custom.minSize`. A resize operation picks a
-  new size at or above the current minimum; one in twenty goes below it to exercise clipping
-  (pressability is not checked there, and the skip is counted).
+- **Window size:** random, at least the app's minimum. The minimum is the app's
+  `Custom.minSize`; else the `App.minSize` it asks the host for, since the host keeps the window
+  at least that (trusted ^1010) and a person never sees it smaller; else, for an app that asks
+  for none (`0 × 0`), the root's preferred size in the current state (`measure`). A resize
+  operation picks a new size at or above the current minimum; one in twenty goes below it to
+  exercise clipping (pressability is not checked there, and the skip is counted).
 - **Text metrics:** a random `TextMetrics` that is `Valid` by construction (prefix sums of
   non-negative per-scalar widths, chosen per font from the seed, some zero for combining marks;
   random ascent and descent), or `TextMetrics.mono` in one sequence in eight.

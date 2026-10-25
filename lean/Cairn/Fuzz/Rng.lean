@@ -91,7 +91,8 @@ structure Custom (S : Type) where
   /-- Scripts of text operations for a field's `edit` move (by claim id), each operation sent as
   its own event; `none` keeps the default generator. -/
   edits : S → ClaimId → Option (Gen (List TextOp)) := fun _ _ => none
-  /-- The smallest window the app supports in a state; `none` means the view's preferred size. -/
+  /-- The smallest window the app supports in a state; `none` means the app's `App.minSize`, or
+  the view's preferred size when that is `0 × 0`. -/
   minSize : S → Option Size := fun _ => none
   /-- Moves that have no control on purpose (keyboard-only), exempt from presence. -/
   noControl : List ClaimId := []

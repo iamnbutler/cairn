@@ -219,7 +219,7 @@ def runTarget (t : Target) (o : Opts) : IO UInt32 := do
   IO.println s!"{o.iterations} sequences, {stepsRun} steps in {msText ns} ms: {seqPerS} sequences/s, {stepsPerS} steps/s; slowest step {msText maxNs} ms (budget {t.budgetNs / 1_000_000} ms, {over.size} over); {fails.size} failing sequences"
   let dropped : Nat := stats.fold (fun (n : Nat) _ (st : ClaimStat) => n + (st.checks.get? droppedCheck).getD 0) 0
   if t.app.isSome then
-    IO.println s!"pressability skipped in {skipped} of {stepsRun} steps (window below the view's minimum); {mono} sequences with mono metrics"
+    IO.println s!"pressability skipped in {skipped} of {stepsRun} steps (window below the app's minimum); {mono} sequences with mono metrics"
     if dropped > 0 then
       IO.println s!"{dropped} clicks dropped by design: the pointerDown's blur saved an edit that moved the clicked control (T33; counted as {droppedCheck}, not failed)"
   for inv in t.invariants do
