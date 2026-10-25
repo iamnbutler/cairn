@@ -1,5 +1,49 @@
 [
   {
+    "image": "/m/images/990f98ad7fd212e4.png",
+    "title": "Sky: a slow sign-in",
+    "caption": "After a few seconds Sky says it's still signing in and offers Cancel. Offscreen render, fake PDS.",
+    "date": "2026-10-25",
+    "published": "2026-10-25T23:44:51Z",
+    "commit": "6f0aa14",
+    "width": 920,
+    "height": 1120,
+    "milestone": "m4"
+  },
+  {
+    "image": "/m/images/e6c13baba13e7bfe.png",
+    "title": "Sky: offline",
+    "caption": "Sign-in errors are words, not codes: here the service can't be reached. Offscreen render, fake PDS.",
+    "date": "2026-10-25",
+    "published": "2026-10-25T23:44:49Z",
+    "commit": "6f0aa14",
+    "width": 920,
+    "height": 1120,
+    "milestone": "m4"
+  },
+  {
+    "image": "/m/images/e20419d09bd36cef.png",
+    "title": "Sky: a wrong app password",
+    "caption": "A wrong password, said in words; the field is emptied as the request is sent. Offscreen render, fake PDS.",
+    "date": "2026-10-25",
+    "published": "2026-10-25T23:44:47Z",
+    "commit": "6f0aa14",
+    "width": 920,
+    "height": 1120,
+    "milestone": "m4"
+  },
+  {
+    "image": "/m/images/e2f41e19d6b35be9.png",
+    "title": "Sky: sign in",
+    "caption": "Sky's sign-in screen (cairn#210): handle or email, the app password in a secure field (bullets only), the service. An offscreen render from the selftest against the fake PDS.",
+    "date": "2026-10-25",
+    "published": "2026-10-25T23:44:46Z",
+    "commit": "6f0aa14",
+    "width": 920,
+    "height": 1120,
+    "milestone": "m4"
+  },
+  {
     "image": "/m/images/a2ff42128e730c36.png",
     "title": "The runtime scrolls the fixture's rows",
     "caption": "Cairn's runtime now owns scroll offsets (#203). A scroll of 100,000 points over the fixture's 200 rows is clamped to the end, the app's state never sees it, and the end line, marked appear, hears that it came on screen: an Action.appear move counted in the app. Offscreen render through the real engine (Fixture --scroll-shots).",
