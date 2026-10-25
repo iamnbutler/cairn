@@ -50,21 +50,11 @@ them on its test app, test/fixture. Each writes under the package's `build/`.
 | `cairn size [--product P]… [--limit BYTES]` | the stripped release binary, attributed, and a guard at 5 MB |
 | `cairn conformance [--module M] [--n N]` | the Lean model replayed against the running app through its debug socket. The package has a generator module, `<App>.Conformance` |
 
-## Planned commands
-
-These still run as make targets, from the root of the Cairn repository, for the apps that live
-in it:
-
-| Command | What it will do | Today |
-|---|---|---|
-| `cairn run` | open the app in a window | `make demo DEMO=Cairn<App>` |
-| `cairn check` | everything a change must pass | `make check` |
-| `cairn bundle --sign` | a signed `.app` | `make bundle APP=<App> SIGN=<identity>`, or Cairn's `tools/bundle/bundle.sh` from an app's own repository |
-| `cairn doctor` | check the toolchain | none |
-
 ## The make targets, today
 
-Run them from the root of the Cairn repository. Each is shown as it is in the Makefile.
+Running, checking and bundling an app don't have `cairn` commands yet (they are planned:
+`cairn run`, `cairn check`, `cairn bundle` and `cairn doctor`). Run the make targets from the root
+of the Cairn repository. Each is shown as it is in the Makefile.
 
 ### Build and run
 
