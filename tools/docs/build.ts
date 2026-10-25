@@ -43,7 +43,7 @@ const fail = (where: string, message: string) => errors.push(`${where}: ${messag
 type NavItem = { page?: string; href?: string; title?: string; children?: string[] };
 type NavSection = { section: string; items: NavItem[] };
 type Page = {
-	id: string; // "book/first-app"; "index" is /docs/
+	id: string; // "guide/first-app"; "index" is /docs/
 	url: string;
 	title: string;
 	nav: string; // the sidebar's name for it
@@ -102,15 +102,18 @@ for (const s of nav)
 	}
 for (const id of pages.keys()) if (!listed.has(id)) fail(`site/docs/${id}.md`, "is not in nav.json, so no one can reach it");
 
-// The Book reads in order: its contents page, then each chapter.
-const bookItem = nav.flatMap((s) => s.items).find((i) => i.page === "book/index");
-const bookOrder = bookItem ? ["book/index", ...(bookItem.children ?? [])] : [];
+// The guide reads in order: its contents page, then each chapter.
+const bookItem = nav.flatMap((s) => s.items).find((i) => i.page === "guide/index");
+const bookOrder = bookItem ? ["guide/index", ...(bookItem.children ?? [])] : [];
+// Both are found by id, so a rename has to come here too.
+if (!bookItem) fail("site/docs/nav.json", "has no guide/index, so the guide's chapters get no previous and next links");
+if (!pages.has("reference/api")) fail("site/docs", "has no reference/api, so the sidebar can't link the API reference");
 
 // The API reference is `cairn doc`'s (#74). Until it has published, the sidebar points at the
 // page that says so.
 const apiPublished = existsSync(join(API, "index.html"));
 const navHref = (item: NavItem) =>
-	item.page === "use/api" && apiPublished ? "/docs/api/" : item.href ?? urlOf(item.page!);
+	item.page === "reference/api" && apiPublished ? "/docs/api/" : item.href ?? urlOf(item.page!);
 
 // --- Includes -----------------------------------------------------------------------------------
 
@@ -350,7 +353,7 @@ function sidebar(current: Page): string {
 		const items = s.items.map((it) => {
 			const p = it.page ? pages.get(it.page) : undefined;
 			const title = it.title ?? p?.nav ?? it.href ?? "";
-			const head = item(navHref(it), title, it.page === current.id, p?.status === "todo" && !(it.page === "use/api" && apiPublished));
+			const head = item(navHref(it), title, it.page === current.id, p?.status === "todo" && !(it.page === "reference/api" && apiPublished));
 			const kids = (it.children ?? [])
 				.map((id) => pages.get(id))
 				.filter((c): c is Page => !!c)
