@@ -48,9 +48,6 @@ extension Project {
         }
     }
 
-    /// The app's Lean module root: the first of cairn.toml's `libs` (`Fixture`, `Yap`).
-    public var appModule: String? { manifest.libs.first }
-
     /// The C name of a module's initializer in this package, as the module system emits it:
     /// `runtime_initialize_fixture_Fixture_Conformance`. Lean doubles `_` inside a name's
     /// components (`Template.mangled`).
@@ -61,7 +58,7 @@ extension Project {
 }
 
 /// `swift package describe`'s executable products, from its JSON.
-enum SwiftPackage {
+public enum SwiftPackage {
     static func executables(_ json: Data) -> [String] {
         guard let root = try? JSONSerialization.jsonObject(with: json) as? [String: Any],
               let products = root["products"] as? [[String: Any]] else { return [] }
@@ -70,23 +67,33 @@ enum SwiftPackage {
             return name
         }
     }
+
+    /// The executable that hosts `app`: the only one, else the one named `app`, else the only
+    /// one whose name ends in it (`CairnCounter`).
+    public static func product(for app: String?, among exes: [String]) throws(CairnError) -> String {
+        if exes.count == 1 { return exes[0] }
+        guard !exes.isEmpty else { throw CairnError("Package.swift has no executable product") }
+        if let app {
+            if exes.contains(app) { return app }
+            let named = exes.filter { $0.hasSuffix(app) }
+            if named.count == 1 { return named[0] }
+        }
+        throw CairnError("Package.swift has several executables (\(exes.joined(separator: ", ")))\(app.map { " and none is named after \($0)" } ?? ""); pick one with --product")
+    }
 }
 
 /// The per-app tools: Cairn's checks, run on any app package the way `cairn build` builds one
 /// (docs/cli.md, "Checks"). Cairn's own `make check` runs them on test/fixture.
 extension Commands {
-    /// The app's executable: `--product`, else the only executable product of its Package.swift.
-    func product(_ project: Project, _ a: Arguments) throws(CairnError) -> [String] {
+    /// The app's executable: `--product`, else the only executable product of its Package.swift,
+    /// else the one named after the app (`Counter` or `CairnCounter` for the app `Counter`).
+    func product(_ project: Project, _ a: Arguments, app: String? = nil) throws(CairnError) -> [String] {
         if let given = a.options["--product"] { return given }
         guard FileManager.default.fileExists(atPath: project.swift.appending(path: "Package.swift").path) else {
             throw CairnError("\(project.manifest.name) has no Package.swift; this command runs an app's host")
         }
         let out = try shell.capture(["swift", "package", "describe", "--type", "json"], in: project.swift)
-        let exes = SwiftPackage.executables(out.stdout)
-        guard exes.count == 1 else {
-            throw CairnError(exes.isEmpty ? "Package.swift has no executable product" : "Package.swift has several executables (\(exes.joined(separator: ", "))); pick one with --product")
-        }
-        return exes
+        return [try SwiftPackage.product(for: app, among: SwiftPackage.executables(out.stdout))]
     }
 
     func binPath(_ project: Project, release: Bool) throws(CairnError) -> URL {
@@ -187,15 +194,15 @@ extension Commands {
 
     // MARK: bench
 
-    /// `cairn bench [--product P]`: a release build, then the app's own `--bench` with
+    /// `cairn bench [--app A] [--product P]`: a release build, then the app's own `--bench` with
     /// LEAN_ABORT_ON_NONLINEAR=1, so an array copied on every write aborts instead of running slow
     /// (AGENTS.md, "Performance"). The host defines what `--bench` measures; test/fixture's is
     /// input → frame at 10 and 1,000 items.
     public func bench(_ args: [String]) throws(CairnError) {
-        let a = try Arguments(args, options: ["--product"], usage: "usage: cairn bench [--product P]")
+        let a = try Arguments(args, options: ["--app", "--product"], usage: "usage: cairn bench [--app A] [--product P]")
         let project = try project()
-        let products = try product(project, a)
-        try buildLean(project)
+        let linked = try buildLean(project, app: a.value("--app"))
+        let products = try product(project, a, app: linked?.app)
         for p in products { try shell.run(["swift", "build", "-c", "release", "--product", p], in: project.swift) }
         let bin = try binPath(project, release: true)
         for p in products {
@@ -205,18 +212,21 @@ extension Commands {
 
     // MARK: size
 
-    /// `cairn size [--product P]… [--limit BYTES]`: each executable built for release with a link
-    /// map, stripped into build/size/, its bytes attributed (Lean runtime, Cairn, the app, Swift
+    /// `cairn size [--app A] [--product P]… [--limit BYTES]`: each executable built for release
+    /// with a link map, stripped into build/size/ (build/size/<App>/ in a package of several
+    /// apps), its bytes attributed (Lean runtime, Cairn, the app, Swift
     /// host, shaders) by Cairn's tools/size/size.ts, and checked against the limit (default
     /// 5,000,000 bytes; crossing it almost always means something imported `Lean`).
     public func size(_ args: [String]) throws(CairnError) {
-        let a = try Arguments(args, options: ["--product", "--limit"], usage: "usage: cairn size [--product P]… [--limit BYTES]")
+        let a = try Arguments(args, options: ["--app", "--product", "--limit"], usage: "usage: cairn size [--app A] [--product P]… [--limit BYTES]")
         let project = try project()
-        let products = try product(project, a)
         let limit = try a.number("--limit") ?? 5_000_000
         guard shell.has("bun") else { throw CairnError("cairn size needs bun (https://bun.sh)") }
-        try buildLean(project)
-        let dir = project.root.appending(path: "build/size")
+        guard let linked = try buildLean(project, app: a.value("--app")) else {
+            throw CairnError("cairn size measures an app: kind = \"bin\" with `libs`, and a Package.swift")
+        }
+        let products = try product(project, a, app: linked.app)
+        let dir = project.root.appending(path: linked.several ? "build/size/\(linked.app)" : "build/size")
         try mkdir(dir)
         for p in products {
             try shell.run(["swift", "build", "-c", "release", "--product", p,
@@ -225,13 +235,13 @@ extension Commands {
         let bin = try binPath(project, release: true)
         try shell.run(["bun", project.cairn.appending(path: "tools/size/size.ts").path,
                        "--bin", bin.path, "--maps", dir.path, "--out", dir.path, "--limit", String(limit),
-                       "--lib", "lib\(project.manifest.name).a", "--modules", project.manifest.libs.joined(separator: ","),
+                       "--lib", linked.archive.lastPathComponent, "--modules", linked.libs.joined(separator: ","),
                        "--swift", project.swift.standardizedFileURL.path] + products, in: project.root)
     }
 
     // MARK: conformance
 
-    /// `cairn conformance [--module M] [--product P] [--n N] [--length L] [--seed S]`: the Lean
+    /// `cairn conformance [--app A] [--module M] [--product P] [--n N] [--length L] [--seed S]`: the Lean
     /// model's sequences replayed on the running app through its debug socket
     /// (docs/conformance.md). The package has a generator module, by default `<App>.Conformance`,
     /// exporting `cairn_conformance_run` over Cairn's `Conformance.run` (test/fixture's is
@@ -239,15 +249,17 @@ extension Commands {
     /// build/conformance/<App>.json and build/conformance/<App>/report.md. The app's window opens
     /// while it runs; it is never activated.
     public func conformance(_ args: [String]) throws(CairnError) {
-        let usage = "usage: cairn conformance [--module M] [--product P] [--n N] [--length L] [--seed S]"
-        let a = try Arguments(args, options: ["--module", "--product", "--n", "--length", "--seed"], usage: usage)
+        let usage = "usage: cairn conformance [--app A] [--module M] [--product P] [--n N] [--length L] [--seed S]"
+        let a = try Arguments(args, options: ["--app", "--module", "--product", "--n", "--length", "--seed"], usage: usage)
         let project = try project()
-        guard let app = project.appModule else { throw CairnError("cairn.toml lists no `libs`") }
-        let module = a.value("--module") ?? "\(app).Conformance"
-        let products = try product(project, a)
-        guard products.count == 1 else { throw CairnError("conformance drives one executable; give one --product") }
         guard shell.has("bun"), shell.has("clang") else { throw CairnError("cairn conformance needs bun and clang") }
-        try buildLean(project)
+        guard let linked = try buildLean(project, app: a.value("--app")) else {
+            throw CairnError("cairn conformance drives an app: kind = \"bin\" with `libs`, and a Package.swift")
+        }
+        let app = linked.app
+        let module = a.value("--module") ?? "\(app).Conformance"
+        let products = try product(project, a, app: app)
+        guard products.count == 1 else { throw CairnError("conformance drives one executable; give one --product") }
         let env = lakeEnv(registry())
         try shell.run(["lake", "build", module], in: project.lean, env: env)
         try shell.run(["swift", "build", "--product", products[0]], in: project.swift)
@@ -272,7 +284,7 @@ extension Commands {
         let gen = out.appending(path: "gen").path
         try shell.run(["clang", "-O2", "-I\(prefix)/include", "-DCAIRN_APP_INIT=\(project.initializer(of: module))",
                        project.cairn.appending(path: "tools/conformance/gen_main.c").path] + objects
-                      + metrics + [project.root.appending(path: ".cairn/lib/lib\(project.manifest.name).a").path,
+                      + metrics + [linked.archive.path,
                          "-L\(sdk)/usr/lib/swift", "-lc++", "-o", gen], in: project.root)
         try shell.run(["bun", project.cairn.appending(path: "tools/conformance/driver.ts").path,
                        "--app", app, "--n", a.value("--n") ?? "1000", "--length", a.value("--length") ?? "12",
