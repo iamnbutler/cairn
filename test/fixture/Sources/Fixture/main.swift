@@ -167,8 +167,30 @@ enum SelfTest {
         expect("^9 after Enter", f.textInput?.text ?? "", "")
         if view.shadowDivergences.count != 0 { fail("text shadow diverged: \(view.shadowDivergences)") }
 
+        // region: fixture-selftest-scroll
+        // The scroll box (^10): the frame has a node for every row, draws only the six that show
+        // (rows 51 to 56 at its offset), and the mirror exposes only those, under an AXScrollArea.
+        f = settle()
+        expect("row nodes in the frame", f.ax.filter { $0.control?.claim == 10 }.count, 200)
+        guard let area = elements().first(where: { $0.accessibilityRole() == .scrollArea }) else { fail("no AXScrollArea") }
+        let shown = (area.accessibilityChildren() ?? []).compactMap { ($0 as? NSAccessibilityElement)?.accessibilityIdentifier() }
+        expect("rows exposed", shown, (51...56).map { "^10#\($0)" })
+        if !ids("^10#").allSatisfy(shown.contains) { fail("a scrolled-out row is exposed: \(ids("^10#"))") }
+        let rowTexts = f.draws.filter { if case .text(_, _, _, let t) = $0 { return t.hasPrefix("Row ") } else { return false } }
+        expect("row texts drawn", rowTexts.count, 6)
+        // Row 51 shows only its lower half: a click at that half's centre selects it.
+        guard let r51 = f.ax.first(where: { $0.control?.label == "^10#51" }) else { fail("^10#51 not in frame") }
+        expect("^10#51's visible height", r51.rect.h, 16)
+        f = settle(engine.send(click(center(r51.rect))))
+        expect("^10#51 selected", f.ax.first { $0.control?.label == "^10#51" }?.selected ?? false, true)
+        // An accessibility press is a click at the centre of the node's visible rect, through Lean.
+        press("^10#54")
+        f = settle()
+        expect("^10#54 selected", f.ax.first { $0.control?.label == "^10#54" }?.selected ?? false, true)
+        // endregion: fixture-selftest-scroll
+
         engine.stop()
-        print("selftest: PASS (Fixture: focus, type, Enter, Add, toggle, delete, timer, Tab, AX, paint, secure field)")
+        print("selftest: PASS (Fixture: focus, type, Enter, Add, toggle, delete, timer, Tab, AX, paint, secure field, scroll box)")
     }
 }
 
