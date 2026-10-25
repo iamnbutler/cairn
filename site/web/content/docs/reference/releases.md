@@ -51,7 +51,7 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
 
 ## v0.2.2
 
-25 October 2026.
+25 October 2026, at commit `885b585`.
 
 - **A window's minimum size.** An app declares its window's smallest content size with
   `App.minSize`, and the host keeps the window at least that big (the trusted claim

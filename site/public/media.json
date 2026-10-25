@@ -1,5 +1,16 @@
 [
   {
+    "title": "Cairn 0.2.2, with a window minimum and an image budget",
+    "text": [
+      "Cairn 0.2.2 is out on the public registry as iamnbutler/cairn. An app declares its window's smallest size with App.minSize, and Grid.minBox gives the smallest box in which every card is at least its minimum width, proved for every size; the host keeps the window at least that big (#169, frame format 7). Sub.imageCache keeps the host's images within a byte budget, and the host tells the app with an evicted notice for every image it drops, so ready always means the pixels are there (#170, frame format 8).",
+      "The registry checked its claims export, 122 claims, against the ledger and serves it for the claim pages. No claim was retired, moved or changed, so it is a patch release; five are new, ^511–^513, ^1010 and ^1011."
+    ],
+    "date": "2026-10-25",
+    "published": "2026-10-25T05:38:57Z",
+    "commit": "885b585",
+    "milestone": "m3"
+  },
+  {
     "video": "/m/videos/44efac4eb00e6da0.mp4",
     "poster": "/m/videos/44efac4eb00e6da0.jpg",
     "title": "Image cache under a budget",
