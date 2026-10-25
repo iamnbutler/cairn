@@ -15,31 +15,15 @@ card: { label: "", title: Cairn, line: "Mac apps where every action is a claim, 
   <p class="lede">Research into user interfaces where everything a person can do is a <em>claim</em>
     with a durable id, and every claim carries machine-checked evidence.</p>
 
-  {{{ $utils.latest() }}}
-
-  <h2 id="the-idea">The idea</h2>
-  <p>A cairn is a stack of stones that marks a trail: placed by hand, built to last, and trusted by
-    whoever comes next. Here the trails are a product's flows, and the stones are claims about them:
-    “pressing <code>^12</code> clears the completed items”, “<code>^12</code>'s button is visible
-    and on top whenever there's something to clear”. Each claim is backed by a Lean proof, a model
-    check or a conformance run against the real app.</p>
-  <p>To make those claims mean something, the code they talk about has to be the code that runs.
-    So the app's state, view, layout, hit testing, focus and text editing are all pure Lean, and
-    the theorems are about exactly those functions.</p>
-  <figure class="diagram">
-{{{ $utils.architecture() }}}
-    <figcaption>One frame, from a key press to the screen.</figcaption>
-  </figure>
-
-  <aside class="note"><div class="card px">
-    <p class="label"><img src="/icon.svg" alt="">Not a layer on top</p>
-    <p>Cairn isn't verification bolted onto an existing UI framework. It is its own framework: the
-      app, its view, layout, hit testing, focus and text editing are written in Lean, and a thin
-      Swift host hands over events and draws the result with Metal.</p>
-    <p>Owning every layer is what lets a claim reach all the way down. Each one is bound to the code
-      that actually runs, not to a model of someone else's, and the little we do have to trust,
-      the host, is written down in one place.</p>
-  </div></aside>
+  <div class="start">
+    <a class="go px" href="/docs/guide/first-app/">Get started</a>
+    <a href="/docs/">Read the docs</a>
+    <a href="/docs/reference/releases/">v{{ $utils.version() }}</a>
+  </div>
+  <pre class="install px"><code><span class="prompt">$</span> git clone https://github.com/iamnbutler/cairn &amp;&amp; cd cairn
+<span class="prompt">$</span> make demo DEMO=CairnCounter</code></pre>
+  <p class="needs">On a Mac with macOS 27, Xcode and Lean through elan. Then
+    <a href="/docs/guide/first-app/">your first app</a> shows what you just ran.</p>
 
   <h2 id="what-a-claim-is">What a claim is</h2>
   <p>A claim is one statement about the app, in two halves, and both live in the app's source under
@@ -101,17 +85,48 @@ card: { label: "", title: Cairn, line: "Mac apps where every action is a claim, 
   <ul class="trail ladder">
     <li><b>Proved.</b> Lean's kernel checked the proof, using only the three standard axioms;
       <code>make check</code> audits every theorem.</li>
-    <li><b>Conformance-checked.</b> The real app, driven through
-      generated sequences of moves, agrees with the model after every step.</li>
+    <li><b>Fuzzed.</b> Random sequences of moves, with the claim checked after every step.</li>
+    <li><b>Tested.</b> The real app, driven through generated sequences of moves, agrees with the
+      model after every step.</li>
+    <li><b>Seen.</b> The claim's control is on a captured frame, and a flow replays click by
+      click.</li>
     <li><b>Assumed.</b> Recorded, never proved. Theorems that rely on it take it as a hypothesis,
       so every use shows.</li>
-    <li><b>Seen.</b> A screenshot of the real app with the claim's control pinned on it.</li>
   </ul>
+  <p>Each one rules out something different and still trusts something:
+    <a href="/docs/reference/trust/">how much to trust a claim</a> says what, with a bug the tests
+    miss and the proof catches.</p>
   <p>Every package on the registry gets claim pages: every claim it makes, grouped by place, with
     its proofs, generated from what it published and nothing written by hand. See Cairn's for the
     <a href="/packages/cairn/claims/3/">counter</a>, <a href="/packages/cairn/claims/106/">Basics</a>,
     <a href="/packages/cairn/claims/201/">TodoMVC</a> and the
     <a href="/packages/cairn/claims/#assumptions">trusted base</a>.</p>
+
+  <h2 id="the-idea">The idea</h2>
+  <p>A cairn is a stack of stones that marks a trail: placed by hand, built to last, and trusted by
+    whoever comes next. Here the trails are a product's flows, and the stones are claims about them:
+    “pressing <code>^12</code> clears the completed items”, “<code>^12</code>'s button is visible
+    and on top whenever there's something to clear”. Each claim is backed by a Lean proof, a model
+    check or a conformance run against the real app.</p>
+  <p>To make those claims mean something, the code they talk about has to be the code that runs.
+    So the app's state, view, layout, hit testing, focus and text editing are all pure Lean, and
+    the theorems are about exactly those functions.</p>
+  <figure class="diagram">
+{{{ $utils.architecture() }}}
+    <figcaption>One frame, from a key press to the screen.</figcaption>
+  </figure>
+
+  <aside class="note"><div class="card px">
+    <p class="label"><img src="/icon.svg" alt="">Not a layer on top</p>
+    <p>Cairn isn't verification bolted onto an existing UI framework. It is its own framework: the
+      app, its view, layout, hit testing, focus and text editing are written in Lean, and a thin
+      Swift host hands over events and draws the result with Metal.</p>
+    <p>Owning every layer is what lets a claim reach all the way down. Each one is bound to the code
+      that actually runs, not to a model of someone else's, and the little we do have to trust,
+      the host, is written down in one place.</p>
+  </div></aside>
+
+  {{{ $utils.latest() }}}
 
 </main>
 

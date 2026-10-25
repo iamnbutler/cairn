@@ -202,6 +202,16 @@ a.feed:hover { color: var(--accent); }
 .latest h3 a:hover { color: var(--accent); }
 .latest .more { margin-top: 12px; font: 15px/1.4 var(--pixel); display: flex; flex-wrap: wrap; gap: 6px 18px; }
 
+/* Get started, under the lede: the way in, an install line and what it needs. */
+.start { margin: 28px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; font: 16px/1.4 var(--pixel); }
+.start .go { --s: var(--px); background: var(--gold); color: var(--ink); padding: 10px 18px; text-decoration: none; font-weight: 600; }
+.start .go:hover { filter: brightness(1.08); }
+.install { --s: var(--px); margin: 18px 0 0; background: var(--panel); padding: 14px 18px; overflow-x: auto;
+  font: 14px/1.7 var(--mono); box-shadow: inset 0 0 0 var(--px) var(--chip); }
+.install code { background: none; padding: 0; font: inherit; }
+.install .prompt { color: var(--muted); user-select: none; }
+.needs { margin: 10px 0 0; font-size: 15px; color: var(--muted); }
+
 @media (max-width: 600px) {
   :root { --px: 3px; }
   .scene .title { padding-top: 44px; }
@@ -210,7 +220,7 @@ a.feed:hover { color: var(--accent); }
   .intro { margin-top: 110px; font-size: 18px; }
   .scene { height: 290px; }
   h2 canvas.sprig { width: 92px; height: 28px; }
-  .claim pre { font-size: 12.5px; padding: 14px; }
+  .claim pre, .install { font-size: 12.5px; padding: 14px; }
   .kinds thead { display: none; }
   .kinds tr { display: block; border-top: 2px solid var(--rule); padding: 8px 0; }
   .kinds td { display: block; border: 0; padding: 2px 0; }
