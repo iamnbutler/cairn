@@ -111,8 +111,8 @@ extension Commands {
 
     /// The Lake environment for tools that import modules from the build directory (`claims`):
     /// the artifact cache off, as `cairn doc` has it.
-    func importEnv() -> [String: String] {
-        var env = lakeEnv(registry())
+    func importEnv(_ project: Project) -> [String: String] {
+        var env = lakeEnv(registry(), project)
         env["LAKE_ARTIFACT_CACHE"] = "false"
         return env
     }
@@ -132,7 +132,7 @@ extension Commands {
         guard project.declaresExe("fuzz") else {
             throw CairnError("the lakefile declares no `lean_exe fuzz`; see docs/fuzz.md, \"An app package\", or Cairn's test/fixture/lean")
         }
-        let env = lakeEnv(registry())
+        let env = lakeEnv(registry(), project)
         try shell.run(["lake", "build", "fuzz"], in: project.lean, env: env)
         let exe = project.lean.appending(path: ".lake/build/bin/fuzz").path
         var targets = a.positionals
@@ -167,7 +167,7 @@ extension Commands {
         } else {
             let modules = a.positionals.isEmpty ? project.documented : a.positionals
             guard !modules.isEmpty else { throw CairnError("cairn.toml lists no `libs`; name the modules") }
-            let env = importEnv()
+            let env = importEnv(project)
             try shell.run(["lake", "build"], in: project.lean, env: env)
             json = try shell.capture(["lake", "exe", "claims"] + modules, in: project.lean, env: env).stdout
         }
@@ -186,7 +186,7 @@ extension Commands {
     func ledgerClaims(_ project: Project, roots: [String] = []) throws(CairnError) -> Data {
         let roots = roots.isEmpty ? project.claimRoots : roots
         guard !roots.isEmpty else { throw CairnError("cairn.toml lists no `libs`; name the modules") }
-        let env = importEnv()
+        let env = importEnv(project)
         try shell.run(["lake", "build"] + roots, in: project.lean, env: env)
         return try shell.capture(["lake", "exe", "claims", "--scope", project.manifest.name] + roots.flatMap { ["--root", $0] },
                                  in: project.lean, env: env).stdout
@@ -285,7 +285,7 @@ extension Commands {
         let module = a.value("--module") ?? "\(app).Conformance"
         let products = try product(project, a, app: app)
         guard products.count == 1 else { throw CairnError("conformance drives one executable; give one --product") }
-        let env = lakeEnv(registry())
+        let env = lakeEnv(registry(), project)
         try shell.run(["lake", "build", module], in: project.lean, env: env)
         try shell.run(["swift", "build", "--product", products[0]], in: project.swift)
         let bin = try binPath(project, release: false)

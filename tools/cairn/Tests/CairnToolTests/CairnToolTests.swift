@@ -576,3 +576,120 @@ final class FakeRegistry: @unchecked Sendable {
         #expect(SwiftPackage.executables(Data("nope".utf8)) == [])
     }
 }
+
+/// Lake's git dependencies on the registry's dumb HTTP (#196): when `cairn` turns lazy fetches
+/// off for Lake, and the prefetch of a stale checkout.
+@Suite struct LazyFetchTests {
+    static let registries = [URL(string: "https://reg.test")!, Registry.standard]
+
+    static func manifest(_ urls: [(String, String)]) -> LakeManifest? {
+        let packages = urls.map { name, url in
+            #"{"url": "\#(url)", "type": "git", "subDir": "lean", "rev": "\#(String(repeating: "a", count: 40))", "name": "\#(name)", "inherited": false}"#
+        }
+        return LakeManifest.parse(Data(#"{"version": "1.3.0", "packagesDir": ".lake/packages", "packages": [\#(packages.joined(separator: ","))], "name": "app"}"#.utf8))
+    }
+
+    @Test func parsesGitPackages() throws {
+        let path = #"{"packages": [{"type": "path", "name": "cairn", "dir": "../.."}, {"type": "git", "name": "x", "url": "u", "rev": "r"}], "packagesDir": "deps"}"#
+        let m = try #require(LakeManifest.parse(Data(path.utf8)))
+        #expect(m.names == ["cairn", "x"])
+        #expect(m.git == [LakeManifest.Git(name: "x", url: "u", rev: "r")])
+        #expect(m.packagesDir == "deps")
+        #expect(LakeManifest.parse(Data("nope".utf8)) == nil)
+    }
+
+    @Test func lakefileRequiresAndUrls() {
+        let lean = Lakefile(format: .lean, text: """
+            package app
+            require "iamnbutler" / "cairn" @ "^0.2.0"
+            require «cairn_json» from git "https://cairn.registry.nexthub.sh/git/iamnbutler/cairn_json.git" @ "v0.1.0" / "lean"
+            require Cli from git "https://github.com/leanprover/lean4-cli" @ "main"
+            """)
+        #expect(lean.requires == ["cairn", "cairn_json", "Cli"])
+        #expect(lean.urls == ["https://cairn.registry.nexthub.sh/git/iamnbutler/cairn_json.git", "https://github.com/leanprover/lean4-cli"])
+        let toml = Lakefile(format: .toml, text: "name = \"app\"\n\n[[require]]\nname = \"cairn\"\nscope = \"iamnbutler\"\n\n[[lean_lib]]\nname = \"App\"\n")
+        #expect(toml.requires == ["cairn"])
+    }
+
+    /// Off only when every git package is on a registry, the manifest lists every require, and
+    /// the lakefile names no other git URL: GIT_NO_LAZY_FETCH breaks a GitHub checkout.
+    @Test func safeOnlyWhenEveryGitDependencyIsOnARegistry() {
+        let regs = Self.registries
+        let lakefile = Lakefile(format: .lean, text: "package app\nrequire \"iamnbutler\" / \"cairn\" @ \"^0.2.0\"\nrequire \"iamnbutler\" / \"cairn_json\"\n")
+        let pairs = Self.manifest([("cairn_json", "https://cairn.registry.nexthub.sh/git/iamnbutler/cairn_json.git"),
+                                   ("cairn", "https://cairn.registry.nexthub.sh/git/iamnbutler/cairn.git")])
+        #expect(LazyFetch.safe(pairs, lakefile: lakefile, registries: regs))
+        let local = Self.manifest([("cairn", "https://reg.test/git/o/cairn.git"), ("cairn_json", "https://reg.test/git/o/cairn_json.git")])
+        #expect(LazyFetch.safe(local, lakefile: lakefile, registries: regs))
+        let mixed = Self.manifest([("cairn", "https://reg.test/git/o/cairn.git"), ("Cli", "https://github.com/leanprover/lean4-cli")])
+        #expect(!LazyFetch.safe(mixed, lakefile: Lakefile(format: .lean, text: "require cairn\nrequire Cli\n"), registries: regs))
+        // A require the manifest doesn't list yet: Lake resolves it, maybe from GitHub.
+        #expect(!LazyFetch.safe(Self.manifest([("cairn", "https://reg.test/git/o/cairn.git")]), lakefile: lakefile, registries: regs))
+        #expect(!LazyFetch.safe(nil, lakefile: lakefile, registries: regs))
+        let github = Lakefile(format: .lean, text: "require \"iamnbutler\" / \"cairn\"\nrequire cairn_json from git \"https://github.com/iamnbutler/cairn_json\"\n")
+        #expect(!LazyFetch.safe(pairs, lakefile: github, registries: regs))
+        #expect(!LazyFetch.served("https://reg.test.evil/git/o/x.git", by: regs))
+    }
+
+    /// The bug itself, on localhost: a bare repository served over dumb HTTP, a partial-clone
+    /// checkout of its first commit (as Lake fetches it), and a manifest that names the second.
+    /// Plain `git fetch` there forks without end (#196); the prefetch fetches it in about a second.
+    @Test(.timeLimit(.minutes(1))) func prefetchFetchesAStaleCheckoutOverDumbHTTP() throws {
+        let dir = FileManager.default.temporaryDirectory.appending(path: "cairn-lazy-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        var shell = Shell()
+        shell.echo = false
+        // Every git here runs with lazy fetches off, so a mistake in this test can't fork without end.
+        func git(_ args: String..., in at: URL) throws -> String {
+            try shell.capture(["git", "-c", "user.name=t", "-c", "user.email=t@t", "-c", "init.defaultBranch=main"] + args, in: at, env: LazyFetch.off).text
+        }
+        let src = dir.appending(path: "src"), bare = dir.appending(path: "srv/git/o/x.git")
+        let checkout = dir.appending(path: "lean/.lake/packages/x")
+        for d in [src, bare, checkout] { try FileManager.default.createDirectory(at: d, withIntermediateDirectories: true) }
+        _ = try git("init", "-q", in: src)
+        try "one\n".write(to: src.appending(path: "a"), atomically: true, encoding: .utf8)
+        _ = try git("add", "a", in: src)
+        _ = try git("commit", "-qm", "one", in: src)
+        let one = try git("rev-parse", "HEAD", in: src)
+        _ = try git("init", "-q", "--bare", in: bare)
+        _ = try git("push", "-q", bare.path, "HEAD:main", in: src)
+        _ = try git("update-server-info", in: bare)
+
+        let server = Process()
+        server.executableURL = URL(filePath: "/usr/bin/env")
+        server.arguments = ["python3", "-u", "-m", "http.server", "0", "--bind", "127.0.0.1", "-d", dir.appending(path: "srv").path]
+        let out = Pipe()
+        server.standardOutput = out
+        server.standardError = FileHandle.nullDevice
+        try server.run()
+        defer { server.terminate(); server.waitUntilExit() }
+        var banner = ""
+        while !banner.contains("\n") {
+            let chunk = out.fileHandleForReading.availableData
+            if chunk.isEmpty { break }
+            banner += String(decoding: chunk, as: UTF8.self)
+        }
+        let port = try #require(banner.firstMatch(of: /port (\d+)/).map { String($0.1) })
+        let registry = URL(string: "http://127.0.0.1:\(port)")!
+
+        _ = try git("init", "-q", in: checkout)
+        _ = try git("remote", "add", "origin", "\(registry.absoluteString)/git/o/x.git", in: checkout)
+        _ = try git("fetch", "-q", "--filter=tree:0", "origin", one, in: checkout)
+        _ = try git("checkout", "-q", "--detach", one, in: checkout)
+        #expect(try git("config", "remote.origin.promisor", in: checkout) == "true")
+
+        try "two\n".write(to: src.appending(path: "a"), atomically: true, encoding: .utf8)
+        _ = try git("commit", "-qam", "two", in: src)
+        let two = try git("rev-parse", "HEAD", in: src)
+        _ = try git("push", "-q", bare.path, "HEAD:main", in: src)
+        _ = try git("update-server-info", in: bare)
+
+        let manifest = try #require(LakeManifest.parse(Data(
+            #"{"packagesDir": ".lake/packages", "packages": [{"type": "git", "name": "x", "url": "\#(registry.absoluteString)/git/o/x.git", "rev": "\#(two)"}]}"#.utf8)))
+        let lean = dir.appending(path: "lean")
+        #expect(LazyFetch.prefetch(manifest, lean: lean, registries: [registry], shell: shell) == ["x"])
+        #expect(try git("rev-parse", "--verify", "\(two)^{tree}", in: checkout).count == 40)
+        // Now it has the commit: nothing to fetch.
+        #expect(LazyFetch.prefetch(manifest, lean: lean, registries: [registry], shell: shell) == [])
+    }
+}
