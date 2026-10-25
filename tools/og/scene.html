@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- The background of every link preview card, 1200 × 630: the homepage's scene with a shade
+     over the sky for the text. tools/og/scene.ts (make og-scene) serves this next to site/public
+     and screenshots it to site/web/assets/og/scene.png; site/web/partials/og/card.hbs draws each
+     card's text on it with satori. -->
+<link rel="stylesheet" href="/site.css">
+<style>
+  html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; }
+  .scene { height: 630px; }
+  .scene canvas { width: 1200px; }
+  /* The text sits on a shade of the night sky, so it reads over clouds and meadow alike. It
+     steps down in bands a scene pixel wide rather than a smooth gradient: the scene stays in flat
+     runs of colour, and the PNG stays small. */
+  .shade { position: absolute; inset: 0 auto 0 0; display: flex; }
+  .shade i { background: #0a0d28; }
+</style>
+</head>
+<body>
+<header class="scene">
+  <canvas id="scene" aria-hidden="true"></canvas>
+  <div class="shade"></div>
+</header>
+<script type="module">
+  import { mountScene } from "/scene.js";
+  // Bands 3 px wide (a scene pixel): solid to 540 px, then fading out by 840.
+  const shade = document.querySelector(".shade");
+  for (let x = 0; x < 840; x += 30) {
+    const i = document.createElement("i");
+    i.style.width = "30px";
+    i.style.opacity = x < 540 ? 0.8 : (0.8 * (840 - x)) / 300;
+    shade.append(i);
+  }
+  mountScene(document.getElementById("scene"));
+</script>
+</body>
+</html>

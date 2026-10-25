@@ -1,9 +1,9 @@
 // Link previews: the Open Graph and Twitter tags every page carries, and the card each one shows.
 // The docs, the homepage and /milestones/ write their own tags and cards (site/web, built by
 // bongo). These tags are stamped by tools/site/build.ts into the copied output of the map and
-// cairn doc. The package pages (site/registry.js) run in the
-// Worker and write them too. Each tag block names its card in an `<!-- og card {…} -->` comment;
-// render.ts reads those to draw site/public/og/<name>.png.
+// cairn doc, and the package pages (site/registry.js) write them in the Worker. Each tag block
+// names its card in an `<!-- og card {…} -->` comment; bongo reads those (site/web/lib/og.ts) and
+// draws og/<name>.png with the same satori partial as every other card.
 
 export const ORIGIN = "https://cairn.iamnbutler.workers.dev";
 

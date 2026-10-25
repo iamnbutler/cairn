@@ -7,6 +7,7 @@ const mdLoader = md.$loaders!.md as Loader;
 import { codeBlock, esc, include } from "./lib/source";
 import { checkLinks, inline, pager, sidebar } from "./lib/docs";
 import { feed, latest, movedIds } from "./lib/site";
+import { ogCards } from "./lib/og";
 
 export default {
 	$site: {
@@ -15,7 +16,7 @@ export default {
 		url: "https://cairn.iamnbutler.workers.dev/",
 		description: "Research into user interfaces where every action a person can take is a claim with a durable id and machine-checked evidence.",
 	},
-	$utils: { inline, checkLinks, sidebar, pager, feed, latest, movedIds },
+	$utils: { inline, checkLinks, sidebar, pager, feed, latest, movedIds, ogCards },
 	$partials: {
 		// <bongo:include src="lean/Examples/Counter.lean#counter-reset" />
 		include(args: { src: string }) {

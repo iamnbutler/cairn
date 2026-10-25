@@ -1,8 +1,7 @@
-{{! A link preview card, drawn by satori when bongo builds: label (the gold line, '' for none),
-    title and an optional line below it, as args from the layouts.
-    assets/og/scene.png is the homepage's scene and shade with no text: tools/og/card.html?bare,
-    screenshotted at 1200 x 630 by headless Chrome, as tools/og/render.ts draws the other cards.
-    Redraw it after a change to the scene. }}
+{{! Every link preview card on the site, drawn by satori when bongo builds: label (the gold line,
+    '' for none), title and an optional line below it, as args from the layouts and from
+    content/og/cards.txt.hbs. assets/og/scene.png is the background: the homepage's scene and
+    shade with no text, drawn by `make og-scene` after a change to the scene. }}
 {{#expect label, title, line}}
 {{#var brand = title !== 'Cairn'}}
 {{#var n = title.length}}

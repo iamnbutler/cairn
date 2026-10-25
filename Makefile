@@ -186,7 +186,7 @@ site-dist: site-build
 
 # Deploy the microsite (site/) to Cloudflare, once the copied pages' tags are fresh (site-tags-check,
 # below).
-site: site-dist site-tags-check og-check
+site: site-dist site-tags-check
 	cd site && npx -y wrangler@4 deploy
 
 clean:
@@ -333,23 +333,17 @@ fuzz-trusted-quick: lean
 # Link preview tags in the copied map and API pages (tools/site/build.ts). They are committed;
 # site-tags-check fails when any is stale. It is part of check (on its own line, so the check:
 # list stays as the docs include it) and runs before every deploy.
-.PHONY: site-tags site-tags-check og og-check
+.PHONY: site-tags site-tags-check og-scene
 site-tags:
 	bun tools/site/build.ts
 
 site-tags-check:
 	bun tools/site/build.ts --check
 
-# The link preview cards, site/public/og/*.png (tools/og/render.ts): one per page, drawn from the
-# card each page's tags name. `make og` draws the missing and changed ones (Google Chrome);
-# `make og ALL=1` redraws all of them after a change to the card or the scene. og-check needs no
-# Chrome and fails when a page names a card that is missing or stale. Commit the PNGs.
-og:
-	bun tools/og/render.ts $(if $(ALL),--all)
-
-og-check:
-	bun tools/og/render.ts --check
-
-check: og-check
+# The background of every link preview card, site/web/assets/og/scene.png (tools/og/scene.ts):
+# the homepage's scene, screenshotted by Google Chrome. Redraw it after a change to the scene and
+# commit it. The cards themselves are drawn by satori when bongo builds (site/web/partials/og/card.hbs).
+og-scene:
+	bun tools/og/scene.ts
 
 check: site-tags-check
