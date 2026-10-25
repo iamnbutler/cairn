@@ -7,8 +7,8 @@
       "Checked with a throwaway app that depends on Cairn and on a second library package with its own libs: it links, and a small C program draws a frame through both. Yap builds against it with its existing --lib Yap and passes its selftest."
     ],
     "date": "2026-10-24",
-    "published": "2026-10-25T00:47:00Z",
-    "commit": "9ca784f",
+    "published": "2026-10-25T00:53:44Z",
+    "commit": "2f67c8d",
     "milestone": "m3"
   },
   {
