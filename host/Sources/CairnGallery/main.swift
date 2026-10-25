@@ -11,6 +11,8 @@ import QuartzCore
 // "Images").
 //   CairnGallery               open the window
 //   CairnGallery --selftest    drive the host headlessly through its real threads and check it
+//   CairnGallery --demo-resize open the window, then widen and narrow it over 12 s so the tile
+//                              grid reflows (for the demo video; docs/media.md)
 //
 // Load 24 (^506) asks for 24 thumbnails from `https://slow.cairn.test/many/<i>.png`, which
 // `SlowServer` answers from the bundled pictures after a second or two, so the
@@ -223,6 +225,31 @@ final class NullRenderer: FrameRenderer {
     let device = MTLCreateSystemDefaultDevice()!
     func configure(_ layer: CAMetalLayer) { layer.device = device }
     func draw(_ frame: Frame, to drawable: CAMetalDrawable, viewport: Viewport) {}
+}
+
+/// `--demo-resize`: after two seconds, sweep the window's width 1120 → 1640 → 860 → 1120 at a
+/// height of 700, a frame at a time, as a person dragging its edge would. Lean sees only the
+/// `resize` events.
+if args.contains("--demo-resize") {
+    let widths: [(Double, Double)] = [(1120, 1640), (1640, 1640), (1640, 860), (860, 860), (860, 1120)]
+    let legs = [3.0, 1.0, 4.0, 1.0, 2.0]
+    let start = Date().addingTimeInterval(2)
+    Timer.scheduledTimer(withTimeInterval: 1.0 / 60, repeats: true) { _ in
+        MainActor.assumeIsolated {
+            guard let window = NSApp.windows.first(where: { $0.isVisible }) else { return }
+            var t = Date().timeIntervalSince(start)
+            if t < 0 { window.setContentSize(NSSize(width: 1120, height: 700)); return }
+            for (leg, (a, b)) in zip(legs, widths) {
+                if t <= leg {
+                    let u = t / leg, e = u * u * (3 - 2 * u)
+                    window.setContentSize(NSSize(width: (a + (b - a) * e).rounded(), height: 700))
+                    return
+                }
+                t -= leg
+            }
+            if window.contentLayoutRect.width != 1120 { window.setContentSize(NSSize(width: 1120, height: 700)) }
+        }
+    }
 }
 
 MainActor.assumeIsolated {
