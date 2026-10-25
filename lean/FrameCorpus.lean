@@ -89,7 +89,7 @@ def ints : Gen (List Int) := do
   return xs
 
 def draw : Gen Draw := do
-  match ← below 6 with
+  match ← below 7 with
   | 0 => return .rect (← rect) (← opt color) (← nat) (← opt (return ⟨← nat, ← color⟩))
   | 1 => return .text ⟨← int, ← int⟩ (← font) (← color) (← str)
   | 2 => return .pushClip (← rect)
@@ -110,6 +110,7 @@ def draw : Gen Draw := do
     let mut arrays := []
     for _ in [0:k] do arrays := (← ints) :: arrays
     return .paint r { shader, origin, scalars, arrays }
+  | 5 => return .image (← rect) (← rect) (← str)
   | _ => return .popClip
 
 def role : Gen Role :=
@@ -146,7 +147,7 @@ def part : Gen Part := do
   if ← coin then return .bytes (← bytes) else return .wav (← nat) (← nat) (← opt nat)
 
 def request : Gen Request := do
-  match ← below 16 with
+  match ← below 17 with
   | 0 => return .readFile (← str)
   | 1 => return .writeFile (← str) (← bytes)
   | 2 => return .playSound (← str)
@@ -164,6 +165,7 @@ def request : Gen Request := do
   | 12 => return .appRunning (← str)
   | 13 => return .readDefault (← str) (← str)
   | 14 => return .makeDir (← str)
+  | 15 => return .loadImage (← str) (← coin)
   | _ => return .http (← str) (← str) (← headers) (← bytes) (← nat)
 
 def effect : Gen Effect := do
@@ -187,13 +189,14 @@ def subCmd : Gen SubCmd := do
 def fault : Gen Fault := pick #[.notFound, .denied, .timeout, .network, .invalid, .other]
 
 def reply : Gen Reply := do
-  match ← below 7 with
+  match ← below 8 with
   | 0 => return .done
   | 1 => return .bytes (← bytes)
   | 2 => return .http (← nat) (← headers) (← bytes)
   | 3 => return .names (← array 4 str).toList
   | 4 => return .app (← nat) (← str)
   | 5 => return .flag (← coin)
+  | 6 => return .image (← nat) (← nat)
   | _ => return .failed (← fault) (← str)
 
 def subEvent : Gen SubEvent := do
@@ -323,6 +326,8 @@ def maxCanvas : Canvas where
     .paint ⟨-2147483648, 2147483647, 0, -1⟩ (Paint.mk "yap.tape\x00" 18446744073709551615 [-2147483648, 2147483647, 0]
         [[], [-1], [2147483647, -2147483648]]),
     .paint ⟨0, 0, 0, 0⟩ ({ shader := "" } : Paint),
+    .image ⟨-2147483648, 2147483647, 0, -1⟩ ⟨2147483647, -2147483648, -1, 0⟩ "https://example.com/🙂.png\x00",
+    .image ⟨0, 0, 0, 0⟩ ⟨0, 0, 0, 0⟩ "",
     .pushClip ⟨0, 0, 0, 0⟩, .popClip, .popClip]
   ax := #[{ control := some ⟨4294967295, 4294967295⟩, role := .tab, rect := ⟨0, 0, 0, 0⟩,
             label := "", value := "", parent := some 4294967295, checked := some false }]
@@ -364,7 +369,8 @@ def maxFrame : Frame where
     .request 10 (.upload "" "" [("", "")] none [] 0),
     .request 11 (.openItem "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"),
     .request 12 (.appRunning ""), .request 13 (.readDefault "dev.yap.Yap" "日本🙂"),
-    .request 14 (.makeDir "~/Library/Application Support/yap/transcripts")]
+    .request 14 (.makeDir "~/Library/Application Support/yap/transcripts"),
+    .request 15 (.loadImage "" true), .request 16 (.loadImage "images/日本 🙂.png" false)]
   subs := #[.start 4294967295 (.every 0), .stop 0, .start 1 (.watchFile "~/a 🙂.json"),
     .start 2 (.record 4294967295), .start 3 (.globalKey 63 none), .start 4 (.globalKey 0 (some 4294967295))]
   wake := some 18446744073709551615
@@ -384,7 +390,8 @@ def edgeEvents : Array Event := #[
   .reply 2 (.failed .other "é"), .subEvent 4294967295 .tick,
   .reply 3 (.names []), .reply 4 (.names ["", "2026-10-23.jsonl", "🙂"]),
   .reply 5 (.app 4294967295 "Terminal"), .reply 6 (.app 0 ""), .reply 7 (.flag true),
-  .reply 8 (.flag false), .subEvent 0 .changed,
+  .reply 8 (.flag false), .reply 9 (.image 4294967295 0), .reply 10 (.image 0 4294967295),
+  .subEvent 0 .changed,
   .subEvent 1 (.audio 4294967295 32768 [⟨18446744073709551615, 32767⟩, ⟨0, 0⟩]),
   .subEvent 2 (.audio 0 0 []), .subEvent 3 (.keyDown 18446744073709551615), .subEvent 4 (.keyUp 0),
   .subEvent 5 (.otherKey 1), .subEvent 6 (.failed .denied "Accessibility"),

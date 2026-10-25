@@ -97,6 +97,7 @@ def jdraw : Draw → String
   | .paint r p =>
     jobj [("paint", jrect r), ("shader", jstr p.shader), ("origin", jnat p.origin),
           ("scalars", jarr (p.scalars.map jint)), ("arrays", jarr (p.arrays.map fun a => jarr (a.map jint)))]
+  | .image r d src => jobj [("image", jrect r), ("dest", jrect d), ("source", jstr src)]
 
 def jax (n : AxNode) : String :=
   jobj [("role", jstr (roleName n.role)), ("control", jopt (jstr ∘ refLabel) n.control),
@@ -209,6 +210,7 @@ def requestKind : Request → String
   | .appRunning b => s!"appRunning {b}"
   | .readDefault d k => s!"readDefault {d} {k}"
   | .makeDir p => s!"makeDir {p}"
+  | .loadImage src r => s!"loadImage {src}{if r then " reload" else ""}"
 
 def jeffect : Effect → String
   | .setClipboard s => jobj [("clipboard", jstr s)]
@@ -588,6 +590,9 @@ def colourAt (m : TextMetrics) (draws : List Draw) (clear : Color) (p : Point) :
         | none => 1
       if has ⟨r.x - spread, r.y - spread, r.w + 2 * spread, r.h + 2 * spread⟩ p then return none
     | .paint r _ =>
+      if has r p then return none
+    | .image r _ _ =>
+      -- The host's pixels: no exact answer anywhere in the box.
       if has r p then return none
   return some c
 

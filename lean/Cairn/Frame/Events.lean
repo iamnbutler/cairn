@@ -40,10 +40,10 @@ def Fault.ofCode : UInt8 → Option Fault
 @[simp] theorem Fault.ofCode_code (f : Fault) : Fault.ofCode (Fault.code f) = some f := by
   cases f <;> rfl
 
-/-- `done` 0, `bytes` 1, `http` 2, `failed` 3, `names` 4, `app` 5, `flag` 6. -/
+/-- `done` 0, `bytes` 1, `http` 2, `failed` 3, `names` 4, `app` 5, `flag` 6, `image` 7. -/
 def Reply.code : Reply → UInt8
   | .done => 0 | .bytes _ => 1 | .http .. => 2 | .failed .. => 3
-  | .names _ => 4 | .app .. => 5 | .flag _ => 6
+  | .names _ => 4 | .app .. => 5 | .flag _ => 6 | .image .. => 7
 
 def Reply.faultCode : Reply → UInt8
   | .failed f _ => Fault.code f
@@ -77,6 +77,7 @@ def fitsReply : Reply → Bool
   | .names ns => fu ns.length && ns.all fs
   | .app pid n => fu pid && fs n
   | .flag _ => true
+  | .image w h => fu w && fu h
 
 def fitsEvent : Event → Bool
   | .pointerMove p => fi p.x && fi p.y
@@ -110,6 +111,7 @@ def replyBody : Reply → List UInt8
   | .names ns => u32 ns.length ++ ns.flatMap str
   | .app pid n => u32 pid ++ str n
   | .flag b => bool b ++ pad 3
+  | .image w h => u32 w ++ u32 h
 
 def level (l : Level) : List UInt8 := u64 l.sumSq ++ u32 l.peak
 
@@ -190,6 +192,10 @@ def replyBody (code fault : UInt8) : Dec Reply :=
       let b ← bool
       skip 3
       return .flag b
+    else fail
+  | 7 => if fault = 0 then do
+      let w ← u32
+      return .image w (← u32)
     else fail
   | _ => fail
 
@@ -343,6 +349,10 @@ theorem replyBody_enc {rp : Reply} (h : fitsReply rp = true) (r : List UInt8) :
   | flag b =>
     simp only [replyBody, Reply.code, Reply.faultCode, Enc.replyBody, ↓reduceIte,
         List.append_assoc, bind_apply, bool_enc, skip_pad, pure_apply]
+  | image w h =>
+    simp only [fitsReply, Bool.and_eq_true, fu_iff] at h
+    simp only [replyBody, Reply.code, Reply.faultCode, Enc.replyBody, ↓reduceIte,
+        List.append_assoc, bind_apply, u32_enc h.1, u32_enc h.2, pure_apply]
 
 theorem level_enc {l : Level} (h : fitsLevel l = true) (r : List UInt8) :
     level (Enc.level l ++ r) = some (l, r) := by

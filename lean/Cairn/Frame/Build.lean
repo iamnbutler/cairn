@@ -36,14 +36,34 @@ namespace Frame
 /-- Selection highlight: the macOS accent blue at 30%. -/
 def selectionColor : Color := ⟨0, 122, 255, 77⟩
 
+/-- Where an image of `f.width`×`f.height` pixels is painted for the box `r`, in logical points:
+the box itself for `fill` (or when either has no area); for `contain` the largest rect of the
+image's aspect ratio inside the box, and for `cover` the smallest one covering it, centred.
+Lengths are rounded down for `contain` and up for `cover`, so `contain` never spills out of the
+box and `cover` never leaves a gap (`imageDest_contain_inside`, `imageDest_cover_covers`). -/
+def imageDest (r : Rect) (f : ImageFill) : Rect :=
+  let pw : Int := f.width
+  let ph : Int := f.height
+  if f.fit = .fill ∨ pw = 0 ∨ ph = 0 ∨ r.w ≤ 0 ∨ r.h ≤ 0 then r else
+  -- `wide`: the image is at least as wide for its height as the box is.
+  let wide := decide (r.w * ph ≤ r.h * pw)
+  let (w, h) : Int × Int :=
+    match f.fit, wide with
+    | .contain, true => (r.w, r.w * ph / pw)
+    | .contain, false => (r.h * pw / ph, r.h)
+    | _, true => ((r.h * pw + ph - 1) / ph, r.h)
+    | _, false => (r.w, (r.w * ph + pw - 1) / pw)
+  ⟨r.x + (r.w - w) / 2, r.y + (r.h - h) / 2, w, h⟩
+
 /-- A box's own paint: its background and border (one `rect`, or one `shape` when it has a
-shadow or continuous corners), then its host-drawn pixels. -/
+shadow or continuous corners), then its host-drawn pixels, then its image. -/
 def boxDraws (r : Rect) (s : Style) : List Draw :=
   (if s.shadow.isSome || (s.corner == .continuous && (s.background.isSome || s.border.isSome)) then
     [.shape r s.background s.radius s.border s.corner s.shadow]
    else if s.background.isSome || s.border.isSome then [.rect r s.background s.radius s.border]
    else []) ++
-  (match s.paint with | some p => [.paint r p] | none => [])
+  (match s.paint with | some p => [.paint r p] | none => []) ++
+  (match s.image with | some i => [.image r (imageDest r i) i.source] | none => [])
 
 def halfAlpha (c : Color) : Color := { c with a := c.a / 2 }
 
@@ -259,6 +279,7 @@ def clipDepth : Nat → List Draw → Option Nat
   | d, .text .. :: ds => clipDepth d ds
   | d, .shape .. :: ds => clipDepth d ds
   | d, .paint .. :: ds => clipDepth d ds
+  | d, .image .. :: ds => clipDepth d ds
 
 /-- Every `popClip` closes an earlier `pushClip`, and every `pushClip` is closed. -/
 def Balanced (ds : List Draw) : Prop := clipDepth 0 ds = some 0
@@ -278,6 +299,7 @@ theorem clipDepth_noClip {ds : List Draw} (h : NoClip ds) (d : Nat) (rest : List
     | text o f c s => simpa [clipDepth] using ih
     | shape r f rad b c sh => simpa [clipDepth] using ih
     | paint r p => simpa [clipDepth] using ih
+    | image r d src => simpa [clipDepth] using ih
     | pushClip r => exact absurd rfl (hx r).1
     | popClip => exact absurd rfl (hx ⟨0, 0, 0, 0⟩).2
 
@@ -285,7 +307,7 @@ theorem noClip_boxDraws (r : Rect) (s : Style) : NoClip (boxDraws r s) := by
   unfold boxDraws NoClip
   intro d hd q
   simp only [List.mem_append] at hd
-  rcases hd with hd | hd
+  rcases hd with (hd | hd) | hd
   · split at hd
     · simp only [List.mem_cons, List.not_mem_nil, or_false] at hd; subst hd
       simp only [ne_eq, reduceCtorEq, not_false_eq_true, and_self]
@@ -293,7 +315,8 @@ theorem noClip_boxDraws (r : Rect) (s : Style) : NoClip (boxDraws r s) := by
       · simp only [List.mem_cons, List.not_mem_nil, or_false] at hd; subst hd
         simp only [ne_eq, reduceCtorEq, not_false_eq_true, and_self]
       · simp only [List.not_mem_nil] at hd
-  · split at hd
+  all_goals
+    split at hd
     · simp only [List.mem_cons, List.not_mem_nil, or_false] at hd; subst hd
       simp only [ne_eq, reduceCtorEq, not_false_eq_true, and_self]
     · simp only [List.not_mem_nil] at hd

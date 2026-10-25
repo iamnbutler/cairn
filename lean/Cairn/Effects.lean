@@ -95,6 +95,12 @@ inductive Request where
   /-- Create the directory and its missing parents, each private (mode 700); `done` if it is
   already a directory. -/
   | makeDir (path : String)
+  /-- Load the image at `source` (a file path, `~/` for the home folder, or an `http`/`https`
+  URL) and answer its size in pixels (`Reply.image`); the host keeps the decoded pixels under
+  `source` and paints them for `Style.image`s that name it. Lean never sees the pixels. An image
+  the host already holds is answered from what it holds, unless `reload`, which reads `source`
+  again. -/
+  | loadImage (source : String) (reload : Bool)
 deriving Repr, BEq, Inhabited
 -- endregion: effects-request
 
@@ -103,7 +109,7 @@ pending. -/
 inductive Request.Kind where
   | readFile | writeFile | playSound | http
   | appendFile | listDir | deleteFile | frontmostApp | permission
-  | typeText | upload | forgetClip | openItem | appRunning | readDefault | makeDir
+  | typeText | upload | forgetClip | openItem | appRunning | readDefault | makeDir | loadImage
 deriving Repr, DecidableEq, Inhabited
 
 def Request.kind : Request → Request.Kind
@@ -113,7 +119,7 @@ def Request.kind : Request → Request.Kind
   | .frontmostApp => .frontmostApp | .permission .. => .permission
   | .typeText .. => .typeText | .upload .. => .upload | .forgetClip .. => .forgetClip
   | .openItem .. => .openItem | .appRunning .. => .appRunning | .readDefault .. => .readDefault
-  | .makeDir .. => .makeDir
+  | .makeDir .. => .makeDir | .loadImage .. => .loadImage
 
 -- region: effects-reply
 inductive Reply where
@@ -131,6 +137,8 @@ inductive Reply where
   | app (pid : Nat) (name : String)
   /-- `permission`'s or `appRunning`'s answer. -/
   | flag (granted : Bool)
+  /-- `loadImage`'s answer: the image's size in pixels (after its orientation is applied). -/
+  | image (width height : Nat)
 deriving Repr, BEq, Inhabited
 
 /-- Whether a reply has the shape that answers a request of kind `k`. -/
@@ -144,6 +152,7 @@ def Reply.answers : Request.Kind → Reply → Bool
   | .listDir, .names _ => true
   | .frontmostApp, .app .. => true
   | .permission, .flag _ | .appRunning, .flag _ => true
+  | .loadImage, .image .. => true
   | _, _ => false
 -- endregion: effects-reply
 
