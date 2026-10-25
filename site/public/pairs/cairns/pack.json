@@ -1,0 +1,18 @@
+{
+  "name": "Cairns",
+  "pairs": 8,
+  "faces": [
+    {"name": "One grey stone", "image": "grey-1.png"},
+    {"name": "Two grey stones", "image": "grey-2.png"},
+    {"name": "Three grey stones", "image": "grey-3.png"},
+    {"name": "Four grey stones", "image": "grey-4.png"},
+    {"name": "One sandstone stone", "image": "sandstone-1.png"},
+    {"name": "Two sandstone stones", "image": "sandstone-2.png"},
+    {"name": "Three sandstone stones", "image": "sandstone-3.png"},
+    {"name": "Four sandstone stones", "image": "sandstone-4.png"},
+    {"name": "One slate stone", "image": "slate-1.png"},
+    {"name": "Two slate stones", "image": "slate-2.png"},
+    {"name": "Three slate stones", "image": "slate-3.png"},
+    {"name": "Four slate stones", "image": "slate-4.png"}
+  ]
+}
