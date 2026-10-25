@@ -14,6 +14,7 @@ import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { evaluate, type Audit, type Capture, type Claim, type Conformance, type Fuzz, type Lock, type Trusted } from "../map/evidence";
 import { render, type DocJson } from "./render";
+import { stylesheet } from "../map/stylesheet";
 import { svg as icon } from "../../site/icons";
 
 const { values: opts } = parseArgs({
@@ -112,7 +113,7 @@ const pages = render({
 });
 for (const [file, content] of Object.entries(pages)) writeFileSync(join(DIST, file), content);
 // The tool's own assets come from its Cairn checkout, not --root, which is the package documented.
-cpSync(join(import.meta.dir, "../map/style.css"), join(DIST, "style.css"));
+writeFileSync(join(DIST, "style.css"), stylesheet());
 cpSync(join(import.meta.dir, "doc.css"), join(DIST, "doc.css"));
 cpSync(join(import.meta.dir, "search.js"), join(DIST, "search.js"));
 writeFileSync(join(DIST, "icon.svg"), icon());

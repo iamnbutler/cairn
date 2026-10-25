@@ -1,0 +1,31 @@
+/* The palette, type and stepped corners every page shares: the homepage and /milestones/
+   (site.css), the docs and package pages (docs/docs.css), and the maps and API reference, whose
+   tools put this file at the top of the style.css they write (tools/map/cairn-map.ts,
+   tools/doc/cairn-doc.ts). */
+:root {
+	--bg: #161937;
+	--fg: #e6e2f6;
+	--muted: #a29fca;
+	--rule: #2d3062;
+	--ink: #0c0e26;
+	--panel: #1d2047;
+	--shadow: #0c0e26;
+	--chip: #2a2d5e;
+	--accent: #9cc8e8;
+	--gold: #f2c46a;
+	--px: 4px;
+	--pixel: "Pixelify Sans", ui-monospace, monospace;
+	--mono: ui-monospace, "SF Mono", Menlo, monospace;
+	color-scheme: dark;
+}
+
+/* Stepped corners: the shape every panel, stone and frame shares. */
+.px {
+	--s: var(--px);
+	clip-path: polygon(
+		0 calc(var(--s) * 2), var(--s) calc(var(--s) * 2), var(--s) var(--s), calc(var(--s) * 2) var(--s), calc(var(--s) * 2) 0,
+		calc(100% - var(--s) * 2) 0, calc(100% - var(--s) * 2) var(--s), calc(100% - var(--s)) var(--s), calc(100% - var(--s)) calc(var(--s) * 2), 100% calc(var(--s) * 2),
+		100% calc(100% - var(--s) * 2), calc(100% - var(--s)) calc(100% - var(--s) * 2), calc(100% - var(--s)) calc(100% - var(--s)), calc(100% - var(--s) * 2) calc(100% - var(--s)), calc(100% - var(--s) * 2) 100%,
+		calc(var(--s) * 2) 100%, calc(var(--s) * 2) calc(100% - var(--s)), var(--s) calc(100% - var(--s)), var(--s) calc(100% - var(--s) * 2), 0 calc(100% - var(--s) * 2)
+	);
+}

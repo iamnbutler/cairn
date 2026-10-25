@@ -16,7 +16,7 @@
 // say (nextpm before kinds) means a library.
 import fixture from "./registry/fixture.json";
 import { CARDS, ogTags, packageCard } from "../tools/og/og.ts";
-import { bar } from "./nav.js";
+import { bar, head } from "./chrome.js";
 
 const esc = (value) =>
 	String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -144,13 +144,7 @@ function page({ title, lede, eyebrow, body, path, on = "packages", card = CARDS.
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(lede)}">
-<link rel="icon" href="/favicon.ico" sizes="32x32">
-<link rel="icon" href="/icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/docs/docs.css">
+${head("/docs/docs.css")}
 ${ogTags({ title, description: lede, path, card })}
 <link rel="stylesheet" href="/packages.css">
 </head>
