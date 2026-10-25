@@ -20,7 +20,7 @@ export default {
 	},
 	$utils: { inline, checkLinks, sidebar, pager, feed, latest, movedIds, version, ogCards, bar, head, titleNav, architecture },
 	$partials: {
-		// <bongo:include src="lean/Examples/Counter.lean#counter-reset" />
+		// <bongo:include src="test/fixture/lean/Fixture.lean#fixture-delete" />
 		include(args: { src: string }) {
 			const [path] = args.src.split("#");
 			const r = include(args.src, "include");

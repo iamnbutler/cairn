@@ -12,14 +12,18 @@ evidence theorems and where it's defined. They are rendered from the claims expo
 `claims.lock`. Nothing on them is written by hand. [The evidence ladder](/docs/reference/evidence/)
 explains what each kind of evidence means.
 
-Cairn's own examples and trusted base are claims of the `cairn` package:
+Cairn's trusted base is claims of the `cairn` package; the [example apps](/docs/examples/) are
+the `cairn_examples` package's:
 
 | Place | What it covers |
 |---|---|
-| [Counter](/packages/cairn/claims/3/) | ^1–^6: two moves, two flows and a retired claim |
-| [Basics](/packages/cairn/claims/106/) | ^101–^109: a field, a keyed list and an invariant |
-| [TodoMVC](/packages/cairn/claims/201/) | ^201–^224: the full TodoMVC spec |
-| [The trusted base](/packages/cairn/claims/#assumptions) | the host's assumptions, ^7, ^214, ^9xx and ^10xx |
+| [The trusted base](/packages/cairn/claims/#assumptions) | the host's assumptions, cairn^7, cairn^214, ^9xx and ^10xx |
+| [Counter](/packages/cairn_examples/claims/3/) | cairn_examples^1–^6: two moves, two flows and a retired claim |
+| [Basics](/packages/cairn_examples/claims/106/) | cairn_examples^101–^109: a field, a keyed list and an invariant |
+| [TodoMVC](/packages/cairn_examples/claims/201/) | cairn_examples^201–^225: the full TodoMVC spec |
+| [Clock](/packages/cairn_examples/claims/406/) | cairn_examples^401–^409: time, timers and files |
+| [Tray](/packages/cairn_examples/claims/450/) | cairn_examples^450–^462: a menu bar item, a submenu and an overlay panel |
+| [Gallery](/packages/cairn_examples/claims/503/) | cairn_examples^501–^513: images and a grid that fits the window |
 
 The pages show the evidence the export holds: proofs and their axioms, assumptions, flow
 witnesses, retired and moved ids. Fuzzing, conformance and screenshots need a build that runs

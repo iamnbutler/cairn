@@ -13,9 +13,10 @@ existing one is trusted with; you don't need it to write an app.
 
 ## The three functions
 
-Every app exports the same three functions, from a module of their own. Here are Counter's:
+Every app exports the same three functions, from a module of their own. Here are the fixture's
+(`test/fixture`, Cairn's own app):
 
-<bongo:include src="lean/Examples/Counter/Abi.lean#counter-abi" />
+<bongo:include src="test/fixture/lean/Fixture/Abi.lean#fixture-abi" />
 
 - `cairn_app_init(w, h, scale)` builds the first runtime state for a window of `w` × `h` logical
   points at a backing scale of `scale` / 100.
@@ -28,7 +29,7 @@ Every app exports the same three functions, from a module of their own. Here are
 `cfg` chooses the text metrics: `TextMetrics.host` asks Core Text, through a C function the
 Swift host provides. On the Swift side, the host wraps the three functions in a `LeanApp`:
 
-<bongo:include src="host/Sources/CairnCounter/main.swift#counter-leanapp" />
+<bongo:include src="test/fixture/Sources/Fixture/main.swift#fixture-leanapp" />
 
 Each app lives in its own Lean library and binary, so there is one `cairn_app_init` per binary.
 

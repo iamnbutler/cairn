@@ -14,12 +14,14 @@ import QuartzCore
 //   Fixture --selftest    drive the host headlessly through its real threads and check it
 //   Fixture --bench       input → frame and frame size with 10 and 1,000 items
 
+// region: fixture-leanapp
 let fixture = LeanApp(
     module: runtime_initialize_fixture_Fixture_Abi,
     initialize: { w, h, scale in cairn_app_init(w, h, scale) },
     step: { cairn_app_step($0, $1) },
     frame: { cairn_app_frame($0) },
     codec: FrameV1Codec())
+// endregion: fixture-leanapp
 
 let size = Size(w: 480, h: 600)
 let args = CommandLine.arguments
@@ -96,6 +98,7 @@ enum SelfTest {
             if String(describing: got) != String(describing: want) { fail("\(what): \(got), expected \(want)") }
         }
 
+        // region: fixture-selftest
         var f = settle()
         expect("first frame size", "\(f.size.w)x\(f.size.h)", "480x600")
         if need("^2").accessibilityRole() != .textField { fail("^2 is not a text field") }
@@ -121,7 +124,9 @@ enum SelfTest {
         expect("left after toggle", label(" left") ?? "", "1 item left")
         press("^5#2")
         expect("delete buttons after delete", ids("^5"), ["^5#1"])
+        // endregion: fixture-selftest
 
+        // region: fixture-selftest-timer
         // Flash: its timer comes back through the host's clock, and the note goes.
         press("^6")
         if label("Flashing") == nil { fail("no Flashing note after a press on ^6") }
@@ -131,6 +136,7 @@ enum SelfTest {
             RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.05))
             view.applyLatestFrame()
         }
+        // endregion: fixture-selftest-timer
 
         // Tab moves keyboard focus in paint order: field, then Add.
         f = settle(engine.send([.pointerExit, .key(.tab, Mods())]))
@@ -315,6 +321,8 @@ if args.contains("--bench") {
     exit(0)
 }
 
+// region: fixture-main
 MainActor.assumeIsolated {
     CairnApp.main(CairnApp.Config(title: "Fixture", size: size) { LeanCore(fixture) })
 }
+// endregion: fixture-main

@@ -2,11 +2,13 @@
 title: The cairn tool
 nav: The cairn tool
 eyebrow: Reference
-lede: The command line for Cairn packages. It starts a package, adds dependencies, builds, documents and publishes; checking, running and shipping are still the repository's make targets.
+lede: The command line for Cairn packages. It starts a package, adds dependencies, builds, checks, bundles, documents and publishes it.
 ---
 
 <bongo:note label="What works today">
-`cairn` has six commands: `new`, `add`, `build`, `doc`, `publish` and `login`, with unit tests.
+`cairn` starts, builds, documents and publishes a package (`new`, `add`, `build`, `doc`,
+`publish`, `login`), and checks and bundles an app (`fuzz`, `claims`, `bench`, `size`,
+`conformance`, `bundle`), with unit tests.
 Cairn has one public registry, `https://cairn.registry.nexthub.sh`: anyone can read it, and
 publishing takes a token. It holds no prebuilt Lean yet, so the first `cairn build` compiles
 Cairn. Nothing installs `cairn` yet; build it from a Cairn checkout.
@@ -49,37 +51,24 @@ them on its test app, test/fixture. Each writes under the package's `build/`.
 | `cairn bench [--product P]` | a release build, then the app's own `--bench` |
 | `cairn size [--product P]… [--limit BYTES]` | the stripped release binary, attributed, and a guard at 5 MB |
 | `cairn conformance [--module M] [--n N]` | the Lean model replayed against the running app through its debug socket. The package has a generator module, `<App>.Conformance` |
+| `cairn bundle [--sign ID] [--name N]` | a release build wrapped in `build/apps/<N>.app`, with the package's `bundle/Info.plist` and `bundle/entitlements.plist` when it has them; signed with `--sign`, else ad hoc |
 
-## The make targets, today
+A package of several apps, like the [example apps](/docs/examples/), picks one with `--app <App>`
+for `build`, `bench`, `size`, `conformance` and `bundle`. Running an app is still SwiftPM's:
+`swift run <Product>` after `cairn build`.
 
-Running, checking and bundling an app don't have `cairn` commands yet (they are planned:
-`cairn run`, `cairn check`, `cairn bundle` and `cairn doctor`). Run the make targets from the root
-of the Cairn repository. Each is shown as it is in the Makefile.
+## Cairn's own checks
 
-### Build and run
-
-`make build` builds the Lean libraries and the Swift host.
-
-<bongo:include src="Makefile#make-demo" />
-
-### Check
+`cairn run`, `cairn check` and `cairn doctor` are planned. Until `cairn check` lands, the lint,
+axiom audit and kernel replay run from the Cairn repository's Makefile, and so do Cairn's own
+checks. Run them from the root of the repository; each is shown as it is in the Makefile.
 
 <bongo:include src="Makefile#make-check" />
 
+The per-app checks run on test/fixture with the commands above:
+
+<bongo:include src="Makefile#make-fixture" />
+
 <bongo:include src="Makefile#make-selftest" />
-
-### Fuzz and conformance
-
-<bongo:include src="Makefile#make-fuzz" />
-
-<bongo:include src="Makefile#make-conformance" />
-
-### Capture
-
-<bongo:include src="Makefile#make-capture" />
-
-### Ship
-
-<bongo:include src="Makefile#make-bundle" />
 
 <bongo:include src="Makefile#make-size" />

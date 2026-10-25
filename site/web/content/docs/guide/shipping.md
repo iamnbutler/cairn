@@ -6,61 +6,65 @@ lede: Checking an app, putting it in a signed bundle, and publishing it with its
 ---
 
 <bongo:note label="Today">
-The checks and bundles here run through the Cairn repository's Makefile, for the apps
-that live in it. An app in its own repository builds with `cairn build`, but checking and bundling
-it from the `cairn` tool are still planned; Yap's repository has its own make targets
-that call Cairn's tools. See [the cairn tool](/docs/reference/cairn-tool/).
+An app checks and bundles itself with [the cairn tool](/docs/reference/cairn-tool/), from anywhere
+in its package. The lint, axiom audit and kernel replay that Cairn's `make check` runs have no
+`cairn check` yet; an app's own Makefile calls Cairn's tools for them, as Yap's and the
+[example apps'](/docs/examples/) do.
 </bongo:note>
 
 ## Check it
 
-`make check` is what every change must pass. It lints for banned constructs, builds everything,
-audits every theorem's axioms, replays every declaration through the kernel, checks the claim
-ledger, runs the Swift tests and each app's self test, fuzzes every app briefly, and checks binary
-sizes:
+`make check` is what every change to Cairn must pass. It lints for banned constructs, builds
+everything, audits every theorem's axioms, replays every declaration through the kernel, checks
+the claim ledger, runs the Swift tests, and runs the per-app checks on the fixture: its self test,
+a short fuzz, its binary size and its own ledger.
 
 <bongo:include src="Makefile#make-check" />
 
 ### The self test
 
-Each app's executable has a `--selftest` mode: it runs the real host, with its threads and
-accessibility mirror, but no window, and drives the app through its controls. Counter's checks
-presence through accessibility, the way an assistive app would see it:
+An app's executable has a `--selftest` mode: it runs the real host, with its threads and
+accessibility mirror, but no window, and drives the app through its controls. The fixture's
+checks presence through accessibility, the way an assistive app would see it:
 
-<bongo:include src="host/Sources/CairnCounter/main.swift#counter-selftest" />
+<bongo:include src="test/fixture/Sources/Fixture/main.swift#fixture-selftest" />
+
+and waits for the timer Flash set to come back through the host's clock:
+
+<bongo:include src="test/fixture/Sources/Fixture/main.swift#fixture-selftest-timer" />
 
 ### Fuzzing and conformance
 
-`make fuzz APP=<App>` generates random sequences of moves from the claims and checks every claim's
-`post`, every invariant, and presence and pressability, after every step. `make conformance
-APP=<App>` replays sequences against the running app through its debug socket and compares it
-with the Lean model at every step. Conformance needs one small module per app,
-`lean/Examples/<App>/Conformance.lean`. In an app's own repository, `cairn fuzz` and `cairn
-conformance` do the same (see [the cairn tool](/docs/reference/cairn-tool/)).
+`cairn fuzz` generates random sequences of moves from the claims and checks every claim's `post`,
+every invariant, and presence and pressability, after every step. `cairn conformance` replays
+sequences against the running app through its debug socket and compares it with the Lean model at
+every step. Each needs a little of the package: a fuzz executable over `fuzz_targets%`, and a
+generator module, `<App>.Conformance`. The fixture's lakefile declares both:
 
-<bongo:include src="Makefile#make-fuzz" />
+<bongo:include src="test/fixture/lean/lakefile.lean#fixture-lakefile-checks" />
+
+Cairn's `make check` runs `cairn fuzz --iterations 200` on the fixture. Conformance opens the
+app's window, so it isn't in `make check`.
 
 ## Size
 
 A Cairn app should be a few megabytes. The commands that declare claims need Lean's compiler at
 build time, and linking the compiler into an app makes it about 100 MB, so apps only `meta import`
-them. `make size` builds each app for release and fails past 5 MB:
+them. `cairn size` builds the app for release, attributes its bytes, and fails past 5 MB:
 
 <bongo:include src="Makefile#make-size" />
 
 ## Bundle and sign
 
-`make bundle APP=<App>` writes a `.app` bundle. Per-app `Info.plist` and entitlements go in
-`host/Bundles/<App>/`:
-
-<bongo:include src="Makefile#make-bundle" />
+`cairn bundle` writes a `.app` bundle, `build/apps/<Name>.app`, from a release build. The
+package's `bundle/Info.plist` and `bundle/entitlements.plist` go in it when they exist. `--sign`
+signs it with an identity; without it the bundle is signed ad hoc.
 
 Yap shows a release build signed with a stable identity. Signing with the same identity every
 time matters: macOS grants permissions such as Accessibility and the microphone to the code
 signature, so a differently signed build is a new app and has to be granted again. Its package's
 `make yap` finds the first valid Apple Development identity with `security find-identity` and
-passes it to Cairn's `tools/bundle/bundle.sh`, which an app outside this repository runs from its
-Lake checkout of Cairn.
+passes it to Cairn's bundle script, `tools/bundle/bundle.sh`, which `cairn bundle` runs.
 
 ## Publish it
 

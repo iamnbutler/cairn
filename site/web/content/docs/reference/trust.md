@@ -2,7 +2,7 @@
 title: How much to trust a claim
 nav: How much to trust a claim
 eyebrow: Reference
-lede: What each kind of evidence rules out, what it still takes on trust, and a bug that Basics' tests miss and its proof can't.
+lede: What each kind of evidence rules out, what it still takes on trust, and a bug that tests miss and a proof can't.
 ---
 
 A claim's evidence says *proved*, *fuzzed*, *tested*, *seen* or *assumed*. This page says what
@@ -51,7 +51,7 @@ the app can reach. No test suite can say that.
 
 ## Fuzzed
 
-**What is checked.** `make fuzz` runs random sequences of moves against the Lean model and, after
+**What is checked.** `cairn fuzz` runs random sequences of moves against the Lean model and, after
 every step, checks each claim it can: a move's `post`, its control's presence and pressability,
 every invariant. For an assumption, the trusted-base fuzzer runs the real host code against
 Lean's proved code or another oracle. A failure prints the command that replays it.
@@ -67,7 +67,7 @@ the evidence.
 
 ## Tested
 
-**What is checked.** `make conformance` drives the real app (its Swift host, its compiled Lean)
+**What is checked.** `cairn conformance` drives the real app (its Swift host, its compiled Lean)
 through its debug socket and compares every frame with what the Lean model says it should be.
 
 **What it rules out.** The running app and the model disagreeing, on the sequences it ran. It is
@@ -82,7 +82,9 @@ didn't run.
 
 **What is checked.** The capture renders the app's frames with the real renderer and replays
 each flow's witness, clicking each step's control where it was laid out. A move is seen when its
-control is in a captured frame; a flow, when its whole witness replays.
+control is in a captured frame; a flow, when its whole witness replays. No capture runs today: it
+went with the example apps ([#137](https://github.com/iamnbutler/cairn/issues/137)), and nothing
+gathers this evidence until one comes back.
 
 **What it rules out.** A control that is never drawn, and a flow that can't be clicked through.
 It is also the evidence a person can look at.
@@ -192,6 +194,7 @@ merge.
    what the prose does.
 2. **Look for assumptions.** Find the package's `assume` claims among its claims, and read the
    trusted base. Every proof you rely on takes those as given.
-3. **Run the checks.** `make check` builds every proof, audits its axioms, replays the kernel and
-   runs the ledger; `make fuzz` and `make conformance` gather the rest. Evidence you built is
+3. **Run the checks.** Cairn's `make check`, or a package's own, builds every proof, audits its
+   axioms, replays the kernel and runs the ledger; `cairn fuzz` and `cairn conformance` gather the
+   rest. Evidence you built is
    evidence you don't have to take on anyone's word.

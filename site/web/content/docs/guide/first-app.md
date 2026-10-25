@@ -19,68 +19,94 @@ A Cairn app has two halves.
 Between them, two byte buffers cross on every step: a batch of events going in, and a frame coming
 out. The [host protocol](/docs/internals/host-protocol/) describes them.
 
-To see one before installing anything, [try Counter in the browser](/try/counter/): every
-frame there is one its Lean code drew, and every control shows its claim.
-
 ## What you need
 
 - A Mac on macOS 27 with Xcode, for Swift 6 and the Metal toolchain.
 - Lean 4 through elan. The repository pins the version in `lean/lean-toolchain`.
 - bun, for the tools that build these docs.
 - The Cairn repository: `git clone https://github.com/iamnbutler/cairn`.
+- [The cairn tool](/docs/reference/cairn-tool/), built from the checkout:
 
-`make build` builds the Lean libraries and the Swift host. `make demo DEMO=CairnCounter` opens
-Counter in a window. The first build in a fresh checkout takes a while; later ones are
-incremental.
+<bongo:include src="docs/cli.md#cli-install" />
 
-## Counter, from the top
+## Running one
 
-Counter's state is one number. Its two controls are named by **control refs**: the claim id of the
-move they perform, and a key (0 here; a list item would use its own id).
+The repository's own app is `test/fixture`, which Cairn's checks run on. It is laid out the way an
+app in its own repository is, and built with the `cairn` tool; the only difference is that it
+requires the checkout it is in, by path. `make fixture-build` builds Cairn's Lean, the `cairn`
+tool, and then the fixture with `cairn build`:
 
-<bongo:include src="lean/Examples/Counter.lean#counter-state" />
+<bongo:include src="Makefile#make-fixture" />
+
+Then `cd test/fixture && swift run Fixture` opens it in a window. The first build in a fresh
+checkout takes a while; later ones are incremental.
+
+## The fixture, from the top
+
+The fixture's state is a list of items, the id the next item gets, the New item field, and
+whether the Flash note shows. Its controls are named by **control refs**: the claim id of the move
+they perform, and a key (0 for a control there is one of; an item's checkbox uses the item's id).
+
+<bongo:include src="test/fixture/lean/Fixture.lean#fixture-state" />
 
 The window is a **place**, a claim of its own, so moves can say where they appear:
 
-<bongo:include src="lean/Examples/Counter.lean#counter-place" />
+<bongo:include src="test/fixture/lean/Fixture.lean#fixture-place" />
 
-Then the two moves. Increment is always available; Reset only when there is something to reset.
-Each says in plain words what the person does (`does`) and sees (`sees`), and in Lean what
-pressing it does (`apply`) and must achieve (`post`), with a proof (`sound`):
+Then the moves. Each says in plain words what the person does (`does`) and sees (`sees`), and in
+Lean what pressing it does (`apply`) and must achieve (`post`), with a proof (`sound`). Add:
 
-<bongo:include src="lean/Examples/Counter.lean#counter-reset" />
+<bongo:include src="test/fixture/lean/Fixture.lean#fixture-add-item" />
+
+`add` is an ordinary function on the state:
+
+<bongo:include src="test/fixture/lean/Fixture.lean#fixture-add" />
 
 The app's behaviour is built from its moves and nothing else. `moves%` collects every move
-declared in the namespace:
+declared in the namespace, and `receive` hears the timer Flash sets
+([chapter 5](/docs/guide/effects/)):
 
-<bongo:include src="lean/Examples/Counter.lean#counter-machine" />
+<bongo:include src="test/fixture/lean/Fixture.lean#fixture-machine" />
 
 The view is a function from the state (and the UI state: hover, focus, window size) to a tree of
-boxes and text. Reset's button is only in the tree when Reset is enabled:
+boxes and text. Each item's row is in the tree only while the item is in the list, and its
+checkbox and delete button with it:
 
-<bongo:include src="lean/Examples/Counter.lean#counter-view" />
+<bongo:include src="test/fixture/lean/Fixture.lean#fixture-view" />
 
 Finally the app: the machine, one window showing the view, and every claim the app makes.
 
-<bongo:include src="lean/Examples/Counter.lean#counter-claims" />
+<bongo:include src="test/fixture/lean/Fixture.lean#fixture-claims" />
 
-<bongo:include src="lean/Examples/Counter.lean#counter-app" />
+<bongo:include src="test/fixture/lean/Fixture.lean#fixture-app" />
 
 ## The host side
 
 The Lean app is compiled to a static library that exports three C functions: start, step and
 frame. A small module holds them:
 
-<bongo:include src="lean/Examples/Counter/Abi.lean#counter-abi" />
+<bongo:include src="test/fixture/lean/Fixture/Abi.lean#fixture-abi" />
 
-The Swift executable names those functions, and hands them to the generic host:
+The Swift executable names those functions, and hands them to the generic host. The module
+initializer, `runtime_initialize_fixture_Fixture_Abi`, is declared in a small C target of the
+app's own, `CFixture`:
 
-<bongo:include src="host/Sources/CairnCounter/main.swift#counter-leanapp" />
+<bongo:include src="test/fixture/Sources/Fixture/main.swift#fixture-leanapp" />
 
-<bongo:include src="host/Sources/CairnCounter/main.swift#counter-main" />
+<bongo:include src="test/fixture/Sources/Fixture/main.swift#fixture-main" />
 
-That is the whole of the app's Swift that isn't a test. Everything else (threads, input, text
-input, accessibility, painting) is the shared host, `CairnHost`.
+That is the whole of the app's Swift that isn't a test; the rest of its `main.swift` is
+`--selftest`, `--bench` and `--close-test` ([chapter 6](/docs/guide/shipping/)). Everything else
+(threads, input, text input, accessibility, painting) is the shared host, `CairnHost`.
+
+The lakefile names the package, which is also the claim scope (the fixture's ids are
+`fixture^N`), and the library `cairn build` links:
+
+<bongo:include src="test/fixture/lean/lakefile.lean#fixture-lakefile" />
+
+`Package.swift` builds the host and links that library from `.cairn/lib/`:
+
+<bongo:include src="test/fixture/Package.swift#package-fixture" />
 
 ## An app in its own repository
 
@@ -88,13 +114,13 @@ An app lives in a repository of its own and depends on a tagged release of Cairn
 [Yap](/docs/examples/yap/) does. One tag pins both halves: the Lean package and the Swift
 libraries. Start one with [the cairn tool](/docs/reference/cairn-tool/).
 
-`cairn new hello` makes `hello/` with a `cairn.toml`, an empty `claims.lock`, and a `lean/`
+`cairn new hello --bin` makes `hello/` with a `cairn.toml`, an empty `claims.lock`, and a `lean/`
 whose lakefile sets the claim scope to `hello`, so the app's ids are `hello^1`, `hello^2`, and so
-on. The app is a working one: a window with a count and a Count button (a place, `hello^1`, and a
-move, `hello^2`), its exports in `lean/Hello/Abi.lean`, a `Package.swift` and a host whose
-`--selftest` runs it headlessly. Its Lean files start with `public import Cairn`, which brings in
-everything an app links, the claim commands included. `cairn new hello --lib` makes a library
-instead, with no host.
+on. The app is a working one, laid out like the fixture: a window with a count and a Count button
+(a place, `hello^1`, and a move, `hello^2`), its exports in `lean/Hello/Abi.lean`, a
+`Package.swift` and a host whose `--selftest` runs it headlessly. Its Lean files start with
+`public import Cairn`, which brings in everything an app links, the claim commands included.
+`cairn new hello --lib` makes a library instead, with no host.
 
 `cairn add cairn` points the lakefile and `cairn.toml` at Cairn's latest release in the
 registry and prints the line for `Package.swift`. An app can also require Cairn from git at a
@@ -111,41 +137,18 @@ Then depend on the same tag in `Package.swift`, and link the library that the bu
 
 <bongo:include src="docs/package.md#package-build" />
 
-The app's `main.swift` hands its three exports to the host, as Counter's does above. The app
-declares those exports in a small C target of its own. Cairn's tools (the claim ledger, the
-axiom audit, the bundle script) run from the app's Lake directory against its own modules.
+The app's `main.swift` hands its three exports to the host, as the fixture's does above, and
+`swift run Hello` opens it. `cairn fuzz`, `cairn bench`, `cairn size`, `cairn conformance` and
+`cairn bundle` check and ship it from anywhere in the package ([chapter 6](/docs/guide/shipping/)).
 
-## An app beside the examples
+## Claim ids
 
-To work on Cairn itself, or to try something quickly without a package, add an app to the
-Cairn repository beside the examples. It goes in five places:
+Ids are scoped per package, so an app numbers from ^1. The fixture's are `fixture^1` to
+`fixture^9`, in `test/fixture/claims.lock`; the template's are `hello^1` and `hello^2`. Cairn's own
+are `cairn^N`: the trusted base's assumptions, ^7, ^214, ^900 and up. The example apps took their
+numbers with them to their own package, so Counter's Reset, once `cairn^2`, is
+`cairn_examples^2`; Yap's are `yap^301` to `yap^399`.
 
-1. **The Lean module**, `lean/Examples/<App>.lean`, written like Counter: a `module` that
-   `public import`s the runtime and only `meta import`s the claim commands, so the commands stay
-   out of the binary. Add an import of it to `lean/Examples.lean`, so the ledger and the axiom
-   audit see its claims.
-2. **Its exports**, `cairn_app_init`, `cairn_app_step` and `cairn_app_frame`, as in Counter's
-   `Abi` module above.
-3. **A library of its own** in `lean/lakefile.lean`. Each app gets one, because every app exports
-   the same three symbols:
-
-<bongo:include src="lean/lakefile.lean#lakefile-counter" />
-
-4. **The Makefile's app list**, which copies each app's library where the host links it:
-
-<bongo:include src="Makefile#make-apps" />
-
-5. **A Swift executable** in `host/Package.swift`, linking that library, and its `main.swift` as
-   above:
-
-<bongo:include src="host/Package.swift#package-counter" />
-
-Then give your claims ids nobody has used (look in `claims.lock`), build with `make build`, record
-the new ids with `cd lean && lake exe ledger update`, and commit `claims.lock` with the app. Run
-it with `make demo DEMO=Cairn<App>`.
-
-Pick ids in a range of their own: the examples use ^1–^6 (Counter), ^101–^109 (Basics), ^201–^226
-(TodoMVC), ^401–^409 (Clock) and ^450 onwards (Tray); the trusted base uses ^900 and up (and
-keeps ^7 and ^214, which the examples first declared), and
-^301–^399 moved with Yap to its own package. Ids are scoped per package: these are all `cairn^N`.
-An app in its own repository has its own scope (`yap^301`), so it can number from ^1.
+Give a new claim an id the package hasn't used (look in `claims.lock`), then record it from the
+package's `lean/` directory, and commit `claims.lock` with the claim. For the fixture:
+`lake exe ledger update --scope fixture --root Checks --lock ../claims.lock`.

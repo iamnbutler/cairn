@@ -28,7 +28,7 @@ they stay usable as names elsewhere. Clauses are indented under `where`, one per
 
 One thing a person can do.
 
-<bongo:include src="lean/Examples/Counter.lean#counter-reset" />
+<bongo:include src="test/fixture/lean/Fixture.lean#fixture-delete" />
 
 - **Header:** the id, a Lean name, the state binder `(s : State)`, optionally a key binder
   `(k : Nat)` for a keyed move (one control per item: `^5#12` is the control with key 12), the
@@ -45,15 +45,14 @@ One thing a person can do.
 The `sound` goal is `∀ s, enabled s = true → post s (apply s)`, with the key and operation added
 for keyed and edit handlers, and without the `enabled` hypothesis when there's no `enabled`.
 
-For a move named `reset`, the command generates `reset.enabled`, `reset.press.apply` (and `emit`),
-`reset.press.post`, `reset.press.sound`, `reset.info` (the human half), `reset : Move State`, and
-`reset.preserves`, which turns "every handler keeps `P`" into what an invariant's proof needs.
+For a move named `deleteItem`, the command generates `deleteItem.enabled`,
+`deleteItem.press.apply` (and `emit`), `deleteItem.press.post`, `deleteItem.press.sound`,
+`deleteItem.info` (the human half), `deleteItem : Move State`, and `deleteItem.preserves`, which
+turns "every handler keeps `P`" into what an invariant's proof needs.
 
-A keyed move, and a field's move with `edit` and `submit`:
+A field's move, with `edit` and `submit`:
 
-<bongo:include src="lean/Examples/Basics.lean#basics-toggle" />
-
-<bongo:include src="lean/Examples/Basics.lean#basics-type-item" />
+<bongo:include src="test/fixture/lean/Fixture.lean#fixture-type-item" />
 
 ## `machine`, `moves%`, `claims%`
 
@@ -61,9 +60,9 @@ A keyed move, and a field's move with `edit` and `submit`:
 retired ones included, in id order. A move declared after `moves%`, or a claim after `claims%`, in
 the same namespace is an error, because it would be silently left out.
 
-<bongo:include src="lean/Examples/Counter.lean#counter-machine" />
+<bongo:include src="test/fixture/lean/Fixture.lean#fixture-machine" />
 
-<bongo:include src="lean/Examples/Counter.lean#counter-claims" />
+<bongo:include src="test/fixture/lean/Fixture.lean#fixture-claims" />
 
 `machine.toApp surfaces claims` makes the app; an optional last argument names the control
 focused at launch. A machine can also have a `receive`, for messages from the outside world
@@ -73,7 +72,7 @@ focused at launch. A machine can also have a `receive`, for messages from the ou
 
 A goal reachable through moves, with a checked path.
 
-<bongo:include src="lean/Examples/Counter.lean#counter-flows" />
+<bongo:include src="test/fixture/lean/Fixture.lean#fixture-flow" />
 
 `witness` is a sequence of actions, each naming a move with a handler for that trigger:
 `press ^1`, `press ^5#12`, `doublePress ^5#12`, `edit ^3 (.insert "milk")`, `edit ^3 .selectAll`,
@@ -85,7 +84,7 @@ give `reaches := proof`.
 
 A property that holds in every reachable state.
 
-<bongo:include src="lean/Examples/Basics.lean#basics-invariant" />
+<bongo:include src="test/fixture/lean/Fixture.lean#fixture-invariant" />
 
 - **`holds s := P`**: the property.
 - **`init`**: a proof that it holds for the machine's starting state.
@@ -113,7 +112,7 @@ evidence for it. See [the trusted base](/docs/internals/trusted-base/).
 A region of the view where moves appear: a window, a menu, a panel. Moves, flows and other places
 refer to it with `in ^P`.
 
-<bongo:include src="lean/Examples/Counter.lean#counter-place" />
+<bongo:include src="test/fixture/lean/Fixture.lean#fixture-place" />
 
 ## `retire`
 
@@ -125,7 +124,9 @@ retired only in a new major version, or a new minor version while at 0.x: Cairn 
 retire one in 0.2.0, not in 0.1.3. `lake exe ledger check` finds the last release from the git
 tags and fails otherwise. A claim added since then can go in any version.
 
-<bongo:include src="lean/Examples/Counter.lean#counter-retire" />
+Counter, in the [example apps](/docs/examples/), retired an invariant once the runtime took over
+tracking presses: `retire ^6 invariant "Moves never leave a press in progress" because "…"`
+([cairn_examples^6](/packages/cairn_examples/claims/6/)).
 
 ## What the build checks
 
@@ -162,7 +163,8 @@ an app's controls are always its own moves.
 
 The scope defaults to `cairn`, so an app that forgets to set it collides with Cairn's ids at
 compile time instead of shipping with them. When claims move with an app to its own package,
-the lock they left marks them `moved:<scope>` (Yap's are `moved:yap`), so the ids stay issued
+the lock they left marks them `moved:<scope>` (Yap's are `moved:yap`, the example apps'
+`moved:cairn_examples`), so the ids stay issued
 there and can't come back.
 
 ## The ledger

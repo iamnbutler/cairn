@@ -17,24 +17,23 @@ it will cover and what has to land first. Every code sample is included from a s
 <bongo:note label="What works today">
 Cairn is research, and its API has no stability promise before 1.0. It is a package, though: an
 app lives in its own repository and depends on a tagged release (the latest is `v0.2.5`), and
-the `cairn` tool starts, builds and documents it. Yap is the first app built that way. Checking,
-fuzzing, mapping and bundling an app are still the Cairn repository's `make` targets; see
+the `cairn` tool starts, builds, checks, bundles and documents it. Yap and the example apps are
+built that way. The lint, axiom audit and kernel replay have no `cairn` command yet; see
 [the cairn tool](/docs/reference/cairn-tool/).
 </bongo:note>
 
 ## Guides
 
 <div class="shelf">
-<a href="/docs/guide/"><b>Building an app</b><span>From a counter to effects and shipping, one chapter at a time.</span></a>
-<a href="/docs/examples/"><b>Example apps</b><span>Counter, Basics, TodoMVC and Yap, read through their source.</span></a>
-<a href="/try/"><b>Try an app</b><span>Counter, Basics and TodoMVC in the browser, every control with its claim id and evidence.</span></a>
+<a href="/docs/guide/"><b>Building an app</b><span>From a first window to effects and shipping, one chapter at a time.</span></a>
+<a href="/docs/examples/"><b>Example apps</b><span>Counter, Basics, TodoMVC, Clock, Tray, Gallery and Yap, with their claims.</span></a>
 </div>
 
 ## Reference
 
 <div class="shelf">
 <a href="/docs/api/"><b>API reference</b><span>Every module, declaration and claim in Cairn, generated from the code by <code>cairn doc</code>.</span></a>
-<a href="/docs/reference/cairn-tool/"><b>The cairn tool</b><span>Starting, building, documenting and publishing a package, and the make targets for the rest.</span></a>
+<a href="/docs/reference/cairn-tool/"><b>The cairn tool</b><span>Starting, building, checking, bundling, documenting and publishing a package.</span></a>
 <a href="/docs/reference/claims/"><b>Claims</b><span>Every claim kind, what each generates, and what the build checks.</span></a>
 <a href="/docs/reference/evidence/"><b>The evidence ladder</b><span>Proved, fuzzed, tested, seen, assumed: how sure we are of each claim.</span></a>
 <a href="/docs/reference/trust/"><b>How much to trust a claim</b><span>What each kind of evidence rules out, what it still trusts, and a bug the tests miss.</span></a>

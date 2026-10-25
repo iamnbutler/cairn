@@ -32,6 +32,7 @@ open Cairn Cairn.Claims
 def placeholder : String := "New item"
 def passPlaceholder : String := "Passcode"
 
+-- region: fixture-state
 structure Item where
   id : Nat
   text : String
@@ -57,10 +58,13 @@ def toggleRef (k : Nat) : ControlRef := ⟨4, k⟩
 def deleteRef (k : Nat) : ControlRef := ⟨5, k⟩
 def flashRef : ControlRef := ⟨6, 0⟩
 def passRef : ControlRef := ⟨9, 0⟩
+-- endregion: fixture-state
 
+-- region: fixture-flash-timer
 /-- The timer Flash sets, and how long the note shows. -/
 def flashTimer : String := "flash"
 def flashMs : Nat := 400
+-- endregion: fixture-flash-timer
 
 /-- Where Enter in the Passcode field sends it. Nothing listens there; the request is what
 the fuzzer and the frame dump check (`Request.redact`). -/
@@ -73,6 +77,7 @@ def signIn (p : Text.SecureField) : Request :=
 
 /-! ## The model -/
 
+-- region: fixture-add
 /-- The field's text without leading and trailing whitespace. -/
 def trimmed (t : List Char) : List Char :=
   ((t.dropWhile Char.isWhitespace).reverse.dropWhile Char.isWhitespace).reverse
@@ -83,6 +88,7 @@ def add (s : State) : State :=
   else
     { s with items := s.items ++ [{ id := s.nextId, text := String.ofList (trimmed s.field.text) }],
              nextId := s.nextId + 1, field := Text.Field.empty placeholder }
+-- endregion: fixture-add
 
 def has (s : State) (k : Nat) : Bool := s.items.any (·.id == k)
 
@@ -94,6 +100,7 @@ def delete (k : Nat) (s : State) : State := { s with items := s.items.filter (·
 
 def left (s : State) : Nat := (s.items.filter (!·.done)).length
 
+-- region: fixture-add-inv
 /-- ^7's statement. -/
 def Inv (s : State) : Prop := 0 < s.nextId ∧ ∀ i ∈ s.items, i.id < s.nextId
 
@@ -108,6 +115,7 @@ theorem add_inv {s : State} (h : Inv s) : Inv (add s) := by
     rcases hi with hi | rfl
     · exact Nat.lt_succ_of_lt (hb i hi)
     · exact Nat.lt_succ_self _
+-- endregion: fixture-add-inv
 
 theorem flip_id (k : Nat) (i : Item) : (flip k i).id = i.id := by
   unfold flip; split <;> rfl
@@ -123,9 +131,12 @@ theorem delete_inv (k : Nat) {s : State} (h : Inv s) : Inv (delete k s) :=
 
 /-! ## Claims -/
 
+-- region: fixture-place
 place ^1 window "Fixture window" where
   does "The window: a heading, a paragraph, the New item field and Add, the Passcode field, Flash, the items and the count left."
+-- endregion: fixture-place
 
+-- region: fixture-type-item
 move ^2 typeItem (s : State) "Type a new item" in ^1 where
   does "Type in the New item field, and press Enter."
   sees "The text appears in the field; Enter adds it like Add does."
@@ -138,7 +149,9 @@ move ^2 typeItem (s : State) "Type a new item" in ^1 where
     apply := add s
     post s' := s' = add s
     sound := by intro s; rfl
+-- endregion: fixture-type-item
 
+-- region: fixture-add-item
 move ^3 addItem (s : State) "Add" in ^1 where
   does "Press Add."
   sees "The field's text, trimmed, is added at the end of the list and the field is cleared. Blank text changes nothing."
@@ -146,7 +159,9 @@ move ^3 addItem (s : State) "Add" in ^1 where
     apply := add s
     post s' := s' = add s
     sound := by intro s; rfl
+-- endregion: fixture-add-item
 
+-- region: fixture-toggle
 move ^4 toggleItem (s : State) (k : Nat) "Toggle an item" in ^1 where
   does "Press an item's checkbox."
   sees "The item is marked done, or not done again."
@@ -155,7 +170,9 @@ move ^4 toggleItem (s : State) (k : Nat) "Toggle an item" in ^1 where
     apply := toggle k s
     post s' := s'.items = s.items.map (flip k)
     sound := by intro s k _; rfl
+-- endregion: fixture-toggle
 
+-- region: fixture-delete
 move ^5 deleteItem (s : State) (k : Nat) "Delete an item" in ^1 where
   does "Press an item's delete button."
   sees "The item is gone, and its checkbox and delete button with it."
@@ -164,7 +181,9 @@ move ^5 deleteItem (s : State) (k : Nat) "Delete an item" in ^1 where
     apply := delete k s
     post s' := s'.items = s.items.filter (·.id ≠ k)
     sound := by intro s k _; rfl
+-- endregion: fixture-delete
 
+-- region: fixture-flash
 move ^6 flashMove (s : State) "Flash" in ^1 where
   does "Press Flash."
   sees "A note shows, and goes when the timer the press set fires."
@@ -172,6 +191,7 @@ move ^6 flashMove (s : State) "Flash" in ^1 where
     emit := ({ s with flash := true }, [.setTimer flashTimer flashMs])
     post s' := s'.flash = true ∧ s'.items = s.items
     sound := by intro s; exact ⟨rfl, rfl⟩
+-- endregion: fixture-flash
 
 move ^9 typePasscode (s : State) "Type a passcode" in ^1 where
   does "Type in the Passcode field, and press Enter."
@@ -189,13 +209,18 @@ move ^9 typePasscode (s : State) "Type a passcode" in ^1 where
       s'.nextId = s.nextId
     sound := by intro s; exact ⟨rfl, rfl, rfl⟩
 
+-- region: fixture-receive
 /-- The world's messages: Flash's timer clears the note. -/
 def receive (s : State) : Msg → State × List Effect
   | .timer n => (if n = flashTimer then { s with flash := false } else s, [])
   | _ => (s, [])
+-- endregion: fixture-receive
 
+-- region: fixture-machine
 def machine : Machine State := { init := {}, moves := moves%, receive }
+-- endregion: fixture-machine
 
+-- region: fixture-invariant
 invariant ^7 idsBelow "Item ids stay below the next id" for machine where
   does "Every item's id is positive and below the id the next item gets, in every reachable state."
   holds s := Inv s
@@ -214,14 +239,19 @@ invariant ^7 idsBelow "Item ids stay below the next id" for machine where
       show Inv (if n = flashTimer then { s with flash := false } else s)
       split <;> exact h
     | _ => exact h
+-- endregion: fixture-invariant
 
+-- region: fixture-flow
 flow ^8 addAndFinish "Add two items and finish one" for machine where
   does "Type milk and press Enter, type eggs and press Add, then check milk."
   sees "Two items, milk done."
   goal s := s.items.map (·.text) = ["milk", "eggs"] ∧ s.items.map (·.done) = [true, false]
   witness edit ^2 (.insert "milk"), submit ^2, edit ^2 (.insert " eggs "), press ^3, press ^4#1
+-- endregion: fixture-flow
 
+-- region: fixture-claims
 def claimInfos : List ClaimInfo := claims%
+-- endregion: fixture-claims
 
 /-! ## View -/
 
@@ -240,12 +270,15 @@ def ring (ui : UI) (r : ControlRef) (otherwise : Option Border := none) : Option
 
 def leftLabel (n : Nat) : String := if n = 1 then "1 item left" else s!"{n} items left"
 
+-- region: fixture-button
 def button (ui : UI) (r : ControlRef) (label : String) : Node :=
   .box { padding := ⟨6, 16, 6, 16⟩, radius := 6, border := ring ui r,
          background := some (if ui.hover = some r then accentDark else accent) }
     (some { ref := r, label })
     [.text { font := { body with weight := 600 }, color := white } label]
+-- endregion: fixture-button
 
+-- region: fixture-input-row
 def inputRow (s : State) (ui : UI) : Node :=
   .box { axis := .row, width := .fill, gap := 8, align := .center } none
     [ .field { width := .fill, padding := ⟨6, 8, 6, 8⟩, background := some white, radius := 6,
@@ -254,6 +287,7 @@ def inputRow (s : State) (ui : UI) : Node :=
         { ref := fieldRef, role := .textField, label := placeholder }
         (s.field.view (ui.focus = some fieldRef)),
       button ui addRef "Add" ]
+-- endregion: fixture-input-row
 
 def passcodeRow (s : State) (ui : UI) : Node :=
   .field { width := .fill, padding := ⟨6, 8, 6, 8⟩, background := some white, radius := 6,
@@ -262,6 +296,7 @@ def passcodeRow (s : State) (ui : UI) : Node :=
     { ref := passRef, role := .textField, label := passPlaceholder }
     (s.passcode.view (ui.focus = some passRef))
 
+-- region: fixture-item-row
 def itemRow (ui : UI) (it : Item) : Node :=
   .box { axis := .row, width := .fill, height := .fixed 36, gap := 10, align := .center,
          padding := ⟨0, 8, 0, 10⟩, background := some white, radius := 6 } none
@@ -279,14 +314,18 @@ def itemRow (ui : UI) (it : Item) : Node :=
              background := some ⟨240, 240, 242, 255⟩ }
         (some { ref := deleteRef it.id, label := s!"Delete {it.text}" })
         [.text { font := { size := 13 }, color := ⟨200, 40, 40, 255⟩ } "Delete"] ]
+-- endregion: fixture-item-row
 
+-- region: fixture-view
 def view (s : State) (ui : UI) : Node :=
   .box { width := .fill, height := .fill, padding := ⟨20, 20, 20, 20⟩, gap := 12,
          background := some bg, clip := true } none
     [ .text { font := { size := 22, weight := 700 }, color := ink } "Fixture",
+      -- region: fixture-para
       .para { font := { size := 13 }, color := muted } {}
         "Cairn's test app. Type an item and press Enter or Add, check it off or delete it, and \
          press Flash to set a timer. Lean breaks this paragraph to the window's width.",
+      -- endregion: fixture-para
       inputRow s ui,
       passcodeRow s ui,
       .box { axis := .row, width := .fill, gap := 8, align := .center } none
@@ -294,7 +333,10 @@ def view (s : State) (ui : UI) : Node :=
          (if s.flash then [.text { font := body, color := accent } "Flashing"] else [])),
       .box { width := .fill, gap := 4 } none (s.items.map (itemRow ui)),
       .text { font := { size := 13 }, color := muted } (leftLabel (left s)) ]
+-- endregion: fixture-view
 
+-- region: fixture-app
 def app : App State := machine.toApp [.window 1 "Fixture" view] claimInfos
+-- endregion: fixture-app
 
 end Fixture
