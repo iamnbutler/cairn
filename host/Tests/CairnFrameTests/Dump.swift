@@ -82,7 +82,7 @@ enum Dump {
     static func surface(_ s: Surface) -> String {
         "surface kind=\(s.kind.rawValue) place=\(s.place) shown=\(bit(s.shown)) "
             + "anchor=\(s.anchor.code) offset=\(s.anchor.offset) screen=\(s.screen.rawValue) "
-            + "title=\(str(s.title))\n" + canvas(s.canvas) + status(s.status)
+            + "min=\(s.minSize.w)x\(s.minSize.h) title=\(str(s.title))\n" + canvas(s.canvas) + status(s.status)
     }
 
     static func frame(_ f: Frame) -> String {

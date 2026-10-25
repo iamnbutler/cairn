@@ -3,7 +3,7 @@ module
 public import Cairn.Frame
 public import Cairn.Frame.Bytes
 
-/-! Frame byte format (docs/frame.md; version 6): specification encoder `Wire.Enc.frame`, decoder
+/-! Frame byte format (docs/frame.md; version 7): specification encoder `Wire.Enc.frame`, decoder
 `Wire.Dec.frame`, the executable encoder `encodeFrame` (proved equal to the specification and
 installed with `@[csimp]`), and the round trip `decodeFrame_encodeFrame`.
 
@@ -325,7 +325,8 @@ def fitsStatus (s : StatusFrame) : Bool :=
     fu s.menu.size && s.menu.all fitsMenuRecord
 
 def fitsSurface (s : SurfaceFrame) : Bool :=
-  fu s.place && fu s.anchor.offset && fs s.title && fitsCanvas s.canvas && fitsStatus s.status
+  fu s.place && fu s.anchor.offset && fi s.minSize.w && fi s.minSize.h && fs s.title &&
+    fitsCanvas s.canvas && fitsStatus s.status
 
 def fitsFrame (f : Frame) : Bool :=
   fu f.surfaces.size && f.surfaces.all fitsSurface &&
@@ -472,13 +473,15 @@ def menuRecord (m : MenuRecord) : List UInt8 :=
 def status (s : StatusFrame) : List UInt8 :=
   ref s.control ++ str s.symbol ++ str s.title ++ str s.label ++ list menuRecord s.menu.toList
 
-/-- `[kind, shown, anchor, screen]`, place, anchor offset, title, canvas, status. -/
+/-- `[kind, shown, anchor, screen]`, place, anchor offset, minimum size, title, canvas,
+status. -/
 def surface (s : SurfaceFrame) : List UInt8 :=
   [SurfaceKind.code s.kind] ++ bool s.shown ++ [Anchor.code s.anchor, ScreenChoice.code s.screen] ++
-    u32 s.place ++ u32 s.anchor.offset ++ str s.title ++ canvas s.canvas ++ status s.status
+    u32 s.place ++ u32 s.anchor.offset ++ size s.minSize ++ str s.title ++ canvas s.canvas ++
+    status s.status
 
-/-- Magic, version 6, flags 0. -/
-def header : List UInt8 := magic ++ [6, 0, 0, 0]
+/-- Magic, version 7, flags 0. -/
+def header : List UInt8 := magic ++ [7, 0, 0, 0]
 
 def frame (f : Frame) : List UInt8 :=
   header ++ list surface f.surfaces.toList ++ list effect f.effects.toList ++
@@ -814,10 +817,11 @@ def surface : Dec SurfaceFrame := do
   let place ← u32
   let offset ← u32
   let some anchor := Anchor.ofCode anchorCode offset | fail
+  let minSize ← size
   let title ← str
   let canvas ← canvas
   let status ← status
-  return { kind, place, shown, title, anchor, screen, canvas, status }
+  return { kind, place, shown, title, anchor, screen, minSize, canvas, status }
 
 def frame : Dec Frame := do
   expect Enc.header
@@ -1218,14 +1222,14 @@ theorem status_enc {s : StatusFrame} (h : fitsStatus s = true)
 theorem surface_enc {s : SurfaceFrame} (h : fitsSurface s = true)
     (hs : (Enc.surface s).length < 4294967296) (r : List UInt8) :
     surface (Enc.surface s ++ r) = some (s, r) := by
-  obtain ⟨kind, place, shown, title, anchor, screen, c, st⟩ := s
-  simp only [fitsSurface, Bool.and_eq_true, fu_iff, fs_iff] at h
-  obtain ⟨⟨⟨⟨hp, ho⟩, ht⟩, hc⟩, hst⟩ := h
-  simp only [Enc.surface, List.length_append, List.length_cons, List.length_nil,
-    Enc.length_u32, Enc.bool] at hs
+  obtain ⟨kind, place, shown, title, anchor, screen, ms, c, st⟩ := s
+  simp only [fitsSurface, Bool.and_eq_true, fu_iff, fi_iff, fs_iff] at h
+  obtain ⟨⟨⟨⟨⟨⟨hp, ho⟩, hmw⟩, hmh⟩, ht⟩, hc⟩, hst⟩ := h
+  simp only [Enc.surface, Enc.size, List.length_append, List.length_cons, List.length_nil,
+    Enc.length_u32, Enc.length_i32, Enc.bool] at hs
   simp only [surface, Enc.surface, List.cons_append, List.nil_append, List.append_assoc,
     bind_apply, byte_cons, SurfaceKind.ofCode_code, bool_enc, ScreenChoice.ofCode_code,
-    u32_enc hp, u32_enc ho, Anchor.ofCode_code, str_enc ht]
+    u32_enc hp, u32_enc ho, Anchor.ofCode_code, size_enc hmw hmh, str_enc ht]
   rw [canvas_enc hc (by omega)]; dsimp only
   rw [status_enc hst (by omega)]
   simp only [pure_apply]
@@ -1344,7 +1348,7 @@ def menuRecord (m : MenuRecord) : Nat := 32 + str m.label
 def status (s : StatusFrame) : Nat :=
   8 + str s.symbol + str s.title + str s.label + (8 + list menuRecord s.menu)
 
-def surface (s : SurfaceFrame) : Nat := 12 + str s.title + canvas s.canvas + status s.status
+def surface (s : SurfaceFrame) : Nat := 20 + str s.title + canvas s.canvas + status s.status
 
 theorem foldl_add {α : Type} (len : α → Nat) (xs : List α) (n : Nat) :
     xs.foldl (fun n x => n + len x) n = n + (xs.map len).sum := by
@@ -1459,7 +1463,7 @@ theorem status_eq (s : StatusFrame) : status s = (Enc.status s).length := by
 
 theorem surface_eq (s : SurfaceFrame) : surface s = (Enc.surface s).length := by
   simp only [surface, Enc.surface, str_eq, canvas_eq, status_eq, List.length_append,
-    List.length_cons, Enc.bool, Enc.length_u32, List.cons_append,
+    List.length_cons, Enc.bool, Enc.length_u32, Enc.size, Enc.length_i32, List.cons_append,
     List.nil_append]
   omega
 
@@ -1596,7 +1600,7 @@ def status (b : ByteArray) (s : StatusFrame) : ByteArray :=
 def surface (b : ByteArray) (s : SurfaceFrame) : ByteArray :=
   let b := ((bool (b.push (SurfaceKind.code s.kind)) s.shown).push (Anchor.code s.anchor)).push
     (ScreenChoice.code s.screen)
-  let b := str (u32 (u32 b s.place) s.anchor.offset) s.title
+  let b := str (i32 (i32 (u32 (u32 b s.place) s.anchor.offset) s.minSize.w) s.minSize.h) s.title
   status (canvas b s.canvas) s.status
 
 def frame (f : Frame) : ByteArray :=
@@ -1743,9 +1747,9 @@ theorem list_data {α : Type} (put : ByteArray → α → ByteArray) (len : α �
 
 @[simp] theorem surface_data (b : ByteArray) (s : SurfaceFrame) :
     (surface b s).data.toList = b.data.toList ++ Enc.surface s := by
-  simp only [surface, status_data, canvas_data, str_data, u32_data, bool_data,
+  simp only [surface, status_data, canvas_data, str_data, i32_data, u32_data, bool_data,
     ByteArray.data_push, Array.toList_push, List.append_assoc, List.cons_append, List.nil_append,
-    Enc.surface]
+    Enc.surface, Enc.size]
 
 theorem frame_data (f : Frame) : (frame f).data.toList = Enc.frame f := by
   have hempty : (ByteArray.emptyWithCapacity 0).data.toList = [] := rfl

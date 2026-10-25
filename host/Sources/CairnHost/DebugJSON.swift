@@ -221,6 +221,7 @@ public enum DebugJSON {
             switch s.kind {
             case .window:
                 o["size"] = [Int(s.canvas.size.w), Int(s.canvas.size.h)]
+                o["minSize"] = [Int(s.minSize.w), Int(s.minSize.h)]
                 if let w = view.window {
                     o["window"] = ["number": w.windowNumber, "key": w.isKeyWindow, "visible": w.isVisible]
                 }

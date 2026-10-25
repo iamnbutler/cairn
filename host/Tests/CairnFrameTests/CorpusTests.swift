@@ -68,7 +68,8 @@ enum Corpus {
         #expect(throws: FrameDecodeError.badHeader) { try Frame(bytes: Array(bin[0..<4]) + [3, 0] + bin.dropFirst(6)) }
         #expect(throws: FrameDecodeError.badHeader) { try Frame(bytes: Array(bin[0..<4]) + [4, 0] + bin.dropFirst(6)) }
         #expect(throws: FrameDecodeError.badHeader) { try Frame(bytes: Array(bin[0..<4]) + [5, 0] + bin.dropFirst(6)) }
-        #expect(throws: FrameDecodeError.badHeader) { try Frame(bytes: Array(bin[0..<4]) + [7, 0] + bin.dropFirst(6)) }
+        #expect(throws: FrameDecodeError.badHeader) { try Frame(bytes: Array(bin[0..<4]) + [6, 0] + bin.dropFirst(6)) }
+        #expect(throws: FrameDecodeError.badHeader) { try Frame(bytes: Array(bin[0..<4]) + [8, 0] + bin.dropFirst(6)) }
         #expect(throws: FrameDecodeError.trailingBytes(at: bin.count)) { try Frame(bytes: bin + [0]) }
         for n in [0, 3, 15, 16, 20, bin.count / 2, bin.count - 1] {
             #expect(throws: FrameDecodeError.self) { try Frame(bytes: Array(bin[0..<n])) }
@@ -83,14 +84,14 @@ enum Corpus {
         let canvas: [UInt8] = u32(10) + u32(10) + u32(1) + u32(draw.count) + draw + u32(0) + u32(0)
             + [0, 0, 0, 0] + [0, 0, 0, 0]
         let status: [UInt8] = u32(0) + u32(0) + u32(0) + u32(0) + u32(0) + u32(0) + u32(0)
-        let surface: [UInt8] = [0, 1, 0, 0] + u32(0) + u32(0) + u32(0) + canvas + status
-        return Array("CAFR".utf8) + [6, 0, 0, 0] + u32(1) + u32(surface.count) + surface
+        let surface: [UInt8] = [0, 1, 0, 0] + u32(0) + u32(0) + u32(0) + u32(0) + u32(0) + canvas + status
+        return Array("CAFR".utf8) + [7, 0, 0, 0] + u32(1) + u32(surface.count) + surface
             + u32(0) + u32(0) + u32(0) + u32(0) + [UInt8](repeating: 0, count: 12)
     }
 
     @Test func rejectsInvalidUTF8() throws {
         #expect(try Frame(bytes: Self.textFrame(Array("é🙂".utf8))).draws.count == 1)
-        let stringAt = 8 + 8 + 12 + 4 + 8 + 8 + 32
+        let stringAt = 8 + 8 + 20 + 4 + 8 + 8 + 32
         for bad: [UInt8] in [[0xFF], [0xC3], [0xC0, 0x80], [0xED, 0xA0, 0x80], [0x61, 0xF4, 0x90, 0x80, 0x80]] {
             #expect(throws: FrameDecodeError.badUTF8(at: stringAt)) { try Frame(bytes: Self.textFrame(bad)) }
         }

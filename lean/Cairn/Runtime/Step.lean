@@ -28,7 +28,9 @@ structure Config where
 `laid`; a panel's is laid out here at its width and its own height; a status item's is its
 description, which `menuSelect` is checked against. -/
 inductive Shown where
-  | window (place : ClaimId) (title : String)
+  /-- The window: its place, title and the smallest content size the app asks for
+  (`App.minSize`). -/
+  | window (place : ClaimId) (title : String) (minSize : Size)
   /-- A shown panel: its view, its size (its width, its content's height) and its layout. -/
   | panel (place : ClaimId) (shown : Option (PanelView × Size × Laid))
   | status (place : ClaimId) (item : Option StatusItem)
@@ -37,12 +39,12 @@ deriving Inhabited
 namespace Shown
 
 def place : Shown → ClaimId
-  | .window p _ | .panel p _ | .status p _ => p
+  | .window p .. | .panel p _ | .status p _ => p
 
 /-- The first window's place: where bare local events go. -/
 def windowPlace : List Shown → Option ClaimId
   | [] => none
-  | .window p _ :: _ => some p
+  | .window p .. :: _ => some p
   | _ :: xs => windowPlace xs
 
 /-- What status item `p` shows, if it is shown. -/
@@ -305,15 +307,15 @@ def layPanel (cfg : Config) (v : PanelView) : Size × Laid :=
   let sz := panelSize cfg v
   (sz, cfg.layout cfg.metrics sz v.content)
 
-/-- What one surface shows in app state `st`. -/
-def Surface.show (cfg : Config) (st : S) : Surface S → Shown
-  | .window p t _ => .window p t
+/-- What one surface shows in app state `st`; a window keeps the app's smallest size `min`. -/
+def Surface.show (cfg : Config) (st : S) (min : Size) : Surface S → Shown
+  | .window p t _ => .window p t min
   | .panel p v => .panel p ((v cfg.metrics st).map fun pv => (pv, layPanel cfg pv))
   | .statusItem p v => .status p (v st)
 
 /-- What every surface shows in app state `st`. -/
 def shows (app : App S) (cfg : Config) (st : S) : List Shown :=
-  app.surfaces.map (Surface.show cfg st)
+  app.surfaces.map (Surface.show cfg st (app.minSize st))
 
 /-- Run `update` over the actions in order, collecting effects. -/
 def deliver (update : S → Action → S × List Effect) (st : S) (acts : List Action) :

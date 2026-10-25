@@ -54,8 +54,9 @@ def panelUI (size : Size) : UI := { size, windowFocused := false }
 
 /-- One surface's record. The window shows the state's laid tree; a panel its own. -/
 def surfaceFrame (b : Boundary) (s : State S) : Shown → SurfaceFrame
-  | .window p t => { kind := .window, place := p, title := t,
-                     canvas := { b.render s.laid s.ui with cursor := cursor s } }
+  | .window p t m =>
+    { kind := .window, place := p, title := t, minSize := m,
+      canvas := { b.render s.laid s.ui with cursor := cursor s } }
   | .panel p none => { kind := .panel, place := p, shown := false }
   | .panel p (some (v, sz, l)) =>
     { kind := .panel, place := p, anchor := v.anchor, screen := v.screen,

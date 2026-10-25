@@ -104,6 +104,12 @@ def wide : Runtime.State State := (runFrom s0 [.resize ⟨1600, 900⟩]).1
 #guard tileCells wide == tileRects ⟨1600, 900⟩
 #guard (tileRects ⟨1600, 900⟩).map (·.x) == [28, 264, 500, 736, 972, 28]
 
+-- The window asks the host for its smallest size (^511): 1020 × 536, where the grid is three
+-- columns of 180-point tiles in two rows; a point narrower or shorter and they would shrink.
+#guard match s0.surfaces with | [.window 503 _ m] => m == ⟨1020, 536⟩ | _ => false
+#guard cols minWindow == 3 && (tileRects minWindow).all (·.w == 180)
+#guard (tileRects ⟨1019, 536⟩).any (·.w < 180) && (tileRects ⟨1020, 535⟩).any (·.w < 180)
+
 -- A tile's press reloads that tile alone, past the cache, under the next id.
 def tileOne : List Event := thenClick settled (tileRef 1)
 #guard (runFrom (run settled) (clickOn (run settled) (tileRef 1))).2 ==

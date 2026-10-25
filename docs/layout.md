@@ -107,6 +107,19 @@ later cards come later in reading order, so no two overlap (`cell_before`, `cell
 laid cells are exactly `Grid.rects` (`cells_rects`); and a point in cell `i` hits what cell `i`
 alone would (`hitTarget_cell`). Gallery uses it for its tiles (^510).
 
+**A floor on card size.** Shrinking every card so the rows fit the height means a short window
+gives tiny cards. `Grid.minBox n cols` is the smallest box with `cols` columns (at least one) in
+which every one of `n` cards is at least `minWidth` wide: `cols` cards of `minWidth` and their
+gaps across, and as many rows of `minCardH` (`minWidth` at the aspect ratio, rounded up, plus
+the caption) and their gaps down. An app adds what it lays out around the grid and returns it
+as `App.minSize`; the host keeps the window at least that big (^1010). Proved for every card
+count and column count: in any box at least `minBox`, every card is at least `minWidth` wide
+(`minW_le_cardW`, `minBox_cells`): a wider box has as many columns or more, so no more rows. And
+it is the smallest: it has exactly `cols` columns (`columns_minBox`); a narrower box has fewer
+columns, or with one column cards narrower than `minWidth` (`minBox_narrower`); a shorter one
+with `cols` columns has narrower cards (`minBox_shorter`, when the gap is no taller than a
+card). Gallery's window is at least 1020 × 536, three columns of 180-point tiles (^511).
+
 ## Text
 
 A `text` node is one line. A text node's rect is its measured box at the position its parent chose, and its

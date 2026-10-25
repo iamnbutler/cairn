@@ -202,4 +202,10 @@ assume ^1009 hostCancelRequest "cancelRequest stops a running request's work; it
   does "On cancelRequest for a request still running, the host stops its work where it can (an http, upload or loadImage download's URLSession task is cancelled) and still answers it exactly once, failed if the work was stopped, at once if its handler had not started; a cancelled loadImage leaves the image store as it was; a cancel of an id already answered or never requested does nothing."
   check "effects.cancel"
 
+/-! The window's size (docs/surfaces.md, `App.minSize`). -/
+
+assume ^1010 hostWindowMinSize "The window is never smaller than the app's minimum size" where
+  does "The host sets the window's contentMinSize to the minimum size of the frame's window record (a negative side as 0), so a person can't drag it smaller, clamps every live resize AppKit proposes to it, and grows a window already smaller to it, keeping its top-left corner; a minimum the window meets leaves it alone. So every resize Lean hears is at least the minimum the app asked for, from the first frame that asks for it."
+  check "window.min-size"
+
 end Cairn.Fuzz.Trusted.Claims

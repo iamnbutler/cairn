@@ -428,13 +428,17 @@ public struct Surface: Equatable, Sendable {
     public var title: String
     public var anchor: Anchor
     public var screen: ScreenChoice
+    /// The window's smallest content size, in points (`App.minSize`); 0 × 0 for other kinds.
+    /// The host keeps the window at least this big (^1010).
+    public var minSize: Size
     public var canvas: Canvas
     public var status: StatusFrame
     public init(kind: SurfaceKind, place: UInt32, shown: Bool = true, title: String = "",
                 anchor: Anchor = .bottomCenter(offset: 0), screen: ScreenChoice = .pointer,
-                canvas: Canvas = .empty, status: StatusFrame = StatusFrame()) {
+                minSize: Size = Size(w: 0, h: 0), canvas: Canvas = .empty, status: StatusFrame = StatusFrame()) {
         self.kind = kind; self.place = place; self.shown = shown; self.title = title
-        self.anchor = anchor; self.screen = screen; self.canvas = canvas; self.status = status
+        self.anchor = anchor; self.screen = screen; self.minSize = minSize; self.canvas = canvas
+        self.status = status
     }
 }
 

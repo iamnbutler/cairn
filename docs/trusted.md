@@ -6,7 +6,7 @@ entries in the section of the workstream that introduces the assumption.
 
 Items marked **Fuzzed** are also checked by the trusted-base fuzzer (`make fuzz-trusted`,
 docs/fuzz.md "Trusted base"), against Lean's proved side or an independent oracle, and are
-declared as `assume` claims ^901–^915, ^940–^944, ^960–^971 and ^1000–^1009 in `lean/Cairn/Fuzz/Trusted/Claims.lean`, each naming its
+declared as `assume` claims ^901–^915, ^940–^944, ^960–^971 and ^1000–^1010 in `lean/Cairn/Fuzz/Trusted/Claims.lean`, each naming its
 check; `build/fuzz/trusted.json` holds the evidence. Items not marked are checked only by the
 tests and reviews they list.
 
@@ -648,6 +648,41 @@ through size changes until hidden.
   Manual checklist (the detached checks don't track).
 - **Under the debug socket** the `quit` effect is recorded and not run, as a beep is; the
   driver ends the app with the socket's `quit`.
+
+## The window's minimum size (M3)
+
+An app asks for its window's smallest content size in every state (`App.minSize`, carried by
+the frame's window record, docs/frame.md). Lean proves what the view does at every size from
+that one up (Gallery's ^511 with `Grid.minBox`: every tile at least 180 points wide); that the
+window never gets smaller is the host's.
+
+### The window is never smaller than the app's minimum size (`assume`, ^1010)
+
+**What is assumed.**
+- ^1010 `hostWindowMinSize`: the host (`WindowSizer`, the window's delegate) sets
+  `contentMinSize` to the window record's minimum (a negative side as 0), clamps every live
+  resize AppKit proposes (`windowWillResize(_:to:)`) to it, and grows a window already smaller
+  (the first frame's, after the saved frame is restored, or a later frame's larger minimum) to
+  it, keeping its top-left corner; a minimum the window meets leaves its frame alone. So every
+  `resize` Lean hears after a frame with a minimum is at least that minimum.
+
+**Also assumed, not fuzzed.** That AppKit proposes a person's drag through the delegate and
+honours `contentMinSize` while tracking it (window-server behaviour, watched in the demo video).
+Programmatic `setContentSize`/`setFrame` calls bypass both; the host makes none but `apply`'s.
+A minimum larger than the screen gives a window larger than the screen.
+
+**Trusted code.** `host/Sources/CairnHost/WindowSize.swift` (`WindowSizer`),
+`host/Sources/CairnHost/CairnApp.swift` (applying each frame's minimum), AppKit.
+
+**Evidence.**
+- **Fuzzed** (^1010 `window.min-size`): a resizable window (never shown) with the sizer as its
+  delegate; 1–12 steps a case of new minimums (negative, 0, 1–2400 a side, many larger than the
+  window) and drags to 1–2600 × 1–1600, proposed to the delegate and set as AppKit does. After
+  every step `contentMinSize` is the minimum, the content and the view's whole-point size are at
+  least it, a met minimum moved nothing, a grown window kept its top-left corner, and a drag at
+  or above the minimum was left as proposed.
+- **Tested**: Gallery's self test checks the window record asks for 1020 × 536 and that the
+  pictures are 180 × 135 there.
 
 ## Conformance (workstream J)
 

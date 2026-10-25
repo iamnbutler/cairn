@@ -14,6 +14,20 @@
     "milestone": "m2"
   },
   {
+    "video": "/m/videos/5c8ee160005c3fbc.mp4",
+    "poster": "/m/videos/5c8ee160005c3fbc.jpg",
+    "title": "A floor on tile size",
+    "caption": "Gallery asks the host to keep its window at least 1020 × 536: the smallest size, proved with Grid.minBox, at which every tile is 180 points wide. The demo drags the window narrower, shorter, then both, through the window's resize delegate as a person's drag goes; it stops at the minimum each time and the tiles stay 180 points wide.",
+    "date": "2026-10-25",
+    "published": "2026-10-25T04:21:06Z",
+    "commit": "f6e6ad2",
+    "width": 2560,
+    "height": 1584,
+    "seconds": 22,
+    "feature": false,
+    "milestone": "m3"
+  },
+  {
     "video": "/m/videos/d3e89acd24cf2229.mp4",
     "poster": "/m/videos/d3e89acd24cf2229.jpg",
     "title": "Claim pages",

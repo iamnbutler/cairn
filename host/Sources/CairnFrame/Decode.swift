@@ -24,11 +24,11 @@ extension Frame {
         self = try bytes.withUnsafeBytes { try Frame(decoding: $0) }
     }
 
-    /// Header (magic, version 6, flags 0), surfaces, effects, subscription commands, wake.
+    /// Header (magic, version 7, flags 0), surfaces, effects, subscription commands, wake.
     public init(decoding raw: UnsafeRawBufferPointer) throws {
         var r = ByteReader(raw)
         try r.need(8)
-        guard r.u8(0) == 0x43, r.u8(1) == 0x41, r.u8(2) == 0x46, r.u8(3) == 0x52, r.u16(4) == 6,
+        guard r.u8(0) == 0x43, r.u8(1) == 0x41, r.u8(2) == 0x46, r.u8(3) == 0x52, r.u16(4) == 7,
               r.u16(6) == 0  // flags: reserved, zero (found by cairn-fuzz-trusted)
         else { throw FrameDecodeError.badHeader }
         r.i = 8
@@ -44,19 +44,20 @@ extension Frame {
     }
 
     static func decodeSurface(_ r: inout ByteReader) throws -> Surface {
-        try r.need(12)
+        try r.need(20)
         guard let kind = SurfaceKind(rawValue: r.u8(0)) else { throw FrameDecodeError.badCode(r.u8(0), at: r.i) }
         let shown = try r.flag(1)
         guard r.u8(2) == 0 else { throw FrameDecodeError.badCode(r.u8(2), at: r.i + 2) }
         guard let screen = ScreenChoice(rawValue: r.u8(3)) else { throw FrameDecodeError.badCode(r.u8(3), at: r.i + 3) }
         let place = r.u32(4)
         let anchor = Anchor.bottomCenter(offset: r.u32(8))
-        r.i += 12
+        let minSize = Size(w: r.i32(12), h: r.i32(16))
+        r.i += 20
         let title = try r.string()
         let canvas = try decodeCanvas(&r)
         let status = try decodeStatus(&r)
         return Surface(kind: kind, place: place, shown: shown, title: title, anchor: anchor,
-                       screen: screen, canvas: canvas, status: status)
+                       screen: screen, minSize: minSize, canvas: canvas, status: status)
     }
 
     /// Size, draws, accessibility nodes, text input, cursor.

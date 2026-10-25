@@ -233,7 +233,7 @@ def statusFrame : Gen StatusFrame := do
 
 def surface : Gen SurfaceFrame := do
   let kind ← pick #[.window, .panel, .statusItem]
-  return { kind, place := ← nat, shown := ← coin, title := ← str,
+  return { kind, place := ← nat, shown := ← coin, title := ← str, minSize := ⟨← int, ← int⟩,
            anchor := .bottomCenter (← nat), screen := ← pick #[.pointer, .main],
            canvas := ← canvas, status := ← statusFrame }
 
@@ -348,7 +348,8 @@ def maxMenu : Array MenuRecord := #[
 
 def maxFrame : Frame where
   surfaces := #[
-    { kind := .window, place := 4294967295, title := "🙂\x00", canvas := maxCanvas },
+    { kind := .window, place := 4294967295, title := "🙂\x00", minSize := ⟨2147483647, -2147483648⟩,
+      canvas := maxCanvas },
     { kind := .panel, place := 0, shown := false, anchor := .bottomCenter 4294967295,
       screen := .main },
     { kind := .statusItem, place := 1,

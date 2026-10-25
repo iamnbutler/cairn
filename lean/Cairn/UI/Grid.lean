@@ -104,6 +104,27 @@ def cell (g : Grid) (x y : Int) (W H n i : Nat) : Rect :=
 def rects (g : Grid) (x y : Int) (W H n : Nat) : List Rect := (List.range n).map (g.cell x y W H n)
 -- endregion: grid-cell
 
+/-! ## The smallest box
+
+`minBox n cols` is the smallest box with `cols` columns (at least one) in which every one of `n`
+cards is at least `minWidth` wide: `cols` cards of the minimum width and their gaps across, and
+as many rows of the least card height (`minCardH`) and their gaps down. An app hands it, plus
+whatever it lays out around the grid, to the host as the window's minimum size
+(`App.minSize`), so the cards never shrink below `minWidth`. Its theorems are at the end of the
+file. -/
+
+-- region: grid-min-box
+/-- The least height of a card `minWidth` wide: its scaled part rounded up, plus the caption. -/
+def minCardH (g : Grid) : Nat := (g.minW * g.rh + g.rw - 1) / g.rw + g.caption
+
+/-- **The smallest box with `cols` columns in which every one of `n` cards is at least
+`minWidth` wide**, as width and height (`minW_le_cardW`). -/
+def minBox (g : Grid) (n cols : Nat) : Nat × Nat :=
+  let c := max 1 cols
+  let r := (n + c - 1) / c
+  (c * g.minW + (c - 1) * g.gap, r * g.minCardH + (r - 1) * g.gap)
+-- endregion: grid-min-box
+
 /-! ## The view -/
 
 /-- `xs` in runs of `c` (the last may be shorter). `fuel` bounds the recursion; `chunks` gives
@@ -345,6 +366,168 @@ theorem rects_inside (x y : Int) (W H n : Nat) : ∀ r ∈ g.rects x y W H n, r.
   simp only [rects, List.mem_map, List.mem_range]
   rintro r ⟨i, hi, rfl⟩
   exact cell_inside g x y W H n i hi
+
+/-! ## The smallest box
+
+* **At or above it, every card is at least `minWidth` wide** (`minW_le_cardW`, `minBox_cells`):
+  a wider box has as many columns or more, so no more rows, and a taller one only more room.
+* **It is the smallest**: it has exactly `cols` columns (`columns_minBox`); a narrower box has
+  fewer columns, or with one column cards narrower than `minWidth` (`minBox_narrower`); a shorter
+  box with `cols` columns has cards narrower than `minWidth` (`minBox_shorter`, when the gap is
+  no taller than a card). -/
+
+
+/-- Rounding up: `q = ⌈a / b⌉` covers `a` (`a ≤ q * b`) and one less doesn't (`(q - 1) * b < a`
+when `a > 0`). -/
+theorem ceil_spec (a b : Nat) (hb : 1 ≤ b) :
+    a ≤ (a + b - 1) / b * b ∧ (0 < a → ((a + b - 1) / b - 1) * b < a) := by
+  have h1 := Nat.div_add_mod (a + b - 1) b
+  have h2 := Nat.mod_lt (a + b - 1) (show 0 < b by omega)
+  generalize (a + b - 1) / b = q at h1 ⊢
+  generalize (a + b - 1) % b = m at h1 h2
+  rw [Nat.mul_comm] at h1
+  refine ⟨by omega, fun ha => ?_⟩
+  rw [Nat.sub_mul, Nat.one_mul]
+  omega
+
+/-- Rows only get fewer with more columns: `⌈n / C⌉ ≤ ⌈n / c⌉` when `1 ≤ c ≤ C`. -/
+theorem ceil_div_anti (n c C : Nat) (hc : 1 ≤ c) (hC : c ≤ C) :
+    (n + C - 1) / C ≤ (n + c - 1) / c := by
+  have ⟨h1, _⟩ := ceil_spec n c hc
+  generalize (n + c - 1) / c = r at h1 ⊢
+  have : r * c ≤ r * C := Nat.mul_le_mul_left _ hC
+  refine (Nat.div_le_iff_le_mul_add_pred (by omega)).2 ?_
+  rw [Nat.mul_comm C r]
+  omega
+
+/-- The columns of a box at least `minBox`'s width: at least `cols`. -/
+theorem le_columns_minBox (n cols W : Nat) (hW : (g.minBox n cols).1 ≤ W) :
+    max 1 cols ≤ g.columns W :=
+  le_columns g W _ (by simp only [Fits, minBox] at hW ⊢; exact hW)
+
+/-- **At or above `minBox`, every card is at least `minWidth` wide.** -/
+theorem minW_le_cardW (n cols W H : Nat) (hn : 0 < n) (hW : (g.minBox n cols).1 ≤ W)
+    (hH : (g.minBox n cols).2 ≤ H) : g.minW ≤ g.cardW W H n := by
+  have hc1 : 1 ≤ max 1 cols := Nat.le_max_left _ _
+  have hcols := le_columns_minBox g n cols W hW
+  -- Wide enough: one card of the minimum width fits, so each column's share is that wide.
+  have hws : g.minW ≤ g.widthShare W := minW_le_widthShare g W (by
+    simp only [Fits, minBox] at hW ⊢
+    have : g.minW ≤ max 1 cols * g.minW := Nat.le_mul_of_pos_left _ hc1
+    omega)
+  -- Tall enough: no more rows than `minBox` counted, each with room for `minCardH`.
+  have hrows : g.rows W n ≤ (n + max 1 cols - 1) / max 1 cols :=
+    ceil_div_anti n _ _ hc1 hcols
+  have hR : 1 ≤ g.rows W n := by
+    have := columns_pos g W
+    simp only [rows]
+    exact (Nat.le_div_iff_mul_le (by omega)).2 (by omega)
+  simp only [minBox] at hH
+  generalize (n + max 1 cols - 1) / max 1 cols = r at hrows hH
+  generalize hRdef : g.rows W n = R at hrows hR
+  have hRm : R * g.minCardH ≤ r * g.minCardH := Nat.mul_le_mul_right _ hrows
+  have hroom : R * g.minCardH + (R - 1) * g.gap ≤ H := by
+    have : (R - 1) * g.gap ≤ (r - 1) * g.gap := Nat.mul_le_mul_right _ (by omega)
+    omega
+  have hv : g.vgap W H n = g.gap := by
+    apply vgap_eq; rw [hRdef, Nat.mul_comm]; omega
+  have hhs : g.minCardH ≤ g.heightShare W H n := by
+    simp only [heightShare, hv, hRdef, show max 1 R = R by omega]
+    refine (Nat.le_div_iff_mul_le (by omega)).2 ?_
+    rw [Nat.mul_comm g.gap, Nat.mul_comm g.minCardH]
+    omega
+  -- So the height allows a card `minWidth` wide.
+  have ⟨hq, _⟩ := ceil_spec (g.minW * g.rh) g.rw (rw_pos g)
+  have hq' : (g.minW * g.rh + g.rw - 1) / g.rw ≤ g.heightShare W H n - g.caption := by
+    simp only [minCardH] at hhs; omega
+  have hmul : g.minW * g.rh ≤ (g.heightShare W H n - g.caption) * g.rw :=
+    Nat.le_trans hq (Nat.mul_le_mul_right _ hq')
+  have hhw : g.minW ≤ (g.heightShare W H n - g.caption) * g.rw / g.rh :=
+    (Nat.le_div_iff_mul_le (rh_pos g)).2 hmul
+  simp only [cardW]
+  omega
+
+/-- **Every card's rect is at least `minWidth` wide** in a box at least `minBox`. -/
+theorem minBox_cells (x y : Int) (n cols W H : Nat) (hW : (g.minBox n cols).1 ≤ W)
+    (hH : (g.minBox n cols).2 ≤ H) : ∀ r ∈ g.rects x y W H n, (g.minW : Int) ≤ r.w := by
+  simp only [rects, List.mem_map, List.mem_range]
+  rintro r ⟨i, hi, rfl⟩
+  have := minW_le_cardW g n cols W H (by omega) hW hH
+  simp only [cell]
+  omega
+
+/-- **`minBox` has exactly `cols` columns** (at least one). -/
+theorem columns_minBox (n cols : Nat) : g.columns (g.minBox n cols).1 = max 1 cols := by
+  have hc1 : 1 ≤ max 1 cols := Nat.le_max_left _ _
+  have hpos : 0 < g.minW + g.gap := by have := minW_pos g; omega
+  have : max 1 cols * g.minW + (max 1 cols - 1) * g.gap + g.gap = max 1 cols * (g.minW + g.gap) := by
+    obtain ⟨c, hc⟩ : ∃ c, max 1 cols = c + 1 := ⟨max 1 cols - 1, by omega⟩
+    rw [hc, Nat.add_sub_cancel, Nat.mul_add, Nat.add_mul, Nat.add_mul]
+    omega
+  simp only [columns, minBox, this, Nat.mul_div_cancel _ hpos]
+  omega
+
+/-- **No narrower box will do**: narrower than `minBox`, a box has fewer than `cols` columns, or
+(at one column) cards narrower than `minWidth`. -/
+theorem minBox_narrower (n cols W H : Nat) (hW : W < (g.minBox n cols).1) :
+    g.columns W < max 1 cols ∨ g.cardW W H n < g.minW := by
+  by_cases h1 : g.columns W = 1
+  · by_cases hc : max 1 cols = 1
+    · right
+      have hws : g.widthShare W = W := by simp only [widthShare, h1, Nat.sub_self, Nat.mul_zero,
+        Nat.sub_zero, Nat.div_one]
+      simp only [minBox, hc, Nat.one_mul, Nat.sub_self, Nat.zero_mul, Nat.add_zero] at hW
+      simp only [cardW, hws]
+      omega
+    · left; have := Nat.le_max_left 1 cols; omega
+  · left
+    have hf : g.Fits W (g.columns W) := (columns_fits g W).resolve_left h1
+    by_cases hlt : g.columns W < max 1 cols
+    · exact hlt
+    · exfalso
+      -- `columns W ≥ cols` cards of the minimum width fit, so `cols` of them do.
+      have hge : max 1 cols ≤ g.columns W := by omega
+      simp only [Fits] at hf
+      simp only [minBox] at hW
+      have : max 1 cols * g.minW ≤ g.columns W * g.minW := Nat.mul_le_mul_right _ hge
+      have : (max 1 cols - 1) * g.gap ≤ (g.columns W - 1) * g.gap :=
+        Nat.mul_le_mul_right _ (by omega)
+      omega
+
+/-- **No shorter box will do**: with `cols` columns and a gap no taller than a card, a box
+shorter than `minBox` has cards narrower than `minWidth`. -/
+theorem minBox_shorter (n cols W H : Nat) (hn : 0 < n) (hcols : g.columns W = max 1 cols)
+    (hgap : g.gap ≤ g.minCardH) (hH : H < (g.minBox n cols).2) : g.cardW W H n < g.minW := by
+  have hc1 : 1 ≤ max 1 cols := Nat.le_max_left _ _
+  have hrows : g.rows W n = (n + max 1 cols - 1) / max 1 cols := by simp only [rows, hcols]
+  simp only [minBox] at hH
+  rw [← hrows] at hH
+  have hR : 1 ≤ g.rows W n := by
+    rw [hrows]; exact (Nat.le_div_iff_mul_le (by omega)).2 (by omega)
+  generalize hRdef : g.rows W n = R at hH hR
+  -- Each row gets less than `minCardH`, with the gaps or without them.
+  have hhs : g.heightShare W H n < g.minCardH := by
+    simp only [heightShare, hRdef, show max 1 R = R by omega]
+    refine (Nat.div_lt_iff_lt_mul (by omega)).2 ?_
+    have h1 : g.gap * (R - 1) ≤ g.minCardH * (R - 1) := Nat.mul_le_mul_right _ hgap
+    have h2 : g.minCardH * R = g.minCardH * (R - 1) + g.minCardH := by
+      obtain ⟨k, rfl⟩ : ∃ k, R = k + 1 := ⟨R - 1, by omega⟩
+      rw [Nat.add_sub_cancel, Nat.mul_add, Nat.mul_one]
+    rw [Nat.mul_comm (R - 1) g.gap, Nat.mul_comm R g.minCardH] at hH
+    simp only [vgap, hRdef]
+    split <;> omega
+  -- So the height allows no card `minWidth` wide.
+  have ⟨_, hq⟩ := ceil_spec (g.minW * g.rh) g.rw (rw_pos g)
+  have hpos : 0 < g.minW * g.rh := Nat.mul_pos (minW_pos g) (rh_pos g)
+  have hq := hq hpos
+  have hle : g.heightShare W H n - g.caption ≤ (g.minW * g.rh + g.rw - 1) / g.rw - 1 := by
+    simp only [minCardH] at hhs; omega
+  have hlt : (g.heightShare W H n - g.caption) * g.rw < g.minW * g.rh :=
+    Nat.lt_of_le_of_lt (Nat.mul_le_mul_right _ hle) hq
+  have : (g.heightShare W H n - g.caption) * g.rw / g.rh < g.minW :=
+    (Nat.div_lt_iff_lt_mul (rh_pos g)).2 hlt
+  simp only [cardW]
+  omega
 
 end Grid
 

@@ -109,6 +109,8 @@ structure SurfaceFrame where
   /-- A panel's placement. -/
   anchor : Anchor := .bottomCenter 0
   screen : ScreenChoice := .pointer
+  /-- The window's smallest content size (`App.minSize`); `0 × 0` for other kinds. -/
+  minSize : Size := ⟨0, 0⟩
   /-- A window's or panel's content. A panel's `size` is Lean's: its width and laid-out
   height. -/
   canvas : Canvas := Canvas.empty

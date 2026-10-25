@@ -26,6 +26,10 @@ https, and two that fail (a file that is no image, a file that isn't there).
   180 points as fit the width the window leaves them, 4:3 pictures with a caption under each,
   20 points apart; they shrink when the rows would be taller than the window. Resizing reflows
   them. The view reads the window size from `UI.size`; the host only reports it.
+* **A floor on tile size.** The app asks the host to keep the window at least `minWindow`
+  (`App.minSize`): `Grid.minBox`'s smallest box for three columns plus what the window lays out
+  around the tiles, so at every size a person can drag it to, every tile is at least 180 points
+  wide (^511).
 
 | Id | Kind | What |
 |---|---|---|
@@ -39,6 +43,7 @@ https, and two that fail (a file that is no image, a file that isn't there).
 | ^508 | flow | load many, then cancel |
 | ^509 | move | Press a tile: that tile alone loads again |
 | ^510 | invariant | at every window size the tiles don't overlap, stay in the window and read in order |
+| ^511 | invariant | at or above the window's minimum size every tile is at least 180 points wide |
 
 The v1 exports are in `Examples.Gallery.Abi`; theorems about the view in
 `Examples.Gallery.Proofs` (^510's evidence among them); the host side is `host/Sources/CairnGallery`. -/
@@ -106,6 +111,18 @@ def gridH (sz : Size) : Nat := (sz.h - (2 * pad + headerH + 2 * rowGap + footerH
 /-- Where the tiles' grid sits in the window. -/
 def gridX : Int := pad
 def gridY : Int := pad + headerH + rowGap
+
+-- region: gallery-min-size
+/-- The tiles' columns at the window's smallest. -/
+def minCols : Nat := 3
+
+/-- **The window's smallest size**: the smallest box with `minCols` columns in which every tile
+is at least `minWidth` wide (`Grid.minBox`), plus the padding, header, footer and thumbnails'
+column around it: 1020 × 536. -/
+def minWindow : Size :=
+  let b := tileGrid.minBox 6 minCols
+  ⟨(b.1 + (2 * pad + colGap + manyW) : Nat), (b.2 + (2 * pad + headerH + 2 * rowGap + footerH) : Nat)⟩
+-- endregion: gallery-min-size
 
 
 -- region: gallery-state
@@ -313,6 +330,31 @@ theorem tilesFit : TilesFit := by
     footerH, colGap, manyW] at hin hw hh ⊢
   omega
 
+-- region: gallery-wide
+/-- At every window size from `minWindow` up, every tile is at least `minWidth` (180 points)
+wide. -/
+def TilesWide : Prop :=
+  ∀ sz : Size, minWindow.w ≤ sz.w → minWindow.h ≤ sz.h →
+    ∀ r ∈ tileRects sz, (tileGrid.minWidth : Int) ≤ r.w
+
+theorem tilesWide : TilesWide := by
+  intro sz hw hh r hr
+  have hn : tiles.length = 6 := rfl
+  have hm : tileGrid.minW = tileGrid.minWidth := rfl
+  rw [tileRects, hn] at hr
+  have := Grid.minBox_cells tileGrid gridX gridY 6 minCols (gridW sz) (gridH sz)
+    (by simp only [minWindow, gridW, pad, colGap, manyW] at hw ⊢; omega)
+    (by simp only [minWindow, gridH, pad, headerH, rowGap, footerH] at hh ⊢; omega) r hr
+  rwa [hm] at this
+
+invariant ^511 tilesWideInvariant "Tiles are at least 180 points wide" for machine where
+  does "At every window size from the window's minimum up, every tile is at least 180 points wide; the host keeps the window from being dragged smaller."
+  holds _s := TilesWide
+  init := tilesWide
+  step := fun _ _ _ => tilesWide
+  receive := fun _ _ _ => tilesWide
+-- endregion: gallery-wide
+
 invariant ^510 tilesFitInvariant "Tiles fit the window at every size" for machine where
   does "At every window size the tiles don't overlap, read left to right and top to bottom, and stay inside the window; resizing reflows them."
   holds _s := TilesFit
@@ -441,9 +483,11 @@ def view (s : State) (ui : UI) : Node :=
 -- region: gallery-app
 def app : App State :=
   { machine.toApp [.window 503 "Gallery" view] claimInfos with
-    initEffects := (loadSources {} false).2 }
+    initEffects := (loadSources {} false).2
+    minSize := fun _ => minWindow }
 -- endregion: gallery-app
 
-example : claimInfos.map (·.id) = [501, 502, 503, 504, 505, 506, 507, 508, 509, 510] := by decide
+example : claimInfos.map (·.id) = [501, 502, 503, 504, 505, 506, 507, 508, 509, 510, 511] := by decide
+example : minWindow = ⟨1020, 536⟩ := by decide
 
 end Examples.Gallery

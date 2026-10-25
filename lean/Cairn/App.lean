@@ -101,6 +101,11 @@ structure App (S : Type) where
   may be with the host at once (at least 1). The runtime queues the rest (docs/effects.md,
   "Requests in flight"). -/
   maxInFlight : Nat := 6
+  /-- The window's smallest content size in this state, in points. The host keeps the window
+  at least this big, so a person can't drag it smaller (`NSWindow.contentMinSize`; trusted,
+  ^1010), and the view can be proved good at every size from it up (with `Grid.minBox`, for
+  instance). `0 × 0`, no minimum, by default. -/
+  minSize : S → Size := fun _ => ⟨0, 0⟩
 -- endregion: app-app
 
 namespace App
