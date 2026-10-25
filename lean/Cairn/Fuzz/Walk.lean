@@ -176,13 +176,41 @@ def clickEvents (p : Point) (clicks : Nat) : List Event :=
   [.pointerMove p, .pointerDown p .primary 1 {}, .pointerUp p .primary {}] ++
     (if clicks ≥ 2 then [.pointerDown p .primary 2 {}, .pointerUp p .primary {}] else [])
 
+/-- The controls a shown status item puts on screen besides the window's laid tree: its button
+(`StatusItem.control`, pressed by opening its menu) and its menu's items, each with its place and
+whether it is enabled. The frame carries them in its surface records (docs/surfaces.md); the host
+builds the button and a real `NSMenu` from them, so they are on screen whenever the item is shown,
+the menu's items whether or not it is open. -/
+def statusControls (rt : Runtime.State S) : List (ClaimId × ControlRef × Bool) :=
+  rt.surfaces.flatMap fun
+    | .status p (some it) =>
+      (p, it.control, true) :: (MenuItem.refs it.menu).map fun r =>
+        (p, r, (MenuItem.enabledRefs it.menu).any fun x => decide (x = r))
+    | _ => []
+
+/-- Whether `r` is an enabled control on a status item: one a person can press now. -/
+def onStatus (rt : Runtime.State S) (r : ControlRef) : Bool :=
+  (statusControls rt).any fun (_, x, e) => e && decide (x = r)
+
+/-- The events that press `c` on a status item: opening the menu for its button, choosing the
+item for a menu item (`Runtime.step`'s `menuOpen` and `menuSelect`). -/
+def statusPress (rt : Runtime.State S) (c : ControlRef) : Option (List Event) :=
+  (statusControls rt).findSome? fun (p, x, e) =>
+    if !(e && decide (x = c)) then none
+    else match Shown.statusOf p rt.surfaces with
+      | some it => if decide (it.control = c) then some [.menuOpen p] else some [.menuSelect p c]
+      | none => none
+
 /-- The events that perform an operation in the current state; `none` when an action's control
 isn't on screen (or can't take that action), so the operation is skipped. -/
 def opToEvents (rt : Runtime.State S) : Op → Option (List Event)
   | .act a =>
     let c := a.control
     match find rt.laid c with
-    | none => none
+    | none =>
+      match a with
+      | .press _ => statusPress rt c
+      | _ => none
     | some tg =>
       let p := tg.visible.center
       let focus := if rt.ui.focus = some c then [] else clickEvents p 1
@@ -261,13 +289,14 @@ def perform (t : Target) (setup : Setup) (w : World t.S) (op : Op) : IO (Perform
 /-- Keys to probe for a move: those on screen, the largest seen so far, and one past it. -/
 def probeKeys (t : Target) (w : World t.S) (id : ClaimId) : List Nat :=
   if !t.isKeyed id then [0] else
-  let onScreen := (refs w.rt.laid).filterMap fun r => if r.claim = id then some r.key else none
+  let shown := refs w.rt.laid ++ (statusControls w.rt).map (·.2.1)
+  let onScreen := shown.filterMap fun r => if r.claim = id then some r.key else none
   let top := (w.seen.get? id).getD 0
   let top := onScreen.foldl max top
   (onScreen ++ [top, top + 1, 0]).eraseDups
 
 def World.noteSeen (w : World S) (laid : Laid) : World S :=
-  { w with seen := (refs laid).foldl (fun m r => m.insert r.claim (max r.key ((m.get? r.claim).getD 0))) w.seen }
+  { w with seen := (refs laid ++ (statusControls w.rt).map (·.2.1)).foldl (fun m r => m.insert r.claim (max r.key ((m.get? r.claim).getD 0))) w.seen }
 
 def isPointer (m : Move S) : Bool := m.triggers.any fun tr => tr == .press || tr == .doublePress
 
@@ -326,7 +355,7 @@ def checks (t : Target) (setup : Setup) (w : World t.S) (act? : Option Action)
     ran := ran.push (mv.id, "presence")
     for k in probeKeys t w mv.id do
       let r : ControlRef := ⟨mv.id, k⟩
-      let on := present laid r
+      let on := present laid r || onStatus w.rt r
       let en := mv.enabled s k
       if on != en then
         fails := fails.push <| mkFail "presence" r stepIx
@@ -362,12 +391,17 @@ def checks (t : Target) (setup : Setup) (w : World t.S) (act? : Option Action)
 /-! ## Generating operations -/
 
 /-- The actions available now: for each control on screen whose move is enabled, each trigger
-it can take there. Without an `App`, each enabled move and probed key. -/
+it can take there, and a press on each enabled status-item control (`statusControls`). Without
+an `App`, each enabled move and probed key. -/
 def candidates (t : Target) (w : World t.S) : List (ControlRef × Trigger × Bool) :=
   let s := w.rt.app
   match t.app with
   | some _ =>
-    (targets w.rt.laid).flatMap fun tg =>
+    let onStatusItems := (statusControls w.rt).flatMap fun (_, r, e) =>
+      match t.move? r.claim with
+      | some mv => if e && mv.enabled s r.key && mv.triggers.contains .press then [(r, Trigger.press, false)] else []
+      | none => []
+    onStatusItems ++ (targets w.rt.laid).flatMap fun tg =>
       match t.move? tg.ref.claim with
       | none => []
       | some mv =>
