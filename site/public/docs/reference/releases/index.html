@@ -62,6 +62,31 @@ meaning in later versions, or is retired; it is never renumbered or reused.</li>
 (<code>v4.35.0</code> for every release so far), because Lake shares compiled modules only between
 identical toolchains.</li>
 </ul>
+<h2 id="v0-1-4">v0.1.4</h2>
+<p>24 October 2026.</p>
+<ul>
+<li><strong>Images.</strong> <code>Node.image</code> shows a picture in a fixed box whose size layout knows before any
+pixels arrive, and the <code>loadImage</code> effect asks the host for one, from a file or an <code>http</code>/<code>https</code>
+URL. The host decodes and paints; Lean never holds pixels. <code>Cairn.UI.Images</code> is the table an app
+keeps, and only the reply to a source's latest load counts. The frame format is version 5: an
+<code>image</code> draw and the <code>loadImage</code> request. Three trusted claims cover the host's side
+(<code>cairn^1006</code>–<code>cairn^1008</code>), and the Gallery example (<code>swift run CairnGallery</code>) shows six tiles
+with Reload and Fit. See <a href="/docs/guide/effects/">Effects</a>.</li>
+<li><strong><code>import Cairn</code> links.</strong> The <code>Cairn</code> module now imports exactly the <code>Cairn</code> library, what
+<code>bin/cairn-link</code> links, and <code>meta</code>-imports the claim commands, so an app can start with
+<code>public import Cairn</code>. The old umbrella that imported everything, proofs and tools included, is
+<code>CairnAll</code>; the ledger and the audit read it. An app that imports it doesn't link.</li>
+<li><strong><code>cairn new --bin</code> makes a working app</strong>: a window with a count and a Count button, its
+exports, a <code>Package.swift</code> and a host with <code>--selftest</code>. <code>cairn build</code> finds a Cairn required by
+path.</li>
+<li><strong>cairn-link links each dependency's <code>libs</code></strong> from its <code>cairn.toml</code>, rather than Cairn's library
+by name, so a library such as <code>cairn_json</code> is linked by naming its own. Cairn's <code>cairn.toml</code>
+says <code>libs = [&quot;Cairn&quot;]</code>.</li>
+</ul>
+<p>No claim was retired or moved, so it is a patch release. Eight claims are new, and <code>cairn^213</code>'s
+statement hash changed when <code>Style</code> gained its image field; its meaning didn't. Moving from v0.1.3
+is a change of tag in the lakefile and <code>Package.swift</code>, unless an app imports <code>Cairn</code> for the
+proofs or tools, which are now in <code>CairnAll</code>, or builds frames by hand, which are now version 5.</p>
 <h2 id="v0-1-3">v0.1.3</h2>
 <p>24 October 2026, at commit <code>aea142c</code>.</p>
 <ul>
