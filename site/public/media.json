@@ -1,5 +1,19 @@
 [
   {
+    "video": "/m/videos/44efac4eb00e6da0.mp4",
+    "poster": "/m/videos/44efac4eb00e6da0.jpg",
+    "title": "Image cache under a budget",
+    "caption": "Gallery runs an imageCache subscription with an 8 MiB budget. Load 24 fetches all 24 thumbnails; the host keeps the twelve on screen and drops the other page's, telling the app, which counts them as evicted and no longer takes them for loaded. Next page loads the dropped ones again, and the host drops the first page's in turn.",
+    "date": "2026-10-25",
+    "published": "2026-10-25T04:52:42Z",
+    "commit": "ecdc04f",
+    "width": 2560,
+    "height": 1584,
+    "seconds": 25,
+    "feature": false,
+    "milestone": "m3"
+  },
+  {
     "title": "Cairn 0.2.1, with claim pages",
     "text": [
       "Cairn 0.2.1 is out on the public registry as iamnbutler/cairn. Requests in flight are capped at 6, with a queue and cancelRequest, frame format 6 (#151). Cairn.UI.Grid lays cards out in as many columns as the window fits, proved for every size (#160). cairn fuzz, claims, bench, size and conformance run on any app, and test/fixture is Cairn's own fixture app (#149).",
