@@ -15,7 +15,7 @@ cd tools/cairn && swift test
 <!-- endregion: cli-install -->
 
 Status: started. `new`, `add`, `build`, `doc`, `publish` and `login` work, with unit tests,
-against the public registry (Cairn 0.2.4 is published there), and so do the checks below
+against the public registry (Cairn 0.2.5 is published there), and so do the checks below
 (`fuzz`, `claims`, `bench`, `size`, `conformance`), which Cairn's own `make check` runs on
 test/fixture. Not yet: `cairn run`, `check`, `map` and the rest of the planned commands in
 site/web/content/docs/reference/cairn-tool.md, and installing it (a release binary or
