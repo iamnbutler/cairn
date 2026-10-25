@@ -76,4 +76,5 @@ results), iOS, other platforms, replacing the original Yap repository, and Ace.
 ## After M2
 
 M3 is [Pairs](docs/goals/m3.md), a memory game that brings images and JSON, then four Bluesky
-milestones. See [docs/roadmap.md](docs/roadmap.md).
+milestones, starting with [Sky](docs/goals/m4.md), which reads the home feed. See
+[docs/roadmap.md](docs/roadmap.md).
