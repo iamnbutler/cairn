@@ -145,6 +145,40 @@ import Testing
         #expect(sections[4].isEmpty)
     }
 
+    /// The claims export is a sixth section, sent only when there is one: a registry from before
+    /// it takes exactly five.
+    @Test func bodySendsTheClaimsExportAsASixthSection() throws {
+        let metadata = Publish.Metadata(
+            name: "hello", version: "1.0.0", kind: "lib", revision: String(repeating: "a", count: 40), toolchain: "t",
+            description: nil, license: nil, lean: "lean", libs: ["Hello"], dependencies: [:], readme: nil)
+        func sections(_ body: Data) -> [[UInt8]] {
+            let bytes = Array(body)
+            var out: [[UInt8]] = []
+            var at = 0
+            while at < bytes.count {
+                let size = bytes[at..<at + 4].enumerated().reduce(0) { $0 | Int($1.element) << (8 * $1.offset) }
+                out.append(Array(bytes[at + 4..<at + 4 + size]))
+                at += 4 + size
+            }
+            return out
+        }
+        let export = Data(#"{"scope":"hello","claims":[]}"#.utf8)
+        let six = sections(try Publish.body(metadata: metadata, pack: Data([1]), index: Data([2]), claims: Data([3]), export: export))
+        #expect(six.count == 6)
+        #expect(six[4].isEmpty)
+        #expect(six[5] == Array(export))
+        #expect(sections(try Publish.body(metadata: metadata, pack: Data([1]), index: Data([2]), claims: Data([3]))).count == 5)
+    }
+
+    /// A registry says in config.json whether it takes the export; one that says nothing doesn't.
+    @Test func configSaysWhetherTheRegistryTakesTheExport() throws {
+        let old = try JSONDecoder().decode(Registry.Config.self, from: Data(#"{"kind":"cairn","api":"a","git":"g","registry":"r"}"#.utf8))
+        #expect(!old.takes(Publish.exportSection))
+        let new = try JSONDecoder().decode(Registry.Config.self, from: Data(
+            #"{"kind":"cairn","api":"a","git":"g","registry":"r","publish":{"sections":["metadata","pack","index","claims.lock","docs","claims.json"]}}"#.utf8))
+        #expect(new.takes(Publish.exportSection))
+    }
+
     /// The metadata says the package's kind, so the registry can refuse a dependency on an app.
     @Test func metadataSendsKind() throws {
         let metadata = Publish.Metadata(

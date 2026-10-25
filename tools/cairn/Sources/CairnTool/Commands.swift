@@ -60,6 +60,12 @@ public struct Project: Sendable {
             : manifest.libs
     }
 
+    /// The modules whose imports reach every claim of the package: its `libs`, or for Cairn
+    /// itself the roots its ledger reads (the Makefile's `ledger`).
+    public var claimRoots: [String] {
+        manifest.name == "cairn" ? ["CairnAll", "Examples", "Cairn.Fuzz.Trusted.Claims"] : manifest.libs
+    }
+
     /// Check that the three names agree: cairn.toml's, the Lake package's, and the claim scope.
     public func agree() throws(CairnError) {
         let (lakefile, url) = try Lakefile.load(lean)
@@ -252,8 +258,8 @@ public struct Commands {
     // MARK: publish
 
     /// `cairn publish [--owner <login>] [--dry-run]`: send the version at tag v<version> to the
-    /// registry: its git objects and claims.lock, then its build outputs for Lake's cache. It
-    /// sends no docs: the registry will build them from the source (docs/cli.md). It publishes
+    /// registry: its git objects, claims.lock and claims export, then its build outputs for Lake's
+    /// cache. It sends no docs: the registry will build them from the source (docs/cli.md). It publishes
     /// under `--owner`, else under the login the token belongs to (`GET /-/whoami`).
     public func publish(_ args: [String]) async throws(CairnError) {
         let project = try project()
@@ -311,15 +317,31 @@ public struct Commands {
             license: m.license, lean: m.lean, swift: swift, libs: m.libs, dependencies: Dictionary(m.dependencies.map { ($0.name, $0.range) }) { $1 },
             readme: readme)
         let claims = (try? Data(contentsOf: root.appending(path: m.claims))) ?? Data()
-        let body = try Publish.body(metadata: metadata, pack: pack, index: index, claims: claims)
-        let size = ByteCountFormatter.string(fromByteCount: Int64(body.count), countStyle: .file)
         if dry {
-            print("Would publish \(owner)/\(m.name) \(m.version) at \(revision.prefix(10)) to \(registry.url.absoluteString): \(size).")
+            let body = try Publish.body(metadata: metadata, pack: pack, index: index, claims: claims)
+            let size = ByteCountFormatter.string(fromByteCount: Int64(body.count), countStyle: .file)
+            print("Would publish \(owner)/\(m.name) \(m.version) at \(revision.prefix(10)) to \(registry.url.absoluteString): \(size), and its claims export if the registry takes one.")
             return
         }
+        let export = try await claimsExport(project, registry)
+        let body = try Publish.body(metadata: metadata, pack: pack, index: index, claims: claims, export: export)
+        let size = ByteCountFormatter.string(fromByteCount: Int64(body.count), countStyle: .file)
         try await registry.send("PUT", "api/v1/packages/\(owner)/\(m.name)/versions/\(m.version)", body: body, type: "application/octet-stream", write: true)
         print("Published \(owner)/\(m.name) \(m.version) (\(size)).")
         try await outputs(project, registry, owner, revision, toolchain)
+    }
+
+    /// The claims export to publish with the version (`cairn claims --ledger`), for a registry
+    /// whose config.json lists the `claims.json` section; else none. The registry checks it
+    /// against claims.lock and serves it as JSON for the site's claim pages. An export that
+    /// fails (a Cairn dependency before 0.2.1 has no `--scope`) is left out with a warning: the
+    /// pages then show the ledger alone.
+    func claimsExport(_ project: Project, _ registry: Registry) async throws(CairnError) -> Data {
+        guard try await registry.config().takes(Publish.exportSection) else { return Data() }
+        do { return try ledgerClaims(project) } catch {
+            FileHandle.standardError.write(Data("cairn: no claims export (\(error.description)); publishing the ledger alone\n".utf8))
+            return Data()
+        }
     }
 
     /// Upload the build's artifacts and its outputs map, so `lake cache get` finds this version

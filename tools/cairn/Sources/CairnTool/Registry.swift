@@ -73,8 +73,18 @@ public struct Registry: Sendable {
 
     // MARK: API
 
-    /// `config.json`: `{kind, api, git, registry}`.
-    public struct Config: Decodable, Sendable { public var kind: String; public var registry: String }
+    /// `config.json`: `{kind, api, git, registry}`, and `publish.sections` from a registry that
+    /// says which sections a publish body may hold (a sixth, the claims export, since nextpm
+    /// took it; none listed means the first five).
+    public struct Config: Decodable, Sendable {
+        public struct Publishing: Decodable, Sendable { public var sections: [String]? }
+        public var kind: String
+        public var registry: String
+        public var publish: Publishing?
+
+        /// Whether a publish body may carry the named section.
+        public func takes(_ section: String) -> Bool { publish?.sections?.contains(section) ?? false }
+    }
 
     /// Check that the URL is a Cairn registry.
     public func config() async throws(CairnError) -> Config {
