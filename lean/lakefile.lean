@@ -20,15 +20,50 @@ target claims_meta.o pkg : System.FilePath := do
   let args := #["-I", (← getLeanIncludeDir).toString]
   buildO (pkg.buildDir / "c" / "claims_meta.o") src args #["-O2", "-fPIC"] "cc"
 
+/-! Cairn's own libraries (docs/packages-and-std.md, "The layout"). Module names are unchanged;
+only which library a module is built and archived in is. Lake gives a module to the *last*
+library declared that matches it, and a root also matches its submodules (`Cairn.Frame` matches
+`Cairn.Frame.Layout`). So the libraries after `Cairn` take back the proofs, tests and tools under
+its roots, and the umbrella modules (`Cairn`, `Cairn.Layout`, `Cairn.Runtime`, `Cairn.Claims`,
+`Cairn.Fuzz`) are only `globs`, never `roots`, so they claim nothing beneath them. The `Cairn`
+umbrella (`Cairn.lean`) still imports everything but the tools and the fuzzer: it is what the
+ledger, the audit and `make doc` read, not what apps link. -/
+
+/-- The linked closure: everything `bin/cairn-link` (`@cairn/Cairn:static`) puts in an app. No
+`import Lean`, no proofs. `Cairn.Abi` is its top (the host runs `initialize_cairn_Cairn_Abi`);
+`Cairn.Fuzz.Rng` is here because app modules name its `Custom` hook. The old names of moved
+modules stay until 0.2.0, since apps import them. -/
 @[default_target]
 lean_lib Cairn where
+  roots := #[`Cairn.Geometry, `Cairn.Claim, `Cairn.Effects, `Cairn.Font, `Cairn.Input,
+    `Cairn.UI.Node, `Cairn.UI.Hit, `Cairn.Surface, `Cairn.App,
+    `Cairn.Claims.Move, `Cairn.Claims.Machine, `Cairn.Claims.Core,
+    `Cairn.Text.Wrap, `Cairn.Text.Field, `Cairn.Text.Host, `Cairn.Layout.Core, `Cairn.Layout.Facts,
+    `Cairn.Runtime.World, `Cairn.Runtime.Step, `Cairn.Runtime.Abi,
+    `Cairn.Frame, `Cairn.Frame.Bytes, `Cairn.Frame.Encode, `Cairn.Frame.Events, `Cairn.Frame.Menu,
+    `Cairn.Frame.Build, `Cairn.Abi, `Cairn.Fuzz.Rng,
+    `Cairn.Frame.Boundary, `Cairn.Runtime.Hit, `Cairn.Text.Metrics]
   defaultFacets := #[LeanLib.staticFacet]
   moreLinkObjs := #[text_host.o]
 
-/-- Every example app and its proofs (`Examples.lean`): what the ledger, the axiom audit and the
-kernel replay read. The host links the per-app libraries below, never this one. -/
+def proofs : Array Lean.Name := #[`Cairn.Text.Proofs, `Cairn.Text.WrapProofs, `Cairn.Text.FieldTests,
+    `Cairn.Layout.Proofs, `Cairn.Layout.Bridge, `Cairn.Layout.Check, `Cairn.Layout.Rigid,
+    `Cairn.Layout.Para, `Cairn.Layout.Tests,
+    `Cairn.Runtime.Proofs, `Cairn.Runtime.WorldProofs, `Cairn.Claims.Deliver,
+    `Cairn.Frame.Layout, `Cairn.Frame.EventsTests, `Cairn.Frame.BuildTests, `Cairn.Abi.Tests]
+
+/-- Proofs and tests about `Cairn`'s code, and the umbrellas that import them. Never linked. -/
 @[default_target]
-lean_lib Examples
+lean_lib CairnProofs where
+  roots := proofs
+  globs := proofs.map .one ++ #[.one `Cairn, .one `Cairn.Layout, .one `Cairn.Runtime]
+
+/-- The claim commands. Apps `meta import` `Cairn.Claims.Elab`, so it runs at compile time only
+(`import Lean`; docs/claims.md, "Linking"). -/
+@[default_target]
+lean_lib CairnClaims where
+  roots := #[`Cairn.Claims.Elab, `Cairn.Claims.Registry]
+  globs := #[.one `Cairn.Claims.Elab, .one `Cairn.Claims.Registry, .one `Cairn.Claims]
 
 /-- Tests for the claim commands. Not imported by `Cairn` or `Examples`, so their ids stay out of
 the ledger. -/
@@ -40,8 +75,20 @@ lean_lib ClaimsTests where
 (`import Lean` at compile time), so they stay out of `Cairn`, which the host links; the ledger
 reads them as a root. -/
 @[default_target]
-lean_lib TrustedClaims where
+lean_lib CairnTrusted where
   roots := #[`Cairn.Fuzz.Trusted.Claims]
+
+/-- The ledger, claim and doc export, and the axiom audit, behind the `lean_exe`s below. Not a
+default target: `make kernel` replays the default targets in one environment, and each of these
+defines a root `main`. -/
+lean_lib CairnTools where
+  roots := #[`Cairn.Claims.Tool, `Cairn.Claims.Ledger, `Cairn.Claims.Export,
+    `Cairn.Claims.Release, `Cairn.Doc.Export, `Audit]
+
+/-- Every example app and its proofs (`Examples.lean`): what the ledger, the axiom audit and the
+kernel replay read. The host links the per-app libraries below, never this one. -/
+@[default_target]
+lean_lib Examples
 
 /-- `lake exe ledger check|update`: guards `claims.lock` (see docs/claims.md). -/
 lean_exe ledger where
@@ -86,8 +133,7 @@ are a separate module so that executables linking all of `Examples` (the fuzzer)
 `cairn_app_init`s. -/
 @[default_target]
 lean_lib Todo where
-  roots := #[`Examples.Todo.Abi, `Examples.Todo, `Examples.Todo.Model, `Examples.Todo.View,
-    `Cairn.Fuzz.Rng]
+  roots := #[`Examples.Todo.Abi, `Examples.Todo, `Examples.Todo.Model, `Examples.Todo.View]
   defaultFacets := #[LeanLib.staticFacet]
   moreLinkObjs := #[claims_meta.o]
 
@@ -124,11 +170,16 @@ lean_lib Conformance where
   srcDir := "../tools/conformance/lean"
   globs := #[.submodules `Conformance]
 
-/-- The fuzzer (docs/fuzz.md): generators, the walk, the checks and shrinking. Not linked into
-any host binary. -/
+/-- The fuzzer (docs/fuzz.md): generators, the walk, the checks and shrinking, and the driver
+behind `lake exe fuzz` (`import Lean`). Not linked into any host binary; its PRNG,
+`Cairn.Fuzz.Rng`, is in `Cairn`. -/
 @[default_target]
-lean_lib Fuzz where
-  roots := #[`Cairn.Fuzz]
+lean_lib CairnFuzz where
+  roots := #[`Cairn.Fuzz.Metrics, `Cairn.Fuzz.Target, `Cairn.Fuzz.Text, `Cairn.Fuzz.Walk,
+    `Cairn.Fuzz.Shrink, `Cairn.Fuzz.Collect, `Cairn.Fuzz.Main]
+  globs := #[.one `Cairn.Fuzz.Metrics, .one `Cairn.Fuzz.Target, .one `Cairn.Fuzz.Text,
+    .one `Cairn.Fuzz.Walk, .one `Cairn.Fuzz.Shrink, .one `Cairn.Fuzz.Collect, .one `Cairn.Fuzz.Main,
+    .one `Cairn.Fuzz]
 
 /-- `lake exe fuzz <App> [--seed S] [--iterations N] [--steps K]` (docs/fuzz.md). -/
 lean_exe fuzz where
@@ -137,9 +188,10 @@ lean_exe fuzz where
 /-- Lean's side of the trusted-base fuzzer (docs/fuzz.md, "Trusted base"): generators, the
 proved decoders' verdicts and a one-field app, exported over C for the Swift executable
 `cairn-fuzz-trusted`, which links this next to `libcairn_lean.a`. No `import Lean`. It carries
-its own copy of `Cairn.Fuzz.Rng`, which `libcairn_lean.a` doesn't contain. -/
+`Cairn.Frame.Dump` (the canonical dump, which no app links); `Cairn.Fuzz.Rng` comes from
+`libcairn_lean.a`. -/
 @[default_target]
 lean_lib TrustedFuzz where
   roots := #[`Cairn.Fuzz.Trusted.Export]
-  globs := #[.one `Cairn.Fuzz.Trusted.Export, .one `Cairn.Fuzz.Trusted.Gen, .one `Cairn.Fuzz.Rng]
+  globs := #[.one `Cairn.Fuzz.Trusted.Export, .one `Cairn.Fuzz.Trusted.Gen, .one `Cairn.Frame.Dump]
   defaultFacets := #[LeanLib.staticFacet]

@@ -1,7 +1,7 @@
 # Packages and the standard library
 
-How Cairn is cut into packages, and what its standard library is. A design: step 1 of the
-migration (§5) is done, nothing after it is. Measured on `main` at c6176ea (Cairn 0.1.2) and Yap
+How Cairn is cut into packages, and what its standard library is. A design: steps 1 and 2 of
+the migration (§5) are done, nothing after them is. Measured on `main` at c6176ea (Cairn 0.1.2) and Yap
 at 4d69f7f.
 
 ## Recommendation
@@ -226,7 +226,11 @@ take with no source change, or a one-line one.
    `CairnClaims`, `CairnFuzz`, `CairnTools`, rename `TrustedClaims` to `CairnTrusted`. Take
    `Cairn.Fuzz.Rng` out of the `Todo` library's roots. The `Cairn.lean` umbrella keeps importing
    everything for the ledger and audit roots. Check `libcairn_lean.a` shrinks (20.8 MB today, 15
-   of it `libInit`). Yap bumps its tag and builds unchanged.
+   of it `libInit`). Yap bumps its tag and builds unchanged. Done: `Cairn` is 31 modules
+   (the shims and `Fuzz.Rng` included), `libcairn_Cairn.a` 3.7 → 2.8 MB and `libcairn_lean.a`
+   20.8 → 19.9 MB; `Frame.Dump` went to `TrustedFuzz`, `ClaimsTests` stays, `CairnTools` isn't a
+   default target (`make kernel` would import its four `main`s together), and the host now runs
+   `initialize_cairn_Cairn_Abi`, since the `Cairn` umbrella imports the proofs.
 3. **`cairn-link` links dependencies' `libs`.** Instead of `@cairn/Cairn:static` by name, it
    links each dependency's `libs` from its `cairn.toml`. `cairn` declares `libs = ["Cairn"]`. Yap
    gets the same archive. Run #86 (an outside package builds against Cairn) with Yap as the

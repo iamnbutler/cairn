@@ -264,8 +264,8 @@ host/.build/release/CairnFuzzTrusted --replay frame --case 1234 --seed 7   # one
 ```
 
 The executable (`host/Tests/CairnFuzzTrusted`) links the host and a small Lean library,
-`TrustedFuzz` (`lean/Cairn/Fuzz/Trusted/`: generators, a one-field app and C exports; no
-`import Lean`). libFuzzer is not available (`-sanitize=fuzzer` is unsupported for
+`TrustedFuzz` (`lean/Cairn/Fuzz/Trusted/`: generators, a one-field app and C exports, plus
+`Cairn.Frame.Dump`; no `import Lean`), next to `libcairn_lean.a`. libFuzzer is not available (`-sanitize=fuzzer` is unsupported for
 arm64-apple-macosx27 in Xcode 27.1), so it is a seeded loop on SplitMix64, the same PRNG as
 `Cairn.Fuzz.Rng`: case `i` of seed `S` replays alone. Each suite runs in a child process that
 records the case it is on, so a crash in trusted code is reported with its case and the run goes

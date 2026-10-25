@@ -195,7 +195,7 @@ map: host
 # no capture; the evidence is build/fuzz/trusted.json from `make fuzz-trusted`.
 map-trusted: lean
 	mkdir -p build/map/Trusted
-	cd lean && lake build claims audit TrustedClaims
+	cd lean && lake build claims audit CairnTrusted
 	cd lean && lake exe claims Cairn.Fuzz.Trusted.Claims > ../build/map/Trusted/claims.json
 	cd lean && lake env .lake/build/bin/audit --json ../build/map/Trusted/audit.json > /dev/null
 	bun tools/map/cairn-map.ts build --app Trusted --name "Trusted base" --dir build/map/Trusted
@@ -299,7 +299,7 @@ size: lean
 # `assume` claim in Cairn.Fuzz.Trusted.Claims that names a check; repros go to build/fuzz/trusted/.
 fuzz-trusted: lean
 	mkdir -p build/fuzz
-	cd lean && lake build claims TrustedClaims && lake exe claims Cairn.Fuzz.Trusted.Claims > ../build/fuzz/trusted-claims.json
+	cd lean && lake build claims CairnTrusted && lake exe claims Cairn.Fuzz.Trusted.Claims > ../build/fuzz/trusted-claims.json
 	cd host && swift build -c release --product CairnFuzzTrusted
 	host/.build/release/CairnFuzzTrusted --n $(or $(N),20000) --seed $(or $(SEED),0) \
 		--claims build/fuzz/trusted-claims.json --out build/fuzz/trusted.json
@@ -307,7 +307,7 @@ fuzz-trusted: lean
 # The quick run in `make check`: 500 cases a suite, debug build (about 2 s).
 fuzz-trusted-quick: lean
 	mkdir -p build/fuzz/quick
-	cd lean && lake build claims TrustedClaims && lake exe claims Cairn.Fuzz.Trusted.Claims > ../build/fuzz/quick/trusted-claims.json
+	cd lean && lake build claims CairnTrusted && lake exe claims Cairn.Fuzz.Trusted.Claims > ../build/fuzz/quick/trusted-claims.json
 	cd host && swift build --product CairnFuzzTrusted
 	host/.build/debug/CairnFuzzTrusted --n 500 --claims build/fuzz/quick/trusted-claims.json --out build/fuzz/quick/trusted.json
 

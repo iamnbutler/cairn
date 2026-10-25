@@ -43,9 +43,10 @@ CairnApp.main(CairnApp.Config(title: "Basics", size: Size(w: 480, h: 600)) { Lea
 Every v1 app exports the same three symbols (`cairn_app_init/step/frame`), so each app is its
 own `lean_lib` with its own static archive (`lean/lakefile.lean`; `make lean` copies
 `libcairn_<Lib>.a` to `build/lib/libcairn_app_<name>.a`), and its executable target links only
-that archive (`-lcairn_app_basics`). The shared `libcairn_lean.a` holds `Cairn`, `Init` and the
-runtime and no app; `make lean` checks with `nm` that it defines no `cairn_app_*` and that each
-app archive defines `cairn_app_init` once. The module initializer is the module system's
+that archive (`-lcairn_app_basics`). The shared `libcairn_lean.a` holds the `Cairn` library (the
+linked closure, no proofs; docs/packages-and-std.md), `Init` and the runtime and no app; `make
+lean` checks with `nm` that it defines no `cairn_app_*` and that each app archive defines
+`cairn_app_init` once. The module initializer is the module system's
 `runtime_initialize_cairn_Examples_<App>`, which never calls into the claim commands. Apps
 that keep their exports in their own module (`Examples.Counter.Abi`, so that executables linking
 every example, like the fuzzer, don't see two `cairn_app_init`s) start that module instead:
