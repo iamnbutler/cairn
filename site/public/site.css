@@ -83,6 +83,7 @@ p { margin: 0 0 14px; }
   display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px;
 }
 .meta .date { color: var(--gold); }
+.meta .commit { font: 0.9em var(--mono); align-self: center; } /* a hash mixes letters and digits; all of it in mono */
 /* The featured video sits on the meadow like a plate, a little wider than the text; the
    scene fades into mist behind its lower part. */
 .feature { margin: 0 calc((100% - min(960px, 100vw - 32px)) / 2); }

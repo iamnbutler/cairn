@@ -1,6 +1,13 @@
 /* The palette, type and stepped corners every page shares: the homepage and /milestones/
    (site.css), the docs and package pages (docs/docs.css), and the API reference, whose
    tool puts this file at the top of the style.css it writes (tools/doc/cairn-doc.ts). */
+/* Digits in the pixel font come from the system monospace: Pixelify's are hard to read at label
+   sizes. Only 0-9, so --pixel stays Pixelify for everything else. */
+@font-face { font-family: "Cairn Digits"; font-weight: 100 500; size-adjust: 92%; unicode-range: U+30-39;
+	src: local("SF Mono"), local("SFMono-Regular"), local("Menlo"), local("Menlo-Regular"), local("Consolas"), local("DejaVu Sans Mono"); }
+@font-face { font-family: "Cairn Digits"; font-weight: 600 900; size-adjust: 92%; unicode-range: U+30-39;
+	src: local("SF Mono Semibold"), local("SFMono-Semibold"), local("Menlo Bold"), local("Menlo-Bold"), local("Consolas Bold"), local("DejaVu Sans Mono Bold"); }
+
 :root {
 	--bg: #161937;
 	--fg: #e6e2f6;
@@ -13,7 +20,7 @@
 	--accent: #9cc8e8;
 	--gold: #f2c46a;
 	--px: 4px;
-	--pixel: "Pixelify Sans", ui-monospace, monospace;
+	--pixel: "Cairn Digits", "Pixelify Sans", ui-monospace, monospace;
 	--mono: ui-monospace, "SF Mono", Menlo, monospace;
 	color-scheme: dark;
 }

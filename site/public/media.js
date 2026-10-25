@@ -30,7 +30,7 @@ export function figure(m, autoplay) {
   c.textContent = m.caption;
   const meta = document.createElement("div");
   meta.className = "meta";
-  for (const [cls, text] of [["date", m.date], ["", m.commit], ...(m.image ? [] : [["", `${m.seconds}s`]])]) {
+  for (const [cls, text] of [["date", m.date], ["commit", m.commit], ...(m.image ? [] : [["", `${m.seconds}s`]])]) {
     const s = document.createElement("span");
     if (cls) s.className = cls;
     s.textContent = text;
@@ -51,7 +51,7 @@ export function note(m) {
   }
   const meta = document.createElement("div");
   meta.className = "meta";
-  for (const [cls, text] of [["date", m.date], ["", m.commit]]) {
+  for (const [cls, text] of [["date", m.date], ["commit", m.commit]]) {
     const s = document.createElement("span");
     if (cls) s.className = cls;
     s.textContent = text;
