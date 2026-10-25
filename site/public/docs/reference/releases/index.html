@@ -49,6 +49,28 @@ meaning in later versions, or is retired; it is never renumbered or reused.</li>
 (<code>v4.35.0</code> for every release so far), because Lake shares compiled modules only between
 identical toolchains.</li>
 </ul>
+<h2 id="v0-1-3">v0.1.3</h2>
+<p>24 October 2026.</p>
+<ul>
+<li><strong>Three modules moved, with shims.</strong> <code>Cairn.Frame.Boundary</code> is now <code>Cairn.Abi</code>,
+<code>Cairn.Runtime.Hit</code> is <code>Cairn.UI.Hit</code> and <code>Cairn.Text.Metrics</code> is <code>Cairn.Font</code>. The old names
+still work: each is a one-line module that imports the new one, until 0.2.0. <code>make lint</code> now
+fails on any cycle between directories in <code>lean/</code>, and there are none.</li>
+<li><strong>The <code>Cairn</code> library is only what apps link.</strong> It holds the 31 modules <code>bin/cairn-link</code>
+archives into an app. Proofs, claims, fuzzing and tools are their own Lake libraries:
+<code>CairnProofs</code>, <code>CairnClaims</code>, <code>CairnFuzz</code> (was <code>Fuzz</code>), <code>CairnTools</code>, and <code>CairnTrusted</code> (was
+<code>TrustedClaims</code>). <code>libcairn_Cairn.a</code> goes from 3.67 to 2.78 MB and <code>libcairn_lean.a</code> from
+20.84 to 19.94 MB. The host now initializes Lean through <code>initialize_cairn_Cairn_Abi</code>.</li>
+<li><strong>One public registry.</strong> The <code>cairn</code> tool uses <code>https://cairn.registry.nexthub.sh</code> by default
+(<code>CAIRN_REGISTRY</code> overrides it). <code>add</code>, <code>build</code> and <code>doc</code> need no login, and <code>cairn login</code> is
+needed only to publish. <code>cairn publish</code> publishes under <code>--owner</code>, or the token's own login.</li>
+<li><strong>Owners by name.</strong> <code>cairn add &lt;name&gt;</code> finds a package's owner with
+<code>GET /api/v1/names/&lt;name&gt;</code>, not a search. <code>cairn publish</code> sends <code>swift</code>, whether the tag has a
+<code>Package.swift</code>, and a package page shows the <code>.package(url:)</code> line only when it does.</li>
+</ul>
+<p>No claim was retired or changed. Moving from v0.1.2 is a change of tag in the lakefile and
+<code>Package.swift</code>, unless an app names the <code>Fuzz</code> or <code>TrustedClaims</code> libraries, which are now
+<code>CairnFuzz</code> and <code>CairnTrusted</code>. Yap moved with only its tag changed.</p>
 <h2 id="v0-1-2">v0.1.2</h2>
 <p>24 October 2026, at commit <code>597dea8</code>.</p>
 <ul>
