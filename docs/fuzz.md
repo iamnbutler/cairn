@@ -71,14 +71,18 @@ app's `init` with its own window size and text metrics:
   non-negative per-scalar widths, chosen per font from the seed, some zero for combining marks;
   random ascent and descent), or `TextMetrics.mono` in one sequence in eight.
 
-Each operation is one of:
+The sequence starts with the host's first clock (a random time from the seed), which boots the
+app: it hears the time and its `initEffects` run. Each operation is one of:
 
 | Operation | Weight | Performed as (app level) |
 |---|---|---|
-| `act a`: an action of an enabled move, for an enabled key | ~70% | the events a person would use: a press is move, down, up at the control's centre; a double press adds a second down with `clicks = 2`; `edit`, `submit`, `cancel` click the field unless it has focus, then send the text event or key (Enter, Escape); `blur` focuses the field, then Tab |
-| `click p`, `move p` at a random point | ~12% | pointer events, whatever is there |
-| `tab`, `shift-Tab`, a bare key (Enter, Escape, Backspace, arrows) | ~10% | key events |
-| `resize`, `pointerExit`, `windowFocus` | ~8% | window events |
+| `host h`: the host's move (below) | 20–60% while the host has something to say (a request outstanding, a timer set, a subscription running), more as requests pile up; 3% otherwise | a batch of the clock and the host's event |
+| `act a`: an action of an enabled move, for an enabled key | ~70% of the rest | the events a person would use: a press is move, down, up at the control's centre; a double press adds a second down with `clicks = 2`; `edit`, `submit`, `cancel` click the field unless it has focus, then send the text event or key (Enter, Escape); `blur` focuses the field, then Tab |
+| `click p`, `move p` at a random point | ~12% of the rest | pointer events, whatever is there |
+| `tab`, `shift-Tab`, a bare key (Enter, Escape, Backspace, arrows) | ~10% of the rest | key events |
+| `resize`, `pointerExit`, `windowFocus` | ~8% of the rest | window events |
+
+Every batch starts with the host's clock, as the real host's does (^908).
 
 Keys for keyed moves come from the frame (every `^N#k` on screen), plus keys seen earlier in the
 run and one past the largest, so "enabled but missing" is caught too.
@@ -100,7 +104,87 @@ def fuzz : Cairn.Fuzz.Custom State where
 ```
 
 `edits` returns a generator of `TextOp` scripts for a field's `edit` moves; `none` keeps the
-default.
+default. The host's hooks are below ("The host").
+
+## The host
+
+`cairn fuzz` plays the host's side too (`Cairn/Fuzz/Host.lean`, cairn#181). It keeps what the
+frames asked of it (the requests and cancels each step's effects put on the frame, the
+subscriptions the runtime runs, the frame's `wake`, the images it draws) and answers the way
+the real host is allowed to, as the trusted claims state it (docs/trusted.md):
+
+| Host move | When | What the claims allow |
+|---|---|---|
+| `reply id r` to an awaited request | any request outstanding, picked at random, so replies come late and in any order | ^914: each request is answered exactly once, under its id, with a reply of its kind's shape (`Reply.answers`) or `failed` (one in six by default) |
+| `reply id r` to a request the app cancelled after it was sent | the frame carried its `cancelRequest` | ^1009: still answered once, `failed other "cancelled"`, or its ordinary answer if its work had finished (or has no stop: files, sounds); the runtime swallows it and frees the slot |
+| `load id w h` | a `loadImage` not answered yet | ^1006/^1011: the pixels are put before the answer is sent, so an eviction can cross the answer |
+| `wake late` | the frame has a `wake` | ^909: a clock at the deadline or up to 40 ms after it; the due timers fire |
+| `advance ms` | always | ^908: the clock moves on (1 ms to an hour; `mono` never goes back, wall time sometimes jumps a day) |
+| `sub s e` | a subscription is running | `every`'s ticks at most one a period (^915), `watchFile`'s `changed`, `record`'s `started` once then `audio` or `failed`, `globalKey`'s down, up and other keys |
+| `late id e` | the runtime stopped a subscription lately | an event that crossed the stop; the runtime drops it (`step_sub_ignored`) |
+| `evict src` | an `imageCache` runs and the held pixels are over its smallest budget | ^1011: the least recently used image (put, or drawn by a frame) that the latest frame doesn't draw and that wasn't just put is dropped, and every running `imageCache` hears `evicted` |
+| `stray id r` | rarely, once the app has made a request | beyond the contract: a reply to an id the runtime doesn't hold (answered before, or never sent); the runtime drops it (`step_reply_ignored`) |
+
+Images follow ^1006: a `loadImage` without `reload` of a source the host holds is answered with
+the held size; a reload is read again; a failed reload drops the source (and says `evicted` if
+an `imageCache` runs); a cancelled reload leaves what was held. The host never sends a
+duplicate reply, a reply of the wrong shape or a clock that goes back: those are outside the
+trusted claims, and the runtime is proved to drop the first two anyway.
+
+**Contents are app-agnostic by default:** a file read gets random bytes or a word, an HTTP
+request a status (200, 201, 204, 301, 304, 400, 401, 403, 404, 410, 429, 500, 503) and random
+bytes, a `loadImage` a random size from 1 to 1600 pixels a side, a directory a few names, and
+any request a random `Fault`. An app that needs structured replies plugs in a generator:
+
+```lean
+def fuzz : Cairn.Fuzz.Custom State where
+  -- The JSON a pack parser expects, by request; `none` keeps the default.
+  replies := fun _ _ r => match r with
+    | .http _ url .. => some do
+        if ← Cairn.Fuzz.Gen.chance 1 10 then return .failed .network "fuzz"
+        return .http 200 [] (manifestFor url).toUTF8
+    | _ => none
+  -- A claim about every step, as a relation over a `Transition`: the state before, the host's
+  -- message (`none` for a person's operation), the state after and the frame's effects.
+  -- (Pairs's ^28: a reply to a request not waited for changes nothing.)
+  relations := [(28, fun t => match t.msg with
+    | some (.reply id _) => t.before.reqs.isLive id || t.after.core == t.before.core
+    | _ => true)]
+  -- Checked once the sequence is over and the host has answered everything outstanding.
+  drained := [(30, fun s => s.core.loading.isNone)]
+```
+
+- `replies s id r`: a generator for request `r` (id `id`) in state `s`. A reply that doesn't
+  answer the request's kind becomes `failed`, since the host never sends one.
+- `subEvents s sub`: the same for a running subscription's events.
+- `relations`: claims stated about every step rather than every state (∀ over `update` and
+  `receive`) are "not runnable" as invariants; an app can check them per step as relations.
+  Counted as `relation` under the claim. A message the runtime drops (a reply to a cancelled
+  or unknown id, an event of a stopped subscription) never reaches the app through the runtime,
+  so it is also given straight to `receive` and the relations checked on that: a claim about
+  every message is then tested on the messages the runtime shields the app from.
+- `drained`: after the last operation the host answers everything outstanding, oldest first,
+  with `replies` or the default (up to 1,000 replies), and these are checked. Counted as
+  `drained`. Only run when the app has some.
+
+**Determinism.** The host's every decision (which request, what reply, how far the clock moves,
+what to drop) is drawn from the sequence's seed and recorded in the operation, so a seed
+replays exactly, and a shrunk subsequence replays without it: a reply to a request the replayed
+sequence never made, an eviction the host couldn't make, or a wake with no timer set is
+skipped, like an `act` whose control is gone. Draining uses its own stream from the seed.
+
+**What it adds to the checks.** Every check above runs after every host move, so a reply, a
+timer, a tick or an eviction that breaks an invariant or presence, or moves a control off its
+click, fails as a person's move would. One check is new, and runs after every step:
+
+- **Images held:** every image source the frame draws (the window's and shown panels'
+  `Style.image`) is one the host holds pixels for. An app takes an image for ready only from
+  the host's answer, and forgets it when told it was dropped (`Images.Cache.ready_held`); a
+  frame that draws a source the host doesn't hold paints nothing there. Counted as `image`
+  under the window's place claim.
+
+A failure that needs the host's moves can't be printed as a flow (a witness is actions only);
+the printout says so and gives the replay command and the shrunk steps.
 
 ## What is checked, after every step
 
@@ -122,7 +206,9 @@ default.
 4. **Pressable** when the window is at or above the minimum: `hitTest` at the centre of each
    enabled pointer move's control returns it, and `checkPressable && controlsNonempty` holds
    (so the app's pressability proof at that size can be `by decide +kernel`).
-5. **Frame-time budget:** wall-clock time of `Runtime.step` (update, view, layout, settle) per
+5. **Images held** (above, "The host"): every image the frame draws is held by the host.
+6. **Relations** (`Custom.relations`), for a host's move or a person's operation.
+7. **Frame-time budget:** wall-clock time of `Runtime.step` (update, view, layout, settle) per
    step, against `--budget-ms` (default 8, a 120 Hz frame). Over-budget states are reported with
    their seed and step, but never fail a run: timing is not deterministic.
 
@@ -183,8 +269,18 @@ A pressability failure names the claim to blame: the control nearest the first n
             "^105": {"kind": "invariant", "pass": true, "steps": 50000, "sequences": 1000},
             "^107": {"kind": "flow", "pass": null, "note": "n/a"}},
  "failures": [{"check": "presence", "claim": 104, "key": 3, "seed": 17, "step": 31,
-               "shrunkFrom": 28, "message": "…", "sequence": {…}, "flow": "flow ^110 …"}]}
+               "shrunkFrom": 28, "message": "…", "sequence": {…}, "flow": "flow ^110 …"}],
+ "host": {"requests": 62416, "cancels": 24452, "replies": 36830, "failedReplies": 5712,
+          "cancelledReplies": 19682, "strayReplies": 2527, "clocks": 11063, "wakes": 0,
+          "timersDue": 0, "subEvents": 0, "lateSubEvents": 0, "loads": 4661,
+          "evictions": 12993, "maxOutstanding": 6, "leftOver": 5904}}
 ```
+
+`host` totals what the host did over the run (above, "The host"): requests and cancels the
+frames carried, replies to awaited requests (and how many failed), replies to cancelled ones,
+stray replies, clocks sent, wakes, timers due at them, subscription events (and late ones),
+pixels put before the answer, evictions, the most requests outstanding at once, and requests
+still unanswered when sequences ended. A place claim's entry has the `image` checks.
 
 `mode` is `runtime` (through `Runtime.step` and the view) or `model` (no `App`: actions into
 `machine.update`). `pass` is `true`, `false`, or `null` with a `note`: `not run` (no step
@@ -201,8 +297,15 @@ exercised it), `not runnable: no Decidable instance`, `n/a` (flows, places, assu
            {"trigger": "press", "ref": "^102", "claim": 102, "key": 0},
            {"event": "click", "x": 40, "y": 300, "clicks": 1, "hit": "^103#1"},
            {"event": "key", "key": "tab", "shift": true},
-           {"event": "resize", "w": 600, "h": 420}]}
+           {"event": "resize", "w": 600, "h": 420},
+           {"host": "reply", "id": 3, "reply": {"kind": "image", "w": 640, "h": 480}},
+           {"host": "wake", "late": 2}]}
 ```
+
+The setup also has the host's first `clock` (`mono`, `wall`, `zone`). Host steps are
+`{"host": kind, …}`: `advance` (`ms`, `wallJump`), `wake` (`late`), `reply` and `stray` (`id`,
+`reply`: `kind` and its fields, bytes as `hex`), `load` (`id`, `w`, `h`), `sub` (`sub`,
+`event`, `dt`), `late` (`id`, `event`) and `evict` (`source`).
 
 Action steps have exactly the shape of a flow's witness in `lake exe claims` (`trigger`, `ref`,
 `claim`, `key`, `op`), which the capture already replays, with `op` extended to every
@@ -233,8 +336,17 @@ from 28 operations to 5 (the printed flow compiles in the app; its theorem fails
 and holds on the real app); a 10 px row height is caught as pressable-check, blamed on ^103#1 and
 shrunk from 13 operations to 2.
 
+With the host (2026-10-25, seed 7000, 3,000 × 300 per app, [bench/fuzz.md](../bench/fuzz.md)):
+no failures in Counter, Basics, Todo, Clock, Tray, Gallery or test/fixture, over 6.3 million
+steps. The host answered 378,020 requests (60,792 failed, 89,126 after a cancel), sent 18,696
+stray replies, 115,919 wakes (171,068 timers due), 138,816 subscription events (8,524 after a
+stop) and 60,563 evictions. A mutant shows the image check would catch a cache that drops what
+the frame draws: Gallery receiving `evicted` without cancelling the pending load is caught as
+image on ^503 at step 143 and shrunk to 74 operations.
+
 `make check` runs `make fuzz-quick`: test/fixture, with `cairn fuzz`, 200 sequences of 50 steps,
-about 1.5 s plus linking the exe; and `examples-fuzz-quick`, the same on Counter, Basics and Todo.
+about 1.5 s plus linking the exe; and `examples-fuzz-quick`, the same on Counter, Basics, Todo,
+Clock, Tray and Gallery (`FUZZ_APPS`), host moves included.
 
 ## Yap: a random host
 
@@ -266,6 +378,11 @@ Each claim's entry has `hostSteps` and `appSteps`; `steps` is their sum.
 - It fuzzes the Lean model and runtime, not the host: no AppKit, Core Text or Metal. J's
   conformance driver covers the running app, and can replay fuzz sequences; the trusted-base
   fuzzer below covers the host's codecs, text input and metrics.
+- The host is a model of the trusted claims, not the host: it never sends what they rule out
+  (duplicate replies, wrong shapes, a clock going back), its replies' contents mean nothing
+  unless the app supplies `replies`, a batch holds one host event, and it doesn't coalesce
+  ticks or model the 4096-pixel cap. Images are evicted only by the least-recently-used rule
+  over the pixel sizes it answered.
 - Flows are not fuzzed (their witnesses are proved live); they are n/a.
 - Presence assumes every move has a control while enabled. A move meant to be keyboard-only
   would need an opt-out in `Custom`.

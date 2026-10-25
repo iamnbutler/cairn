@@ -85,6 +85,15 @@ def listOf {α : Type} (n : Nat) (g : Gen α) : Gen (List α) := do
 
 end Gen
 
+/-- One step the fuzzer took, for `Custom.relations`: the state before, the message the host
+sent if the step was the host's (`none` for a person's operation), the state after, and the
+effects the step put on the frame. -/
+structure Transition (S : Type) where
+  before : S
+  msg : Option Msg
+  after : S
+  effects : List Effect
+
 /-- What an app may add to the fuzzer, by defining `fuzz : Cairn.Fuzz.Custom State` in its
 namespace (docs/fuzz.md). Every field has a default. -/
 structure Custom (S : Type) where
@@ -98,6 +107,24 @@ structure Custom (S : Type) where
   noControl : List ClaimId := []
   /-- The frame-time budget for one step (update, view, layout), in nanoseconds. -/
   budgetNs : Option Nat := none
+  /-- Replies for the fuzzer's host to answer request `id` with, in the current state
+  (docs/fuzz.md, "The host"): for structured answers, such as the JSON a parser expects. `none`
+  keeps the default, which knows only the reply's shape (random bytes, a status, a size, a
+  fault). A reply that doesn't answer the request's kind (`Reply.answers`) is replaced by a
+  failure, since the host never sends one. -/
+  replies : S → Nat → Request → Option (Gen Reply) := fun _ _ _ => none
+  /-- Events for the fuzzer's host to send an active subscription; `none` keeps the default. -/
+  subEvents : S → Sub → Option (Gen SubEvent) := fun _ _ => none
+  /-- Checks over one step, for claims stated about every step rather than every state (a
+  reply to a request not waited for changes nothing; scores only improve). Counted under the
+  claim as `relation`. A message the runtime drops (a reply to a cancelled or unknown id, an
+  event from a stopped subscription) is also given straight to `receive`, so a claim about
+  every message is checked on those too. -/
+  relations : List (ClaimId × (Transition S → Bool)) := []
+  /-- Checks once a sequence ends and the host has answered everything outstanding (with
+  `replies` or the default): every load finished, nothing still waiting. Counted under the
+  claim as `drained`. -/
+  drained : List (ClaimId × (S → Bool)) := []
 
 instance {S : Type} : Inhabited (Custom S) := ⟨{}⟩
 

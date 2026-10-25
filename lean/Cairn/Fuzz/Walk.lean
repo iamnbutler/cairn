@@ -1,6 +1,7 @@
 import Cairn.Fuzz.Target
 import Cairn.Fuzz.Text
 import Cairn.Fuzz.Metrics
+import Cairn.Fuzz.Host
 import Cairn.Runtime
 import Cairn.Layout.Check
 import Std.Data.HashMap
@@ -14,7 +15,11 @@ One sequence: a window size, text metrics, and operations generated from the cur
 An app with an `App` is driven through the real runtime (`Runtime.route` and `Runtime.step`):
 an action is performed as the pointer and key events a person would use, so hit testing, focus
 and routing are exercised along with the app. A machine without an `App` gets its actions
-directly (`machine.update`). -/
+directly (`machine.update`).
+
+Between a person's operations the host has its say (`Cairn.Fuzz.Host`): it answers the requests
+the frames carried, fires timers by sending the clock, sends subscription events and drops
+images, as the trusted claims allow. -/
 
 namespace Cairn.Fuzz
 open Cairn Cairn.Claims Cairn.Runtime Cairn.Layout
@@ -30,6 +35,8 @@ inductive Op where
   | resize (size : Size)
   | exit
   | windowFocus (b : Bool)
+  /-- The host's move: a reply, the clock, a subscription event, an eviction. -/
+  | host (h : HostOp)
 deriving Repr, BEq, Inhabited
 
 /-! ### As text: flow witness syntax for actions -/
@@ -86,6 +93,7 @@ def opText : Op → String
   | .resize z => s!"resize to {z.w}×{z.h}"
   | .exit => "pointer leaves the window"
   | .windowFocus b => if b then "window gains focus" else "window loses focus"
+  | .host h => h.text
 
 
 /-- A failed check: which check, on which claim and key, after which operation. -/
@@ -110,6 +118,8 @@ structure Setup where
   seed : Nat
   size : Size
   metrics : MetricsChoice
+  /-- The host's clock when the sequence starts: its first clock boots the app. -/
+  start : Time := {}
 deriving Repr, Inhabited
 
 section
@@ -149,9 +159,32 @@ structure World (S : Type) where
   rt : Runtime.State S
   /-- The largest key seen on screen per keyed move, so "enabled but missing" can be probed. -/
   seen : Std.HashMap ClaimId Nat := {}
+  /-- The host: what the frames asked of it, its clock, its images. -/
+  host : Host := {}
 
+/-- The host after a step: it takes in the effects the frame carried, the frame's images count
+as used, and the subscriptions the runtime stopped are remembered (their events can still be in
+flight). -/
+def Host.after (h : Host) (before : List (Nat × Sub)) (rt : Runtime.State S) (es : List Effect) :
+    Host :=
+  let h := (h.absorb es).touch (drawnBy rt)
+  let now := rt.world.subs
+  let gone := before.filter fun p => !(now.any (·.1 == p.1))
+  let live := fun (id : Nat) => now.any (·.1 == id)
+  { h with stopped := (gone ++ h.stopped).take 8, started := h.started.filter live,
+           keysDown := h.keysDown.filter live }
+
+/-- The first frame, then the host's first clock, which boots the app (`App.initEffects`). -/
 def World.start (t : Target) (setup : Setup) : World t.S :=
-  { rt := Runtime.start t.runApp (cfgOf setup.metrics) setup.size }
+  let cfg := cfgOf setup.metrics
+  let rt0 := Runtime.start t.runApp cfg setup.size
+  let h0 : Host := { now := setup.start }
+  match t.app with
+  | none => { rt := rt0, host := h0 }
+  | some app =>
+    let (rt, es) := step app cfg rt0 (.clock setup.start)
+    let rt := { rt with subCmds := #[] }
+    { rt, host := { h0 with stats := { clocks := 1 } }.after rt0.world.subs rt es }
 
 /-- The events a text operation arrives as. `setCaret` has none (it comes from clicks). -/
 def opEvents : TextOp → List Event
@@ -233,6 +266,79 @@ def opToEvents (rt : Runtime.State S) : Op → Option (List Event)
   | .resize z => some [.resize z]
   | .exit => some [.pointerExit]
   | .windowFocus b => some [.windowFocus b]
+  | .host _ => none
+
+/-- The host's events for its move, the host once it has made it, and the message it sent (for
+`Custom.relations`); `none` when the move can't happen now (a replayed subsequence whose request
+was never made). Every batch starts with the clock (^908). -/
+def hostPlan (rt : Runtime.State S) (h : Host) : HostOp → Option (Host × List Event × Option Msg)
+  | .advance ms j =>
+    let now : Time := { h.now with mono := h.now.mono + ms, wall := h.now.wall + ms + j }
+    some ({ h with now, stats := { h.stats with clocks := h.stats.clocks + 1 } }, [.clock now],
+      some (.clock now))
+  | .wake late =>
+    match rt.world.wake with
+    | none => none
+    | some due =>
+      let mono := max h.now.mono (due + late)
+      let now : Time := { h.now with mono, wall := h.now.wall + (mono - h.now.mono : Nat) }
+      some ({ h with now, stats := { h.stats with wakes := h.stats.wakes + 1 } }, [.clock now],
+        some (.clock now))
+  | .reply id r =>
+    match h.request? id with
+    | none => none
+    | some req =>
+      let wasCancelled := h.isCancelled id
+      let ready := (h.ready.lookup id).isSome
+      let h1 := h.answer id
+      let (h2, extra) : Host × List Event := match req, r with
+        | .loadImage src _, .image w ht => (if ready then h1 else h1.put src w ht, [])
+        | .loadImage src true, .failed .. =>
+          -- A failed reload drops what was held (^1006) and says so (^1011); a cancelled one
+          -- leaves it (^1009).
+          if !wasCancelled && (h1.heldOf src).isSome then (h1.drop src, notices rt src) else (h1, [])
+        | _, _ => (h1, [])
+      let st := h2.stats
+      let st := if wasCancelled then { st with cancelledReplies := st.cancelledReplies + 1 }
+        else { st with replies := st.replies + 1,
+                       failed := st.failed + (if r matches .failed .. then 1 else 0) }
+      some ({ h2 with stats := st }, [.clock h.now, .reply id r] ++ extra, some (.reply id r))
+  | .load id w ht =>
+    match h.request? id with
+    | some (.loadImage src _) =>
+      if h.isCancelled id || (h.ready.lookup id).isSome then none else
+      let h := h.put src w ht
+      some ({ h with ready := (id, .image w ht) :: h.ready,
+                     stats := { h.stats with loads := h.stats.loads + 1 } }, [], none)
+    | _ => none
+  | .sub sub e dt =>
+    match rt.world.subs.find? (·.2 == sub) with
+    | none => none
+    | some (id, _) =>
+      let now : Time := { h.now with mono := h.now.mono + dt, wall := h.now.wall + dt }
+      let h := { h with now, stats := { h.stats with subEvents := h.stats.subEvents + 1 } }
+      let h := match e with
+        | .started _ => { h with started := id :: h.started }
+        | .keyDown _ => { h with keysDown := id :: h.keysDown }
+        | .keyUp _ => { h with keysDown := h.keysDown.erase id }
+        | _ => h
+      some (h, [.clock now, .subEvent id e], some (.sub sub e))
+  | .late id e =>
+    match h.stopped.lookup id with
+    | none => none
+    | some sub =>
+      if rt.world.subs.any (·.1 == id) then none else
+      some ({ h with stats := { h.stats with lateSubEvents := h.stats.lateSubEvents + 1 } },
+        [.clock h.now, .subEvent id e], some (.sub sub e))
+  | .evict src =>
+    if evictable h rt != some src then none else
+    let b := ((imageCaches rt).head?.map (·.2)).getD 0
+    some ({ (h.drop src) with stats := { h.stats with evictions := h.stats.evictions + 1 } },
+      [.clock h.now] ++ notices rt src, some (.sub (.imageCache b) (.evicted src)))
+  | .stray id r =>
+    if h.isSent id || (rt.world.pending.lookup id).isSome || rt.world.isStopping id then none else
+    some ({ h with stats := { h.stats with stray := h.stats.stray + 1 } },
+      [.clock h.now, .reply id r], some (.reply id r))
 
 /-- The result of performing one operation. -/
 structure Performed (S : Type) where
@@ -249,8 +355,16 @@ structure Performed (S : Type) where
   edit saves first, and if saving moved what was clicked, the click is dropped). This is
   exactly where `Runtime.click_presses`'s hypothesis fails, so "performed" does not apply. -/
   dropped : Bool := false
+  /-- The message the host sent, for a host's move (`Custom.relations`). -/
+  msg : Option Msg := none
+  /-- The effects the operation's steps put on the frame. -/
+  effects : List Effect := []
+  /-- Whether the runtime dropped the host's message without delivering it. -/
+  msgDropped : Bool := false
 
-/-- Perform an operation: through the runtime with an `App`, or straight into the machine. -/
+/-- Perform an operation: through the runtime with an `App`, or straight into the machine.
+A person's operation is one batch, stamped with the host's clock (^908); a host's move is its
+own batch. The host takes in the effects of every step. -/
 def perform (t : Target) (setup : Setup) (w : World t.S) (op : Op) : IO (Performed t.S) := do
   let cfg := cfgOf setup.metrics
   match t.app with
@@ -263,21 +377,35 @@ def perform (t : Target) (setup : Setup) (w : World t.S) (op : Op) : IO (Perform
       return { world := { w with rt := { w.rt with app := s' } }, acts, ran := true, maxNs := 0 }
     | _ => return { world := w, acts := [], ran := false, maxNs := 0 }
   | some app =>
-    match opToEvents w.rt op with
+    let plan : Option (Host × List Event × Option Msg) := match op with
+      | .host h => hostPlan w.rt w.host h
+      | _ => (opToEvents w.rt op).map fun es => (w.host, .clock w.host.now :: es, none)
+    match plan with
     | none => return { world := w, acts := [], ran := false, maxNs := 0 }
-    | some es =>
+    | some (host, es, msg) =>
       let mut rt := w.rt
+      let mut host := host
       let mut acts : Array Action := #[]
       let mut maxNs := 0
       let mut dropped := false
+      let mut effects : Array Effect := #[]
+      -- Whether the runtime will drop the host's message: a reply to an id it doesn't hold, or
+      -- an event of a subscription it stopped.
+      let msgDropped := match op with
+        | .host (.reply id r) | .host (.stray id r) => (w.rt.world.takeReply id r).isNone
+        | .host (.late ..) => true
+        | _ => false
       -- The control a press means, so the first pointerDown can be checked for a T33 drop.
       let pressed? : Option ControlRef := match op with
         | .act (.press c) | .act (.doublePress c) => some c
         | _ => none
       for e in es do
+        if let .clock tm := e then
+          let due := (rt.world.tick tm).dueNames.length
+          host := { host with stats := { host.stats with timersDue := host.stats.timersDue + due } }
         let routed := (route cfg.metrics rt e).2
         let t0 ← IO.monoNanosNow
-        let rt' ← IO.lazyPure fun _ => (step app cfg rt e).1
+        let (rt', effs) ← IO.lazyPure fun _ => step app cfg rt e
         -- Force the new laid tree before reading the clock.
         let _ ← IO.lazyPure fun _ => (targets rt'.laid).length
         let t1 ← IO.monoNanosNow
@@ -285,8 +413,11 @@ def perform (t : Target) (setup : Setup) (w : World t.S) (op : Op) : IO (Perform
         if let (some c, .pointerDown p _ 1 _) := (pressed?, e) then
           if routed.any (· matches .blur _) && hitRef rt'.laid p != some c then dropped := true
         acts := acts ++ routed.toArray
-        rt := rt'
-      return { world := { w with rt }, acts := acts.toList, ran := true, maxNs, dropped }
+        host := host.after rt.world.subs rt' effs
+        effects := effects ++ effs.toArray
+        rt := { rt' with subCmds := #[] }
+      return { world := { w with rt, host }, acts := acts.toList, ran := true, maxNs, dropped, msg,
+               effects := effects.toList, msgDropped }
 
 /-! ## Checks -/
 
@@ -352,7 +483,6 @@ def checks (t : Target) (setup : Setup) (w : World t.S) (act? : Option Action)
       unless acts.contains a do
         fails := fails.push <| mkFail "performed" c stepIx
           s!"{reprStr a} was meant, but the runtime delivered {reprStr acts}"
-  let _ := app
   -- Presence.
   for mv in t.machine.moves do
     if t.custom.noControl.contains mv.id then continue
@@ -365,6 +495,17 @@ def checks (t : Target) (setup : Setup) (w : World t.S) (act? : Option Action)
         fails := fails.push <| mkFail "presence" r stepIx
           (if en then s!"{r.label} is enabled but has no control in the frame"
            else s!"{r.label} is in the frame but its move is disabled")
+  -- Images: everything the frame draws is held by the host. An app takes an image for ready
+  -- only from the host's answer and forgets it when told it was dropped (^1006, ^1011;
+  -- `Images.Cache.ready_held`); a draw of a source the host doesn't hold paints nothing.
+  let drawn := drawnBy w.rt
+  unless drawn.isEmpty do
+    let place := app.windowPlace.getD 0
+    ran := ran.push (place, "image")
+    for src in drawn.eraseDups do
+      unless (w.host.heldOf src).isSome do
+        fails := fails.push <| mkFail "image" ⟨place, 0⟩ stepIx
+          s!"the frame draws {src.quote}, whose pixels the host doesn't hold (never loaded, or dropped with no `evicted` the app heeded)"
   -- Pressable, at sizes at or above the minimum.
   if fitsWindow then
     let ts := targets laid
@@ -464,8 +605,13 @@ def genNoise (t : Target) (setup : Setup) (w : World t.S) : Gen (List Op) := do
       (1, pure [.exit]),
       (2, do return [.windowFocus (← Gen.chance 3 4)]) ]
 
-/-- The next operations: mostly an enabled action, otherwise pointer, key or window noise. -/
+/-- The next operations: the host's move (`Host.share`: one time in five or more while it has
+something to say, a request, a timer or a subscription, one in thirty otherwise); else mostly an enabled
+action, otherwise pointer, key or window noise. -/
 def genOps (t : Target) (setup : Setup) (w : World t.S) : Gen (List Op) := do
+  if t.app.isSome then
+    if ← Gen.chance (w.host.share w.rt) 100 then
+      return [.host (← genHost t.custom w.host w.rt)]
   if t.app.isNone || (← Gen.chance 7 10) then
     if let some ops ← genAct t w then return ops
   genNoise t setup w
@@ -477,8 +623,45 @@ def genSetup (t : Target) (seed : Nat) : Setup × Rng :=
     let m := metrics.metrics
     let min := t.minSize m t.machine.init {}
     let size : Size := ⟨min.w + (← Gen.int 0 400), min.h + (← Gen.int 0 400)⟩
-    return { seed, size, metrics }
+    let mono ← Gen.range 0 1_000_000_000
+    let wall : Int := 1_792_749_600_000 + ((← Gen.below 1_000_000_000_000) : Int)
+    let zone ← Gen.elem [0, 3600, -18_000, -28_800, 19_800, 32_400, 45_900]
+    let start : Time := { mono, wall, zone }
+    return { seed, size, metrics, start }
   g.run (Rng.ofSeed seed)
+
+/-- The app's checks over one step (`Custom.relations`), from state `s0` by the host's message
+`msg` (`none` for a person's operation) to `s1`. -/
+def relationChecks (t : Target) (tr : Transition t.S) (stepIx : Nat) (direct : Bool := false) :
+    List Ran × List Failure :=
+  let sent := match tr.msg with
+    | some m => s!" (the host sent {reprStr m}{if direct then ", which the runtime drops, straight to receive" else ""})"
+    | none => ""
+  t.custom.relations.foldl (fun (ran, fs) (id, rel) =>
+    (ran ++ [(id, "relation")],
+     if rel tr then fs
+     else fs ++ [mkFail "relation" ⟨id, 0⟩ stepIx s!"^{id} fails over this step{sent}"]))
+    ([], [])
+
+/-- The host answers everything outstanding, oldest first, with the app's replies (or the
+default), until nothing is or `fuel` runs out. Returns the world and how many replies it sent. -/
+def drain (t : Target) (setup : Setup) (w : World t.S) (rng : Rng) (fuel : Nat) :
+    IO (World t.S × Nat) := do
+  let mut w := w
+  let mut rng := rng
+  let mut n := 0
+  for _ in [0:fuel] do
+    let some (id, r) := w.host.sent.head? | break
+    let gen : Gen Reply := if w.host.isCancelled id then genCancelled t.custom w.rt.app w.host id r
+      else match w.host.ready.lookup id with
+        | some rep => pure rep
+        | none => genReply t.custom w.rt.app w.host id r
+    let (rep, rng') := gen.run rng
+    rng := rng'
+    let p ← perform t setup w (.host (.reply id rep))
+    w := p.world
+    n := n + 1
+  return (w, n)
 
 /-! ## Running a sequence -/
 
@@ -520,6 +703,8 @@ structure Outcome where
   maxNs : Nat
   /-- Steps where pressability was skipped because the window was below the minimum. -/
   skipped : Nat
+  /-- What the host did. -/
+  host : HostStats := {}
 
 /-- Where a sequence's operations come from: the generator, or a fixed list (replay). -/
 inductive Source where
@@ -539,7 +724,7 @@ def runSeq (t : Target) (setup : Setup) (src : Source) (stats : Stats := {})
   let (ran0, f0) := checks t setup w none [] 0
   stats := stats.record setup.seed ran0
   if let some f := f0.head? then
-    return { setup, ops, failure := some f, stats, steps := 0, over, maxNs, skipped }
+    return { setup, ops, failure := some f, stats, steps := 0, over, maxNs, skipped, host := w.host.stats }
   let (rng0, total, fixed) := match src with
     | .gen r n => (r, n, #[])
     | .replay os => (Rng.ofSeed 0, os.size, os)
@@ -557,6 +742,7 @@ def runSeq (t : Target) (setup : Setup) (src : Source) (stats : Stats := {})
         | o :: rest => pending := rest; pure o
         | [] => pure Op.exit
     ops := ops.push op
+    let s0 := w.rt.app
     let p ← perform t setup w op
     i := i + 1
     w := p.world.noteSeen p.world.rt.laid
@@ -564,6 +750,16 @@ def runSeq (t : Target) (setup : Setup) (src : Source) (stats : Stats := {})
     if p.maxNs > t.budgetNs then over := over.push (i, p.maxNs)
     let act? := match op with | .act a => if p.ran then some a else none | _ => none
     let (ran, fs) := checks t setup w act? p.acts i p.dropped
+    let (ran, fs) := if p.ran && !t.custom.relations.isEmpty then
+        let (r2, f2) := relationChecks t { before := s0, msg := p.msg, after := w.rt.app, effects := p.effects } i
+        -- A message the runtime dropped is also given to `receive` directly.
+        let (r3, f3) := match p.msg, p.msgDropped with
+          | some m, true =>
+            let (s1, es) := t.runApp.receive s0 m
+            relationChecks t { before := s0, msg := some m, after := s1, effects := es } i true
+          | _, _ => ([], [])
+        (ran ++ r2 ++ r3, fs ++ f2 ++ f3)
+      else (ran, fs)
     if t.app.isSome then
       let min := t.minSize setup.metrics.metrics w.rt.app w.rt.ui
       unless min.w ≤ w.rt.ui.size.w && min.h ≤ w.rt.ui.size.h do skipped := skipped + 1
@@ -571,7 +767,24 @@ def runSeq (t : Target) (setup : Setup) (src : Source) (stats : Stats := {})
     if verbose then
       IO.println s!"  {i}. {opText op}{if p.ran then "" else "  (skipped: no such control)"} → {", ".intercalate (p.acts.map actionLean)}{if p.dropped then "  (click dropped: the blur's save moved the control, T33)" else ""}"
     if let some f := fs.head? then
-      return { setup, ops, failure := some f, stats, steps := i, over, maxNs, skipped }
-  return { setup, ops, failure := none, stats, steps := i, over, maxNs, skipped }
+      return { setup, ops, failure := some f, stats, steps := i, over, maxNs, skipped, host := w.host.stats }
+  -- Once the operations are done, the host answers everything outstanding, if the app has
+  -- checks for then.
+  if t.app.isSome && !t.custom.drained.isEmpty then
+    let (w', n) ← drain t setup w (Rng.ofSeed (setup.seed + 0x5eed)) 1000
+    w := w'
+    let s := w.rt.app
+    let mut ran : Array Ran := #[]
+    let mut fails : Array Failure := #[]
+    for (id, ck) in t.custom.drained do
+      ran := ran.push (id, "drained")
+      unless ck s do
+        fails := fails.push <| mkFail "drained" ⟨id, 0⟩ i
+          s!"^{id} is false once the host has answered everything ({n} more replies, {w.host.sent.length} still unanswered)"
+    stats := stats.record setup.seed ran.toList
+    if let some f := fails[0]? then
+      return { setup, ops, failure := some f, stats, steps := i, over, maxNs, skipped, host := w.host.stats }
+  let host := { w.host.stats with leftOver := w.host.sent.length }
+  return { setup, ops, failure := none, stats, steps := i, over, maxNs, skipped, host }
 
 end Cairn.Fuzz
