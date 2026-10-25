@@ -125,9 +125,18 @@ public struct Commands {
     public var registry: () -> Registry = { Registry.current() }
 
     /// The environment Lake runs in: the artifact cache on, and the registry as Reservoir, which
-    /// Lake reads with no credential.
-    func lakeEnv(_ registry: Registry) -> [String: String] {
-        ["LAKE_ARTIFACT_CACHE": "true", "RESERVOIR_API_URL": registry.reservoir]
+    /// Lake reads with no credential. It first fetches the registry dependencies' commits that
+    /// their checkouts lack, and turns git's lazy fetches off when every git dependency is on a
+    /// registry (`LazyFetch`, #196).
+    func lakeEnv(_ registry: Registry, _ project: Project) -> [String: String] {
+        var env = ["LAKE_ARTIFACT_CACHE": "true", "RESERVOIR_API_URL": registry.reservoir]
+        let registries = LazyFetch.registries(registry)
+        let manifest = LakeManifest.load(project.lean)
+        if let manifest { LazyFetch.prefetch(manifest, lean: project.lean, registries: registries, shell: shell) }
+        if LazyFetch.safe(manifest, lakefile: try? Lakefile.load(project.lean).0, registries: registries) {
+            env.merge(LazyFetch.off) { $1 }
+        }
+        return env
     }
 
     // MARK: new
@@ -249,7 +258,7 @@ public struct Commands {
     @discardableResult
     func buildLean(_ project: Project, app given: String? = nil) throws(CairnError) -> Linked? {
         try project.agree()
-        let env = lakeEnv(registry())
+        let env = lakeEnv(registry(), project)
         guard shell.has("lake") else { throw CairnError("lake isn't on PATH; install elan (AGENTS.md, Toolchain)") }
         // Prebuilt Lean for every dependency (and this package, for a published commit). A miss
         // only means building locally, so it never fails the build.
@@ -294,7 +303,7 @@ public struct Commands {
         let dir = project.root.appending(path: "build/doc/\(name)")
         // With the artifact cache on, Lake keeps .olean files in the cache, not in the build
         // directory, and the doc and claims tools import modules from the build directory.
-        var env = lakeEnv(registry())
+        var env = lakeEnv(registry(), project)
         env["LAKE_ARTIFACT_CACHE"] = "false"
         let modules = project.documented
         guard !modules.isEmpty else { throw CairnError("cairn.toml lists no `libs` to document") }
@@ -413,7 +422,7 @@ public struct Commands {
     /// Upload the build's artifacts and its outputs map, so `lake cache get` finds this version
     /// prebuilt. Lake's own `cache put` speaks only to S3, so `cairn` does it.
     func outputs(_ project: Project, _ registry: Registry, _ owner: String, _ revision: String, _ toolchain: String) async throws(CairnError) {
-        let env = lakeEnv(registry)
+        let env = lakeEnv(registry, project)
         let map = FileManager.default.temporaryDirectory.appending(path: "cairn-outputs-\(UUID().uuidString).jsonl")
         defer { try? FileManager.default.removeItem(at: map) }
         try shell.run(["lake", "build", "-o", map.path], in: project.lean, env: env)

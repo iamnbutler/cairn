@@ -5,7 +5,7 @@ LEAN_PREFIX = $(shell cd lean && lean --print-prefix)
 LIB = build/lib/libcairn_lean.a
 VENDOR = host/Sources/CLean/vendor/lean
 
-.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest demo fixture clean record site capture site-try doc doctest conformance fuzz fuzz-quick size fuzz-trusted fuzz-trusted-quick bundle site-build site-dist registry-check new-check cairn-tool fixture-build fixture-ledger examples-check examples-audit examples-doctest examples-selftest examples-fuzz-quick examples-size examples-bench
+.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest demo fixture clean record site capture site-try doc doctest conformance fuzz fuzz-quick size fuzz-trusted fuzz-trusted-quick bundle site-build site-dist registry-check new-check cairn-tool cairn-tool-test fixture-build fixture-ledger examples-check examples-audit examples-doctest examples-selftest examples-fuzz-quick examples-size examples-bench
 
 # region: make-apps
 # build/lib/libcairn_lean.a: the framework (`Cairn`) and Lean's runtime, linked by every host
@@ -78,7 +78,7 @@ corpus: lean
 # region: make-check
 # Everything a PR must pass. The framework's checks run on test/fixture, Cairn's own app;
 # examples-check (at the end of this file) checks the example apps.
-check: lint audit ledger kernel doctest test selftest fuzz-quick size fuzz-trusted-quick fixture-ledger site-build registry-check new-check examples-check
+check: lint audit ledger kernel doctest test selftest fuzz-quick size fuzz-trusted-quick fixture-ledger site-build registry-check new-check cairn-tool-test examples-check
 # endregion: make-check
 
 # region: make-fixture
@@ -90,6 +90,10 @@ CAIRN = $(CURDIR)/tools/cairn/.build/release/cairn
 
 cairn-tool:
 	cd tools/cairn && swift build -c release -q
+
+# The CLI's unit tests, and #196's stale checkout on a localhost dumb-HTTP server (needs python3).
+cairn-tool-test:
+	cd tools/cairn && swift test -q
 
 fixture-build: lean cairn-tool
 	cd $(FIXTURE) && $(CAIRN) build

@@ -144,6 +144,40 @@ sets `LAKE_ARTIFACT_CACHE=true`. `lake cache get` then downloads prebuilt Lean f
 dependency at its resolved commit. A miss isn't an error; Lake builds locally. SwiftPM clones
 `https://cairn.registry.nexthub.sh/git/<owner>/<name>.git` with no credential.
 
+#### Lazy fetches over dumb HTTP (#196)
+
+The registry serves git over the dumb HTTP protocol, and Lake makes every git dependency a
+partial clone (`--filter=tree:0`), so `origin` is a promisor remote. When git fetches a missing
+commit from such a remote, its dumb-HTTP walker lazy-fetches each object it is about to fetch,
+from the same remote, which walks and lazy-fetches again, without end; it stops only when fork
+fails. A Lake fetch from the registry then takes minutes and hundreds of processes.
+`GIT_NO_LAZY_FETCH=1` stops it, but it breaks smart-HTTP dependencies such as GitHub's, whose
+checkout needs lazy fetches (`Could not read <tree>`). So before each Lake run `cairn`:
+
+1. For each git package in `lean/lake-manifest.json` on the registry (its URL is under
+   `<registry>/git/`, the `CAIRN_REGISTRY` one or the public one) whose checkout in
+   `.lake/packages/` lacks the manifest's `rev`, runs `GIT_NO_LAZY_FETCH=1 git fetch origin <rev>`
+   there. Lake then finds the commit and only checks it out. A failed prefetch only warns.
+2. Sets `GIT_NO_LAZY_FETCH=1` for Lake when every git package in the manifest is on the
+   registry, the manifest lists every package the lakefile requires, and the lakefile names no
+   other `http(s)://` URL. Otherwise Lake might fetch from GitHub, and it runs as before.
+
+On Pairs (cairn and cairn_json from the registry), from `cairn build` to Cairn's checkout:
+
+| case | before | after |
+|---|---|---|
+| stale checkout, 0.2.3 to 0.2.4 | 92 s, 769 processes | 4 s, 4 processes |
+| empty `.lake` | 199 s, 770 processes | 9 s, 6 processes |
+
+What stays unfixed until the registry serves smart HTTP: in a project with a GitHub dependency,
+a registry package that isn't checked out yet (a fresh clone, an empty `.lake`, a new
+dependency) or that Lake fetches itself (`lake update` run directly, a version the manifest
+doesn't pin yet) still takes the slow path. So does any project with no
+`lake-manifest.json` yet, and plain `lake` run outside `cairn`; there,
+`export GIT_NO_LAZY_FETCH=1` is safe when every git dependency is on the registry.
+`make cairn-tool-test` (in `make check`) reproduces the stale checkout against a bare
+repository served by a localhost `python3 -m http.server` and checks the prefetch.
+
 ### Publishing
 
 1. Check that the names agree, that the tag `v<version>` is HEAD, and that the tree is clean.
