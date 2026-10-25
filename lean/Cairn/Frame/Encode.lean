@@ -3,7 +3,7 @@ module
 public import Cairn.Frame
 public import Cairn.Frame.Bytes
 
-/-! Frame byte format (docs/frame.md; version 8): specification encoder `Wire.Enc.frame`, decoder
+/-! Frame byte format (docs/frame.md; version 9): specification encoder `Wire.Enc.frame`, decoder
 `Wire.Dec.frame`, the executable encoder `encodeFrame` (proved equal to the specification and
 installed with `@[csimp]`), and the round trip `decodeFrame_encodeFrame`.
 
@@ -81,14 +81,14 @@ def Request.Kind.code : Request.Kind → UInt8
   | .appendFile => 4 | .listDir => 5 | .deleteFile => 6 | .frontmostApp => 7 | .permission => 8
   | .typeText => 9 | .upload => 10 | .forgetClip => 11
   | .openItem => 12 | .appRunning => 13 | .readDefault => 14 | .makeDir => 15
-  | .loadImage => 16
+  | .loadImage => 16 | .forgetSecret => 17
 
 def Request.Kind.ofCode : UInt8 → Option Request.Kind
   | 0 => some .readFile | 1 => some .writeFile | 2 => some .playSound | 3 => some .http
   | 4 => some .appendFile | 5 => some .listDir | 6 => some .deleteFile | 7 => some .frontmostApp
   | 8 => some .permission | 9 => some .typeText | 10 => some .upload | 11 => some .forgetClip
   | 12 => some .openItem | 13 => some .appRunning | 14 => some .readDefault | 15 => some .makeDir
-  | 16 => some .loadImage
+  | 16 => some .loadImage | 17 => some .forgetSecret
   | _ => none
 
 @[simp] theorem Request.Kind.ofCode_code (k : Request.Kind) :
@@ -270,15 +270,20 @@ def fitsPart : Part → Bool
   | .bytes b => fb b
   | .wav c st sp => fu c && fu st && sp.all fu
 
-def fitsSecret (s : Secret) : Bool := fs s.header && fs s.scheme && fs s.file && fs s.name
+def fitsSource : Secret.Source → Bool
+  | .env f n => fs f && fs n
+  | .keychain a => fs a
+
+def fitsSecret (s : Secret) : Bool := fs s.header && fs s.scheme && fitsSource s.source
 
 def fitsRequest : Request → Bool
   | .readFile p => fs p
   | .writeFile p d => fs p && fb d
   | .playSound n => fs n
-  | .http m u hs b t => fs m && fs u && fitsHeaders hs && fb b && fu t
+  | .http m u hs b t sec cap =>
+    fs m && fs u && fitsHeaders hs && fb b && fu t && sec.all fitsSecret && fitsHeaders cap
   | .appendFile p d => fs p && fb d
-  | .listDir p | .deleteFile p | .makeDir p => fs p
+  | .listDir p | .deleteFile p | .makeDir p | .forgetSecret p => fs p
   | .frontmostApp | .permission .. => true
   | .typeText pid t _ => fu pid && fs t
   | .upload m u hs sec body t =>
@@ -402,11 +407,22 @@ def part : Part → List UInt8
   | .bytes b => [0] ++ pad 3 ++ bytes b
   | .wav c st sp => [1] ++ bool sp.isSome ++ pad 2 ++ u32 c ++ u32 st ++ u32 (sp.getD 0)
 
-def secret (s : Secret) : List UInt8 := str s.header ++ str s.scheme ++ str s.file ++ str s.name
+/-- `1` for an environment secret, `2` for a Keychain item (`0` is no secret). -/
+def sourceCode : Secret.Source → UInt8
+  | .env .. => 1
+  | .keychain _ => 2
 
+def source : Secret.Source → List UInt8
+  | .env f n => str f ++ str n
+  | .keychain a => str a
+
+def secret (s : Secret) : List UInt8 := str s.header ++ str s.scheme ++ source s.source
+
+/-- `[0, 0, 0, 0]`, or `[1, 0, 0, 0]` and four strings (an environment secret, as in version 8),
+or `[2, 0, 0, 0]` and three (a Keychain item). -/
 def optSecret : Option Secret → List UInt8
   | none => [0] ++ pad 3
-  | some s => [1] ++ pad 3 ++ secret s
+  | some s => [sourceCode s.source] ++ pad 3 ++ secret s
 
 /-- A `u32` count, then each part. -/
 def parts (ps : List Part) : List UInt8 := u32 ps.length ++ ps.flatMap part
@@ -416,7 +432,8 @@ def requestBody : Request → List UInt8
   | .readFile p => str p
   | .writeFile p d => str p ++ bytes d
   | .playSound n => str n
-  | .http m u hs b t => u32 t ++ str m ++ str u ++ headers hs ++ bytes b
+  | .http m u hs b t sec cap =>
+    u32 t ++ str m ++ str u ++ headers hs ++ bytes b ++ optSecret sec ++ headers cap
   | .appendFile p d => str p ++ bytes d
   | .listDir p => str p
   | .deleteFile p => str p
@@ -431,6 +448,7 @@ def requestBody : Request → List UInt8
   | .readDefault d k => str d ++ str k
   | .makeDir p => str p
   | .loadImage src reload => bool reload ++ pad 3 ++ str src
+  | .forgetSecret a => str a
 
 def effect : Effect → List UInt8
   | .setClipboard s => [0] ++ pad 3 ++ str s
@@ -482,8 +500,8 @@ def surface (s : SurfaceFrame) : List UInt8 :=
     u32 s.place ++ u32 s.anchor.offset ++ size s.minSize ++ str s.title ++ canvas s.canvas ++
     status s.status
 
-/-- Magic, version 8, flags 0. -/
-def header : List UInt8 := magic ++ [8, 0, 0, 0]
+/-- Magic, version 9, flags 0. -/
+def header : List UInt8 := magic ++ [9, 0, 0, 0]
 
 def frame (f : Frame) : List UInt8 :=
   header ++ list surface f.surfaces.toList ++ list effect f.effects.toList ++
@@ -641,8 +659,6 @@ def part : Dec Part := do
     return .wav c st (if has then some sp else none)
   | _ => fail
 
-def secret : Dec Secret := do return ⟨← str, ← str, ← str, ← str⟩
-
 def optSecret : Dec (Option Secret) := do
   match (← byte) with
   | 0 =>
@@ -650,7 +666,15 @@ def optSecret : Dec (Option Secret) := do
     return none
   | 1 =>
     skip 3
-    return some (← secret)
+    let h ← str
+    let sc ← str
+    let f ← str
+    return some ⟨h, sc, .env f (← str)⟩
+  | 2 =>
+    skip 3
+    let h ← str
+    let sc ← str
+    return some ⟨h, sc, .keychain (← str)⟩
   | _ => fail
 
 def parts : Dec (List Part) := do
@@ -669,7 +693,9 @@ def requestBody : Request.Kind → Dec Request
     let u ← str
     let hs ← headers
     let b ← bytes
-    return .http m u hs b t
+    let sec ← optSecret
+    let cap ← headers
+    return .http m u hs b t sec cap
   | .appendFile => do
     let p ← str
     return .appendFile p (← bytes)
@@ -705,6 +731,7 @@ def requestBody : Request.Kind → Dec Request
     let reload ← bool
     skip 3
     return .loadImage (← str) reload
+  | .forgetSecret => do return .forgetSecret (← str)
 
 def effect : Dec Effect := do
   match (← byte) with
@@ -1003,22 +1030,21 @@ theorem part_enc {x : Part} (h : fitsPart x = true) (r : List UInt8) :
         List.append_assoc, bind_apply, byte_cons, bool_enc, skip_pad, u32_enc, fitsU32_zero,
         pure_apply, Bool.false_eq_true, ↓reduceIte]
 
-theorem secret_enc {s : Secret} (h : fitsSecret s = true) (r : List UInt8) :
-    secret (Enc.secret s ++ r) = some (s, r) := by
-  simp only [fitsSecret, Bool.and_eq_true, fs_iff] at h
-  obtain ⟨⟨⟨h1, h2⟩, h3⟩, h4⟩ := h
-  simp only [secret, Enc.secret, List.append_assoc, bind_apply, str_enc h1, str_enc h2,
-      str_enc h3, str_enc h4, pure_apply]
-
 theorem optSecret_enc {s : Option Secret} (h : s.all fitsSecret = true) (r : List UInt8) :
     optSecret (Enc.optSecret s ++ r) = some (s, r) := by
-  cases s with
-  | none => simp only [optSecret, Enc.optSecret, List.cons_append, List.nil_append, bind_apply,
+  rcases s with _ | ⟨hd, sc, ⟨f, n⟩ | a⟩
+  · simp only [optSecret, Enc.optSecret, List.cons_append, List.nil_append, bind_apply,
       byte_cons, skip_pad, pure_apply]
-  | some s =>
-    simp only [Option.all_some] at h
-    simp only [optSecret, Enc.optSecret, List.cons_append, List.nil_append, List.append_assoc,
-        bind_apply, byte_cons, skip_pad, secret_enc h, pure_apply]
+  · simp only [Option.all_some, fitsSecret, fitsSource, Bool.and_eq_true, fs_iff] at h
+    obtain ⟨⟨h1, h2⟩, h3, h4⟩ := h
+    simp only [optSecret, Enc.optSecret, Enc.sourceCode, Enc.secret, Enc.source,
+        List.cons_append, List.nil_append, List.append_assoc, bind_apply, byte_cons, skip_pad,
+        str_enc h1, str_enc h2, str_enc h3, str_enc h4, pure_apply]
+  · simp only [Option.all_some, fitsSecret, fitsSource, Bool.and_eq_true, fs_iff] at h
+    obtain ⟨⟨h1, h2⟩, h3⟩ := h
+    simp only [optSecret, Enc.optSecret, Enc.sourceCode, Enc.secret, Enc.source,
+        List.cons_append, List.nil_append, List.append_assoc, bind_apply, byte_cons, skip_pad,
+        str_enc h1, str_enc h2, str_enc h3, pure_apply]
 
 theorem parts_enc {ps : List Part} (hn : FitsU32 ps.length) (h : ∀ p ∈ ps, fitsPart p = true)
     (r : List UInt8) : parts (Enc.parts ps ++ r) = some (ps, r) := by
@@ -1038,11 +1064,12 @@ theorem requestBody_enc {q : Request} (h : fitsRequest q = true) (r : List UInt8
   | playSound n =>
     simp only [fitsRequest, fs_iff] at h
     simp only [Request.kind, requestBody, Enc.requestBody, bind_apply, str_enc h, pure_apply]
-  | http m u hs b t =>
+  | http m u hs b t sec cap =>
     simp only [fitsRequest, Bool.and_eq_true, fs_iff, fb_iff, fu_iff] at h
-    obtain ⟨⟨⟨⟨hm, hu⟩, hh⟩, hb⟩, ht⟩ := h
+    obtain ⟨⟨⟨⟨⟨⟨hm, hu⟩, hh⟩, hb⟩, ht⟩, hsec⟩, hc⟩ := h
     simp only [Request.kind, requestBody, Enc.requestBody, List.append_assoc, bind_apply,
-        u32_enc ht, str_enc hm, str_enc hu, headers_enc hh, bytes_enc hb, pure_apply]
+        u32_enc ht, str_enc hm, str_enc hu, headers_enc hh, bytes_enc hb, optSecret_enc hsec,
+        headers_enc hc, pure_apply]
   | appendFile p d =>
     simp only [fitsRequest, Bool.and_eq_true, fs_iff, fb_iff] at h
     simp only [Request.kind, requestBody, Enc.requestBody, List.append_assoc, bind_apply,
@@ -1088,6 +1115,9 @@ theorem requestBody_enc {q : Request} (h : fitsRequest q = true) (r : List UInt8
     simp only [fitsRequest, fs_iff] at h
     simp only [Request.kind, requestBody, Enc.requestBody, List.append_assoc, bind_apply,
         bool_enc, skip_pad, str_enc h, pure_apply]
+  | forgetSecret a =>
+    simp only [fitsRequest, fs_iff] at h
+    simp only [Request.kind, requestBody, Enc.requestBody, bind_apply, str_enc h, pure_apply]
 
 theorem effect_enc {x : Effect} (h : fitsEffect x = true) (r : List UInt8) :
     effect (Enc.effect x ++ r) = some (x, r) := by
@@ -1300,7 +1330,11 @@ def part : Part → Nat
 
 def parts (ps : List Part) : Nat := 4 + ps.foldl (fun n p => n + part p) 0
 
-def secret (s : Secret) : Nat := str s.header + str s.scheme + str s.file + str s.name
+def source : Secret.Source → Nat
+  | .env f n => str f + str n
+  | .keychain a => str a
+
+def secret (s : Secret) : Nat := str s.header + str s.scheme + source s.source
 
 def optSecret : Option Secret → Nat
   | none => 4
@@ -1310,9 +1344,9 @@ def requestBody : Request → Nat
   | .readFile p => str p
   | .writeFile p d => str p + bytes d
   | .playSound n => str n
-  | .http m u hs b _ => 4 + str m + str u + headers hs + bytes b
+  | .http m u hs b _ sec cap => 4 + str m + str u + headers hs + bytes b + optSecret sec + headers cap
   | .appendFile p d => str p + bytes d
-  | .listDir p | .deleteFile p | .makeDir p => str p
+  | .listDir p | .deleteFile p | .makeDir p | .forgetSecret p => str p
   | .frontmostApp => 0
   | .permission .. => 4
   | .typeText _ t _ => 8 + str t
@@ -1416,9 +1450,9 @@ theorem parts_eq (ps : List Part) : parts ps = (Enc.parts ps).length := by
       Nat.zero_add]
 
 theorem optSecret_eq (s : Option Secret) : optSecret s = (Enc.optSecret s).length := by
-  cases s <;> simp only [optSecret, secret, Enc.optSecret, Enc.secret, str_eq,
-      List.length_append, List.length_cons, List.length_nil, Enc.pad, List.length_replicate] <;>
-    omega
+  rcases s with _ | ⟨_, _, _ | _⟩ <;> simp only [optSecret, secret, source, Enc.optSecret,
+      Enc.secret, Enc.source, str_eq, List.length_append, List.length_cons, List.length_nil,
+      Enc.pad, List.length_replicate] <;> omega
 
 theorem requestBody_eq (r : Request) : requestBody r = (Enc.requestBody r).length := by
   cases r <;> simp only [requestBody, Enc.requestBody, List.length_append, str_eq, bytes_eq,
@@ -1540,19 +1574,24 @@ def part (b : ByteArray) : Part → ByteArray
 
 def parts (b : ByteArray) (ps : List Part) : ByteArray := ps.foldl part (u32 b ps.length)
 
-def secret (b : ByteArray) (s : Secret) : ByteArray := str (str (str (str b s.header) s.scheme) s.file) s.name
+def source (b : ByteArray) : Secret.Source → ByteArray
+  | .env f n => str (str b f) n
+  | .keychain a => str b a
+
+def secret (b : ByteArray) (s : Secret) : ByteArray := source (str (str b s.header) s.scheme) s.source
 
 def optSecret (b : ByteArray) : Option Secret → ByteArray
   | none => pad (b.push 0) 3
-  | some s => secret (pad (b.push 1) 3) s
+  | some s => secret (pad (b.push (Enc.sourceCode s.source)) 3) s
 
 def requestBody (b : ByteArray) : Request → ByteArray
   | .readFile p => str b p
   | .writeFile p d => bytes (str b p) d
   | .playSound n => str b n
-  | .http m u hs body t => bytes (headers (str (str (u32 b t) m) u) hs) body
+  | .http m u hs body t sec cap =>
+    headers (optSecret (bytes (headers (str (str (u32 b t) m) u) hs) body) sec) cap
   | .appendFile p d => bytes (str b p) d
-  | .listDir p | .deleteFile p | .makeDir p => str b p
+  | .listDir p | .deleteFile p | .makeDir p | .forgetSecret p => str b p
   | .frontmostApp => b
   | .permission p prompt => pad (bool (b.push (Permission.code p)) prompt) 2
   | .typeText pid t r => str (pad (bool (u32 b pid) r) 3) t
@@ -1694,9 +1733,13 @@ theorem foldl_data' {α : Type} (put : ByteArray → α → ByteArray) (e : α �
     (parts b ps).data.toList = b.data.toList ++ Enc.parts ps := by
   simp only [parts, foldl_data' part Enc.part part_data, u32_data, List.append_assoc, Enc.parts]
 
+@[simp] theorem source_data (b : ByteArray) (s : Secret.Source) :
+    (source b s).data.toList = b.data.toList ++ Enc.source s := by
+  cases s <;> simp only [source, str_data, List.append_assoc, Enc.source]
+
 @[simp] theorem secret_data (b : ByteArray) (s : Secret) :
     (secret b s).data.toList = b.data.toList ++ Enc.secret s := by
-  simp only [secret, str_data, List.append_assoc, Enc.secret]
+  simp only [secret, source_data, str_data, List.append_assoc, Enc.secret]
 
 @[simp] theorem optSecret_data (b : ByteArray) (s : Option Secret) :
     (optSecret b s).data.toList = b.data.toList ++ Enc.optSecret s := by

@@ -42,15 +42,28 @@ inductive Part where
   | wav (clip start : Nat) (stop : Option Nat)
 deriving Repr, BEq, Inhabited
 
+/-- Where the host reads a secret's value as it sends a request. -/
+inductive Secret.Source where
+  /-- The environment variable `name` if set and not empty, else `name`'s line in the
+  `KEY=value` file `file` (Yap's API key). -/
+  | env (file name : String)
+  /-- The generic password item `account` in the login keychain, under the app's bundle
+  identifier as its service (docs/effects.md, "Secrets in the Keychain"). -/
+  | keychain (account : String)
+deriving Repr, DecidableEq, Inhabited
+
 /-- A header whose value comes from a secret the host reads when it sends the request, so the
-secret never reaches Lean, a frame or a log: `header: scheme ++ value`, where `value` is the
-environment variable `name`, or else `name`'s line in the `KEY=value` file `file`. -/
+secret never reaches Lean, a frame or a log: `header: scheme ++ value`, where `value` is read
+from `source`. -/
 structure Secret where
   header : String
   scheme : String
-  file : String
-  name : String
+  source : Secret.Source
 deriving Repr, DecidableEq, Inhabited
+
+/-- `Authorization: Bearer <value of the Keychain item account>`. -/
+def Secret.bearer (account : String) : Secret :=
+  { header := "Authorization", scheme := "Bearer ", source := .keychain account }
 
 -- region: effects-request
 /-- Something the host does that answers back. Closed: adding a kind is a constructor, its
@@ -61,8 +74,16 @@ inductive Request where
   | writeFile (path : String) (data : ByteArray)
   /-- A named system sound ("Tink", "Pop", "Basso", …). -/
   | playSound (name : String)
+  /-- An HTTP request. With a `secret`, the host adds its header as it sends (a missing secret
+  answers `failed notFound` and sends nothing). With a non-empty `capture`, a 2xx reply whose
+  body is a JSON object has each listed top-level string field (`(field, account)`) written to
+  the Keychain item `account` and its value replaced by `""` in the body Lean receives; all or
+  nothing: a body that isn't a JSON object, or a listed field that is missing, repeated or not
+  a string, answers `failed invalid` and writes nothing. Other replies pass through as they
+  came. -/
   | http (method url : String) (headers : List (String × String)) (body : ByteArray)
-      (timeoutMs : Nat)
+      (timeoutMs : Nat) (secret : Option Secret := none)
+      (capture : List (String × String) := [])
   /-- Append to the file, creating it (mode 600) and missing parent directories. -/
   | appendFile (path : String) (data : ByteArray)
   /-- The names in a directory (not `.` and `..`), sorted by their UTF-8 bytes. -/
@@ -101,6 +122,9 @@ inductive Request where
   the host already holds is answered from what it holds, unless `reload`, which reads `source`
   again. -/
   | loadImage (source : String) (reload : Bool)
+  /-- Delete the Keychain item `account` (`Secret.Source.keychain`): `done`, also when there is
+  none. -/
+  | forgetSecret (account : String)
 deriving Repr, BEq, Inhabited
 -- endregion: effects-request
 
@@ -110,6 +134,7 @@ inductive Request.Kind where
   | readFile | writeFile | playSound | http
   | appendFile | listDir | deleteFile | frontmostApp | permission
   | typeText | upload | forgetClip | openItem | appRunning | readDefault | makeDir | loadImage
+  | forgetSecret
 deriving Repr, DecidableEq, Inhabited
 
 def Request.kind : Request → Request.Kind
@@ -119,7 +144,7 @@ def Request.kind : Request → Request.Kind
   | .frontmostApp => .frontmostApp | .permission .. => .permission
   | .typeText .. => .typeText | .upload .. => .upload | .forgetClip .. => .forgetClip
   | .openItem .. => .openItem | .appRunning .. => .appRunning | .readDefault .. => .readDefault
-  | .makeDir .. => .makeDir | .loadImage .. => .loadImage
+  | .makeDir .. => .makeDir | .loadImage .. => .loadImage | .forgetSecret .. => .forgetSecret
 
 /-- The kinds that count toward the cap on requests in flight (`App.maxInFlight`, docs/effects.md
 "Requests in flight"): the ones that can take seconds on the network. The others (files, sounds,
@@ -130,7 +155,8 @@ def Request.Kind.capped : Request.Kind → Bool
 
 -- region: effects-reply
 inductive Reply where
-  /-- `writeFile`, `appendFile`, `deleteFile`, `makeDir` and `playSound` succeeded. -/
+  /-- `writeFile`, `appendFile`, `deleteFile`, `makeDir`, `forgetSecret` and `playSound`
+  succeeded. -/
   | done
   /-- `readFile`'s contents, or `readDefault`'s value. -/
   | bytes (data : ByteArray)
@@ -154,6 +180,7 @@ def Reply.answers : Request.Kind → Reply → Bool
   | .readFile, .bytes _ => true
   | .writeFile, .done | .playSound, .done | .appendFile, .done | .deleteFile, .done => true
   | .typeText, .done | .forgetClip, .done | .openItem, .done | .makeDir, .done => true
+  | .forgetSecret, .done => true
   | .readDefault, .bytes _ => true
   | .http, .http .. | .upload, .http .. => true
   | .listDir, .names _ => true

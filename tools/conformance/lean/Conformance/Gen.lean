@@ -195,7 +195,9 @@ def requestKind : Request → String
   | .readFile p => s!"readFile {p}"
   | .writeFile p d => s!"writeFile {p} ({d.size} bytes)"
   | .playSound n => s!"playSound {n}"
-  | .http m u _ _ _ => s!"http {m} {u}"
+  | .http m u _ _ _ sec cap =>
+    s!"http {m} {u}{match sec with | some x => s!" secret {x.header}" | none => ""}" ++
+      (if cap.isEmpty then "" else s!" capture {cap.length}")
   | .appendFile p d => s!"appendFile {p} ({d.size} bytes)"
   | .listDir p => s!"listDir {p}"
   | .deleteFile p => s!"deleteFile {p}"
@@ -211,6 +213,7 @@ def requestKind : Request → String
   | .readDefault d k => s!"readDefault {d} {k}"
   | .makeDir p => s!"makeDir {p}"
   | .loadImage src r => s!"loadImage {src}{if r then " reload" else ""}"
+  | .forgetSecret a => s!"forgetSecret {a}"
 
 def jeffect : Effect → String
   | .setClipboard s => jobj [("clipboard", jstr s)]

@@ -146,8 +146,13 @@ def headers : Gen (List (String × String)) := do
 def part : Gen Part := do
   if ← coin then return .bytes (← bytes) else return .wav (← nat) (← nat) (← opt nat)
 
+def secret : Gen Secret := do
+  let h ← str
+  let sc ← str
+  if ← coin then return ⟨h, sc, .env (← str) (← str)⟩ else return ⟨h, sc, .keychain (← str)⟩
+
 def request : Gen Request := do
-  match ← below 17 with
+  match ← below 18 with
   | 0 => return .readFile (← str)
   | 1 => return .writeFile (← str) (← bytes)
   | 2 => return .playSound (← str)
@@ -158,7 +163,7 @@ def request : Gen Request := do
   | 7 => return .permission (← pick #[.accessibility, .microphone]) (← coin)
   | 8 => return .typeText (← nat) (← str) (← coin)
   | 9 =>
-    let sec ← opt (do return (⟨← str, ← str, ← str, ← str⟩ : Secret))
+    let sec ← opt secret
     return .upload (← str) (← str) (← headers) sec (← array 3 part).toList (← nat)
   | 10 => return .forgetClip (← nat)
   | 11 => return .openItem (← str)
@@ -166,7 +171,8 @@ def request : Gen Request := do
   | 13 => return .readDefault (← str) (← str)
   | 14 => return .makeDir (← str)
   | 15 => return .loadImage (← str) (← coin)
-  | _ => return .http (← str) (← str) (← headers) (← bytes) (← nat)
+  | 16 => return .forgetSecret (← str)
+  | _ => return .http (← str) (← str) (← headers) (← bytes) (← nat) (← opt secret) (← headers)
 
 def effect : Gen Effect := do
   match ← below 8 with
@@ -367,14 +373,19 @@ def maxFrame : Frame where
     .request 5 (.permission .microphone true), .request 6 (.typeText 4294967295 "" true),
     .request 7 (.typeText 0 "héllo 🙂\n" false), .request 8 (.forgetClip 4294967295),
     .request 9 (.upload "POST" "https://api.openai.com/v1/audio/transcriptions" []
-      (some ⟨"Authorization", "Bearer ", "~/.config/yap/secrets.env", "OPENAI_API_KEY"⟩)
+      (some ⟨"Authorization", "Bearer ", .env "~/.config/yap/secrets.env" "OPENAI_API_KEY"⟩)
       [.bytes ⟨#[45, 45]⟩, .wav 4294967295 0 none, .wav 0 4294967295 (some 4294967295),
        .bytes ByteArray.empty] 4294967295),
     .request 10 (.upload "" "" [("", "")] none [] 0),
     .request 11 (.openItem "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"),
     .request 12 (.appRunning ""), .request 13 (.readDefault "dev.yap.Yap" "日本🙂"),
     .request 14 (.makeDir "~/Library/Application Support/yap/transcripts"),
-    .request 15 (.loadImage "" true), .request 16 (.loadImage "images/日本 🙂.png" false)]
+    .request 15 (.loadImage "" true), .request 16 (.loadImage "images/日本 🙂.png" false),
+    .request 17 (.http "POST" "https://pds.example/xrpc/com.atproto.server.refreshSession" []
+      ByteArray.empty 30000 (some (.bearer "refresh"))
+      [("accessJwt", "access"), ("refreshJwt", "refresh"), ("", "")]),
+    .request 18 (.http "GET" "" [] ByteArray.empty 0 (some ⟨"", "", .keychain ""⟩) []),
+    .request 19 (.forgetSecret "refresh"), .request 20 (.forgetSecret "")]
   subs := #[.start 4294967295 (.every 0), .stop 0, .start 1 (.watchFile "~/a 🙂.json"),
     .start 2 (.record 4294967295), .start 3 (.globalKey 63 none), .start 4 (.globalKey 0 (some 4294967295)),
     .start 5 (.imageCache 18446744073709551615), .start 6 (.imageCache 0)]

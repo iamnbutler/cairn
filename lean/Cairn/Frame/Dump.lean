@@ -72,13 +72,18 @@ def part : Part → String
   | .bytes b => s!"bytes {bytes b}"
   | .wav c st sp => s!"wav {c} {st} {opt toString sp}"
 
-def secret (s : Secret) : String := s!"{str s.header} {str s.scheme} {str s.file} {str s.name}"
+def secret (s : Secret) : String :=
+  s!"{str s.header} {str s.scheme} " ++ match s.source with
+  | .env f n => s!"{str f} {str n}"
+  | .keychain a => s!"keychain {str a}"
 
 def request : Request → String
   | .readFile p => s!"readFile {str p}"
   | .writeFile p d => s!"writeFile {str p} {bytes d}"
   | .playSound n => s!"sound {str n}"
-  | .http m u hs b t => s!"http {str m} {str u} timeout={t} {headers hs} body={bytes b}"
+  | .http m u hs b t sec cap =>
+    s!"http {str m} {str u} timeout={t} {headers hs} body={bytes b} secret={opt secret sec} " ++
+      s!"capture={cap.length}" ++ cap.foldl (fun acc (k, v) => acc ++ s!" {str k} {str v}") ""
   | .appendFile p d => s!"appendFile {str p} {bytes d}"
   | .listDir p => s!"listDir {str p}"
   | .deleteFile p => s!"deleteFile {str p}"
@@ -94,6 +99,7 @@ def request : Request → String
   | .readDefault d k => s!"readDefault {str d} {str k}"
   | .makeDir p => s!"makeDir {str p}"
   | .loadImage src r => s!"loadImage {bit r} {str src}"
+  | .forgetSecret a => s!"forgetSecret {str a}"
 
 def effect : Effect → String
   | .setClipboard s => s!"clipboard {str s}"
