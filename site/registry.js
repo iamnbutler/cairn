@@ -15,6 +15,7 @@
 // it. /packages/ shows the libraries and /packages/?tab=apps the apps; a registry that doesn't
 // say (nextpm before kinds) means a library.
 import fixture from "./registry/fixture.json";
+import { ogTags } from "../tools/og/og.ts";
 
 const esc = (value) =>
 	String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -115,7 +116,7 @@ function latestOf(versions) {
 
 const date = (iso) => new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
 
-function page({ title, lede, eyebrow, body, on = "packages" }) {
+function page({ title, lede, eyebrow, body, path, on = "packages" }) {
 	return `<!doctype html>
 <html lang="en">
 <head>
@@ -130,6 +131,7 @@ function page({ title, lede, eyebrow, body, on = "packages" }) {
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/docs/docs.css">
+${ogTags({ title, description: lede, path, card: "packages" })}
 <link rel="stylesheet" href="/packages.css">
 </head>
 <body>
@@ -203,6 +205,7 @@ ${items.length ? `<ul class="pkgs">${cards}</ul>` : `<p>${TABS[kind].none}</p>`}
 		title: "Packages",
 		eyebrow: "Registry",
 		lede: "Cairn packages: libraries to build on and apps to run, each version with the claims it makes.",
+		path: `/packages/${TABS[kind].tab}`,
 		body,
 	});
 }
@@ -284,6 +287,7 @@ ${ledger}
 		title: name,
 		eyebrow: `Package · ${esc(pkg.owner)}`,
 		lede: shown.description ?? pkg.description ?? "",
+		path: `/packages/${encodeURIComponent(name)}/${wanted ? `${encodeURIComponent(shown.version)}/` : ""}`,
 		body,
 	});
 }
@@ -294,6 +298,7 @@ export function docsPage(name, version) {
 		title: `${name} ${version}`,
 		eyebrow: 'Docs<span class="todo">not yet</span>',
 		lede: `API docs for ${name} ${version}.`,
+		path: `/docs/${encodeURIComponent(name)}/${encodeURIComponent(version)}/`,
 		body: `<aside class="note"><div class="card px"><p class="label"><img src="/icon.svg" alt="">To do</p>
 <p>Docs for this version will be built by the registry from its source, like docs.rs. Not yet.</p>
 <p>Publishers don't upload docs. HTML served from an upload runs as the site that serves it, so the registry takes none and this site shows none.</p>

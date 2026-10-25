@@ -15,12 +15,16 @@
 //     every URL absolute;
 //   - the homepage's "latest milestone" panel, between <!-- latest-milestone --> markers;
 //   - the homepage's list of ids that moved to /milestones/, between /* moved-ids */ markers, so
-//     a link from before the move (/#second-milestone-yap-on-cairn) still lands on its section.
+//     a link from before the move (/#second-milestone-yap-on-cairn) still lands on its section;
+//   - the link preview tags (tools/og/og.ts), between <!-- og --> markers, in the pages no
+//     generator here writes: the homepage, /milestones/, and the maps and API docs copied in by
+//     `make site-maps` and `make site-api`.
 //
 // Output depends only on those files, never on the clock or git, so --check is stable. Needs only
 // bun.
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { join, relative, resolve } from "node:path";
+import { type CardName, stamp } from "../og/og.ts";
 
 const ROOT = resolve(import.meta.dir, "../..");
 const PUBLIC = join(ROOT, "site/public");
@@ -176,6 +180,19 @@ const movedRe = /\/\* moved-ids \*\/[\s\S]*?\/\* \/moved-ids \*\//;
 if (!movedRe.test(home)) fail(HOME, "has no /* moved-ids */ … /* /moved-ids */ markers");
 home = home.replace(movedRe, () => `/* moved-ids */${JSON.stringify(moved)}/* /moved-ids */`);
 for (const id of moved) if (home.includes(`id="${id}"`)) fail(HOME, `#${id} is both here and on /milestones/; the redirect would hide it`);
+home = stamp(home, "/", "home");
+
+// Link preview tags in the pages nothing else here writes.
+const htmlUnder = (dir: string): string[] =>
+	existsSync(dir) ? readdirSync(dir).flatMap((n) => (statSync(join(dir, n)).isDirectory() ? htmlUnder(join(dir, n)) : n.endsWith(".html") ? [join(dir, n)] : [])) : [];
+const stamped: [string, string][] = [
+	...([["milestones", "milestones"], ["map", "maps"], ["docs/api", "docs"]] as [string, CardName][]).flatMap(([dir, card]) =>
+		htmlUnder(join(PUBLIC, dir)).map((file): [string, string] => {
+			const path = "/" + relative(PUBLIC, file).replace(/(^|\/)index\.html$/, "$1");
+			return [relative(ROOT, file), stamp(readFileSync(file, "utf8"), path, card)];
+		}),
+	),
+];
 
 if (errors.length) {
 	for (const e of errors) console.error(`site: ${e}`);
@@ -186,6 +203,7 @@ if (errors.length) {
 const out: [string, string][] = [
 	["site/public/feed.xml", feed],
 	[HOME, home],
+	...stamped,
 ];
 if (CHECK) {
 	const stale = out.filter(([f, s]) => !existsSync(join(ROOT, f)) || readFileSync(join(ROOT, f), "utf8") !== s).map(([f]) => f);
@@ -194,8 +212,8 @@ if (CHECK) {
 		console.error("site: run make site-feed and commit the result");
 		process.exit(1);
 	}
-	console.log(`site: feed.xml (${items.length} items) and the homepage are up to date`);
+	console.log(`site: feed.xml (${items.length} items), the homepage and ${stamped.length} pages' preview tags are up to date`);
 } else {
 	for (const [f, s] of out) writeFileSync(join(ROOT, f), s);
-	console.log(`site: wrote feed.xml (${items.length} items) and the homepage's milestone links`);
+	console.log(`site: wrote feed.xml (${items.length} items), the homepage's milestone links and ${stamped.length} pages' preview tags`);
 }
