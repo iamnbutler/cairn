@@ -2,6 +2,7 @@ module
 
 public import Cairn.App
 public import Cairn.UI.Hit
+public import Cairn.UI.VList
 public import Cairn.Layout.Core
 public import Cairn.Runtime.World
 
@@ -447,26 +448,79 @@ def route (m : TextMetrics) (s : State S) : Event → State S × List Action
 def UI.same (a b : UI) : Bool :=
   decide (a.size = b.size) && decide (a.hover = b.hover) && decide (a.pressed = b.pressed) &&
     decide (a.focus = b.focus) && decide (a.windowFocused = b.windowFocused) &&
-    decide (a.scroll = b.scroll)
+    decide (a.scroll = b.scroll) && decide (a.lists = b.lists)
 
 theorem UI.same_eq {a b : UI} (h : UI.same a b = true) : a = b := by
   cases a; cases b
   simp only [UI.same, Bool.and_eq_true, decide_eq_true_eq] at h
-  obtain ⟨⟨⟨⟨⟨h1, h2⟩, h3⟩, h4⟩, h5⟩, h6⟩ := h
-  subst h1 h2 h3 h4 h5 h6; rfl
+  obtain ⟨⟨⟨⟨⟨⟨h1, h2⟩, h3⟩, h4⟩, h5⟩, h6⟩, h7⟩ := h
+  subst h1 h2 h3 h4 h5 h6 h7; rfl
+
+/-! ## Virtual lists (docs/runtime.md, "Virtual lists")
+
+After every layout the runtime records what it learnt of each virtual list on screen
+(`VList.record`): the heights of the rows just laid, the box's length, and the row to keep still,
+and it moves the list's offset by as much as that row's top moved. The view reads the record
+back (`VList.node`, through `UI.listOf`), so the next layout lays those rows at their real
+heights. -/
+
+/-- A virtual list as laid: its ref, what the view laid it by, its rect and padding, the offset
+it was laid at, how far that offset can go, and its children. -/
+structure LaidList where
+  ref : ControlRef
+  info : VList.Info
+  rect : Rect
+  pad : Insets
+  offset : Int
+  limit : Int
+  kids : List Laid
+
+mutual
+/-- Every virtual list in the tree, in paint order. -/
+def listsOf : Laid → List LaidList
+  | l@(.box r _ st _ kids) =>
+    let rest := listsList kids
+    match st.rows, scrollerOf l with
+    | some info, some sc =>
+      { ref := sc.ref, info, rect := r, pad := st.padding, offset := sc.offset,
+        limit := sc.limit, kids } :: rest
+    | _, _ => rest
+  | _ => []
+def listsList : List Laid → List LaidList
+  | [] => []
+  | l :: ls => listsOf l ++ listsList ls
+end
+
+/-- The runtime's record of every virtual list in `laid`: what is now known of it, and its
+corrected offset. -/
+def recordLists (laid : Laid) : List (ControlRef × VList.Known × Int) :=
+  (listsOf laid).map fun ll =>
+    let (k, o) := VList.record ll.info ll.rect ll.pad ll.offset ll.limit ll.kids
+    (ll.ref, k, o)
+
+/-- `offs` with box `r` at `o`; the same list when it already is (as `UI.setScroll`). -/
+def setOff (offs : List (ControlRef × Int)) (r : ControlRef) (o : Int) : List (ControlRef × Int) :=
+  let cur := match offs.find? (·.1 == r) with
+    | some (_, x) => x
+    | none => 0
+  if cur = o then offs else (r, o) :: offs.filter fun e => !decide (e.1 = r)
 
 def relayout (app : App S) (cfg : Config) (st : S) (ui : UI) : Laid :=
   cfg.layout cfg.metrics ui.size (app.view st ui)
 
 /-- Repair interaction state against a new tree: hover is what the pointer is over, focus
 and press survive only if their control does, and scroll offsets only if their box does, clamped
-to its content. -/
+to its content. Virtual lists are recorded (`recordLists`) and their offsets corrected before
+the clamp. -/
 def fixUI (laid : Laid) (pointer : Option Point) (ui : UI) : UI :=
+  let recs := recordLists laid
   { ui with
     hover := pointer.bind (hitRef laid)
     focus := ui.focus.filter (focusableIn laid)
     pressed := ui.pressed.filter (present laid)
-    scroll := clampScroll (scrollersOf laid) ui.scroll }
+    scroll := clampScroll (scrollersOf laid)
+      (recs.foldl (fun offs (r, _, o) => setOff offs r o) ui.scroll)
+    lists := recs.map fun (r, k, _) => (r, k) }
 
 /-- View and lay out, repair `ui0` against the result, and repeat while the repair changes
 what the view saw (hover reveals, focus rings), up to `fuel` more times. The result is always
