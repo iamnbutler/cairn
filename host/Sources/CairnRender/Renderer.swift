@@ -55,6 +55,8 @@ public struct RenderStats: Equatable, Sendable {
     public var skipped = 0  // draws dropped by an empty clip or a zero-size rect
     public var unbalancedPops = 0
     public var shapes = 0, paints = 0
+    /// `image` draws painted, and those skipped because the host holds no image for the source.
+    public var images = 0, missingImages = 0
 }
 
 /// Paints a frame's draw list with Metal: rounded, bordered rects by SDF, glyph runs from a
@@ -70,12 +72,16 @@ public final class Renderer {
 
     private let queue: MTLCommandQueue
     private let library: MTLLibrary
-    private var pipelines: [MTLPixelFormat: (rect: MTLRenderPipelineState, glyph: MTLRenderPipelineState)] = [:]
+    private var pipelines: [MTLPixelFormat: Pipelines] = [:]
+    private struct Pipelines { let rect, glyph, image: MTLRenderPipelineState }
     let atlas: GlyphAtlas
     let shapes: ShapeCache
     private var painterPipelines: [String: MTLRenderPipelineState] = [:]
     private let emptyMask: MTLTexture
     private let emptyColor: MTLTexture
+    /// Where `image` draws read their pixels; the renderer keeps a mipmapped texture per source.
+    public var images: ImageStore = .shared
+    private var imageTextures: [String: (generation: Int, texture: MTLTexture)] = [:]
 
     /// Frames that may be in flight at once; each owns a slot of instance buffers.
     static let framesInFlight = 3
@@ -89,7 +95,7 @@ public final class Renderer {
         var glyphs: MTLBuffer?
     }
 
-    private enum Kind { case rects, glyphs, shape, paint }
+    private enum Kind { case rects, glyphs, shape, paint, image }
     private struct Batch {
         var kind: Kind
         var start: Int
@@ -97,7 +103,8 @@ public final class Renderer {
         var clip: PixelRect
         var maskPage: Int32 = -1
         var colorPage: Int32 = -1
-        /// `.shape`: the texture in this frame's `textures`; `.paint`: the index in `paints`.
+        /// `.shape`, `.image`: the texture in this frame's `textures`; `.paint`: the index in
+        /// `paints`.
         var item = -1
     }
 
@@ -165,11 +172,16 @@ public final class Renderer {
         var textures: [MTLTexture] = []
         var paints: [PaintItem] = []
         var stats = RenderStats()
+        var fresh: [MTLTexture] = []
         build(frame.draws, scale: scale,
               bounds: PixelRect(x0: 0, y0: 0, x1: texture.width, y1: texture.height),
               rects: &rects, glyphs: &glyphs, batches: &batches, textures: &textures,
-              paints: &paints, stats: &stats)
+              paints: &paints, fresh: &fresh, stats: &stats)
         lastStats = stats
+        if !fresh.isEmpty, let blit = cmd.makeBlitCommandEncoder() {
+            for t in fresh where t.mipmapLevelCount > 1 { blit.generateMipmaps(for: t) }
+            blit.endEncoding()
+        }
 
         let s = slots[slot]
         slot = (slot + 1) % slots.count
@@ -204,6 +216,14 @@ public final class Renderer {
                 }
                 enc.setVertexBufferOffset(b.start * MemoryLayout<RectInstance>.stride, index: 0)
                 stats.rectBatches += 1
+            case .image:
+                if current != .image {
+                    enc.setRenderPipelineState(pipe.image)
+                    enc.setVertexBuffer(glyphBuf, offset: 0, index: 0)
+                    current = .image
+                }
+                enc.setVertexBufferOffset(b.start * MemoryLayout<GlyphInstance>.stride, index: 0)
+                enc.setFragmentTexture(textures[b.item], index: 1)
             case .glyphs, .shape:
                 if current != .glyphs {
                     enc.setRenderPipelineState(pipe.glyph)
@@ -248,7 +268,7 @@ public final class Renderer {
     private func build(_ draws: [Draw], scale: Float, bounds: PixelRect,
                        rects: inout [RectInstance], glyphs: inout [GlyphInstance],
                        batches: inout [Batch], textures: inout [MTLTexture], paints: inout [PaintItem],
-                       stats: inout RenderStats) {
+                       fresh: inout [MTLTexture], stats: inout RenderStats) {
         var clips: [PixelRect] = [bounds]
         rects.reserveCapacity(draws.count)
         for d in draws {
@@ -306,6 +326,22 @@ public final class Renderer {
                 paints.append(PaintItem(paint: p, painter: painter, box: px))
                 batches.append(Batch(kind: .paint, start: 0, count: 0, clip: cut, item: paints.count - 1))
                 stats.paints += 1
+            case let .image(r, dest, source):
+                // Scaled into `dest`, cut to the box within the clip: the box's pixels snap like
+                // a fill of the same rect, so nothing lands outside what a background would cover.
+                let cut = clip.intersect(PixelRect.covering(r, scale: scale))
+                let to = PixelRect.covering(dest, scale: scale)
+                guard !cut.isEmpty, !to.isEmpty, !cut.intersect(to).isEmpty else { stats.skipped += 1; continue }
+                guard let t = imageTexture(source, fresh: &fresh) else {
+                    stats.missingImages += 1; stats.skipped += 1; continue
+                }
+                textures.append(t)
+                glyphs.append(GlyphInstance(
+                    rect: SIMD4(Float(to.x0), Float(to.y0), Float(to.x1 - to.x0), Float(to.y1 - to.y0)),
+                    uv: SIMD4(0, 0, 1, 1), color: SIMD4(1, 1, 1, 1), misc: .zero))
+                batches.append(Batch(kind: .image, start: glyphs.count - 1, count: 1, clip: cut,
+                                     item: textures.count - 1))
+                stats.images += 1
             }
         }
     }
@@ -364,12 +400,35 @@ public final class Renderer {
 
     // MARK: Helpers
 
+    /// The texture for `source`, made (and queued in `fresh` for its mip levels) the first time
+    /// it is drawn after `images` was given it. Nil while the store holds no image for it.
+    private func imageTexture(_ source: String, fresh: inout [MTLTexture]) -> MTLTexture? {
+        guard let e = images.entry(source) else {
+            imageTextures[source] = nil
+            return nil
+        }
+        if let t = imageTextures[source], t.generation == e.generation { return t.texture }
+        let px = e.pixels
+        let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: px.width,
+                                                         height: px.height, mipmapped: true)
+        d.usage = .shaderRead
+        d.storageMode = .shared
+        guard let t = device.makeTexture(descriptor: d) else { return nil }
+        px.bytes.withUnsafeBytes {
+            t.replace(region: MTLRegionMake2D(0, 0, px.width, px.height), mipmapLevel: 0,
+                      withBytes: $0.baseAddress!, bytesPerRow: px.width * 4)
+        }
+        imageTextures[source] = (e.generation, t)
+        fresh.append(t)
+        return t
+    }
+
     /// A logical length in whole device pixels, rounded half down.
     static func edgeLength(_ v: UInt32, _ scale: Float) -> Int {
         Int((Double(v) * Double(scale) - 0.5).rounded(.up))
     }
 
-    private func pipeline(_ format: MTLPixelFormat) -> (rect: MTLRenderPipelineState, glyph: MTLRenderPipelineState) {
+    private func pipeline(_ format: MTLPixelFormat) -> Pipelines {
         if let p = pipelines[format] { return p }
         func make(_ v: String, _ f: String) -> MTLRenderPipelineState {
             let d = MTLRenderPipelineDescriptor()
@@ -384,7 +443,8 @@ public final class Renderer {
             a.destinationAlphaBlendFactor = .oneMinusSourceAlpha
             return try! device.makeRenderPipelineState(descriptor: d)
         }
-        let p = (make("rect_vertex", "rect_fragment"), make("glyph_vertex", "glyph_fragment"))
+        let p = Pipelines(rect: make("rect_vertex", "rect_fragment"), glyph: make("glyph_vertex", "glyph_fragment"),
+                          image: make("glyph_vertex", "image_fragment"))
         pipelines[format] = p
         return p
     }

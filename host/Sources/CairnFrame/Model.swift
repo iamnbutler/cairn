@@ -90,6 +90,9 @@ public enum Draw: Equatable, Sendable {
     case popClip
     case paint(Rect, Paint)
     case shape(Rect, fill: Color?, radius: UInt32, border: Border?, corner: Corner, shadow: Shadow?)
+    /// The image loaded from `source`, scaled into `dest` and clipped to the box `rect` (and any
+    /// enclosing clip). Nothing is drawn while the host holds no image for `source`.
+    case image(Rect, dest: Rect, source: String)
 }
 
 public enum Role: UInt8, Sendable {
@@ -217,6 +220,10 @@ public enum Request: Equatable, Sendable {
     case readDefault(domain: String, key: String)
     /// Create a directory and its missing parents, private (mode 700).
     case makeDir(path: String)
+    /// Decode the image at a file path or http(s) URL, keep it for `image` draws naming the same
+    /// source, and answer its pixel size. `reload` reads it again rather than answering from the
+    /// cache.
+    case loadImage(source: String, reload: Bool)
 
     /// The kind code on the wire (`Request.Kind.code`).
     public var kindCode: UInt8 {
@@ -237,6 +244,7 @@ public enum Request: Equatable, Sendable {
         case .appRunning: 13
         case .readDefault: 14
         case .makeDir: 15
+        case .loadImage: 16
         }
     }
 }
@@ -252,8 +260,11 @@ public enum Reply: Equatable, Sendable {
     case app(pid: UInt32, name: String)
     /// `permission`'s answer.
     case flag(Bool)
+    /// `loadImage`'s pixel size.
+    case image(width: UInt32, height: UInt32)
 
-    /// `done` 0, `bytes` 1, `http` 2, `failed` 3, `names` 4, `app` 5, `flag` 6 (`Reply.code`).
+    /// `done` 0, `bytes` 1, `http` 2, `failed` 3, `names` 4, `app` 5, `flag` 6, `image` 7
+    /// (`Reply.code`).
     public var code: UInt8 {
         switch self {
         case .done: 0
@@ -263,6 +274,7 @@ public enum Reply: Equatable, Sendable {
         case .names: 4
         case .app: 5
         case .flag: 6
+        case .image: 7
         }
     }
 }

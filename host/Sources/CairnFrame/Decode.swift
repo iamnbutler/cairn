@@ -24,11 +24,11 @@ extension Frame {
         self = try bytes.withUnsafeBytes { try Frame(decoding: $0) }
     }
 
-    /// Header (magic, version 4, flags 0), surfaces, effects, subscription commands, wake.
+    /// Header (magic, version 5, flags 0), surfaces, effects, subscription commands, wake.
     public init(decoding raw: UnsafeRawBufferPointer) throws {
         var r = ByteReader(raw)
         try r.need(8)
-        guard r.u8(0) == 0x43, r.u8(1) == 0x41, r.u8(2) == 0x46, r.u8(3) == 0x52, r.u16(4) == 4,
+        guard r.u8(0) == 0x43, r.u8(1) == 0x41, r.u8(2) == 0x46, r.u8(3) == 0x52, r.u16(4) == 5,
               r.u16(6) == 0  // flags: reserved, zero (found by cairn-fuzz-trusted)
         else { throw FrameDecodeError.badHeader }
         r.i = 8
@@ -164,6 +164,11 @@ extension Frame {
             r.i += 56
             return .shape(rect, fill: hasFill ? fill : nil, radius: radius, border: hasBorder ? border : nil,
                           corner: corner, shadow: hasShadow ? shadow : nil)
+        case 6:
+            try r.need(36)
+            let rect = r.rect(4), dest = r.rect(20)
+            r.i += 36
+            return .image(rect, dest: dest, source: try r.string())
         default:
             throw FrameDecodeError.badCode(tag, at: r.i)
         }
@@ -290,6 +295,11 @@ extension Frame {
                 let domain = try er.string()
                 req = .readDefault(domain: domain, key: try er.string())
             case 15: req = .makeDir(path: try er.string())
+            case 16:
+                try er.need(4)
+                let reload = try er.flag(0)
+                er.i += 4
+                req = .loadImage(source: try er.string(), reload: reload)
             default: throw FrameDecodeError.badCode(kind, at: at)
             }
             return .request(id: id, req)

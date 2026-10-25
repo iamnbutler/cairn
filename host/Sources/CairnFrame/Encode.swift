@@ -52,6 +52,7 @@ extension Event {
             case let .names(ns): u32(UInt32(ns.count)); for n in ns { str(n) }
             case let .app(pid, name): u32(pid); str(name)
             case let .flag(b): out += [b ? 1 : 0, 0, 0, 0]
+            case let .image(w, h): u32(w); u32(h)
             }
         case let .subEvent(id, e):
             if case let .failed(f, _) = e { head(20, e.code, f.rawValue) } else { head(20, e.code) }

@@ -31,6 +31,8 @@ public enum DebugJSON {
         case let .paint(r, p):
             ["paint": rect(r), "shader": p.shader, "origin": Int(p.origin),
              "scalars": p.scalars.map { Int($0) }, "arrays": p.arrays.map { $0.map { Int($0) } }]
+        case let .image(r, dest, source):
+            ["image": rect(r), "dest": rect(dest), "source": source]
         }
     }
 
@@ -110,6 +112,7 @@ public enum DebugJSON {
         case .appRunning(let b): "appRunning \(b)"
         case let .readDefault(d, k): "readDefault \(d) \(k)"
         case .makeDir(let p): "makeDir \(p)"
+        case let .loadImage(s, reload): "loadImage \(s)\(reload ? " reload" : "")"
         }
     }
 
