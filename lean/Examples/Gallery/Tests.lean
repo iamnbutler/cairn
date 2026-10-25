@@ -41,10 +41,11 @@ def loaded : List Event := boot ++ [.reply 0 (.image 480 320), .reply 1 (.image 
 #guard (st loaded).images.state "images/ridge.png" == .ready 480 320
 #guard (st loaded).images.state "images/broken.png" == .failed .invalid "not an image"
 #guard (st loaded).images.state "images/moss.gif" == .loading
--- Two image draws, each in a 200 × 150 box; ridge (3:2) covers 200 × 150 as 225 × 150, centred (rounded down).
+-- Two image draws, each in a 196 × 147 box (a 4:3 card in the 3 × 2 grid at 1120 × 560); ridge
+-- (3:2) covers it as 221 × 147, centred (rounded down).
 #guard (images loaded).length == 2
-#guard (images loaded).all fun | .image r _ _ => r.w == 200 && r.h == 150 | _ => false
-#guard (images loaded).head? == some (.image ⟨28, 80, 200, 150⟩ ⟨15, 80, 225, 150⟩ "images/ridge.png")
+#guard (images loaded).all fun | .image r _ _ => r.w == 196 && r.h == 147 | _ => false
+#guard (images loaded).head? == some (.image ⟨54, 80, 196, 147⟩ ⟨41, 80, 221, 147⟩ "images/ridge.png")
 
 -- Reload: every tile back to loading under ids 6–11, past the host's cache. Loads 2 and 3 were
 -- still in flight, so they are cancelled; they keep their slots until the host answers them, so
@@ -62,10 +63,10 @@ def reloaded : List Event := thenClick loaded reloadRef
 #guard (runFrom (run reloaded) [.reply 2 (.image 1 1)]).2 ==
   [.request 10 (.loadImage "images/broken.png" true)]
 
--- Fit: contain puts ridge's 3:2 inside the box as 200 × 133, centred.
+-- Fit: contain puts ridge's 3:2 inside the box as 196 × 130, centred.
 def contained : List Event := thenClick (reloaded ++ [.reply 6 (.image 480 320)]) fitRef
 #guard (st contained).fit == .contain
-#guard (images contained).head? == some (.image ⟨28, 80, 200, 150⟩ ⟨28, 88, 200, 133⟩ "images/ridge.png")
+#guard (images contained).head? == some (.image ⟨54, 80, 196, 147⟩ ⟨54, 88, 196, 130⟩ "images/ridge.png")
 
 -- Load 24, with every tile loaded: six thumbnails go out (ids 6–11) and eighteen wait.
 def settled : List Event := loaded ++ [.reply 2 (.image 1 1), .reply 3 (.image 1 1)]
@@ -91,5 +92,23 @@ def cancelled : List Event := thenClick oneIn cancelRef
 #guard (st (cancelled ++ [.reply 7 (.image 48 36)])).images.state (manySources.getD 1 "") == .loading
 #guard (runFrom (run cancelled) [.reply 7 (.image 48 36)]).2 == []
 #guard (run (cancelled ++ [.reply 7 (.image 48 36)])).world.inFlight == 5
+
+-- The tile grid follows the window: three columns at 1120 wide, five at 1600, and a resize
+-- reflows the laid tiles onto the new `tileRects`.
+def cols (sz : Size) : Nat := tileGrid.columns (gridW sz)
+#guard cols ⟨1120, 560⟩ == 3 && cols ⟨1600, 900⟩ == 5 && cols ⟨900, 640⟩ == 2
+def tileCells (rs : Runtime.State State) : List Rect :=
+  (((rs.laid.children.headD default).children.getD 1 default).children.flatMap (·.children)).map (·.rect)
+#guard tileCells s0 == tileRects ⟨1120, 560⟩
+def wide : Runtime.State State := (runFrom s0 [.resize ⟨1600, 900⟩]).1
+#guard tileCells wide == tileRects ⟨1600, 900⟩
+#guard (tileRects ⟨1600, 900⟩).map (·.x) == [28, 264, 500, 736, 972, 28]
+
+-- A tile's press reloads that tile alone, past the cache, under the next id.
+def tileOne : List Event := thenClick settled (tileRef 1)
+#guard (runFrom (run settled) (clickOn (run settled) (tileRef 1))).2 ==
+  [.request 6 (.loadImage "images/tide.jpg" true)]
+#guard (st tileOne).images.state "images/tide.jpg" == .loading
+#guard (st tileOne).images.state "images/ridge.png" == .ready 480 320
 
 end Examples.Gallery.Tests

@@ -90,6 +90,23 @@ not clip itself, only its children; its visible part is `rect.inter clip`.
 `Rect.inter` places an empty intersection inside its first argument, so an intersection is
 always inside the clip it cuts down (see "Contract changes").
 
+## Grids
+
+`Cairn.UI.Grid` lays equal cards out as many to a row as the box's width fits: `columns` is
+the most cards of `minWidth` that fit with their gaps, and at least one. The cards share the
+width, keep their aspect ratio (plus a fixed caption height), and shrink together when the rows
+would be taller than the box, so nothing is drawn outside it. Card `i` is at row `i / columns`,
+column `i % columns`. It is arithmetic on the box's size; a view passes the size it derives
+from `UI.size`, which every `resize` event sets, so the host only reports the window's size.
+`Grid.node` builds a column of rows of fixed-size clipping cells, laid out by the ordinary pass:
+no new kind of node, and nothing in `Node`, `Style` or `Laid` changed.
+
+Proved for every size and card count: the column count is the largest that fits
+(`columns_fits`, `le_columns`, `not_fits_succ`); every cell is inside the box (`cell_inside`);
+later cards come later in reading order, so no two overlap (`cell_before`, `cell_disjoint`); the
+laid cells are exactly `Grid.rects` (`cells_rects`); and a point in cell `i` hits what cell `i`
+alone would (`hitTarget_cell`). Gallery uses it for its tiles (^510).
+
 ## Text
 
 A `text` node is one line. A text node's rect is its measured box at the position its parent chose, and its
