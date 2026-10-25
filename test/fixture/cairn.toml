@@ -1,0 +1,15 @@
+# Cairn's own test app (test/fixture/README.md). Never published: `make check` builds it with the
+# `cairn` CLI against this checkout and runs the per-app tools on it.
+[package]
+name = "fixture"
+version = "0.1.0"
+kind = "bin"
+description = "Cairn's internal fixture app: what the framework's checks need from an app."
+license = "MIT"
+lean = "lean"
+libs = ["Fixture"]
+swift = "."
+claims = "claims.lock"
+
+[dependencies]
+cairn = "^0.1.0"
