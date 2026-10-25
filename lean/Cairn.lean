@@ -31,10 +31,6 @@ public import Cairn.Frame.Menu
 public import Cairn.Frame.Build
 public import Cairn.Abi
 public import Cairn.Fuzz.Rng
--- Old names of moved modules, re-exporting the new ones until 0.2.0 (docs/packages-and-std.md).
-public import Cairn.Frame.Boundary
-public import Cairn.Runtime.Hit
-public import Cairn.Text.Metrics
 
 /-! # Cairn
 

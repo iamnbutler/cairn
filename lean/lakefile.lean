@@ -32,16 +32,15 @@ ledger, the audit, the kernel replay and `make doc` read. -/
 
 /-- The linked closure: everything `bin/cairn-link` (`@cairn/Cairn:static`) puts in an app. No
 `import Lean`, no proofs. `Cairn.Abi` is its top (the host runs `initialize_cairn_Cairn_Abi`);
-`Cairn.Fuzz.Rng` is here because app modules name its `Custom` hook. The old names of moved
-modules stay until 0.2.0, since apps import them. The `Cairn` umbrella imports each of these. -/
+`Cairn.Fuzz.Rng` is here because app modules name its `Custom` hook. The `Cairn` umbrella imports
+each of these. -/
 def linked : Array Lean.Name := #[`Cairn.Geometry, `Cairn.Claim, `Cairn.Effects, `Cairn.Font, `Cairn.Input,
     `Cairn.UI.Node, `Cairn.UI.Images, `Cairn.UI.Grid, `Cairn.UI.Hit, `Cairn.Surface, `Cairn.App,
     `Cairn.Claims.Move, `Cairn.Claims.Machine, `Cairn.Claims.Core,
     `Cairn.Text.Wrap, `Cairn.Text.Field, `Cairn.Text.Host, `Cairn.Layout.Core, `Cairn.Layout.Facts,
     `Cairn.Runtime.World, `Cairn.Runtime.Step, `Cairn.Runtime.Abi,
     `Cairn.Frame, `Cairn.Frame.Bytes, `Cairn.Frame.Encode, `Cairn.Frame.Events, `Cairn.Frame.Menu,
-    `Cairn.Frame.Build, `Cairn.Abi, `Cairn.Fuzz.Rng,
-    `Cairn.Frame.Boundary, `Cairn.Runtime.Hit, `Cairn.Text.Metrics]
+    `Cairn.Frame.Build, `Cairn.Abi, `Cairn.Fuzz.Rng]
 
 @[default_target]
 lean_lib Cairn where

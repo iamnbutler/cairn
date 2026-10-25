@@ -25,8 +25,6 @@ function* leanFiles(dir: string): Generator<string> {
   }
 }
 
-const SHIMS = new Set(["Cairn.Frame.Boundary", "Cairn.Runtime.Hit", "Cairn.Text.Metrics"]);
-
 const dirOf = (m: string) => m.split(".").slice(0, 2).join(".");
 
 // The imports in a file's header: `[public] [meta] import [all] A [B …]` lines after an optional
@@ -62,8 +60,6 @@ for (const file of leanFiles(root)) {
   const from = dirOf(mod);
   nodes.add(from);
   const targets = imports(readFileSync(file, "utf8"));
-  // A shim that grew more than its one import is a module again, and is checked like one.
-  if (SHIMS.has(mod) && targets.length === 1) continue;
   for (const target of targets) {
     const to = dirOf(target);
     if (to === from) continue;
