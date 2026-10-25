@@ -470,7 +470,6 @@ def checks (t : Target) (setup : Setup) (w : World t.S) (act? : Option Action)
       unless acts.contains a do
         fails := fails.push <| mkFail "performed" c stepIx
           s!"{reprStr a} was meant, but the runtime delivered {reprStr acts}"
-  let _ := app
   -- Presence.
   for mv in t.machine.moves do
     if t.custom.noControl.contains mv.id then continue
@@ -483,6 +482,17 @@ def checks (t : Target) (setup : Setup) (w : World t.S) (act? : Option Action)
         fails := fails.push <| mkFail "presence" r stepIx
           (if en then s!"{r.label} is enabled but has no control in the frame"
            else s!"{r.label} is in the frame but its move is disabled")
+  -- Images: everything the frame draws is held by the host. An app takes an image for ready
+  -- only from the host's answer and forgets it when told it was dropped (^1006, ^1011;
+  -- `Images.Cache.ready_held`); a draw of a source the host doesn't hold paints nothing.
+  let drawn := drawnBy w.rt
+  unless drawn.isEmpty do
+    let place := app.windowPlace.getD 0
+    ran := ran.push (place, "image")
+    for src in drawn.eraseDups do
+      unless (w.host.heldOf src).isSome do
+        fails := fails.push <| mkFail "image" ⟨place, 0⟩ stepIx
+          s!"the frame draws {src.quote}, whose pixels the host doesn't hold (never loaded, or dropped with no `evicted` the app heeded)"
   -- Pressable, at sizes at or above the minimum.
   if fitsWindow then
     let ts := targets laid

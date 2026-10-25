@@ -197,6 +197,14 @@ def claimJson (t : Target) (stats : Stats) (fails : Array (Failure × Setup)) (c
          | some (f, s) => [("failure", Json.mkObj [("check", Json.str f.check), ("seed", toJson s.seed),
               ("step", toJson f.step), ("message", Json.str f.message)])]
          | none => []))
+  | .place =>
+    -- A place's checks: the images its frame draws are held by the host.
+    match stats.get? c.id with
+    | some st =>
+      Json.mkObj (base ++ [("pass", toJson failed.isEmpty), ("steps", toJson st.steps),
+        ("sequences", toJson st.sequences),
+        ("checks", Json.mkObj (st.checks.toList.map fun (k, n) => (k, toJson n)))])
+    | none => Json.mkObj (base ++ [("pass", Json.null), ("note", "n/a")])
   | _ => Json.mkObj (base ++ [("pass", Json.null), ("note", "n/a")])
 
 def runTarget (t : Target) (o : Opts) : IO UInt32 := do

@@ -190,9 +190,10 @@ behind `lake exe fuzz` (`import Lean`). Not linked into any host binary; its PRN
 @[default_target]
 lean_lib CairnFuzz where
   roots := #[`Cairn.Fuzz.Metrics, `Cairn.Fuzz.Target, `Cairn.Fuzz.Text, `Cairn.Fuzz.Host,
-    `Cairn.Fuzz.Walk, `Cairn.Fuzz.Shrink, `Cairn.Fuzz.Collect, `Cairn.Fuzz.Main]
+    `Cairn.Fuzz.Walk, `Cairn.Fuzz.Shrink, `Cairn.Fuzz.Collect, `Cairn.Fuzz.Main,
+    `Cairn.Fuzz.HostTests]
   globs := #[.one `Cairn.Fuzz.Metrics, .one `Cairn.Fuzz.Target, .one `Cairn.Fuzz.Text,
-    .one `Cairn.Fuzz.Host, .one `Cairn.Fuzz.Walk, .one `Cairn.Fuzz.Shrink, .one `Cairn.Fuzz.Collect, .one `Cairn.Fuzz.Main,
+    .one `Cairn.Fuzz.Host, .one `Cairn.Fuzz.HostTests, .one `Cairn.Fuzz.Walk, .one `Cairn.Fuzz.Shrink, .one `Cairn.Fuzz.Collect, .one `Cairn.Fuzz.Main,
     .one `Cairn.Fuzz]
 
 /-- `lake exe fuzz <App> [--seed S] [--iterations N] [--steps K]` (docs/fuzz.md): the fuzzer on
