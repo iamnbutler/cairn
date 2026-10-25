@@ -80,32 +80,3 @@ export function pager(path: string, pages: Page[], nav: NavSection[]): string {
 	};
 	return `<nav class="pager" aria-label="Chapters">${link(order[i - 1], "prev", "Previous")}${link(order[i + 1], "next", "Next")}</nav>`;
 }
-
-// --- Heading ids ----------------------------------------------------------------------------------
-
-// scene.js's slugOf, on a heading's HTML. The site's anchors have always been made this way, so
-// links shared before the move keep working; bongo's own ids ("the-hosts-…", "same-1") differ.
-export const slugOf = (inner: string) =>
-	inner
-		.replace(/<[^>]*>/g, "")
-		.replace(/&(amp|lt|gt|quot|#39|apos);/g, (_, e) => ({ amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'", apos: "'" })[e as string]!)
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, "-")
-		.replace(/^-|-$/g, "") || "section";
-
-type Heading = { level: number; id: string; text: string; html?: string };
-
-// Gives h2–h4 our ids, in the HTML and in the headings bongo lists for $pages.
-export function reId(content: string, headings: Heading[]): { content: string; headings: Heading[] } {
-	const seen = new Set<string>();
-	const ids = new Map<string, string>();
-	content = content.replace(/<h([2-4]) id="([^"]*)">([\s\S]*?)<\/h\1>/g, (_, n, old, inner) => {
-		const base = slugOf(inner);
-		let id = base;
-		for (let k = 2; seen.has(id); k++) id = `${base}-${k}`;
-		seen.add(id);
-		ids.set(old, id);
-		return `<h${n} id="${id}">${inner}</h${n}>`;
-	});
-	return { content, headings: headings.map((h) => ({ ...h, id: ids.get(h.id) ?? h.id })) };
-}

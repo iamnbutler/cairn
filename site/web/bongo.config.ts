@@ -1,12 +1,11 @@
 import { markdown } from "@bongo/markdown";
 import type { Config, Loader } from "bongo";
 
-// bongo's Markdown, with our heading ids (lib/docs.ts reId).
 const md = markdown({ headingIds: true });
 const mdLoader = md.$loaders!.md as Loader;
 
 import { codeBlock, esc, include } from "./lib/source";
-import { checkLinks, inline, pager, reId, sidebar } from "./lib/docs";
+import { checkLinks, inline, pager, sidebar } from "./lib/docs";
 
 export default {
 	$site: {
@@ -70,8 +69,7 @@ export default {
 					// A page never holds a code sample: it includes one from a source file.
 					const fence = utils.decode(content).split("\n").findIndex((l) => /^\s*(```|~~~)/.test(l));
 					if (fence >= 0) throw new Error(`${filename}:${fence + 1}: a fenced code block: include the code from a source file instead`);
-					const out = await mdLoader(filename, content, utils);
-					return { ...out, ...reId(String(out.content), out.headings ?? []) };
+					return mdLoader(filename, content, utils);
 				},
 			},
 		},

@@ -96,5 +96,5 @@ a slow frame can't stall AppKit's resize loop.
 
 The input-method protocol is the one place AppKit needs an answer immediately. The host answers
 from its own copy of the focused field, predicts the change, and lets Lean's next frame replace
-the copy. That prediction is a [trusted assumption](/docs/internals/trusted-base/#the-host-s-input-and-output),
+the copy. That prediction is a [trusted assumption](/docs/internals/trusted-base/#the-hosts-input-and-output),
 fuzzed against Lean.
