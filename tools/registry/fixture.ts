@@ -20,7 +20,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 // Cairn's final releases, newest first.
-const RELEASES = ["0.2.3", "0.2.2", "0.2.1", "0.2.0", "0.1.3", "0.1.2", "0.1.1", "0.1.0"];
+const RELEASES = ["0.2.4", "0.2.3", "0.2.2", "0.2.1", "0.2.0", "0.1.3", "0.1.2", "0.1.1", "0.1.0"];
 
 const ROOT = resolve(import.meta.dir, "../..");
 const OUT = join(ROOT, "site/registry/fixture.json");

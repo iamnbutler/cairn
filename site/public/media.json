@@ -1,5 +1,17 @@
 [
   {
+    "title": "Cairn 0.2.4, with a fuzzer that plays the host",
+    "text": [
+      "Cairn 0.2.4 is out on the public registry as iamnbutler/cairn. cairn fuzz now plays the host's side: it answers requests late and in any order, replies to cancelled ones, fires timers, moves the clock, sends subscription events and evicts images, within what the trusted claims allow, and checks that every image a frame draws is one the host holds (#189).",
+      "An app's Custom fuzz hooks take replies and subEvents generators, relations checked on every step, drained checks once the host has answered everything, and outstanding checks against the requests the runtime still holds (#189, #192).",
+      "The registry checked its claims export, 122 claims, against the ledger and serves it for the claim pages. claims.lock is the same as 0.2.3's: no claim was retired, moved, changed or added, so it is a patch release."
+    ],
+    "date": "2026-10-25",
+    "published": "2026-10-25T08:41:47Z",
+    "commit": "654c669",
+    "milestone": "m3"
+  },
+  {
     "title": "Cairn 0.2.3, with several apps a package and cairn bundle",
     "text": [
       "Cairn 0.2.3 is out on the public registry as iamnbutler/cairn. A package can hold several apps, and cairn build, size, bench and conformance take --app to link one (#177), as iamnbutler/cairn_examples does. cairn bundle wraps an app package's release build in a .app with the SwiftPM resource bundles it uses (#185).",

@@ -51,7 +51,7 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
 
 ## v0.2.4
 
-25 October 2026.
+25 October 2026, at commit `654c669`.
 
 - **The fuzzer plays the host.** `cairn fuzz` answers the requests an app's frames make (late,
   in any order, one in six failed), replies to cancelled ones, fires timers at the frame's
