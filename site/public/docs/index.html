@@ -25,7 +25,7 @@
 <div class="layout">
 <details class="side" open>
 <summary>Contents</summary>
-<nav aria-label="Docs"><h2>Learn</h2><ul><li><a href="/docs/book/">The Cairn Book</a><ol><li><a href="/docs/book/first-app/">Your first app</a></li><li><a href="/docs/book/moves-and-flows/">Moves and flows</a></li><li><a href="/docs/book/view-and-layout/">The view and layout</a></li><li><a href="/docs/book/proving/">Proving a claim</a></li><li><a href="/docs/book/effects/">Effects and the host</a></li><li><a href="/docs/book/shipping/">Shipping</a></li></ol></li><li><a href="/docs/examples/">Cairn by Example</a><ol><li><a href="/docs/examples/counter/">Counter</a></li><li><a href="/docs/examples/basics/">Basics</a></li><li><a href="/docs/examples/todo/">TodoMVC</a></li><li><a href="/docs/examples/yap/">Yap</a></li></ol></li></ul><h2>Use</h2><ul><li><a href="/docs/api/">API reference</a></li><li><a href="/docs/use/cairn-tool/">The cairn tool</a></li><li><a href="/docs/use/claims/">Claims reference</a></li><li><a href="/docs/use/evidence/">The evidence ladder</a></li><li><a href="/docs/use/errors/">Error index<span class="todo">to do</span></a></li><li><a href="/docs/use/releases/">Release notes</a></li></ul><h2>Master</h2><ul><li><a href="/docs/master/trusted-base/">The trusted base</a></li><li><a href="/docs/master/host-protocol/">The host protocol</a></li><li><a href="/docs/master/host-effects/">Writing host effects</a></li><li><a href="/docs/master/profiling/">Profiling against a reference</a></li><li><a href="/docs/master/contributing/">Contributing</a></li></ul><h2>Evidence</h2><ul><li><a href="/docs/evidence/">The maps</a></li><li><a href="/map/counter/">Counter's map</a></li><li><a href="/map/basics/">Basics' map</a></li><li><a href="/map/todo/">TodoMVC's map</a></li><li><a href="/map/trusted/">The trusted base's map</a></li></ul></nav>
+<nav aria-label="Docs"><h2>Guides</h2><ul><li><a href="/docs/guide/">Building an app</a><ol><li><a href="/docs/guide/first-app/">Your first app</a></li><li><a href="/docs/guide/moves-and-flows/">Moves and flows</a></li><li><a href="/docs/guide/view-and-layout/">The view and layout</a></li><li><a href="/docs/guide/proving/">Proving a claim</a></li><li><a href="/docs/guide/effects/">Effects and the host</a></li><li><a href="/docs/guide/shipping/">Shipping</a></li></ol></li><li><a href="/docs/examples/">Example apps</a><ol><li><a href="/docs/examples/counter/">Counter</a></li><li><a href="/docs/examples/basics/">Basics</a></li><li><a href="/docs/examples/todo/">TodoMVC</a></li><li><a href="/docs/examples/yap/">Yap</a></li></ol></li></ul><h2>Reference</h2><ul><li><a href="/docs/reference/api/">API reference</a></li><li><a href="/docs/reference/cairn-tool/">The cairn tool</a></li><li><a href="/docs/reference/claims/">Claims</a></li><li><a href="/docs/reference/evidence/">The evidence ladder</a></li><li><a href="/docs/reference/errors/">Errors<span class="todo">to do</span></a></li><li><a href="/docs/reference/releases/">Release notes</a></li></ul><h2>Internals</h2><ul><li><a href="/docs/internals/trusted-base/">The trusted base</a></li><li><a href="/docs/internals/host-protocol/">The host protocol</a></li><li><a href="/docs/internals/host-effects/">Writing host effects</a></li><li><a href="/docs/internals/profiling/">Profiling against a reference</a></li><li><a href="/docs/internals/contributing/">Contributing</a></li></ul><h2>Evidence</h2><ul><li><a href="/docs/evidence/">The maps</a></li><li><a href="/map/counter/">Counter's map</a></li><li><a href="/map/basics/">Basics' map</a></li><li><a href="/map/todo/">TodoMVC's map</a></li><li><a href="/map/trusted/">The trusted base's map</a></li></ul></nav>
 </details>
 <script>if (matchMedia("(max-width: 900px)").matches) document.querySelector("details.side").open = false;</script>
 <main>
@@ -47,29 +47,29 @@ it will cover and what has to land first. Every code sample is included from a s
 app lives in its own repository and depends on a tagged release (the latest is <code>v0.1.2</code>), and
 the <code>cairn</code> tool starts, builds and documents it. Yap is the first app built that way. Checking,
 fuzzing, mapping and bundling an app are still the Cairn repository's <code>make</code> targets; see
-<a href="/docs/use/cairn-tool/">the cairn tool</a>.</p>
+<a href="/docs/reference/cairn-tool/">the cairn tool</a>.</p>
 </div></aside>
-<h2 id="learn">Learn</h2>
+<h2 id="guides">Guides</h2>
 <div class="shelf">
-<a href="/docs/book/"><b>The Cairn Book</b><span>From a counter to effects and shipping, one chapter at a time.</span></a>
-<a href="/docs/examples/"><b>Cairn by Example</b><span>Counter, Basics, TodoMVC and Yap, read through their source.</span></a>
+<a href="/docs/guide/"><b>Building an app</b><span>From a counter to effects and shipping, one chapter at a time.</span></a>
+<a href="/docs/examples/"><b>Example apps</b><span>Counter, Basics, TodoMVC and Yap, read through their source.</span></a>
 </div>
-<h2 id="use">Use</h2>
+<h2 id="reference">Reference</h2>
 <div class="shelf">
 <a href="/docs/api/"><b>API reference</b><span>Every module, declaration and claim in Cairn, generated from the code by <code>cairn doc</code>.</span></a>
-<a href="/docs/use/cairn-tool/"><b>The cairn tool</b><span>Starting, building, documenting and publishing a package, and the make targets for the rest.</span></a>
-<a href="/docs/use/claims/"><b>Claims reference</b><span>Every claim kind, what each generates, and what the build checks.</span></a>
-<a href="/docs/use/evidence/"><b>The evidence ladder</b><span>Proved, fuzzed, tested, seen, assumed: how sure we are of each claim.</span></a>
-<a href="/docs/use/errors/"><b>Error index<i class="todo">to do</i></b><span>Every error the claim commands and the ledger report.</span></a>
-<a href="/docs/use/releases/"><b>Release notes</b><span>What changed in each version, and what an app can rely on across them.</span></a>
+<a href="/docs/reference/cairn-tool/"><b>The cairn tool</b><span>Starting, building, documenting and publishing a package, and the make targets for the rest.</span></a>
+<a href="/docs/reference/claims/"><b>Claims</b><span>Every claim kind, what each generates, and what the build checks.</span></a>
+<a href="/docs/reference/evidence/"><b>The evidence ladder</b><span>Proved, fuzzed, tested, seen, assumed: how sure we are of each claim.</span></a>
+<a href="/docs/reference/errors/"><b>Errors<i class="todo">to do</i></b><span>Every error the claim commands and the ledger report.</span></a>
+<a href="/docs/reference/releases/"><b>Release notes</b><span>What changed in each version, and what an app can rely on across them.</span></a>
 </div>
-<h2 id="master">Master</h2>
+<h2 id="internals">Internals</h2>
 <div class="shelf">
-<a href="/docs/master/trusted-base/"><b>The trusted base</b><span>What the proofs rely on but can't prove, and how each piece is checked.</span></a>
-<a href="/docs/master/host-protocol/"><b>The host protocol</b><span>The two byte buffers between Lean and Swift, and the threads around them.</span></a>
-<a href="/docs/master/host-effects/"><b>Writing host effects</b><span>Adding something the host does for an app, with its assumption and fuzz check.</span></a>
-<a href="/docs/master/profiling/"><b>Profiling against a reference</b><span>Measuring an app against the one it replaces, with Apple's own tools.</span></a>
-<a href="/docs/master/contributing/"><b>Contributing</b><span>The rules every change follows.</span></a>
+<a href="/docs/internals/trusted-base/"><b>The trusted base</b><span>What the proofs rely on but can't prove, and how each piece is checked.</span></a>
+<a href="/docs/internals/host-protocol/"><b>The host protocol</b><span>The two byte buffers between Lean and Swift, and the threads around them.</span></a>
+<a href="/docs/internals/host-effects/"><b>Writing host effects</b><span>Adding something the host does for an app, with its assumption and fuzz check.</span></a>
+<a href="/docs/internals/profiling/"><b>Profiling against a reference</b><span>Measuring an app against the one it replaces, with Apple's own tools.</span></a>
+<a href="/docs/internals/contributing/"><b>Contributing</b><span>The rules every change follows.</span></a>
 </div>
 <h2 id="evidence">Evidence</h2>
 <div class="shelf">

@@ -19,35 +19,35 @@ Cairn is research, and its API has no stability promise before 1.0. It is a pack
 app lives in its own repository and depends on a tagged release (the latest is `v0.1.2`), and
 the `cairn` tool starts, builds and documents it. Yap is the first app built that way. Checking,
 fuzzing, mapping and bundling an app are still the Cairn repository's `make` targets; see
-[the cairn tool](/docs/use/cairn-tool/).
+[the cairn tool](/docs/reference/cairn-tool/).
 :::
 
-## Learn
+## Guides
 
 <div class="shelf">
-<a href="/docs/book/"><b>The Cairn Book</b><span>From a counter to effects and shipping, one chapter at a time.</span></a>
-<a href="/docs/examples/"><b>Cairn by Example</b><span>Counter, Basics, TodoMVC and Yap, read through their source.</span></a>
+<a href="/docs/guide/"><b>Building an app</b><span>From a counter to effects and shipping, one chapter at a time.</span></a>
+<a href="/docs/examples/"><b>Example apps</b><span>Counter, Basics, TodoMVC and Yap, read through their source.</span></a>
 </div>
 
-## Use
+## Reference
 
 <div class="shelf">
 <a href="/docs/api/"><b>API reference</b><span>Every module, declaration and claim in Cairn, generated from the code by <code>cairn doc</code>.</span></a>
-<a href="/docs/use/cairn-tool/"><b>The cairn tool</b><span>Starting, building, documenting and publishing a package, and the make targets for the rest.</span></a>
-<a href="/docs/use/claims/"><b>Claims reference</b><span>Every claim kind, what each generates, and what the build checks.</span></a>
-<a href="/docs/use/evidence/"><b>The evidence ladder</b><span>Proved, fuzzed, tested, seen, assumed: how sure we are of each claim.</span></a>
-<a href="/docs/use/errors/"><b>Error index<i class="todo">to do</i></b><span>Every error the claim commands and the ledger report.</span></a>
-<a href="/docs/use/releases/"><b>Release notes</b><span>What changed in each version, and what an app can rely on across them.</span></a>
+<a href="/docs/reference/cairn-tool/"><b>The cairn tool</b><span>Starting, building, documenting and publishing a package, and the make targets for the rest.</span></a>
+<a href="/docs/reference/claims/"><b>Claims</b><span>Every claim kind, what each generates, and what the build checks.</span></a>
+<a href="/docs/reference/evidence/"><b>The evidence ladder</b><span>Proved, fuzzed, tested, seen, assumed: how sure we are of each claim.</span></a>
+<a href="/docs/reference/errors/"><b>Errors<i class="todo">to do</i></b><span>Every error the claim commands and the ledger report.</span></a>
+<a href="/docs/reference/releases/"><b>Release notes</b><span>What changed in each version, and what an app can rely on across them.</span></a>
 </div>
 
-## Master
+## Internals
 
 <div class="shelf">
-<a href="/docs/master/trusted-base/"><b>The trusted base</b><span>What the proofs rely on but can't prove, and how each piece is checked.</span></a>
-<a href="/docs/master/host-protocol/"><b>The host protocol</b><span>The two byte buffers between Lean and Swift, and the threads around them.</span></a>
-<a href="/docs/master/host-effects/"><b>Writing host effects</b><span>Adding something the host does for an app, with its assumption and fuzz check.</span></a>
-<a href="/docs/master/profiling/"><b>Profiling against a reference</b><span>Measuring an app against the one it replaces, with Apple's own tools.</span></a>
-<a href="/docs/master/contributing/"><b>Contributing</b><span>The rules every change follows.</span></a>
+<a href="/docs/internals/trusted-base/"><b>The trusted base</b><span>What the proofs rely on but can't prove, and how each piece is checked.</span></a>
+<a href="/docs/internals/host-protocol/"><b>The host protocol</b><span>The two byte buffers between Lean and Swift, and the threads around them.</span></a>
+<a href="/docs/internals/host-effects/"><b>Writing host effects</b><span>Adding something the host does for an app, with its assumption and fuzz check.</span></a>
+<a href="/docs/internals/profiling/"><b>Profiling against a reference</b><span>Measuring an app against the one it replaces, with Apple's own tools.</span></a>
+<a href="/docs/internals/contributing/"><b>Contributing</b><span>The rules every change follows.</span></a>
 </div>
 
 ## Evidence

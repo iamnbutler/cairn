@@ -1,7 +1,7 @@
 ---
-title: Cairn by Example
-nav: Cairn by Example
-eyebrow: Learn
+title: Example apps
+nav: Example apps
+eyebrow: Guides
 lede: Four apps read through their source, from two buttons to an app used every day.
 ---
 
@@ -18,7 +18,7 @@ describes its code instead of including it.
 | [Yap](/docs/examples/yap/) | porting a real menu bar app one to one: effects, surfaces, a parity audit | `make yap`, in its own package |
 
 Two more apps in the repository aren't written up yet: **Clock**, a stopwatch that is the example
-for effects (the Book's [effects chapter](/docs/book/effects/) uses it), and **Tray**, a menu bar
+for effects (the guide's [effects chapter](/docs/guide/effects/) uses it), and **Tray**, a menu bar
 item with an overlay panel, the example for surfaces.
 
 Counter, Basics and TodoMVC each have a published [map](/docs/evidence/): every claim, its

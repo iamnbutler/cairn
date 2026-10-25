@@ -7,7 +7,7 @@ lede: Every claim each example makes, with its evidence and screenshots, generat
 
 Each map is built from an app's claims and whatever evidence the build had: the axiom audit,
 fuzzing, conformance runs against the running app, and screenshots from the app's own frames.
-Nothing on a map is written by hand. [The evidence ladder](/docs/use/evidence/) explains what each
+Nothing on a map is written by hand. [The evidence ladder](/docs/reference/evidence/) explains what each
 kind of evidence means.
 
 | Map | What it covers |

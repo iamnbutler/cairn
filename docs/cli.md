@@ -17,7 +17,7 @@ cd tools/cairn && swift test
 Status: started. `new`, `add`, `build`, `doc`, `publish` and `login` work, with unit tests,
 and `add` and `publish --dry-run` have been run against a stand-in registry. Not yet: a run
 against the public registry, whose host isn't live yet (its DNS is pending), `cairn run`, `check`, `map`, `fuzz` and the rest of the
-planned commands in site/docs/use/cairn-tool.md, and installing it (a release binary or
+planned commands in site/docs/reference/cairn-tool.md, and installing it (a release binary or
 `mint`/Homebrew).
 
 ## A package

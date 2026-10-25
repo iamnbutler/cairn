@@ -1,7 +1,7 @@
 ---
 title: TodoMVC
 nav: TodoMVC
-eyebrow: Cairn by Example
+eyebrow: Example apps
 lede: The full TodoMVC spec as a native Mac app, with every behaviour a claim and the counts, filters and controls proved.
 ---
 

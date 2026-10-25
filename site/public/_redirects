@@ -1,0 +1,4 @@
+# The docs' sections were renamed on 2026-10-24: book → guide, use → reference, master → internals.
+/docs/book/* /docs/guide/:splat 301
+/docs/use/* /docs/reference/:splat 301
+/docs/master/* /docs/internals/:splat 301
