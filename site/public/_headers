@@ -1,0 +1,10 @@
+# The docs for language models (tools/site/llms.ts, tools/doc/markdown.ts) are UTF-8; without a
+# charset a browser reads ^, → and – as Latin-1.
+/llms.txt
+  Content-Type: text/plain; charset=utf-8
+/llms-full.txt
+  Content-Type: text/plain; charset=utf-8
+/docs/api/llms.txt
+  Content-Type: text/plain; charset=utf-8
+/docs/*.md
+  Content-Type: text/markdown; charset=utf-8
