@@ -151,6 +151,7 @@ site-maps:
 	rm -rf site/public/map && mkdir -p site/public/map
 	@for a in $(MAP_APPS); do cp -R build/map/$$a/dist site/public/map/$$(echo $$a | tr A-Z a-z); done
 	cp -R build/map/Trusted/dist site/public/map/trusted
+	bun tools/site/build.ts
 
 # The developer docs: site/docs/*.md → site/public/docs/ (tools/docs/build.ts). Code is included
 # from source by region; a missing file or region fails the build. The output is committed, and
@@ -226,6 +227,7 @@ site-api:
 	$(MAKE) doc PKG=Cairn
 	rm -rf site/public/docs/api && mkdir -p site/public/docs
 	cp -R build/doc/Cairn/dist site/public/docs/api
+	bun tools/site/build.ts
 
 # Doc tests alone, for `make check`: every Lean code block in a doc comment in Cairn and the
 # examples elaborates (docs/doc.md, "Doc tests").
@@ -315,11 +317,16 @@ fuzz-trusted-quick: lean
 # site/public/milestones/index.html and the videos in site/public/media.json (tools/site/build.ts).
 # Both are committed; site-feed-check fails when either is stale. It is part of check (on its own
 # line, so the check: list stays as the docs include it) and runs before every deploy.
-.PHONY: site-feed site-feed-check
+.PHONY: site-feed site-feed-check og
 site-feed:
 	bun tools/site/build.ts
 
 site-feed-check:
 	bun tools/site/build.ts --check
+
+# The link preview cards, site/public/og/*.png (tools/og/render.ts). Needs Google Chrome; redraw
+# them when the scene or a card's text changes, and commit them.
+og:
+	bun tools/og/render.ts
 
 check: site-feed-check
