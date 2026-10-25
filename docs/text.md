@@ -142,6 +142,36 @@ matters later, the host can send boundaries the way it sends text metrics, as an
 placeholder and focus. Layout places the caret and selection from `TextMetrics.offsets`; the
 indices it receives are in bounds (`view_wf`) and the text has no newline (`view_no_newline`).
 
+## Secure fields
+
+A password field is a `Text.SecureField` (`lean/Cairn/Text/Field.lean`): a `Field` wrapped, not
+flagged, so `Field.apply` and every theorem and claim stated with it stay as they are.
+
+- **What it does.** `SecureField.apply` is `Field.apply`, except that `copy`, `cut`, `undo` and
+  `redo` beep and change nothing (`NSSecureTextField` refuses them too), and the undo and redo
+  stacks are emptied after every op, so no earlier text is kept. Typing, deleting, moving,
+  selecting, IME composition and paste work as in a `Field`.
+- **What it shows.** `SecureField.view` puts one bullet (U+2022) per scalar in `FieldView.text`,
+  with the field's caret, selection, marked range and placeholder, and sets
+  `FieldView.secure`. Layout measures, places the caret on and draws the bullets; nothing
+  downstream ever has the text. The frame marks the field (`AxNode.secure`, `TextInput.secure`,
+  docs/frame.md), writes its accessibility value as `""`, and the host's mirror makes it an
+  `AXSecureTextField` with no value. While it has focus in the key window the host turns on
+  secure event input (`EnableSecureEventInput`; trusted ^1020, docs/trusted.md).
+- **Where its text goes.** Only where the app sends it. A request built from it should be
+  `Request.http … (redact := true)`: dumps print it as `<redacted N bytes>`, the debug socket as
+  `<redacted>`, and the fuzzer fails a run that dumps planted secure text anywhere
+  (docs/fuzz.md, "Secure fields"). The fixture's Passcode field (`fixture^9`) does this.
+
+| Property | Theorems (`Cairn.Text.SecureField`) |
+|---|---|
+| Copy and cut never set the clipboard: every effect is a beep | `apply_copy`, `apply_cut`, `apply_effects`, `apply_no_clipboard` |
+| Undo history stays empty, after any op and any sequence from an empty field | `history_empty`, `applyAll_history` |
+| Other ops edit as `Field.apply` does; refused ops change nothing | `apply_edit`, `apply_other`, `apply_refused` |
+| Every index stays in bounds | `wf_apply`, `forget_wf` |
+| The view is bullets, and depends only on length, selection, marked range and placeholder | `view_text`, `view_agree` (in `Field.lean`) |
+| So any frame's or canvas's dump is the same for two such fields: it holds none of the text | `Dump.secure_frame`, `Dump.secure_canvas` (`Cairn/Frame/Dump.lean`) |
+
 ## Theorems
 
 All in `lean/Cairn/Text/Proofs.lean`, namespace `Cairn.Text.Field`, checked by `make check`

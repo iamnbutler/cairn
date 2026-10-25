@@ -113,11 +113,12 @@ def role : Gen Role :=
 def axNode : Gen AxNode := do
   return { control := ← opt ref, role := ← role, rect := ← rect, label := ← str, value := ← str,
            parent := ← opt u32, focused := ← Gen.bool, selected := ← Gen.bool,
-           checked := ← opt Gen.bool }
+           checked := ← opt Gen.bool, secure := ← Gen.bool }
 
 def textInput : Gen TextInput := do
   return { control := ← ref, rect := ← rect, caret := ← rect, text := ← str,
-           selection := ← range, marked := ← opt range, textOrigin := ⟨← i32, ← i32⟩ }
+           selection := ← range, marked := ← opt range, textOrigin := ⟨← i32, ← i32⟩,
+           secure := ← Gen.bool }
 
 def array {α : Type} (n : Nat) (g : Gen α) : Gen (Array α) := do
   let k ← Gen.below (n + 1)
@@ -170,6 +171,7 @@ def request : Gen Request := do
   | 15 => return .loadImage (← str) (← Gen.chance 1 2)
   | 16 => return .forgetSecret (← str)
   | _ => return .http (← str) (← str) (← headers) (← bytes) (← u32) (← opt secret) (← headers)
+      (← Gen.bool)
 
 def effect : Gen Effect := do
   match ← Gen.below 8 with

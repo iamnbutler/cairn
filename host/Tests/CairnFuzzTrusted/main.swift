@@ -19,7 +19,7 @@ let allSuites: [Suite] = [FrameSuite(), EventsSuite(), TextIndexSuite(), InputCl
                           ClockSuite(), WorldSuite(), FilesSuite(), HTTPSuite(), SoundSuite(), SurfacesSuite(),
                           FileOpsSuite(), SystemSuite(), AudioSuite(), InputSuite(), UploadSuite(), WrapSuite(),
                           PaintSuite(), ImageSuite(), CancelSuite(), WindowSuite(), CacheSuite(), PointerSuite(),
-                          SecretsSuite()]
+                          SecretsSuite(), SecureInputSuite()]
 
 var args = Array(CommandLine.arguments.dropFirst())
 func take(_ flag: String) -> String? {

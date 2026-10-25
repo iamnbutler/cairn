@@ -7,7 +7,7 @@ import Cairn.Claims.Deliver
 
 /-! # TodoMVC: presence and pressability
 
-The moves' own evidence (`post` for every enabled state), the invariants ^212 and ^226 and the
+The moves' own evidence (`post` for every enabled state), the invariants ^212 and ^225 and the
 flows ^216–^224 are checked where they are declared, in `Examples.Todo`. This file proves what
 depends on the view and layout:
 

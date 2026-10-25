@@ -131,6 +131,7 @@ inductive Request where
   | http (method url : String) (headers : List (String × String)) (body : ByteArray)
       (timeoutMs : Nat) (secret : Option Secret := none)
       (capture : List (String × String) := [])     -- Secrets in the Keychain, below
+      (redact : Bool := false)                     -- a secure field's text: tools print sizes only
   | appendFile (path : String) (data : ByteArray)    -- Yap's host effects, below
   | listDir (path : String)
   | deleteFile (path : String)
@@ -175,6 +176,11 @@ inductive Fault where
   | notFound | denied | timeout | network | invalid | other
 ```
 
+- **`redact` keeps a secret out of tools.** An `http` request built from a secure field's text
+  (docs/text.md, "Secure fields") sets `redact := true` (`Request.redact`). The host sends it as
+  given; the frame dump prints it as `http "METHOD" timeout=MS <redacted N bytes>` (N the bytes
+  of its URL, headers and body), the debug socket as `http METHOD <redacted>`, and the fuzzer
+  fails a run in which text planted in a secure field reaches an effect unredacted.
 - **The app chooses the id.** It is how the app matches a reply to what it asked; Yap will use
   a clip's sequence number, so a late reply for an old clip is recognisably old.
 - **Failure is a reply.** Every request gets exactly one reply; a missing file, a refused

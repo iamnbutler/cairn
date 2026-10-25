@@ -244,4 +244,10 @@ assume ^1011 hostImageCache "The image cache reports every image it drops, after
   does "While an imageCache subscription runs, the host keeps its decoded images within the smallest running budget: past it, it drops the images used least recently, never one the latest published frame draws nor the one just loaded, and sends evicted for every image it drops (a failed reload's removal too) after the pixels are gone. It answers loadImage ready only after it held the pixels for that load. With Images.evicted on the Lean side, an image the app takes for ready has its pixels with the host once every message is heard (Images.Cache.ready_held_quiet)."
   check "images.cache"
 
+/-! Secure fields (docs/text.md, "Secure fields"). -/
+
+assume ^1020 hostSecureInput "Secure event input is on exactly while a secure field has focus" where
+  does "The host turns the system's secure event input on (EnableSecureEventInput) when the applied frame's text input is a secure field, its window is key and the view is live, and off (DisableSecureEventInput) when any of those stops, the view is shut down or released; it calls them in pairs, never twice the same way in a row, so it never leaves secure input on. While it is on, no other process can read the keystrokes."
+  check "text.secure-input"
+
 end Cairn.Fuzz.Trusted.Claims

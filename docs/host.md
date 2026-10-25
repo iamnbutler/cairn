@@ -290,7 +290,7 @@ in scalar indices. Chromium's browser process does the same.
   | Node role | AX role |
   |---|---|
   | checkbox | `.checkBox` |
-  | textField | `.textField` |
+  | textField | `.textField`; a secure one (`secure`) with subrole `AXSecureTextField` |
   | list | `.list` |
   | listItem | `.group`, role description "list item" |
   | heading | `AXHeading` |
@@ -301,8 +301,11 @@ in scalar indices. Chromium's browser process does the same.
   | group | `.group` |
 
 - **Attributes.** The identifier is the ControlRef label. A checkbox's value is 1 or 0; a text
-  field's value is its text. The text-field range attributes are in UTF-16, converted through
+  field's value is its text; a secure field has no value and an empty selected text. The text-field range attributes are in UTF-16, converted through
   `TextIndex`.
+- **Secure input.** While the applied frame's text input is a secure field, the window is key and
+  the view is live, the host holds the system's secure event input on (`SecureInputGate`;
+  trusted ^1020, docs/trusted.md).
 - **Frames.** `accessibilityFrame` is overridden to return screen coordinates, converted from
   the frame's view rect through the window. This avoids parent-relative y-up maths.
 

@@ -3,7 +3,7 @@ module
 public import Cairn.Frame
 public import Cairn.Frame.Bytes
 
-/-! Frame byte format (docs/frame.md; version 9): specification encoder `Wire.Enc.frame`, decoder
+/-! Frame byte format (docs/frame.md; version 10): specification encoder `Wire.Enc.frame`, decoder
 `Wire.Dec.frame`, the executable encoder `encodeFrame` (proved equal to the specification and
 installed with `@[csimp]`), and the round trip `decodeFrame_encodeFrame`.
 
@@ -501,8 +501,8 @@ def surface (s : SurfaceFrame) : List UInt8 :=
     u32 s.place ++ u32 s.anchor.offset ++ size s.minSize ++ str s.title ++ canvas s.canvas ++
     status s.status
 
-/-- Magic, version 9, flags 0. -/
-def header : List UInt8 := magic ++ [9, 0, 0, 0]
+/-- Magic, version 10, flags 0. -/
+def header : List UInt8 := magic ++ [10, 0, 0, 0]
 
 def frame (f : Frame) : List UInt8 :=
   header ++ list surface f.surfaces.toList ++ list effect f.effects.toList ++

@@ -1,4 +1,4 @@
-# Frame and event format: frames v8, events v2
+# Frame and event format: frames v10, events v2
 
 Two byte buffers cross the boundary between Lean and the Swift host, and nothing else does:
 
@@ -93,7 +93,8 @@ request (kind 16); version 6 added the `cancelRequest` effect (7); version 7 add
 minimum size to the surface record; version 8 added the `imageCache` subscription (4); version 9
 added the Keychain secret source (`[2, 0, 0, 0]`), `http`'s secret and captures, and the
 `forgetSecret` request (kind 17). An `upload` with no secret or an environment secret is the
-same bytes in versions 8 and 9.
+same bytes in versions 8 and 9. Version 10 added the `secure` flags to accessibility and
+text-input records and `redact` to requests.
 
 ### Surface records
 
@@ -244,7 +245,7 @@ One per node, parents before children (`parent_lt_ofLaid`).
 
 ```
 ax        [role, focused, selected, checked]                      36 + two strings
-          4  hasControl (bool), 5  hasParent (bool), 6  0, 7  0
+          4  hasControl (bool), 5  hasParent (bool), 6  secure (bool), 7  0
           8  control ref         (0,0 and ignored when hasControl = 0)
           16 u32 parent index    (0 and ignored when hasParent = 0)
           20 rect: the visible rect (the node's rect intersected with its clip)
@@ -253,12 +254,14 @@ ax        [role, focused, selected, checked]                      36 + two strin
 ```
 
 `checked` is `0` none (not checkable), `1` false, `2` true. `parent` indexes this frame's ax list.
+`secure` marks a secure field (`FieldView.secure`): Lean writes its value as `""`, and the host's
+mirror makes it an `AXSecureTextField` with no value.
 
 ### Text input
 
 ```
 none      [0, 0, 0, 0]                                                        4 bytes
-some      [1, hasMarked, 0, 0]                                          68 + string
+some      [1, hasMarked, secure, 0]                                     68 + string
           4  control ref of the focused field
           12 rect: the field
           28 rect: the caret
@@ -268,6 +271,9 @@ some      [1, hasMarked, 0, 0]                                          68 + str
              after horizontal scroll (where scalar 0 starts)
           68 string: the field's text
 ```
+
+`secure` (a bool) marks a secure field: its text is bullets, one per scalar typed
+(`Text.SecureField.view`), and the host turns on secure event input while it has focus.
 
 The host's input-method client answers from this record: `firstRect`, `characterIndex(for:)`
 and the marked range measure from `textOrigin` with the same shaping Lean measured with.
@@ -282,7 +288,7 @@ beep          [1, 0, 0, 0]                                                   4 b
 focus         [2, 0, 0, 0]     4 u32 claim  8 u32 key                      12 bytes
 setTimer      [3, 0, 0, 0]     4 u32 ms  8 string name                 8 + string
 cancelTimer   [4, 0, 0, 0]     4 string name                           4 + string
-request       [5, kind, 0, 0]  4 u32 id  8 request fields              8 + fields
+request       [5, kind, redact, 0]  4 u32 id  8 request fields         8 + fields
 quit          [6, 0, 0, 0]                                                   4 bytes
 cancelRequest [7, 0, 0, 0]     4 u32 id                                     8 bytes
 ```
@@ -309,6 +315,10 @@ Request kinds and their fields:
 | 15 | makeDir | string path |
 | 16 | loadImage | `[reload, 0, 0, 0]` (a bool), string source: a file path or an `https` URL |
 | 17 | forgetSecret | string account |
+
+`redact` (a bool, `Request.redact`; only an `http` request sets it) marks a request built from a
+secure field's text: tools print its URL, headers and body as their size only (the dump's
+`<redacted N bytes>`, the debug socket's `<redacted>`). The host sends it as given.
 
 A `secret` (of `http` and `upload`) is `[0, 0, 0, 0]` for none; `[1, 0, 0, 0]` and four strings
 for an environment secret: the header name, the scheme written before the value (`"Bearer "`),
@@ -470,6 +480,7 @@ checked against Lean's decoder, so a bad batch means a host bug.
 | `parent_lt_ofMenu` | every menu record's parent is an earlier submenu record |
 | `balanced_ofLaid` | `pushClip`/`popClip` are balanced and never pop an empty stack |
 | `satU32_eq_host_sat` | the font-field clamp is `Cairn.Text.Host.sat` |
+| `Dump.secure_frame`, `Dump.secure_canvas` (`Cairn/Frame/Dump.lean`) | two secure fields with the same length, selection, marked range and placeholder (`SecureField.Agree`) render to the same dump, through any renderer: a dump holds nothing of a secure field's text but its length |
 
 The specification is arithmetic over `List UInt8` (`/`, `%`, `toNat`), and the round trips close
 with `omega`. The fast encoder (`Put.*`) writes into a presized `ByteArray` with shifts and is
@@ -498,9 +509,9 @@ paint X Y W H origin=N shader="NAME" scalars=[A,B,…] arrays=[[A,…],[…]]
 push X Y W H
 pop
 ax N
-node role=CODE control=CLAIM#KEY|none parent=I|none rect=X Y W H focused=B selected=B checked=B|none label="…" value="…"
+node role=CODE control=CLAIM#KEY|none parent=I|none rect=X Y W H focused=B selected=B checked=B|none secure=B label="…" value="…"
 textInput none
-textInput control=C#K rect=… caret=… selection=A B marked=A B|none origin=X Y text="…"
+textInput control=C#K rect=… caret=… selection=A B marked=A B|none origin=X Y secure=B text="…"
 cursor CODE
 status control=C#K symbol="…" title="…" label="…"
 menu N
@@ -512,6 +523,7 @@ focus CLAIM#KEY
 timer "NAME" MS | cancelTimer "NAME" | quit
 request ID readFile "PATH" | request ID writeFile "PATH" BYTES | request ID sound "NAME"
 request ID http "METHOD" "URL" timeout=MS HEADERS body=BYTES secret=none|SECRET capture=N "FIELD" "ACCOUNT"…
+request ID http "METHOD" timeout=MS <redacted N bytes> secret=none|SECRET capture=N "FIELD" "ACCOUNT"…
 request ID appendFile "PATH" BYTES | request ID listDir "PATH" | request ID deleteFile "PATH"
 request ID frontmostApp | request ID permission CODE PROMPT
 request ID typeText PID RETURN "TEXT" | request ID forgetClip CLIP

@@ -144,7 +144,7 @@ Then give your claims ids nobody has used (look in `claims.lock`), build with `m
 the new ids with `cd lean && lake exe ledger update`, and commit `claims.lock` with the app. Run
 it with `make demo DEMO=Cairn<App>`.
 
-Pick ids in a range of their own: the examples use ^1–^6 (Counter), ^101–^109 (Basics), ^201–^226
+Pick ids in a range of their own: the examples use ^1–^6 (Counter), ^101–^109 (Basics), ^201–^225
 (TodoMVC), ^401–^409 (Clock) and ^450 onwards (Tray); the trusted base uses ^900 and up (and
 keeps ^7 and ^214, which the examples first declared), and
 ^301–^399 moved with Yap to its own package. Ids are scoped per package: these are all `cairn^N`.

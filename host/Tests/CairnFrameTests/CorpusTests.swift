@@ -86,7 +86,7 @@ enum Corpus {
             + [0, 0, 0, 0] + [0, 0, 0, 0]
         let status: [UInt8] = u32(0) + u32(0) + u32(0) + u32(0) + u32(0) + u32(0) + u32(0)
         let surface: [UInt8] = [0, 1, 0, 0] + u32(0) + u32(0) + u32(0) + u32(0) + u32(0) + canvas + status
-        return Array("CAFR".utf8) + [9, 0, 0, 0] + u32(1) + u32(surface.count) + surface
+        return Array("CAFR".utf8) + [10, 0, 0, 0] + u32(1) + u32(surface.count) + surface
             + u32(0) + u32(0) + u32(0) + u32(0) + [UInt8](repeating: 0, count: 12)
     }
 

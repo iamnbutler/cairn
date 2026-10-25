@@ -220,9 +220,25 @@ the printout says so and gives the replay command and the shrunk steps.
 6. **Relations** (`Custom.relations`), for a host's move or a person's operation.
 7. **Outstanding** (`Custom.outstanding`): the app's checks against the requests the runtime
    still holds for it.
-8. **Frame-time budget:** wall-clock time of `Runtime.step` (update, view, layout, settle) per
+8. **Secure fields** (`secure`), once a secure field (`FieldView.secure`) has been on screen:
+   neither the frame's dump (`Dump.canvas` of `Frame.ofLaid`) nor any effect's dump (`Dump.effect`)
+   holds the planted text, as text or as hex. See "Secure fields" below.
+9. **Frame-time budget:** wall-clock time of `Runtime.step` (update, view, layout, settle) per
    step, against `--budget-ms` (default 8, a 120 Hz frame). Over-budget states are reported with
    their seed and step, but never fail a run: timing is not deterministic.
+
+### Secure fields
+
+An edit of a secure field is one time in three preceded by inserting `Text.planted`
+(`lean/Cairn/Fuzz/Text.lean`), a string nothing else types. Check 8 then fails the step at which
+a frame or an effect carries it where a tool could print it: a view that echoes the field, a
+request built from it without `redact := true`, a clipboard write. Lean proves the field's own
+view safe (`Dump.secure_canvas`); the check is for what an app does with the text.
+
+Nothing the fuzzer prints holds what was typed into a secure field: its `insert`, `paste` and
+`setMarked` text is printed as bullets, one per scalar, in verbose steps, failure messages,
+shrunk sequences, flows and `build/fuzz/<App>.json`. Shrinking replays the real text, so a
+printed flow's witness has bullets where the text was.
 
 Moves' `post`s and the invariants are proved, so checks 1 and 2 at the model level should never
 fail; they are cheap and guard the machinery. Presence and pressability are proved per app and
@@ -461,6 +477,7 @@ on after it.
 | `images.cache` | ^1011 | `ImageStore` (`setBudget`, `setDrawn`, `put`, `remove`), `World` (`imageCache`) | a least-recently-used model of the store; a copy of Lean's `Images` table fed the `World`'s events in order | 5–60 puts (4–32 pixels a side), removals, drawn sets and budgets; 3–10 files loaded concurrently with and without `reload`, deleted and restored, frames drawing what the app takes for ready, budgets of 0–3 large images |
 | `pointer.click` | ^7 | `HostView` (`mouseDown`, `mouseUp`, `point`), `Engine`'s queue | the click's window location flipped and rounded down by the suite; the event's modifier flags | 1–10 clicks a case in a hidden titled window of 40–1600 × 40–1000 whose content is a `HostView` over a recording core; points fractional, whole and on the content's edges; random shift, command, option, control; each event sent to the view AppKit's `hitTest` picks |
 | `pointer.double-click` | ^214 | `HostView.mouseDown`'s `clickCount` | the `clickCount` of each mouse down, at the first click's point | the same cases: double and triple clicks, the later downs and ups `clickCount` 2 and 3, within the double-click interval |
+| `text.secure-input` | ^1020 | `SecureInputGate` as `HostView.updateSecureInput` drives it; Carbon's `EnableSecureEventInput`, `DisableSecureEventInput` | the frame's `TextInput.secure`, the window's key state and the view's life, step by step; `IsSecureEventInputEnabled` read back | 1–30 steps a case of no, plain or secure text input, key or not, live or not, ending closed; one case in eight makes the system's calls |
 | `effects.cancel` | ^1009 | `World` (`Cancellation`, `cancelRequest`), `HTTP.run`, `ImageLoad` | a `URLProtocol` stub recording which loads started and which were stopped early; the store before and after | 1–12 `http` and `loadImage` requests (with and without `reload`), some held open by the stub; cancels in the same frame, while running and after the answer; 0–2 cancels of ids never sent |
 | `effects.permission` | ^965 | `Permissions.check` | a stubbed TCC: statuses and the calls made | both permissions × trusted or not × the four microphone statuses × prompt × granted or not; the live system without prompting |
 | `subs.record` | ^966 | `World` (`record`), `LevelMeter`, `Clips` | a fake microphone's delivered samples; levels computed directly from them | 0–2 s of synthetic audio (silence, square waves, noise, ±32768 extremes) split into buffers of 0–4000 samples, delivered from another thread with 0–3 ms pauses; stops and resets after 0–100 ms; failing microphones; the meter over random splits |

@@ -31,8 +31,7 @@ host in `host/Sources/CairnTodo`.
 | ^213 | retired | the listed rows, before `Style` had an image (now ^225) |
 | ^215 | retired | hash routes and the back button (web only) |
 | ^216–^224 | flow | witnessed paths through the app |
-| ^225 | retired | the listed rows, before `FieldView` had `secure` (now ^226) |
-| ^226 | invariant | the listed rows are the todos the filter accepts, in order |
+| ^225 | invariant | the listed rows are the todos the filter accepts, in order |
 
 Editing a title (^205, a double press) relies on the host reporting a double click as a second
 click, ^214, and every press on the host reporting clicks where they happen, ^7: assumptions of
@@ -202,14 +201,12 @@ invariant ^212 counterAndIds "Counter and ids" for machine where
       (Move.all_cons (clearDone.preserves _ fun _ _ h => clear_inv h) Move.all_nil)))))))))
 
 -- region: todo-listed-rows
-invariant ^226 listedRows "The list is the filter applied to the todos" for machine where
+invariant ^225 listedRows "The list is the filter applied to the todos" for machine where
   does "The rows on screen are exactly the todos the selected filter accepts, in creation order, under any hover and focus, in every reachable state. (T40, T42)"
   holds s := ∀ ui, (view s ui).controls.filterMap rowKey = (visible s).map (·.id)
   init := fun ui => view_rows _ ui
   step := fun _ _ _ ui => view_rows _ ui
 -- endregion: todo-listed-rows
-
-retire ^225 invariant "The list is the filter applied to the todos" because "Reissued as ^226 with the same meaning: FieldView gained its secure field (#206), which changed the statement's hash, and a published claim keeps its statement."
 
 retire ^213 invariant "The list is the filter applied to the todos" because "Reissued as ^225 with the same meaning: Style gained its image field (Cairn 0.2.0), which changed the statement's hash, and a published claim keeps its statement."
 
