@@ -2,7 +2,8 @@
   "name": "cairn",
   "main": "worker.js",
   "compatibility_date": "2026-10-01",
-  "assets": { "directory": "./public", "binding": "ASSETS" },
+  // build/site is site/public with the docs on top: `make site-dist`.
+  "assets": { "directory": "../build/site", "binding": "ASSETS" },
   // The package pages read the public Cairn registry, with no token: anyone reads it. Without
   // REGISTRY_URL they show site/registry/fixture.json, marked as sample data.
   "vars": { "REGISTRY_URL": "https://cairn.registry.nexthub.sh" },

@@ -5,7 +5,7 @@ LEAN_PREFIX = $(shell cd lean && lean --print-prefix)
 LIB = build/lib/libcairn_lean.a
 VENDOR = host/Sources/CLean/vendor/lean
 
-.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest demo fixture clean record site site-maps map map-trusted doc doctest site-api conformance fuzz fuzz-quick size fuzz-trusted fuzz-trusted-quick bundle docs-site docs-check registry-check new-check
+.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest demo fixture clean record site site-maps map map-trusted doc doctest site-api conformance fuzz fuzz-quick size fuzz-trusted fuzz-trusted-quick bundle docs site-dist registry-check new-check
 
 # region: make-apps
 # build/lib/libcairn_lean.a: the framework (`Cairn`) and Lean's runtime, linked by every host
@@ -77,7 +77,7 @@ corpus: lean
 
 # region: make-check
 # Everything a PR must pass.
-check: lint audit ledger kernel doctest test selftest fuzz-quick size fuzz-trusted-quick docs-check registry-check new-check
+check: lint audit ledger kernel doctest test selftest fuzz-quick size fuzz-trusted-quick docs registry-check new-check
 # endregion: make-check
 
 bench: lean
@@ -154,14 +154,14 @@ site-maps:
 	cp -R build/map/Trusted/dist site/public/map/trusted
 	bun tools/site/build.ts
 
-# The developer docs: site/docs/*.md → site/public/docs/ (tools/docs/build.ts). Code is included
-# from source by region; a missing file or region fails the build. The output is committed, and
-# docs-check (part of check) fails when it is stale. site/public/docs/api/ is `cairn doc`'s.
-docs-site:
-	bun tools/docs/build.ts
-
-docs-check:
-	bun tools/docs/build.ts --check
+# The developer docs: site/web/content/docs/*.md → site/web/public/docs/, built by bongo
+# (site/web/bongo.config.ts) with a link preview card per page. Code is included from source by
+# region; a missing file or region, a fenced code block or a broken link fails the build. The
+# output isn't committed: site-dist merges it with site/public. site/public/docs/api/ is
+# `cairn doc`'s, and site/public/docs/docs.css is shared with the package pages. --fresh: bongo
+# rebuilds a page when its Markdown changes, not when a file it includes does.
+docs:
+	cd site/web && bun install --frozen-lockfile --silent && bun --bun ./node_modules/.bin/bongo build --fresh
 
 # The package pages (site/registry.js) against the registry fixture and a fake registry. The
 # fixture comes from the release tags: `bun tools/registry/fixture.ts` rewrites it, `--check` diffs it.
@@ -174,8 +174,16 @@ registry-check:
 new-check: lean
 	tools/cairn/new-check.sh
 
+# The microsite's files, build/site/: site/public with the docs on top. bongo empties its own
+# output when a build fails, so it never writes into site/public; a file both have is an error.
+site-dist: docs
+	rm -rf build/site && mkdir -p build && cp -R site/public build/site
+	@clash=$$(cd site/web/public && find . -type f -exec test -e ../../public/{} \; -print); \
+		if [ -n "$$clash" ]; then echo "site-dist: site/public and the docs build both have $$clash"; exit 1; fi
+	cp -R site/web/public/. build/site/
+
 # Deploy the microsite (site/) to Cloudflare, once the feed is fresh (site-feed-check, below).
-site: site-feed-check og-check
+site: site-dist site-feed-check og-check
 	cd site && npx -y wrangler@4 deploy
 
 clean:
@@ -228,7 +236,7 @@ doc:
 		$(if $(PRIVATE),--private) $(if $(OPEN),--open)
 
 # Cairn's docs as the developer docs' API reference, site/public/docs/api/ (committed; the
-# docs build in tools/docs links to it and never writes it). Deploying is still `make site`.
+# docs build in site/web links to it and never writes it). Deploying is still `make site`.
 site-api:
 	$(MAKE) doc PKG=Cairn
 	rm -rf site/public/docs/api && mkdir -p site/public/docs

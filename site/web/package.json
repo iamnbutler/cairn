@@ -1,0 +1,16 @@
+{
+	"name": "cairn-site",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "bongo dev",
+		"build": "bongo build"
+	},
+	"devDependencies": {
+		"@bongo/markdown": "1.1.0",
+		"@fontsource/pixelify-sans": "^5.3.0",
+		"@resvg/resvg-js": "2.6.2",
+		"bongo": "npm:@bongo/bongo@1.1.0",
+		"satori": "0.57.2"
+	}
+}

@@ -1,5 +1,5 @@
 // Link previews: the Open Graph and Twitter tags every page carries, and the card each one shows.
-// The tags are written by the generators that own a page's head (tools/docs/build.ts), and
+// The docs write their own tags and cards (site/web, built by bongo). These tags are
 // stamped by tools/site/build.ts into the pages it doesn't generate: the homepage, /milestones/,
 // and the copied output of the map and cairn doc. The package pages (site/registry.js) run in the
 // Worker and write them too. Each tag block names its card in an `<!-- og card {…} -->` comment;

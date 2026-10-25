@@ -1,6 +1,6 @@
 /* The site's look, shared by the homepage and /milestones/: the night palette, Pixelify Sans for
    headings and labels, a serif for prose, stepped corners on panels. The docs have their own
-   copy in tools/docs/docs.css. */
+   own, site/public/docs/docs.css. */
 :root {
   --bg: #161937;
   --fg: #e6e2f6;

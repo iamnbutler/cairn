@@ -1,0 +1,22 @@
+{{! The link preview card for a docs page, drawn by satori when bongo builds (layouts/docs/html.hbs).
+    assets/og/scene.png is the homepage's scene and shade with no text: tools/og/card.html?bare,
+    screenshotted at 1200 x 630 by headless Chrome, as tools/og/render.ts draws the other cards.
+    Redraw it after a change to the scene. }}
+{{#var n = $page.title.length}}
+{{#var size = n <= 12 ? 112 : n <= 20 ? 96 : n <= 30 ? 80 : 68}}
+<style>
+	@font-face { font-family: Pixelify Sans; src: url(fonts/pixelify-sans-latin-500-normal.woff) format('woff'); font-weight: 500 }
+	@font-face { font-family: Pixelify Sans; src: url(fonts/pixelify-sans-latin-600-normal.woff) format('woff'); font-weight: 600 }
+</style>
+<div style="display: flex; position: relative; width: 1200px; height: 630px; font-family: Pixelify Sans; color: #f3efff">
+	<img src="og/scene.png" width="1200" height="630" style="position: absolute; left: 0; top: 0"/>
+	<div style="display: flex; flex-direction: column; justify-content: center; position: absolute; left: 72px; top: 0; width: 680px; height: 630px">
+		<div style="display: flex; align-items: center; font-weight: 600; font-size: 30px; letter-spacing: 1px; text-shadow: 3px 3px 0 #2b2d6a">
+			<img src="og/icon.svg" width="48" height="48" style="margin-right: 16px"/>Cairn
+		</div>
+		{{#if $page.params.eyebrow}}
+		<div style="display: flex; margin-top: 34px; font-weight: 600; font-size: 34px; color: #f2c46a; text-shadow: 3px 3px 0 #2b2d6a">{{ $page.params.eyebrow }}</div>
+		{{/if}}
+		<div style="display: flex; margin-top: {{ $page.params.eyebrow ? 14 : 34 }}px; font-weight: 600; font-size: {{ size }}px; line-height: 1.05; text-shadow: 5px 5px 0 #2b2d6a">{{ $page.title }}</div>
+	</div>
+</div>
