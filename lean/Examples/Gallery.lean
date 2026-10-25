@@ -175,7 +175,7 @@ def line (size : Nat) (color : Color) (t : String) (weight : Nat := 400) : Node 
 def status : ImageState → String
   | .loading => "Loading…"
   | .ready w h => s!"{w} × {h} px"
-  | .failed f _ => Image.faultText f
+  | .failed .. => "Failed to load"
 
 -- region: gallery-tile
 def tileImage (s : State) (src : String) : Node :=

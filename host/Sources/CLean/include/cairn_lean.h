@@ -55,6 +55,9 @@ cairn_obj *runtime_initialize_cairn_Examples_Counter_Abi(uint8_t builtin);
 cairn_obj *runtime_initialize_cairn_Examples_Clock_Abi(uint8_t builtin);
 cairn_obj *runtime_initialize_cairn_Examples_Tray_Abi(uint8_t builtin);
 
+// libcairn_app_gallery.a: lean/Examples/Gallery.lean, exports in Examples/Gallery/Abi.lean.
+cairn_obj *runtime_initialize_cairn_Examples_Gallery_Abi(uint8_t builtin);
+
 // libcairn_app_basics.a: lean/Examples/Basics.lean.
 cairn_obj *runtime_initialize_cairn_Examples_Basics(uint8_t builtin);
 
