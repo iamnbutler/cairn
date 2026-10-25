@@ -1,10 +1,10 @@
 [
 	{
-		"section": "Learn",
+		"section": "Guides",
 		"items": [
 			{
-				"page": "book/index",
-				"children": ["book/first-app", "book/moves-and-flows", "book/view-and-layout", "book/proving", "book/effects", "book/shipping"]
+				"page": "guide/index",
+				"children": ["guide/first-app", "guide/moves-and-flows", "guide/view-and-layout", "guide/proving", "guide/effects", "guide/shipping"]
 			},
 			{
 				"page": "examples/index",
@@ -13,24 +13,24 @@
 		]
 	},
 	{
-		"section": "Use",
+		"section": "Reference",
 		"items": [
-			{ "page": "use/api" },
-			{ "page": "use/cairn-tool" },
-			{ "page": "use/claims" },
-			{ "page": "use/evidence" },
-			{ "page": "use/errors" },
-			{ "page": "use/releases" }
+			{ "page": "reference/api" },
+			{ "page": "reference/cairn-tool" },
+			{ "page": "reference/claims" },
+			{ "page": "reference/evidence" },
+			{ "page": "reference/errors" },
+			{ "page": "reference/releases" }
 		]
 	},
 	{
-		"section": "Master",
+		"section": "Internals",
 		"items": [
-			{ "page": "master/trusted-base" },
-			{ "page": "master/host-protocol" },
-			{ "page": "master/host-effects" },
-			{ "page": "master/profiling" },
-			{ "page": "master/contributing" }
+			{ "page": "internals/trusted-base" },
+			{ "page": "internals/host-protocol" },
+			{ "page": "internals/host-effects" },
+			{ "page": "internals/profiling" },
+			{ "page": "internals/contributing" }
 		]
 	},
 	{

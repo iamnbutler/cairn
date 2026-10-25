@@ -70,7 +70,7 @@ describe("with the fixture", () => {
 		for (const name of ["cairn", "yap"]) {
 			const text = await (await get(`/packages/${name}/`)).text();
 			expect(text).toContain("Not from a registry yet");
-			expect(text).toContain('<a href="/docs/book/first-app/#an-app-in-its-own-repository">');
+			expect(text).toContain('<a href="/docs/guide/first-app/#an-app-in-its-own-repository">');
 			expect(text).not.toContain(`cairn add ${name}@`);
 			expect(text).not.toContain("cairn build --release");
 			expect(text).not.toContain("git clone");

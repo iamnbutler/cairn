@@ -1,13 +1,13 @@
 ---
 title: Counter
 nav: Counter
-eyebrow: Cairn by Example
+eyebrow: Example apps
 lede: A count, an Increment button, and a Reset button that is there only when there is something to reset.
 ---
 
 Counter is the smallest complete Cairn app. Every part of the stack is in it: claims, a view,
 proofs that reach the screen, runtime tests, a Swift host, a self test and a map.
-[Your first app](/docs/book/first-app/) walks through it in order; this page is the reference.
+[Your first app](/docs/guide/first-app/) walks through it in order; this page is the reference.
 
 | Id | Kind | What |
 |---|---|---|

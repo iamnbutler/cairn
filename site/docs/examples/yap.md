@@ -1,7 +1,7 @@
 ---
 title: Yap
 nav: Yap
-eyebrow: Cairn by Example
+eyebrow: Example apps
 lede: Porting a real dictation app to Cairn one to one, with its original as the spec.
 ---
 
@@ -20,7 +20,7 @@ This is the example to read for porting an existing app. It isn't a tutorial: th
 and these sections show the decisions that matter.
 
 Yap is also the first app that lives outside Cairn's repository. It is its own package, `yap-cairn`,
-which depends on Cairn `v0.1.0` the way any app would ([release notes](/docs/use/releases/)). Its claims are `yap^301` to `yap^399`, beside Cairn's own `cairn^N`. Because its
+which depends on Cairn `v0.1.0` the way any app would ([release notes](/docs/reference/releases/)). Its claims are `yap^301` to `yap^399`, beside Cairn's own `cairn^N`. Because its
 sources are no longer in this repository, this page can't include them yet: the parity table is
 `docs/yap-parity.md` and the claims are in `lean/Yap.lean`, both in that package.
 

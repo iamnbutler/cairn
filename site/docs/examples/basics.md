@@ -1,7 +1,7 @@
 ---
 title: Basics
 nav: Basics
-eyebrow: Cairn by Example
+eyebrow: Example apps
 lede: A text field, an Add button, a list of items you can check off or delete, and a count of what's left.
 ---
 

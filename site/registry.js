@@ -245,7 +245,7 @@ export async function packagePage(src, name, wanted) {
 ${
 	src.fixture
 		? `<h2 id="use">${app ? "Build it" : "Use it"}</h2>
-<p>Not from a registry yet: none is deployed, so <code>cairn add</code> and <code>cairn build</code> have nothing to resolve against. Today an app depends on Cairn by its git tag, in its lakefile and <code>Package.swift</code>: see <a href="/docs/book/first-app/#an-app-in-its-own-repository">An app in its own repository</a>.</p>`
+<p>Not from a registry yet: none is deployed, so <code>cairn add</code> and <code>cairn build</code> have nothing to resolve against. Today an app depends on Cairn by its git tag, in its lakefile and <code>Package.swift</code>: see <a href="/docs/guide/first-app/#an-app-in-its-own-repository">An app in its own repository</a>.</p>`
 		: app
 		? `<h2 id="use">Build it</h2>
 <p>${esc(name)} is an app: nothing can depend on it. Clone it from the registry and build it with the <code>cairn</code> tool:</p>
