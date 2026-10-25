@@ -1,20 +1,9 @@
-/* Cairn's map (tools/map). The site's night palette and type (site/public/site.css): Pixelify
-   Sans for headings and labels, a serif for prose, stepped corners on panels and frames. Each
-   kind of evidence has one colour, used wherever it appears; a gap is the same chip, dashed and
-   empty. */
+/* Cairn's map (tools/map) and API reference (tools/doc): Pixelify Sans for headings and labels, a
+   serif for prose, stepped corners on panels and frames. The palette and the corners are the
+   site's (site/public/tokens.css), which the tools put at the top of the style.css they write.
+   Each kind of evidence has one colour, used wherever it appears; a gap is the same chip, dashed
+   and empty. */
 :root {
-	--bg: #161937;
-	--fg: #e6e2f6;
-	--muted: #a29fca;
-	--rule: #2d3062;
-	--ink: #0c0e26;
-	--panel: #1d2047;
-	--chip: #2a2d5e;
-	--accent: #9cc8e8;
-	--gold: #f2c46a;
-	--px: 4px;
-	--pixel: "Pixelify Sans", ui-monospace, monospace;
-	--mono: ui-monospace, "SF Mono", Menlo, monospace;
 	/* The ladder, strongest first. */
 	--proved: #9cc8e8;
 	--fuzzed: #82b896;
@@ -24,7 +13,6 @@
 	--broken: #ec7a62;
 	--untested: #5a5a96;
 	--retired: #3a3d70;
-	color-scheme: dark;
 }
 * { box-sizing: border-box; }
 html { background: var(--bg); }
@@ -40,17 +28,6 @@ a { color: var(--accent); text-underline-offset: 3px; }
 code { font: 0.84em var(--mono); background: var(--chip); padding: 1px 5px; border-radius: 2px; overflow-wrap: anywhere; }
 h1, h2, h3, .pix, nav, .m, .hl, .tile, th, .eyebrow { font-variant-ligatures: none; } /* Pixelify draws "fi" as a broken glyph */
 p { margin: 0 0 12px; }
-
-/* Stepped corners, as on the site. */
-.px {
-	--s: var(--px);
-	clip-path: polygon(
-		0 calc(var(--s) * 2), var(--s) calc(var(--s) * 2), var(--s) var(--s), calc(var(--s) * 2) var(--s), calc(var(--s) * 2) 0,
-		calc(100% - var(--s) * 2) 0, calc(100% - var(--s) * 2) var(--s), calc(100% - var(--s)) var(--s), calc(100% - var(--s)) calc(var(--s) * 2), 100% calc(var(--s) * 2),
-		100% calc(100% - var(--s) * 2), calc(100% - var(--s)) calc(100% - var(--s) * 2), calc(100% - var(--s)) calc(100% - var(--s)), calc(100% - var(--s) * 2) calc(100% - var(--s)), calc(100% - var(--s) * 2) 100%,
-		calc(var(--s) * 2) 100%, calc(var(--s) * 2) calc(100% - var(--s)), var(--s) calc(100% - var(--s)), var(--s) calc(100% - var(--s) * 2), 0 calc(100% - var(--s) * 2)
-	);
-}
 
 /* The bar: the site, the map, its pages. */
 .bar { max-width: 1120px; margin: 0 auto; padding: 20px 16px 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; font: 15px/1.3 var(--pixel); }

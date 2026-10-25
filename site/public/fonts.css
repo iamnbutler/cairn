@@ -1,0 +1,5 @@
+/* Pixelify Sans, served by the site: make site-dist copies the files from @fontsource/pixelify-sans
+   (site/web/package.json) into /fonts/. */
+@font-face { font-family: "Pixelify Sans"; font-style: normal; font-weight: 400; font-display: swap; src: url(/fonts/pixelify-sans-latin-400-normal.woff2) format("woff2"); }
+@font-face { font-family: "Pixelify Sans"; font-style: normal; font-weight: 600; font-display: swap; src: url(/fonts/pixelify-sans-latin-600-normal.woff2) format("woff2"); }
+@font-face { font-family: "Pixelify Sans"; font-style: normal; font-weight: 700; font-display: swap; src: url(/fonts/pixelify-sans-latin-700-normal.woff2) format("woff2"); }

@@ -9,13 +9,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ title }}</title>
 <meta name="description" content="{{ p.description }}">
-<link rel="icon" href="/favicon.ico" sizes="32x32">
-<link rel="icon" href="/icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/site.css">
+{{{ $utils.head('/site.css') }}}
 <link rel="alternate" type="application/rss+xml" title="Cairn" href="/feed.xml">
 {{#if home}}
 <script>

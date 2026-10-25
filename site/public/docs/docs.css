@@ -1,21 +1,6 @@
-/* Cairn's developer docs (site/web, built by bongo) and the package pages (site/registry.js). The site's night palette and type, as on the homepage
-   (site/public/index.html) and the maps (tools/map/style.css): Pixelify Sans for headings and
-   labels, a serif for prose, stepped corners on panels. */
-:root {
-	--bg: #161937;
-	--fg: #e6e2f6;
-	--muted: #a29fca;
-	--rule: #2d3062;
-	--ink: #0c0e26;
-	--panel: #1d2047;
-	--chip: #2a2d5e;
-	--accent: #9cc8e8;
-	--gold: #f2c46a;
-	--px: 4px;
-	--pixel: "Pixelify Sans", ui-monospace, monospace;
-	--mono: ui-monospace, "SF Mono", Menlo, monospace;
-	color-scheme: dark;
-}
+/* Cairn's developer docs (site/web, built by bongo) and the package pages (site/registry.js):
+   Pixelify Sans for headings and labels, a serif for prose, on the palette and stepped corners in
+   /tokens.css. */
 * { box-sizing: border-box; }
 html { background: var(--bg); }
 body {
@@ -29,17 +14,6 @@ body {
 a { color: var(--accent); text-underline-offset: 3px; }
 code { font: 0.84em var(--mono); background: var(--chip); padding: 1px 5px; border-radius: 2px; overflow-wrap: anywhere; }
 p { margin: 0 0 14px; }
-
-/* Stepped corners, as on the site. */
-.px {
-	--s: var(--px);
-	clip-path: polygon(
-		0 calc(var(--s) * 2), var(--s) calc(var(--s) * 2), var(--s) var(--s), calc(var(--s) * 2) var(--s), calc(var(--s) * 2) 0,
-		calc(100% - var(--s) * 2) 0, calc(100% - var(--s) * 2) var(--s), calc(100% - var(--s)) var(--s), calc(100% - var(--s)) calc(var(--s) * 2), 100% calc(var(--s) * 2),
-		100% calc(100% - var(--s) * 2), calc(100% - var(--s)) calc(100% - var(--s) * 2), calc(100% - var(--s)) calc(100% - var(--s)), calc(100% - var(--s) * 2) calc(100% - var(--s)), calc(100% - var(--s) * 2) 100%,
-		calc(var(--s) * 2) 100%, calc(var(--s) * 2) calc(100% - var(--s)), var(--s) calc(100% - var(--s)), var(--s) calc(100% - var(--s) * 2), 0 calc(100% - var(--s) * 2)
-	);
-}
 
 /* The bar: the site, the docs, the maps. */
 .bar { max-width: 1180px; margin: 0 auto; padding: 20px 16px 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; font: 15px/1.3 var(--pixel); }

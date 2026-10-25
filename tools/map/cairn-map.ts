@@ -16,6 +16,7 @@ import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { captureScript, counts, evaluate, gaps, type Audit, type Capture, type Claim, type Conformance, type Fuzz, type Lock, type Trusted } from "./evidence";
 import { render } from "./render";
+import { stylesheet } from "./stylesheet";
 import { svg as icon } from "../../site/icons";
 
 const { values: opts, positionals } = parseArgs({
@@ -98,7 +99,7 @@ function build() {
 
 	const pages = render({ app: opts.name || app, rows, size: (f) => sizes.get(f), inputs, code: "https://github.com/iamnbutler/cairn/blob/main/" });
 	for (const [file, html] of Object.entries(pages)) writeFileSync(join(DIST, file), html);
-	cpSync(join(import.meta.dir, "style.css"), join(DIST, "style.css"));
+	writeFileSync(join(DIST, "style.css"), stylesheet());
 	writeFileSync(join(DIST, "icon.svg"), icon());
 
 	// evidence.json: the same rows, for anything that wants to render its own view.

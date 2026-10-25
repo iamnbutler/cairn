@@ -1,22 +1,5 @@
-/* The site's look, shared by the homepage and /milestones/: the night palette, Pixelify Sans for
-   headings and labels, a serif for prose, stepped corners on panels. The docs have their own
-   own, site/public/docs/docs.css. */
-:root {
-  --bg: #161937;
-  --fg: #e6e2f6;
-  --muted: #a29fca;
-  --rule: #2d3062;
-  --ink: #0c0e26;
-  --panel: #1d2047;
-  --shadow: #0c0e26;
-  --chip: #2a2d5e;
-  --accent: #9cc8e8;
-  --gold: #f2c46a;
-  --px: 4px;
-  --pixel: "Pixelify Sans", ui-monospace, monospace;
-  --mono: ui-monospace, "SF Mono", Menlo, monospace;
-  color-scheme: dark;
-}
+/* The homepage's and /milestones/' look: Pixelify Sans for headings and labels, a serif for prose,
+   on the palette and stepped corners in tokens.css. The docs have their own, docs/docs.css. */
 * { box-sizing: border-box; }
 html { background: var(--bg); }
 body {
@@ -32,17 +15,6 @@ code {
   background: var(--chip);
   padding: 1px 5px;
   border-radius: 2px;
-}
-
-/* Stepped corners: the shape every panel, stone and frame on the page shares. */
-.px {
-  --s: var(--px);
-  clip-path: polygon(
-    0 calc(var(--s) * 2), var(--s) calc(var(--s) * 2), var(--s) var(--s), calc(var(--s) * 2) var(--s), calc(var(--s) * 2) 0,
-    calc(100% - var(--s) * 2) 0, calc(100% - var(--s) * 2) var(--s), calc(100% - var(--s)) var(--s), calc(100% - var(--s)) calc(var(--s) * 2), 100% calc(var(--s) * 2),
-    100% calc(100% - var(--s) * 2), calc(100% - var(--s)) calc(100% - var(--s) * 2), calc(100% - var(--s)) calc(100% - var(--s)), calc(100% - var(--s) * 2) calc(100% - var(--s)), calc(100% - var(--s) * 2) 100%,
-    calc(var(--s) * 2) 100%, calc(var(--s) * 2) calc(100% - var(--s)), var(--s) calc(100% - var(--s)), var(--s) calc(100% - var(--s) * 2), 0 calc(100% - var(--s) * 2)
-  );
 }
 
 /* The scene sits behind the top of the page. Under the text column it dissolves into mist

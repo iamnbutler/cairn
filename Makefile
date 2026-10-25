@@ -208,6 +208,7 @@ site-dist: site-build
 	cp -R build/doc/Cairn/dist build/site/docs/api
 	bun tools/site/pages.ts build/site
 	bun site/icons.ts build/site
+	mkdir -p build/site/fonts && for w in 400 600 700; do cp site/web/node_modules/@fontsource/pixelify-sans/files/pixelify-sans-latin-$$w-normal.woff2 build/site/fonts/; done
 
 # Deploy the microsite (site/) to Cloudflare.
 site: site-dist
