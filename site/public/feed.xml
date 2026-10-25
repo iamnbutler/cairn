@@ -8,7 +8,14 @@
 <language>en</language>
 <atom:link href="https://cairn.iamnbutler.workers.dev/feed.xml" rel="self" type="application/rss+xml"/>
 <image><url>https://cairn.iamnbutler.workers.dev/apple-touch-icon.png</url><title>Cairn</title><link>https://cairn.iamnbutler.workers.dev/</link></image>
-<lastBuildDate>Sun, 25 Oct 2026 00:43:00 GMT</lastBuildDate>
+<lastBuildDate>Sun, 25 Oct 2026 00:47:00 GMT</lastBuildDate>
+<item>
+<title>cairn-link links each dependency's libraries</title>
+<link>https://cairn.iamnbutler.workers.dev/milestones/#cairn-link-links-each-dependency-s-libraries</link>
+<guid isPermaLink="true">https://cairn.iamnbutler.workers.dev/milestones/#cairn-link-links-each-dependency-s-libraries</guid>
+<pubDate>Sun, 25 Oct 2026 00:47:00 GMT</pubDate>
+<description>&lt;p&gt;bin/cairn-link no longer links Cairn's library by name (#118). It reads lake-manifest.json, finds the cairn.toml beside each dependency, transitive ones included, and links the Lean libraries that package lists under libs. Cairn's own cairn.toml now lists Cairn, so an app gets the same archive as before, and a library like cairn_batteries can be linked the same way.&lt;/p&gt;&lt;p&gt;It refuses a Lean module that ends up in two archives, which would be a duplicate symbol, and a dependency that is an app. A dependency with no cairn.toml is linked not at all; if linked code imports it, cairn-link names the package and says to give it one.&lt;/p&gt;&lt;p&gt;Checked with a throwaway app that depends on Cairn and on a second library package with its own libs: it links, and a small C program draws a frame through both. Yap builds against it with its existing --lib Yap and passes its selftest.&lt;/p&gt;&lt;p&gt;As of commit 9ca784f, in the progress log of &lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#third-milestone-pairs&quot;&gt;Third milestone: Pairs&lt;/a&gt;.&lt;/p&gt;</description>
+</item>
 <item>
 <title>Third milestone: Pairs</title>
 <link>https://cairn.iamnbutler.workers.dev/milestones/#third-milestone-pairs</link>
@@ -33,7 +40,7 @@
   &lt;/ol&gt;
   &lt;p&gt;Pairs lives in its own repository and is built only through the package path:
     &lt;code&gt;cairn new pairs --bin&lt;/code&gt;, &lt;code&gt;cairn add&lt;/code&gt; and &lt;code&gt;cairn build&lt;/code&gt;.&lt;/p&gt;
-  </description>
+  &lt;p&gt;Progress so far:&lt;/p&gt;&lt;ul&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#cairn-link-links-each-dependency-s-libraries&quot;&gt;cairn-link links each dependency's libraries&lt;/a&gt; (2026-10-24)&lt;/li&gt;&lt;/ul&gt;</description>
 </item>
 <item>
 <title>Cairn 0.1.3, on the public registry</title>
