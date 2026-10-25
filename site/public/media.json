@@ -1,5 +1,16 @@
 [
   {
+    "image": "/m/images/bc48859669cf1995.png",
+    "title": "Yap on cairn_json",
+    "caption": "Yap's overlay mid-dictation, now built on Cairn 0.2.5 with JSON from the cairn_json package instead of its own parser. Yap 0.1.0 is on the registry.",
+    "date": "2026-10-25",
+    "published": "2026-10-25T21:14:20Z",
+    "commit": "bdf391d",
+    "width": 1112,
+    "height": 428,
+    "milestone": "m3"
+  },
+  {
     "title": "Cairn 0.2.5: closing the window quits cleanly",
     "text": [
       "Cairn 0.2.5 is out on the public registry as iamnbutler/cairn. Closing an app's window now quits it cleanly: the window delegate owns the window and shuts the view down before the app terminates. Before, AppKit also released the window on close, and a frame landing afterwards reached the freed window; Pairs 0.1.2 crashed that way. make selftest closes a real window with input, a timer and frames in flight (#199).",
