@@ -9,6 +9,8 @@ import { route } from "./registry.js";
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    // A package version's card is drawn when the site builds; one published since has none yet.
+    if (url.pathname.startsWith("/og/pkg/")) return env.ASSETS.fetch(new Request(new URL("/og/packages.png", url)));
     if (url.pathname === "/packages" || url.pathname.startsWith("/packages/") || url.pathname.startsWith("/docs/")) {
       if (request.method !== "GET" && request.method !== "HEAD") return env.ASSETS.fetch(request);
       try {
