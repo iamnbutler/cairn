@@ -8,7 +8,14 @@
 <language>en</language>
 <atom:link href="https://cairn.iamnbutler.workers.dev/feed.xml" rel="self" type="application/rss+xml"/>
 <image><url>https://cairn.iamnbutler.workers.dev/apple-touch-icon.png</url><title>Cairn</title><link>https://cairn.iamnbutler.workers.dev/</link></image>
-<lastBuildDate>Sun, 25 Oct 2026 01:01:40 GMT</lastBuildDate>
+<lastBuildDate>Sun, 25 Oct 2026 01:17:40 GMT</lastBuildDate>
+<item>
+<title>cairn new makes an app that links</title>
+<link>https://cairn.iamnbutler.workers.dev/milestones/#cairn-new-makes-an-app-that-links</link>
+<guid isPermaLink="true">https://cairn.iamnbutler.workers.dev/milestones/#cairn-new-makes-an-app-that-links</guid>
+<pubDate>Sun, 25 Oct 2026 01:17:40 GMT</pubDate>
+<description>&lt;p&gt;Since the library split, the Cairn umbrella imported every proof and tool, none of which an app links, so an app that wrote import Cairn, as cairn new's template did, failed at the host's link on initialize_cairn_Cairn (#128). Now Cairn is the linked library's umbrella, with the claim commands at compile time only, and the everything-umbrella the ledger, the audit and the docs read is CairnAll. cairn new --bin writes a working app: a place, a move, its exports, the C declaration of its initializer and a host with a selftest. make check now builds one against the checkout, runs its selftest and locks its two claims, which takes about a minute.&lt;/p&gt;&lt;p&gt;As of commit a2d3ff9, in the progress log of &lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#third-milestone-pairs&quot;&gt;Third milestone: Pairs&lt;/a&gt;.&lt;/p&gt;</description>
+</item>
 <item>
 <title>cairn_json, the first package outside the cairn repository</title>
 <link>https://cairn.iamnbutler.workers.dev/milestones/#cairn-json-the-first-package-outside-the-cairn-repository</link>
@@ -54,7 +61,7 @@
   &lt;/ol&gt;
   &lt;p&gt;Pairs lives in its own repository and is built only through the package path:
     &lt;code&gt;cairn new pairs --bin&lt;/code&gt;, &lt;code&gt;cairn add&lt;/code&gt; and &lt;code&gt;cairn build&lt;/code&gt;.&lt;/p&gt;
-  &lt;p&gt;Progress so far:&lt;/p&gt;&lt;ul&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#gallery-images&quot;&gt;Gallery: images&lt;/a&gt; (2026-10-24)&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#cairn-json-the-first-package-outside-the-cairn-repository&quot;&gt;cairn_json, the first package outside the cairn repository&lt;/a&gt; (2026-10-24)&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#cairn-link-links-each-dependency-s-libraries&quot;&gt;cairn-link links each dependency's libraries&lt;/a&gt; (2026-10-24)&lt;/li&gt;&lt;/ul&gt;</description>
+  &lt;p&gt;Progress so far:&lt;/p&gt;&lt;ul&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#cairn-new-makes-an-app-that-links&quot;&gt;cairn new makes an app that links&lt;/a&gt; (2026-10-24)&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#gallery-images&quot;&gt;Gallery: images&lt;/a&gt; (2026-10-24)&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#cairn-json-the-first-package-outside-the-cairn-repository&quot;&gt;cairn_json, the first package outside the cairn repository&lt;/a&gt; (2026-10-24)&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;https://cairn.iamnbutler.workers.dev/milestones/#cairn-link-links-each-dependency-s-libraries&quot;&gt;cairn-link links each dependency's libraries&lt;/a&gt; (2026-10-24)&lt;/li&gt;&lt;/ul&gt;</description>
 </item>
 <item>
 <title>Cairn 0.1.3, on the public registry</title>

@@ -1,5 +1,15 @@
 [
   {
+    "title": "cairn new makes an app that links",
+    "text": [
+      "Since the library split, the Cairn umbrella imported every proof and tool, none of which an app links, so an app that wrote import Cairn, as cairn new's template did, failed at the host's link on initialize_cairn_Cairn (#128). Now Cairn is the linked library's umbrella, with the claim commands at compile time only, and the everything-umbrella the ledger, the audit and the docs read is CairnAll. cairn new --bin writes a working app: a place, a move, its exports, the C declaration of its initializer and a host with a selftest. make check now builds one against the checkout, runs its selftest and locks its two claims, which takes about a minute."
+    ],
+    "date": "2026-10-24",
+    "published": "2026-10-25T01:17:40Z",
+    "commit": "a2d3ff9",
+    "milestone": "m3"
+  },
+  {
     "video": "/m/videos/e7538d8c5c746b46.mp4",
     "poster": "/m/videos/e7538d8c5c746b46.jpg",
     "title": "Gallery: images",
