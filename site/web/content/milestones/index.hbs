@@ -18,7 +18,29 @@ card: { label: Cairn, title: Milestones, line: "What each one sets out to show, 
   <p class="meta"><a class="feed" href="/feed.xml">Follow along with the RSS feed</a></p>
 
   <article class="post">
-  <h2 id="third-milestone-pairs">Third milestone: Pairs<span class="soon">next</span></h2>
+  <h2 id="fourth-milestone-sky-reads-bluesky">Fourth milestone: Sky reads Bluesky<span class="soon">now</span></h2>
+  <p class="meta"><time class="date" datetime="2026-10-25T16:57:29-04:00">2026-10-25</time></p>
+  <p>Can Cairn hold a feed that never ends? Sky is the reading half of a Bluesky client: sign in
+    with an app password, keep the session, and read the home feed however long it gets. It is the
+    first of four milestones on Bluesky, which needs nearly everything left after Pairs: long
+    lists, authentication, paging and requests that race.</p>
+  <ol class="trail">
+    <li>Scrolling in Cairn: a scroll box whose offset the runtime owns, and a virtual list that
+      lays out only the rows on screen.</li>
+    <li>Secrets: the session's tokens kept in the Keychain by the host, never in Lean, and secure
+      text fields for the password.</li>
+    <li><code>cairn_atproto</code>, a package: XRPC, the session calls and the timeline, with one
+      refresh at a time when a token expires.</li>
+    <li>Proofs about the feed: no duplicates and no gaps, a late page for an old cursor never
+      changes it, and a refresh racing a load-more ends as one of the two would in order.</li>
+    <li>All of it testable against a fake server, with no account and no network.</li>
+  </ol>
+  <p>Sky lives in its own repository and, like Pairs, is built only through the package path.</p>
+  <ul id="log-m4" class="trail log"><li class="meta">Loading…</li></ul>
+  </article>
+
+  <article class="post">
+  <h2 id="third-milestone-pairs">Third milestone: Pairs<span class="soon">done</span></h2>
   <p class="meta"><time class="date" datetime="2026-10-24T20:43:00-04:00">2026-10-24</time></p>
   <p>Can an app be built from packages alone, with images and requests it doesn't control? Pairs
     is a memory game: a grid of face-down cards, flip two, keep them if they match. Decks are theme
@@ -43,7 +65,7 @@ card: { label: Cairn, title: Milestones, line: "What each one sets out to show, 
   </article>
 
   <article class="post">
-  <h2 id="second-milestone-yap-on-cairn">Second milestone: Yap on Cairn<span class="soon">now</span></h2>
+  <h2 id="second-milestone-yap-on-cairn">Second milestone: Yap on Cairn<span class="soon">done</span></h2>
   <p class="meta"><time class="date" datetime="2026-10-23T21:04:46-04:00">2026-10-23</time></p>
   <p>Can claims hold up on real software someone uses every day? Yap is a small dictation app for
     the Mac: hold a key, talk, and the transcript is typed into the app in front. Almost all of it
@@ -56,7 +78,7 @@ card: { label: Cairn, title: Milestones, line: "What each one sets out to show, 
       a late reply never types, every recording ends.</li>
     <li>Yap rebuilt on Cairn, signed and installed, and used for a real day of work.</li>
   </ol>
-  <p>Yap lives in its own repository now, yap-cairn, and depends on a tagged release of Cairn the
+  <p>Yap lives in its own repository now, as the package <code>yap</code>, and depends on a tagged release of Cairn the
     way any app would. Getting it there made Cairn a package, with a <code>cairn</code> command
     and claim ids scoped by package: Yap's are <code>yap^N</code>.</p>
   <ul id="log-m2" class="trail log"><li class="meta">Loading…</li></ul>
