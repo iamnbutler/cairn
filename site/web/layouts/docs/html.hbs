@@ -32,14 +32,7 @@
 <link rel="stylesheet" href="/docs/docs.css">
 </head>
 <body>
-<header class="bar">
-  <a class="home" href="/"><img src="/icon.svg" alt="">Cairn</a>
-  <a href="/milestones/">Milestones</a>
-  <a href="/docs/"{{#if index}} class="on"{{/if}}>Docs</a>
-  <a href="/packages/">Packages</a>
-  <a href="/docs/evidence/">Maps</a>
-  <a class="gh" href="https://github.com/iamnbutler/cairn"><img src="/github.svg" alt="">GitHub</a>
-</header>
+{{{ $utils.bar(index ? 'docs' : $page.path === '/docs/evidence/' ? 'maps' : '') }}}
 <div class="layout">
 <details class="side" open>
 <summary>Contents</summary>

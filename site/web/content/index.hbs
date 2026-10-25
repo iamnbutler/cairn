@@ -6,7 +6,7 @@ card: { label: "", title: Cairn, line: "Mac apps where every action is a claim, 
 <header class="scene">
   <canvas id="scene" aria-hidden="true"></canvas>
   <a class="octocat" id="octocat" href="https://github.com/iamnbutler/cairn" aria-label="Cairn on GitHub" title="Cairn on GitHub" hidden></a>
-  <div class="title"><h1>Cairn</h1><nav class="links" aria-label="Site"><a href="/" aria-current="page">Home</a><a href="/milestones/">Milestones</a><a href="/docs/">Docs</a><a href="/packages/">Packages</a><a href="/docs/evidence/">Maps</a><a class="gh" href="https://github.com/iamnbutler/cairn"><img src="/github.svg" alt="">GitHub</a></nav></div>
+  <div class="title"><h1>Cairn</h1>{{{ $utils.titleNav('home') }}}</div>
 </header>
 
 <main>
@@ -27,61 +27,7 @@ card: { label: "", title: Cairn, line: "Mac apps where every action is a claim, 
     So the app's state, view, layout, hit testing, focus and text editing are all pure Lean, and
     the theorems are about exactly those functions.</p>
   <figure class="diagram">
-<svg viewBox="0 0 640 396" role="img" aria-labelledby="arch-t">
-<title id="arch-t">How a frame is made: Swift captures events, Lean computes the frame, Metal paints it</title>
-<!-- swift -->
-<polygon points="126,16 454,16 454,19 457,19 457,22 460,22 460,86 457,86 457,89 454,89 454,92 126,92 126,89 123,89 123,86 120,86 120,22 123,22 123,19 126,19"/>
-<text x="136" y="40" class="hd">SWIFT · MAIN THREAD</text>
-<text x="136" y="64" class="nm">the window and its events</text>
-<text x="136" y="82" class="it">no application logic</text>
-<!-- events -->
-<line x1="290" y1="92" x2="290" y2="140"/>
-<polyline points="284,134 290,140 296,134"/>
-<text x="302" y="114" class="it">events, as bytes</text>
-<!-- lean -->
-<polygon class="tint" points="126,148 454,148 454,151 457,151 457,154 460,154 460,258 457,258 457,261 454,261 454,264 126,264 126,261 123,261 123,258 120,258 120,154 123,154 123,151 126,151"/>
-<text x="136" y="172" class="hd">LEAN · OWNS THE STATE</text>
-<polygon class="chip" points="142,186 182,186 182,189 185,189 185,192 188,192 188,208 185,208 185,211 182,211 182,214 142,214 142,211 139,211 139,208 136,208 136,192 139,192 139,189 142,189"/>
-<text x="162" y="205" class="sm" text-anchor="middle">update</text>
-<polyline points="192,196 196,200 192,204"/>
-<polygon class="chip" points="206,186 246,186 246,189 249,189 249,192 252,192 252,208 249,208 249,211 246,211 246,214 206,214 206,211 203,211 203,208 200,208 200,192 203,192 203,189 206,189"/>
-<text x="226" y="205" class="sm" text-anchor="middle">view</text>
-<polyline points="256,196 260,200 256,204"/>
-<polygon class="chip" points="270,186 310,186 310,189 313,189 313,192 316,192 316,208 313,208 313,211 310,211 310,214 270,214 270,211 267,211 267,208 264,208 264,192 267,192 267,189 270,189"/>
-<text x="290" y="205" class="sm" text-anchor="middle">layout</text>
-<polyline points="320,196 324,200 320,204"/>
-<polygon class="chip" points="334,186 374,186 374,189 377,189 377,192 380,192 380,208 377,208 377,211 374,211 374,214 334,214 334,211 331,211 331,208 328,208 328,192 331,192 331,189 334,189"/>
-<text x="354" y="205" class="sm" text-anchor="middle">hit map</text>
-<polyline points="384,196 388,200 384,204"/>
-<polygon class="chip" points="398,186 438,186 438,189 441,189 441,192 444,192 444,208 441,208 441,211 438,211 438,214 398,214 398,211 395,211 395,208 392,208 392,192 395,192 395,189 398,189"/>
-<text x="418" y="205" class="sm" text-anchor="middle">encode</text>
-<text x="136" y="238" class="it">pure, total functions; every</text>
-<text x="136" y="254" class="it">claim is a theorem about them</text>
-<!-- frame -->
-<line x1="290" y1="264" x2="290" y2="312"/>
-<polyline points="284,306 290,312 296,306"/>
-<text x="302" y="286" class="it">the frame, as bytes</text>
-<!-- metal -->
-<polygon points="126,320 454,320 454,323 457,323 457,326 460,326 460,378 457,378 457,381 454,381 454,384 126,384 126,381 123,381 123,378 120,378 120,326 123,326 123,323 126,323"/>
-<text x="136" y="344" class="hd">METAL · RENDER THREAD</text>
-<text x="136" y="368" class="nm">paints the latest frame</text>
-<!-- the frame answers AppKit -->
-<polyline class="dash" points="460,206 494,206 494,54 468,54"/>
-<polyline points="474,48 468,54 474,60"/>
-<text x="504" y="120" class="it">accessibility and</text>
-<text x="504" y="136" class="it">text input answer</text>
-<text x="504" y="152" class="it">from the last frame</text>
-<!-- what is proved and what is trusted -->
-<polyline points="112,18 106,18 106,90 112,90"/>
-<text x="96" y="52" class="lb" text-anchor="end">trusted</text>
-<text x="96" y="69" class="it" text-anchor="end">kept thin</text>
-<polyline class="accent" points="112,150 106,150 106,262 112,262"/>
-<text x="96" y="204" class="lb accent" text-anchor="end">proved</text>
-<text x="96" y="221" class="it" text-anchor="end">in Lean</text>
-<polyline points="112,322 106,322 106,382 112,382"/>
-<text x="96" y="350" class="lb" text-anchor="end">trusted</text>
-<text x="96" y="367" class="it" text-anchor="end">probes, goldens</text>
-</svg>
+{{{ $utils.architecture() }}}
     <figcaption>One frame, from a key press to the screen.</figcaption>
   </figure>
 
