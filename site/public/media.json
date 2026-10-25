@@ -1,5 +1,19 @@
 [
   {
+    "video": "/m/videos/e7538d8c5c746b46.mp4",
+    "poster": "/m/videos/e7538d8c5c746b46.jpg",
+    "title": "Gallery: images",
+    "caption": "Six image tiles, each a 200 × 150 Node.image that Lean lays out before any pixels exist: a PNG, a JPEG turned by its EXIF orientation, a GIF, a poster over https, a text file and a missing file. The host decodes with ImageIO and paints with Metal; Lean only learns the pixel size, or the fault, from the loadImage reply. Reload (^501) sends every tile back to its grey placeholder and reads each source again; Fit (^502) cycles cover, contain and stretch. Nothing moves when a picture arrives or fails. In the self test every tile was answered 6.8 ms after launch.",
+    "date": "2026-10-24",
+    "published": "2026-10-25T01:01:25Z",
+    "commit": "8254f50",
+    "width": 1440,
+    "height": 1184,
+    "seconds": 31,
+    "feature": false,
+    "milestone": "m3"
+  },
+  {
     "title": "cairn_json, the first package outside the cairn repository",
     "text": [
       "Yap's JSON parser and encoder is now its own registry package, cairn_json 0.1.0, in iamnbutler/cairn_json. It requires cairn ^0.1.2 from the registry, is pure Lean with no Swift and no extern, and leaves Yap's date arithmetic for a later cairn_date.",
