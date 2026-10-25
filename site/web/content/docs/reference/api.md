@@ -15,6 +15,7 @@ The API reference is at **[/docs/api/](/docs/api/)**. It is generated, never wri
   evidence from the build and their proofs, addressed by their `^N` id. `claims.html` lists them
   all.
 - **Search** over names, doc comments and claims; `/` focuses it and `^212` finds a claim.
+- **[llms.txt](/docs/api/llms.txt)**: all of it as one Markdown file for a language model, claims and their evidence first.
 
 Anchors don't change while the name doesn't: a declaration's is its full name
 (`Cairn.Layout.Core.html#Cairn.Layout.layout`), a claim's its number.
