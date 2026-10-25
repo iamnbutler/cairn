@@ -1,3 +1,7 @@
+{{! The link preview card for a docs page, drawn by satori when bongo builds (layouts/docs/html.hbs).
+    assets/og/scene.png is the homepage's scene and shade with no text: tools/og/card.html?bare,
+    screenshotted at 1200 x 630 by headless Chrome, as tools/og/render.ts draws the other cards.
+    Redraw it after a change to the scene. }}
 {{#var n = $page.title.length}}
 {{#var size = n <= 12 ? 112 : n <= 20 ? 96 : n <= 30 ? 80 : 68}}
 <style>

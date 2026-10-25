@@ -87,7 +87,10 @@ libraries. Start one with [the cairn tool](/docs/reference/cairn-tool/).
 
 `cairn new hello` makes `hello/` with a `cairn.toml`, an empty `claims.lock`, and a `lean/`
 whose lakefile sets the claim scope to `hello`, so the app's ids are `hello^1`, `hello^2`, and so
-on. It also writes a `Package.swift` for the host. `cairn new hello --lib` makes a library
+on. The app is a working one: a window with a count and a Count button (a place, `hello^1`, and a
+move, `hello^2`), its exports in `lean/Hello/Abi.lean`, a `Package.swift` and a host whose
+`--selftest` runs it headlessly. Its Lean files start with `public import Cairn`, which brings in
+everything an app links, the claim commands included. `cairn new hello --lib` makes a library
 instead, with no host.
 
 `cairn add cairn` points the lakefile and `cairn.toml` at Cairn's latest release in the

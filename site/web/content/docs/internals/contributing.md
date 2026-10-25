@@ -59,7 +59,9 @@ that these docs are up to date with the code they include.
 
 ## Changing these docs
 
-These pages are Markdown in `site/docs`, built into `site/public/docs` by `make docs-site`, and
-the built pages are committed. Code is never pasted into a page: it is included from compiled
-source by a named region, between `region:` and `endregion:` comments, so it can't go stale. If
-a region moves or disappears, `make check` fails until the page is fixed.
+These pages are Markdown in `site/web/content/docs`, built by [bongo](https://bongo.build/) with
+`make docs`, and `make site` deploys them. Code is never pasted into a page: it is included from
+compiled source by a named region, between `region:` and `endregion:` comments, with
+`<bongo:include src="path#region" />`, so it can't go stale. If a region moves or disappears,
+or a link points at a page or heading that isn't there, `make check` fails until the page is
+fixed.

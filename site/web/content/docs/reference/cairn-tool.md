@@ -22,7 +22,7 @@ Cairn. Nothing installs `cairn` yet; build it from a Cairn checkout.
 
 | Command | What it does |
 |---|---|
-| `cairn new <name> [--lib\|--bin]` | starts a package in a new directory: `cairn.toml` with its `kind`, an empty `claims.lock`, and `lean/` with a lakefile that sets the claim scope to `<name>` and requires Cairn. An app (`--bin`) also gets `Package.swift` and `Sources/`; a library (`--lib`) doesn't. With neither flag it asks which. |
+| `cairn new <name> [--lib\|--bin]` | starts a package in a new directory: `cairn.toml` with its `kind`, an empty `claims.lock`, and `lean/` with a lakefile that sets the claim scope to `<name>` and requires Cairn. Its Lean module does `public import Cairn`. An app (`--bin`) is a working one: a window with a count and a Count button (place `^1`, move `^2`), its exports in `lean/<Module>/Abi.lean`, `Package.swift`, a C target declaring its initializer, and a host with `--selftest`; a library (`--lib`) gets none of the Swift. With neither flag it asks which. |
 | `cairn add [<owner>/]<name>[@<range>]` | adds a dependency from the registry to `cairn.toml` and the lakefile, replacing a `require … from git` of it. It prints the `Package.swift` line rather than editing Swift. With no range it uses `^` and the latest release, and with no owner it looks up the name's owner. It needs no login. |
 | `cairn build [--release]` | `lake cache get` (prebuilt Lean from the registry, when it has it), `lake build`, Cairn's `cairn-link` to merge the Lean into one static library in `.cairn/lib/`, then `swift build`. |
 | `cairn doc [--private] [--open]` | the package's API docs, in `build/doc/<name>/`, the same pages as [Cairn's own](/docs/api/), with every claim on its module's page. |

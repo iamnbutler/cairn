@@ -20,6 +20,33 @@ are published.
   (`v4.35.0` for every release so far), because Lake shares compiled modules only between
   identical toolchains.
 
+## v0.1.4
+
+24 October 2026.
+
+- **Images.** `Node.image` shows a picture in a fixed box whose size layout knows before any
+  pixels arrive, and the `loadImage` effect asks the host for one, from a file or an `http`/`https`
+  URL. The host decodes and paints; Lean never holds pixels. `Cairn.UI.Images` is the table an app
+  keeps, and only the reply to a source's latest load counts. The frame format is version 5: an
+  `image` draw and the `loadImage` request. Three trusted claims cover the host's side
+  (`cairn^1006`–`cairn^1008`), and the Gallery example (`swift run CairnGallery`) shows six tiles
+  with Reload and Fit. See [Effects](/docs/guide/effects/).
+- **`import Cairn` links.** The `Cairn` module now imports exactly the `Cairn` library, what
+  `bin/cairn-link` links, and `meta`-imports the claim commands, so an app can start with
+  `public import Cairn`. The old umbrella that imported everything, proofs and tools included, is
+  `CairnAll`; the ledger and the audit read it. An app that imports it doesn't link.
+- **`cairn new --bin` makes a working app**: a window with a count and a Count button, its
+  exports, a `Package.swift` and a host with `--selftest`. `cairn build` finds a Cairn required by
+  path.
+- **cairn-link links each dependency's `libs`** from its `cairn.toml`, rather than Cairn's library
+  by name, so a library such as `cairn_json` is linked by naming its own. Cairn's `cairn.toml`
+  says `libs = ["Cairn"]`.
+
+No claim was retired or moved, so it is a patch release. Eight claims are new, and `cairn^213`'s
+statement hash changed when `Style` gained its image field; its meaning didn't. Moving from v0.1.3
+is a change of tag in the lakefile and `Package.swift`, unless an app imports `Cairn` for the
+proofs or tools, which are now in `CairnAll`, or builds frames by hand, which are now version 5.
+
 ## v0.1.3
 
 24 October 2026, at commit `aea142c`.

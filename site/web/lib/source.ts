@@ -2,7 +2,7 @@
 // in. A region is marked in the source with comments in the file's own syntax (`-- region: name`
 // … `-- endregion: name` in Lean, `//` in Swift, `#` in a Makefile or shell script,
 // `<!-- region: name -->` in Markdown). A missing file or region, or an unclosed or doubled one,
-// fails the build. Moved unchanged from tools/docs/build.ts.
+// fails the build.
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 
