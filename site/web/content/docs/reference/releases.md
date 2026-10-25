@@ -64,11 +64,23 @@ The next minor version: it retires claims and changes the frame format.
 - **Frame format version 9.** Adds the Keychain secret (`[2, 0, 0, 0]`), `http`'s secret and
   captures, and request kind 17. A host and a Lean library must both be at 9; an `upload` with
   no secret or an environment secret is encoded as before.
+- **Secure text fields** ([#206](https://github.com/iamnbutler/cairn/issues/206)).
+  `Text.SecureField` wraps a field: its view shows one bullet per scalar
+  (`FieldView.secure := true`), copy and cut beep and never set the clipboard, and it keeps no
+  undo history (proved in `Cairn.Text.Proofs`). The host gives it the `AXSecureTextField` role
+  with no value and turns on secure event input while it has focus (new `assume` claim ^1020).
+  `Request.http` gains `redact` (defaulted to `false`): a redacted request dumps as
+  `<redacted N bytes>` in `Frame.Dump`, the debug socket and fuzz output. A dump of a frame
+  holds none of a secure field's text (`secure_frame` in `Cairn.Frame.Dump`). The fuzzer plants text in
+  secure fields and fails if it appears in any dump. The Todo example's ^225 is retired as ^226.
+- **Frame format version 10.** Adds the secure flag to accessibility nodes and text inputs and
+  `http`'s redact flag. A host and a Lean library must both be at 10; version 9 never shipped
+  in a release.
 - **Upgrading.** Write an environment secret as
   `{ header, scheme, source := .env file name }` (Yap's `apiKey`; its `upload` is unchanged
   otherwise). A pattern that lists `http`'s five arguments (`| .http m u hs b t =>`) now matches
-  only requests with no secret and no captures: write `| .http m u hs b t _ _ =>` or
-  `| .http m u ..`. Exhaustive matches on `Request` need a `forgetSecret` case.
+  only requests with no secret, no captures and no redaction: write
+  `| .http m u hs b t _ _ _ =>` or `| .http m u ..`. Exhaustive matches on `Request` need a `forgetSecret` case.
 
 ## v0.2.5
 

@@ -24,11 +24,11 @@ extension Frame {
         self = try bytes.withUnsafeBytes { try Frame(decoding: $0) }
     }
 
-    /// Header (magic, version 9, flags 0), surfaces, effects, subscription commands, wake.
+    /// Header (magic, version 10, flags 0), surfaces, effects, subscription commands, wake.
     public init(decoding raw: UnsafeRawBufferPointer) throws {
         var r = ByteReader(raw)
         try r.need(8)
-        guard r.u8(0) == 0x43, r.u8(1) == 0x41, r.u8(2) == 0x46, r.u8(3) == 0x52, r.u16(4) == 9,
+        guard r.u8(0) == 0x43, r.u8(1) == 0x41, r.u8(2) == 0x46, r.u8(3) == 0x52, r.u16(4) == 10,
               r.u16(6) == 0  // flags: reserved, zero (found by cairn-fuzz-trusted)
         else { throw FrameDecodeError.badHeader }
         r.i = 8
@@ -180,7 +180,7 @@ extension Frame {
         guard let role = Role(rawValue: r.u8(0)) else { throw FrameDecodeError.badCode(r.u8(0), at: r.i) }
         let focused = try r.flag(1), selected = try r.flag(2)
         let checked = try r.checked(3)
-        let hasControl = try r.flag(4), hasParent = try r.flag(5)
+        let hasControl = try r.flag(4), hasParent = try r.flag(5), secure = try r.flag(6)
         let control = ControlRef(claim: r.u32(8), key: r.u32(12))
         let parent = Int(r.u32(16))
         let rect = r.rect(20)
@@ -189,7 +189,7 @@ extension Frame {
         let value = try r.string()
         return AxNode(control: hasControl ? control : nil, role: role, rect: rect, label: label,
                       value: value, parent: hasParent ? parent : nil, focused: focused,
-                      selected: selected, checked: checked)
+                      selected: selected, checked: checked, secure: secure)
     }
 
     static func decodeTextInput(_ r: inout ByteReader) throws -> TextInput? {
@@ -200,7 +200,7 @@ extension Frame {
             return nil
         case 1:
             try r.need(68)
-            let hasMarked = try r.flag(1)
+            let hasMarked = try r.flag(1), secure = try r.flag(2)
             let control = ControlRef(claim: r.u32(4), key: r.u32(8))
             let rect = r.rect(12), caret = r.rect(28)
             let selection = (start: r.u32(44), end: r.u32(48))
@@ -208,7 +208,8 @@ extension Frame {
             let origin = Point(x: r.i32(60), y: r.i32(64))
             r.i += 68
             return TextInput(control: control, rect: rect, caret: caret, text: try r.string(),
-                             selection: selection, marked: hasMarked ? marked : nil, textOrigin: origin)
+                             selection: selection, marked: hasMarked ? marked : nil, textOrigin: origin,
+                             secure: secure)
         case let c:
             throw FrameDecodeError.badCode(c, at: r.i)
         }
@@ -237,7 +238,7 @@ extension Frame {
             return .cancelTimer(try er.string())
         case 5:
             try er.need(8)
-            let kind = er.u8(1), id = er.u32(4)
+            let kind = er.u8(1), id = er.u32(4), redact = try er.flag(2)
             let at = er.i + 1
             er.i += 8
             let req: Request
@@ -257,7 +258,8 @@ extension Frame {
                 let body = try er.bytes()
                 let secret = try er.secret()
                 req = .http(method: method, url: url, headers: headers, body: body, timeoutMs: timeout,
-                            secret: secret, capture: try er.headers().map { Capture($0.name, $0.value) })
+                            secret: secret, capture: try er.headers().map { Capture($0.name, $0.value) },
+                            redact: redact)
             case 4:
                 let path = try er.string()
                 req = .appendFile(path: path, data: try er.bytes())

@@ -40,7 +40,8 @@
 222	flow	active	b0d8d8a6a65e2c5f	Clear completed
 223	flow	active	36d2b8e708c4eceb	Mark all as complete, then undo it
 224	flow	active	06954be5c9e714a8	A new todo under the Completed filter
-225	invariant	active	cdded3b5839c217c	The list is the filter applied to the todos
+225	invariant	retired	7ae77f5f10c146de	The list is the filter applied to the todos
+226	invariant	active	7ae77f5f10c146de	The list is the filter applied to the todos
 301	place	moved:yap	-	Menu bar menu
 302	move	moved:yap	64ec1c59a4b05b88	Copy Last Transcript
 303	move	moved:yap	b2465772ee2b99fb	Recent transcript
@@ -170,3 +171,4 @@
 1009	assume	active	-	cancelRequest stops a running request's work; it is still answered once
 1010	assume	active	-	The window is never smaller than the app's minimum size
 1011	assume	active	-	The image cache reports every image it drops, after it is gone
+1020	assume	active	-	Secure event input is on exactly while a secure field has focus

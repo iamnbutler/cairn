@@ -27,6 +27,11 @@ def ime : Gen (List TextOp) := do
   let last ← Gen.weighted [(3, pure (TextOp.insert commit)), (1, pure TextOp.unmark)]
   return steps ++ [last]
 
+/-- Planted into secure fields (`FieldView.secure`): the walk checks after every step that it is
+in no frame's dump and no effect's dump, so a secure field's text never leaves the app but as
+a redacted request (docs/fuzz.md, "Secure fields"). -/
+def planted : String := "Zq9plantedSecret"
+
 /-- One script of text operations. -/
 def script : Gen (List TextOp) :=
   Gen.weighted

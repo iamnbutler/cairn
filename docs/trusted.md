@@ -6,7 +6,7 @@ entries in the section of the workstream that introduces the assumption.
 
 Items marked **Fuzzed** are also checked by the trusted-base fuzzer (`make fuzz-trusted`,
 docs/fuzz.md "Trusted base"), against Lean's proved side or an independent oracle, and are
-declared as `assume` claims ^7, ^214, ^901–^915, ^940–^944, ^960–^975 and ^1000–^1011 in `lean/Cairn/Fuzz/Trusted/Claims.lean`, each naming its
+declared as `assume` claims ^7, ^214, ^901–^915, ^940–^944, ^960–^975, ^1000–^1011 and ^1020 in `lean/Cairn/Fuzz/Trusted/Claims.lean`, each naming its
 check; `build/fuzz/trusted.json` holds the evidence. Items not marked are checked only by the
 tests and reviews they list.
 
@@ -258,6 +258,10 @@ See [host.md](host.md) for how each piece works.
   frame. On duplicates, lookups find the first node.
 - **Screen frames.** AX frames come from the view's rect through `convert(to: nil)` and
   `window.convertToScreen`.
+- **Secure fields.** A frame node with `secure` set is an `AXTextField` with subrole
+  `AXSecureTextField`, no value and an empty selected text, so VoiceOver and other assistive
+  apps get its length (the bullets) and nothing typed. Reviewed by hand and checked by the
+  fixture's self test (`^9`); what the frame holds is Lean's (`FieldView.secure`, docs/text.md).
 
 ### Output
 
@@ -854,6 +858,42 @@ can be drawn), `host/Sources/CairnHost/ImageEffects.swift`.
   answered.
 - **Tested**: Gallery's self test loads 24 thumbnails under its 8 MiB budget, checks some are
   evicted and every drawn image is in the store, pages, and checks again.
+
+## Secure fields (M4)
+
+A secure field (`FieldView.secure`, docs/text.md "Secure fields") shows bullets, keeps no undo
+history and refuses copy and cut; Lean proves that its view, and so every frame and dump built
+from it, depends only on its length and selection (`SecureField.view_agree`,
+`Dump.secure_canvas`). Keeping other processes from reading the keystrokes is the host's.
+
+### Secure event input is on exactly while a secure field has focus (`assume`, ^1020)
+
+**What is assumed.**
+- ^1020 `hostSecureInput`: the host turns the system's secure event input on
+  (`EnableSecureEventInput`) when the applied frame's text input is a secure field, its window
+  is key and the view is live, and off (`DisableSecureEventInput`) when any of those stops, when
+  the view is shut down and when it is released. It calls them in pairs, never twice the same way
+  in a row: the system counts enables, so an extra one would leave secure input on for the
+  process. While it is on, other processes' event taps and global monitors see no keystrokes.
+
+**Also assumed, not fuzzed.** That AppKit posts `didBecomeKey`/`didResignKey` for every change of
+the window's key state (the host re-decides on each, on every applied frame, when the view
+moves to a window and on shut down). That secure event input does what Apple documents (it is a
+system service; this process can't watch another's event tap).
+
+**Trusted code.** `host/Sources/CairnHost/SecureInput.swift` (`SecureInputGate`),
+`host/Sources/CairnHost/HostView.swift` (`updateSecureInput` and its call sites, `deinit`),
+Carbon (`EnableSecureEventInput`, `DisableSecureEventInput`, `IsSecureEventInputEnabled`).
+
+**Evidence.**
+- **Fuzzed** (^1020 `text.secure-input`): 1–30 steps a case of the applied frame's text input
+  (none, plain, secure), the window's key state and the view's life, ending closed, given to the
+  gate as `HostView` gives them. After every step the gate is on exactly when it should be and its
+  calls alternate on, off, starting with on; one case in eight makes the system's calls and reads
+  `IsSecureEventInputEnabled` back: on while the gate is on, as before the case once it is off.
+- **Tested**: the fixture's self test types into its Passcode field (`^9`) and checks the frame
+  carries bullets and `secure`, the AX element is an `AXSecureTextField` with no value, and Enter
+  clears it.
 
 ## Conformance (workstream J)
 

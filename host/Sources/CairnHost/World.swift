@@ -108,7 +108,7 @@ extension Handlers {
             },
             11: { r, reply in if case let .forgetClip(c) = r { reply(clips.forget(c)) } },
             3: { r, reply in
-                if case let .http(m, u, hs, b, t, sec, cap) = r {
+                if case let .http(m, u, hs, b, t, sec, cap, _) = r {
                     SecretHTTP.run(method: m, url: u, headers: hs, body: b, timeoutMs: t, secret: sec, capture: cap,
                                    secrets: d.secrets, session: d.session, reply)
                 }

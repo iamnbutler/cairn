@@ -117,10 +117,14 @@ public struct AxNode: Equatable, Sendable {
     public var focused: Bool
     public var selected: Bool
     public var checked: Bool?
+    /// A secure field: an `AXSecureTextField` with no value.
+    public var secure: Bool
     public init(control: ControlRef?, role: Role, rect: Rect, label: String, value: String = "",
-                parent: Int? = nil, focused: Bool = false, selected: Bool = false, checked: Bool? = nil) {
+                parent: Int? = nil, focused: Bool = false, selected: Bool = false, checked: Bool? = nil,
+                secure: Bool = false) {
         self.control = control; self.role = role; self.rect = rect; self.label = label; self.value = value
         self.parent = parent; self.focused = focused; self.selected = selected; self.checked = checked
+        self.secure = secure
     }
 }
 
@@ -134,17 +138,21 @@ public struct TextInput: Equatable, Sendable {
     /// The left end of the text's baseline in window coordinates, after any horizontal scroll:
     /// where scalar 0 starts.
     public var textOrigin: Point
+    /// A secure field: `text` is bullets, and the host turns on secure event input while it has
+    /// focus (`SecureInput`).
+    public var secure: Bool
     public init(control: ControlRef, rect: Rect, caret: Rect, text: String,
                 selection: (start: UInt32, end: UInt32), marked: (start: UInt32, end: UInt32)?,
-                textOrigin: Point = Point(x: 0, y: 0)) {
+                textOrigin: Point = Point(x: 0, y: 0), secure: Bool = false) {
         self.control = control; self.rect = rect; self.caret = caret; self.text = text
         self.selection = selection; self.marked = marked; self.textOrigin = textOrigin
+        self.secure = secure
     }
 
     public static func == (a: TextInput, b: TextInput) -> Bool {
         a.control == b.control && a.rect == b.rect && a.caret == b.caret && a.text == b.text
             && a.selection == b.selection && a.marked?.start == b.marked?.start
-            && a.marked?.end == b.marked?.end && a.textOrigin == b.textOrigin
+            && a.marked?.end == b.marked?.end && a.textOrigin == b.textOrigin && a.secure == b.secure
     }
 }
 
@@ -223,8 +231,10 @@ public enum Request: Equatable, Sendable {
     case playSound(name: String)
     /// With a secret, its header is added as the request is sent; with captures, a 2xx JSON
     /// object reply's listed fields go to the Keychain and are blanked (docs/effects.md).
+    /// `redact`: it carries a secret the person typed (a secure field's text); nothing prints its
+    /// URL, headers or body.
     case http(method: String, url: String, headers: [Header], body: [UInt8], timeoutMs: UInt32,
-              secret: Secret? = nil, capture: [Capture] = [])
+              secret: Secret? = nil, capture: [Capture] = [], redact: Bool = false)
     /// Append, creating the file (mode 600) and missing parent directories.
     case appendFile(path: String, data: [UInt8])
     /// The names in a directory, sorted by their UTF-8 bytes.

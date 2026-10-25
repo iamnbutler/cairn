@@ -195,8 +195,8 @@ def requestKind : Request → String
   | .readFile p => s!"readFile {p}"
   | .writeFile p d => s!"writeFile {p} ({d.size} bytes)"
   | .playSound n => s!"playSound {n}"
-  | .http m u _ _ _ sec cap =>
-    s!"http {m} {u}{match sec with | some x => s!" secret {x.header}" | none => ""}" ++
+  | .http m u _ _ _ sec cap r =>
+    s!"http {m} {if r then "<redacted>" else u}{match sec with | some x => s!" secret {x.header}" | none => ""}" ++
       (if cap.isEmpty then "" else s!" capture {cap.length}")
   | .appendFile p d => s!"appendFile {p} ({d.size} bytes)"
   | .listDir p => s!"listDir {p}"

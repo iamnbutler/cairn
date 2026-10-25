@@ -3,7 +3,7 @@ module
 public import Cairn.Frame
 public import Cairn.Frame.Bytes
 
-/-! Frame byte format (docs/frame.md; version 9): specification encoder `Wire.Enc.frame`, decoder
+/-! Frame byte format (docs/frame.md; version 10): specification encoder `Wire.Enc.frame`, decoder
 `Wire.Dec.frame`, the executable encoder `encodeFrame` (proved equal to the specification and
 installed with `@[csimp]`), and the round trip `decodeFrame_encodeFrame`.
 
@@ -13,7 +13,7 @@ Layout, all little-endian:
 header     "CAFR" u16 version=1 u16 flags=0 i32 w i32 h                       16 bytes
 draws      u32 count u32 byteLength, then count records
 ax         u32 count u32 byteLength, then count records
-textInput  4 bytes [present, hasMarked, 0, 0], then the rest of the record when present
+textInput  4 bytes [present, hasMarked, secure, 0], then the rest of the record when present
 cursor     4 bytes [cursor, 0, 0, 0]
 effects    u32 count u32 byteLength, then count records
 ```
@@ -280,7 +280,7 @@ def fitsRequest : Request → Bool
   | .readFile p => fs p
   | .writeFile p d => fs p && fb d
   | .playSound n => fs n
-  | .http m u hs b t sec cap =>
+  | .http m u hs b t sec cap _ =>
     fs m && fs u && fitsHeaders hs && fb b && fu t && sec.all fitsSecret && fitsHeaders cap
   | .appendFile p d => fs p && fb d
   | .listDir p | .deleteFile p | .makeDir p | .forgetSecret p => fs p
@@ -385,14 +385,14 @@ def draw : Draw → List UInt8
 
 def ax (n : AxNode) : List UInt8 :=
   [Role.code n.role] ++ bool n.focused ++ bool n.selected ++ [checkedCode n.checked] ++
-    bool n.control.isSome ++ bool n.parent.isSome ++ pad 2 ++
+    bool n.control.isSome ++ bool n.parent.isSome ++ bool n.secure ++ pad 1 ++
     ref (n.control.getD ⟨0, 0⟩) ++ u32 (n.parent.getD 0) ++ rect n.rect ++
     str n.label ++ str n.value
 
 def textInput : Option TextInput → List UInt8
   | none => [0] ++ pad 3
   | some t =>
-    [1] ++ bool t.marked.isSome ++ pad 2 ++ ref t.control ++ rect t.rect ++ rect t.caret ++
+    [1] ++ bool t.marked.isSome ++ bool t.secure ++ pad 1 ++ ref t.control ++ rect t.rect ++ rect t.caret ++
       range t.selection ++ range (t.marked.getD (0, 0)) ++ point t.textOrigin ++ str t.text
 
 def cursor (c : Cursor) : List UInt8 := [Cursor.code c] ++ pad 3
@@ -432,7 +432,7 @@ def requestBody : Request → List UInt8
   | .readFile p => str p
   | .writeFile p d => str p ++ bytes d
   | .playSound n => str n
-  | .http m u hs b t sec cap =>
+  | .http m u hs b t sec cap _ =>
     u32 t ++ str m ++ str u ++ headers hs ++ bytes b ++ optSecret sec ++ headers cap
   | .appendFile p d => str p ++ bytes d
   | .listDir p => str p
@@ -456,7 +456,8 @@ def effect : Effect → List UInt8
   | .focus c => [2] ++ pad 3 ++ ref c
   | .setTimer n ms => [3] ++ pad 3 ++ u32 ms ++ str n
   | .cancelTimer n => [4] ++ pad 3 ++ str n
-  | .request id r => [5, Request.Kind.code r.kind] ++ pad 2 ++ u32 id ++ requestBody r
+  | .request id r =>
+    [5, Request.Kind.code r.kind] ++ bool r.redact ++ pad 1 ++ u32 id ++ requestBody r
   | .quit => [6] ++ pad 3
   | .cancelRequest id => [7] ++ pad 3 ++ u32 id
 
@@ -500,8 +501,8 @@ def surface (s : SurfaceFrame) : List UInt8 :=
     u32 s.place ++ u32 s.anchor.offset ++ size s.minSize ++ str s.title ++ canvas s.canvas ++
     status s.status
 
-/-- Magic, version 9, flags 0. -/
-def header : List UInt8 := magic ++ [9, 0, 0, 0]
+/-- Magic, version 10, flags 0. -/
+def header : List UInt8 := magic ++ [10, 0, 0, 0]
 
 def frame (f : Frame) : List UInt8 :=
   header ++ list surface f.surfaces.toList ++ list effect f.effects.toList ++
@@ -606,14 +607,16 @@ def ax : Dec AxNode := do
   let some checked := checkedOfCode (← byte) | fail
   let hasControl ← bool
   let hasParent ← bool
-  skip 2
+  let secure ← bool
+  skip 1
   let c ← ref
   let parent ← u32
   let r ← rect
   let label ← str
   let value ← str
   return { control := if hasControl then some c else none, role, rect := r, label, value,
-           parent := if hasParent then some parent else none, focused, selected, checked }
+           parent := if hasParent then some parent else none, focused, selected, checked,
+           secure }
 
 def textInput : Dec (Option TextInput) := do
   match (← byte) with
@@ -622,7 +625,8 @@ def textInput : Dec (Option TextInput) := do
     return none
   | 1 =>
     let hasMarked ← bool
-    skip 2
+    let secure ← bool
+    skip 1
     let control ← ref
     let r ← rect
     let caret ← rect
@@ -630,7 +634,7 @@ def textInput : Dec (Option TextInput) := do
     let marked ← range
     let textOrigin ← point
     let text ← str
-    return some { control, rect := r, caret, text, selection, textOrigin,
+    return some { control, rect := r, caret, text, selection, textOrigin, secure,
                   marked := if hasMarked then some marked else none }
   | _ => fail
 
@@ -681,7 +685,7 @@ def parts : Dec (List Part) := do
   let n ← u32
   count part n
 
-def requestBody : Request.Kind → Dec Request
+def requestBody (redact : Bool) : Request.Kind → Dec Request
   | .readFile => do return .readFile (← str)
   | .writeFile => do
     let p ← str
@@ -695,7 +699,7 @@ def requestBody : Request.Kind → Dec Request
     let b ← bytes
     let sec ← optSecret
     let cap ← headers
-    return .http m u hs b t sec cap
+    return .http m u hs b t sec cap redact
   | .appendFile => do
     let p ← str
     return .appendFile p (← bytes)
@@ -753,9 +757,10 @@ def effect : Dec Effect := do
     return .cancelTimer (← str)
   | 5 =>
     let some k := Request.Kind.ofCode (← byte) | fail
-    skip 2
+    let redact ← bool
+    skip 1
     let id ← u32
-    return .request id (← requestBody k)
+    return .request id (← requestBody redact k)
   | 6 =>
     skip 3
     return .quit
@@ -972,7 +977,7 @@ theorem draw_enc {x : Draw} (h : fitsDraw x = true) (r : List UInt8) :
 
 theorem ax_enc {x : AxNode} (h : fitsAx x = true) (r : List UInt8) :
     ax (Enc.ax x ++ r) = some (x, r) := by
-  obtain ⟨control, role, rc, label, value, parent, focused, selected, checked⟩ := x
+  obtain ⟨control, role, rc, label, value, parent, focused, selected, checked, secure⟩ := x
   simp only [fitsAx, Bool.and_eq_true, fs_iff] at h
   obtain ⟨⟨⟨⟨hc, hp⟩, hr⟩, hl⟩, hv⟩ := h
   cases control <;> cases parent <;>
@@ -988,7 +993,7 @@ theorem textInput_enc {x : Option TextInput} (h : x.all fitsTextInput = true) (r
   | none => simp only [textInput, Enc.textInput, List.cons_append, List.nil_append, bind_apply,
       byte_cons, skip_pad, pure_apply]
   | some t =>
-    obtain ⟨control, rc, caret, text, selection, marked, origin⟩ := t
+    obtain ⟨control, rc, caret, text, selection, marked, origin, secure⟩ := t
     simp only [Option.all_some, fitsTextInput, Bool.and_eq_true, fs_iff, fi_iff] at h
     obtain ⟨⟨⟨⟨⟨⟨⟨hc, hr⟩, hk⟩, hs⟩, hm⟩, hx⟩, hy⟩, ht⟩ := h
     cases marked <;>
@@ -1052,7 +1057,7 @@ theorem parts_enc {ps : List Part} (hn : FitsU32 ps.length) (h : ∀ p ∈ ps, f
   exact count_enc ps (fun p hp => part_enc (h p hp)) r
 
 theorem requestBody_enc {q : Request} (h : fitsRequest q = true) (r : List UInt8) :
-    requestBody q.kind (Enc.requestBody q ++ r) = some (q, r) := by
+    requestBody q.redact q.kind (Enc.requestBody q ++ r) = some (q, r) := by
   cases q with
   | readFile p =>
     simp only [fitsRequest, fs_iff] at h
@@ -1064,10 +1069,10 @@ theorem requestBody_enc {q : Request} (h : fitsRequest q = true) (r : List UInt8
   | playSound n =>
     simp only [fitsRequest, fs_iff] at h
     simp only [Request.kind, requestBody, Enc.requestBody, bind_apply, str_enc h, pure_apply]
-  | http m u hs b t sec cap =>
+  | http m u hs b t sec cap red =>
     simp only [fitsRequest, Bool.and_eq_true, fs_iff, fb_iff, fu_iff] at h
     obtain ⟨⟨⟨⟨⟨⟨hm, hu⟩, hh⟩, hb⟩, ht⟩, hsec⟩, hc⟩ := h
-    simp only [Request.kind, requestBody, Enc.requestBody, List.append_assoc, bind_apply,
+    simp only [Request.kind, Request.redact, requestBody, Enc.requestBody, List.append_assoc, bind_apply,
         u32_enc ht, str_enc hm, str_enc hu, headers_enc hh, bytes_enc hb, optSecret_enc hsec,
         headers_enc hc, pure_apply]
   | appendFile p d =>
@@ -1143,7 +1148,7 @@ theorem effect_enc {x : Effect} (h : fitsEffect x = true) (r : List UInt8) :
   | request id rq =>
     simp only [fitsEffect, Bool.and_eq_true, fu_iff] at h
     simp only [effect, Enc.effect, List.cons_append, List.nil_append, List.append_assoc, bind_apply,
-        byte_cons, Request.Kind.ofCode_code, skip_pad, u32_enc h.1]
+        byte_cons, Request.Kind.ofCode_code, bool_enc, skip_pad, u32_enc h.1]
     rw [requestBody_enc h.2]; rfl
   | quit => simp only [effect, Enc.effect, List.cons_append, List.nil_append, bind_apply, byte_cons,
       skip_pad, pure_apply]
@@ -1344,7 +1349,7 @@ def requestBody : Request → Nat
   | .readFile p => str p
   | .writeFile p d => str p + bytes d
   | .playSound n => str n
-  | .http m u hs b _ sec cap => 4 + str m + str u + headers hs + bytes b + optSecret sec + headers cap
+  | .http m u hs b _ sec cap _ => 4 + str m + str u + headers hs + bytes b + optSecret sec + headers cap
   | .appendFile p d => str p + bytes d
   | .listDir p | .deleteFile p | .makeDir p | .forgetSecret p => str p
   | .frontmostApp => 0
@@ -1464,7 +1469,7 @@ theorem effect_eq (e : Effect) : effect e = (Enc.effect e).length := by
       String.size_toByteArray, List.length_append, Enc.length_u32, Array.length_toList,
       ByteArray.size_data, Enc.effect, Enc.pad, List.reduceReplicate, List.cons_append,
       List.nil_append, List.length_cons, List.length_nil, Nat.zero_add,
-      Nat.reduceAdd, Enc.ref] <;> all_goals omega
+      Nat.reduceAdd, Enc.ref, Enc.bool] <;> all_goals omega
 
 theorem subCmd_eq (c : SubCmd) : subCmd c = (Enc.subCmd c).length := by
   rcases c with ⟨_, ⟨_⟩ | ⟨_⟩ | ⟨_⟩ | ⟨_, _⟩ | ⟨_⟩⟩ | _ <;> simp only [subCmd, subBody, Enc.subCmd,
@@ -1550,14 +1555,15 @@ def draw (b : ByteArray) : Draw → ByteArray
 
 def ax (b : ByteArray) (n : AxNode) : ByteArray :=
   let b := bool (bool (b.push (Role.code n.role)) n.focused) n.selected
-  let b := pad (bool (bool (b.push (checkedCode n.checked)) n.control.isSome) n.parent.isSome) 2
+  let b := pad (bool (bool (bool (b.push (checkedCode n.checked)) n.control.isSome) n.parent.isSome)
+    n.secure) 1
   let b := rect (u32 (ref b (n.control.getD ⟨0, 0⟩)) (n.parent.getD 0)) n.rect
   str (str b n.label) n.value
 
 def textInput (b : ByteArray) : Option TextInput → ByteArray
   | none => pad (b.push 0) 3
   | some t =>
-    let b := ref (pad (bool (b.push 1) t.marked.isSome) 2) t.control
+    let b := ref (pad (bool (bool (b.push 1) t.marked.isSome) t.secure) 1) t.control
     let b := range (range (rect (rect b t.rect) t.caret) t.selection) (t.marked.getD (0, 0))
     str (point b t.textOrigin) t.text
 
@@ -1588,7 +1594,7 @@ def requestBody (b : ByteArray) : Request → ByteArray
   | .readFile p => str b p
   | .writeFile p d => bytes (str b p) d
   | .playSound n => str b n
-  | .http m u hs body t sec cap =>
+  | .http m u hs body t sec cap _ =>
     headers (optSecret (bytes (headers (str (str (u32 b t) m) u) hs) body) sec) cap
   | .appendFile p d => bytes (str b p) d
   | .listDir p | .deleteFile p | .makeDir p | .forgetSecret p => str b p
@@ -1608,7 +1614,8 @@ def effect (b : ByteArray) : Effect → ByteArray
   | .focus c => ref (pad (b.push 2) 3) c
   | .setTimer n ms => str (u32 (pad (b.push 3) 3) ms) n
   | .cancelTimer n => str (pad (b.push 4) 3) n
-  | .request id r => requestBody (u32 (pad ((b.push 5).push (Request.Kind.code r.kind)) 2) id) r
+  | .request id r =>
+    requestBody (u32 (pad (bool ((b.push 5).push (Request.Kind.code r.kind)) r.redact) 1) id) r
   | .quit => pad (b.push 6) 3
   | .cancelRequest id => u32 (pad (b.push 7) 3) id
 
@@ -1765,8 +1772,9 @@ theorem foldl_data' {α : Type} (put : ByteArray → α → ByteArray) (e : α �
 
 @[simp] theorem effect_data (b : ByteArray) (e : Effect) :
     (effect b e).data.toList = b.data.toList ++ Enc.effect e := by
-  cases e <;> simp only [effect, str_data, u32_data, requestBody_data, pad_data, ByteArray.data_push, Array.toList_push,
-      List.append_assoc, List.cons_append, List.nil_append, Enc.effect, ref_data]
+  cases e <;> simp only [effect, str_data, u32_data, requestBody_data, pad_data, bool_data,
+      ByteArray.data_push, Array.toList_push, List.append_assoc, List.cons_append,
+      List.nil_append, Enc.effect, ref_data]
 
 theorem foldl_data {α : Type} (put : ByteArray → α → ByteArray) (e : α → List UInt8)
     (h : ∀ b x, (put b x).data.toList = b.data.toList ++ e x) (xs : List α) (b : ByteArray) :

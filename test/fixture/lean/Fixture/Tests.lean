@@ -1,5 +1,6 @@
 import Fixture
 import Cairn.Runtime
+import Cairn.Frame.Dump
 
 /-! Runtime checks for the fixture: events in, through layout, hit testing, focus, timers and
 the v1 boundary, with mono metrics (the interpreter can't call the host's Core Text). -/
@@ -30,15 +31,27 @@ def toggled : List Event := two ++ clickOn (run two) (toggleRef 1)
 #guard left (st toggled) == 1
 def deleted : List Event := toggled ++ clickOn (run toggled) (deleteRef 2)
 #guard texts (st deleted) == [(1, "milk", true)]
--- Tab order: field, Add, Flash, then each item's checkbox and delete button.
+-- Tab order: field, Add, Passcode, Flash, then each item's checkbox and delete button.
 #guard (tabOrder (run two).laid).map (·.ref) ==
-  [fieldRef, addRef, flashRef, toggleRef 1, deleteRef 1, toggleRef 2, deleteRef 2]
+  [fieldRef, addRef, passRef, flashRef, toggleRef 1, deleteRef 1, toggleRef 2, deleteRef 2]
 -- Flash sets its timer; the note shows until it fires.
 def flashed : List Event := clickOn (run []) flashRef
 #guard (st flashed).flash
 -- The frame through the v1 boundary carries the keyed controls.
 #guard ((decodeFrame (frameBytes Frame.boundary (run two))).map fun f =>
   f.ax.toList.filterMap (·.control)) ==
-  some [fieldRef, addRef, flashRef, toggleRef 1, deleteRef 1, toggleRef 2, deleteRef 2]
+  some [fieldRef, addRef, passRef, flashRef, toggleRef 1, deleteRef 1, toggleRef 2, deleteRef 2]
+
+-- The Passcode field: bullets on screen, nothing in the accessibility value, a redacted request.
+def secret : List Event := clickOn (run []) passRef ++ [.insertText "hunter2"]
+#guard (st secret).passcode.text == "hunter2"
+#guard ((decodeFrame (frameBytes Frame.boundary (run secret))).map fun f =>
+  (f.ax.toList.filter (·.control == some passRef)).map fun n => (n.value, n.secure)) ==
+  some [("", true)]
+#guard !Dump.occurs "hunter2" (Dump.canvas (Frame.ofLaid (run secret).ui (run secret).laid))
+#guard (steps app tcfg (run secret) [.key .enter {}]).2.any fun
+  | .request _ r => r.redact && !Dump.occurs "hunter2" (Dump.request r)
+  | _ => false
+#guard (st (secret ++ [.key .enter {}])).passcode.len == 0
 
 end Fixture.Tests

@@ -15,7 +15,8 @@ order, the accessibility tree, and the focused field's text-input state.
   is empty.
 * **Accessibility.** One `AxNode` per control (boxes with a control, fields) and per text, in
   paint order, each with its visible rect (`rect ∩ clip`). A node's parent is the nearest
-  enclosing control. A field's value is its text and its role is `textField`.
+  enclosing control. A field's value is its text and its role is `textField`; a secure field's
+  node is marked `secure` and has no value.
 * **Text input** describes the first field whose control has focus.
 
 Focus comes from the runtime (`UI.focus`), the one source of truth; `FieldView.focused` is for the
@@ -156,7 +157,9 @@ def axOf (focus : Option ControlRef) (parent : Option Nat) (acc : Array AxNode) 
   | .text r clip _ _ content =>
     acc.push { control := none, role := .text, rect := r.inter clip, label := content, parent }
   | .field r clip _ _ c v .. =>
-    acc.push { controlNode focus parent (r.inter clip) c with role := .textField, value := v.text }
+    let value := if v.secure then "" else v.text
+    acc.push { controlNode focus parent (r.inter clip) c with
+               role := .textField, value, secure := v.secure }
 
 def axAll (focus : Option ControlRef) (parent : Option Nat) (acc : Array AxNode) :
     List Laid → Array AxNode
@@ -172,7 +175,8 @@ def textInputOf (focus : Option ControlRef) : Laid → Option TextInput
   | .field r _ _ _ c v origin caret _ =>
     if focus == some c.ref then
       some { control := c.ref, rect := r, caret, text := v.text, textOrigin := origin,
-             selection := (min v.anchor v.caret, max v.anchor v.caret), marked := v.marked }
+             selection := (min v.anchor v.caret, max v.anchor v.caret), marked := v.marked,
+             secure := v.secure }
     else none
 
 def textInputAll (focus : Option ControlRef) : List Laid → Option TextInput

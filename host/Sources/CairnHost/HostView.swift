@@ -31,6 +31,8 @@ public final class HostView: NSView {
     private var cursor: Cursor = .arrow
     private var tracking: NSTrackingArea?
     private var observers: [NSObjectProtocol] = []
+    /// Secure event input, on while a secure field has focus in the key window.
+    var secureInput = SecureInputGate()
     /// Set by `shutDown`: no frame is applied after it.
     public private(set) var isShutDown = false
 
@@ -54,7 +56,10 @@ public final class HostView: NSView {
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError() }
 
-    deinit { renderLoop.stop() }
+    deinit {
+        renderLoop.stop()
+        secureInput.set(false)
+    }
 
     public override var isFlipped: Bool { true }
     public override func makeBackingLayer() -> CALayer { metalLayer }
@@ -67,14 +72,15 @@ public final class HostView: NSView {
         super.viewDidMoveToWindow()
         observers.forEach(NotificationCenter.default.removeObserver)
         observers = []
+        updateSecureInput()
         guard !isShutDown, let window else { return }
         updateViewport()
         let nc = NotificationCenter.default
         observers.append(nc.addObserver(forName: NSWindow.didBecomeKeyNotification, object: window, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { _ = self?.send([.windowFocus(true)]) }
+            MainActor.assumeIsolated { _ = self?.send([.windowFocus(true)]); self?.updateSecureInput() }
         })
         observers.append(nc.addObserver(forName: NSWindow.didResignKeyNotification, object: window, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { _ = self?.send([.windowFocus(false)]) }
+            MainActor.assumeIsolated { _ = self?.send([.windowFocus(false)]); self?.updateSecureInput() }
         })
         renderLoop.start(link: displayLink(target: renderLoop, selector: #selector(RenderLoop.tick)))
     }
@@ -293,6 +299,7 @@ public final class HostView: NSView {
     public func shutDown() {
         guard !isShutDown else { return }
         isShutDown = true
+        updateSecureInput()
         engine.stop()
         renderLoop.stop()
         observers.forEach(NotificationCenter.default.removeObserver)
@@ -309,8 +316,17 @@ public final class HostView: NSView {
         for effect in engine.takeEffects() { run(effect) }
         setCursor(p.frame.cursor)
         textInputDidChange(p, previousFrame: previous?.frame.textInput)
+        updateSecureInput()
         mirror.update(p.frame, host: self)
         onApply?(p.frame)
+    }
+
+    /// Secure input follows the focused field, the window's key state and the view's life
+    /// (`SecureInputGate`).
+    func updateSecureInput() {
+        secureInput.set(SecureInputGate.wanted(textInput: shown?.frame.textInput,
+                                               windowKey: window?.isKeyWindow ?? false,
+                                               live: !isShutDown && window != nil))
     }
 
     private func run(_ effect: Effect) {

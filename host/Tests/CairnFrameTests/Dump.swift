@@ -45,7 +45,7 @@ enum Dump {
     static func ax(_ n: AxNode) -> String {
         "node role=\(n.role.rawValue) control=\(opt(n.control, ref)) parent=\(opt(n.parent) { "\($0)" }) "
             + "rect=\(rect(n.rect)) focused=\(bit(n.focused)) selected=\(bit(n.selected)) "
-            + "checked=\(opt(n.checked, bit)) label=\(str(n.label)) value=\(str(n.value))"
+            + "checked=\(opt(n.checked, bit)) secure=\(bit(n.secure)) label=\(str(n.label)) value=\(str(n.value))"
     }
 
     static func canvas(_ c: Canvas) -> String {
@@ -57,7 +57,7 @@ enum Dump {
             out += "textInput control=\(ref(t.control)) rect=\(rect(t.rect)) caret=\(rect(t.caret)) "
                 + "selection=\(t.selection.start) \(t.selection.end) "
                 + "marked=\(opt(t.marked) { "\($0.start) \($0.end)" }) "
-                + "origin=\(t.textOrigin.x) \(t.textOrigin.y) text=\(str(t.text))\n"
+                + "origin=\(t.textOrigin.x) \(t.textOrigin.y) secure=\(bit(t.secure)) text=\(str(t.text))\n"
         } else {
             out += "textInput none\n"
         }
@@ -130,9 +130,13 @@ enum Dump {
         case let .readFile(p): return "readFile \(str(p))"
         case let .writeFile(p, d): return "writeFile \(str(p)) \(bytes(d))"
         case let .playSound(n): return "sound \(str(n))"
-        case let .http(m, u, hs, b, t, sec, cap):
-            return "http \(str(m)) \(str(u)) timeout=\(t) \(headers(hs)) body=\(bytes(b)) secret=\(opt(sec, secret)) "
-                + "capture=\(cap.count)" + cap.map { " \(str($0.field)) \(str($0.account))" }.joined()
+        case let .http(m, u, hs, b, t, sec, cap, red):
+            let tail = "secret=\(opt(sec, secret)) capture=\(cap.count)" + cap.map { " \(str($0.field)) \(str($0.account))" }.joined()
+            if red {
+                let n = u.utf8.count + hs.reduce(0) { $0 + $1.name.utf8.count + $1.value.utf8.count } + b.count
+                return "http \(str(m)) timeout=\(t) <redacted \(n) bytes> " + tail
+            }
+            return "http \(str(m)) \(str(u)) timeout=\(t) \(headers(hs)) body=\(bytes(b)) " + tail
         case let .appendFile(p, d): return "appendFile \(str(p)) \(bytes(d))"
         case let .listDir(p): return "listDir \(str(p))"
         case let .deleteFile(p): return "deleteFile \(str(p))"

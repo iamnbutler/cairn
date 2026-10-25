@@ -14,7 +14,13 @@ import Cairn.Text.Field
    `Field.insert_replace`.
 5. **Copy is pure.** `Field.apply_copy`, `Field.selected_spec`.
 6. **Movement never edits.** `Field.apply_movement_text`.
-7. **Single line.** `Field.singleLine_apply`, `Field.view_no_newline` (and `WF.single`). -/
+7. **Single line.** `Field.singleLine_apply`, `Field.view_no_newline` (and `WF.single`).
+8. **Secure fields.** `SecureField.apply_no_clipboard` (copy and cut, and every other op, never
+   set the clipboard; `SecureField.apply_copy`, `SecureField.apply_cut` beep and change
+   nothing), `SecureField.history_empty`, `SecureField.applyAll_history` (no undo or redo
+   history, ever), `SecureField.apply_edit` (every other op edits as `Field.apply` does),
+   `SecureField.wf_apply`, `SecureField.view_text` (the view holds a bullet per scalar) and
+   `SecureField.view_agree` (the view depends on the text only through its length). -/
 
 namespace Cairn.Text
 
@@ -577,4 +583,84 @@ theorem redo_undo (f : Field) (hu : f.undoStack ≠ []) :
   | cons t rest => simp [undo, redo, h, snapshot]
 
 end Field
+
+/-! ## 8. Secure fields -/
+
+namespace SecureField
+
+/-- Ops a secure field refuses. -/
+def _root_.Cairn.TextOp.isRefused : TextOp → Bool
+  | .copy | .cut | .undo | .redo => true
+  | _ => false
+
+/-- The ops it doesn't refuse emit nothing on a plain field. -/
+theorem field_apply_effects (op : TextOp) (hop : op.isRefused = false) (f : Field) :
+    (Field.apply op f).2 = [] := by
+  cases op <;> simp_all [TextOp.isRefused, Field.apply]
+
+theorem apply_refused (op : TextOp) (hop : op.isRefused = true) (f : SecureField) :
+    apply op f = (⟨forget f.field⟩, [.beep]) := by
+  cases op <;> simp_all [TextOp.isRefused, apply]
+
+theorem apply_other (op : TextOp) (hop : op.isRefused = false) (f : SecureField) :
+    apply op f = (⟨forget (Field.apply op f.field).1⟩, []) := by
+  rw [← field_apply_effects op hop f.field]
+  cases op <;> simp_all [TextOp.isRefused, apply]
+
+/-- **Copy is refused**: it beeps, and the clipboard and the text are untouched. -/
+theorem apply_copy (f : SecureField) : apply .copy f = (⟨forget f.field⟩, [.beep]) := rfl
+
+/-- **Cut is refused**: it beeps and deletes nothing. -/
+theorem apply_cut (f : SecureField) : apply .cut f = (⟨forget f.field⟩, [.beep]) := rfl
+
+/-- **No op on a secure field sets the clipboard**: the only effect any op can have is a beep. -/
+theorem apply_effects (op : TextOp) (f : SecureField) : ∀ e ∈ (apply op f).2, e = .beep := by
+  cases h : op.isRefused
+  · rw [apply_other op h]; simp
+  · rw [apply_refused op h]; simp
+
+theorem apply_no_clipboard (op : TextOp) (f : SecureField) (s : String) :
+    Effect.setClipboard s ∉ (apply op f).2 := fun hm => nomatch apply_effects op f _ hm
+
+/-- **No history**: after any op, the undo and redo stacks are empty. -/
+theorem history_empty (op : TextOp) (f : SecureField) :
+    (apply op f).1.field.undoStack = [] ∧ (apply op f).1.field.redoStack = [] := by
+  cases h : op.isRefused
+  · rw [apply_other op h]; exact ⟨rfl, rfl⟩
+  · rw [apply_refused op h]; exact ⟨rfl, rfl⟩
+
+/-- From an empty field, history stays empty through any ops. -/
+theorem applyAll_history (p : String) (ops : List TextOp) :
+    ((empty p).applyAll ops).field.undoStack = [] ∧
+      ((empty p).applyAll ops).field.redoStack = [] := by
+  suffices ∀ (ops : List TextOp) (f : SecureField), f.field.undoStack = [] →
+      f.field.redoStack = [] → (f.applyAll ops).field.undoStack = [] ∧
+        (f.applyAll ops).field.redoStack = [] from this ops _ rfl rfl
+  intro ops
+  induction ops with
+  | nil => intro f hu hr; exact ⟨hu, hr⟩
+  | cons op ops ih =>
+    intro f _ _
+    exact ih _ (history_empty op f).1 (history_empty op f).2
+
+/-- **Editing is a field's**: every op a secure field doesn't refuse changes its text, selection
+and composition exactly as `Field.apply` does. -/
+theorem apply_edit (op : TextOp) (hop : op.isRefused = false) (f : SecureField) :
+    (apply op f).1.field.text = (Field.apply op f.field).1.text ∧
+    (apply op f).1.field.caret = (Field.apply op f.field).1.caret ∧
+    (apply op f).1.field.anchor = (Field.apply op f.field).1.anchor ∧
+    (apply op f).1.field.marked = (Field.apply op f.field).1.marked := by
+  rw [apply_other op hop]; exact ⟨rfl, rfl, rfl, rfl⟩
+
+theorem forget_wf {f : Field} (h : f.WF) : (forget f).WF :=
+  ⟨h.caret_le, h.anchor_le, h.marked_le, h.single, (fun _ hm => nomatch hm),
+    (fun _ hm => nomatch hm)⟩
+
+theorem wf_apply (op : TextOp) {f : SecureField} (h : f.field.WF) : (apply op f).1.field.WF := by
+  cases hr : op.isRefused
+  · rw [apply_other op hr]; exact forget_wf (Field.wf_apply op h)
+  · rw [apply_refused op hr]; exact forget_wf h
+
+end SecureField
+
 end Cairn.Text

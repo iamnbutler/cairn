@@ -148,6 +148,11 @@ structure FieldView where
   marked : Option (Nat × Nat) := none
   placeholder : String := ""
   focused : Bool := false
+  /-- A secure field (a password): `text` is one bullet per scalar of what was typed
+  (`Cairn.Text.SecureField.view`), so it is drawn, measured and dumped as bullets; the frame
+  marks it so the accessibility mirror shows an `AXSecureTextField` with no value and the host
+  turns on secure event input while it has focus (docs/text.md, "Secure fields"). -/
+  secure : Bool := false
 deriving Repr, BEq, Inhabited
 
 /-- Which lines a wrapped text keeps when it has more than `maxLines`: the first ones, or the

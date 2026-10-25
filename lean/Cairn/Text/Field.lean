@@ -274,4 +274,75 @@ structure WF (f : Field) : Prop where
 
 end Field
 
+/-! ## Secure fields
+
+A secure field is a password field, as `NSSecureTextField`: the same editing model, but it
+draws a bullet per scalar, refuses copy and cut with a beep, and keeps no undo history. It wraps
+a `Field` rather than flagging one, so `Field.apply` and every theorem and claim stated with it
+mean what they did. The typed text is in Lean (typed text always is) but never in its view:
+`view` puts bullets in `FieldView.text`, so what layout measures, the frame draws and every dump
+prints is its length only (`SecureField.view_agree`, `Dump.secure_frame`). Theorems are in
+`Cairn.Text.Proofs`; the rules are in `docs/text.md`, "Secure fields". -/
+
+/-- What a secure field draws for each scalar. -/
+def bullet : Char := '•'
+
+/-- `n` bullets. -/
+def bullets (n : Nat) : String := String.ofList (List.replicate n bullet)
+
+/-- A password field: a `Field` whose history is always empty. -/
+structure SecureField where
+  field : Field := {}
+deriving Repr, BEq, DecidableEq, Inhabited
+
+namespace SecureField
+
+/-- An empty secure field. -/
+def empty (placeholder : String := "") : SecureField := ⟨Field.empty placeholder⟩
+
+/-- What was typed. Only for the one request that sends it (with `redact := true`). -/
+def text (f : SecureField) : String := f.field.textString
+
+def len (f : SecureField) : Nat := f.field.text.length
+
+/-- The field without undo or redo history. -/
+def forget (f : Field) : Field := { f with undoStack := [], redoStack := [] }
+
+/-- Like `Field.apply`, except that copy, cut, undo and redo beep and change nothing, and no
+history is kept. -/
+def apply : TextOp → SecureField → SecureField × List Effect
+  | .copy, f | .cut, f | .undo, f | .redo, f => (⟨forget f.field⟩, [.beep])
+  | op, f => (⟨forget (Field.apply op f.field).1⟩, (Field.apply op f.field).2)
+
+/-- Apply ops in order, dropping effects. -/
+def applyAll (f : SecureField) (ops : List TextOp) : SecureField :=
+  ops.foldl (fun g op => (apply op g).1) f
+
+/-- What the view layer draws: a bullet per scalar, the field's selection and composition, and
+`secure`. -/
+def view (f : SecureField) (focused : Bool) : FieldView :=
+  { text := bullets f.field.text.length, caret := f.field.caret, anchor := f.field.anchor,
+    marked := f.field.marked, placeholder := f.field.placeholder, focused, secure := true }
+
+/-- Two secure fields that show the same: the same number of scalars, selection, composition
+and placeholder, whatever the scalars are. -/
+def Agree (f g : SecureField) : Prop :=
+  f.field.text.length = g.field.text.length ∧ f.field.caret = g.field.caret ∧
+    f.field.anchor = g.field.anchor ∧ f.field.marked = g.field.marked ∧
+    f.field.placeholder = g.field.placeholder
+
+/-- **Bullets**: the view's text is one bullet per scalar typed. -/
+theorem view_text (f : SecureField) (b : Bool) :
+    (f.view b).text.toList = List.replicate f.field.text.length bullet ∧ (f.view b).secure = true := by
+  simp only [view, bullets, String.toList_ofList, and_self]
+
+/-- **The view hides the text**: two secure fields that agree on everything but which scalars
+were typed have the same view, so nothing built from it (layout, the frame, the accessibility
+mirror, a dump) can tell them apart. -/
+theorem view_agree {f g : SecureField} (h : f.Agree g) (b : Bool) : f.view b = g.view b := by
+  obtain ⟨h1, h2, h3, h4, h5⟩ := h
+  simp only [view, h1, h2, h3, h4, h5]
+
+end SecureField
+
 end Cairn.Text
