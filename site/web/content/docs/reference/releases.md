@@ -49,6 +49,32 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
 - **Its evidence.** What a claim reads as depends on the build that computed it. See
   [how much to trust a claim](/docs/reference/trust/).
 
+## v0.2.3
+
+25 October 2026.
+
+- **Several apps in one package.** Each `lean_lib` in `libs` whose library defines
+  `cairn_app_init` is an app, and `cairn build`, `size`, `bench` and `conformance` take
+  `--app <Lib>` to link one (it defaults to the only app). With several, each app's archive is
+  `.cairn/lib/lib<name>_<app>.a`. `cairn claims --ledger`, `publish` and `doc` still read every
+  lib. The example apps are also in iamnbutler/cairn_examples, which is such a package.
+- **`cairn bundle`.** A release build of an app package wrapped in `build/apps/<N>.app`, with the
+  SwiftPM resource bundles its executable uses copied into `Contents/Resources`, where
+  `Bundle.module` looks in an app. The package's `bundle/Info.plist` and
+  `bundle/entitlements.plist` are used when present; it signs with `--sign`, else ad hoc.
+- **The fuzzer sees more of an app.** A status item's button and menu items count as on screen,
+  and the fuzzer presses them with `menuOpen` and `menuSelect`, so Clock and Tray are fuzzed. It
+  takes `App.minSize` as the window's minimum, since the host never makes the window smaller
+  (`cairn^1010`), so Gallery is fuzzed too.
+- **Clicks are in the trusted base.** `cairn^7` (a click reaches Lean where it happens) and
+  `cairn^214` (a double click is a second click) were declared by the Counter and TodoMVC
+  examples. They now live in `Cairn.Fuzz.Trusted.Claims`, with the same ids and statements,
+  and the trusted-base fuzzer checks them (`pointer.click`, `pointer.double-click`).
+
+No claim was retired, moved or changed, and none is new: `claims.lock` is the same as v0.2.2's,
+so it is a patch release. Moving from v0.2.2 is a change of tag in the lakefile and
+`Package.swift`.
+
 ## v0.2.2
 
 25 October 2026, at commit `885b585`.
