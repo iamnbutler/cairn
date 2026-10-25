@@ -64,7 +64,7 @@ on the site:
 | `search-index.js`, `search.js` | client-side search over names, doc comments and claims |
 
 **A declaration** shows its kind, its full name, its source as text (`lean/Cairn/Layout/Core.lean:329`;
-the repository is private, so there is no link), its signature with every constant in the package
+not linked yet, though the repository is now public), its signature with every constant in the package
 linked, and its doc comment as Markdown. A structure lists its fields with their types and
 docs, an inductive type its constructors, and a type the instances for it (`Repr`, `BEq`, …). A
 theorem carries a chip: `proved` when it depends only on `propext`, `Classical.choice` and
