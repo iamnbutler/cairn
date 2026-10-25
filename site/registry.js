@@ -378,7 +378,7 @@ export async function claimPageOf(src, name, wanted, id) {
 	return page({
 		title: `${name}^${c.id} ${title}`,
 		eyebrow: `Claim · <a href="${base}">${esc(name)} ${esc(shown.version)}</a>`,
-		lede: `A ${c.kind} of ${name} ${shown.version}${c.place != null ? `, in ${m.byId.get(c.place)?.detail?.title ?? m.byId.get(c.place)?.title}` : ""}.`,
+		lede: `${c.kind === "assume" ? "An assumption" : c.kind === "invariant" ? "An invariant" : `A ${c.kind}`} of ${name} ${shown.version}${c.place != null ? `, in ${m.byId.get(c.place)?.detail?.title ?? m.byId.get(c.place)?.title}` : ""}.`,
 		path: `${base}${c.id}/`,
 		body: `${sample(src)}\n${claimPage(m, c, base)}`,
 		card: cardOf(pkg, shown),
