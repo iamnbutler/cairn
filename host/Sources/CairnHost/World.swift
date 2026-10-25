@@ -542,10 +542,10 @@ public final class World: @unchecked Sendable {
     public func reset() {
         lock.lock()
         generation += 1
-        let old = tokens.values
+        // Requests already running finish as before (their answers are dropped); only a
+        // `cancelRequest` stops one.
         tokens.removeAll()
         lock.unlock()
-        for t in old { t.cancel() }
         queue.sync {
             for stop in running_.values { stop() }
             running_.removeAll()
