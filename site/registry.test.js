@@ -22,7 +22,7 @@ describe("with the fixture", () => {
 		expect(text).toContain("Sample data");
 		expect(text).toContain('<a href="/packages/" class="on" aria-current="page">Libraries <span class="n">1</span></a>');
 		expect(text).toContain('<a href="/packages/?tab=apps">Apps <span class="n">1</span></a>');
-		expect(text).toContain('href="/docs/cairn/0.2.5/"');
+		expect(text).toContain('href="/docs/cairn/0.3.0/"');
 		expect(text).toContain('<span class="owner">by iamnbutler</span>');
 		expect(text).not.toContain('href="/packages/yap/"');
 		const apps = await (await get("/packages/?tab=apps")).text();
@@ -40,7 +40,7 @@ describe("with the fixture", () => {
 
 	test("shows the latest release with its ledger", async () => {
 		const text = await (await get("/packages/cairn/")).text();
-		expect(text).toContain("<dd>0.2.5</dd>");
+		expect(text).toContain("<dd>0.3.0</dd>");
 		expect(text).toContain("<dt>Owner</dt><dd>iamnbutler</dd>");
 		expect(text).toContain('<tr id="301" class="moved">');
 		expect(text).toContain("<code>cairn^1</code>");
@@ -72,7 +72,11 @@ describe("with the fixture", () => {
 		const old = await get("/packages/cairn/0.1.0/claims/301/");
 		expect(old.status).toBe(200);
 		expect(await old.text()).toContain('Now <a href="/packages/yap/claims/301/"><code>yap^301</code></a>');
-		expect((await get("/packages/cairn/claims/1/")).status).toBe(200);
+		const examples = await get("/packages/cairn/claims/1/");
+		expect(examples.status).toBe(301);
+		expect(examples.headers.get("location")).toBe(`${ORIGIN}/packages/cairn_examples/claims/1/`);
+		expect((await get("/packages/cairn/0.2.5/claims/1/")).status).toBe(200);
+		expect((await get("/packages/cairn/claims/7/")).status).toBe(200);
 	});
 
 	test("links a package's dependencies", async () => {
@@ -102,7 +106,7 @@ describe("with the fixture", () => {
 	});
 
 	test("answers a version's docs with the placeholder, in the site's style", async () => {
-		for (const path of ["/docs/cairn/0.2.5/", "/docs/cairn/0.2.4/", "/docs/cairn/0.2.3/", "/docs/cairn/0.2.2/", "/docs/cairn/0.2.1/", "/docs/cairn/0.2.0/", "/docs/cairn/0.1.3/", "/docs/cairn/0.1.2/", "/docs/cairn/0.1.1/", "/docs/cairn/0.1.0/", "/docs/yap/0.1.0/"]) {
+		for (const path of ["/docs/cairn/0.3.0/", "/docs/cairn/0.2.5/", "/docs/cairn/0.2.4/", "/docs/cairn/0.2.3/", "/docs/cairn/0.2.2/", "/docs/cairn/0.2.1/", "/docs/cairn/0.2.0/", "/docs/cairn/0.1.3/", "/docs/cairn/0.1.2/", "/docs/cairn/0.1.1/", "/docs/cairn/0.1.0/", "/docs/yap/0.1.0/"]) {
 			const res = await get(path);
 			expect(res.status).toBe(200);
 			expect(res.headers.get("content-type")).toBe("text/html; charset=utf-8");
@@ -117,8 +121,8 @@ describe("with the fixture", () => {
 	test("sends every path under a version, and latest, to the placeholder", async () => {
 		expect((await get("/docs/cairn/0.1.0/Cairn.UI.html")).headers.get("location")).toBe(`${ORIGIN}/docs/cairn/0.1.0/`);
 		expect((await get("/docs/cairn/0.1.0/a/b/index.html")).headers.get("location")).toBe(`${ORIGIN}/docs/cairn/0.1.0/`);
-		expect((await get("/docs/cairn/latest/Cairn.UI.html")).headers.get("location")).toBe(`${ORIGIN}/docs/cairn/0.2.5/`);
-		expect((await get("/docs/cairn/")).headers.get("location")).toBe(`${ORIGIN}/docs/cairn/0.2.5/`);
+		expect((await get("/docs/cairn/latest/Cairn.UI.html")).headers.get("location")).toBe(`${ORIGIN}/docs/cairn/0.3.0/`);
+		expect((await get("/docs/cairn/")).headers.get("location")).toBe(`${ORIGIN}/docs/cairn/0.3.0/`);
 	});
 
 	test("leaves everything else to the static site", async () => {
