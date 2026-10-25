@@ -71,6 +71,18 @@ let lib = Context.packageDirectory + "/.cairn/lib"
 ```
 <!-- endregion: package-manifest -->
 
+`cairn new <name> --bin` writes all of this for a small working app (docs/cli.md).
+
+### What an app imports
+
+`import Cairn` (in a `module`, `public import Cairn`): the `Cairn` umbrella imports every module
+of the `Cairn` library, which is exactly what cairn-link links, and `meta`-imports the claim
+commands, so they run at compile time only (docs/claims.md, "Linking"). Importing single
+modules (`Cairn.App`, `Cairn.Abi`, …) works too, as Yap and the examples do. Don't import
+`CairnAll`: it imports the proofs, tests and tool modules too, for the ledger, the axiom audit
+and `make doc`, and none of those are linked, so an app that imports it doesn't link (missing
+`initialize_cairn_*` symbols; cairn-link warns first).
+
 `unsafeFlags` are fine here, because the app is the root package. The app declares its own Lean
 exports in a small C target (`runtime_initialize_<package>_<Module>` and anything `@[export]`ed);
 Cairn's CLean declares the runtime and the v1 app ABI (`cairn_app_init`, `step`, `frame`).

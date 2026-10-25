@@ -4,7 +4,7 @@ import Cairn.Claims.Release
 /-! Tests for the claim commands: a small machine that uses every command, and one failing
 declaration per compile-time check, with the error it must give.
 
-Not imported by `Cairn` or `Examples`, so its ids (9100 and up) stay out of the ledger. -/
+Not imported by `CairnAll` or `Examples`, so its ids (9100 and up) stay out of the ledger. -/
 
 namespace Cairn.Claims.Tests
 open Cairn Cairn.Claims

@@ -255,7 +255,7 @@ moved to iamnbutler/yap-cairn). A moved id stays issued here: it may not come ba
 `lake exe ledger update [--accept]` appends new ids, marks ids retired in the code as retired,
 and with `--accept` records changed hashes and titles. It never removes a line and refuses to
 write while `check` has errors other than new ids. Both take `--lock PATH` and `--root MODULE`
-(default roots `Cairn`, `Examples` and `Cairn.Fuzz.Trusted.Claims`: a claim in a module neither imports is invisible to the
+(default roots `CairnAll`, `Examples` and `Cairn.Fuzz.Trusted.Claims`: a claim in a module neither imports is invisible to the
 ledger, so every app module must be reachable from `Examples.lean`).
 
 ### Retiring needs a major version
@@ -353,7 +353,7 @@ which `libInit` is 15 MB); the `CairnCounter` binary contains no symbols from `l
   `in ^P` or a witness; Yap's ^348 cites `cairn^1005` in its text.
 - **Ids are global only as far as imports reach.** Two modules that are never imported together
   can issue the same id; the ledger catches it because it imports everything reachable from
-  `Cairn` and `Examples`, and the `Issued.«^N»` declarations make importing both fail.
+  `CairnAll` and `Examples`, and the `Issued.«^N»` declarations make importing both fail.
 - **"Meaning changed" is a warning, not an error.** The hash can't tell a refactor from a change
   of meaning; a person decides, and `--accept` records the decision in the diff.
 - **Prose isn't checked against the formal statement.** `does`/`sees` are for reviewers; nothing

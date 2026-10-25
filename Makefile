@@ -5,7 +5,7 @@ LEAN_PREFIX = $(shell cd lean && lean --print-prefix)
 LIB = build/lib/libcairn_lean.a
 VENDOR = host/Sources/CLean/vendor/lean
 
-.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest demo fixture clean record site site-maps map map-trusted doc doctest site-api conformance fuzz fuzz-quick size fuzz-trusted fuzz-trusted-quick bundle docs-site docs-check registry-check
+.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest demo fixture clean record site site-maps map map-trusted doc doctest site-api conformance fuzz fuzz-quick size fuzz-trusted fuzz-trusted-quick bundle docs-site docs-check registry-check new-check
 
 # region: make-apps
 # build/lib/libcairn_lean.a: the framework (`Cairn`) and Lean's runtime, linked by every host
@@ -77,7 +77,7 @@ corpus: lean
 
 # region: make-check
 # Everything a PR must pass.
-check: lint audit ledger kernel doctest test selftest fuzz-quick size fuzz-trusted-quick docs-check registry-check
+check: lint audit ledger kernel doctest test selftest fuzz-quick size fuzz-trusted-quick docs-check registry-check new-check
 # endregion: make-check
 
 bench: lean
@@ -169,6 +169,11 @@ registry-check:
 	bun tools/registry/fixture.ts --check
 	bun test site/registry.test.js
 
+# `cairn new --bin` + `cairn build` against this checkout: the template app builds, links (its
+# `import Cairn` is the linked library), passes its `--selftest` and its ledger. About a minute.
+new-check: lean
+	tools/cairn/new-check.sh
+
 # Deploy the microsite (site/) to Cloudflare, once the feed is fresh (site-feed-check, below).
 site: site-feed-check og-check
 	cd site && npx -y wrangler@4 deploy
@@ -209,7 +214,7 @@ map-trusted: lean
 # carry the evidence already in build/ (`make fuzz`, `make conformance`, `make map` for the
 # screenshots), as on the map. Doc tests (Lean code blocks in doc comments) run first and fail
 # the build.
-DOC_CAIRN = Cairn Cairn.Claims Cairn.Fuzz Cairn.Fuzz.Trusted.Claims Cairn.Fuzz.Trusted.Export
+DOC_CAIRN = Cairn CairnAll Cairn.Claims Cairn.Fuzz Cairn.Fuzz.Trusted.Claims Cairn.Fuzz.Trusted.Export
 DOC_NAME = $(or $(PKG),$(APP))
 DOCDIR = build/doc/$(DOC_NAME)
 DOC_MODULES = $(if $(PKG),$(if $(filter Cairn,$(PKG)),$(DOC_CAIRN),$(PKG)),Examples.$(APP) $(shell cd lean && find Examples/$(APP) -name '*.lean' 2>/dev/null | sed 's/\.lean$$//; s|/|.|g'))

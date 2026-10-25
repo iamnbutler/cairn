@@ -191,8 +191,8 @@ Lake libraries, all in the one package `lean/`:
 
 | Library | Roots | Linked | Imports Lean |
 |---|---|---|---|
-| `Cairn` | the core and std code above, the linked closure only | yes, by `cairn-link` | no |
-| `CairnProofs` | the proof and test modules | no | no |
+| `Cairn` | the core and std code above, the linked closure only, and the `Cairn` umbrella apps import | yes, by `cairn-link` | no (the umbrella `meta`-imports the claim commands) |
+| `CairnProofs` | the proof and test modules, and the `CairnAll` umbrella | no | no |
 | `CairnClaims` | `Claims.Elab`, `Claims.Registry` | no (`meta import`) | yes |
 | `CairnTrusted` | `Fuzz.Trusted.Claims` (today `TrustedClaims`) | no | compile time |
 | `CairnFuzz` | `Fuzz.*` (with `Rng`'s `Custom` hook in `Cairn`, since app modules name it) | no | yes |
@@ -203,6 +203,13 @@ Arrows: `CairnProofs`, `CairnClaims`, `CairnFuzz` → `Cairn`; `CairnTools` → 
 `CairnTrusted` → `Cairn` + `CairnClaims` (meta). Module names don't change apart from the three
 moves, so `import`s in apps keep working. Swift products as today. `cairn.toml`'s
 `libs = ["Cairn"]`.
+
+Two umbrellas. `Cairn` (`lean/Cairn.lean`, a `module`) imports every module of the `Cairn`
+library and nothing else, and is in it: `import Cairn` is what an app writes, and it links.
+`CairnAll` imports everything but the tools and the fuzzer (the proofs and tests too); it is a
+root of the ledger, the axiom audit and `make doc`, and `make kernel` replays it as part of
+`CairnProofs`. Before #128 `Cairn` was the everything-umbrella, so an app that imported it
+couldn't link.
 
 ### `cairn_<topic>` (lib, own repository each, own scope)
 
@@ -230,12 +237,14 @@ take with no source change, or a one-line one.
 2. **Libraries** (0.1.3 or 0.1.4). Narrow `Cairn` to the linked closure; add `CairnProofs`,
    `CairnClaims`, `CairnFuzz`, `CairnTools`, rename `TrustedClaims` to `CairnTrusted`. Take
    `Cairn.Fuzz.Rng` out of the `Todo` library's roots. The `Cairn.lean` umbrella keeps importing
-   everything for the ledger and audit roots. Check `libcairn_lean.a` shrinks (20.8 MB today, 15
+   everything for the ledger and audit roots (renamed `CairnAll` since, see below). Check `libcairn_lean.a` shrinks (20.8 MB today, 15
    of it `libInit`). Yap bumps its tag and builds unchanged. Done: `Cairn` is 31 modules
    (the shims and `Fuzz.Rng` included), `libcairn_Cairn.a` 3.7 → 2.8 MB and `libcairn_lean.a`
    20.8 → 19.9 MB; `Frame.Dump` went to `TrustedFuzz`, `ClaimsTests` stays, `CairnTools` isn't a
    default target (`make kernel` would import its four `main`s together), and the host now runs
-   `initialize_cairn_Cairn_Abi`, since the `Cairn` umbrella imports the proofs.
+   `initialize_cairn_Cairn_Abi`, since the `Cairn` umbrella imported the proofs. Then (#128)
+   the everything-umbrella became `CairnAll`, and `Cairn` the linked library's umbrella, so
+   `import Cairn` links; `make new-check` builds `cairn new --bin`'s app to keep it so.
 3. **`cairn-link` links dependencies' `libs`.** Instead of `@cairn/Cairn:static` by name, it
    links each dependency's `libs` from its `cairn.toml`. `cairn` declares `libs = ["Cairn"]`. Yap
    gets the same archive. Run #86 (an outside package builds against Cairn) with Yap as the

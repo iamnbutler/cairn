@@ -27,8 +27,20 @@ public struct Project: Sendable {
         }
     }
 
-    /// Cairn itself, or the Cairn package Lake fetched into the app's lean/.lake/packages/.
-    public var cairn: URL { manifest.name == "cairn" ? root : lean.appending(path: ".lake/packages/cairn") }
+    /// Cairn itself, or the checkout of Cairn the app's Lake workspace uses: the one Lake fetched
+    /// into lean/.lake/packages/, or, for `require cairn from "<path>/lean"`, the repository
+    /// around that path (lean/lake-manifest.json says which).
+    public var cairn: URL {
+        if manifest.name == "cairn" { return root }
+        let fetched = lean.appending(path: ".lake/packages/cairn")
+        guard let data = try? Data(contentsOf: lean.appending(path: "lake-manifest.json")),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let packages = json["packages"] as? [[String: Any]],
+              let entry = packages.first(where: { $0["name"] as? String == "cairn" }),
+              entry["type"] as? String == "path", let dir = entry["dir"] as? String else { return fetched }
+        let package = dir.hasPrefix("/") ? URL(filePath: dir) : lean.appending(path: dir)
+        return package.standardizedFileURL.deletingLastPathComponent()
+    }
 
     /// `cairn build`'s link step: `bin/cairn-link` from the Cairn that Lake fetched, with this
     /// package's `libs` (cairn-link adds every dependency's own), into .cairn/lib/lib<name>.a.
@@ -96,60 +108,7 @@ public struct Commands {
         manifest.dependencies = [("cairn", "^0.1.0")]
         let toolchain = (try? String(contentsOf: Project(root: cwd, manifest: manifest).cairn.appending(path: "lean/lean-toolchain"), encoding: .utf8))
             ?? "leanprover/lean4:v4.35.0\n"
-        var files: [(String, String)] = [
-            ("cairn.toml", manifest.render()),
-            ("claims.lock", "# id\tkind\tstatus\tstatement\ttitle\n"),
-            (".gitignore", ".lake/\n.build/\n.cairn/\nbuild/\n"),
-            ("lean/lean-toolchain", toolchain),
-            ("lean/lakefile.lean", """
-                import Lake
-                open Lake DSL
-
-                package \(name) where
-                  leanOptions := #[⟨`weak.cairn.claims.scope, "\(name)"⟩]
-
-                require "owner" / "cairn" @ "^0.1.0"
-
-                @[default_target]
-                lean_lib \(module) where
-                  defaultFacets := #[LeanLib.staticFacet]
-
-                """),
-            ("lean/\(module).lean", """
-                /-! \(module): a Cairn \(lib ? "library" : "app"). Its claims are `\(name)^N`. -/
-                import Cairn
-
-                namespace \(module)
-
-                end \(module)
-
-                """),
-        ]
-        if !lib {
-            files.append(("Package.swift", """
-                // swift-tools-version: 6.0
-                // The app's host: Cairn's AppKit host, linking .cairn/lib/lib\(name).a, which
-                // `cairn build` makes from the Lean code (bin/cairn-link).
-                import PackageDescription
-
-                let lib = Context.packageDirectory + "/.cairn/lib"
-
-                let package = Package(
-                    name: "\(name)",
-                    platforms: [.macOS(.v14)],
-                    dependencies: [.package(url: "CAIRN_GIT_URL", from: "0.1.0")],
-                    targets: [
-                        .executableTarget(
-                            name: "\(module)",
-                            dependencies: [.product(name: "CairnHost", package: "cairn")],
-                            linkerSettings: [.unsafeFlags(["-L" + lib, "-l\(name)"])]),
-                    ]
-                )
-
-                """))
-            files.append(("Sources/\(module)/main.swift", "import CairnHost\n\n// Start the host with this app's Lean code; see Cairn's docs/package.md.\n"))
-        }
-        if !lib { manifest.libs = [module] }
+        let files = [("cairn.toml", manifest.render())] + Template.files(name: name, module: module, kind: kind, toolchain: toolchain)
         do {
             for (path, text) in files {
                 let url = dir.appending(path: path)
@@ -158,7 +117,8 @@ public struct Commands {
             }
         } catch { throw CairnError("couldn't write \(name)/: \(error.localizedDescription)") }
         _ = try? shell.capture(["git", "init", "-q"], in: dir, check: false)
-        print("Created \(name)/. Next: `cd \(name) && cairn add cairn`, which points the lakefile at the registry, then `cairn build`.")
+        print("Created \(name)/. Next: `cd \(name) && cairn add cairn`, which points the lakefile at the registry, then `cairn build`"
+            + (lib ? "." : ", and `swift run \(module)` to open it (`--selftest` runs it headlessly)."))
     }
 
     /// Ask whether a new package is a library or an app, until the answer is one of them.
@@ -249,7 +209,7 @@ public struct Commands {
         var env = lakeEnv(registry())
         env["LAKE_ARTIFACT_CACHE"] = "false"
         let modules = name == "cairn"
-            ? ["Cairn", "Cairn.Claims", "Cairn.Fuzz", "Cairn.Fuzz.Trusted.Claims", "Cairn.Fuzz.Trusted.Export"]
+            ? ["Cairn", "CairnAll", "Cairn.Claims", "Cairn.Fuzz", "Cairn.Fuzz.Trusted.Claims", "Cairn.Fuzz.Trusted.Export"]
             : project.manifest.libs
         guard !modules.isEmpty else { throw CairnError("cairn.toml lists no `libs` to document") }
         do { try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true) } catch { throw CairnError("couldn't create \(dir.path)") }
