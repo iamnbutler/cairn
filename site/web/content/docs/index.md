@@ -27,6 +27,7 @@ fuzzing, mapping and bundling an app are still the Cairn repository's `make` tar
 <div class="shelf">
 <a href="/docs/guide/"><b>Building an app</b><span>From a counter to effects and shipping, one chapter at a time.</span></a>
 <a href="/docs/examples/"><b>Example apps</b><span>Counter, Basics, TodoMVC and Yap, read through their source.</span></a>
+<a href="/try/"><b>Try an app</b><span>Counter, Basics and TodoMVC in the browser, every control with its claim id and evidence.</span></a>
 </div>
 
 ## Reference

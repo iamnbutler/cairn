@@ -5,7 +5,7 @@ LEAN_PREFIX = $(shell cd lean && lean --print-prefix)
 LIB = build/lib/libcairn_lean.a
 VENDOR = host/Sources/CLean/vendor/lean
 
-.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest demo fixture clean record site capture doc doctest conformance fuzz fuzz-quick size fuzz-trusted fuzz-trusted-quick bundle site-build site-dist registry-check new-check cairn-tool fixture-build fixture-ledger examples-check examples-audit examples-doctest examples-selftest examples-fuzz-quick examples-size examples-bench
+.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest demo fixture clean record site capture site-try doc doctest conformance fuzz fuzz-quick size fuzz-trusted fuzz-trusted-quick bundle site-build site-dist registry-check new-check cairn-tool fixture-build fixture-ledger examples-check examples-audit examples-doctest examples-selftest examples-fuzz-quick examples-size examples-bench
 
 # region: make-apps
 # build/lib/libcairn_lean.a: the framework (`Cairn`) and Lean's runtime, linked by every host
@@ -192,6 +192,7 @@ site-dist: site-build
 	bun site/icons.ts build/site
 	bun tools/site/llms.ts build/site
 	mkdir -p build/site/fonts && for w in 400 600 700; do cp site/web/node_modules/@fontsource/pixelify-sans/files/pixelify-sans-latin-$$w-normal.woff2 build/site/fonts/; done
+	$(MAKE) site-try
 
 # Deploy the microsite (site/) to Cloudflare.
 site: site-dist
@@ -217,6 +218,20 @@ capture: host
 	rm -rf $(SHOTS) && mkdir -p $(dir $(SHOTS))
 	cd host && swift run Cairn$(APP) --map-capture ../$(CAPDIR)/script.json ../$(SHOTS)
 # endregion: make-capture
+
+# The "Try it" pages' data (docs/try.md): each app's states, explored headless from its real step
+# and frame, → build/site/try/<app>/ (graph.json, img/). Built at deploy by site-dist, not
+# committed; about a minute on a built tree.
+TRY_APPS = Counter Basics Todo
+TRY_OUT ?= build/site/try
+site-try: host
+	cd lean && lake build claims
+	@for a in $(TRY_APPS); do d=build/try/$$a; mkdir -p $$d && \
+		(cd lean && lake exe claims Examples.$$a > ../$$d/claims.json) && \
+		bun tools/try/try.ts script --app $$a --claims $$d/claims.json > $$d/script.json && \
+		rm -rf $$d/capture && (cd host && swift run -q Cairn$$a --try-capture ../$$d/script.json ../$$d/capture) && \
+		bun tools/try/try.ts build --app $$a --dir $$d --out $(TRY_OUT)/$$(echo $$a | tr A-Z a-z) && \
+		rm -rf $$d/capture || exit 1; done
 
 # cairn doc (docs/doc.md): a package's API and claims from its code, rustdoc-style.
 # `make doc APP=Todo` documents Examples.Todo and its submodules; `make doc PKG=Cairn` documents

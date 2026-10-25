@@ -40,6 +40,11 @@ public enum MapCapture {
         var kind: String
         var text: String?
     }
+    /// A step without its control: what the try capture's actions are made of.
+    struct Gesture: Codable {
+        var trigger: String
+        var op: Op?
+    }
 
     struct Control: Encodable {
         var ref: String, claim: UInt32, key: UInt32
@@ -76,7 +81,10 @@ public enum MapCapture {
     }
 
     /// Runs the capture if `args` asks for it, and returns the exit code; nil otherwise.
+    /// Also runs the try capture (`--try-capture`, Explore.swift), so every app that opts in here
+    /// gets both.
     public static func main(_ args: [String], size: Size, core: @escaping () -> AppCore) -> Int32? {
+        if let code = TryCapture.main(args, size: size, core: core) { return code }
         guard let i = args.firstIndex(of: "--map-capture") else { return nil }
         guard i + 2 < args.count else {
             FileHandle.standardError.write("usage: --map-capture <script.json> <out dir>\n".data(using: .utf8)!)
@@ -113,26 +121,7 @@ public enum MapCapture {
                         break
                     }
                     let c = Point(x: node.rect.x + node.rect.w / 2, y: node.rect.y + node.rect.h / 2)
-                    let click: (UInt32) -> [Event] = { n in
-                        [.pointerDown(c, .primary, clicks: n, Mods()), .pointerUp(c, .primary, Mods())]
-                    }
-                    // Text steps go to the focused field: click it first unless it has focus.
-                    let focus = current.textInput?.control == ref ? [] : [.pointerMove(c)] + click(1)
-                    let events: [Event]? = switch (step.trigger, step.op?.kind) {
-                    case ("press", _): [.pointerMove(c)] + click(1)
-                    case ("doublePress", _): [.pointerMove(c)] + click(1) + click(2)
-                    case ("edit", "insert"): focus + [.insertText(step.op?.text ?? "")]
-                    case ("edit", "paste"): focus + [.paste(step.op?.text ?? "")]
-                    case ("edit", "deleteBackward"): focus + [.key(.backspace, Mods())]
-                    case ("edit", "deleteForward"): focus + [.key(.delete, Mods())]
-                    case ("edit", "selectAll"): focus + [.selectAll]
-                    case ("edit", "undo"): focus + [.undo]
-                    case ("edit", "redo"): focus + [.redo]
-                    case ("submit", _): focus + [.key(.enter, Mods())]
-                    case ("cancel", _): focus + [.key(.escape, Mods())]
-                    default: nil  // blur and the remaining text operations: not yet
-                    }
-                    guard let events else {
+                    guard let events = events(trigger: step.trigger, op: step.op, node: node, frame: current) else {
                         steps.append(StepResult(step: step, ref: ref.label, outcome: "unsupported", at: [c.x, c.y]))
                         break
                     }
@@ -203,6 +192,31 @@ public enum MapCapture {
     }
 
 
+    /// The events a person's step on `node` sends: pointer events at its centre, or, for a text
+    /// step, a click to focus the field unless it has focus, then the text or key. nil for a
+    /// trigger the capture can't send yet (blur and the rarer text operations).
+    static func events(trigger: String, op: Op?, node: AxNode, frame: Frame) -> [Event]? {
+        let c = Point(x: node.rect.x + node.rect.w / 2, y: node.rect.y + node.rect.h / 2)
+        let click: (UInt32) -> [Event] = { n in
+            [.pointerDown(c, .primary, clicks: n, Mods()), .pointerUp(c, .primary, Mods())]
+        }
+        let focus = node.control != nil && frame.textInput?.control == node.control ? [] : [.pointerMove(c)] + click(1)
+        return switch (trigger, op?.kind) {
+        case ("press", _): [.pointerMove(c)] + click(1)
+        case ("doublePress", _): [.pointerMove(c)] + click(1) + click(2)
+        case ("edit", "insert"): focus + [.insertText(op?.text ?? "")]
+        case ("edit", "paste"): focus + [.paste(op?.text ?? "")]
+        case ("edit", "deleteBackward"): focus + [.key(.backspace, Mods())]
+        case ("edit", "deleteForward"): focus + [.key(.delete, Mods())]
+        case ("edit", "selectAll"): focus + [.selectAll]
+        case ("edit", "undo"): focus + [.undo]
+        case ("edit", "redo"): focus + [.redo]
+        case ("submit", _): focus + [.key(.enter, Mods())]
+        case ("cancel", _): focus + [.key(.escape, Mods())]
+        default: nil
+        }
+    }
+
     /// A sequence's pinned frames in reading order, each labelled with the step that led to it, so a
     /// flow reads left to right in one image.
     static func strip(_ frames: [CGImage], labels: [String], scale s: CGFloat) -> CGImage {
@@ -246,12 +260,28 @@ public enum MapCapture {
     /// The logical rect holding every pixel that differs from the background (the renderer's
     /// clear colour, read from the top-left pixel).
     static func inkBounds(_ img: Image, scale: CGFloat) -> CGRect {
-        let bg = img.bgra[0..<4]
+        // One pixel as one UInt32: the scan runs on every frame of a try capture (hundreds), so
+        // it reads the buffer directly rather than comparing slices.
         var minX = img.width, minY = img.height, maxX = -1, maxY = -1
-        for y in 0..<img.height {
-            let row = y * img.width * 4
-            for x in 0..<img.width where img.bgra[row + x * 4 ..< row + x * 4 + 4] != bg {
-                minX = min(minX, x); maxX = max(maxX, x); minY = min(minY, y); maxY = max(maxY, y)
+        img.bgra.withUnsafeBytes { raw in
+            let px = raw.bindMemory(to: UInt32.self)
+            guard let base = px.baseAddress, px.count > 0 else { return }
+            let bg = base[0], w = img.width, h = img.height
+            // while loops: a debug build doesn't specialize Range iteration, and is 10× slower.
+            var y = 0
+            while y < h {
+                let row = base + y * w
+                var x = 0
+                while x < w {
+                    if row[x] != bg {
+                        if x < minX { minX = x }
+                        if x > maxX { maxX = x }
+                        if y < minY { minY = y }
+                        maxY = y
+                    }
+                    x += 1
+                }
+                y += 1
             }
         }
         guard maxX >= 0 else { return .null }

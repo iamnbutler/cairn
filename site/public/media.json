@@ -1,5 +1,19 @@
 [
   {
+    "video": "/m/videos/b4346f892137dc00.mp4",
+    "poster": "/m/videos/b4346f892137dc00.jpg",
+    "title": "Try it: TodoMVC in the browser",
+    "caption": "Every frame is one the app's Lean code drew, explored ahead of time; each control shows its claim id, its reading and a link to its claim page.",
+    "date": "2026-10-25",
+    "published": "2026-10-25T04:30:29Z",
+    "commit": "a9813e5",
+    "width": 1920,
+    "height": 1200,
+    "seconds": 23,
+    "feature": false,
+    "milestone": "m2"
+  },
+  {
     "video": "/m/videos/d3e89acd24cf2229.mp4",
     "poster": "/m/videos/d3e89acd24cf2229.jpg",
     "title": "Claim pages",
