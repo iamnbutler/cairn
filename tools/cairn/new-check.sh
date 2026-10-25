@@ -33,8 +33,11 @@ grep -q ".package(path:" Package.swift || { echo "new-check: the template's Pack
 "$cairn" build >build.log 2>&1 || { tail -40 build.log >&2; echo "new-check: cairn build failed (log above)" >&2; exit 1; }
 "$(swift build --show-bin-path)/DemoApp" --selftest
 
-# The template's claims: issue its ids, then check them as an app's CI would.
-(cd lean && lake exe ledger update --scope demo_app --root DemoApp --lock ../claims.lock >/dev/null \
+# The template's claims: issue its ids, then check them as an app's CI would. `cairn build` turns
+# on Lake's artifact cache, which keeps .olean files out of the build directory on a hit, and the
+# ledger imports from there: as `cairn doc` does, turn it off and build again.
+export LAKE_ARTIFACT_CACHE=false
+(cd lean && lake build -q && lake exe ledger update --scope demo_app --root DemoApp --lock ../claims.lock >/dev/null \
 	&& lake exe ledger check --scope demo_app --root DemoApp --lock ../claims.lock)
 [ "$(grep -c '^[0-9]' claims.lock)" -eq 2 ] || { cat claims.lock >&2; echo "new-check: expected two claims in claims.lock" >&2; exit 1; }
 
