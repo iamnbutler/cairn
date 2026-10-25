@@ -49,6 +49,27 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
 - **Its evidence.** What a claim reads as depends on the build that computed it. See
   [how much to trust a claim](/docs/reference/trust/).
 
+## v0.2.5
+
+25 October 2026.
+
+- **Closing the window quits the app cleanly.** The window delegate now owns the window
+  (`isReleasedWhenClosed = false`), and on close it shuts the view down (engine, `World`,
+  render loop, observers) before the app terminates. Before, AppKit also released the window on
+  close, and a frame that landed afterwards reached the freed window: Pairs 0.1.2 crashed in
+  `objc_retain` when its window closed. `make selftest` closes a real window with input, a timer
+  and frames in flight (`Fixture --close-test`). See `docs/host.md`.
+- **`cairn` builds fetch registry dependencies quickly.** Before each Lake run, `cairn`
+  fetches the commit the manifest pins for each registry dependency, and turns Lake's lazy
+  fetches off when every git dependency is on a registry (#196). A stale checkout went from
+  92 s to 4 s on Pairs. See `docs/cli.md`.
+- **The tray's tick-rate selftest** checks Lean's per-tick cost against the 20 ms period and
+  the timer's own ticks; the wall-clock rate is asserted on real hardware only, not on CI VMs.
+
+No claim was retired, moved or changed, and none is new: `claims.lock` is the same as v0.2.4's,
+so it is a patch release. Moving from v0.2.4 is a change of tag in the lakefile and
+`Package.swift`.
+
 ## v0.2.4
 
 25 October 2026, at commit `654c669`.
