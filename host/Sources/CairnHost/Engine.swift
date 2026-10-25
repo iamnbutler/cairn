@@ -289,6 +289,7 @@ public final class Engine: @unchecked Sendable {
         if let inputTime { stats.record(.inputToFrame, ms: (t1 - inputTime) * 1000) }
         version += 1
         let p = Published(frame: frame, version: version, throughSeq: throughSeq, inputTime: inputTime)
+        world.drawing(frame)
         cond.lock()
         latestPublished = p
         through = throughSeq

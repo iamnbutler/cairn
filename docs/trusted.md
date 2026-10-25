@@ -6,7 +6,7 @@ entries in the section of the workstream that introduces the assumption.
 
 Items marked **Fuzzed** are also checked by the trusted-base fuzzer (`make fuzz-trusted`,
 docs/fuzz.md "Trusted base"), against Lean's proved side or an independent oracle, and are
-declared as `assume` claims ^901–^915, ^940–^944, ^960–^971 and ^1000–^1010 in `lean/Cairn/Fuzz/Trusted/Claims.lean`, each naming its
+declared as `assume` claims ^901–^915, ^940–^944, ^960–^971 and ^1000–^1011 in `lean/Cairn/Fuzz/Trusted/Claims.lean`, each naming its
 check; `build/fuzz/trusted.json` holds the evidence. Items not marked are checked only by the
 tests and reviews they list.
 
@@ -440,8 +440,9 @@ destination, scissored to the box within the clip.
   HEIC).
 
 **Also assumed, not fuzzed.** Pixels are kept at most 4096 on their long side (larger images are
-scaled down on decode; the reply still gives the full size). Kept images are never evicted: an
-app that loads many large sources holds them all. Animated GIFs show their first frame. A
+scaled down on decode; the reply still gives the full size). Kept images are never evicted
+unless the app runs an `imageCache` subscription (^1011, below): without one, an app that loads
+many large sources holds them all. Animated GIFs show their first frame. A
 relative path is resolved against the working directory, which a host app sets to its resource
 bundle. Redirects, caching and cookies are Foundation's (an ephemeral session, as for `http`).
 
@@ -683,6 +684,46 @@ A minimum larger than the screen gives a window larger than the screen.
   or above the minimum was left as proposed.
 - **Tested**: Gallery's self test checks the window record asks for 1020 × 536 and that the
   pictures are 180 × 135 there.
+
+## The image cache's budget (M3)
+
+An app that subscribes to `Sub.imageCache bytes` has the host keep its decoded images within
+that budget (docs/effects.md, "A budget on the host's images"). Lean proves, in a model of the
+table, the store and the messages between them (`Images.Cache.ready_held_quiet`), that an image
+the app takes for ready has its pixels with the host once every message is heard, given the
+host's two moves below; the app's side (`Images.evicted`) is proved, and Gallery's ^513 keeps
+its dropped thumbnails not loaded until loaded again.
+
+### The image cache reports every image it drops (`assume`, ^1011)
+
+**What is assumed.**
+- ^1011 `hostImageCache`: while an `imageCache` subscription runs, the store keeps within the
+  smallest running budget by dropping the entries used least recently (put, or drawn by a
+  published frame), never one the latest published frame draws nor the one just put, and only
+  while over budget; it sends `evicted source` to every running `imageCache` for every entry it
+  drops, a failed reload's removal included, after the entry is gone. `loadImage` answers ready
+  only after the store held the pixels for that load (it put them, or found them there).
+
+**Also assumed, not fuzzed.** That the engine delivers the host's events in the order they are
+sent (one queue). The renderer's textures of dropped images are released on its next frame.
+
+**Trusted code.** `host/Sources/CairnRender/Images.swift` (`ImageStore`: `setBudget`,
+`setDrawn`, `put`, `remove`), `host/Sources/CairnHost/World.swift` (`imageCache`,
+`World.drawing`), `host/Sources/CairnHost/Engine.swift` (`publish` calls `drawing` before a frame
+can be drawn), `host/Sources/CairnHost/ImageEffects.swift`.
+
+**Evidence.**
+- **Fuzzed** (^1011 `images.cache`), two ways. The store alone: 5–60 random puts (4–32 pixels a
+  side), removals, drawn sets and budget changes against a least-recently-used model; after
+  each step the entries, the bytes held and the drops (in order) are the model's, nothing drawn
+  or just put was dropped, the store is over budget only when nothing more can go, and each drop
+  was reported once, after the entry was gone. Through the `World`: 3–10 files, a random budget,
+  4–30 steps of concurrent `loadImage` requests (with and without `reload`), frames drawing
+  what the app takes for ready, files deleted and restored; the events, fed in order to a copy of
+  Lean's `Images` table, leave every image it takes for ready in the store once every request is
+  answered.
+- **Tested**: Gallery's self test loads 24 thumbnails under its 8 MiB budget, checks some are
+  evicted and every drawn image is in the store, pages, and checks again.
 
 ## Conformance (workstream J)
 

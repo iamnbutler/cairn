@@ -178,6 +178,10 @@ public final class Renderer {
               rects: &rects, glyphs: &glyphs, batches: &batches, textures: &textures,
               paints: &paints, fresh: &fresh, stats: &stats)
         lastStats = stats
+        // Let go of the textures of images the store has dropped or replaced (`Sub.imageCache`).
+        if !imageTextures.isEmpty {
+            imageTextures = imageTextures.filter { images.entry($0.key)?.generation == $0.value.generation }
+        }
         if !fresh.isEmpty, let blit = cmd.makeBlitCommandEncoder() {
             for t in fresh where t.mipmapLevelCount > 1 { blit.generateMipmaps(for: t) }
             blit.endEncoding()
