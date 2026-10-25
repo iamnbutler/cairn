@@ -19,6 +19,9 @@ A Cairn app has two halves.
 Between them, two byte buffers cross on every step: a batch of events going in, and a frame coming
 out. The [host protocol](/docs/internals/host-protocol/) describes them.
 
+To see one before installing anything, [try Counter in the browser](/try/counter/): every
+frame there is one its Lean code drew, and every control shows its claim.
+
 ## What you need
 
 - A Mac on macOS 27 with Xcode, for Swift 6 and the Metal toolchain.

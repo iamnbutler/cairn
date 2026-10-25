@@ -1,0 +1,19 @@
+---
+title: Try a Cairn app
+description: "Use Cairn's example apps in the browser, with no install: every control shows its claim id and the evidence behind it."
+lede: "Three of Cairn's example apps, in the browser, with nothing to install. Every control shows its claim (cairn^N) and the evidence the build has for it."
+---
+<ul class="try-pick">
+  <li><a class="px" href="/try/counter/"><span class="shot" data-app="counter"></span><b>Counter</b><span>A bar, Increment, and Reset when there is something to reset. The smallest app.</span><span class="n" data-count="counter"></span></a></li>
+  <li><a class="px" href="/try/basics/"><span class="shot" data-app="basics"></span><b>Basics</b><span>A text field, Add, and a list to check off and delete from.</span><span class="n" data-count="basics"></span></a></li>
+  <li><a class="px" href="/try/todo/"><span class="shot" data-app="todo"></span><b>Todo</b><span>TodoMVC: add, complete, edit by double-click, filter, clear.</span><span class="n" data-count="todo"></span></a></li>
+</ul>
+<section class="prose try-about">
+<h2 id="what-this-is">What you are looking at</h2>
+<p>A Cairn app is pure Lean: its state, what it draws and what each input does. Ahead of time, at deploy, the app's own <code>step</code> and <code>frame</code> ran headless from its first frame: every control in each frame was acted on (pressed, double-clicked, or for a text field, typed into with the texts its flows type), and every new frame was kept, up to a bound. These pages replay those recorded frames. The page decides nothing: a click follows the edge the app produced.</p>
+<p>Each control carries its claim id, the same <code>cairn^N</code> the code, the proofs and the claim pages use, and reads as its evidence does on <a href="/packages/cairn/claims/">the claim pages</a>.</p>
+</section>
+<script type="module">
+  import { pick } from "/try/try.js";
+  pick(document.querySelector(".try-pick"));
+</script>
