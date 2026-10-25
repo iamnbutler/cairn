@@ -25,6 +25,8 @@ let usage = """
                                       release build, then the app's own --bench
       cairn size [--app A] [--product P]… [--limit BYTES]
                                       stripped release size, attributed, under a limit
+      cairn bundle [--app A] [--product P] [--sign ID] [--name N]
+                                      release build in build/apps/<N>.app, resources included, signed
       cairn conformance [--app A] [--module M] [--product P] [--n N] [--length L] [--seed S]
                                       the Lean model replayed on the running app
 
@@ -47,6 +49,7 @@ do {
     case "claims": try commands.claims(args)
     case "bench": try commands.bench(args)
     case "size": try commands.size(args)
+    case "bundle": try commands.bundle(args)
     case "conformance": try commands.conformance(args)
     case "publish": try await commands.publish(args)
     case "login": try await commands.login(args)

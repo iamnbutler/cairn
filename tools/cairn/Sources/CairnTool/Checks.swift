@@ -210,6 +210,31 @@ extension Commands {
         }
     }
 
+    // MARK: bundle
+
+    /// `cairn bundle [--app A] [--product P] [--sign ID] [--name N]`: the executable built for
+    /// release and wrapped in build/apps/<N>.app (N defaults to the product) by Cairn's
+    /// tools/bundle/bundle.sh, with the SwiftPM resource bundles it uses in Contents/Resources.
+    /// The package's `bundle/` folder may hold `Info.plist` and `entitlements.plist`. `--sign`
+    /// is a codesign identity; without it the app is signed ad hoc.
+    public func bundle(_ args: [String]) throws(CairnError) {
+        let a = try Arguments(args, options: ["--app", "--product", "--sign", "--name"], usage: "usage: cairn bundle [--app A] [--product P] [--sign ID] [--name N]")
+        let project = try project()
+        guard let linked = try buildLean(project, app: a.value("--app")) else {
+            throw CairnError("cairn bundle wraps an app: kind = \"bin\" with `libs`, and a Package.swift")
+        }
+        let products = try product(project, a, app: linked.app)
+        guard products.count == 1, let p = products.first else { throw CairnError("cairn bundle takes one --product") }
+        try shell.run(["swift", "build", "-c", "release", "--product", p], in: project.swift)
+        let bin = try binPath(project, release: true)
+        let name = a.value("--name") ?? p
+        try shell.run(["sh", project.cairn.appending(path: "tools/bundle/bundle.sh").path, p, bin.path,
+                       a.value("--sign") ?? "-", name], in: project.root,
+                      env: ["EXE": p, "HOOK": project.root.appending(path: "bundle").path,
+                            "OUT_DIR": project.root.appending(path: "build/apps").path,
+                            "ID": "dev.cairn.\(project.manifest.name)"])
+    }
+
     // MARK: size
 
     /// `cairn size [--app A] [--product P]… [--limit BYTES]`: each executable built for release
