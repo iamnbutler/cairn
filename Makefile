@@ -371,7 +371,7 @@ examples-selftest: host
 	cd host && swift run CairnGallery --selftest
 
 # 200 sequences of 50 steps on each of FUZZ_APPS, into build/fuzz/quick/.
-FUZZ_APPS = Counter Basics Todo Clock Tray
+FUZZ_APPS = Counter Basics Todo Clock Tray Gallery
 examples-fuzz-quick: lean
 	cd lean && lake build fuzz
 	@for a in $(FUZZ_APPS); do (cd lean && .lake/build/bin/fuzz $$a --iterations 200 --out ../build/fuzz/quick) || exit 1; done

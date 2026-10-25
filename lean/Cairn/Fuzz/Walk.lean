@@ -128,11 +128,15 @@ def Target.isKeyed (id : ClaimId) : Bool := t.keyed.contains id
 
 def Target.budgetNs : Nat := t.custom.budgetNs.getD 8_000_000
 
-/-- The smallest window for a state: the app's, or the view's preferred size. -/
+/-- The smallest window for a state: the fuzz config's; else the minimum the app asks the host
+for (`App.minSize`), which the host keeps the window at or above (trusted ^1010), so a person
+never sees a smaller one; else, when the app asks for none, the view's preferred size. -/
 def Target.minSize (m : TextMetrics) (s : t.S) (ui : UI) : Size :=
   match t.custom.minSize s, t.app with
   | some z, _ => z
-  | none, some app => (measure m ui.size.w (app.view s ui)).size
+  | none, some app =>
+    let z := app.minSize s
+    if 0 < z.w || 0 < z.h then z else (measure m ui.size.w (app.view s ui)).size
   | none, none => ⟨0, 0⟩
 
 end
