@@ -468,6 +468,14 @@ def checks (t : Target) (setup : Setup) (w : World t.S) (act? : Option Action)
         fails := fails.push <| mkFail "invariant" ⟨inv.info.id, 0⟩ stepIx
           s!"^{inv.info.id} {inv.info.title} is false after this step"
   let some app := t.app | return (ran.toList, fails.toList)
+  -- Outstanding: the app's checks against the requests the runtime still holds for it.
+  unless t.custom.outstanding.isEmpty do
+    let ids := w.rt.world.entries.map (·.1)
+    for (id, ck) in t.custom.outstanding do
+      ran := ran.push (id, "outstanding")
+      unless ck s ids do
+        fails := fails.push <| mkFail "outstanding" ⟨id, 0⟩ stepIx
+          s!"^{id} is false after this step, with the runtime holding {ids.length} requests for the app: {ids.map (s!"#{·}")}"
   let laid := w.rt.laid
   let m := setup.metrics.metrics
   let size := w.rt.ui.size

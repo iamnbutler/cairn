@@ -184,7 +184,8 @@ def claimJson (t : Target) (stats : Stats) (fails : Array (Failure × Setup)) (c
   | .move | .invariant =>
     let runnable := c.kind == .move ||
       (t.invariants.any fun (i : InvCheck t.S) => i.info.id == c.id && i.check.isSome) ||
-      t.custom.relations.any (·.1 == c.id) || t.custom.drained.any (·.1 == c.id)
+      t.custom.relations.any (·.1 == c.id) || t.custom.drained.any (·.1 == c.id) ||
+      t.custom.outstanding.any (·.1 == c.id)
     match stats.get? c.id with
     | none => Json.mkObj (base ++ [("pass", Json.null),
         ("note", Json.str (if runnable then "not run" else "not runnable: no Decidable instance"))])
@@ -278,7 +279,8 @@ def runTarget (t : Target) (o : Opts) : IO UInt32 := do
   if t.app.isSome then
     IO.println s!"host: {host.requests} requests ({host.cancels} cancelled), {host.replies} answered ({host.failed} failed), {host.cancelledReplies} answers to cancelled requests, {host.stray} stray; {host.clocks} clocks, {host.wakes} wakes, {host.timersDue} timers due; {host.subEvents} subscription events ({host.lateSubEvents} after a stop); {host.loads} early loads, {host.evictions} evictions; at most {host.maxOutstanding} outstanding, {host.leftOver} unanswered at the end"
   for inv in t.invariants do
-    if inv.check.isNone && !(t.custom.relations.any (·.1 == inv.info.id)) then IO.println s!"note: ^{inv.info.id} {inv.info.title} is not runnable (no Decidable instance)"
+    if inv.check.isNone && !(t.custom.relations.any (·.1 == inv.info.id)) &&
+        !(t.custom.drained.any (·.1 == inv.info.id)) && !(t.custom.outstanding.any (·.1 == inv.info.id)) then IO.println s!"note: ^{inv.info.id} {inv.info.title} is not runnable (no Decidable instance)"
   let json := Json.mkObj [
     ("app", Json.str t.name), ("module", Json.str t.module),
     ("mode", Json.str (if t.app.isSome then "runtime" else "model")),
