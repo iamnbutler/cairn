@@ -36,7 +36,7 @@ modules stay until 0.2.0, since apps import them. -/
 @[default_target]
 lean_lib Cairn where
   roots := #[`Cairn.Geometry, `Cairn.Claim, `Cairn.Effects, `Cairn.Font, `Cairn.Input,
-    `Cairn.UI.Node, `Cairn.UI.Hit, `Cairn.Surface, `Cairn.App,
+    `Cairn.UI.Node, `Cairn.UI.Images, `Cairn.UI.Hit, `Cairn.Surface, `Cairn.App,
     `Cairn.Claims.Move, `Cairn.Claims.Machine, `Cairn.Claims.Core,
     `Cairn.Text.Wrap, `Cairn.Text.Field, `Cairn.Text.Host, `Cairn.Layout.Core, `Cairn.Layout.Facts,
     `Cairn.Runtime.World, `Cairn.Runtime.Step, `Cairn.Runtime.Abi,

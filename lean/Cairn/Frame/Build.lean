@@ -55,6 +55,55 @@ def imageDest (r : Rect) (f : ImageFill) : Rect :=
     | _, false => (r.w, (r.w * ph + pw - 1) / pw)
   ⟨r.x + (r.w - w) / 2, r.y + (r.h - h) / 2, w, h⟩
 
+/-- `contain` stays inside the box. -/
+theorem imageDest_contain_inside (r : Rect) (f : ImageFill) (hf : f.fit = .contain) :
+    let d := imageDest r f
+    r.x ≤ d.x ∧ d.x + d.w ≤ r.x + r.w ∧ r.y ≤ d.y ∧ d.y + d.h ≤ r.y + r.h := by
+  intro d
+  by_cases hn : f.fit = .fill ∨ (f.width : Int) = 0 ∨ (f.height : Int) = 0 ∨ r.w ≤ 0 ∨ r.h ≤ 0
+  · simp only [d, imageDest, hn, ↓reduceIte]; omega
+  · simp only [d, imageDest, hn, ↓reduceIte]; simp only [hf]
+    have hpw : (0 : Int) < f.width := by omega
+    have hph : (0 : Int) < f.height := by omega
+    have hw : 0 < r.w := by omega
+    have hh : 0 < r.h := by omega
+    by_cases hwide : r.w * f.height ≤ r.h * f.width
+    · simp only [hwide, decide_true]
+      have h1 : r.w * f.height / f.width ≤ r.h := Int.ediv_le_of_le_mul hpw hwide
+      have h0 : 0 ≤ r.w * f.height / f.width :=
+        (Int.ediv_nonneg_iff_of_pos hpw).mpr (Int.mul_nonneg (by omega) (by omega))
+      generalize r.w * f.height / f.width = h at h0 h1
+      omega
+    · simp only [hwide, decide_false]
+      have hwide' : r.h * f.width ≤ r.w * f.height := by omega
+      have h1 : r.h * f.width / f.height ≤ r.w := Int.ediv_le_of_le_mul hph hwide'
+      have h0 : 0 ≤ r.h * f.width / f.height :=
+        (Int.ediv_nonneg_iff_of_pos hph).mpr (Int.mul_nonneg (by omega) (by omega))
+      generalize r.h * f.width / f.height = w at h0 h1
+      omega
+
+/-- `cover` leaves no part of the box uncovered. -/
+theorem imageDest_cover_covers (r : Rect) (f : ImageFill) (hf : f.fit = .cover) :
+    let d := imageDest r f
+    d.x ≤ r.x ∧ r.x + r.w ≤ d.x + d.w ∧ d.y ≤ r.y ∧ r.y + r.h ≤ d.y + d.h := by
+  intro d
+  by_cases hn : f.fit = .fill ∨ (f.width : Int) = 0 ∨ (f.height : Int) = 0 ∨ r.w ≤ 0 ∨ r.h ≤ 0
+  · simp only [d, imageDest, hn, ↓reduceIte]; omega
+  · simp only [d, imageDest, hn, ↓reduceIte]; simp only [hf]
+    have hpw : (0 : Int) < f.width := by omega
+    have hph : (0 : Int) < f.height := by omega
+    by_cases hwide : r.w * f.height ≤ r.h * f.width
+    · simp only [hwide, decide_true]
+      have h1 : r.w ≤ (r.h * f.width + f.height - 1) / f.height :=
+        (Int.le_ediv_iff_mul_le hph).mpr (by omega)
+      generalize (r.h * f.width + f.height - 1) / f.height = w at h1
+      omega
+    · simp only [hwide, decide_false]
+      have h1 : r.h ≤ (r.w * f.height + f.width - 1) / f.width :=
+        (Int.le_ediv_iff_mul_le hpw).mpr (by omega)
+      generalize (r.w * f.height + f.width - 1) / f.width = h at h1
+      omega
+
 /-- A box's own paint: its background and border (one `rect`, or one `shape` when it has a
 shadow or continuous corners), then its host-drawn pixels, then its image. -/
 def boxDraws (r : Rect) (s : Style) : List Draw :=
