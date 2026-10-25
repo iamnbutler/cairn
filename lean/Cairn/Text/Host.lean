@@ -1,6 +1,6 @@
 module
 
-public import Cairn.Text.Metrics
+public import Cairn.Font
 
 /-! Core Text metrics from the host, as a `TextMetrics`.
 

@@ -14,122 +14,15 @@
 </head>
 <body>
 <nav class="bar"><a class="home" href="../../"><img src="icon.svg" alt="">Cairn</a><span class="sep">/</span><a href="index.html">Cairn docs</a><a href="claims.html">Claims</a><span class="search"><input id="search" type="search" placeholder="Search names, docs, ^N  ( / )" autocomplete="off" spellcheck="false"><div id="results" hidden></div></span></nav>
-<div class="layout"><aside class="toc"><div class="pix muted">Cairn.Text.Metrics</div><a href="#structures">Structures <span class="n">3</span></a><ol><li><a href="#Cairn.Font">Font</a></li><li><a href="#Cairn.TextMetrics">TextMetrics</a></li><li><a href="#Cairn.TextMetrics.Valid">Valid</a></li></ol><a href="#inductives">Inductive types <span class="n">1</span></a><ol><li><a href="#Cairn.FontWidth">FontWidth</a></li></ol><a href="#definitions">Definitions <span class="n">5</span></a><ol><li><a href="#Cairn.FontWidth.code">code</a></li><li><a href="#Cairn.FontWidth.ofCode?">ofCode?</a></li><li><a href="#Cairn.TextMetrics.width">width</a></li><li><a href="#Cairn.TextMetrics.lineHeight">lineHeight</a></li><li><a href="#Cairn.TextMetrics.mono">mono</a></li></ol><a href="#theorems">Theorems <span class="n">2</span></a><ol><li><a href="#Cairn.FontWidth.ofCode_code">ofCode_code</a></li><li><a href="#Cairn.FontWidth.code_lt">code_lt</a></li></ol><a href="#instances">Instances <span class="n">10</span></a><ol><li><a href="#Cairn.instDecidableEqFontWidth">instDecidableEqFontWidth</a></li><li><a href="#Cairn.instBEqFontWidth">instBEqFontWidth</a></li><li><a href="#Cairn.instHashableFontWidth">instHashableFontWidth</a></li><li><a href="#Cairn.instReprFontWidth">instReprFontWidth</a></li><li><a href="#Cairn.instInhabitedFontWidth">instInhabitedFontWidth</a></li><li><a href="#Cairn.instInhabitedFont">instInhabitedFont</a></li><li><a href="#Cairn.instReprFont">instReprFont</a></li><li><a href="#Cairn.instDecidableEqFont">instDecidableEqFont</a></li><li><a href="#Cairn.instHashableFont">instHashableFont</a></li><li><a href="#Cairn.instBEqFont">instBEqFont</a></li></ol></aside><main>
+<div class="layout"><aside class="toc"><div class="pix muted">Cairn.Text.Metrics</div></aside><main>
 <header class="page"><div class="eyebrow">Cairn · module</div><h1 class="mod">Cairn.Text.Metrics</h1><p class="src">lean/Cairn/Text/Metrics.lean</p></header>
-<div class="doc"><p>Text metrics: the one place layout depends on the host.</p>
-<p>Layout is parameterised by a <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics"><code>TextMetrics</code></a>. Theorems quantify over every metrics that is
-<code>Valid</code>; at run time the host supplies Core Text's (an <code>assume</code> claim, checked by logging and
-replay). Text indices are Unicode scalar positions (<code>String.length</code>), not bytes and not UTF-16.
-Grapheme clusters are not modelled in M1. A metrics measures one line; wrapped text
-(<a href="Cairn.UI.Node.html#Cairn.Node.para"><code>Node.para</code></a>) is broken into lines by Lean from one measurement of the whole string
-(<a href="Cairn.Text.Wrap.html"><code>Cairn.Text.Wrap</code></a>).</p>
+<div class="doc"><p>Moved to <a href="Cairn.Font.html"><code>Cairn.Font</code></a> (docs/packages-and-std.md). This name re-exports it until 0.2.0.</p>
 </div>
-<p class="imports"><span class="pix muted">Imports</span> <a href="Cairn.Geometry.html">Cairn.Geometry</a></p>
+<p class="imports"><span class="pix muted">Imports</span> <a href="Cairn.Font.html">Cairn.Font</a></p>
 <div class="order"><span class="pix muted">Order</span> <button type="button" data-order="kind" class="on">by kind</button><button type="button" data-order="source">as in the source</button></div>
 <div id="items">
 
-<h2 id="structures">Structures <span class="n">3</span></h2>
-<section class="decl" id="Cairn.Font" data-line="39">
-<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.Font"><span class="ns">Cairn.</span>Font</a></h3><span class="src" title="source">lean/Cairn/Text/Metrics.lean:39</span></div>
-<pre class="sig"><b class="nm">Font</b> : Type</pre><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.Font.family"><pre class="sig"><b class="nm">family</b> : <span title="Nat">Nat</span></pre><div class="doc"><p>0 is the system UI font, 1 the system monospaced font.</p>
-</div></div><div class="member" id="Cairn.Font.size"><pre class="sig"><b class="nm">size</b> : <span title="Nat">Nat</span></pre><div class="doc"><p>Points.</p>
-</div></div><div class="member" id="Cairn.Font.weight"><pre class="sig"><b class="nm">weight</b> : <span title="Nat">Nat</span></pre><div class="doc"><p>100–900, CSS-style.</p>
-</div></div><div class="member" id="Cairn.Font.italic"><pre class="sig"><b class="nm">italic</b> : <span title="Bool">Bool</span></pre></div><div class="member" id="Cairn.Font.width"><pre class="sig"><b class="nm">width</b> : <a href="Cairn.Text.Metrics.html#Cairn.FontWidth" title="Cairn.FontWidth">FontWidth</a></pre></div><div class="member" id="Cairn.Font.tracking"><pre class="sig"><b class="nm">tracking</b> : <span title="Int">Int</span></pre><div class="doc"><p>Extra space after every character, in hundredths of a point (SwiftUI's <a href="Cairn.Text.Metrics.html#Cairn.Font.tracking"><code>tracking</code></a>):
-140 is 1.4 pt. Measured and painted alike.</p>
-</div></div><div class="member" id="Cairn.Font.tabular"><pre class="sig"><b class="nm">tabular</b> : <span title="Bool">Bool</span></pre><div class="doc"><p>Digits all one width (SwiftUI's <code>monospacedDigit</code>), so a clock doesn't jitter.</p>
-</div></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Text.Metrics.html#Cairn.instInhabitedFont"><code>Inhabited</code></a> <a href="Cairn.Text.Metrics.html#Cairn.instReprFont"><code>Repr</code></a> <a href="Cairn.Text.Metrics.html#Cairn.instHashableFont"><code>Hashable</code></a> <a href="Cairn.Text.Metrics.html#Cairn.instBEqFont"><code>BEq</code></a></p></div>
-</section>
-<section class="decl" id="Cairn.TextMetrics" data-line="55">
-<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.TextMetrics"><span class="ns">Cairn.</span>TextMetrics</a></h3><span class="src" title="source">lean/Cairn/Text/Metrics.lean:55</span></div>
-<pre class="sig"><b class="nm">TextMetrics</b> : Type</pre><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.TextMetrics.offsets"><pre class="sig"><b class="nm">offsets</b> : Array <span title="Int">Int</span></pre><div class="doc"><p>Caret offsets: entry <code>i</code> is the x offset of the boundary before scalar <code>i</code>, so the array
-has <code>s.length + 1</code> entries, starts at 0 and never decreases. The last entry is the width.</p>
-</div></div><div class="member" id="Cairn.TextMetrics.ascent"><pre class="sig"><b class="nm">ascent</b> : <span title="Int">Int</span></pre></div><div class="member" id="Cairn.TextMetrics.descent"><pre class="sig"><b class="nm">descent</b> : <span title="Int">Int</span></pre></div></div>
-</section>
-<section class="decl" id="Cairn.TextMetrics.Valid" data-line="69">
-<div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.TextMetrics.Valid"><span class="ns">Cairn.TextMetrics.</span>Valid</a></h3><span class="src" title="source">lean/Cairn/Text/Metrics.lean:69</span></div>
-<pre class="sig"><b class="nm">Valid</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) : Prop</pre><div class="doc"><p>What every metrics must satisfy. Layout and text theorems assume this and nothing more.</p>
-</div><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.TextMetrics.Valid.size"><pre class="sig"><b class="nm">size</b> : (m.offsets f s).size = s.length + 1</pre></div><div class="member" id="Cairn.TextMetrics.Valid.zero"><pre class="sig"><b class="nm">zero</b> : (m.offsets f s)[0]? = some 0</pre></div><div class="member" id="Cairn.TextMetrics.Valid.mono"><pre class="sig"><b class="nm">mono</b> : (m.offsets f s)[i] ≤ (m.offsets f s)[j]</pre></div><div class="member" id="Cairn.TextMetrics.Valid.ascent"><pre class="sig"><b class="nm">ascent</b> : 0 ≤ m.ascent f</pre></div><div class="member" id="Cairn.TextMetrics.Valid.descent"><pre class="sig"><b class="nm">descent</b> : 0 ≤ m.descent f</pre></div></div>
-</section>
-<h2 id="inductives">Inductive types <span class="n">1</span></h2>
-<section class="decl" id="Cairn.FontWidth" data-line="21">
-<div class="dhead"><span class="kind pix">inductive</span><h3><a href="#Cairn.FontWidth"><span class="ns">Cairn.</span>FontWidth</a></h3><span class="src" title="source">lean/Cairn/Text/Metrics.lean:21</span></div>
-<pre class="sig"><b class="nm">FontWidth</b> : Type</pre><div class="doc"><p>A font's width axis: SwiftUI's <code>Font.Width</code> presets, which the system font's variable width
-axis implements (<code>NSFont.Width</code>: standard 0, condensed −0.2, expanded 0.2, compressed −0.4).</p>
-</div><div class="members"><b class="pix muted">Constructors</b><div class="member" id="Cairn.FontWidth.standard"><pre class="sig"><b class="nm">standard</b> : <a href="Cairn.Text.Metrics.html#Cairn.FontWidth" title="Cairn.FontWidth">FontWidth</a></pre></div><div class="member" id="Cairn.FontWidth.condensed"><pre class="sig"><b class="nm">condensed</b> : <a href="Cairn.Text.Metrics.html#Cairn.FontWidth" title="Cairn.FontWidth">FontWidth</a></pre></div><div class="member" id="Cairn.FontWidth.expanded"><pre class="sig"><b class="nm">expanded</b> : <a href="Cairn.Text.Metrics.html#Cairn.FontWidth" title="Cairn.FontWidth">FontWidth</a></pre></div><div class="member" id="Cairn.FontWidth.compressed"><pre class="sig"><b class="nm">compressed</b> : <a href="Cairn.Text.Metrics.html#Cairn.FontWidth" title="Cairn.FontWidth">FontWidth</a></pre></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Text.Metrics.html#Cairn.instBEqFontWidth"><code>BEq</code></a> <a href="Cairn.Text.Metrics.html#Cairn.instHashableFontWidth"><code>Hashable</code></a> <a href="Cairn.Text.Metrics.html#Cairn.instReprFontWidth"><code>Repr</code></a> <a href="Cairn.Text.Metrics.html#Cairn.instInhabitedFontWidth"><code>Inhabited</code></a></p></div>
-</section>
-<h2 id="definitions">Definitions <span class="n">5</span></h2>
-<section class="decl" id="Cairn.FontWidth.code" data-line="26">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.FontWidth.code"><span class="ns">Cairn.FontWidth.</span>code</a></h3><span class="src" title="source">lean/Cairn/Text/Metrics.lean:26</span></div>
-<pre class="sig"><b class="nm">code</b> : <a href="Cairn.Text.Metrics.html#Cairn.FontWidth" title="Cairn.FontWidth">FontWidth</a> → <span title="Nat">Nat</span></pre><div class="doc"><p>The width's code on the wire and in the metrics ABI.</p>
-</div>
-</section>
-<section class="decl" id="Cairn.FontWidth.ofCode?" data-line="29">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.FontWidth.ofCode?"><span class="ns">Cairn.FontWidth.</span>ofCode?</a></h3><span class="src" title="source">lean/Cairn/Text/Metrics.lean:29</span></div>
-<pre class="sig"><b class="nm">ofCode?</b> : <span title="Nat">Nat</span> → Option <a href="Cairn.Text.Metrics.html#Cairn.FontWidth" title="Cairn.FontWidth">FontWidth</a></pre>
-</section>
-<section class="decl" id="Cairn.TextMetrics.width" data-line="64">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.TextMetrics.width"><span class="ns">Cairn.TextMetrics.</span>width</a></h3><span class="src" title="source">lean/Cairn/Text/Metrics.lean:64</span></div>
-<pre class="sig"><b class="nm">width</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (f : <a href="Cairn.Text.Metrics.html#Cairn.Font" title="Cairn.Font">Font</a>) (s : <span title="String">String</span>) : <span title="Int">Int</span></pre>
-</section>
-<section class="decl" id="Cairn.TextMetrics.lineHeight" data-line="66">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.TextMetrics.lineHeight"><span class="ns">Cairn.TextMetrics.</span>lineHeight</a></h3><span class="src" title="source">lean/Cairn/Text/Metrics.lean:66</span></div>
-<pre class="sig"><b class="nm">lineHeight</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (f : <a href="Cairn.Text.Metrics.html#Cairn.Font" title="Cairn.Font">Font</a>) : <span title="Int">Int</span></pre>
-</section>
-<section class="decl" id="Cairn.TextMetrics.mono" data-line="78">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.TextMetrics.mono"><span class="ns">Cairn.TextMetrics.</span>mono</a></h3><span class="src" title="source">lean/Cairn/Text/Metrics.lean:78</span></div>
-<pre class="sig"><b class="nm">mono</b> : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a></pre><div class="doc"><p>A deterministic stand-in for tests and examples: every scalar is <code>size * 6 / 10</code> wide.</p>
-</div>
-</section>
-<h2 id="theorems">Theorems <span class="n">2</span></h2>
-<section class="decl" id="Cairn.FontWidth.ofCode_code" data-line="33">
-<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.FontWidth.ofCode_code"><span class="ns">Cairn.FontWidth.</span>ofCode_code</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Text/Metrics.lean:33</span></div>
-<pre class="sig"><b class="nm">ofCode_code</b> (w : <a href="Cairn.Text.Metrics.html#Cairn.FontWidth" title="Cairn.FontWidth">FontWidth</a>) : ofCode? w.code = some w</pre>
-</section>
-<section class="decl" id="Cairn.FontWidth.code_lt" data-line="36">
-<div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.FontWidth.code_lt"><span class="ns">Cairn.FontWidth.</span>code_lt</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Text/Metrics.lean:36</span></div>
-<pre class="sig"><b class="nm">code_lt</b> (w : <a href="Cairn.Text.Metrics.html#Cairn.FontWidth" title="Cairn.FontWidth">FontWidth</a>) : w.code &lt; 4</pre>
-</section>
-<h2 id="instances">Instances <span class="n">10</span></h2>
-<section class="decl" id="Cairn.instDecidableEqFontWidth" data-line="23">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instDecidableEqFontWidth"><span class="ns">Cairn.</span>instDecidableEqFontWidth</a></h3><span class="src" title="source">lean/Cairn/Text/Metrics.lean:23</span></div>
-<pre class="sig"><b class="nm">instDecidableEqFontWidth</b> : DecidableEq <a href="Cairn.Text.Metrics.html#Cairn.FontWidth" title="Cairn.FontWidth">FontWidth</a></pre>
-</section>
-<section class="decl" id="Cairn.instBEqFontWidth" data-line="23">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instBEqFontWidth"><span class="ns">Cairn.</span>instBEqFontWidth</a></h3><span class="src" title="source">lean/Cairn/Text/Metrics.lean:23</span></div>
-<pre class="sig"><b class="nm">instBEqFontWidth</b> : BEq <a href="Cairn.Text.Metrics.html#Cairn.FontWidth" title="Cairn.FontWidth">FontWidth</a></pre>
-</section>
-<section class="decl" id="Cairn.instHashableFontWidth" data-line="23">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instHashableFontWidth"><span class="ns">Cairn.</span>instHashableFontWidth</a></h3><span class="src" title="source">lean/Cairn/Text/Metrics.lean:23</span></div>
-<pre class="sig"><b class="nm">instHashableFontWidth</b> : Hashable <a href="Cairn.Text.Metrics.html#Cairn.FontWidth" title="Cairn.FontWidth">FontWidth</a></pre>
-</section>
-<section class="decl" id="Cairn.instReprFontWidth" data-line="23">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprFontWidth"><span class="ns">Cairn.</span>instReprFontWidth</a></h3><span class="src" title="source">lean/Cairn/Text/Metrics.lean:23</span></div>
-<pre class="sig"><b class="nm">instReprFontWidth</b> : Repr <a href="Cairn.Text.Metrics.html#Cairn.FontWidth" title="Cairn.FontWidth">FontWidth</a></pre>
-</section>
-<section class="decl" id="Cairn.instInhabitedFontWidth" data-line="23">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedFontWidth"><span class="ns">Cairn.</span>instInhabitedFontWidth</a></h3><span class="src" title="source">lean/Cairn/Text/Metrics.lean:23</span></div>
-<pre class="sig"><b class="nm">instInhabitedFontWidth</b> : Inhabited <a href="Cairn.Text.Metrics.html#Cairn.FontWidth" title="Cairn.FontWidth">FontWidth</a></pre>
-</section>
-<section class="decl" id="Cairn.instInhabitedFont" data-line="53">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instInhabitedFont"><span class="ns">Cairn.</span>instInhabitedFont</a></h3><span class="src" title="source">lean/Cairn/Text/Metrics.lean:53</span></div>
-<pre class="sig"><b class="nm">instInhabitedFont</b> : Inhabited <a href="Cairn.Text.Metrics.html#Cairn.Font" title="Cairn.Font">Font</a></pre>
-</section>
-<section class="decl" id="Cairn.instReprFont" data-line="53">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instReprFont"><span class="ns">Cairn.</span>instReprFont</a></h3><span class="src" title="source">lean/Cairn/Text/Metrics.lean:53</span></div>
-<pre class="sig"><b class="nm">instReprFont</b> : Repr <a href="Cairn.Text.Metrics.html#Cairn.Font" title="Cairn.Font">Font</a></pre>
-</section>
-<section class="decl" id="Cairn.instDecidableEqFont" data-line="53">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instDecidableEqFont"><span class="ns">Cairn.</span>instDecidableEqFont</a></h3><span class="src" title="source">lean/Cairn/Text/Metrics.lean:53</span></div>
-<pre class="sig"><b class="nm">instDecidableEqFont</b> : DecidableEq <a href="Cairn.Text.Metrics.html#Cairn.Font" title="Cairn.Font">Font</a></pre>
-</section>
-<section class="decl" id="Cairn.instHashableFont" data-line="53">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instHashableFont"><span class="ns">Cairn.</span>instHashableFont</a></h3><span class="src" title="source">lean/Cairn/Text/Metrics.lean:53</span></div>
-<pre class="sig"><b class="nm">instHashableFont</b> : Hashable <a href="Cairn.Text.Metrics.html#Cairn.Font" title="Cairn.Font">Font</a></pre>
-</section>
-<section class="decl" id="Cairn.instBEqFont" data-line="53">
-<div class="dhead"><span class="kind pix">instance</span><h3><a href="#Cairn.instBEqFont"><span class="ns">Cairn.</span>instBEqFont</a></h3><span class="src" title="source">lean/Cairn/Text/Metrics.lean:53</span></div>
-<pre class="sig"><b class="nm">instBEqFont</b> : BEq <a href="Cairn.Text.Metrics.html#Cairn.Font" title="Cairn.Font">Font</a></pre>
-</section>
+
 
 </div>
 </main></div>

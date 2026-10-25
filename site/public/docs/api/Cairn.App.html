@@ -20,7 +20,7 @@
 interaction state (hover, press, focus, window size), turns events into actions by hit testing
 the laid-out frame or checking the menu, and calls <a href="Cairn.App.html#Cairn.App.update"><code>update</code></a>.</p>
 </div>
-<p class="imports"><span class="pix muted">Imports</span> <a href="Cairn.UI.Node.html">Cairn.UI.Node</a>, <a href="Cairn.Input.html">Cairn.Input</a>, <a href="Cairn.Claim.html">Cairn.Claim</a>, <a href="Cairn.Surface.html">Cairn.Surface</a>, <a href="Cairn.Text.Metrics.html">Cairn.Text.Metrics</a></p>
+<p class="imports"><span class="pix muted">Imports</span> <a href="Cairn.UI.Node.html">Cairn.UI.Node</a>, <a href="Cairn.Input.html">Cairn.Input</a>, <a href="Cairn.Claim.html">Cairn.Claim</a>, <a href="Cairn.Surface.html">Cairn.Surface</a>, <a href="Cairn.Font.html">Cairn.Font</a></p>
 <div class="order"><span class="pix muted">Order</span> <button type="button" data-order="kind" class="on">by kind</button><button type="button" data-order="source">as in the source</button></div>
 <div id="items">
 
@@ -53,7 +53,7 @@ claim: its durable identity on the wire, in the map and in the debug socket.</p>
 </div><div class="members"><b class="pix muted">Constructors</b><div class="member" id="Cairn.Surface.window"><pre class="sig"><b class="nm">window</b> {S : Type} (place : <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a>) (title : <span title="String">String</span>) (view : S → <a href="Cairn.App.html#Cairn.UI" title="Cairn.UI">UI</a> → <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
   Surface S</pre><div class="doc"><p>M1's window: Metal content laid out at the window's size, with input.</p>
 </div></div><div class="member" id="Cairn.Surface.panel"><pre class="sig"><b class="nm">panel</b> {S : Type} (place : <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a>)
-  (view : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a> → S → Option <a href="Cairn.Surface.html#Cairn.PanelView" title="Cairn.PanelView">PanelView</a>) : Surface S</pre><div class="doc"><p>A non-activating, click-through overlay panel; <code>none</code> hides it. It takes no input, so its
+  (view : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a> → S → Option <a href="Cairn.Surface.html#Cairn.PanelView" title="Cairn.PanelView">PanelView</a>) : Surface S</pre><div class="doc"><p>A non-activating, click-through overlay panel; <code>none</code> hides it. It takes no input, so its
 view doesn't read <a href="Cairn.App.html#Cairn.UI"><code>UI</code></a>. The view is given the text metrics the panel is laid out with, so it
 can measure content (<a href="Cairn.Layout.Core.html#Cairn.Layout.measure"><code>Cairn.Layout.measure</code></a>), for instance to animate between two heights.</p>
 </div></div><div class="member" id="Cairn.Surface.statusItem"><pre class="sig"><b class="nm">statusItem</b> {S : Type} (place : <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a>) (view : S → Option <a href="Cairn.Surface.html#Cairn.StatusItem" title="Cairn.StatusItem">StatusItem</a>) :

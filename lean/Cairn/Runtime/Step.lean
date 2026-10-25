@@ -1,7 +1,7 @@
 module
 
 public import Cairn.App
-public import Cairn.Runtime.Hit
+public import Cairn.UI.Hit
 public import Cairn.Layout.Core
 public import Cairn.Runtime.World
 

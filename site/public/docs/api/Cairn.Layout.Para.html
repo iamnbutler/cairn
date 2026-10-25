@@ -41,19 +41,19 @@ are exactly the last / first lines of that;</li>
 <h2 id="definitions">Definitions <span class="n">2</span></h2>
 <section class="decl" id="Cairn.Layout.paraOffsets" data-line="27">
 <div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Layout.paraOffsets"><span class="ns">Cairn.Layout.</span>paraOffsets</a></h3><span class="src" title="source">lean/Cairn/Layout/Para.lean:27</span></div>
-<pre class="sig"><b class="nm">paraOffsets</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (ts : <a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a>) (s : <span title="String">String</span>) : <span title="Nat">Nat</span> → <span title="Int">Int</span></pre><div class="doc"><p>The offsets a para breaks with.</p>
+<pre class="sig"><b class="nm">paraOffsets</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (ts : <a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a>) (s : <span title="String">String</span>) : <span title="Nat">Nat</span> → <span title="Int">Int</span></pre><div class="doc"><p>The offsets a para breaks with.</p>
 </div>
 </section>
 <section class="decl" id="Cairn.Layout.paraStrings" data-line="60">
 <div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Layout.paraStrings"><span class="ns">Cairn.Layout.</span>paraStrings</a></h3><span class="src" title="source">lean/Cairn/Layout/Para.lean:60</span></div>
-<pre class="sig"><b class="nm">paraStrings</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (ts : <a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a>) (wr : <a href="Cairn.UI.Node.html#Cairn.Wrap" title="Cairn.Wrap">Wrap</a>) (aw : <span title="Int">Int</span>)
+<pre class="sig"><b class="nm">paraStrings</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (ts : <a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a>) (wr : <a href="Cairn.UI.Node.html#Cairn.Wrap" title="Cairn.Wrap">Wrap</a>) (aw : <span title="Int">Int</span>)
   (s : <span title="String">String</span>) : List (List <span title="Char">Char</span>)</pre><div class="doc"><p>The lines' strings, as scalars.</p>
 </div>
 </section>
 <h2 id="theorems">Theorems <span class="n">13</span></h2>
 <section class="decl" id="Cairn.Layout.measure_para" data-line="30">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.measure_para"><span class="ns">Cairn.Layout.</span>measure_para</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Para.lean:30</span></div>
-<pre class="sig"><b class="nm">measure_para</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (aw : <span title="Int">Int</span>) (ts : <a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a>) (wr : <a href="Cairn.UI.Node.html#Cairn.Wrap" title="Cairn.Wrap">Wrap</a>)
+<pre class="sig"><b class="nm">measure_para</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (aw : <span title="Int">Int</span>) (ts : <a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a>) (wr : <a href="Cairn.UI.Node.html#Cairn.Wrap" title="Cairn.Wrap">Wrap</a>)
   (s : <span title="String">String</span>) :
   measure m aw (Node.para ts wr s) =
     Sized.box (paraStyle wr) none
@@ -70,7 +70,7 @@ are exactly the last / first lines of that;</li>
 </section>
 <section class="decl" id="Cairn.Layout.paraLines_eq" data-line="37">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.paraLines_eq"><span class="ns">Cairn.Layout.</span>paraLines_eq</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Para.lean:37</span></div>
-<pre class="sig"><b class="nm">paraLines_eq</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (ts : <a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a>) (wr : <a href="Cairn.UI.Node.html#Cairn.Wrap" title="Cairn.Wrap">Wrap</a>) (aw : <span title="Int">Int</span>)
+<pre class="sig"><b class="nm">paraLines_eq</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (ts : <a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a>) (wr : <a href="Cairn.UI.Node.html#Cairn.Wrap" title="Cairn.Wrap">Wrap</a>) (aw : <span title="Int">Int</span>)
   (s : <span title="String">String</span>) :
   paraLines m ts wr aw s =
     List.map
@@ -87,7 +87,7 @@ are exactly the last / first lines of that;</li>
 </section>
 <section class="decl" id="Cairn.Layout.para_lines_fit" data-line="46">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.para_lines_fit"><span class="ns">Cairn.Layout.</span>para_lines_fit</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Para.lean:46</span></div>
-<pre class="sig"><b class="nm">para_lines_fit</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (ts : <a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a>) (wr : <a href="Cairn.UI.Node.html#Cairn.Wrap" title="Cairn.Wrap">Wrap</a>) (aw : <span title="Int">Int</span>)
+<pre class="sig"><b class="nm">para_lines_fit</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (ts : <a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a>) (wr : <a href="Cairn.UI.Node.html#Cairn.Wrap" title="Cairn.Wrap">Wrap</a>) (aw : <span title="Int">Int</span>)
   (s : <span title="String">String</span>) (hW : 0 ≤ wrapWidth wr aw) (k : <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>) :
   k ∈ paraLines m ts wr aw s →
     ∃ str sz, k = Sized.text ts str sz ∧ (sz.w ≤ wrapWidth wr aw ∨ str.length ≤ 1)</pre><div class="doc"><p><strong>Lines fit.</strong> Every line of a para is at most the wrap width wide, or is one scalar.</p>
@@ -95,7 +95,7 @@ are exactly the last / first lines of that;</li>
 </section>
 <section class="decl" id="Cairn.Layout.paraStrings_eq" data-line="66">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.paraStrings_eq"><span class="ns">Cairn.Layout.</span>paraStrings_eq</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Para.lean:66</span></div>
-<pre class="sig"><b class="nm">paraStrings_eq</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (ts : <a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a>) (wr : <a href="Cairn.UI.Node.html#Cairn.Wrap" title="Cairn.Wrap">Wrap</a>) (aw : <span title="Int">Int</span>)
+<pre class="sig"><b class="nm">paraStrings_eq</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (ts : <a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a>) (wr : <a href="Cairn.UI.Node.html#Cairn.Wrap" title="Cairn.Wrap">Wrap</a>) (aw : <span title="Int">Int</span>)
   (s : <span title="String">String</span>) :
   paraStrings m ts wr aw s =
     List.map (Text.Wrap.slice s.toList)
@@ -103,7 +103,7 @@ are exactly the last / first lines of that;</li>
 </section>
 <section class="decl" id="Cairn.Layout.para_lines_tile" data-line="76">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.para_lines_tile"><span class="ns">Cairn.Layout.</span>para_lines_tile</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Para.lean:76</span></div>
-<pre class="sig"><b class="nm">para_lines_tile</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (ts : <a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a>) (wr : <a href="Cairn.UI.Node.html#Cairn.Wrap" title="Cairn.Wrap">Wrap</a>) (aw : <span title="Int">Int</span>)
+<pre class="sig"><b class="nm">para_lines_tile</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (ts : <a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a>) (wr : <a href="Cairn.UI.Node.html#Cairn.Wrap" title="Cairn.Wrap">Wrap</a>) (aw : <span title="Int">Int</span>)
   (s : <span title="String">String</span>) (hm : wr.maxLines = none) :
   Text.Wrap.Tiles s.toList (paraStrings m ts wr aw s)</pre><div class="doc"><p><strong>Lines tile the text.</strong> Without <code>maxLines</code>, the text is its lines with break spaces only
 between and around them.</p>
@@ -111,7 +111,7 @@ between and around them.</p>
 </section>
 <section class="decl" id="Cairn.Layout.para_lines_tail" data-line="83">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.para_lines_tail"><span class="ns">Cairn.Layout.</span>para_lines_tail</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Para.lean:83</span></div>
-<pre class="sig"><b class="nm">para_lines_tail</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (ts : <a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a>) (wr : <a href="Cairn.UI.Node.html#Cairn.Wrap" title="Cairn.Wrap">Wrap</a>) (aw : <span title="Int">Int</span>)
+<pre class="sig"><b class="nm">para_lines_tail</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (ts : <a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a>) (wr : <a href="Cairn.UI.Node.html#Cairn.Wrap" title="Cairn.Wrap">Wrap</a>) (aw : <span title="Int">Int</span>)
   (s : <span title="String">String</span>) (n : <span title="Nat">Nat</span>) (hm : wr.maxLines = some n) (hk : wr.keep = <a href="Cairn.UI.Node.html#Cairn.Keep.tail" title="Cairn.Keep.tail">Keep.tail</a>) :
   have all :=
     List.map (Text.Wrap.slice s.toList)
@@ -124,7 +124,7 @@ last <code>min n k</code> of the <code>k</code> lines the text breaks into.</p>
 </section>
 <section class="decl" id="Cairn.Layout.para_lines_head" data-line="94">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.para_lines_head"><span class="ns">Cairn.Layout.</span>para_lines_head</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Para.lean:94</span></div>
-<pre class="sig"><b class="nm">para_lines_head</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (ts : <a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a>) (wr : <a href="Cairn.UI.Node.html#Cairn.Wrap" title="Cairn.Wrap">Wrap</a>) (aw : <span title="Int">Int</span>)
+<pre class="sig"><b class="nm">para_lines_head</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (ts : <a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a>) (wr : <a href="Cairn.UI.Node.html#Cairn.Wrap" title="Cairn.Wrap">Wrap</a>) (aw : <span title="Int">Int</span>)
   (s : <span title="String">String</span>) (n : <span title="Nat">Nat</span>) (hm : wr.maxLines = some n) (hk : wr.keep = <a href="Cairn.UI.Node.html#Cairn.Keep.head" title="Cairn.Keep.head">Keep.head</a>) :
   have all :=
     List.map (Text.Wrap.slice s.toList)
@@ -136,7 +136,7 @@ last <code>min n k</code> of the <code>k</code> lines the text breaks into.</p>
 </section>
 <section class="decl" id="Cairn.Layout.para_count" data-line="105">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.para_count"><span class="ns">Cairn.Layout.</span>para_count</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Para.lean:105</span></div>
-<pre class="sig"><b class="nm">para_count</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (ts : <a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a>) (wr : <a href="Cairn.UI.Node.html#Cairn.Wrap" title="Cairn.Wrap">Wrap</a>) (aw : <span title="Int">Int</span>)
+<pre class="sig"><b class="nm">para_count</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (ts : <a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a>) (wr : <a href="Cairn.UI.Node.html#Cairn.Wrap" title="Cairn.Wrap">Wrap</a>) (aw : <span title="Int">Int</span>)
   (s : <span title="String">String</span>) (n : <span title="Nat">Nat</span>) (hm : wr.maxLines = some n) : (paraLines m ts wr aw s).length ≤ n</pre><div class="doc"><p><strong>Line count.</strong></p>
 </div>
 </section>
@@ -148,14 +148,14 @@ last <code>min n k</code> of the <code>k</code> lines the text breaks into.</p>
 </section>
 <section class="decl" id="Cairn.Layout.para_line_height" data-line="118">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.para_line_height"><span class="ns">Cairn.Layout.</span>para_line_height</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Para.lean:118</span></div>
-<pre class="sig"><b class="nm">para_line_height</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (ts : <a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a>) (wr : <a href="Cairn.UI.Node.html#Cairn.Wrap" title="Cairn.Wrap">Wrap</a>) (aw : <span title="Int">Int</span>)
+<pre class="sig"><b class="nm">para_line_height</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (ts : <a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a>) (wr : <a href="Cairn.UI.Node.html#Cairn.Wrap" title="Cairn.Wrap">Wrap</a>) (aw : <span title="Int">Int</span>)
   (s : <span title="String">String</span>) (k : <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>) :
   k ∈ paraLines m ts wr aw s → k.size.h = max 0 (m.lineHeight ts.font)</pre><div class="doc"><p>Every line is one line height tall.</p>
 </div>
 </section>
 <section class="decl" id="Cairn.Layout.para_height" data-line="127">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.para_height"><span class="ns">Cairn.Layout.</span>para_height</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Para.lean:127</span></div>
-<pre class="sig"><b class="nm">para_height</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (ts : <a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a>) (wr : <a href="Cairn.UI.Node.html#Cairn.Wrap" title="Cairn.Wrap">Wrap</a>) (aw : <span title="Int">Int</span>)
+<pre class="sig"><b class="nm">para_height</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (ts : <a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a>) (wr : <a href="Cairn.UI.Node.html#Cairn.Wrap" title="Cairn.Wrap">Wrap</a>) (aw : <span title="Int">Int</span>)
   (s : <span title="String">String</span>) (hh : wr.height = <a href="Cairn.UI.Node.html#Cairn.Sizing.hug" title="Cairn.Sizing.hug">Sizing.hug</a>) :
   (measure m aw (Node.para ts wr s)).size.h =
     ↑(paraLines m ts wr aw s).length * max 0 (m.lineHeight ts.font) +
@@ -165,7 +165,7 @@ lines.</p>
 </section>
 <section class="decl" id="Cairn.Layout.layout_para_height" data-line="144">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.layout_para_height"><span class="ns">Cairn.Layout.</span>layout_para_height</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Para.lean:144</span></div>
-<pre class="sig"><b class="nm">layout_para_height</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) (ts : <a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a>) (wr : <a href="Cairn.UI.Node.html#Cairn.Wrap" title="Cairn.Wrap">Wrap</a>)
+<pre class="sig"><b class="nm">layout_para_height</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) (ts : <a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a>) (wr : <a href="Cairn.UI.Node.html#Cairn.Wrap" title="Cairn.Wrap">Wrap</a>)
   (s : <span title="String">String</span>) (hh : wr.height = <a href="Cairn.UI.Node.html#Cairn.Sizing.hug" title="Cairn.Sizing.hug">Sizing.hug</a>) :
   (layout m w (Node.para ts wr s)).rect.h =
     ↑(paraLines m ts wr (windowRect w).w s).length * max 0 (m.lineHeight ts.font) +

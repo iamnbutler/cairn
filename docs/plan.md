@@ -10,7 +10,7 @@ coding against the contracts below.
 |---|---|---|
 | Geometry | `lean/Cairn/Geometry.lean` | `Point`, `Size`, `Rect`, `Insets`, integer logical points, y down |
 | Claims | `lean/Cairn/Claim.lean` | `ClaimId`, `ClaimKind`, `ClaimInfo`, `ControlRef` (`^5`, `^5#12`) |
-| Text metrics | `lean/Cairn/Text/Metrics.lean` | `Font`, `TextMetrics` (caret offsets per scalar), `TextMetrics.Valid`, a mono stand-in |
+| Text metrics | `lean/Cairn/Font.lean` (`Cairn.Text.Metrics` re-exports it until 0.2.0) | `Font`, `TextMetrics` (caret offsets per scalar), `TextMetrics.Valid`, a mono stand-in |
 | View and layout | `lean/Cairn/UI/Node.lean` | `Node` (what `view` returns), `Laid` (what layout returns), `Style`, `Control`, `FieldView` |
 | Input | `lean/Cairn/Input.lean` | `Event` (host → Lean), `TextOp`, `Action` (runtime → app), `Effect`, `Cursor` |
 | Frame | `lean/Cairn/Frame.lean` | `Frame`: draws, accessibility nodes, text-input state, cursor, effects |

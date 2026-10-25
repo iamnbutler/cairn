@@ -27,7 +27,7 @@ proofs.</p>
 <h2 id="theorems">Theorems <span class="n">1</span></h2>
 <section class="decl" id="Cairn.Frame.controls_ofLaid_layout" data-line="11">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Frame.controls_ofLaid_layout"><span class="ns">Cairn.Frame.</span>controls_ofLaid_layout</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Layout.lean:11</span></div>
-<pre class="sig"><b class="nm">controls_ofLaid_layout</b> (ui : <a href="Cairn.App.html#Cairn.UI" title="Cairn.UI">UI</a>) (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) (n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
+<pre class="sig"><b class="nm">controls_ofLaid_layout</b> (ui : <a href="Cairn.App.html#Cairn.UI" title="Cairn.UI">UI</a>) (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) (n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
   List.filterMap <a href="Cairn.Frame.html#Cairn.AxNode.control" title="Cairn.AxNode.control">AxNode.control</a> (ofLaid ui (Layout.layout m w n)).ax.toList =
     List.map <a href="Cairn.UI.Node.html#Cairn.Control.ref" title="Cairn.Control.ref">Control.ref</a> n.controls</pre><div class="doc"><p>Composed with layout: the accessibility tree has exactly the view's controls, in order.</p>
 </div>

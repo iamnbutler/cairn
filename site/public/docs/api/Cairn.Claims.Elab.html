@@ -14,7 +14,7 @@
 </head>
 <body>
 <nav class="bar"><a class="home" href="../../"><img src="icon.svg" alt="">Cairn</a><span class="sep">/</span><a href="index.html">Cairn docs</a><a href="claims.html">Claims</a><span class="search"><input id="search" type="search" placeholder="Search names, docs, ^N  ( / )" autocomplete="off" spellcheck="false"><div id="results" hidden></div></span></nav>
-<div class="layout"><aside class="toc"><div class="pix muted">Cairn.Claims.Elab</div><a href="#structures">Structures <span class="n">1</span></a><ol><li><a href="#Cairn.Claims.Clauses">Clauses</a></li></ol><a href="#inductives">Inductive types <span class="n">1</span></a><ol><li><a href="#Cairn.Claims.Item">Item</a></li></ol><a href="#definitions">Definitions <span class="n">61</span></a><ol><li><a href="#Cairn.Claims.claimKw">claimKw</a></li><li><a href="#Cairn.Claims.moveKw">moveKw</a></li><li><a href="#Cairn.Claims.flowKw">flowKw</a></li><li><a href="#Cairn.Claims.invariantKw">invariantKw</a></li><li><a href="#Cairn.Claims.assumeKw">assumeKw</a></li><li><a href="#Cairn.Claims.placeKw">placeKw</a></li><li><a href="#Cairn.Claims.retireKw">retireKw</a></li><li><a href="#Cairn.Claims.claimRef">claimRef</a></li><li><a href="#Cairn.Claims.claimStep">claimStep</a></li><li><a href="#Cairn.Claims.claimItem">claimItem</a></li><li><a href="#Cairn.Claims.claimWitness">claimWitness</a></li><li><a href="#Cairn.Claims.claimOn">claimOn</a></li><li><a href="#Cairn.Claims.claimClause">claimClause</a></li><li><a href="#Cairn.Claims.claimBinder">claimBinder</a></li><li><a href="#Cairn.Claims.claimIn">claimIn</a></li><li><a href="#Cairn.Claims.moveCmd">moveCmd</a></li><li><a href="#Cairn.Claims.flowCmd">flowCmd</a></li><li><a href="#Cairn.Claims.invariantCmd">invariantCmd</a></li><li><a href="#Cairn.Claims.assumeCmd">assumeCmd</a></li><li><a href="#Cairn.Claims.placeCmd">placeCmd</a></li><li><a href="#Cairn.Claims.retireCmd">retireCmd</a></li><li><a href="#Cairn.Claims.movesTerm">movesTerm</a></li><li><a href="#Cairn.Claims.claimsTerm">claimsTerm</a></li><li><a href="#Cairn.Claims.Item.ref">ref</a></li><li><a href="#Cairn.Claims.Item.key">key</a></li><li><a href="#Cairn.Claims.parseItem">parseItem</a></li><li><a href="#Cairn.Claims.parseClause">parseClause</a></li><li><a href="#Cairn.Claims.refId">refId</a></li><li><a href="#Cairn.Claims.Clauses.read">read</a></li><li><a href="#Cairn.Claims.Clauses.prose?">prose?</a></li><li><a href="#Cairn.Claims.Clauses.defn?">defn?</a></li><li><a href="#Cairn.Claims.needDefn">needDefn</a></li><li><a href="#Cairn.Claims.optDefn">optDefn</a></li><li><a href="#Cairn.Claims.needProse">needProse</a></li><li><a href="#Cairn.Claims.checkTitle">checkTitle</a></li><li><a href="#Cairn.Claims.checkFresh">checkFresh</a></li><li><a href="#Cairn.Claims.checkPlace">checkPlace</a></li><li><a href="#Cairn.Claims.checkUnsealed">checkUnsealed</a></li><li><a href="#Cairn.Claims.register">register</a></li><li><a href="#Cairn.Claims.lit">lit</a></li><li><a href="#Cairn.Claims.strLit">strLit</a></li><li><a href="#Cairn.Claims.cid">cid</a></li><li><a href="#Cairn.Claims.binder">binder</a></li><li><a href="#Cairn.Claims.mkDef">mkDef</a></li><li><a href="#Cairn.Claims.mkThm">mkThm</a></li><li><a href="#Cairn.Claims.foralls">foralls</a></li><li><a href="#Cairn.Claims.app">app</a></li><li><a href="#Cairn.Claims.mkInfo">mkInfo</a></li><li><a href="#Cairn.Claims.docOf">docOf</a></li><li><a href="#Cairn.Claims.triggers">triggers</a></li><li><a href="#Cairn.Claims.elabMove">elabMove</a></li><li><a href="#Cairn.Claims.stepAction">stepAction</a></li><li><a href="#Cairn.Claims.elabFlow">elabFlow</a></li><li><a href="#Cairn.Claims.decidableUnfolds">decidableUnfolds</a></li><li><a href="#Cairn.Claims.elabInvariant">elabInvariant</a></li><li><a href="#Cairn.Claims.elabAssume">elabAssume</a></li><li><a href="#Cairn.Claims.elabPlace">elabPlace</a></li><li><a href="#Cairn.Claims.elabRetire">elabRetire</a></li><li><a href="#Cairn.Claims.nsOf">nsOf</a></li><li><a href="#Cairn.Claims.elabMoves">elabMoves</a></li><li><a href="#Cairn.Claims.elabClaims">elabClaims</a></li></ol><a href="#instances">Instances <span class="n">1</span></a><ol><li><a href="#Cairn.Claims.instInhabitedItem">instInhabitedItem</a></li></ol></aside><main>
+<div class="layout"><aside class="toc"><div class="pix muted">Cairn.Claims.Elab</div><a href="#structures">Structures <span class="n">1</span></a><ol><li><a href="#Cairn.Claims.Clauses">Clauses</a></li></ol><a href="#inductives">Inductive types <span class="n">1</span></a><ol><li><a href="#Cairn.Claims.Item">Item</a></li></ol><a href="#definitions">Definitions <span class="n">62</span></a><ol><li><a href="#Cairn.Claims.claimKw">claimKw</a></li><li><a href="#Cairn.Claims.moveKw">moveKw</a></li><li><a href="#Cairn.Claims.flowKw">flowKw</a></li><li><a href="#Cairn.Claims.invariantKw">invariantKw</a></li><li><a href="#Cairn.Claims.assumeKw">assumeKw</a></li><li><a href="#Cairn.Claims.placeKw">placeKw</a></li><li><a href="#Cairn.Claims.retireKw">retireKw</a></li><li><a href="#Cairn.Claims.claimRef">claimRef</a></li><li><a href="#Cairn.Claims.claimStep">claimStep</a></li><li><a href="#Cairn.Claims.claimItem">claimItem</a></li><li><a href="#Cairn.Claims.claimWitness">claimWitness</a></li><li><a href="#Cairn.Claims.claimOn">claimOn</a></li><li><a href="#Cairn.Claims.claimClause">claimClause</a></li><li><a href="#Cairn.Claims.claimBinder">claimBinder</a></li><li><a href="#Cairn.Claims.claimIn">claimIn</a></li><li><a href="#Cairn.Claims.moveCmd">moveCmd</a></li><li><a href="#Cairn.Claims.flowCmd">flowCmd</a></li><li><a href="#Cairn.Claims.invariantCmd">invariantCmd</a></li><li><a href="#Cairn.Claims.assumeCmd">assumeCmd</a></li><li><a href="#Cairn.Claims.placeCmd">placeCmd</a></li><li><a href="#Cairn.Claims.retireCmd">retireCmd</a></li><li><a href="#Cairn.Claims.movesTerm">movesTerm</a></li><li><a href="#Cairn.Claims.claimsTerm">claimsTerm</a></li><li><a href="#Cairn.Claims.Item.ref">ref</a></li><li><a href="#Cairn.Claims.Item.key">key</a></li><li><a href="#Cairn.Claims.parseItem">parseItem</a></li><li><a href="#Cairn.Claims.parseClause">parseClause</a></li><li><a href="#Cairn.Claims.refId">refId</a></li><li><a href="#Cairn.Claims.Clauses.read">read</a></li><li><a href="#Cairn.Claims.Clauses.prose?">prose?</a></li><li><a href="#Cairn.Claims.Clauses.defn?">defn?</a></li><li><a href="#Cairn.Claims.needDefn">needDefn</a></li><li><a href="#Cairn.Claims.optDefn">optDefn</a></li><li><a href="#Cairn.Claims.needProse">needProse</a></li><li><a href="#Cairn.Claims.checkTitle">checkTitle</a></li><li><a href="#Cairn.Claims.currentScope">currentScope</a></li><li><a href="#Cairn.Claims.checkFresh">checkFresh</a></li><li><a href="#Cairn.Claims.checkPlace">checkPlace</a></li><li><a href="#Cairn.Claims.checkUnsealed">checkUnsealed</a></li><li><a href="#Cairn.Claims.register">register</a></li><li><a href="#Cairn.Claims.lit">lit</a></li><li><a href="#Cairn.Claims.strLit">strLit</a></li><li><a href="#Cairn.Claims.cid">cid</a></li><li><a href="#Cairn.Claims.binder">binder</a></li><li><a href="#Cairn.Claims.mkDef">mkDef</a></li><li><a href="#Cairn.Claims.mkThm">mkThm</a></li><li><a href="#Cairn.Claims.foralls">foralls</a></li><li><a href="#Cairn.Claims.app">app</a></li><li><a href="#Cairn.Claims.mkInfo">mkInfo</a></li><li><a href="#Cairn.Claims.docOf">docOf</a></li><li><a href="#Cairn.Claims.triggers">triggers</a></li><li><a href="#Cairn.Claims.elabMove">elabMove</a></li><li><a href="#Cairn.Claims.stepAction">stepAction</a></li><li><a href="#Cairn.Claims.elabFlow">elabFlow</a></li><li><a href="#Cairn.Claims.decidableUnfolds">decidableUnfolds</a></li><li><a href="#Cairn.Claims.elabInvariant">elabInvariant</a></li><li><a href="#Cairn.Claims.elabAssume">elabAssume</a></li><li><a href="#Cairn.Claims.elabPlace">elabPlace</a></li><li><a href="#Cairn.Claims.elabRetire">elabRetire</a></li><li><a href="#Cairn.Claims.nsOf">nsOf</a></li><li><a href="#Cairn.Claims.elabMoves">elabMoves</a></li><li><a href="#Cairn.Claims.elabClaims">elabClaims</a></li></ol><a href="#instances">Instances <span class="n">1</span></a><ol><li><a href="#Cairn.Claims.instInhabitedItem">instInhabitedItem</a></li></ol></aside><main>
 <header class="page"><div class="eyebrow">Cairn · module</div><h1 class="mod">Cairn.Claims.Elab</h1><p class="src">lean/Cairn/Claims/Elab.lean</p></header>
 <div class="doc"><p>The claim commands: <code>move</code>, <code>flow</code>, <code>invariant</code>, <code>assume</code>, <code>place</code> and <code>retire</code>, and the
 <code>moves%</code> and <code>claims%</code> terms. See <code>docs/claims.md</code> for the syntax and what each check
@@ -50,7 +50,7 @@ theorems for the evidence, a <a href="Cairn.Claim.html#Cairn.ClaimInfo"><code>Cl
   (rhs : <span title="Lean.Syntax.Term">Lean.Term</span>) : <a href="Cairn.Claims.Elab.html#Cairn.Claims.Item" title="Cairn.Claims.Item">Item</a></pre></div><div class="member" id="Cairn.Claims.Item.on"><pre class="sig"><b class="nm">on</b> (trigger : <span title="Lean.Syntax">Lean.Syntax</span>) (op : Option (<span title="Lean.Syntax.Ident">Lean.Ident</span> × <span title="Lean.Syntax.Term">Lean.Term</span>))
   (items : Array <a href="Cairn.Claims.Elab.html#Cairn.Claims.Item" title="Cairn.Claims.Item">Item</a>) : <a href="Cairn.Claims.Elab.html#Cairn.Claims.Item" title="Cairn.Claims.Item">Item</a></pre></div><div class="member" id="Cairn.Claims.Item.witness"><pre class="sig"><b class="nm">witness</b> (ref : <span title="Lean.Syntax">Lean.Syntax</span>) (steps : Array <span title="Lean.Syntax">Lean.Syntax</span>) : <a href="Cairn.Claims.Elab.html#Cairn.Claims.Item" title="Cairn.Claims.Item">Item</a></pre></div></div><div class="members"><b class="pix muted">Instances</b><p class="insts"><a href="Cairn.Claims.Elab.html#Cairn.Claims.instInhabitedItem"><code>Inhabited</code></a></p></div>
 </section>
-<h2 id="definitions">Definitions <span class="n">61</span></h2>
+<h2 id="definitions">Definitions <span class="n">62</span></h2>
 <section class="decl" id="Cairn.Claims.claimKw" data-line="38">
 <div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.claimKw"><span class="ns">Cairn.Claims.</span>claimKw</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:38</span></div>
 <pre class="sig"><b class="nm">claimKw</b> (s : <span title="String">String</span>) : <span title="Lean.Parser.Parser">Lean.Parser.Parser</span></pre><div class="doc"><p>A command keyword that is not reserved.</p>
@@ -207,127 +207,132 @@ including retired ids, ordered by id.</p>
 <pre class="sig"><b class="nm">checkTitle</b> (ref : <span title="Lean.Syntax">Lean.Syntax</span>) (title : <span title="String">String</span>) :
   Lean.Elab.Command.CommandElabM <span title="Unit">Unit</span></pre>
 </section>
-<section class="decl" id="Cairn.Claims.checkFresh" data-line="179">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.checkFresh"><span class="ns">Cairn.Claims.</span>checkFresh</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:179</span></div>
-<pre class="sig"><b class="nm">checkFresh</b> (ref : <span title="Lean.Syntax">Lean.Syntax</span>) (id : <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a>) :
-  Lean.Elab.Command.CommandElabM <span title="Unit">Unit</span></pre><div class="doc"><p>An id is issued once in the whole imported environment.</p>
+<section class="decl" id="Cairn.Claims.currentScope" data-line="179">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.currentScope"><span class="ns">Cairn.Claims.</span>currentScope</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:179</span></div>
+<pre class="sig"><b class="nm">currentScope</b> : Lean.CoreM <span title="String">String</span></pre><div class="doc"><p>The package scope this module's claims are declared in (<a href="Cairn.Claims.Registry.html#Cairn.Claims.cairn.claims.scope"><code>cairn.claims.scope</code></a>).</p>
 </div>
 </section>
-<section class="decl" id="Cairn.Claims.checkPlace" data-line="189">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.checkPlace"><span class="ns">Cairn.Claims.</span>checkPlace</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:189</span></div>
+<section class="decl" id="Cairn.Claims.checkFresh" data-line="182">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.checkFresh"><span class="ns">Cairn.Claims.</span>checkFresh</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:182</span></div>
+<pre class="sig"><b class="nm">checkFresh</b> (ref : <span title="Lean.Syntax">Lean.Syntax</span>) (id : <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a>) :
+  Lean.Elab.Command.CommandElabM <span title="Unit">Unit</span></pre><div class="doc"><p>An id is issued once per scope in the whole imported environment.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Claims.checkPlace" data-line="193">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.checkPlace"><span class="ns">Cairn.Claims.</span>checkPlace</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:193</span></div>
 <pre class="sig"><b class="nm">checkPlace</b> (stx : <span title="Lean.Syntax">Lean.Syntax</span>) :
   Lean.Elab.Command.CommandElabM (Option <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a>)</pre>
 </section>
-<section class="decl" id="Cairn.Claims.checkUnsealed" data-line="202">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.checkUnsealed"><span class="ns">Cairn.Claims.</span>checkUnsealed</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:202</span></div>
+<section class="decl" id="Cairn.Claims.checkUnsealed" data-line="206">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.checkUnsealed"><span class="ns">Cairn.Claims.</span>checkUnsealed</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:206</span></div>
 <pre class="sig"><b class="nm">checkUnsealed</b> (ref : <span title="Lean.Syntax">Lean.Syntax</span>) (dispatched : <span title="Bool">Bool</span>) :
   Lean.Elab.Command.CommandElabM <span title="Unit">Unit</span></pre>
 </section>
-<section class="decl" id="Cairn.Claims.register" data-line="211">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.register"><span class="ns">Cairn.Claims.</span>register</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:211</span></div>
+<section class="decl" id="Cairn.Claims.register" data-line="215">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.register"><span class="ns">Cairn.Claims.</span>register</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:215</span></div>
 <pre class="sig"><b class="nm">register</b> (e : <a href="Cairn.Claims.Registry.html#Cairn.Claims.Entry" title="Cairn.Claims.Entry">Entry</a>) : Lean.Elab.Command.CommandElabM <span title="Unit">Unit</span></pre>
 </section>
-<section class="decl" id="Cairn.Claims.lit" data-line="216">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.lit"><span class="ns">Cairn.Claims.</span>lit</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:216</span></div>
+<section class="decl" id="Cairn.Claims.lit" data-line="221">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.lit"><span class="ns">Cairn.Claims.</span>lit</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:221</span></div>
 <pre class="sig"><b class="nm">lit</b> (n : <span title="Nat">Nat</span>) : <span title="Lean.Syntax.Term">Lean.Term</span></pre>
 </section>
-<section class="decl" id="Cairn.Claims.strLit" data-line="217">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.strLit"><span class="ns">Cairn.Claims.</span>strLit</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:217</span></div>
+<section class="decl" id="Cairn.Claims.strLit" data-line="222">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.strLit"><span class="ns">Cairn.Claims.</span>strLit</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:222</span></div>
 <pre class="sig"><b class="nm">strLit</b> (s : <span title="String">String</span>) : <span title="Lean.Syntax.Term">Lean.Term</span></pre>
 </section>
-<section class="decl" id="Cairn.Claims.cid" data-line="219">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.cid"><span class="ns">Cairn.Claims.</span>cid</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:219</span></div>
+<section class="decl" id="Cairn.Claims.cid" data-line="224">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.cid"><span class="ns">Cairn.Claims.</span>cid</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:224</span></div>
 <pre class="sig"><b class="nm">cid</b> (n : <span title="Lean.Name">Lean.Name</span>) : <span title="Lean.Syntax.Ident">Lean.Ident</span></pre>
 </section>
-<section class="decl" id="Cairn.Claims.binder" data-line="223">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.binder"><span class="ns">Cairn.Claims.</span>binder</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:223</span></div>
+<section class="decl" id="Cairn.Claims.binder" data-line="228">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.binder"><span class="ns">Cairn.Claims.</span>binder</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:228</span></div>
 <pre class="sig"><b class="nm">binder</b> (x : <span title="Lean.Syntax">Lean.Syntax</span>) (t : <span title="Lean.Syntax.Term">Lean.Term</span>) :
   Lean.Elab.Command.CommandElabM (Lean.TSyntax `Lean.Parser.Term.bracketedBinder)</pre><div class="doc"><p>An explicit binder from a name the user wrote: an identifier, or a <code>binderIdent</code> (which may
 be <code>_</code>).</p>
 </div>
 </section>
-<section class="decl" id="Cairn.Claims.mkDef" data-line="229">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.mkDef"><span class="ns">Cairn.Claims.</span>mkDef</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:229</span></div>
+<section class="decl" id="Cairn.Claims.mkDef" data-line="234">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.mkDef"><span class="ns">Cairn.Claims.</span>mkDef</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:234</span></div>
 <pre class="sig"><b class="nm">mkDef</b> (name : <span title="Lean.Name">Lean.Name</span>) (bs : Array (<span title="Lean.Syntax">Lean.Syntax</span> × <span title="Lean.Syntax.Term">Lean.Term</span>))
   (type body : <span title="Lean.Syntax.Term">Lean.Term</span>) (doc : <span title="String">String</span> := &quot;&quot;) (reducible : <span title="Bool">Bool</span> := <span title="Bool.false">false</span>) :
   Lean.Elab.Command.CommandElabM <span title="Unit">Unit</span></pre><div class="doc"><p><code>def name binders : type := body</code>, then its doc string.</p>
 </div>
 </section>
-<section class="decl" id="Cairn.Claims.mkThm" data-line="243">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.mkThm"><span class="ns">Cairn.Claims.</span>mkThm</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:243</span></div>
+<section class="decl" id="Cairn.Claims.mkThm" data-line="248">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.mkThm"><span class="ns">Cairn.Claims.</span>mkThm</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:248</span></div>
 <pre class="sig"><b class="nm">mkThm</b> (name : <span title="Lean.Name">Lean.Name</span>) (type proof : <span title="Lean.Syntax.Term">Lean.Term</span>) (doc : <span title="String">String</span> := &quot;&quot;) :
   Lean.Elab.Command.CommandElabM <span title="Unit">Unit</span></pre>
 </section>
-<section class="decl" id="Cairn.Claims.foralls" data-line="248">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.foralls"><span class="ns">Cairn.Claims.</span>foralls</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:248</span></div>
+<section class="decl" id="Cairn.Claims.foralls" data-line="253">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.foralls"><span class="ns">Cairn.Claims.</span>foralls</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:253</span></div>
 <pre class="sig"><b class="nm">foralls</b> (bs : Array (<span title="Lean.Syntax.Ident">Lean.Ident</span> × <span title="Lean.Syntax.Term">Lean.Term</span>)) (body : <span title="Lean.Syntax.Term">Lean.Term</span>) :
   Lean.Elab.Command.CommandElabM <span title="Lean.Syntax.Term">Lean.Term</span></pre>
 </section>
-<section class="decl" id="Cairn.Claims.app" data-line="251">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.app"><span class="ns">Cairn.Claims.</span>app</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:251</span></div>
+<section class="decl" id="Cairn.Claims.app" data-line="256">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.app"><span class="ns">Cairn.Claims.</span>app</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:256</span></div>
 <pre class="sig"><b class="nm">app</b> (f : <span title="Lean.Name">Lean.Name</span>) (args : Array <span title="Lean.Syntax.Term">Lean.Term</span>) : <span title="Lean.Syntax.Term">Lean.Term</span></pre>
 </section>
-<section class="decl" id="Cairn.Claims.mkInfo" data-line="253">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.mkInfo"><span class="ns">Cairn.Claims.</span>mkInfo</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:253</span></div>
+<section class="decl" id="Cairn.Claims.mkInfo" data-line="258">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.mkInfo"><span class="ns">Cairn.Claims.</span>mkInfo</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:258</span></div>
 <pre class="sig"><b class="nm">mkInfo</b> (name : <span title="Lean.Name">Lean.Name</span>) (id : <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a>) (kind : <span title="Lean.Name">Lean.Name</span>)
   (title does sees : <span title="String">String</span>) (place : Option <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a>) (retired : Option <span title="String">String</span> := none) :
   Lean.Elab.Command.CommandElabM <span title="Unit">Unit</span></pre>
 </section>
-<section class="decl" id="Cairn.Claims.docOf" data-line="275">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.docOf"><span class="ns">Cairn.Claims.</span>docOf</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:275</span></div>
+<section class="decl" id="Cairn.Claims.docOf" data-line="282">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.docOf"><span class="ns">Cairn.Claims.</span>docOf</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:282</span></div>
 <pre class="sig"><b class="nm">docOf</b> (doc? : Option <span title="Lean.Syntax">Lean.Syntax</span>) (fallback : <span title="String">String</span>) :
   Lean.Elab.Command.CommandElabM <span title="String">String</span></pre>
 </section>
-<section class="decl" id="Cairn.Claims.triggers" data-line="280">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.triggers"><span class="ns">Cairn.Claims.</span>triggers</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:280</span></div>
+<section class="decl" id="Cairn.Claims.triggers" data-line="287">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.triggers"><span class="ns">Cairn.Claims.</span>triggers</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:287</span></div>
 <pre class="sig"><b class="nm">triggers</b> : List (<span title="String">String</span> × <span title="Lean.Name">Lean.Name</span>)</pre>
 </section>
-<section class="decl" id="Cairn.Claims.elabMove" data-line="287">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.elabMove"><span class="ns">Cairn.Claims.</span>elabMove</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:287</span></div>
+<section class="decl" id="Cairn.Claims.elabMove" data-line="294">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.elabMove"><span class="ns">Cairn.Claims.</span>elabMove</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:294</span></div>
 <pre class="sig"><b class="nm">elabMove</b> : <span title="Lean.Elab.Command.CommandElab">Lean.Elab.Command.CommandElab</span></pre>
 </section>
-<section class="decl" id="Cairn.Claims.stepAction" data-line="439">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.stepAction"><span class="ns">Cairn.Claims.</span>stepAction</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:439</span></div>
+<section class="decl" id="Cairn.Claims.stepAction" data-line="446">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.stepAction"><span class="ns">Cairn.Claims.</span>stepAction</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:446</span></div>
 <pre class="sig"><b class="nm">stepAction</b> (step : <span title="Lean.Syntax">Lean.Syntax</span>) :
   Lean.Elab.Command.CommandElabM (<span title="Lean.Syntax.Term">Lean.Term</span> × <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a>)</pre>
 </section>
-<section class="decl" id="Cairn.Claims.elabFlow" data-line="462">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.elabFlow"><span class="ns">Cairn.Claims.</span>elabFlow</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:462</span></div>
+<section class="decl" id="Cairn.Claims.elabFlow" data-line="469">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.elabFlow"><span class="ns">Cairn.Claims.</span>elabFlow</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:469</span></div>
 <pre class="sig"><b class="nm">elabFlow</b> : <span title="Lean.Elab.Command.CommandElab">Lean.Elab.Command.CommandElab</span></pre>
 </section>
-<section class="decl" id="Cairn.Claims.decidableUnfolds" data-line="515">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.decidableUnfolds"><span class="ns">Cairn.Claims.</span>decidableUnfolds</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:515</span></div>
+<section class="decl" id="Cairn.Claims.decidableUnfolds" data-line="522">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.decidableUnfolds"><span class="ns">Cairn.Claims.</span>decidableUnfolds</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:522</span></div>
 <pre class="sig"><b class="nm">decidableUnfolds</b> (holds : <span title="Lean.Name">Lean.Name</span>) (SM : <span title="Lean.Syntax.Term">Lean.Term</span>) :
   Lean.Elab.Command.CommandElabM (Option (Array <span title="Lean.Name">Lean.Name</span>))</pre><div class="doc"><p>The definitions to unfold, from <code>holds</code> down its body's head, before <code>Decidable</code> of the
 property can be synthesized; <code>none</code> when it can't be, even after unfolding a few.</p>
 </div>
 </section>
-<section class="decl" id="Cairn.Claims.elabInvariant" data-line="531">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.elabInvariant"><span class="ns">Cairn.Claims.</span>elabInvariant</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:531</span></div>
+<section class="decl" id="Cairn.Claims.elabInvariant" data-line="538">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.elabInvariant"><span class="ns">Cairn.Claims.</span>elabInvariant</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:538</span></div>
 <pre class="sig"><b class="nm">elabInvariant</b> : <span title="Lean.Elab.Command.CommandElab">Lean.Elab.Command.CommandElab</span></pre>
 </section>
-<section class="decl" id="Cairn.Claims.elabAssume" data-line="601">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.elabAssume"><span class="ns">Cairn.Claims.</span>elabAssume</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:601</span></div>
+<section class="decl" id="Cairn.Claims.elabAssume" data-line="608">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.elabAssume"><span class="ns">Cairn.Claims.</span>elabAssume</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:608</span></div>
 <pre class="sig"><b class="nm">elabAssume</b> : <span title="Lean.Elab.Command.CommandElab">Lean.Elab.Command.CommandElab</span></pre>
 </section>
-<section class="decl" id="Cairn.Claims.elabPlace" data-line="633">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.elabPlace"><span class="ns">Cairn.Claims.</span>elabPlace</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:633</span></div>
+<section class="decl" id="Cairn.Claims.elabPlace" data-line="640">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.elabPlace"><span class="ns">Cairn.Claims.</span>elabPlace</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:640</span></div>
 <pre class="sig"><b class="nm">elabPlace</b> : <span title="Lean.Elab.Command.CommandElab">Lean.Elab.Command.CommandElab</span></pre>
 </section>
-<section class="decl" id="Cairn.Claims.elabRetire" data-line="655">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.elabRetire"><span class="ns">Cairn.Claims.</span>elabRetire</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:655</span></div>
+<section class="decl" id="Cairn.Claims.elabRetire" data-line="662">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.elabRetire"><span class="ns">Cairn.Claims.</span>elabRetire</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:662</span></div>
 <pre class="sig"><b class="nm">elabRetire</b> : <span title="Lean.Elab.Command.CommandElab">Lean.Elab.Command.CommandElab</span></pre>
 </section>
-<section class="decl" id="Cairn.Claims.nsOf" data-line="676">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.nsOf"><span class="ns">Cairn.Claims.</span>nsOf</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:676</span></div>
+<section class="decl" id="Cairn.Claims.nsOf" data-line="683">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.nsOf"><span class="ns">Cairn.Claims.</span>nsOf</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:683</span></div>
 <pre class="sig"><b class="nm">nsOf</b> (stx : <span title="Lean.Syntax">Lean.Syntax</span>) : Lean.Elab.TermElabM <span title="Lean.Name">Lean.Name</span></pre>
 </section>
-<section class="decl" id="Cairn.Claims.elabMoves" data-line="681">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.elabMoves"><span class="ns">Cairn.Claims.</span>elabMoves</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:681</span></div>
+<section class="decl" id="Cairn.Claims.elabMoves" data-line="688">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.elabMoves"><span class="ns">Cairn.Claims.</span>elabMoves</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:688</span></div>
 <pre class="sig"><b class="nm">elabMoves</b> : <span title="Lean.Elab.Term.TermElab">Lean.Elab.Term.TermElab</span></pre>
 </section>
-<section class="decl" id="Cairn.Claims.elabClaims" data-line="689">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.elabClaims"><span class="ns">Cairn.Claims.</span>elabClaims</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:689</span></div>
+<section class="decl" id="Cairn.Claims.elabClaims" data-line="696">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Claims.elabClaims"><span class="ns">Cairn.Claims.</span>elabClaims</a></h3><span class="src" title="source">lean/Cairn/Claims/Elab.lean:696</span></div>
 <pre class="sig"><b class="nm">elabClaims</b> : <span title="Lean.Elab.Term.TermElab">Lean.Elab.Term.TermElab</span></pre>
 </section>
 <h2 id="instances">Instances <span class="n">1</span></h2>
@@ -342,13 +347,13 @@ parser when it starts a command, so each keyword is a non-reserved symbol that a
 under identifiers.</p>
 </div></div><div class="mdoc" data-line="81" hidden><div class="doc"><h3>Reading clauses</h3>
 </div></div><div class="mdoc" data-line="171" hidden><div class="doc"><h3>Checks shared by every claim</h3>
-</div></div><div class="mdoc" data-line="214" hidden><div class="doc"><h3>Building declarations</h3>
-</div></div><div class="mdoc" data-line="285" hidden><div class="doc"><h3><code>move</code></h3>
-</div></div><div class="mdoc" data-line="437" hidden><div class="doc"><h3><code>flow</code></h3>
-</div></div><div class="mdoc" data-line="511" hidden><div class="doc"><h3><code>invariant</code></h3>
-</div></div><div class="mdoc" data-line="599" hidden><div class="doc"><h3><code>assume</code> and <code>place</code></h3>
-</div></div><div class="mdoc" data-line="653" hidden><div class="doc"><h3><code>retire</code></h3>
-</div></div><div class="mdoc" data-line="674" hidden><div class="doc"><h3>Collecting claims</h3>
+</div></div><div class="mdoc" data-line="219" hidden><div class="doc"><h3>Building declarations</h3>
+</div></div><div class="mdoc" data-line="292" hidden><div class="doc"><h3><code>move</code></h3>
+</div></div><div class="mdoc" data-line="444" hidden><div class="doc"><h3><code>flow</code></h3>
+</div></div><div class="mdoc" data-line="518" hidden><div class="doc"><h3><code>invariant</code></h3>
+</div></div><div class="mdoc" data-line="606" hidden><div class="doc"><h3><code>assume</code> and <code>place</code></h3>
+</div></div><div class="mdoc" data-line="660" hidden><div class="doc"><h3><code>retire</code></h3>
+</div></div><div class="mdoc" data-line="681" hidden><div class="doc"><h3>Collecting claims</h3>
 </div></div>
 </div>
 </main></div>

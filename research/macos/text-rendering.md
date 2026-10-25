@@ -191,7 +191,7 @@ Indices are UTF-16 into the line's string.
   `CTLineGetOffsetForStringIndex` at each scalar boundary. Never measure prefixes. Round each
   offset the same way (e.g. `floor(x + 0.5)`). Rounding is monotone, so it preserves `mono`, but
   only if the float input is monotone (next point).
-- **F**: `TextMetrics.Valid.mono` (`lean/Cairn/Text/Metrics.lean`) is false for real RTL text
+- **F**: `TextMetrics.Valid.mono` (`lean/Cairn/Font.lean`) is false for real RTL text
   (measured: 15.01, 22.74, 15.01). For M1, either declare text LTR-only in `docs/trusted.md` and
   have the host **check** monotonicity on every measurement (log and clamp with a running max if
   it fails, so Lean's assumption holds), or carry both offsets. The runtime check is the

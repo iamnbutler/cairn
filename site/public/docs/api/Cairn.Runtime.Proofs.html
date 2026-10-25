@@ -68,7 +68,7 @@ app's).</p>
 </section>
 <section class="decl" id="Cairn.Runtime.route_laid" data-line="16">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Runtime.route_laid"><span class="ns">Cairn.Runtime.</span>route_laid</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Runtime/Proofs.lean:16</span></div>
-<pre class="sig"><b class="nm">route_laid</b> {S : Type} (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (s : State S) (e : <a href="Cairn.Input.html#Cairn.Event" title="Cairn.Event">Event</a>) :
+<pre class="sig"><b class="nm">route_laid</b> {S : Type} (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (s : State S) (e : <a href="Cairn.Input.html#Cairn.Event" title="Cairn.Event">Event</a>) :
   (route m s e).fst.laid = s.laid ∧ (route m s e).fst.app = s.app</pre>
 </section>
 <section class="decl" id="Cairn.Runtime.fixUI_sound" data-line="32">
@@ -122,13 +122,13 @@ screen, and hover and press are none or controls of it.</p>
 </section>
 <section class="decl" id="Cairn.Runtime.names_of" data-line="120">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Runtime.names_of"><span class="ns">Cairn.Runtime.</span>names_of</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Runtime/Proofs.lean:120</span></div>
-<pre class="sig"><b class="nm">names_of</b> {laid : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>} {t : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a>} (ht : t ∈ targets laid)
+<pre class="sig"><b class="nm">names_of</b> {laid : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>} {t : <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a>} (ht : t ∈ targets laid)
   {acts : List <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a>} (h : ∀ (a : <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a>), a ∈ acts → a.control = t.ref) : Names laid acts</pre><div class="doc"><p>Actions all about one control of the tree.</p>
 </div>
 </section>
 <section class="decl" id="Cairn.Runtime.focused_mem" data-line="124">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Runtime.focused_mem"><span class="ns">Cairn.Runtime.</span>focused_mem</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Runtime/Proofs.lean:124</span></div>
-<pre class="sig"><b class="nm">focused_mem</b> {S : Type} {s : State S} {t : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a>} (h : focused s = some t) :
+<pre class="sig"><b class="nm">focused_mem</b> {S : Type} {s : State S} {t : <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a>} (h : focused s = some t) :
   t ∈ targets s.laid</pre>
 </section>
 <section class="decl" id="Cairn.Runtime.leave_names" data-line="129">
@@ -143,7 +143,7 @@ screen, and hover and press are none or controls of it.</p>
 </section>
 <section class="decl" id="Cairn.Runtime.onField_names" data-line="144">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Runtime.onField_names"><span class="ns">Cairn.Runtime.</span>onField_names</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Runtime/Proofs.lean:144</span></div>
-<pre class="sig"><b class="nm">onField_names</b> {S : Type} (s : State S) (ops : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a> → List <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a>) :
+<pre class="sig"><b class="nm">onField_names</b> {S : Type} (s : State S) (ops : <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a> → List <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a>) :
   Names s.laid (onField s ops)</pre>
 </section>
 <section class="decl" id="Cairn.Runtime.keyActions_names" data-line="153">
@@ -158,7 +158,7 @@ screen, and hover and press are none or controls of it.</p>
 </section>
 <section class="decl" id="Cairn.Runtime.tabTarget_mem" data-line="171">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Runtime.tabTarget_mem"><span class="ns">Cairn.Runtime.</span>tabTarget_mem</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Runtime/Proofs.lean:171</span></div>
-<pre class="sig"><b class="nm">tabTarget_mem</b> {S : Type} (s : State S) (back : <span title="Bool">Bool</span>) {t : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a>}
+<pre class="sig"><b class="nm">tabTarget_mem</b> {S : Type} (s : State S) (back : <span title="Bool">Bool</span>) {t : <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a>}
   (h : tabTarget s back = some t) : t ∈ targets s.laid</pre>
 </section>
 <section class="decl" id="Cairn.Runtime.tab_names" data-line="183">
@@ -168,7 +168,7 @@ screen, and hover and press are none or controls of it.</p>
 </section>
 <section class="decl" id="Cairn.Runtime.route_names" data-line="194">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Runtime.route_names"><span class="ns">Cairn.Runtime.</span>route_names</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Runtime/Proofs.lean:194</span></div>
-<pre class="sig"><b class="nm">route_names</b> {S : Type} (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (s : State S) (e : <a href="Cairn.Input.html#Cairn.Event" title="Cairn.Event">Event</a>)
+<pre class="sig"><b class="nm">route_names</b> {S : Type} (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (s : State S) (e : <a href="Cairn.Input.html#Cairn.Event" title="Cairn.Event">Event</a>)
   (hm : e.isMenu = <span title="Bool.false">false</span>) : Names s.laid (route m s e).snd</pre><div class="doc"><p><strong>No action without a control.</strong> Every action the runtime passes to <code>update</code> names a
 control of the laid tree on screen when the event arrived, unless the event is a menu event
 (those name the menu's items: <a href="Cairn.Runtime.Proofs.html#Cairn.Runtime.menu_route_names"><code>menu_route_names</code></a>). (<a href="Cairn.Runtime.Step.html#Cairn.Runtime.step"><code>step</code></a> delivers exactly
@@ -344,7 +344,7 @@ exactly the routed actions.</p>
 <section class="decl" id="Cairn.Runtime.step_down_pressed" data-line="466">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Runtime.step_down_pressed"><span class="ns">Cairn.Runtime.</span>step_down_pressed</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Runtime/Proofs.lean:466</span></div>
 <pre class="sig"><b class="nm">step_down_pressed</b> {S : Type} (app : App S) (cfg : <a href="Cairn.Runtime.Step.html#Cairn.Runtime.Config" title="Cairn.Runtime.Config">Config</a>) (s : State S)
-  (t : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a>) (p : <a href="Cairn.Geometry.html#Cairn.Point" title="Cairn.Point">Point</a>) (clicks : <span title="Nat">Nat</span>) (mods : <a href="Cairn.Input.html#Cairn.Mods" title="Cairn.Mods">Mods</a>) (hhit : hitTarget s.laid p = some t)
+  (t : <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a>) (p : <a href="Cairn.Geometry.html#Cairn.Point" title="Cairn.Point">Point</a>) (clicks : <span title="Nat">Nat</span>) (mods : <a href="Cairn.Input.html#Cairn.Mods" title="Cairn.Mods">Mods</a>) (hhit : hitTarget s.laid p = some t)
   (hf : t.isField = <span title="Bool.false">false</span>)
   (hpres :
     t.ref ∈
@@ -358,7 +358,7 @@ new tree.</p>
 </section>
 <section class="decl" id="Cairn.Runtime.down_actions" data-line="493">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Runtime.down_actions"><span class="ns">Cairn.Runtime.</span>down_actions</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Runtime/Proofs.lean:493</span></div>
-<pre class="sig"><b class="nm">down_actions</b> {S : Type} (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (s : State S) (t : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a>)
+<pre class="sig"><b class="nm">down_actions</b> {S : Type} (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (s : State S) (t : <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a>)
   (p : <a href="Cairn.Geometry.html#Cairn.Point" title="Cairn.Point">Point</a>) (clicks : <span title="Nat">Nat</span>) (mods : <a href="Cairn.Input.html#Cairn.Mods" title="Cairn.Mods">Mods</a>) (hhit : hitTarget s.laid p = some t)
   (hf : t.isField = <span title="Bool.false">false</span>) :
   (route m s (Event.pointerDown p <a href="Cairn.Input.html#Cairn.Button.primary" title="Cairn.Button.primary">Button.primary</a> clicks mods)).snd = leave s none</pre><div class="doc"><p>The actions of a pointerDown on a non-field control: at most a blur of the field that
@@ -368,7 +368,7 @@ loses focus. No press happens on the way down.</p>
 <section class="decl" id="Cairn.Runtime.click_presses" data-line="502">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Runtime.click_presses"><span class="ns">Cairn.Runtime.</span>click_presses</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Runtime/Proofs.lean:502</span></div>
 <pre class="sig"><b class="nm">click_presses</b> {S : Type} (app : App S) (cfg : <a href="Cairn.Runtime.Step.html#Cairn.Runtime.Config" title="Cairn.Runtime.Config">Config</a>) (s : State S)
-  (t : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a>) (p : <a href="Cairn.Geometry.html#Cairn.Point" title="Cairn.Point">Point</a>) (mods mods' : <a href="Cairn.Input.html#Cairn.Mods" title="Cairn.Mods">Mods</a>) (h0 : Reaches s.laid t p)
+  (t : <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a>) (p : <a href="Cairn.Geometry.html#Cairn.Point" title="Cairn.Point">Point</a>) (mods mods' : <a href="Cairn.Input.html#Cairn.Mods" title="Cairn.Mods">Mods</a>) (h0 : Reaches s.laid t p)
   (hf : t.isField = <span title="Bool.false">false</span>)
   (h1 :
     ∃ t1,
@@ -388,7 +388,7 @@ pointerDown delivered nothing but blurs.</p>
 <section class="decl" id="Cairn.Runtime.click_center_presses" data-line="519">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Runtime.click_center_presses"><span class="ns">Cairn.Runtime.</span>click_center_presses</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Runtime/Proofs.lean:519</span></div>
 <pre class="sig"><b class="nm">click_center_presses</b> {S : Type} (app : App S) (cfg : <a href="Cairn.Runtime.Step.html#Cairn.Runtime.Config" title="Cairn.Runtime.Config">Config</a>) (s : State S)
-  (t : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a>) (mods mods' : <a href="Cairn.Input.html#Cairn.Mods" title="Cairn.Mods">Mods</a>) (h0 : LayoutFacts s.laid t) (hf : t.isField = <span title="Bool.false">false</span>)
+  (t : <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a>) (mods mods' : <a href="Cairn.Input.html#Cairn.Mods" title="Cairn.Mods">Mods</a>) (h0 : LayoutFacts s.laid t) (hf : t.isField = <span title="Bool.false">false</span>)
   (h1 :
     ∃ t1,
       Reaches
@@ -404,13 +404,13 @@ pointerDown delivered nothing but blurs.</p>
     (route cfg.metrics
           (step app cfg s (Event.pointerDown t.visible.center <a href="Cairn.Input.html#Cairn.Button.primary" title="Cairn.Button.primary">Button.primary</a> 1 mods)).fst
           (Event.pointerUp t.visible.center <a href="Cairn.Input.html#Cairn.Button.primary" title="Cairn.Button.primary">Button.primary</a> mods')).snd =
-      [Action.press t.ref]</pre><div class="doc"><p><strong>Pressable</strong> at the centre: under <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.LayoutFacts"><code>LayoutFacts</code></a>, a click at the centre of the control's
+      [Action.press t.ref]</pre><div class="doc"><p><strong>Pressable</strong> at the centre: under <a href="Cairn.UI.Hit.html#Cairn.Runtime.LayoutFacts"><code>LayoutFacts</code></a>, a click at the centre of the control's
 visible rect presses it.</p>
 </div>
 </section>
 <section class="decl" id="Cairn.Runtime.menu_route_names" data-line="537">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Runtime.menu_route_names"><span class="ns">Cairn.Runtime.</span>menu_route_names</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Runtime/Proofs.lean:537</span></div>
-<pre class="sig"><b class="nm">menu_route_names</b> {S : Type} (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (s : State S) :
+<pre class="sig"><b class="nm">menu_route_names</b> {S : Type} (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (s : State S) :
   (∀ (p : <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a>) (a : <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a>),
       a ∈ (route m s (Event.menuOpen p)).snd →
         ∃ it, Shown.statusOf p s.surfaces = some it ∧ a = Action.press it.control) ∧
@@ -426,7 +426,7 @@ presses nothing.</p>
 </section>
 <section class="decl" id="Cairn.Runtime.menu_select_presses" data-line="564">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Runtime.menu_select_presses"><span class="ns">Cairn.Runtime.</span>menu_select_presses</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Runtime/Proofs.lean:564</span></div>
-<pre class="sig"><b class="nm">menu_select_presses</b> {S : Type} (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (s : State S) {p : <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a>}
+<pre class="sig"><b class="nm">menu_select_presses</b> {S : Type} (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (s : State S) {p : <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a>}
   {it : <a href="Cairn.Surface.html#Cairn.StatusItem" title="Cairn.StatusItem">StatusItem</a>} {r : <a href="Cairn.Claim.html#Cairn.ControlRef" title="Cairn.ControlRef">ControlRef</a>} (h : Shown.statusOf p s.surfaces = some it)
   (hr : r ∈ MenuItem.enabledRefs it.menu) :
   route m s (Event.menuSelect p r) = (s, [Action.press r])</pre><div class="doc"><p><strong>A menu selection presses its item.</strong> If <code>r</code> is an enabled item of the status item's
@@ -436,7 +436,7 @@ layout in between).</p>
 </section>
 <section class="decl" id="Cairn.Runtime.menu_open_presses" data-line="571">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Runtime.menu_open_presses"><span class="ns">Cairn.Runtime.</span>menu_open_presses</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Runtime/Proofs.lean:571</span></div>
-<pre class="sig"><b class="nm">menu_open_presses</b> {S : Type} (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (s : State S) {p : <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a>}
+<pre class="sig"><b class="nm">menu_open_presses</b> {S : Type} (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (s : State S) {p : <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a>}
   {it : <a href="Cairn.Surface.html#Cairn.StatusItem" title="Cairn.StatusItem">StatusItem</a>} (h : Shown.statusOf p s.surfaces = some it) :
   route m s (Event.menuOpen p) = (s, [Action.press it.control])</pre><div class="doc"><p>Opening a shown status item's menu presses its control.</p>
 </div>
@@ -471,7 +471,7 @@ effects.</p>
 </section>
 <section class="decl" id="Cairn.Runtime.route_surface_other" data-line="605">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Runtime.route_surface_other"><span class="ns">Cairn.Runtime.</span>route_surface_other</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Runtime/Proofs.lean:605</span></div>
-<pre class="sig"><b class="nm">route_surface_other</b> {S : Type} (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (s : State S) {p : <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a>}
+<pre class="sig"><b class="nm">route_surface_other</b> {S : Type} (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (s : State S) {p : <a href="Cairn.Claim.html#Cairn.ClaimId" title="Cairn.ClaimId">ClaimId</a>}
   (e : <a href="Cairn.Input.html#Cairn.Event" title="Cairn.Event">Event</a>) (h : Shown.windowPlace s.surfaces ≠ some p) :
   route m s (Event.surface p e) = (s, [])</pre><div class="doc"><p>Events addressed to a surface other than the window (a panel, a status item) do nothing.</p>
 </div>
@@ -483,7 +483,7 @@ effects.</p>
 </section>
 <section class="decl" id="Cairn.Runtime.route_surfaces" data-line="614">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Runtime.route_surfaces"><span class="ns">Cairn.Runtime.</span>route_surfaces</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Runtime/Proofs.lean:614</span></div>
-<pre class="sig"><b class="nm">route_surfaces</b> {S : Type} (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (s : State S) (e : <a href="Cairn.Input.html#Cairn.Event" title="Cairn.Event">Event</a>) :
+<pre class="sig"><b class="nm">route_surfaces</b> {S : Type} (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (s : State S) (e : <a href="Cairn.Input.html#Cairn.Event" title="Cairn.Event">Event</a>) :
   (route m s e).fst.surfaces = s.surfaces</pre>
 </section>
 <section class="decl" id="Cairn.Runtime.give_kept" data-line="625">

@@ -216,7 +216,7 @@ structure Boundary where
   encode : Frame → ByteArray
 ```
 
-`Cairn.Frame.boundary` (`Cairn/Frame/Boundary.lean`) is the real one: v2 event decoding,
+`Cairn.Frame.boundary` (`Cairn/Abi.lean`) is the real one: v2 event decoding,
 `Frame.ofLaid` and v3 frame encoding ([frame.md](frame.md)). `render` takes the whole `UI` because
 the canvas needs the focus (accessibility `focused`, the caret, the text-input state) as well
 as the size. `Boundary.frame` (`Runtime/Abi.lean`) builds one surface record per surface the

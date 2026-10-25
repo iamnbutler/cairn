@@ -1,6 +1,6 @@
 import Cairn.Fuzz.Trusted.Gen
 import Cairn.Frame.Dump
-import Cairn.Frame.Boundary
+import Cairn.Abi
 import Cairn.Runtime.Abi
 import Cairn.Text.Host
 import Cairn.Text.Field

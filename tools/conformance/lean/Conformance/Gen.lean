@@ -2,7 +2,7 @@ module
 
 public import Cairn.Claims.Core
 public import Cairn.Runtime.Abi
-public import Cairn.Frame.Boundary
+public import Cairn.Abi
 
 /-! # The conformance generator (docs/conformance.md)
 

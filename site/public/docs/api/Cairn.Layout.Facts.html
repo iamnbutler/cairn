@@ -28,7 +28,7 @@ the runtime's pressability proof consumes. The theorems are in <a href="Cairn.La
 <h2 id="structures">Structures <span class="n">1</span></h2>
 <section class="decl" id="Cairn.Layout.Facts" data-line="143">
 <div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.Layout.Facts"><span class="ns">Cairn.Layout.</span>Facts</a></h3><span class="src" title="source">lean/Cairn/Layout/Facts.lean:143</span></div>
-<pre class="sig"><b class="nm">Facts</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (window : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) (n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) (l : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>) : Prop</pre><div class="doc"><p>Everything <code>layout m window n</code> guarantees about its result <code>l</code>. The runtime's pressability
+<pre class="sig"><b class="nm">Facts</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (window : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) (n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) (l : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>) : Prop</pre><div class="doc"><p>Everything <code>layout m window n</code> guarantees about its result <code>l</code>. The runtime's pressability
 theorem takes these as hypotheses; <a href="Cairn.Layout.Proofs.html#Cairn.Layout.facts"><code>Cairn.Layout.facts</code></a> proves them for every view, window and
 valid metrics.</p>
 </div><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.Layout.Facts.controls"><pre class="sig"><b class="nm">controls</b> : l.controls = n.controls</pre><div class="doc"><p>No control is lost, invented or reordered.</p>
@@ -125,7 +125,7 @@ subtree can cover another child, as long as the view fits.</p>
 </section>
 <section class="decl" id="Cairn.Layout.CaretPlaced" data-line="126">
 <div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Layout.CaretPlaced"><span class="ns">Cairn.Layout.</span>CaretPlaced</a></h3><span class="src" title="source">lean/Cairn/Layout/Facts.lean:126</span></div>
-<pre class="sig"><b class="nm">CaretPlaced</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a> → Prop</pre><div class="doc"><p>Field geometry: the caret sits at the text origin plus the caret's offset, within the
+<pre class="sig"><b class="nm">CaretPlaced</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a> → Prop</pre><div class="doc"><p>Field geometry: the caret sits at the text origin plus the caret's offset, within the
 text's extent, is one point wide and a line high, and is inside the content box horizontally
 whenever the content box is at least one point wide (the text scrolls to keep it there). The
 selection is empty when collapsed and otherwise runs between the offsets of its ends.</p>

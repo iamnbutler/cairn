@@ -4,7 +4,7 @@ public import Cairn.UI.Node
 public import Cairn.Input
 public import Cairn.Claim
 public import Cairn.Surface
-public import Cairn.Text.Metrics
+public import Cairn.Font
 
 /-! An app is its state, its surfaces, and its moves. The runtime (`Cairn.Runtime`) owns
 interaction state (hover, press, focus, window size), turns events into actions by hit testing

@@ -1,6 +1,5 @@
-import Cairn.Runtime.Hit
+import Cairn.UI.Hit
 import Cairn.Runtime.Step
 import Cairn.Runtime.Abi
-import Cairn.Runtime.Tests
 import Cairn.Runtime.Proofs
 import Cairn.Runtime.WorldProofs

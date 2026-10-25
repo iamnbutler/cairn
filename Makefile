@@ -50,10 +50,12 @@ ledger: lean
 kernel: lean
 	cd lean && lake check --inadvisably-no-sandbox
 
-# Constructs that bypass the kernel or swap in unchecked code. See research/lean/.
+# Constructs that bypass the kernel or swap in unchecked code (research/lean/), and import cycles
+# between directories of lean/ (docs/packages-and-std.md, "The graph").
 lint:
 	@! grep -rnE 'implemented_by|skipKernelTC|native_decide|bv_decide|^\s*axiom ' lean/Cairn lean/Examples \
 	  || (echo "lint: forbidden construct (see AGENTS.md, Lean rules)"; exit 1)
+	@bun tools/lint/dircycles.ts lean
 
 # Swift tests: renderer goldens, pixel probes, text metrics (offscreen; needs a Metal device),
 # and the host's unit tests (index conversion, text-input shadow, input mapping, NSTextInputClient).

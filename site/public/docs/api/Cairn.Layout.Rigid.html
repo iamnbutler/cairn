@@ -193,17 +193,17 @@ every length from <code>⌊leftover / fills⌋</code> up. A box with a control h
 </section>
 <section class="decl" id="Cairn.Layout.measure_sizings" data-line="153">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.measure_sizings"><span class="ns">Cairn.Layout.</span>measure_sizings</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:153</span></div>
-<pre class="sig"><b class="nm">measure_sizings</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (aw : <span title="Int">Int</span>) (n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
+<pre class="sig"><b class="nm">measure_sizings</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (aw : <span title="Int">Int</span>) (n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
   (measure m aw n).sizings = nodeSizings n</pre>
 </section>
 <section class="decl" id="Cairn.Layout.measureList_eq_map" data-line="157">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.measureList_eq_map"><span class="ns">Cairn.Layout.</span>measureList_eq_map</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:157</span></div>
-<pre class="sig"><b class="nm">measureList_eq_map</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (aw : <span title="Int">Int</span>) (ks : List <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
+<pre class="sig"><b class="nm">measureList_eq_map</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (aw : <span title="Int">Int</span>) (ks : List <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
   measureList m aw ks = List.map (measure m aw) ks</pre>
 </section>
 <section class="decl" id="Cairn.Layout.mem_arrangeList" data-line="163">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.mem_arrangeList"><span class="ns">Cairn.Layout.</span>mem_arrangeList</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:163</span></div>
-<pre class="sig"><b class="nm">mem_arrangeList</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (aw : <span title="Int">Int</span>) (c : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (rs : List <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>)
+<pre class="sig"><b class="nm">mem_arrangeList</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (aw : <span title="Int">Int</span>) (c : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (rs : List <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>)
   (ks : List <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
   rs.length = ks.length →
     ∀ (k' : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>),
@@ -224,7 +224,7 @@ every length from <code>⌊leftover / fills⌋</code> up. A box with a control h
 </section>
 <section class="decl" id="Cairn.Layout.item_sizing" data-line="191">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.item_sizing"><span class="ns">Cairn.Layout.</span>item_sizing</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:191</span></div>
-<pre class="sig"><b class="nm">item_sizing</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (aw : <span title="Int">Int</span>) (h : <span title="Bool">Bool</span>) (k : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
+<pre class="sig"><b class="nm">item_sizing</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (aw : <span title="Int">Int</span>) (h : <span title="Bool">Bool</span>) (k : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
   Item.mainSizing h (measure m aw k).item = mainSz h k ∧
     Item.crossSizing h (measure m aw k).item = crossSz h k</pre><div class="doc"><p>A rigid child's item: its sizings are its node's.</p>
 </div>
@@ -246,14 +246,14 @@ every length from <code>⌊leftover / fills⌋</code> up. A box with a control h
 </section>
 <section class="decl" id="Cairn.Layout.baseSum_rigid" data-line="209">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.baseSum_rigid"><span class="ns">Cairn.Layout.</span>baseSum_rigid</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:209</span></div>
-<pre class="sig"><b class="nm">baseSum_rigid</b> (h : <span title="Bool">Bool</span>) (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (aw : <span title="Int">Int</span>) (ks : List <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
+<pre class="sig"><b class="nm">baseSum_rigid</b> (h : <span title="Bool">Bool</span>) (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (aw : <span title="Int">Int</span>) (ks : List <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
   (∀ (k : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>), k ∈ ks → (mainSz h k).isHug = <span title="Bool.false">false</span>) →
     baseSum h (List.map (fun k =&gt; (measure m aw k).item) ks) =
       (List.map (fun k =&gt; fixedOf (mainSz h k)) ks).sum</pre>
 </section>
 <section class="decl" id="Cairn.Layout.fillCount_eq" data-line="220">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.fillCount_eq"><span class="ns">Cairn.Layout.</span>fillCount_eq</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:220</span></div>
-<pre class="sig"><b class="nm">fillCount_eq</b> (h : <span title="Bool">Bool</span>) (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (aw : <span title="Int">Int</span>) (ks : List <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
+<pre class="sig"><b class="nm">fillCount_eq</b> (h : <span title="Bool">Bool</span>) (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (aw : <span title="Int">Int</span>) (ks : List <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
   fillCount h (List.map (fun k =&gt; (measure m aw k).item) ks) = lineFills h ks</pre>
 </section>
 <section class="decl" id="Cairn.Layout.mainSz_hug" data-line="228">
@@ -281,7 +281,7 @@ every length from <code>⌊leftover / fills⌋</code> up. A box with a control h
 </section>
 <section class="decl" id="Cairn.Layout.text_ok" data-line="252">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.text_ok"><span class="ns">Cairn.Layout.</span>text_ok</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:252</span></div>
-<pre class="sig"><b class="nm">text_ok</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (aw : <span title="Int">Int</span>) (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) {k : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>}
+<pre class="sig"><b class="nm">text_ok</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (aw : <span title="Int">Int</span>) (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) {k : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>}
   (hk : k.isText = <span title="Bool.true">true</span>) :
   Laid.Everywhere <a href="Cairn.Layout.Rigid.html#Cairn.Layout.NodeOk" title="Cairn.Layout.NodeOk">NodeOk</a> (arrange m c r (measure m aw k)) ∧
     (arrange m c r (measure m aw k)).isText = <span title="Bool.true">true</span> ∧
@@ -294,12 +294,12 @@ every length from <code>⌊leftover / fills⌋</code> up. A box with a control h
 </section>
 <section class="decl" id="Cairn.Layout.mem_targetsList" data-line="271">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.mem_targetsList"><span class="ns">Cairn.Layout.</span>mem_targetsList</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:271</span></div>
-<pre class="sig"><b class="nm">mem_targetsList</b> {t : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>} {ls : List <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>} :
+<pre class="sig"><b class="nm">mem_targetsList</b> {t : <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>} {ls : List <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>} :
   t ∈ Runtime.targetsList ls → ∃ l, l ∈ ls ∧ t ∈ Runtime.targetsOf l</pre>
 </section>
 <section class="decl" id="Cairn.Layout.arrangeList_texts" data-line="282">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.arrangeList_texts"><span class="ns">Cairn.Layout.</span>arrangeList_texts</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:282</span></div>
-<pre class="sig"><b class="nm">arrangeList_texts</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (c : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (rs : List <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>)
+<pre class="sig"><b class="nm">arrangeList_texts</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (c : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (rs : List <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>)
   (ss : List <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>) :
   (∀ (s : <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>), s ∈ ss → ∃ ts str sz, s = Sized.text ts str sz) →
     ∀ (k : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>),
@@ -309,10 +309,10 @@ every length from <code>⌊leftover / fills⌋</code> up. A box with a control h
 </section>
 <section class="decl" id="Cairn.Layout.para_ok" data-line="308">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.para_ok"><span class="ns">Cairn.Layout.</span>para_ok</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:308</span></div>
-<pre class="sig"><b class="nm">para_ok</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (ts : <a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a>) (wr : <a href="Cairn.UI.Node.html#Cairn.Wrap" title="Cairn.Wrap">Wrap</a>) (s : <span title="String">String</span>) (aw : <span title="Int">Int</span>)
+<pre class="sig"><b class="nm">para_ok</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (ts : <a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a>) (wr : <a href="Cairn.UI.Node.html#Cairn.Wrap" title="Cairn.Wrap">Wrap</a>) (s : <span title="String">String</span>) (aw : <span title="Int">Int</span>)
   (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) :
   Laid.Everywhere <a href="Cairn.Layout.Rigid.html#Cairn.Layout.NodeOk" title="Cairn.Layout.NodeOk">NodeOk</a> (arrange m c r (measure m aw (Node.para ts wr s))) ∧
-    ∀ (t : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>),
+    ∀ (t : <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>),
       t ∈ Runtime.targetsOf (arrange m c r (measure m aw (Node.para ts wr s))) →
         t.node.rect.nonempty</pre><div class="doc"><p>Wrapped text lays out as a clipping column of text: it meets <a href="Cairn.Layout.Bridge.html#Cairn.Layout.Pressable"><code>Pressable</code></a>'s conditions and
 has no controls.</p>
@@ -320,12 +320,12 @@ has no controls.</p>
 </section>
 <section class="decl" id="Cairn.Layout.fitsIn_arrange" data-line="333">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.fitsIn_arrange"><span class="ns">Cairn.Layout.</span>fitsIn_arrange</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:333</span></div>
-<pre class="sig"><b class="nm">fitsIn_arrange</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) {n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>} {w h : <span title="Int">Int</span>} (hf : FitsIn n w h)
+<pre class="sig"><b class="nm">fitsIn_arrange</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) {n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>} {w h : <span title="Int">Int</span>} (hf : FitsIn n w h)
   (aw : <span title="Int">Int</span>) (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) :
   r.w = w →
     r.h = h →
       Laid.Everywhere <a href="Cairn.Layout.Rigid.html#Cairn.Layout.NodeOk" title="Cairn.Layout.NodeOk">NodeOk</a> (arrange m c r (measure m aw n)) ∧
-        ∀ (t : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>),
+        ∀ (t : <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>),
           t ∈ Runtime.targetsOf (arrange m c r (measure m aw n)) → t.node.rect.nonempty</pre><div class="doc"><p><strong>Rigid views lay out pressably.</strong> If <code>n</code> fits in <code>w × h</code>, then laid out in any rect of that
 size, with any clip and any text metrics, every node meets <a href="Cairn.Layout.Bridge.html#Cairn.Layout.Pressable"><code>Pressable</code></a>'s per-node conditions
 and every control's rect is nonempty.</p>
@@ -338,10 +338,10 @@ and every control's rect is nonempty.</p>
 </section>
 <section class="decl" id="Cairn.Layout.hitTest_center_of_fitsIn" data-line="508">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.hitTest_center_of_fitsIn"><span class="ns">Cairn.Layout.</span>hitTest_center_of_fitsIn</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:508</span></div>
-<pre class="sig"><b class="nm">hitTest_center_of_fitsIn</b> {m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>} {w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>} {st : <a href="Cairn.UI.Node.html#Cairn.Style" title="Cairn.Style">Style</a>}
+<pre class="sig"><b class="nm">hitTest_center_of_fitsIn</b> {m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>} {w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>} {st : <a href="Cairn.UI.Node.html#Cairn.Style" title="Cairn.Style">Style</a>}
   {ctl : Option <a href="Cairn.UI.Node.html#Cairn.Control" title="Cairn.Control">Control</a>} {kids : List <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>} (hw : st.width = <a href="Cairn.UI.Node.html#Cairn.Sizing.fill" title="Cairn.Sizing.fill">Sizing.fill</a>)
   (hh : st.height = <a href="Cairn.UI.Node.html#Cairn.Sizing.fill" title="Cairn.Sizing.fill">Sizing.fill</a>)
-  (hf : FitsIn (Node.box st ctl kids) (max 0 w.w) (max 0 w.h)) (t : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>) :
+  (hf : FitsIn (Node.box st ctl kids) (max 0 w.w) (max 0 w.h)) (t : <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>) :
   t ∈ Runtime.targets (layout m w (Node.box st ctl kids)) →
     Runtime.hitTest (layout m w (Node.box st ctl kids)) t.visible.center = some t.control</pre><div class="doc"><p><strong>Pressable, for a rigid root.</strong> If the root fills the window and fits in it, every control
 of the laid-out view is pressable at its centre, for every text metrics.</p>
@@ -354,8 +354,8 @@ of the laid-out view is pressable at its centre, for every text metrics.</p>
 </section>
 <section class="decl" id="Cairn.Layout.exampleList_pressable" data-line="579">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.exampleList_pressable"><span class="ns">Cairn.Layout.</span>exampleList_pressable</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Rigid.lean:579</span></div>
-<pre class="sig"><b class="nm">exampleList_pressable</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (labels : List <span title="String">String</span>) (w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>)
-  (hw : 0 &lt; w.w) (hh : 44 * ↑labels.length ≤ w.h) (t : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>) :
+<pre class="sig"><b class="nm">exampleList_pressable</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (labels : List <span title="String">String</span>) (w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>)
+  (hw : 0 &lt; w.w) (hh : 44 * ↑labels.length ≤ w.h) (t : <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>) :
   t ∈ Runtime.targets (layout m w (exampleList labels)) →
     Runtime.hitTest (layout m w (exampleList labels)) t.visible.center = some t.control</pre><div class="doc"><p>Every button in a list of any length is pressable at its centre, with any metrics.</p>
 </div>

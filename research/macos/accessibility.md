@@ -246,7 +246,7 @@ pointer event.
    re-reads. Keep a `[ControlRef or node key → element]` map; mutate in place.
 2. **Every range on the AX text API is UTF-16.** AccessKit converts at the boundary
    (`util.rs:13-28`); Cairn's `TextInput.selection` and Lean `Field` are Unicode-scalar indices
-   (`lean/Cairn/Text/Metrics.lean:7`). Emoji and astral characters make them diverge.
+   (`lean/Cairn/Font.lean:7`). Emoji and astral characters make them diverge.
 3. **Flipped view, y-up parent space, primary screen.** Parent space is y-up even under a flipped
    parent (spike); screen flips use `NSScreen.screens[0]`, not `mainScreen` (Flutter
    `FlutterPlatformNodeDelegateMac.mm:141-150`); backing vs logical px (AccessKit #185).

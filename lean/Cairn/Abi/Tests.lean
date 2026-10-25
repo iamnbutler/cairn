@@ -1,7 +1,21 @@
 import Cairn.Runtime.Abi
-import Cairn.Frame.Boundary
+import Cairn.Abi
 
-/-! Concrete checks of the runtime on a small app, laid out by `Cairn.Layout.layout`. -/
+/-! Checks for `Cairn.Abi`, kept out of the module so they can use `#guard` (a `#guard` in a
+`module` needs a `meta import` of what it evaluates): the frame encoder's font clamping, then
+concrete checks of the runtime on a small app, laid out by `Cairn.Layout.layout`. -/
+
+namespace Cairn
+
+private def hugeFont : Frame := .single
+  { size := ⟨1, 1⟩, draws := #[.text ⟨0, 0⟩ { size := 4294967296 + 12 } ⟨0, 0, 0, 255⟩ "x"],
+    ax := #[] }
+
+-- An out-of-range font size crosses clamped, not wrapped.
+#guard (decodeFrame (encodeFrame hugeFont)).map (·.draws) ==
+  some #[.text ⟨0, 0⟩ { size := 4294967295 } ⟨0, 0, 0, 255⟩ "x"]
+
+end Cairn
 
 namespace Cairn.Runtime.Tests
 

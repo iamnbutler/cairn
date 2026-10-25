@@ -2,7 +2,7 @@ module
 
 public import Cairn.Geometry
 public import Cairn.Claim
-public import Cairn.Text.Metrics
+public import Cairn.Font
 
 /-! What `view` returns (`Node`) and what layout produces (`Laid`).
 

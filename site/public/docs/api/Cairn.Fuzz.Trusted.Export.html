@@ -27,7 +27,7 @@ verdict on any bytes. The reply is <code>&quot;R&quot;</code> (rejected), or <co
 re-encoding the value gives the same bytes back) followed by the canonical dump
 (<code>Cairn.Dump</code>), which the Swift side compares with its own dump.</li>
 <li><code>cairn_tf_field_init/step/frame</code>: an app that is one text field, on the real runtime and
-boundary (<a href="Cairn.Runtime.Abi.html#Cairn.Runtime.stepBytes"><code>Runtime.stepBytes</code></a>, <a href="Cairn.Frame.Boundary.html#Cairn.Frame.boundary"><code>Frame.boundary</code></a>, <a href="Cairn.Text.Host.html#Cairn.TextMetrics.host"><code>TextMetrics.host</code></a>), so the host's
+boundary (<a href="Cairn.Runtime.Abi.html#Cairn.Runtime.stepBytes"><code>Runtime.stepBytes</code></a>, <a href="Cairn.Abi.html#Cairn.Frame.boundary"><code>Frame.boundary</code></a>, <a href="Cairn.Text.Host.html#Cairn.TextMetrics.host"><code>TextMetrics.host</code></a>), so the host's
 <code>NSTextInputClient</code> and its shadow of the field can be checked against <code>Field.apply</code>.
 The same ABI as <code>cairn_app_*</code> (docs/runtime.md), under other names so it can't clash.</li>
 <li><code>cairn_tf_wrap</code>: where Lean breaks a string into lines at a width with <a href="Cairn.Text.Host.html#Cairn.TextMetrics.host"><code>TextMetrics.host</code></a>,
@@ -35,7 +35,7 @@ and where layout puts each line, so the Swift side can shape each line as the re
 and compare with Core Text's own line breaking.</li>
 </ul>
 </div>
-<p class="imports"><span class="pix muted">Imports</span> <a href="Cairn.Fuzz.Trusted.Gen.html">Cairn.Fuzz.Trusted.Gen</a>, <a href="Cairn.Frame.Dump.html">Cairn.Frame.Dump</a>, <a href="Cairn.Frame.Boundary.html">Cairn.Frame.Boundary</a>, <a href="Cairn.Runtime.Abi.html">Cairn.Runtime.Abi</a>, <a href="Cairn.Text.Host.html">Cairn.Text.Host</a>, <a href="Cairn.Text.Field.html">Cairn.Text.Field</a>, <a href="Cairn.Layout.Core.html">Cairn.Layout.Core</a></p>
+<p class="imports"><span class="pix muted">Imports</span> <a href="Cairn.Fuzz.Trusted.Gen.html">Cairn.Fuzz.Trusted.Gen</a>, <a href="Cairn.Frame.Dump.html">Cairn.Frame.Dump</a>, <a href="Cairn.Abi.html">Cairn.Abi</a>, <a href="Cairn.Runtime.Abi.html">Cairn.Runtime.Abi</a>, <a href="Cairn.Text.Host.html">Cairn.Text.Host</a>, <a href="Cairn.Text.Field.html">Cairn.Text.Field</a>, <a href="Cairn.Layout.Core.html">Cairn.Layout.Core</a></p>
 <div class="order"><span class="pix muted">Order</span> <button type="button" data-order="kind" class="on">by kind</button><button type="button" data-order="source">as in the source</button></div>
 <div id="items">
 

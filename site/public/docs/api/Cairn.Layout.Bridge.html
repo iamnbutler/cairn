@@ -17,7 +17,7 @@
 <div class="layout"><aside class="toc"><div class="pix muted">Cairn.Layout.Bridge</div><a href="#structures">Structures <span class="n">1</span></a><ol><li><a href="#Cairn.Layout.Pressable">Pressable</a></li></ol><a href="#definitions">Definitions <span class="n">6</span></a><ol><li><a href="#Cairn.Laid.isText">isText</a></li><li><a href="#Cairn.Layout.Fits">Fits</a></li><li><a href="#Cairn.Layout.StackTop">StackTop</a></li><li><a href="#Cairn.Layout.ControlLeaf">ControlLeaf</a></li><li><a href="#Cairn.Layout.Good">Good</a></li><li><a href="#Cairn.Layout.ReachesIn">ReachesIn</a></li></ol><a href="#theorems">Theorems <span class="n">29</span></a><ol><li><a href="#Cairn.Layout.Rect.contains_iff">contains_iff</a></li><li><a href="#Cairn.Layout.Rect.inter_contains_left">inter_contains_left</a></li><li><a href="#Cairn.Layout.Rect.inter_contains_right">inter_contains_right</a></li><li><a href="#Cairn.Layout.Rect.contains_of_inside">contains_of_inside</a></li><li><a href="#Cairn.Layout.Rect.inset_inside">inset_inside</a></li><li><a href="#Cairn.Layout.Rect.inside_trans">inside_trans</a></li><li><a href="#Cairn.Layout.Rect.inside_inter">inside_inter</a></li><li><a href="#Cairn.Layout.Rect.inter_of_inside">inter_of_inside</a></li><li><a href="#Cairn.Layout.Rect.disjoint_contains">disjoint_contains</a></li><li><a href="#Cairn.Layout.hitsList_append">hitsList_append</a></li><li><a href="#Cairn.Layout.mem_hitsList">mem_hitsList</a></li><li><a href="#Cairn.Layout.mem_targetsList_split">mem_targetsList_split</a></li><li><a href="#Cairn.Layout.targetsOf_controls">targetsOf_controls</a></li><li><a href="#Cairn.Layout.targetsList_controls">targetsList_controls</a></li><li><a href="#Cairn.Layout.targetsOf_eq_nil">targetsOf_eq_nil</a></li><li><a href="#Cairn.Layout.targetsList_eq_nil">targetsList_eq_nil</a></li><li><a href="#Cairn.Layout.mem_targetsOf_box">mem_targetsOf_box</a></li><li><a href="#Cairn.Laid.Everywhere.and">and</a></li><li><a href="#Cairn.Laid.Everywhere.target">target</a></li><li><a href="#Cairn.Layout.Good.child_inside">child_inside</a></li><li><a href="#Cairn.Layout.Good.text_hit">text_hit</a></li><li><a href="#Cairn.Layout.hits_inside">hits_inside</a></li><li><a href="#Cairn.Layout.mem_dropLast">mem_dropLast</a></li><li><a href="#Cairn.Layout.reachesIn_of_good">reachesIn_of_good</a></li><li><a href="#Cairn.Layout.rect_inside_clip">rect_inside_clip</a></li><li><a href="#Cairn.Layout.layout_good">layout_good</a></li><li><a href="#Cairn.Layout.reaches_of_pressable">reaches_of_pressable</a></li><li><a href="#Cairn.Layout.layoutFacts_of_pressable">layoutFacts_of_pressable</a></li><li><a href="#Cairn.Layout.hitTest_center_of_pressable">hitTest_center_of_pressable</a></li></ol></aside><main>
 <header class="page"><div class="eyebrow">Cairn · module</div><h1 class="mod">Cairn.Layout.Bridge</h1><p class="src">lean/Cairn/Layout/Bridge.lean</p></header>
 <div class="doc"><h1>From layout facts to the runtime's <code>LayoutFacts</code></h1>
-<p>The runtime's pressable theorems (<a href="Cairn.Runtime.Hit.html#Cairn.Runtime.hitTest_center"><code>Cairn.Runtime.hitTest_center</code></a>, <code>click_center_presses</code>) take
+<p>The runtime's pressable theorems (<a href="Cairn.UI.Hit.html#Cairn.Runtime.hitTest_center"><code>Cairn.Runtime.hitTest_center</code></a>, <code>click_center_presses</code>) take
 <code>Cairn.Runtime.LayoutFacts laid t</code>: the control's visible rect is nonempty and a pointer at its
 centre reaches it. This file proves that every control of <code>layout m w n</code> satisfies it, given
 four conditions an app can check about its view (<a href="Cairn.Layout.Bridge.html#Cairn.Layout.Pressable"><code>Pressable</code></a>):</p>
@@ -37,7 +37,7 @@ the clip keeps everything it paints inside its rect, and text has no controls.</
 (<a href="Cairn.Layout.Bridge.html#Cairn.Layout.layoutFacts_of_pressable"><code>layoutFacts_of_pressable</code></a>), and indeed at every point of its visible rect
 (<a href="Cairn.Layout.Bridge.html#Cairn.Layout.reaches_of_pressable"><code>reaches_of_pressable</code></a>).</p>
 </div>
-<p class="imports"><span class="pix muted">Imports</span> <a href="Cairn.Layout.Proofs.html">Cairn.Layout.Proofs</a>, <a href="Cairn.Runtime.Hit.html">Cairn.Runtime.Hit</a></p>
+<p class="imports"><span class="pix muted">Imports</span> <a href="Cairn.Layout.Proofs.html">Cairn.Layout.Proofs</a>, <a href="Cairn.UI.Hit.html">Cairn.UI.Hit</a></p>
 <div class="order"><span class="pix muted">Order</span> <button type="button" data-order="kind" class="on">by kind</button><button type="button" data-order="source">as in the source</button></div>
 <div id="items">
 
@@ -75,7 +75,7 @@ or it clips and its children are text, which may overflow it.</p>
 </section>
 <section class="decl" id="Cairn.Layout.ReachesIn" data-line="262">
 <div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Layout.ReachesIn"><span class="ns">Cairn.Layout.</span>ReachesIn</a></h3><span class="src" title="source">lean/Cairn/Layout/Bridge.lean:262</span></div>
-<pre class="sig"><b class="nm">ReachesIn</b> (hs : List <a href="Cairn.Runtime.Hit.html" title="Cairn.Runtime.Hit">Runtime.Hit</a>) (t : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>) (p : <a href="Cairn.Geometry.html#Cairn.Point" title="Cairn.Point">Point</a>) : Prop</pre><div class="doc"><p><code>Reaches</code>, for any list of hit entries.</p>
+<pre class="sig"><b class="nm">ReachesIn</b> (hs : List <a href="Cairn.Runtime.Hit.html" title="Cairn.Runtime.Hit">Runtime.Hit</a>) (t : <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>) (p : <a href="Cairn.Geometry.html#Cairn.Point" title="Cairn.Point">Point</a>) : Prop</pre><div class="doc"><p><code>Reaches</code>, for any list of hit entries.</p>
 </div>
 </section>
 <h2 id="theorems">Theorems <span class="n">29</span></h2>
@@ -126,17 +126,17 @@ or it clips and its children are text, which may overflow it.</p>
 </section>
 <section class="decl" id="Cairn.Layout.hitsList_append" data-line="109">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.hitsList_append"><span class="ns">Cairn.Layout.</span>hitsList_append</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Bridge.lean:109</span></div>
-<pre class="sig"><b class="nm">hitsList_append</b> (o : Option <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>) (a b : List <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>) :
+<pre class="sig"><b class="nm">hitsList_append</b> (o : Option <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>) (a b : List <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>) :
   Runtime.hitsList o (a ++ b) = Runtime.hitsList o a ++ Runtime.hitsList o b</pre>
 </section>
 <section class="decl" id="Cairn.Layout.mem_hitsList" data-line="115">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.mem_hitsList"><span class="ns">Cairn.Layout.</span>mem_hitsList</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Bridge.lean:115</span></div>
-<pre class="sig"><b class="nm">mem_hitsList</b> {o : Option <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>} {h : <a href="Cairn.Runtime.Hit.html" title="Cairn.Runtime.Hit">Runtime.Hit</a>} {ls : List <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>} :
+<pre class="sig"><b class="nm">mem_hitsList</b> {o : Option <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>} {h : <a href="Cairn.Runtime.Hit.html" title="Cairn.Runtime.Hit">Runtime.Hit</a>} {ls : List <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>} :
   h ∈ Runtime.hitsList o ls → ∃ k, k ∈ ls ∧ h ∈ Runtime.hitsOf o k</pre>
 </section>
 <section class="decl" id="Cairn.Layout.mem_targetsList_split" data-line="125">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.mem_targetsList_split"><span class="ns">Cairn.Layout.</span>mem_targetsList_split</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Bridge.lean:125</span></div>
-<pre class="sig"><b class="nm">mem_targetsList_split</b> {t : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>} {ls : List <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>} :
+<pre class="sig"><b class="nm">mem_targetsList_split</b> {t : <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>} {ls : List <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>} :
   t ∈ Runtime.targetsList ls → ∃ pre k post, ls = pre ++ k :: post ∧ t ∈ Runtime.targetsOf k</pre>
 </section>
 <section class="decl" id="Cairn.Layout.targetsOf_controls" data-line="136">
@@ -160,7 +160,7 @@ or it clips and its children are text, which may overflow it.</p>
 </section>
 <section class="decl" id="Cairn.Layout.mem_targetsOf_box" data-line="156">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.mem_targetsOf_box"><span class="ns">Cairn.Layout.</span>mem_targetsOf_box</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Bridge.lean:156</span></div>
-<pre class="sig"><b class="nm">mem_targetsOf_box</b> {t : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>} {r c : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>} {st : <a href="Cairn.UI.Node.html#Cairn.Style" title="Cairn.Style">Style</a>}
+<pre class="sig"><b class="nm">mem_targetsOf_box</b> {t : <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>} {r c : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>} {st : <a href="Cairn.UI.Node.html#Cairn.Style" title="Cairn.Style">Style</a>}
   {ctl : Option <a href="Cairn.UI.Node.html#Cairn.Control" title="Cairn.Control">Control</a>} {kids : List <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>}
   (ht : t ∈ Runtime.targetsOf (Laid.box r c st ctl kids)) :
   (∃ k, ctl = some k ∧ t = { node := Laid.box r c st ctl kids, control := k }) ∨
@@ -174,7 +174,7 @@ or it clips and its children are text, which may overflow it.</p>
 <section class="decl" id="Cairn.Laid.Everywhere.target" data-line="174">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Laid.Everywhere.target"><span class="ns">Cairn.Laid.Everywhere.</span>target</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Bridge.lean:174</span></div>
 <pre class="sig"><b class="nm">target</b> {P : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a> → Prop} {l : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>} (hE : Everywhere P l)
-  (t : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>) : t ∈ Runtime.targetsOf l → P t.node</pre><div class="doc"><p>A fact holding everywhere holds at every control's node.</p>
+  (t : <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>) : t ∈ Runtime.targetsOf l → P t.node</pre><div class="doc"><p>A fact holding everywhere holds at every control's node.</p>
 </div>
 </section>
 <section class="decl" id="Cairn.Layout.Good.child_inside" data-line="200">
@@ -189,14 +189,14 @@ container's rect.</p>
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.Good.text_hit"><span class="ns">Cairn.Layout.Good.</span>text_hit</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Bridge.lean:210</span></div>
 <pre class="sig"><b class="nm">text_hit</b> {r c : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>} {st : <a href="Cairn.UI.Node.html#Cairn.Style" title="Cairn.Style">Style</a>} {ctl : Option <a href="Cairn.UI.Node.html#Cairn.Control" title="Cairn.Control">Control</a>}
   {kids : List <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>} (hG : Good (Laid.box r c st ctl kids)) {k : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>} (hk : k ∈ kids)
-  (ht : k.isText = <span title="Bool.true">true</span>) {o : Option <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>} {h : <a href="Cairn.Runtime.Hit.html" title="Cairn.Runtime.Hit">Runtime.Hit</a>} {p : <a href="Cairn.Geometry.html#Cairn.Point" title="Cairn.Point">Point</a>}
+  (ht : k.isText = <span title="Bool.true">true</span>) {o : Option <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>} {h : <a href="Cairn.Runtime.Hit.html" title="Cairn.Runtime.Hit">Runtime.Hit</a>} {p : <a href="Cairn.Geometry.html#Cairn.Point" title="Cairn.Point">Point</a>}
   (hh : h ∈ Runtime.hitsOf o k) (hc : h.visible.contains p = <span title="Bool.true">true</span>) : r.contains p = <span title="Bool.true">true</span></pre><div class="doc"><p>A text child's hits are inside its parent's rect when the parent fits or clips.</p>
 </div>
 </section>
 <section class="decl" id="Cairn.Layout.hits_inside" data-line="234">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.hits_inside"><span class="ns">Cairn.Layout.</span>hits_inside</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Bridge.lean:234</span></div>
 <pre class="sig"><b class="nm">hits_inside</b> {l : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>} (hE : Laid.Everywhere <a href="Cairn.Layout.Bridge.html#Cairn.Layout.Good" title="Cairn.Layout.Good">Good</a> l)
-  (o : Option <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>) (h : <a href="Cairn.Runtime.Hit.html" title="Cairn.Runtime.Hit">Runtime.Hit</a>) (p : <a href="Cairn.Geometry.html#Cairn.Point" title="Cairn.Point">Point</a>) :
+  (o : Option <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>) (h : <a href="Cairn.Runtime.Hit.html" title="Cairn.Runtime.Hit">Runtime.Hit</a>) (p : <a href="Cairn.Geometry.html#Cairn.Point" title="Cairn.Point">Point</a>) :
   h ∈ Runtime.hitsOf o l → h.visible.contains p = <span title="Bool.true">true</span> → l.rect.contains p = <span title="Bool.true">true</span></pre><div class="doc"><p>Every hit entry in a subtree that contains <code>p</code> lies inside the subtree's root rect.</p>
 </div>
 </section>
@@ -208,7 +208,7 @@ container's rect.</p>
 <section class="decl" id="Cairn.Layout.reachesIn_of_good" data-line="276">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.reachesIn_of_good"><span class="ns">Cairn.Layout.</span>reachesIn_of_good</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Bridge.lean:276</span></div>
 <pre class="sig"><b class="nm">reachesIn_of_good</b> {l : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>} (hE : Laid.Everywhere <a href="Cairn.Layout.Bridge.html#Cairn.Layout.Good" title="Cairn.Layout.Good">Good</a> l)
-  (o : Option <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>) (t : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>) (p : <a href="Cairn.Geometry.html#Cairn.Point" title="Cairn.Point">Point</a>) :
+  (o : Option <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>) (t : <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>) (p : <a href="Cairn.Geometry.html#Cairn.Point" title="Cairn.Point">Point</a>) :
   t ∈ Runtime.targetsOf l → t.visible.contains p = <span title="Bool.true">true</span> → ReachesIn (Runtime.hitsOf o l) t p</pre><div class="doc"><p>In a tree where every node is <a href="Cairn.Layout.Bridge.html#Cairn.Layout.Good"><code>Good</code></a>, a pointer anywhere in a control's visible rect reaches
 that control.</p>
 </div>
@@ -217,19 +217,19 @@ that control.</p>
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.rect_inside_clip"><span class="ns">Cairn.Layout.</span>rect_inside_clip</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Bridge.lean:338</span></div>
 <pre class="sig"><b class="nm">rect_inside_clip</b> {l : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>} (hE : Laid.Everywhere <a href="Cairn.Layout.Bridge.html#Cairn.Layout.Good" title="Cairn.Layout.Good">Good</a> l) :
   l.rect.inside l.clip →
-    ∀ (t : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>), t ∈ Runtime.targetsOf l → t.node.rect.inside t.node.clip</pre><div class="doc"><p>In a tree where every node is <a href="Cairn.Layout.Bridge.html#Cairn.Layout.Good"><code>Good</code></a> and the root is inside its clip, each control's rect
+    ∀ (t : <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>), t ∈ Runtime.targetsOf l → t.node.rect.inside t.node.clip</pre><div class="doc"><p>In a tree where every node is <a href="Cairn.Layout.Bridge.html#Cairn.Layout.Good"><code>Good</code></a> and the root is inside its clip, each control's rect
 is inside its clip.</p>
 </div>
 </section>
 <section class="decl" id="Cairn.Layout.layout_good" data-line="372">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.layout_good"><span class="ns">Cairn.Layout.</span>layout_good</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Bridge.lean:372</span></div>
-<pre class="sig"><b class="nm">layout_good</b> {m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>} {w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>} {n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>}
+<pre class="sig"><b class="nm">layout_good</b> {m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>} {w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>} {n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>}
   (hp : Pressable w (layout m w n)) : Laid.Everywhere <a href="Cairn.Layout.Bridge.html#Cairn.Layout.Good" title="Cairn.Layout.Good">Good</a> (layout m w n)</pre>
 </section>
 <section class="decl" id="Cairn.Layout.reaches_of_pressable" data-line="379">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.reaches_of_pressable"><span class="ns">Cairn.Layout.</span>reaches_of_pressable</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Bridge.lean:379</span></div>
-<pre class="sig"><b class="nm">reaches_of_pressable</b> {m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>} {w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>} {n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>}
-  (hp : Pressable w (layout m w n)) {t : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>}
+<pre class="sig"><b class="nm">reaches_of_pressable</b> {m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>} {w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>} {n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>}
+  (hp : Pressable w (layout m w n)) {t : <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>}
   (ht : t ∈ Runtime.targets (layout m w n)) {p : <a href="Cairn.Geometry.html#Cairn.Point" title="Cairn.Point">Point</a>} (hc : t.visible.contains p = <span title="Bool.true">true</span>) :
   Runtime.Reaches (layout m w n) t p</pre><div class="doc"><p><strong>Reaching, from layout.</strong> If the view is <a href="Cairn.Layout.Bridge.html#Cairn.Layout.Pressable"><code>Pressable</code></a>, a pointer at any point of a control's
 visible rect reaches that control.</p>
@@ -237,18 +237,18 @@ visible rect reaches that control.</p>
 </section>
 <section class="decl" id="Cairn.Layout.layoutFacts_of_pressable" data-line="387">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.layoutFacts_of_pressable"><span class="ns">Cairn.Layout.</span>layoutFacts_of_pressable</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Bridge.lean:387</span></div>
-<pre class="sig"><b class="nm">layoutFacts_of_pressable</b> {m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>} {w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>} {n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>}
-  (hp : Pressable w (layout m w n)) {t : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>}
+<pre class="sig"><b class="nm">layoutFacts_of_pressable</b> {m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>} {w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>} {n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>}
+  (hp : Pressable w (layout m w n)) {t : <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>}
   (ht : t ∈ Runtime.targets (layout m w n)) (hne : t.node.rect.nonempty) :
   Runtime.LayoutFacts (layout m w n) t</pre><div class="doc"><p><strong>The bridge.</strong> If the view is <a href="Cairn.Layout.Bridge.html#Cairn.Layout.Pressable"><code>Pressable</code></a>, every control whose rect is nonempty satisfies
 the runtime's <code>LayoutFacts</code>: its visible rect is its whole rect, and a pointer at the centre
-reaches it. So <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.hitTest_center"><code>Cairn.Runtime.hitTest_center</code></a> and <code>click_center_presses</code> apply.</p>
+reaches it. So <a href="Cairn.UI.Hit.html#Cairn.Runtime.hitTest_center"><code>Cairn.Runtime.hitTest_center</code></a> and <code>click_center_presses</code> apply.</p>
 </div>
 </section>
 <section class="decl" id="Cairn.Layout.hitTest_center_of_pressable" data-line="399">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.hitTest_center_of_pressable"><span class="ns">Cairn.Layout.</span>hitTest_center_of_pressable</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Bridge.lean:399</span></div>
-<pre class="sig"><b class="nm">hitTest_center_of_pressable</b> {m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>} {w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>} {n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>}
-  (hp : Pressable w (layout m w n)) {t : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>}
+<pre class="sig"><b class="nm">hitTest_center_of_pressable</b> {m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>} {w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>} {n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>}
+  (hp : Pressable w (layout m w n)) {t : <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>}
   (ht : t ∈ Runtime.targets (layout m w n)) (hne : t.node.rect.nonempty) :
   Runtime.hitTest (layout m w n) t.visible.center = some t.control</pre><div class="doc"><p>And so hit testing at the centre of such a control returns it.</p>
 </div>

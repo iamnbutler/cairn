@@ -22,7 +22,7 @@ the new interaction state and a list of actions, each naming a control of that t
 then hands the actions to <code>app.update</code> in order, re-runs <code>view</code> and layout, and repairs focus,
 hover and press against the new tree. The semantics are written out in docs/runtime.md.</p>
 </div>
-<p class="imports"><span class="pix muted">Imports</span> <a href="Cairn.App.html">Cairn.App</a>, <a href="Cairn.Runtime.Hit.html">Cairn.Runtime.Hit</a>, <a href="Cairn.Layout.Core.html">Cairn.Layout.Core</a>, <a href="Cairn.Runtime.World.html">Cairn.Runtime.World</a></p>
+<p class="imports"><span class="pix muted">Imports</span> <a href="Cairn.App.html">Cairn.App</a>, <a href="Cairn.UI.Hit.html">Cairn.UI.Hit</a>, <a href="Cairn.Layout.Core.html">Cairn.Layout.Core</a>, <a href="Cairn.Runtime.World.html">Cairn.Runtime.World</a></p>
 <div class="order"><span class="pix muted">Order</span> <button type="button" data-order="kind" class="on">by kind</button><button type="button" data-order="source">as in the source</button></div>
 <div id="items">
 
@@ -31,7 +31,7 @@ hover and press against the new tree. The semantics are written out in docs/runt
 <div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.Runtime.Config"><span class="ns">Cairn.Runtime.</span>Config</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:21</span></div>
 <pre class="sig"><b class="nm">Config</b> : Type</pre><div class="doc"><p>What the runtime needs besides the app: text metrics and the layout function. Layout is a
 parameter so the runtime and its theorems don't depend on one implementation.</p>
-</div><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.Runtime.Config.metrics"><pre class="sig"><b class="nm">metrics</b> : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a></pre></div><div class="member" id="Cairn.Runtime.Config.layout"><pre class="sig"><b class="nm">layout</b> : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a></pre></div><div class="member" id="Cairn.Runtime.Config.panelHeight"><pre class="sig"><b class="nm">panelHeight</b> : <span title="Int">Int</span></pre><div class="doc"><p>A panel's height for its content at a width: the content's own (hug) height, measured with that width offered (so paragraphs wrap to it).</p>
+</div><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.Runtime.Config.metrics"><pre class="sig"><b class="nm">metrics</b> : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a></pre></div><div class="member" id="Cairn.Runtime.Config.layout"><pre class="sig"><b class="nm">layout</b> : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a></pre></div><div class="member" id="Cairn.Runtime.Config.panelHeight"><pre class="sig"><b class="nm">panelHeight</b> : <span title="Int">Int</span></pre><div class="doc"><p>A panel's height for its content at a width: the content's own (hug) height, measured with that width offered (so paragraphs wrap to it).</p>
 </div></div></div>
 </section>
 <section class="decl" id="Cairn.Runtime.State" data-line="56">
@@ -80,7 +80,7 @@ description, which <code>menuSelect</code> is checked against.</p>
 </section>
 <section class="decl" id="Cairn.Runtime.fieldInfo" data-line="80">
 <div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.fieldInfo"><span class="ns">Cairn.Runtime.</span>fieldInfo</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:80</span></div>
-<pre class="sig"><b class="nm">fieldInfo</b> (t : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a>) : Option (<a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a> × <a href="Cairn.UI.Node.html#Cairn.FieldView" title="Cairn.FieldView">FieldView</a> × <a href="Cairn.Geometry.html#Cairn.Point" title="Cairn.Point">Point</a>)</pre><div class="doc"><p>A field's font, view and text origin.</p>
+<pre class="sig"><b class="nm">fieldInfo</b> (t : <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a>) : Option (<a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a> × <a href="Cairn.UI.Node.html#Cairn.FieldView" title="Cairn.FieldView">FieldView</a> × <a href="Cairn.Geometry.html#Cairn.Point" title="Cairn.Point">Point</a>)</pre><div class="doc"><p>A field's font, view and text origin.</p>
 </div>
 </section>
 <section class="decl" id="Cairn.Runtime.nearest" data-line="86">
@@ -94,13 +94,13 @@ description, which <code>menuSelect</code> is checked against.</p>
 </section>
 <section class="decl" id="Cairn.Runtime.caretAt" data-line="99">
 <div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.caretAt"><span class="ns">Cairn.Runtime.</span>caretAt</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:99</span></div>
-<pre class="sig"><b class="nm">caretAt</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (t : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a>) (p : <a href="Cairn.Geometry.html#Cairn.Point" title="Cairn.Point">Point</a>) : <span title="Nat">Nat</span></pre><div class="doc"><p>The caret boundary a click at <code>p</code> lands on: the nearest entry of the field's caret offsets,
+<pre class="sig"><b class="nm">caretAt</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (t : <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a>) (p : <a href="Cairn.Geometry.html#Cairn.Point" title="Cairn.Point">Point</a>) : <span title="Nat">Nat</span></pre><div class="doc"><p>The caret boundary a click at <code>p</code> lands on: the nearest entry of the field's caret offsets,
 measured from its <code>textOrigin</code>.</p>
 </div>
 </section>
 <section class="decl" id="Cairn.Runtime.fieldLength" data-line="104">
 <div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.fieldLength"><span class="ns">Cairn.Runtime.</span>fieldLength</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:104</span></div>
-<pre class="sig"><b class="nm">fieldLength</b> (t : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a>) : <span title="Nat">Nat</span></pre>
+<pre class="sig"><b class="nm">fieldLength</b> (t : <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a>) : <span title="Nat">Nat</span></pre>
 </section>
 <section class="decl" id="Cairn.Runtime.editOps" data-line="111">
 <div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.editOps"><span class="ns">Cairn.Runtime.</span>editOps</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:111</span></div>
@@ -110,12 +110,12 @@ page down go to the end.</p>
 </section>
 <section class="decl" id="Cairn.Runtime.replaceOps" data-line="131">
 <div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.replaceOps"><span class="ns">Cairn.Runtime.</span>replaceOps</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:131</span></div>
-<pre class="sig"><b class="nm">replaceOps</b> (t : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a>) : Option (<span title="Nat">Nat</span> × <span title="Nat">Nat</span>) → List <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a></pre><div class="doc"><p>Select <code>[a, b)</code> (clamped to the text) before an insert or composition that replaces it.</p>
+<pre class="sig"><b class="nm">replaceOps</b> (t : <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a>) : Option (<span title="Nat">Nat</span> × <span title="Nat">Nat</span>) → List <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a></pre><div class="doc"><p>Select <code>[a, b)</code> (clamped to the text) before an insert or composition that replaces it.</p>
 </div>
 </section>
 <section class="decl" id="Cairn.Runtime.focused" data-line="140">
 <div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.focused"><span class="ns">Cairn.Runtime.</span>focused</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:140</span></div>
-<pre class="sig"><b class="nm">focused</b> {S : Type} (s : State S) : Option <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a></pre><div class="doc"><p>The focused control, looked up in the tree on screen.</p>
+<pre class="sig"><b class="nm">focused</b> {S : Type} (s : State S) : Option <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a></pre><div class="doc"><p>The focused control, looked up in the tree on screen.</p>
 </div>
 </section>
 <section class="decl" id="Cairn.Runtime.leave" data-line="143">
@@ -125,7 +125,7 @@ page down go to the end.</p>
 </section>
 <section class="decl" id="Cairn.Runtime.onField" data-line="149">
 <div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.onField"><span class="ns">Cairn.Runtime.</span>onField</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:149</span></div>
-<pre class="sig"><b class="nm">onField</b> {S : Type} (s : State S) (ops : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a> → List <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a>) : List <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a></pre><div class="doc"><p>Edits to the focused field, if a field is focused.</p>
+<pre class="sig"><b class="nm">onField</b> {S : Type} (s : State S) (ops : <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a> → List <a href="Cairn.Input.html#Cairn.TextOp" title="Cairn.TextOp">TextOp</a>) : List <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a></pre><div class="doc"><p>Edits to the focused field, if a field is focused.</p>
 </div>
 </section>
 <section class="decl" id="Cairn.Runtime.keyActions" data-line="154">
@@ -139,12 +139,12 @@ page down go to the end.</p>
 </section>
 <section class="decl" id="Cairn.Runtime.tabOrder" data-line="176">
 <div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.tabOrder"><span class="ns">Cairn.Runtime.</span>tabOrder</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:176</span></div>
-<pre class="sig"><b class="nm">tabOrder</b> (laid : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>) : List <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a></pre><div class="doc"><p>Focusable controls in paint order.</p>
+<pre class="sig"><b class="nm">tabOrder</b> (laid : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>) : List <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a></pre><div class="doc"><p>Focusable controls in paint order.</p>
 </div>
 </section>
 <section class="decl" id="Cairn.Runtime.tabTarget" data-line="180">
 <div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.tabTarget"><span class="ns">Cairn.Runtime.</span>tabTarget</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:180</span></div>
-<pre class="sig"><b class="nm">tabTarget</b> {S : Type} (s : State S) (back : <span title="Bool">Bool</span>) : Option <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a></pre><div class="doc"><p>The next focusable control after the focused one (or before it, going back), wrapping;
+<pre class="sig"><b class="nm">tabTarget</b> {S : Type} (s : State S) (back : <span title="Bool">Bool</span>) : Option <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Target</a></pre><div class="doc"><p>The next focusable control after the focused one (or before it, going back), wrapping;
 the first (or last) when nothing is focused.</p>
 </div>
 </section>
@@ -158,7 +158,7 @@ the first (or last) when nothing is focused.</p>
 </section>
 <section class="decl" id="Cairn.Runtime.route" data-line="198">
 <div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Runtime.route"><span class="ns">Cairn.Runtime.</span>route</a></h3><span class="src" title="source">lean/Cairn/Runtime/Step.lean:198</span></div>
-<pre class="sig"><b class="nm">route</b> {S : Type} (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (s : State S) :
+<pre class="sig"><b class="nm">route</b> {S : Type} (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (s : State S) :
   <a href="Cairn.Input.html#Cairn.Event" title="Cairn.Event">Event</a> → State S × List <a href="Cairn.Input.html#Cairn.Action" title="Cairn.Action">Action</a></pre><div class="doc"><p>Read one event against the tree on screen. Returns the new interaction state (<code>app</code> and
 <code>laid</code> untouched) and the actions to deliver, in order.</p>
 </div>

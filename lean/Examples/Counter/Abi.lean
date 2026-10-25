@@ -3,7 +3,7 @@ module
 public import Examples.Counter
 public import Cairn.Text.Host
 public import Cairn.Runtime.Abi
-public import Cairn.Frame.Boundary
+public import Cairn.Abi
 
 /-! # Counter's v1 exports
 

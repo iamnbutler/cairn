@@ -446,12 +446,12 @@ the kind it answers, once. And the runtime's tables still agree with the book at
 </section>
 <section class="decl" id="Cairn.Runtime.route_reply" data-line="617">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Runtime.route_reply"><span class="ns">Cairn.Runtime.</span>route_reply</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Runtime/WorldProofs.lean:617</span></div>
-<pre class="sig"><b class="nm">route_reply</b> {S : Type} (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (s : State S) (id : <span title="Nat">Nat</span>)
+<pre class="sig"><b class="nm">route_reply</b> {S : Type} (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (s : State S) (id : <span title="Nat">Nat</span>)
   (r : <a href="Cairn.Effects.html#Cairn.Reply" title="Cairn.Reply">Reply</a>) : (route m s (Event.reply id r)).snd = []</pre>
 </section>
 <section class="decl" id="Cairn.Runtime.route_subEvent" data-line="620">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Runtime.route_subEvent"><span class="ns">Cairn.Runtime.</span>route_subEvent</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Runtime/WorldProofs.lean:620</span></div>
-<pre class="sig"><b class="nm">route_subEvent</b> {S : Type} (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (s : State S) (id : <span title="Nat">Nat</span>)
+<pre class="sig"><b class="nm">route_subEvent</b> {S : Type} (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (s : State S) (id : <span title="Nat">Nat</span>)
   (ev : <a href="Cairn.Effects.html#Cairn.SubEvent" title="Cairn.SubEvent">SubEvent</a>) : (route m s (Event.subEvent id ev)).snd = []</pre>
 </section>
 <section class="decl" id="Cairn.Runtime.step_reply" data-line="625">

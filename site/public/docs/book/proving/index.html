@@ -154,7 +154,7 @@ real byte encoding:</p>
 #guard (st (three ++ [.pointerExit, .key .tab {}, .key .tab {}, .insertText <span class="str">" "</span>])).count == 0
 <span class="cm">-- The frame through the v1 boundary carries both controls, and the count as text.</span>
 #guard ((decodeFrame (frameBytes Frame.boundary (run three))).map <span class="kw">fun</span> f =&gt;
-  f.ax.toList.filterMap (·.control)) == some [incrementRef, resetRef]</code></pre><figcaption><code>lean/Examples/Counter/Tests.lean</code>, lines 27–43</figcaption></figure>
+  f.ax.toList.filterMap (·.control)) == some [incrementRef, resetRef]</code></pre><figcaption><code>lean/Examples/Counter/Tests.lean</code>, lines 28–44</figcaption></figure>
 <h2 id="the-rules">The rules</h2>
 <p>These hold for every proof that counts as evidence, and <code>make check</code> enforces them:</p>
 <ul>
