@@ -22,7 +22,7 @@ are published.
 
 ## v0.2.0
 
-24 October 2026.
+24 October 2026, at commit `16b70b8`.
 
 - **Images.** `Node.image` shows a picture in a fixed box whose size layout knows before any
   pixels arrive, and the `loadImage` effect asks the host for one, from a file or an `http`/`https`
