@@ -75,7 +75,7 @@ Swift's model uses `Int32` and `UInt32` for these fields, so every Swift value f
 ```
 offset  size  field
 0       4     magic "CAFR" (43 41 46 52)
-4       2     u16 version = 7
+4       2     u16 version = 9
 6       2     u16 flags = 0
 8       4+4   surfaces: u32 count, u32 byteLength, then the surface records
 .       4+4   effects: u32 count, u32 byteLength, then the effect records
@@ -90,7 +90,10 @@ replaced the single window (size, draws, ax, text input, cursor after the header
 of surface records; version 4 added the font's width, tracking and tabular digits to the text
 record and the `paint` and `shape` draws; version 5 added the `image` draw and the `loadImage`
 request (kind 16); version 6 added the `cancelRequest` effect (7); version 7 added the window's
-minimum size to the surface record; version 8 added the `imageCache` subscription (4).
+minimum size to the surface record; version 8 added the `imageCache` subscription (4); version 9
+added the Keychain secret source (`[2, 0, 0, 0]`), `http`'s secret and captures, and the
+`forgetSecret` request (kind 17). An `upload` with no secret or an environment secret is the
+same bytes in versions 8 and 9.
 
 ### Surface records
 
@@ -291,7 +294,7 @@ Request kinds and their fields:
 | 0 | readFile | string path |
 | 1 | writeFile | string path, bytes data |
 | 2 | playSound | string name |
-| 3 | http | u32 timeoutMs, string method, string url, headers, bytes body |
+| 3 | http | u32 timeoutMs, string method, string url, headers, bytes body, secret, captures (as headers: u32 count, then each field and account) |
 | 4 | appendFile | string path, bytes data |
 | 5 | listDir | string path |
 | 6 | deleteFile | string path |
@@ -305,10 +308,13 @@ Request kinds and their fields:
 | 14 | readDefault | string domain, string key |
 | 15 | makeDir | string path |
 | 16 | loadImage | `[reload, 0, 0, 0]` (a bool), string source: a file path or an `https` URL |
+| 17 | forgetSecret | string account |
 
-An upload's `secret` is `[0, 0, 0, 0]` for none, or `[1, 0, 0, 0]` and four strings: the header
-name, the scheme written before the value (`"Bearer "`), the `KEY=value` file and the key. Only
-these names cross the wire; the host reads the value as it sends. Each part is
+A `secret` (of `http` and `upload`) is `[0, 0, 0, 0]` for none; `[1, 0, 0, 0]` and four strings
+for an environment secret: the header name, the scheme written before the value (`"Bearer "`),
+the `KEY=value` file and the key; or `[2, 0, 0, 0]` and three for a Keychain item: the header
+name, the scheme and the account. Only these names cross the wire; the host reads the value as
+it sends. Captures are names too (top-level field, account); captured values never cross. Each part is
 `[0, 0, 0, 0]` and bytes, or `[1, hasStop, 0, 0]`, u32 clip, u32 start window, u32 stop window
 (`hasStop` a bool; the stop is written as 0 and ignored when it is 0): the clip's WAV for
 those 20 ms windows.
@@ -505,13 +511,14 @@ beep
 focus CLAIM#KEY
 timer "NAME" MS | cancelTimer "NAME" | quit
 request ID readFile "PATH" | request ID writeFile "PATH" BYTES | request ID sound "NAME"
-request ID http "METHOD" "URL" timeout=MS HEADERS body=BYTES
+request ID http "METHOD" "URL" timeout=MS HEADERS body=BYTES secret=none|SECRET capture=N "FIELD" "ACCOUNT"…
 request ID appendFile "PATH" BYTES | request ID listDir "PATH" | request ID deleteFile "PATH"
 request ID frontmostApp | request ID permission CODE PROMPT
 request ID typeText PID RETURN "TEXT" | request ID forgetClip CLIP
 request ID open "TARGET" | request ID appRunning "ID" | request ID readDefault "DOMAIN" "KEY"
-request ID makeDir "PATH" | request ID loadImage RELOAD "SOURCE"
-request ID upload "METHOD" "URL" timeout=MS HEADERS secret=none|"HEADER" "SCHEME" "FILE" "NAME" parts=N PART…
+request ID makeDir "PATH" | request ID loadImage RELOAD "SOURCE" | request ID forgetSecret "ACCOUNT"
+request ID upload "METHOD" "URL" timeout=MS HEADERS secret=none|SECRET parts=N PART…
+SECRET = "HEADER" "SCHEME" "FILE" "NAME" | "HEADER" "SCHEME" keychain "ACCOUNT"
 subs N
 start ID every MS | start ID watchFile "PATH" | start ID record CLIP
 start ID globalKey CODE MODIFIER|none | start ID imageCache BYTES | stop ID

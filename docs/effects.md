@@ -129,7 +129,8 @@ inductive Request where
   | writeFile (path : String) (data : ByteArray)     -- atomic
   | playSound (name : String)
   | http (method url : String) (headers : List (String × String)) (body : ByteArray)
-      (timeoutMs : Nat)
+      (timeoutMs : Nat) (secret : Option Secret := none)
+      (capture : List (String × String) := [])     -- Secrets in the Keychain, below
   | appendFile (path : String) (data : ByteArray)    -- Yap's host effects, below
   | listDir (path : String)
   | deleteFile (path : String)
@@ -144,17 +145,24 @@ inductive Request where
   | readDefault (domain key : String)
   | makeDir (path : String)
   | loadImage (source : String) (reload : Bool)     -- Images, below
+  | forgetSecret (account : String)                 -- Secrets in the Keychain, below
 
 inductive Part where
   | bytes (b : ByteArray)
   | wav (clip start : Nat) (stop : Option Nat)       -- the clip's 20 ms windows start..<stop
 
+inductive Secret.Source where
+  | env (file name : String)                          -- the environment, then a KEY=value file
+  | keychain (account : String)                       -- a generic password item
+
 structure Secret where
-  header scheme file name : String                    -- `header: scheme ++ value of name`
+  header scheme : String                              -- `header: scheme ++ value`
+  source : Secret.Source
 
 inductive Reply where
   | done                                              -- writeFile, appendFile, deleteFile, playSound,
-                                                      -- typeText, forgetClip, openItem, makeDir
+                                                      -- typeText, forgetClip, openItem, makeDir,
+                                                      -- forgetSecret
   | bytes (data : ByteArray)                          -- readFile, readDefault
   | http (status : Nat) (headers : List (String × String)) (body : ByteArray)   -- http, upload
   | failed (fault : Fault) (message : String)          -- any request
@@ -193,14 +201,18 @@ inductive Fault where
   `https` URLs; the method is letters and `-`; header names are RFC 9110 tokens and values have
   no CR, LF or NUL (no header injection); anything else is `failed invalid` and sends nothing.
   Foundation percent-encodes characters a URL can't hold. The host follows redirects
-  (Foundation's default) and keeps no cookies or cache (an ephemeral session).
+  (Foundation's default), except for a request carrying a secret, which is answered with the
+  3xx itself so the secret's header never goes to another URL; it keeps no cookies or cache
+  (an ephemeral session). A request's `secret` and `capture` are in "Secrets in the Keychain".
 - **Quit** (`Effect.quit`) ends the app (`NSApp.terminate`), for a menu bar app's Quit item
   (docs/surfaces.md). It is not a request: there is no one to reply to.
 
 ### The host side is a table
 
 `host/Sources/CairnHost/World.swift` has one handler per request kind (`Handlers.standard`,
-keyed by the request's kind code), each a function from the request and a `reply` callback,
+and `Handlers.devices` for the kinds that reach the world's devices: `http` and `upload` (the
+network and secrets), `typeText`, `forgetClip`, `loadImage`, `forgetSecret`; keyed by the
+request's kind code), each a function from the request and a `reply` callback,
 started on a global queue; the reply goes back through `Engine.send` as a `reply` event. The
 callback is once-guarded (a handler that answers twice sends one reply), a kind with no
 handler is answered `failed invalid`, and when the app starts over (`Engine.restart`) the
@@ -416,7 +428,7 @@ secret.
 | `Sub.globalKey code modifier` | `keyDown t`, `keyUp t`, `otherKey t` events | global and local `NSEvent` monitors, `KeyWatch` (Yap's PushToTalk) | ^968 `subs.global-key` |
 | `typeText pid text ret` | `done` | activate the app, then `CGEvent`s with Unicode payloads (Yap's TextInjector) | ^969 `effects.type-text` |
 | `upload method url hs secret parts t` | as `http` | the parts spliced, the secret's header added, then `HTTP.run` | ^970 `effects.upload` |
-| the secret | | environment, then `KEY=value` file (Yap's Secrets) | ^971 `effects.secret` |
+| the secret | | environment, then `KEY=value` file (Yap's Secrets) | ^975 `effects.secret` (was ^971) |
 
 Decisions, and why:
 
@@ -447,7 +459,7 @@ Decisions, and why:
   multipart body as bytes (boundary, part headers, the model field), as Yap's
   `OpenAITranscription.body` does, and names the clip range where the file goes; the host only
   splices. The fuzzer checks that body arrives byte for byte.
-- **Secrets are read by the host as it sends, and never shown.** `Secret header scheme file name`
+- **Secrets are read by the host as it sends, and never shown.** `Secret header scheme (.env file name)`
   names where the value is: the environment variable `name` if set and not empty, else `name`'s
   line in the `KEY=value` file `file` (Yap's `Secrets.parseDotEnv`: `#` comments, `export `,
   matching quotes; a later line wins). The header sent is `header: scheme ++ value` (Yap:
@@ -470,6 +482,47 @@ Decisions, and why:
   must be in front within 600 ms, or nothing is typed (`failed other`): words in the wrong
   window are worse than none. Empty text is `failed invalid`; no app with that pid
   `failed notFound`. The typed text is not in the debug description (only its length).
+
+## Secrets in the Keychain
+
+M4's Sky signs in to a Bluesky server and keeps its session tokens. The tokens live in the
+Keychain and in the host, never in Lean (docs/goals/m4.md, "Where the secrets sit"). The host
+knows nothing about Bluesky: Lean names the items, the fields and the requests; the host stores,
+attaches and captures (`host/Sources/CairnHost/SecretEffects.swift`).
+
+| Lean asks | Reply | Host | Claim |
+|---|---|---|---|
+| `http … (secret := some ⟨h, s, .keychain a⟩)` | as `http` | the item `a`'s value in header `h: s ++ value`; no item: `failed notFound`, nothing sent | ^974 `effects.http`, ^972 |
+| `http … (capture := [(field, account), …])` | `http` with those fields `""`, or `failed invalid` | on a 2xx JSON object reply, each field's string to its item, blanked in the body | ^973 `effects.http.capture` |
+| `forgetSecret a` | `done` | deletes the item (`done` if there is none) | ^972 `effects.secret.keychain` |
+
+- **An item** is a generic password in the login keychain with service = the app's bundle
+  identifier (`cairn.<process name>` for an executable run outside a bundle) and account = the
+  name Lean gives. One item per account, never synchronized to iCloud, no access group. The
+  value is UTF-8 text. An empty account, or one with NUL, is `failed invalid`.
+  `Secret.bearer a` is `Authorization: Bearer <item a>`.
+- **A missing item is how an app learns there is no session**: a request whose secret item is
+  missing answers `failed notFound` without sending anything. At launch, Sky asks for a call
+  that needs the access token; `notFound` means signed out.
+- **Capture** applies only to a reply with a 2xx status whose body is a JSON object (the whole
+  body, UTF-8, as `JSONSerialization` reads it). Each `(field, account)` names a *top-level*
+  member: it must be there exactly once and be a string, and its decoded value is written to
+  `account`. The body Lean receives is the server's, byte for byte, except that each captured
+  member's value is written `""` (the key, the other members, nested objects of the same name,
+  whitespace and order are untouched). All or nothing: a body that isn't a JSON object, or a
+  listed field that is missing, repeated or not a string, is `failed invalid` and writes no
+  item; a failed write puts back what the items held before (`failed` with the store's fault).
+  Several captures can name one field (it is written to each account) or one account (the last
+  one listed wins). A reply outside 2xx, or a failure, passes through as it came and writes
+  nothing. Only the listed members are blanked: the same value elsewhere in the body would
+  reach Lean, which is why capture is for fields a server sends once (Bluesky's `accessJwt`
+  and `refreshJwt` in `createSession` and `refreshSession`).
+- **`forgetSecret a`** deletes the item: Sign Out. `done` also when there was none.
+- **Never shown.** A value is in no reply, failure message, frame, event, dump or debug
+  description (`DebugJSON` shows `secret <header name>` and `capture <count>`); the trusted
+  fuzzer plants markers and searches every one of them (docs/fuzz.md).
+- **Not in this layer:** when to refresh, what to retry and when to sign out are Lean's
+  (`cairn_atproto`, #207). The host never reads a token to decide anything.
 
 ### Permissions
 
@@ -660,7 +713,7 @@ Each kind of host effect is an `assume` claim naming a check of the trusted-base
 | ^910 | `readFile` replies with the file's bytes, or `failed` | `effects.read-file` |
 | ^911 | `writeFile` is atomic, and replies `done` only when the bytes are there | `effects.write-file` |
 | ^912 | `playSound` starts a known sound and refuses an unknown one | `effects.sound` |
-| ^913 | `http` sends the request as given and returns the response as received | `effects.http` |
+| ^974 | `http` sends the request as given, with its secret header, and returns the response as received (^913 retired) | `effects.http` |
 | ^914 | the host answers every request exactly once, with its id | `effects.reply-once` |
 | ^915 | `every ms` ticks while started and never after it is stopped | `subs.every` |
 | ^960 | `appendFile` adds exactly the bytes at the end, or fails and adds nothing | `effects.append-file` |
@@ -676,7 +729,9 @@ Each kind of host effect is an `assume` claim naming a check of the trusted-base
 | ^1011 | the image cache reports every image it drops, after it is gone | `images.cache` |
 | ^969 | `typeText` types exactly the text into that app, or nothing | `effects.type-text` |
 | ^970 | `upload` sends the body assembled from its parts, with the secret in its header | `effects.upload` |
-| ^971 | a secret is read from the environment or its file, and never shown | `effects.secret` |
+| ^975 | an environment secret is read from the environment or its file, and never shown (^971 retired) | `effects.secret` |
+| ^972 | the Keychain keeps what it was given for this app | `effects.secret.keychain` |
+| ^973 | captured reply fields go to the Keychain and never to Lean | `effects.http.capture` |
 | ^1000 | `openItem` opens exactly the URL or existing file it names | `effects.open-item` |
 | ^1001 | `appRunning` answers whether an app with that bundle id runs | `effects.app-running` |
 | ^1002 | `readDefault` answers the default's value as text | `effects.read-default` |
@@ -687,5 +742,5 @@ Each kind of host effect is an `assume` claim naming a check of the trusted-base
 | ^1009 | `cancelRequest` stops a running request's work; it is still answered once | `effects.cancel` |
 
 The new records are also covered by ^901 and ^902 (the Swift codecs against Lean's), whose
-generators now produce them. The suites (`clock`, `world`, `files`, `http`, `sound`, `fileops`, `system`, `audio`, `input`, `upload`, `image`, `cancel` in
+generators now produce them. The suites (`clock`, `world`, `files`, `http`, `sound`, `fileops`, `system`, `audio`, `input`, `upload`, `image`, `cancel`, `secrets` in
 `host/Tests/CairnFuzzTrusted`) are described in docs/fuzz.md.

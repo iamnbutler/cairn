@@ -6,7 +6,7 @@ entries in the section of the workstream that introduces the assumption.
 
 Items marked **Fuzzed** are also checked by the trusted-base fuzzer (`make fuzz-trusted`,
 docs/fuzz.md "Trusted base"), against Lean's proved side or an independent oracle, and are
-declared as `assume` claims ^7, ^214, ^901–^915, ^940–^944, ^960–^971 and ^1000–^1011 in `lean/Cairn/Fuzz/Trusted/Claims.lean`, each naming its
+declared as `assume` claims ^7, ^214, ^901–^915, ^940–^944, ^960–^975 and ^1000–^1011 in `lean/Cairn/Fuzz/Trusted/Claims.lean`, each naming its
 check; `build/fuzz/trusted.json` holds the evidence. Items not marked are checked only by the
 tests and reviews they list.
 
@@ -328,11 +328,16 @@ deadline, and the outcome of each request. Trusted code: `host/Sources/CairnHost
 - **Fuzzed** (^912 `effects.sound`): every system sound name resolves; any other name is
   `failed notFound`, answered once. Playing is checked only with `CAIRN_FUZZ_SOUND=1` (it is
   audible). That the sound is actually heard is not checked.
-- **Fuzzed** (^913 `effects.http`): against a `URLProtocol` stub, the method, URL (as
+- **Fuzzed** (^974 `effects.http`, which reissues the retired ^913 now that `http` carries a
+  secret and captures): against a `URLProtocol` stub, the method, URL (as
   Foundation parses it), headers and body arrive as given; status, headers (sorted) and body
   come back exactly; connection failures are `network`, a silent server `timeout` after the
   requested time; bad schemes, methods, header names and CR/LF/NUL in values are `invalid`
-  and send nothing (no header injection). Not covered: real TLS, redirects, proxies, HTTP/2
+  and send nothing (no header injection). With a secret (environment or Keychain), the header
+  is `scheme ++ value`; a missing one is `notFound` and one with CR, LF or NUL `invalid`, neither
+  sent; a redirect is followed without a secret and answered as the 302 with one, so the
+  secret never reaches the other URL (the stub redirects to another host; removing the
+  host's redirect refusal makes this check fail). Not covered: real TLS, proxies, HTTP/2
   specifics; those are Foundation's.
 - **Fuzzed** (^914 `effects.reply-once`): with handlers that answer zero to three times, from
   other threads, late, every request is answered at most once and, when its handler answers,
@@ -579,9 +584,10 @@ installs no monitor, types into no app and reads no real secret.
   those milliseconds; Yap has the same window). Not checked live: nothing types into another
   app from a test.
 - **Fuzzed** (^970 `effects.upload`): the server receives the parts in order with each WAV
-  spliced in and the secret header; failures send nothing. **Also assumed:** what ^913 assumes
+  spliced in and the secret header; failures send nothing. **Also assumed:** what ^974 assumes
   of `HTTP.run`.
-- **Fuzzed** (^971 `effects.secret`): the dotenv reader against files of known meaning;
+- **Fuzzed** (^975 `effects.secret`, which reissues the retired ^971 for environment secrets
+  now that a secret can also be a Keychain item, below): the dotenv reader against files of known meaning;
   environment first; the value in no reply, message or debug description. **Also assumed:**
   the environment and the file are the person's (anyone who can write them can choose the key);
   the file should be mode 600 in a 700 directory, as Yap's is; the host doesn't check.
@@ -589,6 +595,99 @@ installs no monitor, types into no app and reads no real secret.
   microphone, an `NSMicrophoneUsageDescription` in the bundle's Info.plist and the
   `com.apple.security.device.audio-input` entitlement under the hardened runtime. Each fails
   with an ordinary `failed denied` without its permission, and none of them prompts.
+
+## Secrets in the Keychain (M4)
+
+A request's secret header can come from a Keychain item, a 2xx JSON reply's top-level string
+fields can be captured into items and blanked before Lean sees the body, and `forgetSecret`
+deletes an item (docs/effects.md, "Secrets in the Keychain"; #205). Trusted code:
+`host/Sources/CairnHost/SecretEffects.swift` (`SecretStore`, `KeychainStore`, `MemoryStore`,
+`JSONCapture`, `SecretHTTP`, `ForgetSecret`), `SecretSource.resolve` and `header` in
+`UploadEffects.swift`, `HTTP.run`'s redirect refusal in `World.swift`, and under them
+Security.framework's `SecItem*` calls and `JSONSerialization`. The fuzz suite is `secrets`
+(`host/Tests/CairnFuzzTrusted/SecretsSuite.swift`).
+
+### The Keychain keeps what it was given for this app (`assume`, ^972)
+
+**Statement.** As the claim says: reading an account gives exactly the value last written to it
+until it is deleted, one account's write changes no other, `forgetSecret` deletes and answers
+`done` (also when there was nothing), and a request whose item is missing answers `notFound`
+without sending.
+
+**Scope.** One generic password item per account, service = the app's bundle identifier
+(`cairn.<process name>` outside a bundle), in the person's login keychain; never synchronized
+to iCloud (`kSecAttrSynchronizable` false); no access group. Values are UTF-8 text. One account
+per item name Lean chooses; several accounts, several apps sharing items and other platforms
+are out of scope (docs/goals/m4.md, "Not in M4").
+
+**Which keychain, and why.** The file-based login keychain, not the data-protection keychain
+(`kSecUseDataProtectionKeychain` false). The data-protection keychain needs the app signed with
+a team identifier and a keychain access group (`keychain-access-groups` /
+`application-identifier` entitlements, which on macOS come with a provisioning profile);
+development builds, `swift run`, the fuzzer and ad-hoc signed bundles have none, and would get
+`errSecMissingEntitlement`. The file-based keychain works for all of them. Its cost: an item's
+access list trusts the app that created it by its code signature, so a rebuilt app with a
+different signature (an ad-hoc development build) may make macOS ask the person to allow access
+to the item it made before; a Developer ID signed app (`cairn bundle --sign`) keeps its
+designated requirement across builds and is not asked. Moving to the data-protection keychain
+later is a change of `KeychainStore.query` and this entry, not of Lean.
+
+**Also assumed.** That the login keychain is unlocked while the person uses the app (macOS
+unlocks it at login); a locked or denied keychain is `failed denied` (or `other`, with
+Security's status) rather than a value. That nothing else writes the app's items. That a value
+written is not readable by other apps without the person's consent (the keychain's access list:
+Apple's, not checked).
+
+**Finding.** The live check found the file-based keychain answering success to `SecItemUpdate`
+with empty data while keeping the old value; `KeychainStore.write` now deletes and re-adds the
+item for an empty value.
+
+**Evidence.**
+- **Fuzzed** (`effects.secret.keychain`): random writes (generated text: ASCII, edge Unicode,
+  quotes, backslashes, empty values, values of 500–3000 characters), reads, overwrites,
+  deletes and `forgetSecret` over three accounts, against a dictionary model, on the in-memory
+  store and on the **live login keychain** under a throwaway service
+  (`dev.cairn.fuzz-trusted.keychain.<pid>.<random>`), every account checked at the end and
+  each case deleting the items it made and checking they're gone; the live items' attributes
+  (service, account, not synchronizable, no access group). Through the world with a stub
+  server: a Keychain secret's value is sent as `scheme ++ value`, a missing item is `notFound`
+  and reaches no server, `forgetSecret` answers `done` twice; the value is in no reply, event
+  bytes, event dump or debug description. The live part is skipped when `CI` is set (a CI
+  runner has no unlocked login keychain, and nothing may prompt there) or with
+  `CAIRN_FUZZ_KEYCHAIN=0`; the counter `liveSkipped:<reason>` says so, as ^968's "not checked
+  live" does. The fuzzer never reads, prints or deletes an item outside its own service.
+
+### Captured reply fields go to the Keychain and never to Lean (`assume`, ^973)
+
+**Statement.** As the claim says: on a 2xx JSON object reply, each listed top-level string
+field is stored exactly and blanked to `""` in the body Lean gets, every other byte as sent; a
+missing, repeated or non-string field or a body that isn't an object is `invalid` and writes
+nothing; a failed write restores the items; other replies pass through.
+
+**What is not assumed.** That Lean holds no token is by construction: no Lean value ever
+receives one (the reply's body has `""` where it was), and `cairn_atproto` and Sky prove what
+they do with the names (M4, #207, #209).
+
+**Also assumed.** The JSON is read twice, by `JSONSerialization` (is it a valid object?) and by
+`JSONCapture.scan` (where is each top-level member?); the scan trusts the first's validation
+and both must agree on what a top-level member is. A captured value that also appears
+elsewhere in the body (another field, a nested object) is not looked for and would reach Lean;
+capture is for values a server sends once. Bodies in UTF-16 or UTF-32 that `JSONSerialization`
+accepts are refused by the scan (`invalid`).
+
+**Evidence.**
+- **Fuzzed** (`effects.http.capture`): random JSON objects (shuffled members, random
+  whitespace, keys and values with `\u` escapes and surrogate pairs, nested objects that reuse
+  the captured names, decoy strings, numbers past 64 bits) whose captured fields hold planted
+  markers, served by a `URLProtocol` stub with 2xx statuses; variants with a field missing,
+  repeated, or not a string, bodies that aren't objects (arrays, truncated, trailing garbage,
+  a bare string), statuses outside 2xx, no captures, and a store that fails one write. A valid
+  capture stores each marker exactly and the body Lean gets equals the generated body with
+  just those values written `""`; every other variant fails `invalid` (or `other` for the
+  failed write) or passes through, with the store as it was. No marker (whole, or its
+  unescaped core) is in any reply, failure message, the events' bytes (what Lean decodes), the
+  event dump or the request's debug description. Mutations checked by hand: not blanking, or
+  storing one capture too few, fail the check.
 
 ## Surfaces: menus and overlay panels (workstream S)
 

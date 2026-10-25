@@ -49,6 +49,27 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
 - **Its evidence.** What a claim reads as depends on the build that computed it. See
   [how much to trust a claim](/docs/reference/trust/).
 
+## v0.3.0 (unreleased)
+
+The next minor version: it retires claims and changes the frame format.
+
+- **Secrets in the Keychain** ([#205](https://github.com/iamnbutler/cairn/issues/205)). A
+  `Secret` now has a `source`: `.env file name` (what `Secret` was before) or `.keychain
+  account`, a generic password item under the app's bundle identifier. `Request.http` gains
+  `secret` and `capture` (both defaulted, so `.http m u hs body t` still builds the same
+  request): a 2xx JSON object reply's listed top-level string fields are written to Keychain
+  items and blanked before Lean sees the body. `Request.forgetSecret account` deletes an item.
+  A request carrying a secret no longer follows redirects. New `assume` claims ^972 (the
+  Keychain store) and ^973 (capture); ^913 and ^971 are retired as ^974 and ^975.
+- **Frame format version 9.** Adds the Keychain secret (`[2, 0, 0, 0]`), `http`'s secret and
+  captures, and request kind 17. A host and a Lean library must both be at 9; an `upload` with
+  no secret or an environment secret is encoded as before.
+- **Upgrading.** Write an environment secret as
+  `{ header, scheme, source := .env file name }` (Yap's `apiKey`; its `upload` is unchanged
+  otherwise). A pattern that lists `http`'s five arguments (`| .http m u hs b t =>`) now matches
+  only requests with no secret and no captures: write `| .http m u hs b t _ _ =>` or
+  `| .http m u ..`. Exhaustive matches on `Request` need a `forgetSecret` case.
+
 ## v0.2.5
 
 25 October 2026, at commit `ea05c5e`.
