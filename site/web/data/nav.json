@@ -20,7 +20,6 @@
 			{ "page": "reference/claims" },
 			{ "page": "reference/evidence" },
 			{ "page": "reference/trust" },
-			{ "page": "reference/errors" },
 			{ "page": "reference/releases" }
 		]
 	},
