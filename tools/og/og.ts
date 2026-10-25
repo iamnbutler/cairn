@@ -1,6 +1,6 @@
 // Link previews: the Open Graph and Twitter tags every page carries, and the card each one shows.
 // The docs, the homepage and /milestones/ write their own tags and cards (site/web, built by
-// bongo). These tags are stamped by tools/site/pages.ts into the built copies of the maps and the
+// bongo). These tags are stamped by tools/site/pages.ts into the built copies of the
 // API reference, and the package pages (site/registry.js) write them in the Worker. bongo draws
 // every card, og/<name>.png, with the same satori partial (site/web/lib/og.ts lists them).
 

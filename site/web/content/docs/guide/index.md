@@ -25,8 +25,7 @@ needs are one line, and the guide shows where the longer ones come from.
    screen.
 5. [Effects and the host](/docs/guide/effects/): time, timers, files and other requests, and
    subscriptions.
-6. [Shipping](/docs/guide/shipping/): checking, bundling and signing an app, and publishing its
-   map.
+6. [Shipping](/docs/guide/shipping/): checking, bundling and signing an app, and publishing it.
 
 ## What Cairn is for
 

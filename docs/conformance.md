@@ -11,7 +11,7 @@ make conformance APP=Basics N=50 LEN=20 SEED=7
 
 The run writes:
 
-- `build/conformance/<App>.json`, which the map reads (docs/map.md);
+- `build/conformance/<App>.json`, which `cairn doc` reads (`tools/map/evidence.ts`);
 - `build/conformance/<App>/report.md`, with a shrunk repro for each distinct failure;
 - `failures.jsonl`;
 - the app's log.
@@ -189,11 +189,11 @@ nothing. That is TodoMVC decision T33 (docs/plan.md), still open, and where
 `Runtime.click_presses`'s hypothesis fails. The generator lists such a step under `known`
 (`"T33: …"`), not `findings`: the app did what the model does, so the walk passes. The driver
 counts them in the results file's `known` and in the claim's `known` and `note`, and
-`report.md` lists them under "Known: open decisions", so the map can say so.
+`report.md` lists them under "Known: open decisions", so the docs can say so.
 
 ## Results file
 
-`build/conformance/<App>.json` uses the map's shape (docs/map.md):
+`build/conformance/<App>.json` uses the shape `tools/map/evidence.ts` reads:
 
 ```json
 {"runs": 1000, "commit": "2e63d83",
@@ -208,8 +208,8 @@ counts them in the results file's `known` and in the claim's `known` and `note`,
 | invariant | every step checked | anything failed: it passes only when every state the app reached was the model's, where the invariant is proved |
 
 A claim with known outcomes (above) has `known` (`{"T33": 1}`) and, when it passed, a `note`
-naming the decision and the first walk and step. Places and assumptions aren't run; the map shows them as `n/a`. The extra fields (`sequences`,
-`steps`, `probes`, `triggers`, `timing`, `plainUi`) are for people. The map reads only `claims`.
+naming the decision and the first walk and step. Places and assumptions aren't run; the docs show them as `n/a`. The extra fields (`sequences`,
+`steps`, `probes`, `triggers`, `timing`, `plainUi`) are for people. `cairn doc` reads only `claims`.
 
 ## Shrinking
 

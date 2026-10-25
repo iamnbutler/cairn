@@ -105,7 +105,7 @@ package of its own that requires the checkout by path.
 | Command | What it does |
 |---|---|
 | `cairn fuzz [<target>…] [--iterations N] [--seed S] [--steps K] [--out DIR] [-v]` | `lake build fuzz`, then the fuzzer (docs/fuzz.md) on every machine `--list` names, or the ones given, into `build/fuzz/<target>.json`. The package declares the executable: `lean_exe fuzz` whose root imports the app, `Cairn.Fuzz.Collect` and `Cairn.Fuzz.Main` and defines `main` over `fuzz_targets%` (test/fixture/lean/FuzzMain.lean) |
-| `cairn claims [<module>…] [--out FILE]` | `lake exe claims` on the package's `libs`, or the modules given: every claim as JSON, on stdout or into the file |
+| `cairn claims [<module>…] [--ledger] [--out FILE]` | `lake exe claims` on the package's `libs`, or the modules given: every claim as JSON, on stdout or into the file. `--ledger` exports exactly the package's own claims (its scope), as `cairn publish` sends them |
 | `cairn bench [--product P]` | a release build, then the app's own `<product> --bench` with `LEAN_ABORT_ON_NONLINEAR=1`. The host decides what it measures |
 | `cairn size [--product P]… [--limit BYTES]` | a release build of each executable with a link map, stripped into `build/size/` and attributed by Cairn's `tools/size/size.ts` (Lean runtime, Cairn, the app's `libs`, Swift host, shaders); fails over the limit, 5,000,000 bytes by default (bench/size.md) |
 | `cairn conformance [--module M] [--product P] [--n N] [--length L] [--seed S]` | the model replayed on the running app (docs/conformance.md): links the generator from the module `M`, by default `<App>.Conformance` with `<App>` the first of `libs`, with the app's merged library and the host's Core Text metrics, then runs Cairn's driver. Writes `build/conformance/<App>.json` and `build/conformance/<App>/report.md`. The app's window opens while it runs |
@@ -139,12 +139,16 @@ dependency at its resolved commit. A miss isn't an error; Lake builds locally. S
    has. The registry serves all of a package's packs over git's dumb HTTP protocol, so a clone
    gets the whole history.
 4. `PUT /api/v1/packages/<owner>/<name>/versions/<version>` with `Authorization: Bearer
-   <token>`, as every write below. The body is five sections, each a
-   little-endian u32 length and its bytes: metadata JSON, pack, pack index, `claims.lock`, and
-   docs, which is always empty. The metadata's `swift` says whether the tag has a
+   <token>`, as every write below. The body is five or six sections, each a
+   little-endian u32 length and its bytes: metadata JSON, pack, pack index, `claims.lock`,
+   docs, which is always empty, and the claims export (`cairn claims --ledger`) when the
+   registry's `/config.json` lists `claims.json` in `publish.sections`. The export is what the
+   site's claim pages show (docs/claim-pages.md); if Lean can't produce it, `cairn publish`
+   warns and publishes without it. The metadata's `swift` says whether the tag has a
    `Package.swift` in cairn.toml's `swift` directory; the site prints a SwiftPM line only for a
    version that does. The registry checks that the pack holds the commit and that the
-   ledger keeps every earlier version's ids, and answers 400 to a non-empty docs section.
+   ledger keeps every earlier version's ids, and answers 400 to a non-empty docs section or to an
+   export that disagrees with `claims.lock`.
 5. `lake build -o outputs.jsonl`, then upload each artifact the map names
    (`PUT …/artifacts/<hash>.art`) and the map itself
    (`PUT …/build-outputs?rev=&platform=&toolchain=`). Lake's `lake cache put` only speaks S3.

@@ -1,0 +1,309 @@
+{
+ "package": "counter",
+ "version": "1.2.0",
+ "scope": "counter",
+ "modules": [
+  "Examples"
+ ],
+ "claims": [
+  {
+   "id": 1,
+   "kind": "move",
+   "title": "Increment",
+   "does": "Press Increment.",
+   "sees": "The count goes up by one.",
+   "place": 3,
+   "retired": null,
+   "module": "Examples.Counter",
+   "decl": "Examples.Counter.increment",
+   "statement": "1c77a9411d162684",
+   "statementDecls": [
+    "Examples.Counter.increment.press.post"
+   ],
+   "triggers": [
+    "press"
+   ],
+   "keyed": false,
+   "passes": [],
+   "witness": null,
+   "machine": null,
+   "check": null,
+   "pos": {
+    "line": 50,
+    "file": "lean/Examples/Counter.lean"
+   },
+   "evidence": [
+    {
+     "theorem": "Examples.Counter.increment.press.sound",
+     "role": "sound press",
+     "proved": true,
+     "extraAxioms": []
+    }
+   ]
+  },
+  {
+   "id": 2,
+   "kind": "move",
+   "title": "Reset",
+   "does": "Press Reset.",
+   "sees": "The count is zero, and Reset disappears.",
+   "place": 3,
+   "retired": null,
+   "module": "Examples.Counter",
+   "decl": "Examples.Counter.reset",
+   "statement": "5ace86b109a74bf5",
+   "statementDecls": [
+    "Examples.Counter.reset.enabled",
+    "Examples.Counter.reset.press.post"
+   ],
+   "triggers": [
+    "press"
+   ],
+   "keyed": false,
+   "passes": [],
+   "witness": null,
+   "machine": null,
+   "check": null,
+   "pos": {
+    "line": 60,
+    "file": "lean/Examples/Counter.lean"
+   },
+   "evidence": [
+    {
+     "theorem": "Examples.Counter.reset.press.sound",
+     "role": "sound press",
+     "proved": true,
+     "extraAxioms": []
+    }
+   ]
+  },
+  {
+   "id": 3,
+   "kind": "place",
+   "title": "Counter window",
+   "does": "The counter's window: a bar as long as the count, Increment, and Reset when there is something to reset.",
+   "sees": "",
+   "place": null,
+   "retired": null,
+   "module": "Examples.Counter",
+   "decl": "Examples.Counter.window",
+   "statement": "-",
+   "statementDecls": [],
+   "triggers": [],
+   "keyed": false,
+   "passes": [],
+   "witness": null,
+   "machine": null,
+   "check": null,
+   "pos": {
+    "line": 45,
+    "file": "lean/Examples/Counter.lean"
+   },
+   "evidence": []
+  },
+  {
+   "id": 4,
+   "kind": "flow",
+   "title": "Count to three",
+   "does": "Press Increment three times.",
+   "sees": "The count is three.",
+   "place": null,
+   "retired": null,
+   "module": "Examples.Counter",
+   "decl": "Examples.Counter.countToThree",
+   "statement": "8e8ea87eb87cc917",
+   "statementDecls": [
+    "Examples.Counter.countToThree.goal",
+    "Examples.Counter.countToThree.witness"
+   ],
+   "triggers": [],
+   "keyed": false,
+   "passes": [
+    1,
+    1,
+    1
+   ],
+   "witness": [
+    {
+     "trigger": "press",
+     "ref": "^1",
+     "claim": 1,
+     "key": 0,
+     "op": null
+    },
+    {
+     "trigger": "press",
+     "ref": "^1",
+     "claim": 1,
+     "key": 0,
+     "op": null
+    },
+    {
+     "trigger": "press",
+     "ref": "^1",
+     "claim": 1,
+     "key": 0,
+     "op": null
+    }
+   ],
+   "machine": "Examples.Counter.machine",
+   "check": null,
+   "pos": {
+    "line": 76,
+    "file": "lean/Examples/Counter.lean"
+   },
+   "evidence": [
+    {
+     "theorem": "Examples.Counter.countToThree.live",
+     "role": "live",
+     "proved": true,
+     "extraAxioms": []
+    },
+    {
+     "theorem": "Examples.Counter.countToThree.reaches",
+     "role": "reaches",
+     "proved": true,
+     "extraAxioms": []
+    }
+   ]
+  },
+  {
+   "id": 5,
+   "kind": "flow",
+   "title": "Start over",
+   "does": "Count up, then press Reset.",
+   "sees": "The count is back to zero and Reset is gone.",
+   "place": null,
+   "retired": null,
+   "module": "Examples.Counter",
+   "decl": "Examples.Counter.startOver",
+   "statement": "a3b193af912012c1",
+   "statementDecls": [
+    "Examples.Counter.startOver.goal",
+    "Examples.Counter.startOver.witness"
+   ],
+   "triggers": [],
+   "keyed": false,
+   "passes": [
+    1,
+    1,
+    2
+   ],
+   "witness": [
+    {
+     "trigger": "press",
+     "ref": "^1",
+     "claim": 1,
+     "key": 0,
+     "op": null
+    },
+    {
+     "trigger": "press",
+     "ref": "^1",
+     "claim": 1,
+     "key": 0,
+     "op": null
+    },
+    {
+     "trigger": "press",
+     "ref": "^2",
+     "claim": 2,
+     "key": 0,
+     "op": null
+    }
+   ],
+   "machine": "Examples.Counter.machine",
+   "check": null,
+   "pos": {
+    "line": 82,
+    "file": "lean/Examples/Counter.lean"
+   },
+   "evidence": [
+    {
+     "theorem": "Examples.Counter.startOver.live",
+     "role": "live",
+     "proved": true,
+     "extraAxioms": []
+    },
+    {
+     "theorem": "Examples.Counter.startOver.reaches",
+     "role": "reaches",
+     "proved": true,
+     "extraAxioms": []
+    }
+   ]
+  },
+  {
+   "id": 6,
+   "kind": "invariant",
+   "title": "Moves never leave a press in progress",
+   "does": "",
+   "sees": "",
+   "place": null,
+   "retired": "The runtime owns press tracking; Counter's state no longer has a pressed field, so the invariant was vacuous.",
+   "module": "Examples.Counter",
+   "decl": "Examples.Counter.retired_6",
+   "statement": "-",
+   "statementDecls": [],
+   "triggers": [],
+   "keyed": false,
+   "passes": [],
+   "witness": null,
+   "machine": null,
+   "check": null,
+   "pos": {
+    "line": 90,
+    "file": "lean/Examples/Counter.lean"
+   },
+   "evidence": []
+  },
+  {
+   "id": 7,
+   "kind": "assume",
+   "title": "The host reports clicks where they happen",
+   "does": "The host sends a pointer down and up at the logical point the person clicked, in order.",
+   "sees": "",
+   "place": null,
+   "retired": null,
+   "module": "Examples.Counter",
+   "decl": "Examples.Counter.hostClicks",
+   "statement": "-",
+   "statementDecls": [],
+   "triggers": [],
+   "keyed": false,
+   "passes": [],
+   "witness": null,
+   "machine": null,
+   "check": null,
+   "pos": {
+    "line": 94,
+    "file": "lean/Examples/Counter.lean"
+   },
+   "evidence": []
+  },
+  {
+   "id": 901,
+   "kind": "assume",
+   "title": "The Swift frame decoder agrees with Lean's",
+   "does": "For every byte buffer, the host's Frame(bytes:) accepts exactly when Lean's proved decodeFrame does, and then decodes the same frame.",
+   "sees": "",
+   "place": null,
+   "retired": null,
+   "module": "Cairn.Fuzz.Trusted.Claims",
+   "decl": "Cairn.Fuzz.Trusted.Claims.swiftFrameDecoder",
+   "statement": "-",
+   "statementDecls": [],
+   "triggers": [],
+   "keyed": false,
+   "passes": [],
+   "witness": null,
+   "machine": null,
+   "check": "frame.decode",
+   "pos": {
+    "line": 15,
+    "file": "lean/Cairn/Fuzz/Trusted/Claims.lean"
+   },
+   "evidence": []
+  }
+ ]
+}

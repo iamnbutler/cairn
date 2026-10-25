@@ -14,7 +14,7 @@ make doctest                # the doc tests alone (in make check)
 On a built tree `make doc` takes about 8 s, nearly all of it Lake checking the build and two
 environment imports; rendering takes under a second.
 
-## The decision: our own export, rendered beside the map
+## The decision: our own export, rendered with our own pages
 
 Two ways to get the rustdoc half (modules, types, functions and theorems, with doc comments,
 signatures, positions, search and cross-links):
@@ -38,14 +38,14 @@ the claims means either forking its HTML or post-processing 2,500 pages, and kee
 step with doc-gen4's releases. AGENTS.md also keeps Lean dependencies to core and Std.
 
 **(b) Our own export** walks the Lean environment, as `lake exe claims` already does, and
-`tools/doc` renders it with the map's code and style. `lake exe doc` (lean/Cairn/Doc/Export.lean,
+`tools/doc` renders it with the old map's evidence code and style. `lake exe doc` (lean/Cairn/Doc/Export.lean,
 about 250 lines) takes each declaration's doc comment (`findDocString?`), its signature
 (`ppSignature`, with the constants in it tagged so pages can link them, the way doc-gen4 does
 it), its position (`findDeclarationRanges?`), and a theorem's axioms (`collectAxioms`, as the
 audit). No dependencies, a few seconds, and output only for the package asked for.
 
-**Chosen: (b).** It fits the map: claims come from the same export and their evidence from the
-same `tools/map/evidence.ts`, so a claim reads the same on both. We control the pages, so they
+**Chosen: (b).** Claims come from the same export as the claim pages (docs/claim-pages.md),
+and their evidence from `tools/map/evidence.ts`. We control the pages, so they
 look like the site and a claim is one entry, not eleven. It costs nothing to build. What we give
 up is doc-gen4's breadth (Verso docstrings, `simp` attribute listings, `Init`/`Std` pages,
 equation lemmas, a declaration-data API for the editor); none of it is needed yet, and links to
@@ -72,17 +72,17 @@ theorem carries a chip: `proved` when it depends only on `propext`, `Classical.c
 `Quot.sound`, red with the axioms otherwise. Left out: recursors, `noConfusion`, matchers,
 equation lemmas, structure projections (they are the fields) and the methods of instances.
 
-**A claim** is the map's card, on the page of the module that declares it: its id, title, kind
+**A claim** is a card, on the page of the module that declares it: its id, title, kind
 and how it reads; `does` and `sees`; the place it is in; its **formal statement**, each
 statement declaration as written (`edit.post s op s' := s'.newField = …`); the evidence ladder
 with what each kind rests on; its proofs, linked to their declarations; a flow's witness; for a
-move, the before and after screenshots when `make map` captured them; its source and ledger
+move, the before and after screenshots when `make capture` took them; its source and ledger
 state; and, folded, the declarations the claim command generated (`newTodo.edit.sound`,
 `newTodo.info`, …), which therefore aren't listed again as loose definitions.
 
 **Anchors never change while the name does not.** A declaration's anchor is its full name
 (`Cairn.Layout.Core.html#Cairn.Layout.layout`), a field's `Type.field`, a claim's its number
-(`Examples.Todo.html#202`, the map's convention). A claim keeps its id for ever, so `#202` is
+(`Examples.Todo.html#202`, as on the claim pages). A claim keeps its id for ever, so `#202` is
 permanent; a declaration's anchor is as stable as its name.
 
 **Links.** `^N` anywhere (doc comments, `does`/`sees`, witnesses, evidence details) links to the
@@ -99,9 +99,9 @@ rank above doc text; `^212` or `212` finds the claim. `/` focuses it, arrows and
 **Private declarations** (`private`, or not `public` in a `module` file) are left out by
 default and counted on the index; `PRIVATE=1` (`--private`) shows them, marked.
 
-**Look.** The map's `style.css` plus `tools/doc/doc.css`: the night palette, Pixelify Sans for
+**Look.** `tools/map/stylesheet.ts` plus `tools/doc/doc.css`: the night palette, Pixelify Sans for
 headings and labels, a serif for prose, a monospace for code, the evidence chips. Pages load
-`/scene.js` and call `mountSprigs(main)` and `mountAnchors(main)`, as map pages do, so on the site
+`/scene.js` and call `mountSprigs(main)` and `mountAnchors(main)`, so on the site
 headings get sprigs and copyable `#` links; from disk the import fails quietly.
 
 ## Doc tests
@@ -121,15 +121,15 @@ don't exist (`MyApp.State` in `Cairn.Runtime.Abi`). Today there is one doc test,
 | Step | Command (inside `make doc`) | Output in `build/doc/<name>/` |
 |---|---|---|
 | Declarations | `lake exe doc --check <modules>` | `doc.json`: modules (doc comments, imports), declarations (kind, signature, doc, line, private, fields, constructors, instance, axioms), each claim's statement declarations as binders and body, the doc test count |
-| Claims | `lake exe claims <modules>` | `claims.json`, as for the map |
+| Claims | `lake exe claims <modules>` | `claims.json` |
 | Pages | `bun tools/doc/cairn-doc.ts` | `dist/` |
 
 For `APP=Todo` the modules are `Examples.Todo` and every file under `lean/Examples/Todo/`; for
 `PKG=Cairn`, `DOC_CAIRN` in the Makefile (`Cairn`, `CairnAll`, `Cairn.Claims`, `Cairn.Fuzz` and the trusted
 base's modules; the tool executables `Cairn.Claims.Export`, `Ledger`, `Tool`, `Tests` and
-`Cairn.Doc.Export` are left out). Evidence is whatever `build/` already has, as on the map:
-`build/fuzz/<App>.json`, `build/fuzz/trusted.json`, `build/conformance/<App>.json`, and the map's
-capture in `build/map/<App>/capture/` for screenshots. Proved comes from the export's own axiom
+`Cairn.Doc.Export` are left out). Evidence is whatever `build/` already has:
+`build/fuzz/<App>.json`, `build/fuzz/trusted.json`, `build/conformance/<App>.json`, and
+`make capture`'s screenshots in `build/map/<App>/capture/`. Proved comes from the export's own axiom
 check, so `make doc` doesn't need the whole-package audit (60 s).
 
 Sizes on this build: Cairn 59 modules with pages, 2,124 declarations (1,924 listed: the public
@@ -145,7 +145,7 @@ ones not generated by a claim command), 665 theorems, 40 claims, 2.2 MB in 66 fi
 - **Hosting per version.** `/docs/api/` is main's. A package's docs per version
   (`/docs/<name>/<version>/`) will be built by the registry from the published source, as
   docs.rs does; publishers never upload them (docs/cli.md). Until then that path is a placeholder.
-- **The map and the docs are still two outputs.** They share the claim export, the evidence
-  model and the style; a claim's map page and its doc entry could become one page.
+- **The claim pages and the docs are still two outputs.** They share the claim export; a
+  claim's page and its doc entry could become one page.
 - **Signatures** are pretty-printed at 92 columns, with no per-binder layout or implicit-argument
   folding as doc-gen4 has.

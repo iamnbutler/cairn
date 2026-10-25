@@ -6,7 +6,7 @@ import CoreText
 import Foundation
 import ImageIO
 
-/// Headless screenshots for the map (tools/map, docs/map.md).
+/// Headless screenshots of an app (`make capture`, docs/claim-pages.md).
 ///
 /// Runs an app's real `step` and `frame` on a Lean thread, replays scripted sequences of
 /// actions as pointer events at each control's centre (found in the frame's accessibility
@@ -20,7 +20,7 @@ import ImageIO
 ///
 /// and is then run as `<App> --map-capture <script.json> <out dir>`.
 public enum MapCapture {
-    /// The script tools/map writes: sequences of actions from the initial state.
+    /// The script tools/map/capture-script.ts writes: sequences of actions from the initial state.
     struct Script: Decodable {
         var scale: Float?
         var sequences: [Sequence]

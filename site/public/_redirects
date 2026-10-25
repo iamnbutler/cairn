@@ -2,3 +2,10 @@
 /docs/book/* /docs/guide/:splat 301
 /docs/use/* /docs/reference/:splat 301
 /docs/master/* /docs/internals/:splat 301
+# The maps were replaced by the packages' claim pages on 2026-10-24. A fragment (#202) carries
+# over: each claim is a row with its id on its place's page.
+/map/counter/* /packages/cairn/claims/3/ 301
+/map/basics/* /packages/cairn/claims/106/ 301
+/map/todo/* /packages/cairn/claims/201/ 301
+/map/trusted/* /packages/cairn/claims/ 301
+/map/* /packages/cairn/claims/ 301

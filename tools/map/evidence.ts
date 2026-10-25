@@ -1,6 +1,6 @@
-// The evidence model: what the build says about each claim (docs/map.md, "Evidence").
+// The evidence model: what the build says about each claim (the evidence ladder, site/web/content/docs/reference/evidence.md), as `cairn doc` shows it.
 //
-// Pure: inputs in, one Row per claim out. Every status on the map comes from here.
+// Pure: inputs in, one Row per claim out. Every status `cairn doc` shows comes from here.
 
 // ---- Inputs ------------------------------------------------------------------------------------
 

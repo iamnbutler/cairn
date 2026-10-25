@@ -1,7 +1,6 @@
 /* The palette, type and stepped corners every page shares: the homepage and /milestones/
-   (site.css), the docs and package pages (docs/docs.css), and the maps and API reference, whose
-   tools put this file at the top of the style.css they write (tools/map/cairn-map.ts,
-   tools/doc/cairn-doc.ts). */
+   (site.css), the docs and package pages (docs/docs.css), and the API reference, whose
+   tool puts this file at the top of the style.css it writes (tools/doc/cairn-doc.ts). */
 :root {
 	--bg: #161937;
 	--fg: #e6e2f6;

@@ -147,23 +147,42 @@ extension Commands {
 
     // MARK: claims
 
-    /// `cairn claims [<module>…] [--out FILE]`: every claim of the package's `libs` (or the modules
-    /// named) as JSON, `lake exe claims`, for the map, the conformance driver and `cairn doc`.
+    /// `cairn claims [<module>…] [--ledger] [--out FILE]`: every claim of the package's `libs` (or
+    /// the modules named) as JSON, `lake exe claims`, for the conformance driver and `cairn doc`.
+    /// With `--ledger`, every claim of the package's own scope that its claim roots reach, as its
+    /// ledger counts them: what `cairn publish` sends and the site's claim pages render.
     public func claims(_ args: [String]) throws(CairnError) {
-        let a = try Arguments(args, options: ["--out"], usage: "usage: cairn claims [<module>…] [--out FILE]")
+        let a = try Arguments(args, options: ["--out"], flags: ["--ledger"], usage: "usage: cairn claims [<module>…] [--ledger] [--out FILE]")
         let project = try project()
-        let modules = a.positionals.isEmpty ? project.documented : a.positionals
-        guard !modules.isEmpty else { throw CairnError("cairn.toml lists no `libs`; name the modules") }
-        let env = importEnv()
-        try shell.run(["lake", "build"], in: project.lean, env: env)
-        let json = try shell.capture(["lake", "exe", "claims"] + modules, in: project.lean, env: env)
+        let json: Data
+        if a.flags.contains("--ledger") {
+            json = try ledgerClaims(project, roots: a.positionals)
+        } else {
+            let modules = a.positionals.isEmpty ? project.documented : a.positionals
+            guard !modules.isEmpty else { throw CairnError("cairn.toml lists no `libs`; name the modules") }
+            let env = importEnv()
+            try shell.run(["lake", "build"], in: project.lean, env: env)
+            json = try shell.capture(["lake", "exe", "claims"] + modules, in: project.lean, env: env).stdout
+        }
         if let out = a.value("--out") {
             let url = path(out)
             try mkdir(url.deletingLastPathComponent())
-            do { try json.stdout.write(to: url) } catch { throw CairnError("couldn't write \(url.path)") }
+            do { try json.write(to: url) } catch { throw CairnError("couldn't write \(url.path)") }
         } else {
-            FileHandle.standardOutput.write(json.stdout)
+            FileHandle.standardOutput.write(json)
         }
+    }
+
+    /// The package's claims export (docs/claim-pages.md): `lake exe claims --scope <name>` over
+    /// its claim roots, or the roots given. Builds first, with the artifact cache off, since the
+    /// export imports modules from the build directory.
+    func ledgerClaims(_ project: Project, roots: [String] = []) throws(CairnError) -> Data {
+        let roots = roots.isEmpty ? project.claimRoots : roots
+        guard !roots.isEmpty else { throw CairnError("cairn.toml lists no `libs`; name the modules") }
+        let env = importEnv()
+        try shell.run(["lake", "build"] + roots, in: project.lean, env: env)
+        return try shell.capture(["lake", "exe", "claims", "--scope", project.manifest.name] + roots.flatMap { ["--root", $0] },
+                                 in: project.lean, env: env).stdout
     }
 
     // MARK: bench

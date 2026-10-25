@@ -23,7 +23,7 @@ const LINKS = [
   ["milestones", "/milestones/", "Milestones"],
   ["docs", "/docs/", "Docs"],
   ["packages", "/packages/", "Packages"],
-  ["maps", "/docs/evidence/", "Maps"],
+  ["claims", "/docs/evidence/", "Claims"],
 ];
 const GITHUB = `<a class="gh" href="https://github.com/iamnbutler/cairn"><img src="/github.svg" alt="">GitHub</a>`;
 

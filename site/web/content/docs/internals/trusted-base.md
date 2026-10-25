@@ -12,8 +12,8 @@ Swift host, AppKit, Core Text, Metal and the GPU. That code is the **trusted bas
 Cairn's rule is to keep it small and to write it down. Each piece of it is an **assumption**: a
 statement about the world that is taken as given, stated as an `assume` claim with an id, and
 checked another way, most often by a fuzzer that runs the real host code against Lean's proved
-side or an independent oracle. The [trusted base's map](/map/trusted/) lists every assumption
-with its evidence.
+side or an independent oracle. Cairn's [claim pages](/packages/cairn/claims/#assumptions) list every
+assumption with its evidence.
 
 ## How an assumption is checked
 
@@ -21,8 +21,8 @@ There are three kinds of check, and an assumption usually has more than one.
 
 - **Fuzzed.** The trusted-base fuzzer (`make fuzz-trusted`, and a short run in `make check`) runs
   random cases through the real host code and compares the result with Lean's proved code or
-  another oracle. Each fuzz check names the assumption it is evidence for, so its result lands on
-  the map as **fuzzed**. A failure prints the command that replays it.
+  another oracle. Each fuzz check names the assumption it is evidence for, so its result shows
+  as **fuzzed** in `cairn doc`. A failure prints the command that replays it.
 - **Tested.** Swift unit tests, golden images, the frame corpus and each app's self test
   (`make selftest`), which drives the host headlessly through its real threads.
 - **Reviewed.** Some things, like the table that maps AppKit key bindings to Lean events, are

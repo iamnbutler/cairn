@@ -274,9 +274,12 @@ check passes. So: bump the version in `cairn.toml` first, then retire. The rule 
 `Cairn.Claims.Release`, with tests in `Cairn.Claims.Tests`. The registry checks the same rule
 when a version is published (nextpm's cairn kind), against the version before it.
 
-## Export for the map
+## The claims export
 
-`lake exe claims Examples.Counter` (any modules; submodules included) prints JSON:
+`lake exe claims Examples.Counter` (any modules; submodules included) prints JSON. `lake exe
+claims --scope cairn` prints exactly one package's claims instead, from the modules it builds
+(`--root M`, repeatable), with `"scope"` added: that is what `cairn claims --ledger` writes and
+`cairn publish` sends, and what the claim pages show (docs/claim-pages.md).
 
 ```json
 {"modules": ["Examples.Counter"],
@@ -292,9 +295,9 @@ when a version is published (nextpm's cairn kind), against the version before it
 ```
 
 Each claim also carries `"scope"` (`cairn`) and `"qualified"` (`cairn^2`); `"ref"` stays the
-bare `^2` the map labels pins with.
+bare `^2` the capture labels pins with.
 
-`passes` is a flow's path through move ids, and `witness` its steps (`{"trigger": "press", "ref": "^1", "claim": 1, "key": 0}`, plus `op` for edits), for drivers that replay it (docs/map.md); `pos` is where the claim is declared; `machine` is the machine a flow or invariant is
+`passes` is a flow's path through move ids, and `witness` its steps (`{"trigger": "press", "ref": "^1", "claim": 1, "key": 0}`, plus `op` for edits), for drivers that replay it (the capture, docs/claim-pages.md); `pos` is where the claim is declared; `machine` is the machine a flow or invariant is
 stated against. Evidence roles: `sound <trigger>` (moves), `live` and `reaches` (flows),
 `init`, `step`, `receive`, `reachable` and `reachableAll` (invariants). `proved` is true when the theorem depends on no
 axioms beyond `propext`, `Classical.choice` and `Quot.sound`.

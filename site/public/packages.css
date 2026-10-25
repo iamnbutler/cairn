@@ -30,7 +30,7 @@ main.registry { max-width: 1180px; margin: 0 auto; padding: 8px 16px 72px; }
 .facts dl { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px 24px; }
 .facts dt { font: 600 13px/1.2 var(--pixel); color: var(--gold); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 4px; }
 .facts dd { margin: 0; font-size: 15.5px; overflow-wrap: anywhere; }
-.facts .go { margin: 16px 0 0; font: 600 16px/1.3 var(--pixel); }
+.facts .go { margin: 16px 0 0; font: 600 16px/1.3 var(--pixel); display: flex; flex-wrap: wrap; gap: 8px 24px; }
 
 tr.on td { background: color-mix(in srgb, var(--panel) 70%, transparent); }
 .ledger tr.retired td, .ledger tr.moved td { color: var(--muted); }
@@ -38,7 +38,35 @@ tr.on td { background: color-mix(in srgb, var(--panel) 70%, transparent); }
 .muted { color: var(--muted); }
 .ledger td:first-child code, td code[title] { white-space: nowrap; overflow-wrap: normal; }
 
+/* The claim pages (site/claims.js). Each reading has one colour, as the evidence ladder had it:
+   proved blue, assumed gold, not proved red; a dashed chip is evidence not shown yet. */
+.chip.ev { --c: var(--muted); box-shadow: inset 3px 0 0 var(--c); }
+.chip.ev.proved { --c: #9cc8e8; }
+.chip.ev.assumed { --c: var(--gold); }
+.chip.ev.unproved { --c: #ec7a62; color: #ec7a62; }
+.chip.ev.open, .chip.ev.ledger { --c: #5a5a96; }
+.chip.ev.retired { --c: #8a87b8; color: var(--muted); }
+.chip.ev.moved { --c: var(--gold); color: var(--muted); }
+.chip.ev.later { background: none; box-shadow: inset 0 0 0 2px var(--chip); color: var(--muted); border: 0; }
+.lede-row { max-width: 900px; margin: 0 0 4px; }
+.places { max-width: 900px; display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 14px 0 0; font: 600 15px/1.4 var(--pixel); }
+.places span { color: var(--gold); }
+.place h2 .id { font-size: 0.6em; vertical-align: middle; }
+.claims td .does { display: block; color: var(--muted); font-size: 14.5px; margin-top: 2px; }
+.claim .said { font-size: 18px; }
+.steps li { margin: 4px 0; }
+.steps .trigger { font: 600 14px/1 var(--pixel); color: var(--gold); }
+.evidence td { vertical-align: top; }
+.evidence tr.later td { color: var(--muted); }
+.evidence .bad { color: #ec7a62; }
+.defs { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; margin: 0 0 12px; }
+.defs div { display: contents; }
+.defs dt { font: 600 13px/1.6 var(--pixel); color: var(--gold); letter-spacing: 0.04em; text-transform: uppercase; }
+.defs dd { margin: 0; overflow-wrap: anywhere; }
+
 @media (max-width: 640px) {
+	.defs { grid-template-columns: 1fr; }
+	.defs div { display: block; margin-bottom: 6px; }
 	.pkgs .pkg, .facts { padding: 16px; }
 	.pkg .name { font-size: 20px; }
 }

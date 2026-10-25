@@ -1,5 +1,19 @@
 [
   {
+    "video": "/m/videos/d3e89acd24cf2229.mp4",
+    "poster": "/m/videos/d3e89acd24cf2229.jpg",
+    "title": "Claim pages",
+    "caption": "Every package on the registry gets claim pages, rendered by the site from the claims export cairn publish now sends: the overview grouped by place, then the Todos window, a flow's steps, a move, and one of the trusted base's assumptions. No agent and no screenshots of the apps: proofs, witnesses and where each claim is defined come straight from Lean. Shown here with Cairn's export from this branch; the live pages fill in once Cairn is published again. These replace the maps, and /map/ redirects here.",
+    "date": "2026-10-24",
+    "published": "2026-10-25T03:25:50Z",
+    "commit": "f45df9b",
+    "width": 1280,
+    "height": 900,
+    "seconds": 15,
+    "feature": false,
+    "milestone": "m3"
+  },
+  {
     "video": "/m/videos/f059cdc41ffb2079.mp4",
     "poster": "/m/videos/f059cdc41ffb2079.jpg",
     "title": "Gallery's grid follows the window",

@@ -2,7 +2,7 @@
 title: The evidence ladder
 nav: The evidence ladder
 eyebrow: Reference
-lede: How sure we are of each claim: proved, fuzzed, tested, seen or assumed, computed by the build and shown on the map.
+lede: How sure we are of each claim: proved, fuzzed, tested, seen or assumed, computed by the build and shown on the claim pages.
 ---
 
 Every claim carries a list of evidence, one entry for each kind it can have. Each entry is a
@@ -18,7 +18,7 @@ Strongest first:
 | **proved** | the axiom audit of every theorem | every theorem the claim names (each handler's `sound`; a flow's `live` and `reaches`; an invariant's `init`, `step` and `reachable`) exists and uses only `propext`, `Classical.choice` and `Quot.sound` |
 | **fuzzed** | `make fuzz APP=<App>` | the claim's checks held in every random sequence that exercised it; for an assumption, every trusted-base check naming it held |
 | **tested** | `make conformance APP=<App>` | the running app matched the Lean model at every step that exercised it |
-| **seen** | the map's capture | a move's control is in a captured frame; a flow's whole witness was replayed, each step on the control it names |
+| **seen** | the app capture (`make capture`) | a move's control is in a captured frame; a flow's whole witness was replayed, each step on the control it names |
 | **assumed** | the claim is an `assume` | always: it is stated, never proved |
 
 Proved and fuzzed are about the Lean model; tested and seen are about the app. A proof says more,
@@ -40,7 +40,7 @@ screenshot can't show that something holds in every state.
 
 ## How a claim reads
 
-To make a map scannable, each claim also reads as one word:
+To make a list of claims scannable, each claim also reads as one word:
 
 | Reads as | When |
 |---|---|
@@ -55,14 +55,12 @@ the command that replays it; a conformance failure; or a flow whose step names a
 captured app doesn't show. A claim missing from `claims.lock`, or whose statement changed without
 being accepted, is reported with it.
 
-## The map
+## Claim pages
 
-The map is the ladder as pages, one set per app: a summary of the evidence, the gaps (failures
-first), then a page per place with each move's does and sees, its evidence, its theorems, and
-before-and-after screenshots from the app's own frames, with pins on the controls. Each flow has a
-filmstrip of its replay. Claims are cited as `page.html#N`.
-
-See the [published maps](/docs/evidence/).
+Every package's [claim pages](/docs/evidence/) show the part of the ladder its published claims
+export holds: proved (with each theorem's axioms) and assumed, plus a flow's witness and retired
+and moved ids. Fuzzed, tested and seen come from builds that run the app, and are listed as not
+shown yet until CI publishes them. `cairn doc` shows the whole ladder locally, from `build/`.
 
 ## What isn't evidence yet
 
