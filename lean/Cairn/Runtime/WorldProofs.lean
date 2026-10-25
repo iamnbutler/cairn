@@ -63,25 +63,31 @@ theorem any_eq_lookup {β : Type} (l : List (Nat × β)) (id : Nat) :
 
 /-! ## The world's other fields stay put -/
 
-/-- Absorbing effects touches only timers and pending requests. -/
+/-- Absorbing effects touches only timers and requests. -/
 def Same (w w' : World) : Prop :=
   w'.clock = w.clock ∧ w'.heard = w.heard ∧ w'.booted = w.booted ∧ w'.subs = w.subs ∧
-    w'.nextSub = w.nextSub
+    w'.nextSub = w.nextSub ∧ w'.cap = w.cap
 
 theorem Same.trans {a b c : World} (h1 : Same a b) (h2 : Same b c) : Same a c := by
-  obtain ⟨a1, a2, a3, a4, a5⟩ := h1
-  obtain ⟨b1, b2, b3, b4, b5⟩ := h2
-  exact ⟨b1.trans a1, b2.trans a2, b3.trans a3, b4.trans a4, b5.trans a5⟩
+  obtain ⟨a1, a2, a3, a4, a5, a6⟩ := h1
+  obtain ⟨b1, b2, b3, b4, b5, b6⟩ := h2
+  exact ⟨b1.trans a1, b2.trans a2, b3.trans a3, b4.trans a4, b5.trans a5, b6.trans a6⟩
+
+theorem cancel_same (w : World) (id : Nat) : Same w (w.cancel id).1 := by
+  unfold World.cancel; split
+  · exact ⟨rfl, rfl, rfl, rfl, rfl, rfl⟩
+  · split <;> exact ⟨rfl, rfl, rfl, rfl, rfl, rfl⟩
 
 theorem absorb1_same (w : World) (e : Effect) : Same w (w.absorb1 e).1 := by
-  cases e <;> simp only [World.absorb1] <;> (try split) <;> exact ⟨rfl, rfl, rfl, rfl, rfl⟩
+  cases e <;> simp only [World.absorb1] <;> (try split) <;> (try split) <;>
+    first | exact ⟨rfl, rfl, rfl, rfl, rfl, rfl⟩ | exact cancel_same _ _
 
 theorem absorb_cons (w : World) (e : Effect) (es : List Effect) :
     (w.absorb (e :: es)).1 = ((w.absorb1 e).1.absorb es).1 := rfl
 
 theorem absorb_same (es : List Effect) : ∀ (w : World), Same w (w.absorb es).1 := by
   induction es with
-  | nil => intro w; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
+  | nil => intro w; exact ⟨rfl, rfl, rfl, rfl, rfl, rfl⟩
   | cons e es ih => intro w; rw [absorb_cons]; exact (absorb1_same w e).trans (ih _)
 
 /-! ## Books -/
@@ -106,7 +112,9 @@ def drop (b : Book) (id : Nat) : Book :=
   { b with pending := fun x => if x = id then none else b.pending x }
 
 /-- One effect: `setTimer` arms, `cancelTimer` disarms, a request with a fresh id becomes
-pending (one whose id is pending is refused). -/
+pending (one whose id is pending is refused), `cancelRequest` withdraws a pending request. Whether
+a request is sent at once or waits for a slot is the runtime's business, not the book's: the
+book's pending requests are the ones the app may still hear about. -/
 def take (b : Book) : Effect → Book
   | .setTimer n _ => b.arm n true
   | .cancelTimer n => b.arm n false
@@ -114,6 +122,7 @@ def take (b : Book) : Effect → Book
     match b.pending id with
     | some _ => b
     | none => { b with pending := fun x => if x = id then some r.kind else b.pending x }
+  | .cancelRequest id => b.drop id
   | _ => b
 
 def takeAll (b : Book) (es : List Effect) : Book := es.foldl take b
@@ -180,6 +189,34 @@ theorem cancel_disarms (b : Book) (n : String) (es rest : List Effect)
         simp only [arm, (Ne.symm hm), ↓reduceIte, hb]
       case cancelTimer m => simp only [arm]; split <;> simp_all
 
+/-- **A cancelled request is never answered**: once `cancelRequest id` is the last word on `id`
+in a delivery's effects (no request under `id` after it), no reply to `id` is admitted. -/
+theorem cancel_blocks (b : Book) (id : Nat) (es rest : List Effect) (r : Reply)
+    (h : ∀ q, Effect.request id q ∉ rest) :
+    (b.takeAll (es ++ .cancelRequest id :: rest)).admits (.reply id r) = false := by
+  rw [takeAll_append]
+  generalize b.takeAll es = b
+  simp only [takeAll, List.foldl_cons]
+  have : (b.take (.cancelRequest id)).pending id = none := by simp only [take, drop, ↓reduceIte]
+  suffices hp : (rest.foldl take (b.take (.cancelRequest id))).pending id = none by
+    simp only [admits, hp]
+  revert this h
+  generalize b.take (.cancelRequest id) = b
+  induction rest generalizing b with
+  | nil => intro _ hb; exact hb
+  | cons e rest ih =>
+    intro h hb
+    simp only [List.foldl_cons]
+    apply ih
+    · intro q hq; exact h q (List.mem_cons_of_mem _ hq)
+    · cases e <;> simp only [take] <;> (try exact hb)
+      case request j q =>
+        have hj : j ≠ id := fun he => h q (he ▸ List.mem_cons_self)
+        split
+        · exact hb
+        · simp only [hj.symm, ↓reduceIte, hb]
+      case cancelRequest j => simp only [drop]; split <;> simp_all
+
 /-- A reply uses up its request: right after delivery a second reply to the same id is not
 admitted. -/
 theorem reply_once (b : Book) (id : Nat) (r r' : Reply) :
@@ -188,9 +225,132 @@ theorem reply_once (b : Book) (id : Nat) (r r' : Reply) :
 
 end Book
 
-/-- The runtime's tables and a book agree: the same timers armed, the same requests pending. -/
+/-! ## Keyed lists
+
+The runtime's request tables are lists keyed by id. While no id appears twice (`Keys`), a lookup
+is a membership test. -/
+
+theorem lookup_some_mem {β : Type} {l : List (Nat × β)} {x : Nat} {v : β}
+    (h : l.lookup x = some v) : (x, v) ∈ l := by
+  induction l with
+  | nil => simp only [List.lookup, reduceCtorEq] at h
+  | cons p l ih =>
+    obtain ⟨a, b⟩ := p
+    simp only [List.lookup] at h
+    split at h
+    · rename_i he
+      have hx : x = a := by simpa only [beq_iff_eq] using he
+      cases h; subst hx; exact List.mem_cons_self
+    · exact List.mem_cons_of_mem _ (ih h)
+
+theorem lookup_none_of {β : Type} {l : List (Nat × β)} {x : Nat} (h : x ∉ l.map (·.1)) :
+    l.lookup x = none := by
+  induction l with
+  | nil => rfl
+  | cons p l ih =>
+    obtain ⟨a, b⟩ := p
+    simp only [List.map_cons, List.mem_cons, not_or] at h
+    simp only [List.lookup, beq_eq_false_iff_ne.mpr h.1]
+    exact ih h.2
+
+theorem lookup_isSome_iff {β : Type} (l : List (Nat × β)) (x : Nat) :
+    (l.lookup x).isSome = true ↔ x ∈ l.map (·.1) := by
+  constructor
+  · intro h
+    obtain ⟨v, hv⟩ := Option.isSome_iff_exists.mp h
+    exact List.mem_map.mpr ⟨(x, v), lookup_some_mem hv, rfl⟩
+  · intro h
+    induction l with
+    | nil => cases h
+    | cons p l ih =>
+      obtain ⟨a, b⟩ := p
+      simp only [List.lookup]
+      by_cases hx : x = a
+      · subst hx; simp only [beq_self_eq_true, Option.isSome_some]
+      · simp only [beq_eq_false_iff_ne.mpr hx]
+        simp only [List.map_cons, List.mem_cons] at h
+        exact ih (h.resolve_left hx)
+
+theorem lookup_of_mem {β : Type} {l : List (Nat × β)} {x : Nat} {v : β}
+    (hn : (l.map (·.1)).Nodup) (h : (x, v) ∈ l) : l.lookup x = some v := by
+  induction l with
+  | nil => cases h
+  | cons p l ih =>
+    obtain ⟨a, b⟩ := p
+    simp only [List.map_cons, List.nodup_cons] at hn
+    rcases List.mem_cons.mp h with he | he
+    · cases he; simp only [List.lookup, beq_self_eq_true]
+    · have hx : x ≠ a := fun e => hn.1 (e ▸ List.mem_map_of_mem he)
+      simp only [List.lookup, beq_eq_false_iff_ne.mpr hx]
+      exact ih hn.2 he
+
+/-- Two keyed lists with the same members and no repeated key look up alike. -/
+theorem lookup_congr {β : Type} {l l' : List (Nat × β)} (hm : ∀ p, p ∈ l ↔ p ∈ l')
+    (hn : (l.map (·.1)).Nodup) (hn' : (l'.map (·.1)).Nodup) (x : Nat) : l.lookup x = l'.lookup x := by
+  cases h : l.lookup x with
+  | some v => exact (lookup_of_mem hn' ((hm _).mp (lookup_some_mem h))).symm
+  | none =>
+    cases h' : l'.lookup x with
+    | none => rfl
+    | some v =>
+      have := (hm _).mpr (lookup_some_mem h')
+      rw [lookup_of_mem hn this] at h; cases h
+
+theorem nodup_middle {α : Type} {a c : List α} {x : α} (h : (a ++ c).Nodup) (hx : x ∉ a ++ c) :
+    (a ++ [x] ++ c).Nodup := by
+  have hp : (a ++ [x] ++ c).Perm (x :: (a ++ c)) := by
+    rw [List.append_assoc, List.singleton_append]; exact List.perm_middle
+  exact hp.nodup_iff.mpr (List.nodup_cons.mpr ⟨hx, h⟩)
+
+theorem nodup_snoc {α : Type} {a : List α} {x : α} (h : a.Nodup) (hx : x ∉ a) : (a ++ [x]).Nodup :=
+  List.nodup_append.mpr ⟨h, List.nodup_cons.mpr ⟨List.not_mem_nil, List.nodup_nil⟩,
+    fun _ ha _ hb he => by rw [List.mem_singleton] at hb; subst hb; subst he; exact hx ha⟩
+
+/-! ## The runtime's requests against the book -/
+
+namespace World
+
+/-- No id is both pending and queued, or twice in either. -/
+def Keys (w : World) : Prop := (w.entries.map (·.1)).Nodup
+
+/-- How a queued request shows in `entries`. -/
+def wkind (p : Nat × Request) : Nat × Request.Kind := (p.1, p.2.kind)
+
+theorem entries_eq (w : World) : w.entries = w.pending ++ w.waiting.map wkind := rfl
+
+theorem map_wkind_keys (l : List (Nat × Request)) : (l.map wkind).map (·.1) = l.map (·.1) := by
+  simp only [List.map_map]; rfl
+
+theorem live_none {w : World} {id : Nat} (h : w.live id = none) :
+    w.pending.lookup id = none ∧ (w.waiting.map wkind).lookup id = none := by
+  simp only [live, entries_eq, lookup_append, Option.or_eq_none_iff] at h
+  exact h
+
+theorem waiting_any {w : World} {id : Nat} :
+    w.waiting.any (·.1 == id) = true ↔ id ∈ w.waiting.map (·.1) := by
+  simp only [List.any_eq_true, beq_iff_eq, List.mem_map]
+
+/-- An id both pending and queued contradicts `Keys`. -/
+theorem keys_disjoint {w : World} (hk : w.Keys) {id : Nat} (hp : id ∈ w.pending.map (·.1))
+    (hq : id ∈ w.waiting.map (·.1)) : False := by
+  unfold Keys at hk
+  rw [entries_eq, List.map_append, map_wkind_keys] at hk
+  exact (List.nodup_append.mp hk).2.2 id hp id hq rfl
+
+theorem waiting_filter (w : World) (id : Nat) :
+    (w.queued.filter (·.2.1 != id)).map (·.2) = w.waiting.filter (·.1 != id) := by
+  simp only [waiting, List.filter_map]; rfl
+
+theorem map_wkind_filter (l : List (Nat × Request)) (id : Nat) :
+    (l.filter (·.1 != id)).map wkind = (l.map wkind).filter (·.1 != id) := by
+  simp only [List.filter_map]; rfl
+
+end World
+
+/-- The runtime's tables and a book agree: the same timers armed, and the requests the app may
+still hear about (pending or queued) the same, each id once. -/
 def Agrees (w : World) (b : Book) : Prop :=
-  (∀ n, n ∈ w.timerNames ↔ b.armed n = true) ∧ ∀ id, w.pending.lookup id = b.pending id
+  (∀ n, n ∈ w.timerNames ↔ b.armed n = true) ∧ (∀ id, w.live id = b.pending id) ∧ w.Keys
 
 theorem mem_setTimer (w : World) (n x : String) (ms : Nat) :
     x ∈ (w.setTimer n ms).timerNames ↔ x = n ∨ x ∈ w.timerNames := by
@@ -214,38 +374,119 @@ theorem mem_cancelTimer (w : World) (n x : String) :
   · rintro ⟨p, ⟨hp, hn⟩, rfl⟩; exact ⟨hn, p, hp, rfl⟩
   · rintro ⟨hn, p, hp, rfl⟩; exact ⟨p, ⟨hp, hn⟩, rfl⟩
 
+/-- Sending a request with a fresh id. -/
+theorem send_agrees {w : World} {b : Book} (h : Agrees w b) {id : Nat} (k : Request.Kind)
+    (hb : b.pending id = none) :
+    Agrees (w.send id k) { b with pending := fun x => if x = id then some k else b.pending x } := by
+  obtain ⟨ht, hp, hk⟩ := h
+  have hl : w.live id = none := (hp id).trans hb
+  obtain ⟨h1, h2⟩ := World.live_none hl
+  have hnot : id ∉ w.entries.map (·.1) := fun m =>
+    by rw [← lookup_isSome_iff] at m; simp only [World.live] at hl; rw [hl] at m; cases m
+  refine ⟨ht, fun x => ?_, ?_⟩
+  · show (w.pending ++ [(id, k)] ++ w.waiting.map World.wkind).lookup x = _
+    rw [lookup_append, lookup_append]
+    by_cases hx : x = id
+    · subst hx; simp only [h1, List.lookup, beq_self_eq_true, Option.none_or, Option.some_or, ↓reduceIte]
+    · simp only [List.lookup, beq_eq_false_iff_ne.mpr hx, Option.or_none, hx, ↓reduceIte]
+      rw [← hp x, World.live, World.entries_eq, lookup_append]
+  · show ((w.pending ++ [(id, k)] ++ w.waiting.map World.wkind).map (·.1)).Nodup
+    simp only [List.map_append, List.map_cons, List.map_nil]
+    have := hk; unfold World.Keys at this; rw [World.entries_eq, List.map_append] at this hnot
+    exact nodup_middle this hnot
+
+/-- Queueing a request with a fresh id. -/
+theorem enqueue_agrees {w : World} {b : Book} (h : Agrees w b) {id : Nat} (r : Request)
+    (hb : b.pending id = none) :
+    Agrees (w.enqueue id r) { b with pending := fun x => if x = id then some r.kind else b.pending x } := by
+  obtain ⟨ht, hp, hk⟩ := h
+  have hl : w.live id = none := (hp id).trans hb
+  have hnot : id ∉ w.entries.map (·.1) := fun m =>
+    by rw [← lookup_isSome_iff] at m; simp only [World.live] at hl; rw [hl] at m; cases m
+  have he : (w.enqueue id r).entries = w.entries ++ [(id, r.kind)] := by
+    simp only [World.entries, World.enqueue, World.waiting, List.map_append, List.map_cons,
+      List.map_nil, List.append_assoc]
+  refine ⟨ht, fun x => ?_, ?_⟩
+  · show (w.enqueue id r).entries.lookup x = _
+    rw [he, lookup_append]
+    by_cases hx : x = id
+    · subst hx; simp only [World.live] at hl
+      simp only [hl, List.lookup, beq_self_eq_true, Option.none_or, ↓reduceIte]
+    · simp only [List.lookup, beq_eq_false_iff_ne.mpr hx, Option.or_none, hx, ↓reduceIte]
+      exact hp x
+  · show ((w.enqueue id r).entries.map (·.1)).Nodup
+    rw [he, List.map_append]
+    exact nodup_snoc hk hnot
+
+theorem cancel_agrees {w : World} {b : Book} (h : Agrees w b) (id : Nat) :
+    Agrees (w.cancel id).1 (b.drop id) := by
+  obtain ⟨ht, hp, hk⟩ := h
+  unfold World.cancel
+  split
+  · rename_i hq
+    have hq := World.waiting_any.mp hq
+    have hpn : w.pending.lookup id = none :=
+      lookup_none_of fun m => World.keys_disjoint hk m hq
+    refine ⟨ht, fun x => ?_, ?_⟩
+    · show (w.pending ++ ((w.queued.filter (·.2.1 != id)).map (·.2)).map World.wkind).lookup x = _
+      rw [World.waiting_filter, World.map_wkind_filter, lookup_append, lookup_filter]
+      by_cases hx : x = id
+      · subst hx; simp only [hpn, ↓reduceIte, Option.or_none, Book.drop]
+      · simp only [hx, ↓reduceIte, Book.drop]; rw [← hp x, World.live, World.entries_eq, lookup_append]
+    · show ((w.pending ++ ((w.queued.filter (·.2.1 != id)).map (·.2)).map World.wkind).map (·.1)).Nodup
+      rw [World.waiting_filter, World.map_wkind_filter]
+      exact List.Nodup.sublist ((List.Sublist.append (List.Sublist.refl _) List.filter_sublist).map _) hk
+  · rename_i hq
+    have hq : id ∉ w.waiting.map (·.1) := fun m => hq (World.waiting_any.mpr m)
+    have hwn : (w.waiting.map World.wkind).lookup id = none := by
+      apply lookup_none_of; rw [World.map_wkind_keys]; exact hq
+    split
+    · refine ⟨ht, fun x => ?_, ?_⟩
+      · show (w.pending.filter (·.1 != id) ++ w.waiting.map World.wkind).lookup x = _
+        rw [lookup_append, lookup_filter]
+        by_cases hx : x = id
+        · subst hx; simp only [hwn, ↓reduceIte, Option.none_or, Book.drop]
+        · simp only [hx, ↓reduceIte, Book.drop]; rw [← hp x, World.live, World.entries_eq, lookup_append]
+      · show ((w.pending.filter (·.1 != id) ++ w.waiting.map World.wkind).map (·.1)).Nodup
+        exact List.Nodup.sublist ((List.Sublist.append List.filter_sublist (List.Sublist.refl _)).map _) hk
+    · rename_i hpn
+      refine ⟨ht, fun x => ?_, hk⟩
+      simp only [Book.drop]
+      by_cases hx : x = id
+      · subst hx; simp only [↓reduceIte, World.live, World.entries_eq, lookup_append, hpn, hwn,
+          Option.or_none]
+      · simp only [hx, ↓reduceIte]; exact hp x
+
 theorem absorb1_agrees {w : World} {b : Book} (h : Agrees w b) (e : Effect) :
     Agrees (w.absorb1 e).1 (b.take e) := by
-  obtain ⟨ht, hp⟩ := h
+  have h0 := h
+  obtain ⟨ht, hp, hk⟩ := h
   cases e
   case setTimer n ms =>
-    refine ⟨fun x => ?_, hp⟩
+    refine ⟨fun x => ?_, hp, hk⟩
     show x ∈ (w.setTimer n ms).timerNames ↔ (if x = n then true else b.armed x) = true
     rw [mem_setTimer, ht]
     by_cases hx : x = n <;> simp only [hx, ↓reduceIte, true_or, false_or]
   case cancelTimer n =>
-    refine ⟨fun x => ?_, hp⟩
+    refine ⟨fun x => ?_, hp, hk⟩
     show x ∈ (w.cancelTimer n).timerNames ↔ (if x = n then false else b.armed x) = true
     rw [mem_cancelTimer, ht]
     by_cases hx : x = n <;> simp only [hx, ↓reduceIte, ne_eq, not_true_eq_false, false_and,
       Bool.false_eq_true, not_false_eq_true, true_and]
   case request id r =>
-    have hpi : w.isPending id = (b.pending id).isSome := by
-      rw [World.isPending, any_eq_lookup, hp]
+    have hli : w.isLive id = (b.pending id).isSome := by rw [World.isLive, hp]
     cases hb : b.pending id with
     | some k =>
-      simp only [World.absorb1, Book.take, hpi, hb, Option.isSome_some, ↓reduceIte]
-      exact ⟨ht, hp⟩
+      simp only [World.absorb1, Book.take, hli, hb, Option.isSome_some, ↓reduceIte]
+      exact h0
     | none =>
-      simp only [World.absorb1, Book.take, hpi, hb, Option.isSome_none, Bool.false_eq_true,
+      simp only [World.absorb1, Book.take, hli, hb, Option.isSome_none, Bool.false_eq_true,
         ↓reduceIte]
-      refine ⟨ht, fun x => ?_⟩
-      simp only [lookup_append, hp, List.lookup]
-      by_cases hx : x = id
-      · subst hx; simp only [hb, beq_self_eq_true, Option.none_or, ↓reduceIte]
-      · simp only [hx, ↓reduceIte, beq_eq_false_iff_ne.mpr hx]
-        cases b.pending x <;> rfl
-  all_goals exact ⟨ht, hp⟩
+      split
+      · exact send_agrees h0 _ hb
+      · exact enqueue_agrees h0 _ hb
+  case cancelRequest id => exact cancel_agrees h0 id
+  all_goals exact h0
 
 theorem absorb_agrees (es : List Effect) :
     ∀ {w : World} {b : Book}, Agrees w b → Agrees (w.absorb es).1 (b.takeAll es) := by
@@ -263,6 +504,89 @@ theorem takeReply_some {w w' : World} {id : Nat} {r : Reply} (h : w.takeReply id
     · exact ⟨k, hk, by assumption, (Option.some.inj h).symm⟩
     · cases h
   · cases h
+
+/-! ## Taking replies and sending from the queue keep the book -/
+
+/-- How a queued request shows in `entries`. -/
+def qkind (q : Nat × Nat × Request) : Nat × Request.Kind := (q.2.1, q.2.2.kind)
+
+theorem entries_queued (w : World) : w.entries = w.pending ++ w.queued.map qkind := by
+  simp only [World.entries, World.waiting, List.map_map]; rfl
+
+/-- `promoteGo` moves the requests it is given into `pending` or the queue, touching nothing
+else. -/
+theorem promoteGo_spec (rest : List (Nat × Nat × Request)) : ∀ (w : World),
+    (∃ p q, (World.promoteGo w rest).1 = { w with pending := p, queued := q }) ∧
+      ((World.promoteGo w rest).1.entries).Perm (w.entries ++ rest.map qkind) := by
+  induction rest with
+  | nil => intro w; exact ⟨⟨w.pending, w.queued, rfl⟩, by simp only [World.promoteGo, List.map_nil, List.append_nil]; exact List.Perm.refl _⟩
+  | cons q rest ih =>
+    intro w
+    simp only [World.promoteGo]
+    split
+    · obtain ⟨⟨p, q', he⟩, hp⟩ := ih (w.send q.2.1 q.2.2.kind)
+      refine ⟨⟨p, q', by rw [he]; rfl⟩, hp.trans ?_⟩
+      simp only [entries_queued, World.send, List.map_cons, List.append_assoc, List.singleton_append]
+      exact List.Perm.append_left _ List.perm_middle.symm
+    · obtain ⟨⟨p, q', he⟩, hp⟩ := ih { w with queued := w.queued ++ [q] }
+      refine ⟨⟨p, q', by rw [he]⟩, hp.trans ?_⟩
+      simp only [entries_queued, List.map_append, List.map_cons, List.map_nil, List.append_assoc,
+        List.singleton_append]
+      exact List.Perm.refl _
+
+theorem promote_spec (w : World) :
+    (∃ p q, w.promote.1 = { w with pending := p, queued := q }) ∧ (w.promote.1.entries).Perm w.entries := by
+  obtain ⟨⟨p, q, he⟩, hp⟩ := promoteGo_spec w.queued { w with queued := [] }
+  refine ⟨⟨p, q, by unfold World.promote; rw [he]⟩, ?_⟩
+  unfold World.promote
+  refine hp.trans ?_
+  simp only [entries_queued, List.map_nil, List.append_nil]
+  exact List.Perm.refl _
+
+theorem agrees_entries {w w' : World} {b : Book} (ht : w'.timers = w.timers)
+    (hp : w'.entries.Perm w.entries) (h : Agrees w b) : Agrees w' b := by
+  obtain ⟨h1, h2, h3⟩ := h
+  have hk' : w'.Keys := (hp.map (fun p : Nat × Request.Kind => p.1)).nodup_iff.mpr h3
+  refine ⟨fun n => by unfold World.timerNames; rw [ht]; exact h1 n, fun x => ?_, hk'⟩
+  rw [← h2 x]
+  exact lookup_congr (fun _ => hp.mem_iff) hk' h3 x
+
+theorem promote_agrees {w : World} {b : Book} (h : Agrees w b) : Agrees w.promote.1 b := by
+  obtain ⟨⟨p, q, he⟩, hp⟩ := promote_spec w
+  exact agrees_entries (by rw [he]) hp h
+
+theorem takeStop_some {w w' : World} {id : Nat} (h : w.takeStop id = some w') :
+    w.isStopping id = true ∧ w' = { w with stopping := w.stopping.filter (·.1 != id) } := by
+  unfold World.takeStop at h
+  split at h
+  · exact ⟨by assumption, (Option.some.inj h).symm⟩
+  · cases h
+
+theorem takeStop_agrees {w w' : World} {b : Book} {id : Nat} (h : Agrees w b)
+    (hw : w.takeStop id = some w') : Agrees w' b := by
+  obtain ⟨-, rfl⟩ := takeStop_some hw
+  exact agrees_entries rfl (List.Perm.refl _) h
+
+theorem takeReply_agrees {w w' : World} {b : Book} {id : Nat} {r : Reply} (h : Agrees w b)
+    (hw : w.takeReply id r = some w') : Agrees w' (b.drop id) := by
+  obtain ⟨k, hk, -, rfl⟩ := takeReply_some hw
+  obtain ⟨ht, hp, hkeys⟩ := h
+  have hin : id ∈ w.pending.map (·.1) := List.mem_map.mpr ⟨(id, k), lookup_some_mem hk, rfl⟩
+  have hwn : (w.waiting.map World.wkind).lookup id = none := by
+    apply lookup_none_of; rw [World.map_wkind_keys]; exact fun m => World.keys_disjoint hkeys hin m
+  refine ⟨ht, fun x => ?_, ?_⟩
+  · show (w.pending.filter (·.1 != id) ++ w.waiting.map World.wkind).lookup x = _
+    rw [lookup_append, lookup_filter]
+    by_cases hx : x = id
+    · subst hx; simp only [hwn, ↓reduceIte, Option.none_or, Book.drop]
+    · simp only [hx, ↓reduceIte, Book.drop]; rw [← hp x, World.live, World.entries_eq, lookup_append]
+  · show ((w.pending.filter (·.1 != id) ++ w.waiting.map World.wkind).map (·.1)).Nodup
+    exact List.Nodup.sublist ((List.Sublist.append List.filter_sublist (List.Sublist.refl _)).map _) hkeys
+
+/-- A pending request is live, with its kind. -/
+theorem live_of_pending {w : World} {id : Nat} {k : Request.Kind} (h : w.pending.lookup id = some k) :
+    w.live id = some k := by
+  simp only [World.live, World.entries_eq, lookup_append, h, Option.some_or]
 
 /-! ## The recording wrapper -/
 
@@ -365,6 +689,14 @@ theorem foldl_fire_inv (app : App S) {log0 : List Entry} {b0 : Book} (ns : List 
 theorem boot_booted (app : App S) (c : Ctx S) (h : c.world.booted = true) : boot app c = c := by
   simp only [boot, h, ↓reduceIte]
 
+theorem ack_inv {log0 : List Entry} {b0 : Book} {c : Ctx (S × List Entry)}
+    (h : Inv log0 b0 c) (id : Nat) : Inv log0 b0 (ack c id) := by
+  unfold ack; split
+  · rename_i w hw
+    obtain ⟨new, b, hl, hr, hag⟩ := h
+    exact ⟨new, b, hl, hr, promote_agrees (takeStop_agrees hag hw)⟩
+  · exact h
+
 theorem admit_inv (app : App S) (s : State (S × List Entry)) (e : Event)
     (hb : s.world.booted = true) {b0 : Book} (ha : Agrees s.world b0) :
     Inv s.app.2 b0 (admit (logged app) s e) := by
@@ -384,13 +716,12 @@ theorem admit_inv (app : App S) (s : State (S × List Entry)) (e : Event)
       split
       · rename_i w hw
         obtain ⟨new, b, hl, hr, hag⟩ := hh
-        obtain ⟨k, hk, hans, rfl⟩ := takeReply_some hw
-        have hbk : b.pending id = some k := (hag.2 id).symm.trans hk
-        refine give_inv app hl hr ?_ ⟨hag.1, fun x => ?_⟩
-        · simp only [Book.admits, hbk, hans]
-        · simp only [lookup_filter, Book.pre, Book.drop, hag.2]
-      · exact hh
-    · exact base
+        obtain ⟨k, hk, hans, -⟩ := takeReply_some hw
+        have hbk : b.pending id = some k := (hag.2.1 id).symm.trans (live_of_pending hk)
+        refine give_inv app hl hr ?_ (promote_agrees (takeReply_agrees hag hw))
+        simp only [Book.admits, hbk, hans]
+      · exact ack_inv hh id
+    · exact ack_inv base id
   case subEvent id ev =>
     split
     · obtain ⟨new, b, hl, hr, hag⟩ := hear_inv app base
@@ -416,14 +747,12 @@ theorem act_nil (app : App S) (c : Ctx S) : act app c [] = c := by
   simp only [act, List.isEmpty_nil, ↓reduceIte]
 
 
-/-- What a step leaves in the world's timers and pending table, and the app, is what `act`
-leaves after `admit`. -/
+/-- What a step leaves in the world, and the app, is what `act` leaves after `admit`; the step
+only adds the subscription diff. -/
 theorem step_ctx (app : App S) (cfg : Config) (s : State S) (e : Event) :
     let c := act app (admit app s e) (route cfg.metrics s e).2
-    (step app cfg s e).1.app = c.app ∧ (step app cfg s e).1.world.timers = c.world.timers ∧
-      (step app cfg s e).1.world.pending = c.world.pending ∧
-      (step app cfg s e).1.world.clock = c.world.clock ∧
-      (step app cfg s e).1.world.booted = c.world.booted := by
+    (step app cfg s e).1.app = c.app ∧
+      ∃ subs next, (step app cfg s e).1.world = { c.world with subs, nextSub := next } := by
   refine ⟨step_app app cfg s e, ?_⟩
   unfold step
   generalize route cfg.metrics s e = r
@@ -435,12 +764,8 @@ theorem step_ctx (app : App S) (cfg : Config) (s : State S) (e : Event) :
     obtain ⟨⟨ha, -⟩, -⟩ := hc
     subst ha
     rw [act_nil]
-    exact ⟨rfl, rfl, rfl, rfl⟩
-  · exact ⟨rfl, rfl, rfl, rfl⟩
-
-theorem agrees_of {w w' : World} {b : Book} (ht : w'.timers = w.timers)
-    (hp : w'.pending = w.pending) (h : Agrees w b) : Agrees w' b := by
-  unfold Agrees World.timerNames; rw [ht, hp]; exact h
+    exact ⟨_, _, rfl⟩
+  · exact ⟨_, _, rfl⟩
 
 /-- One step of the recording app: the log grows by entries the book allows, and the runtime's
 tables agree with the book afterwards. -/
@@ -448,9 +773,9 @@ theorem step_book (app : App S) (cfg : Config) (s : State (S × List Entry)) (e 
     (hb : s.world.booted = true) {b0 : Book} (ha : Agrees s.world b0) :
     ∃ new b, (step (logged app) cfg s e).1.app.2 = s.app.2 ++ new ∧ b0.run new = some b ∧
       Agrees (step (logged app) cfg s e).1.world b := by
-  obtain ⟨h1, h2, h3, -, -⟩ := step_ctx (logged app) cfg s e
+  obtain ⟨h1, subs, next, hw⟩ := step_ctx (logged app) cfg s e
   obtain ⟨new, b, hl, hr, hag⟩ := act_inv app (route cfg.metrics s e).2 (admit_inv app s e hb ha)
-  exact ⟨new, b, h1 ▸ hl, hr, agrees_of h2 h3 hag⟩
+  exact ⟨new, b, h1 ▸ hl, hr, by rw [hw]; exact agrees_entries rfl (List.Perm.refl _) hag⟩
 
 /-! ## The clock -/
 
@@ -510,6 +835,26 @@ theorem admit_clock_grows (app : App S) (s : State S) (t : Time) :
   · exact h1
   · exact h1.trans ((hear_grows app _).trans (foldl_fire_grows app _ _))
 
+theorem promoteGo_same (rest : List (Nat × Nat × Request)) (w : World) :
+    Same w (World.promoteGo w rest).1 := by
+  obtain ⟨⟨p, q, he⟩, -⟩ := promoteGo_spec rest w
+  rw [he]; exact ⟨rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+theorem promote_same (w : World) : Same w w.promote.1 := by
+  obtain ⟨⟨p, q, he⟩, -⟩ := promote_spec w
+  rw [he]; exact ⟨rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+theorem release_grows (c : Ctx S) (w : World) (h : Same c.world w) :
+    Grows c.world (release c w).world :=
+  (h.trans (promote_same w)).grows
+
+theorem ack_grows (c : Ctx S) (id : Nat) : Grows c.world (ack c id).world := by
+  unfold ack; split
+  · rename_i w hw
+    obtain ⟨-, rfl⟩ := takeStop_some hw
+    exact release_grows c _ ⟨rfl, rfl, rfl, rfl, rfl, rfl⟩
+  · exact Grows.refl _
+
 theorem admit_grows (app : App S) (s : State S) (e : Event) :
     Grows s.world (admit app s e).world := by
   cases e
@@ -522,9 +867,9 @@ theorem admit_grows (app : App S) (s : State S) (e : Event) :
       split
       · rename_i w hw
         obtain ⟨k, -, -, rfl⟩ := takeReply_some hw
-        exact give_grows' app (hh.trans ⟨Nat.le_refl _, fun h => h⟩)
-      · exact hh
-    · exact Grows.refl _
+        exact give_grows' app (hh.trans (release_grows _ _ ⟨rfl, rfl, rfl, rfl, rfl, rfl⟩))
+      · exact hh.trans (ack_grows _ _)
+    · exact ack_grows ({ app := s.app, world := s.world } : Ctx S) id
   case subEvent id ev =>
     simp only [admit]
     split
@@ -542,16 +887,16 @@ theorem act_grows (app : App S) (c : Ctx S) (acts : List Action) :
 booted. -/
 theorem step_clock (app : App S) (cfg : Config) (s : State S) (e : Event) :
     Grows s.world (step app cfg s e).1.world := by
-  obtain ⟨-, -, -, hc, hb⟩ := step_ctx app cfg s e
+  obtain ⟨-, subs, next, hw⟩ := step_ctx app cfg s e
   have h := (admit_grows app s e).trans (act_grows app _ (route cfg.metrics s e).2)
-  exact ⟨by rw [hc]; exact h.1, fun h0 => hb ▸ h.2 h0⟩
+  rw [hw]; exact h
 
 /-- A clock event brings the runtime's clock at least to the host's time. -/
 theorem step_clock_reaches (app : App S) (cfg : Config) (s : State S) (t : Time) :
     t.mono ≤ (step app cfg s (.clock t)).1.world.clock.mono := by
-  obtain ⟨-, -, -, hc, -⟩ := step_ctx app cfg s (.clock t)
+  obtain ⟨-, subs, next, hw⟩ := step_ctx app cfg s (.clock t)
   have h := (admit_clock_grows app s t).trans (act_grows app _ (route cfg.metrics s (.clock t)).2)
-  rw [hc]
+  rw [hw]
   exact Nat.le_trans (tick_reaches _ _) h.1
 
 /-! ## Batches -/
@@ -594,25 +939,45 @@ theorem steps_book (app : App S) (cfg : Config) (s : State (S × List Entry)) (e
 /-! ## Replies and subscription events -/
 
 theorem absorb1_pending (w : World) (e : Effect) {id : Nat} {k : Request.Kind}
-    (h : w.pending.lookup id = some k) : (w.absorb1 e).1.pending.lookup id = some k := by
+    (he : e ≠ .cancelRequest id) (h : w.pending.lookup id = some k) :
+    (w.absorb1 e).1.pending.lookup id = some k := by
   cases e <;> simp only [World.absorb1] <;> (try exact h)
   case request id' r =>
     split
     · exact h
-    · simp only [lookup_append, h, Option.some_or]
+    · split
+      · simp only [World.send, lookup_append, h, Option.some_or]
+      · exact h
+  case cancelRequest j =>
+    have hj : j ≠ id := fun e => he (e ▸ rfl)
+    unfold World.cancel; split
+    · exact h
+    · split
+      · show (w.pending.filter (·.1 != j)).lookup id = _
+        rw [lookup_filter]; simp only [hj.symm, ↓reduceIte, h]
+      · exact h
 
 theorem absorb_pending (es : List Effect) :
-    ∀ (w : World) {id : Nat} {k : Request.Kind}, w.pending.lookup id = some k →
-      (w.absorb es).1.pending.lookup id = some k := by
+    ∀ (w : World) {id : Nat} {k : Request.Kind}, Effect.cancelRequest id ∉ es →
+      w.pending.lookup id = some k → (w.absorb es).1.pending.lookup id = some k := by
   induction es with
-  | nil => intro w id k h; exact h
-  | cons e es ih => intro w id k h; rw [absorb_cons]; exact ih _ (absorb1_pending w e h)
+  | nil => intro w id k _ h; exact h
+  | cons e es ih =>
+    intro w id k hn h
+    rw [absorb_cons]
+    exact ih _ (fun m => hn (List.mem_cons_of_mem _ m))
+      (absorb1_pending w e (fun he => hn (he ▸ List.mem_cons_self)) h)
+
+/-- The app does not withdraw request `id` when it hears the time. -/
+def KeepsOnClock (app : App S) (id : Nat) : Prop :=
+  ∀ st t, Effect.cancelRequest id ∉ (app.receive st (.clock t)).2
 
 theorem hear_pending (app : App S) (c : Ctx S) {id : Nat} {k : Request.Kind}
+    (hq : KeepsOnClock app id)
     (h : c.world.pending.lookup id = some k) : (hear app c).world.pending.lookup id = some k := by
   unfold hear; split
   · exact h
-  · exact absorb_pending _ _ h
+  · exact absorb_pending _ _ (hq _ _) h
 
 theorem route_reply (m : TextMetrics) (s : State S) (id : Nat) (r : Reply) :
     (route m s (.reply id r)).2 = [] := rfl
@@ -621,27 +986,29 @@ theorem route_subEvent (m : TextMetrics) (s : State S) (id : Nat) (ev : SubEvent
     (route m s (.subEvent id ev)).2 = [] := rfl
 
 /-- A reply to a pending request, in the shape that answers it, is delivered to `receive`
-with the id it was requested under: it is the last thing the app hears in that step. -/
+with the id it was requested under: it is the last thing the app hears in that step. (Unless the
+app withdrew the request on hearing the time just before: then it is swallowed,
+`step_reply_cancelled`.) -/
 theorem step_reply (app : App S) (cfg : Config) (s : State (S × List Entry)) {id : Nat}
     {r : Reply} {k : Request.Kind} (hk : s.world.pending.lookup id = some k)
-    (ha : r.answers k = true) :
+    (ha : r.answers k = true) (hq : KeepsOnClock app id) :
     ∃ es, (step (logged app) cfg s (.reply id r)).1.app.2.getLast? = some (.recv (.reply id r) es) := by
   rw [(step_ctx (logged app) cfg s (.reply id r)).1, route_reply, act_nil]
   have ht : ∀ w : World, w.pending.lookup id = some k →
       w.takeReply id r = some { w with pending := w.pending.filter (fun p => p.1 != id) } := by
     intro w hw; simp only [World.takeReply, hw, ha, ↓reduceIte]
   simp only [admit, ht s.world hk, Option.isSome_some, ↓reduceIte]
-  have hh := hear_pending (logged app) ({ app := s.app, world := s.world } : Ctx _) hk
+  have hh := hear_pending (logged app) ({ app := s.app, world := s.world } : Ctx _) (fun st t => hq st.1 t) hk
   generalize hear (logged app) { app := s.app, world := s.world } = c at hh
-  simp only [ht c.world hh, give, logged, logReceive, List.getLast?_append, List.getLast?_singleton,
-    Option.some_or]
+  simp only [ht c.world hh, give, release_app, logged, logReceive, List.getLast?_append,
+    List.getLast?_singleton, Option.some_or]
   exact ⟨_, rfl⟩
 
 /-- A reply to an id that is not pending, or in the wrong shape, reaches no one. -/
 theorem step_reply_ignored (app : App S) (cfg : Config) (s : State S) {id : Nat} {r : Reply}
     (h : s.world.takeReply id r = none) : (step app cfg s (.reply id r)).1.app = s.app := by
   rw [step_app, route_reply, act_nil]
-  simp only [admit, h, Option.isSome_none, Bool.false_eq_true, ↓reduceIte]
+  simp only [admit, h, Option.isSome_none, Bool.false_eq_true, ↓reduceIte, ack_app]
 
 /-- An event from an active subscription is delivered as that subscription's message. -/
 theorem step_sub (app : App S) (cfg : Config) (s : State (S × List Entry)) {id : Nat}

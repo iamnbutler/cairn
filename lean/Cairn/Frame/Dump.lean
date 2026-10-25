@@ -103,6 +103,7 @@ def effect : Effect → String
   | .cancelTimer n => s!"cancelTimer {str n}"
   | .request id r => s!"request {id} {request r}"
   | .quit => "quit"
+  | .cancelRequest id => s!"cancelRequest {id}"
 
 def subCmd : SubCmd → String
   | .start id (.every ms) => s!"start {id} every {ms}"

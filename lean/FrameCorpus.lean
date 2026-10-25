@@ -169,13 +169,14 @@ def request : Gen Request := do
   | _ => return .http (← str) (← str) (← headers) (← bytes) (← nat)
 
 def effect : Gen Effect := do
-  match ← below 7 with
+  match ← below 8 with
   | 0 => return .setClipboard (← str)
   | 1 => return .focus (← ref)
   | 2 => return .beep
   | 3 => return .setTimer (← str) (← nat)
   | 4 => return .cancelTimer (← str)
   | 5 => return .request (← nat) (← request)
+  | 6 => return .cancelRequest (← nat)
   | _ => return .quit
 
 def subCmd : Gen SubCmd := do
@@ -354,7 +355,7 @@ def maxFrame : Frame where
       status := { control := ⟨4294967295, 0⟩, symbol := "waveform.circle.fill", title := "Ŷ",
                   label := "", menu := maxMenu } }]
   effects := #[.setClipboard "", .beep, .setClipboard "📋", .focus ⟨202, 7⟩,
-    .setTimer "tick" 4294967295, .cancelTimer "", .quit,
+    .setTimer "tick" 4294967295, .cancelTimer "", .quit, .cancelRequest 4294967295,
     .request 4294967295 (.writeFile "~/a/🙂.txt" ⟨#[0, 255, 10]⟩),
     .request 0 (.http "GET" "https://example.com/?q=日本" [("Accept", "*/*"), ("", "")]
       ByteArray.empty 0),

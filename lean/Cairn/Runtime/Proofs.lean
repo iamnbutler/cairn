@@ -238,6 +238,16 @@ theorem route_names (m : TextMetrics) (s : State S) (e : Event) (hm : e.isMenu =
   | insertText str rep => exact textActions_names s str rep
   | _ => first | exact names_nil _ | exact onField_names s _
 
+/-! ### Releasing a slot touches neither the app nor what was delivered -/
+
+@[simp] theorem release_app (c : Ctx S) (w : World) : (release c w).app = c.app := rfl
+@[simp] theorem release_delivered (c : Ctx S) (w : World) : (release c w).delivered = c.delivered := rfl
+
+@[simp] theorem ack_app (c : Ctx S) (id : Nat) : (ack c id).app = c.app := by
+  unfold ack; split <;> rfl
+@[simp] theorem ack_delivered (c : Ctx S) (id : Nat) : (ack c id).delivered = c.delivered := by
+  unfold ack; split <;> rfl
+
 /-- Nothing delivered means the app state is the one it started from. -/
 def Untouched (a0 : S) (c : Ctx S) : Prop := c.delivered = false → c.app = a0
 
@@ -278,8 +288,16 @@ theorem admit_untouched (app : App S) (s : State S) (e : Event) :
     split
     · exact hb
     · exact foldl_fire_untouched app _ (hear_untouched app hb)
-  all_goals (split <;> (try split) <;>
-    first | exact base | exact give_untouched app _ _ _ | exact hear_untouched app base)
+  case reply id r =>
+    split
+    · split
+      · exact give_untouched app _ _ _
+      · intro hd; rw [ack_delivered] at hd; rw [ack_app]; exact hear_untouched app base hd
+    · intro _; rw [ack_app]
+  case subEvent id ev =>
+    split
+    · exact give_untouched app _ _ _
+    · exact base
 
 theorem admit_input (app : App S) (s : State S) {e : Event} (h : e.isWorld = false) :
     admit app s e = { app := s.app, world := s.world } := by
@@ -354,8 +372,17 @@ theorem admit_app {app : App S} (h : Quiet app) (s : State S) (e : Event) :
     split
     · exact boot_app h _
     · rw [foldl_fire_app h, hear_app h, boot_app h]
-  all_goals (try split) <;> (try split) <;> (try rfl) <;>
-    first | (rw [give_app h, hear_app h]) | exact hear_app h _
+  case reply id r =>
+    split
+    · split
+      · rw [give_app h, release_app, hear_app h]
+      · rw [ack_app, hear_app h]
+    · exact ack_app _ _
+  case subEvent id ev =>
+    split
+    · rw [give_app h, hear_app h]
+    · rfl
+  all_goals rfl
 
 theorem act_app {app : App S} (h : Quiet app) (c : Ctx S) (acts : List Action) :
     (act app c acts).app = (deliver app.update c.app acts).1 := by
@@ -411,10 +438,16 @@ theorem admit_fed (app : App S) (s : State S) (e : Event) : Fed app s.app (admit
     split
     · exact boot_fed app _
     · exact ((boot_fed app _).trans (hear_fed app _)).trans (foldl_fire_fed app _ _)
-  all_goals (try split) <;> (try split) <;> (try exact Fed.refl _ _) <;>
-    first
-    | exact (hear_fed app _).trans (give_fed app _ _)
-    | exact hear_fed app _
+  case reply id r =>
+    split
+    · split
+      · exact (hear_fed app _).trans (give_fed app (release _ _) _)
+      · rw [ack_app]; exact hear_fed app _
+    · rw [ack_app]; exact Fed.refl _ _
+  case subEvent id ev =>
+    split
+    · exact (hear_fed app _).trans (give_fed app _ _)
+    · exact Fed.refl _ _
 
 theorem deliver_fed (u : S → Action → S × List Effect) (acts : List Action) :
     ∀ (st : S) (effs : List Effect),
@@ -659,8 +692,8 @@ theorem admit_kept (app : App S) (s : State S) (e : Event) : Kept s.app (admit a
     · dsimp only
       split
       · exact give_kept app _ _ _
-      · exact hear_kept app _ _ (fun _ => rfl)
-    · exact fun _ => rfl
+      · intro hd; rw [ack_delivered] at hd; rw [ack_app]; exact hear_kept app _ _ (fun _ => rfl) hd
+    · intro _; exact ack_app _ _
   · split
     · exact give_kept app _ _ _
     · exact fun _ => rfl

@@ -17,8 +17,8 @@ https, and two that fail (a file that is no image, a file that isn't there).
 * **Requests.** At launch every source is asked for with `loadImage` (`Images.loadAll`); a reply
   gives the pixel size (shown under the tile) or the fault (shown in the tile). Lean never holds
   pixels: the host keeps them by source and paints them into the box Lean laid out.
-* **Moves.** Reload asks again for every source, past the host's cache; Fit cycles how the
-  pictures fill their boxes.
+* **Moves.** Reload cancels any load still in flight (`Images.cancelAll`), then asks again for
+  every source, past the host's cache; Fit cycles how the pictures fill their boxes.
 
 | Id | Kind | What |
 |---|---|---|
@@ -68,10 +68,11 @@ structure State where
 deriving Repr, Inhabited
 -- endregion: gallery-state
 
-/-- Ask for every source under fresh ids. -/
+/-- Cancel every load still in flight, then ask for every source under fresh ids. -/
 def loadSources (s : State) (reload : Bool) : State × List Effect :=
-  let (t, es) := s.images.loadAll s.nextReq reload sources
-  ({ s with images := t, nextReq := s.nextReq + sources.length }, es)
+  let (t0, cs) := s.images.cancelAll
+  let (t, es) := t0.loadAll s.nextReq reload sources
+  ({ s with images := t, nextReq := s.nextReq + sources.length }, cs ++ es)
 
 /-- The launch state: every source asked for, under ids 0–5. -/
 def initial : State := (loadSources {} false).1
@@ -97,7 +98,7 @@ move ^501 reloadMove (s : State) "Reload" in ^503 where
     post s' := s'.fit = s.fit ∧ ∀ src ∈ sources, s'.images.state src = .loading
     sound := by
       intro s
-      exact ⟨rfl, fun src h => Images.state_loadAll s.images s.nextReq true src sources h⟩
+      exact ⟨rfl, fun src h => Images.state_loadAll _ s.nextReq true src sources h⟩
 -- endregion: gallery-reload
 
 move ^502 fitMove (s : State) "Fit" in ^503 where
@@ -119,11 +120,11 @@ def machine : Machine State := { init := initial, moves := moves%, receive }
 /-- Pending loads have ids below the next request's. -/
 def Fresh (s : State) : Prop := ∀ p ∈ s.images.pending, p.1 < s.nextReq
 
-theorem fresh_loadSources (s : State) (reload : Bool) (h : Fresh s) : Fresh (loadSources s reload).1 := by
+theorem fresh_loadSources (s : State) (reload : Bool) (_h : Fresh s) : Fresh (loadSources s reload).1 := by
   intro p hp
-  rcases Images.pending_loadAll s.images reload sources s.nextReq p hp with ⟨_, h2⟩ | h'
+  rcases Images.pending_loadAll _ reload sources s.nextReq p hp with ⟨_, h2⟩ | h'
   · exact h2
-  · exact Nat.lt_of_lt_of_le (h p h') (Nat.le_add_right _ _)
+  · exact nomatch h'
 
 invariant ^504 freshLoads "Pending loads have fresh ids" for machine where
   does "Every load waiting for its reply has an id below the next request's, so a reply to a later load is never taken for an earlier one."

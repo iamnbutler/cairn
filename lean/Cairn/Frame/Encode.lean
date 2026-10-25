@@ -3,7 +3,7 @@ module
 public import Cairn.Frame
 public import Cairn.Frame.Bytes
 
-/-! Frame byte format (docs/frame.md; version 5): specification encoder `Wire.Enc.frame`, decoder
+/-! Frame byte format (docs/frame.md; version 6): specification encoder `Wire.Enc.frame`, decoder
 `Wire.Dec.frame`, the executable encoder `encodeFrame` (proved equal to the specification and
 installed with `@[csimp]`), and the round trip `decodeFrame_encodeFrame`.
 
@@ -296,6 +296,7 @@ def fitsEffect : Effect → Bool
   | .setTimer n ms => fs n && fu ms
   | .cancelTimer n => fs n
   | .request id r => fu id && fitsRequest r
+  | .cancelRequest id => fu id
   | .quit => true
 
 def fitsSub : Sub → Bool
@@ -437,6 +438,7 @@ def effect : Effect → List UInt8
   | .cancelTimer n => [4] ++ pad 3 ++ str n
   | .request id r => [5, Request.Kind.code r.kind] ++ pad 2 ++ u32 id ++ requestBody r
   | .quit => [6] ++ pad 3
+  | .cancelRequest id => [7] ++ pad 3 ++ u32 id
 
 /-- A subscription's fields after its record head and id. -/
 def subBody : Sub → List UInt8
@@ -475,8 +477,8 @@ def surface (s : SurfaceFrame) : List UInt8 :=
   [SurfaceKind.code s.kind] ++ bool s.shown ++ [Anchor.code s.anchor, ScreenChoice.code s.screen] ++
     u32 s.place ++ u32 s.anchor.offset ++ str s.title ++ canvas s.canvas ++ status s.status
 
-/-- Magic, version 5, flags 0. -/
-def header : List UInt8 := magic ++ [5, 0, 0, 0]
+/-- Magic, version 6, flags 0. -/
+def header : List UInt8 := magic ++ [6, 0, 0, 0]
 
 def frame (f : Frame) : List UInt8 :=
   header ++ list surface f.surfaces.toList ++ list effect f.effects.toList ++
@@ -725,6 +727,9 @@ def effect : Dec Effect := do
   | 6 =>
     skip 3
     return .quit
+  | 7 =>
+    skip 3
+    return .cancelRequest (← u32)
   | _ => fail
 
 def subBody : UInt8 → Dec Sub
@@ -1105,6 +1110,10 @@ theorem effect_enc {x : Effect} (h : fitsEffect x = true) (r : List UInt8) :
     rw [requestBody_enc h.2]; rfl
   | quit => simp only [effect, Enc.effect, List.cons_append, List.nil_append, bind_apply, byte_cons,
       skip_pad, pure_apply]
+  | cancelRequest id =>
+    simp only [fitsEffect, fu_iff] at h
+    simp only [effect, Enc.effect, List.cons_append, List.nil_append, List.append_assoc, bind_apply,
+        byte_cons, skip_pad, u32_enc h, pure_apply]
 
 theorem subCmd_enc {x : SubCmd} (h : fitsSubCmd x = true) (r : List UInt8) :
     subCmd (Enc.subCmd x ++ r) = some (x, r) := by
@@ -1309,6 +1318,7 @@ def effect : Effect → Nat
   | .cancelTimer n => 4 + str n
   | .request _ r => 8 + requestBody r
   | .quit => 4
+  | .cancelRequest _ => 8
 
 def subBody : Sub → Nat
   | .every _ => 4
@@ -1548,6 +1558,7 @@ def effect (b : ByteArray) : Effect → ByteArray
   | .cancelTimer n => str (pad (b.push 4) 3) n
   | .request id r => requestBody (u32 (pad ((b.push 5).push (Request.Kind.code r.kind)) 2) id) r
   | .quit => pad (b.push 6) 3
+  | .cancelRequest id => u32 (pad (b.push 7) 3) id
 
 def subBody (b : ByteArray) : Sub → ByteArray
   | .every ms => u32 b ms

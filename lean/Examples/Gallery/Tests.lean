@@ -45,14 +45,21 @@ def loaded : List Event := boot ++ [.reply 0 (.image 480 320), .reply 1 (.image 
 #guard (images loaded).all fun | .image r _ _ => r.w == 200 && r.h == 150 | _ => false
 #guard (images loaded).head? == some (.image ⟨28, 80, 200, 150⟩ ⟨15, 80, 225, 150⟩ "images/ridge.png")
 
--- Reload: every tile back to loading under ids 6–11, past the host's cache.
+-- Reload: every tile back to loading under ids 6–11, past the host's cache. Loads 2 and 3 were
+-- still in flight, so they are cancelled; they keep their slots until the host answers them, so
+-- only four of the six new loads go out at once (`App.maxInFlight` = 6) and two wait.
 def reloaded : List Event := thenClick loaded reloadRef
 #guard (st reloaded).reloads == 1 && (st reloaded).nextReq == 12
 #guard sources.all fun src => (st reloaded).images.state src == .loading
 #guard (runFrom (run loaded) (clickOn (run loaded) reloadRef)).2 ==
-  (sources.zipIdx.map fun (src, i) => .request (i + 6) (.loadImage src true))
--- A late reply to a load from before the reload is ignored by the runtime (moss's id 2).
+  [.cancelRequest 3, .cancelRequest 2] ++
+  ((sources.zipIdx.take 4).map fun (src, i) => .request (i + 6) (.loadImage src true))
+#guard (run reloaded).world.inFlight == 6 && (run reloaded).world.queued.length == 2
+-- The cancelled load's late reply reaches no app (moss's id 2), and frees its slot: the next
+-- waiting load goes out.
 #guard (st (reloaded ++ [.reply 2 (.image 1 1)])).images.state "images/moss.gif" == .loading
+#guard (runFrom (run reloaded) [.reply 2 (.image 1 1)]).2 ==
+  [.request 10 (.loadImage "images/broken.png" true)]
 
 -- Fit: contain puts ridge's 3:2 inside the box as 200 × 133, centred.
 def contained : List Event := thenClick (reloaded ++ [.reply 6 (.image 480 320)]) fitRef

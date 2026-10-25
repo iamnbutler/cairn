@@ -144,8 +144,15 @@ inductive Effect where
   | setTimer (name : String) (ms : Nat)
   /-- Forget the timer `name`; nothing if it isn't set. -/
   | cancelTimer (name : String)
-  /-- Ask the host to do `r`; it answers with `Msg.reply id _`, exactly once. -/
+  /-- Ask the host to do `r`; it answers with `Msg.reply id _`, exactly once. At most
+  `App.maxInFlight` requests of capped kinds (`Request.Kind.capped`) are with the host at a time;
+  the runtime holds the rest and sends them, oldest first, as slots free. -/
   | request (id : Nat) (r : Request)
+  /-- Withdraw request `id` (docs/effects.md, "Requests in flight"). Its reply never reaches the
+  app. A request still waiting for a slot is dropped and never sent; one already sent is cancelled
+  on the host (`URLSessionTask.cancel`), and its id stays taken until the host's one reply to it
+  arrives, which the runtime swallows. Nothing if `id` is not pending. -/
+  | cancelRequest (id : Nat)
   /-- End the app. The host terminates after running the frame's other effects. -/
   | quit
 deriving Repr, BEq, Inhabited

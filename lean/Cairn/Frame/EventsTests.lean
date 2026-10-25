@@ -45,7 +45,7 @@ private def frame : Frame where
   effects := #[.setClipboard "copied", .beep, .setTimer "t" 30, .cancelTimer "ü",
     .request 7 (.writeFile "~/a" ⟨#[0, 255, 1]⟩), .request 8 (.readFile ""),
     .request 9 (.playSound "Tink"),
-    .request 4294967295 (.http "POST" "http://x/" [("A", "b"), ("", "")] ⟨#[1]⟩ 1000), .quit,
+    .request 4294967295 (.http "POST" "http://x/" [("A", "b"), ("", "")] ⟨#[1]⟩ 1000), .quit, .cancelRequest 9,
     .request 10 (.appendFile "~/t/2026-10-23.jsonl" ⟨#[123, 10]⟩), .request 11 (.listDir "~/t"),
     .request 12 (.deleteFile "~/t/old"), .request 13 .frontmostApp,
     .request 14 (.permission .accessibility true), .request 15 (.typeText 501 "hi 🙂" true),

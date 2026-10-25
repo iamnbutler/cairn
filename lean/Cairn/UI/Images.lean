@@ -224,6 +224,44 @@ theorem loadAll_length (t : Images) (id : Nat) (reload : Bool) :
     show (((t.load id s reload).1.loadAll (id + 1) reload rest).2.length + 1) = rest.length + 1
     rw [ih]
 
+/-! ## Cancelling
+
+A load still in flight holds one of the runtime's request slots (`App.maxInFlight`) until the
+host answers it. `cancel` and `cancelAll` stop waiting and ask the runtime to cancel: a queued
+request is never sent, a sent one is cancelled at the host, and its reply reaches no app
+(`Book.cancel_blocks`). A cancelled source keeps what was known of it (`loading` if it never
+answered) until it is loaded again. -/
+
+/-- Stop waiting for `source`'s latest load and cancel it. -/
+def cancel (t : Images) (source : String) : Images × List Effect :=
+  ({ t with pending := t.pending.filter (·.2 != source) },
+   (t.pending.filter (·.2 == source)).map fun p => .cancelRequest p.1)
+
+/-- Stop waiting for every load and cancel each one. -/
+def cancelAll (t : Images) : Images × List Effect :=
+  ({ t with pending := [] }, t.pending.map fun p => .cancelRequest p.1)
+
+/-- **After `cancelAll`, no reply changes the table.** -/
+theorem receive_cancelAll (t : Images) (id : Nat) (r : Reply) :
+    t.cancelAll.1.receive id r = t.cancelAll.1 :=
+  receive_stale _ _ _ (by simp only [cancelAll, List.lookup])
+
+/-- `cancelAll` cancels exactly the ids the table was waiting for. -/
+theorem cancelAll_effects (t : Images) :
+    t.cancelAll.2 = t.pending.map fun p => .cancelRequest p.1 := rfl
+
+/-- After `cancel source`, a reply to any id leaves what is known of `source` alone. -/
+theorem receive_cancel (t : Images) (source : String) (id : Nat) (r : Reply) :
+    ((t.cancel source).1.receive id r).state source = (t.cancel source).1.state source := by
+  unfold receive
+  split
+  · next src hl =>
+    have hsrc : src ≠ source := fun e =>
+      Images.load_supersedes.lookup_filter_ne t.pending id source (e ▸ hl)
+    simp only [state, cancel]
+    rw [lookup_setAt_ne _ _ _ _ hsrc]
+  · rfl
+
 end Images
 
 end Cairn
