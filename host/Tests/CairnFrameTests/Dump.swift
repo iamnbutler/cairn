@@ -130,8 +130,9 @@ enum Dump {
         case let .readFile(p): return "readFile \(str(p))"
         case let .writeFile(p, d): return "writeFile \(str(p)) \(bytes(d))"
         case let .playSound(n): return "sound \(str(n))"
-        case let .http(m, u, hs, b, t):
-            return "http \(str(m)) \(str(u)) timeout=\(t) \(headers(hs)) body=\(bytes(b))"
+        case let .http(m, u, hs, b, t, sec, cap):
+            return "http \(str(m)) \(str(u)) timeout=\(t) \(headers(hs)) body=\(bytes(b)) secret=\(opt(sec, secret)) "
+                + "capture=\(cap.count)" + cap.map { " \(str($0.field)) \(str($0.account))" }.joined()
         case let .appendFile(p, d): return "appendFile \(str(p)) \(bytes(d))"
         case let .listDir(p): return "listDir \(str(p))"
         case let .deleteFile(p): return "deleteFile \(str(p))"
@@ -139,8 +140,7 @@ enum Dump {
         case let .permission(p, prompt): return "permission \(p.rawValue) \(bit(prompt))"
         case let .typeText(pid, t, ret): return "typeText \(pid) \(bit(ret)) \(str(t))"
         case let .upload(m, u, hs, sec, body, t):
-            let secret = opt(sec) { "\(str($0.header)) \(str($0.scheme)) \(str($0.file)) \(str($0.name))" }
-            return "upload \(str(m)) \(str(u)) timeout=\(t) \(headers(hs)) secret=\(secret) parts=\(body.count)"
+            return "upload \(str(m)) \(str(u)) timeout=\(t) \(headers(hs)) secret=\(opt(sec, secret)) parts=\(body.count)"
                 + body.map { " " + part($0) }.joined()
         case let .forgetClip(c): return "forgetClip \(c)"
         case let .openItem(t): return "open \(str(t))"
@@ -148,6 +148,14 @@ enum Dump {
         case let .readDefault(d, k): return "readDefault \(str(d)) \(str(k))"
         case let .makeDir(p): return "makeDir \(str(p))"
         case let .loadImage(src, r): return "loadImage \(bit(r)) \(str(src))"
+        case let .forgetSecret(a): return "forgetSecret \(str(a))"
+        }
+    }
+
+    static func secret(_ s: Secret) -> String {
+        switch s.source {
+        case let .env(f, n): "\(str(s.header)) \(str(s.scheme)) \(str(f)) \(str(n))"
+        case let .keychain(a): "\(str(s.header)) \(str(s.scheme)) keychain \(str(a))"
         }
     }
 

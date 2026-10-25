@@ -98,7 +98,9 @@ public enum DebugJSON {
         case .readFile(let p): "readFile \(p)"
         case let .writeFile(p, d): "writeFile \(p) (\(d.count) bytes)"
         case .playSound(let n): "playSound \(n)"
-        case let .http(m, u, _, _, _): "http \(m) \(u)"
+        // Never the secret's value nor a captured one: the header's name and how many fields.
+        case let .http(m, u, _, _, _, s, cap):
+            "http \(m) \(u)\(s.map { " secret \($0.header)" } ?? "")\(cap.isEmpty ? "" : " capture \(cap.count)")"
         case let .appendFile(p, d): "appendFile \(p) (\(d.count) bytes)"
         case .listDir(let p): "listDir \(p)"
         case .deleteFile(let p): "deleteFile \(p)"
@@ -114,6 +116,7 @@ public enum DebugJSON {
         case let .readDefault(d, k): "readDefault \(d) \(k)"
         case .makeDir(let p): "makeDir \(p)"
         case let .loadImage(s, reload): "loadImage \(s)\(reload ? " reload" : "")"
+        case .forgetSecret(let a): "forgetSecret \(a)"
         }
     }
 

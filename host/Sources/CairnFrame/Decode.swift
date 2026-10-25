@@ -24,11 +24,11 @@ extension Frame {
         self = try bytes.withUnsafeBytes { try Frame(decoding: $0) }
     }
 
-    /// Header (magic, version 8, flags 0), surfaces, effects, subscription commands, wake.
+    /// Header (magic, version 9, flags 0), surfaces, effects, subscription commands, wake.
     public init(decoding raw: UnsafeRawBufferPointer) throws {
         var r = ByteReader(raw)
         try r.need(8)
-        guard r.u8(0) == 0x43, r.u8(1) == 0x41, r.u8(2) == 0x46, r.u8(3) == 0x52, r.u16(4) == 8,
+        guard r.u8(0) == 0x43, r.u8(1) == 0x41, r.u8(2) == 0x46, r.u8(3) == 0x52, r.u16(4) == 9,
               r.u16(6) == 0  // flags: reserved, zero (found by cairn-fuzz-trusted)
         else { throw FrameDecodeError.badHeader }
         r.i = 8
@@ -254,8 +254,10 @@ extension Frame {
                 let method = try er.string()
                 let url = try er.string()
                 let headers = try er.headers()
-                req = .http(method: method, url: url, headers: headers, body: try er.bytes(),
-                            timeoutMs: timeout)
+                let body = try er.bytes()
+                let secret = try er.secret()
+                req = .http(method: method, url: url, headers: headers, body: body, timeoutMs: timeout,
+                            secret: secret, capture: try er.headers().map { Capture($0.name, $0.value) })
             case 4:
                 let path = try er.string()
                 req = .appendFile(path: path, data: try er.bytes())
@@ -301,6 +303,7 @@ extension Frame {
                 let reload = try er.flag(0)
                 er.i += 4
                 req = .loadImage(source: try er.string(), reload: reload)
+            case 17: req = .forgetSecret(account: try er.string())
             default: throw FrameDecodeError.badCode(kind, at: at)
             }
             return .request(id: id, req)
@@ -484,7 +487,8 @@ struct ByteReader {
         return out
     }
 
-    /// `[0, 0, 0, 0]`, or `[1, 0, 0, 0]` and four strings (`Dec.optSecret`; padding unchecked).
+    /// `[0, 0, 0, 0]`, `[1, 0, 0, 0]` and four strings (an environment secret), or `[2, 0, 0, 0]`
+    /// and three (a Keychain item) (`Dec.optSecret`; padding unchecked).
     mutating func secret() throws -> Secret? {
         try need(4)
         switch u8(0) {
@@ -495,6 +499,10 @@ struct ByteReader {
             i += 4
             let h = try string(), s = try string(), f = try string()
             return Secret(header: h, scheme: s, file: f, name: try string())
+        case 2:
+            i += 4
+            let h = try string(), s = try string()
+            return Secret(header: h, scheme: s, source: .keychain(account: try string()))
         case let c: throw FrameDecodeError.badCode(c, at: i)
         }
     }
