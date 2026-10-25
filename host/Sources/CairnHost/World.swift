@@ -1,5 +1,6 @@
 import AppKit
 import CairnFrame
+import CairnRender
 import Foundation
 
 // The host's side of the outside world (docs/effects.md): the clock, the requests Lean asks
@@ -96,9 +97,9 @@ final class RefuseProtocol: URLProtocol, @unchecked Sendable {
 }
 
 extension Handlers {
-    /// `typeText`, `upload`, `forgetClip` and `loadImage`, which reach the world's clips and
-    /// devices.
-    public static func devices(_ clips: Clips, _ d: Devices) -> [UInt8: RequestHandler] {
+    /// `typeText`, `upload`, `forgetClip` and `loadImage`, which reach the world's clips,
+    /// devices and image store.
+    public static func devices(_ clips: Clips, _ d: Devices, images: ImageStore = .shared) -> [UInt8: RequestHandler] {
         [
             9: { r, reply in
                 if case let .typeText(pid, text, ret) = r { reply(Typing.type(pid: pid, text: text, pressReturn: ret, d.typist)) }
@@ -112,7 +113,7 @@ extension Handlers {
             11: { r, reply in if case let .forgetClip(c) = r { reply(clips.forget(c)) } },
             16: { r, reply in
                 if case let .loadImage(s, reload) = r {
-                    ImageLoad.run(source: s, reload: reload, store: .shared, session: d.session, reply)
+                    ImageLoad.run(source: s, reload: reload, store: images, session: d.session, reply)
                 }
             },
         ]
@@ -324,6 +325,8 @@ public enum HTTP {
 /// events is sent (^915, ^963, ^966, ^969): `every` is a dispatch timer, `watchFile` a dispatch
 /// timer that polls the file, `record` the microphone and `globalKey` the key monitors, whose
 /// callbacks hop onto the queue and are dropped once their subscription has stopped.
+/// `imageCache` sets the image store's budget (the smallest of those running) and sends
+/// `evicted` from the queue for each image the store drops (^1011).
 public final class World: @unchecked Sendable {
     public var handlers: Handlers
     private let queue = DispatchQueue(label: "cairn.world")
@@ -352,13 +355,25 @@ public final class World: @unchecked Sendable {
     /// Every recording, by clip id (`record`, `upload`'s `wav` parts, `forgetClip`).
     public let clips = Clips()
     public let devices: Devices
+    /// Where `loadImage` keeps decoded images and the renderer finds them.
+    public let images: ImageStore
+    /// The running `imageCache` subscriptions' budgets, by id (on the queue).
+    private var caches: [UInt32: UInt64] = [:]
 
     /// `handlers`, plus the device handlers (`Handlers.devices`) for kinds it has none for.
-    public init(handlers: Handlers = .standard, devices: Devices = .live) {
+    public init(handlers: Handlers = .standard, devices: Devices = .live, images: ImageStore = .shared) {
         self.devices = devices
+        self.images = images
         var h = handlers
-        for (k, v) in Handlers.devices(clips, devices) where h.table[k] == nil { h.table[k] = v }
+        for (k, v) in Handlers.devices(clips, devices, images: images) where h.table[k] == nil { h.table[k] = v }
         self.handlers = h
+    }
+
+    /// The images `frame` draws, which the store keeps whatever its budget. Called on the Lean
+    /// thread before the frame is published, so the renderer never draws an image the store may
+    /// drop.
+    public func drawing(_ frame: Frame) {
+        images.setDrawn(frame.imageSources)
     }
 
     /// The frame's effects and subscription commands, in order. Called on the Lean thread.
@@ -471,6 +486,29 @@ public final class World: @unchecked Sendable {
             return record(id, clip)
         case let .globalKey(code, modifier):
             return globalKey(id, code, modifier)
+        case let .imageCache(bytes):
+            caches[id] = bytes
+            cacheChanged()
+            return { [weak self] in
+                self?.caches[id] = nil
+                self?.cacheChanged()
+            }
+        }
+    }
+
+    /// On the queue: the store keeps within the smallest running budget and reports what it
+    /// drops to every running `imageCache`, from the queue; with none running it keeps
+    /// everything.
+    private func cacheChanged() {
+        guard let budget = caches.values.min() else {
+            images.setBudget(nil, onDrop: nil)
+            return
+        }
+        images.setBudget(Int(clamping: budget)) { [weak self] source in
+            self?.queue.async { [weak self] in
+                guard let self else { return }
+                for id in self.caches.keys.sorted() { self.send?([.subEvent(id: id, .evicted(source))]) }
+            }
         }
     }
 

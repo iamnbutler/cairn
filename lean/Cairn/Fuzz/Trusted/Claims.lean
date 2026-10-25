@@ -208,4 +208,10 @@ assume ^1010 hostWindowMinSize "The window is never smaller than the app's minim
   does "The host sets the window's contentMinSize to the minimum size of the frame's window record (a negative side as 0), so a person can't drag it smaller, clamps every live resize AppKit proposes to it, and grows a window already smaller to it, keeping its top-left corner; a minimum the window meets leaves it alone. So every resize Lean hears is at least the minimum the app asked for, from the first frame that asks for it."
   check "window.min-size"
 
+/-! The image cache's budget (docs/effects.md, "Images"; `Sub.imageCache`). -/
+
+assume ^1011 hostImageCache "The image cache reports every image it drops, after it is gone" where
+  does "While an imageCache subscription runs, the host keeps its decoded images within the smallest running budget: past it, it drops the images used least recently, never one the latest published frame draws nor the one just loaded, and sends evicted for every image it drops (a failed reload's removal too) after the pixels are gone. It answers loadImage ready only after it held the pixels for that load. With Images.evicted on the Lean side, an image the app takes for ready has its pixels with the host once every message is heard (Images.Cache.ready_held_quiet)."
+  check "images.cache"
+
 end Cairn.Fuzz.Trusted.Claims

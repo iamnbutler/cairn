@@ -299,11 +299,13 @@ inductive Sub where
   | watchFile (path : String)  -- `changed` when the file changes (below)
   | record (clip : Nat)        -- the microphone into clip `clip`, as levels (below)
   | globalKey (code : Nat) (modifier : Option Nat)  -- the hotkey (below)
+  | imageCache (bytes : Nat)   -- keep the host's images within a budget ("Images")
 inductive SubEvent where
   | tick | changed
   | audio (frames peak : Nat) (windows : List Level)
   | keyDown (t : Nat) | keyUp (t : Nat) | otherKey (t : Nat)
   | failed (fault : Fault) (message : String)
+  | evicted (source : String)
 ```
 
 Subscriptions are data derived from state, as in Elm. After every step that delivered
@@ -522,6 +524,36 @@ reply to an earlier load of it, or to an id the table never issued, changes noth
 (`receive_stale`, `superseded_reply`), so a slow first load can't overwrite a reload that
 answered first.
 
+### A budget on the host's images
+
+Without more, the host keeps every image it loaded. An app that subscribes to
+`Sub.imageCache bytes` asks it to keep its decoded pixels within `bytes` (the smallest budget
+of those running): past it, the host drops the images used least recently, never one the latest
+frame draws (an image is drawn once it is `ready`) nor the one it has just loaded, and sends
+`SubEvent.evicted source` for each, after the pixels are gone. A failed reload's removal is
+reported the same way. The budget is soft: what one frame draws is kept even past it, so it
+should hold at least a screenful.
+
+The app hears it in `receive` and calls `Images.evicted`: a ready image goes back to
+`loading`, and the table stops waiting for (and cancels) any load of it still in flight. That
+last part matters, because the notice and a reply can cross: the host may load a picture,
+drop it to make room and say so before its ready reply is sent. Forgetting the pending load
+means that reply is ignored. The app loads the image again when it wants to show it.
+
+`Images.Cache` models the table, the host's store and the messages between them, with the
+host's moves as ^1011 states them (it answers ready only after it held the pixels for that
+load; it reports every drop after it), and proves that in every state reached an image the
+table takes for ready is held by the host or an `evicted` notice for it is on its way
+(`ready_held`), so once the app has heard everything, ready means the pixels are there
+(`ready_held_quiet`). The host's half is fuzzed (`images.cache`, docs/fuzz.md). This holds while
+the app keeps its subscription: notices sent after a subscription stopped reach no app.
+
+Why notices rather than reloading in the host: a transparent reload would leave Lean taking
+the image for ready while the host has nothing to draw, a reload that fails (the file gone, the
+server down) would never be reported, and a file that changed could come back at another pixel
+size under geometry Lean already laid out. With a notice, what the screen shows is still a
+function of Lean's state.
+
 Example: Gallery (`lean/Examples/Gallery.lean`, host `host/Sources/CairnGallery`, run with
 `cd host && swift run CairnGallery`): six tiles (a PNG, a JPEG stored turned with an EXIF
 orientation, a GIF, a poster over https, a text file, a missing file) in a 4:3 grid that takes as
@@ -530,7 +562,10 @@ and never shrinks a tile below 180 points (the window's minimum size, `Grid.minB
 Reload (^501), Fit (^502) and a press on a tile to reload that one (^509). Its proofs
 (`Examples/Gallery/Proofs.lean`) show every tile's image is its cell's size whatever its state,
 the tiles land on the grid's cells at every window size, a click in a cell reaches that tile,
-and Reload is on screen; ^504 keeps pending loads' ids fresh. The self test runs the real host
+and Reload is on screen; ^504 keeps pending loads' ids fresh. Its "Many at once" column shows
+24 thumbnails twelve at a time under an 8 MiB budget: after Load 24 the host drops most of the
+other page's, the app counts them evicted and Next page (^512) loads them again; ^513 proves a
+dropped thumbnail shows as not loaded until it is. The self test runs the real host
 with the network off (the https tile shows "Offline"); every tile was answered 6.8 ms after
 launch.
 
@@ -638,6 +673,7 @@ Each kind of host effect is an `assume` claim naming a check of the trusted-base
 | ^1005 | `record` reports `started` once its microphone is running, before any audio, or fails without it | `subs.record-start` |
 | ^967 | a clip's WAV for a range of windows holds exactly those samples | `effects.clip-wav` |
 | ^968 | `globalKey` reports the hotkey's press and release, and other keys while it is held | `subs.global-key` |
+| ^1011 | the image cache reports every image it drops, after it is gone | `images.cache` |
 | ^969 | `typeText` types exactly the text into that app, or nothing | `effects.type-text` |
 | ^970 | `upload` sends the body assembled from its parts, with the secret in its header | `effects.upload` |
 | ^971 | a secret is read from the environment or its file, and never shown | `effects.secret` |

@@ -288,6 +288,8 @@ public enum Sub: Hashable, Sendable {
     case record(clip: UInt32)
     /// The hotkey: a key code, or a modifier key (its code and its modifier flag bit).
     case globalKey(code: UInt32, modifier: UInt32?)
+    /// Keep decoded images within about `bytes` bytes, reporting each one dropped (`evicted`).
+    case imageCache(bytes: UInt64)
 }
 
 /// One 20 ms window of a recording (`Cairn.Level`).
@@ -307,9 +309,11 @@ public enum SubEvent: Equatable, Sendable {
     /// `record`: the microphone is running, since these monotonic milliseconds. Once, before
     /// any `audio`.
     case started(UInt64)
+    /// `imageCache`: the host dropped this source's pixels.
+    case evicted(String)
 
     /// `tick` 0, `changed` 1, `audio` 2, `keyDown` 3, `keyUp` 4, `otherKey` 5, `failed` 6,
-    /// `started` 7.
+    /// `started` 7, `evicted` 8.
     public var code: UInt8 {
         switch self {
         case .tick: 0
@@ -320,6 +324,7 @@ public enum SubEvent: Equatable, Sendable {
         case .otherKey: 5
         case .failed: 6
         case .started: 7
+        case .evicted: 8
         }
     }
 
@@ -460,6 +465,15 @@ public struct Frame: Equatable, Sendable {
         let c = Canvas(size: size, draws: draws, ax: ax, textInput: textInput, cursor: cursor)
         self.init(surfaces: [Surface(kind: .window, place: 0, canvas: c)], effects: effects,
                   subs: subs, wake: wake)
+    }
+
+    /// The sources of every `image` draw, on every surface.
+    public var imageSources: Set<String> {
+        var out: Set<String> = []
+        for s in surfaces {
+            for d in s.canvas.draws { if case let .image(_, _, source) = d { out.insert(source) } }
+        }
+        return out
     }
 
     /// The index of the first window, if any.

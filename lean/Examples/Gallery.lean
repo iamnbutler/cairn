@@ -30,6 +30,13 @@ https, and two that fail (a file that is no image, a file that isn't there).
   (`App.minSize`): `Grid.minBox`'s smallest box for three columns plus what the window lays out
   around the tiles, so at every size a person can drag it to, every tile is at least 180 points
   wide (^511).
+* **A budget on the host's images** (`Sub.imageCache`). The app keeps the host's decoded images
+  within `cacheBudget` (8 MiB, small on purpose: about what one screen draws). Past it the host
+  drops the images used least recently that the window doesn't draw and says so with
+  `evicted`; the app forgets them (`Images.evicted`, so no reply can say they are loaded while
+  their pixels are gone) and loads them again when they come back on screen. The thumbnails
+  show twelve at a time; after Load 24 the other page's are dropped, and Next page loads them
+  again (^512, ^513).
 
 | Id | Kind | What |
 |---|---|---|
@@ -44,6 +51,8 @@ https, and two that fail (a file that is no image, a file that isn't there).
 | ^509 | move | Press a tile: that tile alone loads again |
 | ^510 | invariant | at every window size the tiles don't overlap, stay in the window and read in order |
 | ^511 | invariant | at or above the window's minimum size every tile is at least 180 points wide |
+| ^512 | move | Next page: the other twelve thumbnails, those the host dropped loaded again |
+| ^513 | invariant | a thumbnail the host dropped shows as not loaded until it is loaded again |
 
 The v1 exports are in `Examples.Gallery.Abi`; theorems about the view in
 `Examples.Gallery.Proofs` (^510's evidence among them); the host side is `host/Sources/CairnGallery`. -/
@@ -84,6 +93,22 @@ def isMany (src : String) : Bool := manySources.contains src
 
 theorem manySources_length : manySources.length = manyCount := by
   simp only [manySources, List.length_map, List.length_range]
+
+/-- No tile is a thumbnail. -/
+theorem sources_not_many : ∀ src ∈ sources, isMany src = false := by decide
+
+/-- The thumbnails show `pageSize` at a time, on `pageCount` pages. -/
+def pageSize : Nat := 12
+def pageCount : Nat := 2
+
+/-- The thumbnails on page `p`. -/
+def pageSources (p : Nat) : List String := (manySources.drop (p * pageSize)).take pageSize
+
+-- region: gallery-budget
+/-- How many bytes of decoded pixels the host may keep for the app (`Sub.imageCache`): 8 MiB,
+about what one screen of tiles and thumbnails takes, so paging drops the other page's. -/
+def cacheBudget : Nat := 8 * 1024 * 1024
+-- endregion: gallery-budget
 
 -- region: gallery-grid
 /-- The tiles' grid: columns of at least 180 points, 4:3 pictures with 50 points of caption
@@ -135,6 +160,10 @@ structure State where
   /-- Presses of Load 24 and of Cancel. -/
   batches : Nat := 0
   cancels : Nat := 0
+  /-- The page of thumbnails shown. -/
+  page : Nat := 0
+  /-- Thumbnails the host dropped (`evicted`) and the app hasn't loaded again. -/
+  dropped : List String := []
 deriving Repr, Inhabited
 -- endregion: gallery-state
 
@@ -148,7 +177,8 @@ def loadSources (s : State) (reload : Bool) : State × List Effect :=
 def loadMany (s : State) : State × List Effect :=
   let (t0, cs) := s.images.cancelWhere isMany
   let (t, es) := t0.loadAll s.nextReq true manySources
-  ({ s with images := t, nextReq := s.nextReq + manyCount, batches := s.batches + 1 }, cs ++ es)
+  ({ s with images := t, nextReq := s.nextReq + manyCount, batches := s.batches + 1, dropped := [] },
+   cs ++ es)
 
 /-- Cancel the thumbnails still loading. -/
 def cancelMany (s : State) : State × List Effect :=
@@ -165,6 +195,31 @@ def loadTile (s : State) (k : Nat) : State × List Effect :=
     ({ s with images := t, nextReq := s.nextReq + 1 }, cs ++ es)
   | none => (s, [])
 
+/-- Whether the window shows `src` now: a tile, or a thumbnail on the page shown. -/
+def shown (s : State) (src : String) : Bool := sources.contains src || (pageSources s.page).contains src
+
+-- region: gallery-page
+/-- Show the next page, loading its thumbnails the host dropped. -/
+def nextPage (s : State) : State × List Effect :=
+  let p := (s.page + 1) % pageCount
+  let want := (pageSources p).filter s.dropped.contains
+  let l := s.images.loadAll s.nextReq false want
+  ({ s with page := p, images := l.1, nextReq := s.nextReq + want.length,
+            dropped := s.dropped.filter fun x => !want.contains x }, l.2)
+
+/-- The host dropped `src`'s pixels (`SubEvent.evicted`): forget them; load the image again at
+once if the window shows it, or else remember it as dropped. -/
+def evicted (s : State) (src : String) : State × List Effect :=
+  let e := s.images.evicted src
+  if shown s src then
+    let l := e.1.loadAll s.nextReq false [src]
+    ({ s with images := l.1, nextReq := s.nextReq + 1, dropped := s.dropped.filter (· != src) },
+     e.2 ++ l.2)
+  else if isMany src && !s.dropped.contains src then
+    ({ s with images := e.1, dropped := src :: s.dropped }, e.2)
+  else ({ s with images := e.1 }, e.2)
+-- endregion: gallery-page
+
 /-- The launch state: every source asked for, under ids 0–5. -/
 def initial : State := (loadSources {} false).1
 
@@ -179,6 +234,7 @@ def fitRef : ControlRef := ⟨502, 0⟩
 def manyRef : ControlRef := ⟨506, 0⟩
 def cancelRef : ControlRef := ⟨507, 0⟩
 def tileRef (k : Nat) : ControlRef := ⟨509, k⟩
+def pageRef : ControlRef := ⟨512, 0⟩
 
 place ^503 window "Gallery window" where
   does "Six image tiles in a grid, each with its name and pixel size or fault, under a header with Fit and Reload."
@@ -245,9 +301,30 @@ move ^509 tileMove (s : State) (k : Nat) "Reload a tile" in ^503 where
     sound := by intro s k _ src h; exact state_loadTile s k src h
 -- endregion: gallery-tile-move
 
+-- region: gallery-page-move
+move ^512 pageMove (s : State) "Next page" in ^503 where
+  does "Press Next page."
+  sees "The other twelve thumbnails show; those the host dropped from its cache load again, and the rest show at once."
+  on press
+    emit := nextPage s
+    post s' := s'.page = (s.page + 1) % pageCount ∧
+      ∀ src ∈ pageSources s'.page, src ∈ s.dropped → s'.images.state src = .loading ∧ src ∉ s'.dropped
+    sound := by
+      intro s
+      refine ⟨rfl, fun src hp hd => ⟨?_, ?_⟩⟩
+      · exact Images.state_loadAll _ _ _ _ _ (List.mem_filter.mpr ⟨hp, List.contains_iff_mem.mpr hd⟩)
+      · intro m
+        have hw : src ∈ (pageSources ((s.page + 1) % pageCount)).filter s.dropped.contains :=
+          List.mem_filter.mpr ⟨hp, List.contains_iff_mem.mpr hd⟩
+        have := (List.mem_filter.mp m).2
+        rw [List.contains_iff_mem.mpr hw] at this
+        cases this
+-- endregion: gallery-page-move
+
 -- region: gallery-receive
 def receive (s : State) : Msg → State × List Effect
   | .reply id r => ({ s with images := s.images.receive id r }, [])
+  | .sub _ (.evicted src) => evicted s src
   | _ => (s, [])
 -- endregion: gallery-receive
 
@@ -280,6 +357,25 @@ theorem fresh_loadSources (s : State) (reload : Bool) (_h : Fresh s) : Fresh (lo
   · exact h2
   · exact nomatch h'
 
+theorem fresh_nextPage (s : State) (h : Fresh s) : Fresh (nextPage s).1 := by
+  intro p hp
+  rcases Images.pending_loadAll _ false _ s.nextReq p hp with ⟨_, h2⟩ | h'
+  · exact h2
+  · exact Nat.lt_of_lt_of_le (h p h') (Nat.le_add_right _ _)
+
+theorem fresh_evicted (s : State) (src : String) (h : Fresh s) : Fresh (evicted s src).1 := by
+  unfold evicted
+  have hev : ∀ p ∈ (s.images.evicted src).1.pending, p.1 < s.nextReq :=
+    fun p hp => h p (Images.pending_evicted _ _ _ hp).1
+  split
+  · intro p hp
+    rcases Images.pending_loadAll _ false _ s.nextReq p hp with ⟨_, h2⟩ | h'
+    · simp only [List.length_singleton] at h2; exact h2
+    · exact Nat.lt_of_lt_of_le (hev p h') (Nat.le_add_right _ _)
+  · split
+    · exact hev
+    · exact hev
+
 invariant ^504 freshLoads "Pending loads have fresh ids" for machine where
   does "Every load waiting for its reply has an id below the next request's, so a reply to a later load is never taken for an earlier one."
   holds s := Fresh s
@@ -289,12 +385,142 @@ invariant ^504 freshLoads "Pending loads have fresh ids" for machine where
       (Move.all_cons (fitMove.preserves _ fun _ h => h)
         (Move.all_cons (manyMove.preserves _ fresh_loadMany)
           (Move.all_cons (cancelMove.preserves _ fresh_cancelMany)
-            (Move.all_cons (tileMove.preserves _ fun s k _ h => fresh_loadTile s k h) Move.all_nil))))
+            (Move.all_cons (tileMove.preserves _ fun s k _ h => fresh_loadTile s k h)
+              (Move.all_cons (pageMove.preserves _ fresh_nextPage) Move.all_nil)))))
   receive := by
     intro s m h
     cases m with
     | reply id r => exact fun p hp => h p (Images.pending_receive _ _ _ _ hp)
+    | sub _ e =>
+      cases e with
+      | evicted src => exact fresh_evicted s src h
+      | _ => exact h
     | _ => exact h
+
+-- region: gallery-dropped
+/-- Every thumbnail the host dropped and the app hasn't loaded again shows as not loaded, and
+the table waits for no load of it, so no reply can make it loaded. -/
+def DroppedWait (s : State) : Prop :=
+  ∀ src ∈ s.dropped, isMany src = true ∧ s.images.isReady src = false ∧
+    ∀ p ∈ s.images.pending, p.2 ≠ src
+
+/-- Not ready and waited for by no load: what `DroppedWait` asks of each dropped thumbnail. -/
+def Waits (t : Images) (src : String) : Prop := t.isReady src = false ∧ ∀ p ∈ t.pending, p.2 ≠ src
+
+/-- `Waits` holds on when `src`'s state is kept and every new load is for another source. -/
+theorem waits_of {t t' : Images} {src : String} (hs : t'.state src = t.state src)
+    (hp : ∀ p ∈ t'.pending, p.2 = src → p ∈ t.pending) (h : Waits t src) : Waits t' src :=
+  ⟨by simp only [Images.isReady, hs]; exact h.1, fun p hp' e => h.2 p (hp p hp' e) e⟩
+
+/-- Loading sources other than `src` keeps `Waits` for it. -/
+theorem waits_loadAll {t : Images} {src : String} (id : Nat) (reload : Bool) (srcs : List String)
+    (hn : src ∉ srcs) (h : Waits t src) : Waits (t.loadAll id reload srcs).1 src :=
+  waits_of (Images.state_loadAll_notin _ _ _ _ _ hn)
+    (fun p hp e => by
+      rcases Images.pending_loadAll_src _ _ _ _ p hp with m | m
+      · exact absurd (e ▸ m) hn
+      · exact m) h
+
+/-- After an eviction, `Waits` holds for the evicted source, and is kept for every other. -/
+theorem waits_evicted (t : Images) (src d : String) (h : d ≠ src → Waits t d) :
+    Waits (t.evicted src).1 d := by
+  by_cases hd : d = src
+  · subst hd
+    refine ⟨?_, fun p hp => (Images.pending_evicted _ _ _ hp).2⟩
+    unfold Images.isReady
+    split
+    · next w hh e => exact absurd e (Images.state_evicted _ _ w hh)
+    · rfl
+  · exact waits_of (Images.state_evicted_ne _ _ _ (Ne.symm hd))
+      (fun p hp _ => (Images.pending_evicted _ _ _ hp).1) (h hd)
+
+theorem dropped_loadSources (s : State) (reload : Bool) (h : DroppedWait s) :
+    DroppedWait (loadSources s reload).1 := by
+  intro src hd
+  obtain ⟨hm, hw⟩ := h src hd
+  have hns : src ∉ sources := fun m => by rw [sources_not_many src m] at hm; cases hm
+  have h0 : Waits s.images.cancelAll.1 src := waits_of (t := s.images) rfl (fun p hp _ => nomatch hp) hw
+  exact ⟨hm, waits_loadAll s.nextReq reload sources hns h0⟩
+
+theorem dropped_cancelMany (s : State) (h : DroppedWait s) : DroppedWait (cancelMany s).1 :=
+  fun src hd => ⟨(h src hd).1, waits_of (t := s.images) (t' := (s.images.cancelWhere isMany).1) rfl
+    (fun p hp _ => (Images.pending_cancelWhere _ _ p hp).1) (h src hd).2⟩
+
+theorem dropped_loadTile (s : State) (k : Nat) (h : DroppedWait s) : DroppedWait (loadTile s k).1 := by
+  unfold loadTile
+  split
+  · next src0 hk =>
+    intro src hd
+    obtain ⟨hm, hw⟩ := h src hd
+    have hne : src ∉ [src0] := by
+      intro e
+      have : src0 ∈ sources := List.mem_of_getElem? hk
+      rw [List.mem_singleton.mp e, sources_not_many src0 this] at hm
+      cases hm
+    have h0 : Waits (s.images.cancelWhere (· == src0)).1 src :=
+      waits_of (t := s.images) rfl (fun p hp _ => (Images.pending_cancelWhere _ _ p hp).1) hw
+    exact ⟨hm, waits_loadAll _ _ _ hne h0⟩
+  · exact h
+
+theorem dropped_nextPage (s : State) (h : DroppedWait s) : DroppedWait (nextPage s).1 := by
+  intro src hd
+  obtain ⟨hd, hn⟩ := List.mem_filter.mp hd
+  obtain ⟨hm, hw⟩ := h src hd
+  refine ⟨hm, waits_loadAll _ _ _ (fun m => ?_) hw⟩
+  rw [List.contains_iff_mem.mpr m] at hn
+  cases hn
+
+theorem dropped_receive (s : State) (id : Nat) (r : Reply) (h : DroppedWait s) :
+    DroppedWait { s with images := s.images.receive id r } := by
+  intro src hd
+  obtain ⟨hm, hw⟩ := h src hd
+  refine ⟨hm, waits_of ?_ (fun p hp _ => Images.pending_receive _ _ _ _ hp) hw⟩
+  exact Images.state_receive_waiting _ _ _ _ hw.2
+
+theorem dropped_evicted (s : State) (src0 : String) (h : DroppedWait s) :
+    DroppedWait (evicted s src0).1 := by
+  unfold evicted
+  split
+  · intro src hd
+    obtain ⟨hd, hne⟩ := List.mem_filter.mp hd
+    obtain ⟨hm, hw⟩ := h src hd
+    refine ⟨hm, waits_loadAll _ _ _ (fun m => ?_) (waits_evicted _ _ _ fun _ => hw)⟩
+    rw [List.mem_singleton.mp m] at hne
+    simp only [bne_self_eq_false, Bool.false_eq_true] at hne
+  · split
+    · next hc =>
+      intro src hd
+      rcases List.mem_cons.mp hd with e | hd
+      · subst e
+        simp only [Bool.and_eq_true, Bool.not_eq_true'] at hc
+        exact ⟨hc.1, waits_evicted _ _ _ fun hne => absurd rfl hne⟩
+      · obtain ⟨hm, hw⟩ := h src hd
+        exact ⟨hm, waits_evicted _ _ _ fun _ => hw⟩
+    · intro src hd
+      obtain ⟨hm, hw⟩ := h src hd
+      exact ⟨hm, waits_evicted _ _ _ fun _ => hw⟩
+
+invariant ^513 droppedWait "A dropped thumbnail waits to be loaded again" for machine where
+  does "A thumbnail the host dropped from its image cache shows as not loaded, and no late reply can show it as loaded, until the app loads it again."
+  holds s := DroppedWait s
+  init := dropped_loadSources {} false (fun _ h => nomatch h)
+  step := machine.preserves <|
+    Move.all_cons (reloadMove.preserves _ fun s h => dropped_loadSources s true h)
+      (Move.all_cons (fitMove.preserves _ fun _ h => h)
+        (Move.all_cons (manyMove.preserves _ fun _ _ _ h => nomatch h)
+          (Move.all_cons (cancelMove.preserves _ dropped_cancelMany)
+            (Move.all_cons (tileMove.preserves _ fun s k _ h => dropped_loadTile s k h)
+              (Move.all_cons (pageMove.preserves _ dropped_nextPage) Move.all_nil)))))
+  receive := by
+    intro s m h
+    cases m with
+    | reply id r => exact dropped_receive s id r h
+    | sub _ e =>
+      cases e with
+      | evicted src => exact dropped_evicted s src h
+      | _ => exact h
+    | _ => exact h
+-- endregion: gallery-dropped
 
 flow ^505 reloadContain "Reload, then fit inside" for machine where
   does "Press Reload, then Fit."
@@ -452,9 +678,9 @@ def manyCounts (s : State) : String × String :=
   let waiting (src : String) : Bool := s.images.pending.any (·.2 == src)
   let loaded := countOf manySources fun src => match s.images.state src with | .ready .. => true | _ => false
   let cancelled := if s.batches = 0 then 0 else
-    countOf manySources fun src => !waiting src && s.images.state src == .loading
+    countOf manySources fun src => !waiting src && s.images.state src == .loading && !s.dropped.contains src
   (s!"In flight {sent} of 6 · queued {asked - sent}",
-   s!"Loaded {loaded} of {manyCount} · cancelled {cancelled}")
+   s!"Loaded {loaded} of {manyCount} · cancelled {cancelled} · evicted {s.dropped.length}")
 
 def galleryColumn (s : State) (ui : UI) : Node :=
   .box { width := .fixed (gridW ui.size), height := .fill, gap := rowGap } none
@@ -470,10 +696,11 @@ def manyColumn (s : State) (ui : UI) : Node :=
           button ui cancelRef "Cancel" grey greyDark ],
       line 13 ink (manyCounts s).1,
       line 13 muted (manyCounts s).2,
-      thumbRow s (manySources.take 6),
-      thumbRow s ((manySources.drop 6).take 6),
-      thumbRow s ((manySources.drop 12).take 6),
-      thumbRow s (manySources.drop 18) ]
+      thumbRow s ((pageSources s.page).take 6),
+      thumbRow s ((pageSources s.page).drop 6),
+      .box { axis := .row, width := .fill, height := .fixed 32, gap := 12, align := .center } none
+        [ button ui pageRef "Next page" grey greyDark,
+          line 13 muted s!"Page {s.page + 1} of {pageCount}" ] ]
 
 def view (s : State) (ui : UI) : Node :=
   .box { axis := .row, width := .fill, height := .fill, padding := ⟨pad, pad, pad, pad⟩, gap := colGap,
@@ -484,10 +711,11 @@ def view (s : State) (ui : UI) : Node :=
 def app : App State :=
   { machine.toApp [.window 503 "Gallery" view] claimInfos with
     initEffects := (loadSources {} false).2
+    subscriptions := fun _ => [.imageCache cacheBudget]
     minSize := fun _ => minWindow }
 -- endregion: gallery-app
 
-example : claimInfos.map (·.id) = [501, 502, 503, 504, 505, 506, 507, 508, 509, 510, 511] := by decide
+example : claimInfos.map (·.id) = [501, 502, 503, 504, 505, 506, 507, 508, 509, 510, 511, 512, 513] := by decide
 example : minWindow = ⟨1020, 536⟩ := by decide
 
 end Examples.Gallery

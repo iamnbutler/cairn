@@ -56,7 +56,7 @@ private def frame : Frame where
     .request 21 (.readDefault "dev.yap.Yap" "model"), .request 22 (.makeDir "~/a/b"),
     .request 23 (.loadImage "images/a.png" true)]
   subs := #[.start 1 (.every 50), .stop 0, .start 2 (.watchFile "~/c.json"), .start 3 (.record 7),
-    .start 4 (.globalKey 63 none), .start 5 (.globalKey 49 (some 55))]
+    .start 4 (.globalKey 63 none), .start 5 (.globalKey 49 (some 55)), .start 6 (.imageCache 8388608)]
   wake := some 18446744073709551615
 
 #guard fitsFrame frame
@@ -84,6 +84,7 @@ private def events : Array Event := #[.pointerMove ⟨-1, 2⟩,
   .subEvent 4 (.audio 0 0 []), .subEvent 5 (.keyDown 18446744073709551615), .subEvent 5 (.keyUp 0),
   .subEvent 5 (.otherKey 7), .subEvent 4 (.failed .denied "no microphone"),
   .subEvent 4 (.started 18446744073709551615), .subEvent 4 (.started 0),
+  .subEvent 6 (.evicted "https://h/a 🙂.png"),
   .surface 3 (.pointerDown ⟨1, 2⟩ .primary 1 {}), .surface 4294967295 .copy,
   .menuOpen 450, .menuClose 450, .menuSelect 450 ⟨453, 1⟩]
 

@@ -15,9 +15,9 @@ in `Examples.Gallery`. Here:
 * **The grid** (^510). Laid out at any window size, the tiles land exactly on `tileRects`
   (`tiles_laid`), which never overlap, read in order and stay in the window (`tilesFit`, in
   `Examples.Gallery`); a point in a tile's rect hits only that tile (`tiles_hit`).
-* **Presence.** Fit, Reload, the six tiles in order, Load 24 and Cancel are on screen in every
-  state and at every size, and nothing else is a control: the thumbnails aren't (`view_refs`,
-  `reload_in_frame`).
+* **Presence.** Fit, Reload, the six tiles in order, Load 24, Cancel and Next page are on
+  screen in every state and at every size, and nothing else is a control: the thumbnails aren't
+  (`view_refs`, `reload_in_frame`).
 * ^504 holds in every state the running app reaches (`freshLoads_on_screen`). -/
 
 namespace Examples.Gallery
@@ -102,10 +102,10 @@ theorem thumbs_controls (s : State) : ∀ xs : List String, Node.controlsList (x
 
 -- region: gallery-presence
 /-- The view's controls, in every state and at every size: Fit, Reload, the six tiles in
-order, Load 24, then Cancel. The thumbnails are no controls. -/
+order, Load 24, Cancel, then Next page. The thumbnails are no controls. -/
 theorem view_refs (s : State) (ui : UI) :
     (view s ui).controls.map (·.ref) =
-      [fitRef, reloadRef] ++ (List.range 6).map tileRef ++ [manyRef, cancelRef] := by
+      [fitRef, reloadRef] ++ (List.range 6).map tileRef ++ [manyRef, cancelRef, pageRef] := by
   simp only [view, galleryColumn, manyColumn, header, tilesNode, thumbRow, thumbs_controls, button,
     line, Node.controls, Node.controlsList, Grid.node_controls, Option.toList, List.append_nil,
     List.nil_append, List.cons_append, List.map_cons, List.map_append, tiles_refs]

@@ -118,6 +118,8 @@
 509	move	active	80ec73812fd26594	Reload a tile
 510	invariant	active	4b77d8ad02a81eb4	Tiles fit the window at every size
 511	invariant	active	759d8febcfec109a	Tiles are at least 180 points wide
+512	move	active	4c3cef4f3a7d5f3c	Next page
+513	invariant	active	84126e733a7b341d	A dropped thumbnail waits to be loaded again
 901	assume	active	-	The Swift frame decoder agrees with Lean's
 902	assume	active	-	Lean decodes what the Swift event encoder writes
 903	assume	active	-	UTF-16 offsets and scalar indices convert exactly
@@ -163,3 +165,4 @@
 1008	assume	active	-	An image is drawn where its oriented pixels are
 1009	assume	active	-	cancelRequest stops a running request's work; it is still answered once
 1010	assume	active	-	The window is never smaller than the app's minimum size
+1011	assume	active	-	The image cache reports every image it drops, after it is gone

@@ -64,6 +64,7 @@ extension Event {
                 for w in ws { u64(w.sumSq); u32(w.peak) }
             case let .keyDown(t), let .keyUp(t), let .otherKey(t), let .started(t): u64(t)
             case let .failed(_, m): str(m)
+            case let .evicted(s): str(s)
             }
         case let .surface(p, e): head(21); u32(p); e.encode(into: &out)
         case let .menuOpen(p): head(22); u32(p)

@@ -3,7 +3,7 @@ module
 public import Cairn.Frame
 public import Cairn.Frame.Bytes
 
-/-! Frame byte format (docs/frame.md; version 7): specification encoder `Wire.Enc.frame`, decoder
+/-! Frame byte format (docs/frame.md; version 8): specification encoder `Wire.Enc.frame`, decoder
 `Wire.Dec.frame`, the executable encoder `encodeFrame` (proved equal to the specification and
 installed with `@[csimp]`), and the round trip `decodeFrame_encodeFrame`.
 
@@ -105,9 +105,9 @@ def Permission.ofCode : UInt8 → Option Permission
     Permission.ofCode (Permission.code p) = some p := by
   cases p <;> rfl
 
-/-- `every` 0, `watchFile` 1, `record` 2, `globalKey` 3. -/
+/-- `every` 0, `watchFile` 1, `record` 2, `globalKey` 3, `imageCache` 4. -/
 def Sub.code : Sub → UInt8
-  | .every _ => 0 | .watchFile _ => 1 | .record _ => 2 | .globalKey .. => 3
+  | .every _ => 0 | .watchFile _ => 1 | .record _ => 2 | .globalKey .. => 3 | .imageCache _ => 4
 
 /-- `char` is 13 and carries its scalar in the record's `u32` field. -/
 def Key.code : Key → UInt8
@@ -304,6 +304,7 @@ def fitsSub : Sub → Bool
   | .watchFile p => fs p
   | .record c => fu c
   | .globalKey code m => fu code && m.all fu
+  | .imageCache n => fu64 n
 
 def fitsSubCmd : SubCmd → Bool
   | .start id sub => fu id && fitsSub sub
@@ -447,6 +448,7 @@ def subBody : Sub → List UInt8
   | .watchFile p => str p
   | .record c => u32 c
   | .globalKey code m => u32 code ++ bool m.isSome ++ pad 3 ++ u32 (m.getD 0)
+  | .imageCache n => u64 n
 
 def subCmd : SubCmd → List UInt8
   | .start id s => [0, Sub.code s] ++ pad 2 ++ u32 id ++ subBody s
@@ -480,8 +482,8 @@ def surface (s : SurfaceFrame) : List UInt8 :=
     u32 s.place ++ u32 s.anchor.offset ++ size s.minSize ++ str s.title ++ canvas s.canvas ++
     status s.status
 
-/-- Magic, version 7, flags 0. -/
-def header : List UInt8 := magic ++ [7, 0, 0, 0]
+/-- Magic, version 8, flags 0. -/
+def header : List UInt8 := magic ++ [8, 0, 0, 0]
 
 def frame (f : Frame) : List UInt8 :=
   header ++ list surface f.surfaces.toList ++ list effect f.effects.toList ++
@@ -745,6 +747,7 @@ def subBody : UInt8 → Dec Sub
     skip 3
     let m ← u32
     return .globalKey code (if has then some m else none)
+  | 4 => do return .imageCache (← u64)
   | _ => fail
 
 def subCmd : Dec SubCmd := do
@@ -1148,6 +1151,11 @@ theorem subCmd_enc {x : SubCmd} (h : fitsSubCmd x = true) (r : List UInt8) :
           Option.getD_some, List.cons_append, List.nil_append, List.append_assoc, bind_apply,
           byte_cons, skip_pad, bool_enc, u32_enc, fitsU32_zero, pure_apply, Bool.false_eq_true,
           ↓reduceIte]
+    | imageCache n =>
+      simp only [fitsSubCmd, fitsSub, Bool.and_eq_true, fu_iff, fu64_iff] at h
+      simp only [subCmd, Enc.subCmd, Sub.code, Enc.subBody, subBody, List.cons_append,
+          List.nil_append, List.append_assoc, bind_apply, byte_cons, skip_pad, u32_enc h.1,
+          u64_enc h.2, pure_apply]
   | stop id =>
     simp only [fitsSubCmd, fu_iff] at h
     simp only [subCmd, Enc.subCmd, List.cons_append, List.nil_append, List.append_assoc,
@@ -1329,6 +1337,7 @@ def subBody : Sub → Nat
   | .watchFile p => str p
   | .record _ => 4
   | .globalKey .. => 12
+  | .imageCache _ => 8
 
 def subCmd : SubCmd → Nat
   | .start _ s => 8 + subBody s
@@ -1424,9 +1433,9 @@ theorem effect_eq (e : Effect) : effect e = (Enc.effect e).length := by
       Nat.reduceAdd, Enc.ref] <;> all_goals omega
 
 theorem subCmd_eq (c : SubCmd) : subCmd c = (Enc.subCmd c).length := by
-  rcases c with ⟨_, ⟨_⟩ | ⟨_⟩ | ⟨_⟩ | ⟨_, _⟩⟩ | _ <;> simp only [subCmd, subBody, Enc.subCmd,
+  rcases c with ⟨_, ⟨_⟩ | ⟨_⟩ | ⟨_⟩ | ⟨_, _⟩ | ⟨_⟩⟩ | _ <;> simp only [subCmd, subBody, Enc.subCmd,
       Enc.subBody, str_eq, List.length_append, List.length_cons, Enc.pad, List.length_replicate,
-      Enc.length_u32, List.length_nil, Enc.bool] <;> omega
+      Enc.length_u32, Enc.length_u64, List.length_nil, Enc.bool] <;> omega
 
 theorem textInput_eq (t : Option TextInput) : textInput t = (Enc.textInput t).length := by
   cases t <;> simp only [textInput, Enc.textInput, Enc.pad, List.reduceReplicate, List.cons_append,
@@ -1569,6 +1578,7 @@ def subBody (b : ByteArray) : Sub → ByteArray
   | .watchFile p => str b p
   | .record c => u32 b c
   | .globalKey code m => u32 (pad (bool (u32 b code) m.isSome) 3) (m.getD 0)
+  | .imageCache n => u64 b n
 
 def subCmd (b : ByteArray) : SubCmd → ByteArray
   | .start id s => subBody (u32 (pad ((b.push 0).push (Sub.code s)) 2) id) s
@@ -1702,7 +1712,7 @@ theorem foldl_data' {α : Type} (put : ByteArray → α → ByteArray) (e : α �
 
 @[simp] theorem subCmd_data (b : ByteArray) (c : SubCmd) :
     (subCmd b c).data.toList = b.data.toList ++ Enc.subCmd c := by
-  rcases c with ⟨_, ⟨_⟩ | ⟨_⟩ | ⟨_⟩ | ⟨_, _⟩⟩ | _ <;> simp only [subCmd, subBody, u32_data, str_data,
+  rcases c with ⟨_, ⟨_⟩ | ⟨_⟩ | ⟨_⟩ | ⟨_, _⟩ | ⟨_⟩⟩ | _ <;> simp only [subCmd, subBody, u32_data, u64_data, str_data,
       pad_data, bool_data, ByteArray.data_push, Array.toList_push, List.append_assoc,
       List.cons_append, List.nil_append, Enc.subCmd, Enc.subBody]
 
