@@ -732,12 +732,19 @@ where
     | i, k :: ks => { index := i, key := info.keys[i]?.getD 0, height := max 1 k.rect.h.toNat } ::
         go (i + 1) ks
 
-/-- What is known after a layout: the heights known before (unless the width changed), with the
-rows just laid at the heights they were laid at. -/
+/-- How many rows either side of those laid the runtime keeps the heights of. Further rows go
+back to the estimate (the anchor keeps the rows on screen still when they do), so what the
+runtime keeps, and what a frame costs, stays bounded however long the list and however much of
+it has been scrolled through (bench/vlist.md). -/
+def keepSpan : Nat := 500
+
+/-- What is known after a layout: the heights known before within `keepSpan` rows of those laid
+(none if the width changed), with the rows just laid at the heights they were laid at. -/
 def merged (info : Info) (width : Int) (kids : List Laid) : Array Row :=
   let base := if info.known.width = width then info.model else #[]
-  (base.filter (·.index < info.first)) ++ (laidRows info kids).toArray ++
-    (base.filter (info.last ≤ ·.index))
+  (base.filter fun r => info.first - keepSpan ≤ r.index ∧ r.index < info.first) ++
+    (laidRows info kids).toArray ++
+    (base.filter fun r => info.last ≤ r.index ∧ r.index < info.last + keepSpan)
 
 /-- The estimate kept after a layout: the one kept before, unless the width changed; else the
 mean of the heights now known. -/
