@@ -118,6 +118,11 @@ structure Style where
   the box. `none` is an ordinary box. The children keep their real rects, possibly above or
   below the box; what shows is `rect ∩ clip` (docs/layout.md, "Scroll boxes"). -/
   scroll : Option Int := none
+  /-- The scroll box's identity, when the runtime owns its offset (docs/runtime.md,
+  "Scrolling"): the wheel, the trackpad and the page keys move it, and the view reads it back with
+  `UI.scrollOf` (`UI.scrolling` sets both fields). Usually a `place` claim's ref. A box with
+  `scroll` and no `scrollRef` scrolls only as far as the view says. -/
+  scrollRef : Option ControlRef := none
 deriving Repr, BEq, Inhabited
 -- endregion: node-style
 
@@ -136,6 +141,10 @@ structure Control where
   value : String := ""
   checked : Option Bool := none
   selected : Bool := false
+  /-- Tell the app when this control comes on screen: the runtime delivers `Action.appear` when
+  it has a visible part at the end of a batch and didn't at the end of the last one (or wasn't
+  in the tree). How an app hears that the end of a list is in view (docs/runtime.md, "Appear"). -/
+  appear : Bool := false
 deriving Repr, BEq, Inhabited
 -- endregion: node-control
 

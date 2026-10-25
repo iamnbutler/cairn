@@ -159,7 +159,7 @@ theorem steps (K : Carries I R) (app : App S) (cfg : Config) (s : State S) (es :
     (h : I s.world) :
     I (steps app cfg s es).1.world ∧ R s.world (steps app cfg s es).1.world :=
   steps_go app cfg (fun s' => I s'.world ∧ R s.world s'.world)
-    (fun s' e h' => K.toThrough.next h' (K.step app cfg s' e)) es s [] (K.toThrough.refl h)
+    (fun s' e h' => K.toThrough.next h' (K.step app cfg s' e)) (es ++ frameEvents) s [] (K.toThrough.refl h)
 
 end Carries
 

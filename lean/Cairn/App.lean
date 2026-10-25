@@ -22,7 +22,26 @@ structure UI where
   pressed : Option ControlRef := none
   focus : Option ControlRef := none
   windowFocused : Bool := true
+  /-- The offset of each scroll box that has scrolled, by its `Style.scrollRef`. The runtime
+  moves them (the wheel, the trackpad, the page keys, Tab into a box) and clamps them to the box's
+  content; the view reads them with `scrollOf` (docs/runtime.md, "Scrolling"). -/
+  scroll : List (ControlRef × Int) := []
 deriving Repr, DecidableEq, Inhabited
+
+/-- The runtime's offset for the scroll box `r`: 0 until it has scrolled. -/
+def UI.scrollOf (ui : UI) (r : ControlRef) : Int :=
+  match ui.scroll.find? (·.1 == r) with
+  | some (_, o) => o
+  | none => 0
+
+/-- `st` as the scroll box `r` whose offset the runtime owns: scrolled by `ui.scrollOf r`.
+
+```lean
+example : (({} : UI).scrolling ⟨14, 0⟩ {}).scroll = some 0 := rfl
+```
+-/
+def UI.scrolling (ui : UI) (r : ControlRef) (st : Style) : Style :=
+  { st with scroll := some (ui.scrollOf r), scrollRef := some r }
 
 -- region: app-surface
 /-- One thing an app shows (docs/surfaces.md). An app declares a fixed list of them; whether

@@ -29,6 +29,7 @@ def actionJson : Cairn.Action → Json
   | .submit c => step "submit" c
   | .cancel c => step "cancel" c
   | .blur c => step "blur" c
+  | .appear c => step "appear" c
 where
   /-- `{"kind": "insert", "text": "milk"}`; operations without text are just their kind. -/
   opJson : Cairn.TextOp → Json

@@ -24,16 +24,16 @@ namespace Cairn
 
 /-- The kind of an action, without its payload. -/
 inductive Trigger where
-  | press | doublePress | edit | submit | cancel | blur
+  | press | doublePress | edit | submit | cancel | blur | appear
 deriving Repr, DecidableEq, Inhabited
 
 def Trigger.name : Trigger → String
   | .press => "press" | .doublePress => "doublePress" | .edit => "edit"
-  | .submit => "submit" | .cancel => "cancel" | .blur => "blur"
+  | .submit => "submit" | .cancel => "cancel" | .blur => "blur" | .appear => "appear"
 
 def Action.trigger : Action → Trigger
   | .press _ => .press | .doublePress _ => .doublePress | .edit _ _ => .edit
-  | .submit _ => .submit | .cancel _ => .cancel | .blur _ => .blur
+  | .submit _ => .submit | .cancel _ => .cancel | .blur _ => .blur | .appear _ => .appear
 
 /-- The claim an action names. -/
 def Action.claim (a : Action) : ClaimId := a.control.claim
@@ -59,7 +59,7 @@ structure Handler (S : Type) (enabled : S → Nat → Bool) where
   sound : ∀ s a, a.trigger = trigger → enabled s a.key = true → post s a (apply s a).1
 
 /-- A handler for an action that carries only its control (`press`, `doublePress`, `submit`,
-`cancel`, `blur`). -/
+`cancel`, `blur`, `appear`). -/
 def Handler.simple {S : Type} {enabled : S → Nat → Bool} (t : Trigger)
     (apply : S → Nat → S × List Effect) (post : S → Nat → S → Prop)
     (sound : ∀ s k, enabled s k = true → post s k (apply s k).1) : Handler S enabled where

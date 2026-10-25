@@ -87,7 +87,7 @@ theorem steps_reachable (surfaces : List (Surface S)) (claims : List ClaimInfo) 
   suffices ∀ (es : List Event) (acc : State S × List Effect), M.Reachable acc.1.app →
       M.Reachable (es.foldl (fun (s, effs) e =>
         let (s', e') := step (M.toApp surfaces claims initFocus) cfg s e; (s', effs ++ e')) acc).1.app from
-    this es _ ⟨[], rfl⟩
+    this (es ++ frameEvents) _ ⟨[], rfl⟩
   intro es
   induction es with
   | nil => intro acc h; exact h
@@ -110,7 +110,8 @@ theorem steps_reachableAll (app : App S) (hi : app.init = M.init) (hu : app.upda
     (hr : app.receive = M.receive) (cfg : Config) (size : Size) (scale : Nat) (es : List Event) :
     M.ReachableAll (steps app cfg (start app cfg size scale) es).1.app := by
   have := steps_go app cfg (fun s' => Fed app app.init s'.app)
-    (fun s' e h => h.trans (step_fed _ cfg s' e)) es (start app cfg size scale) [] (Fed.refl _ _)
+    (fun s' e h => h.trans (step_fed _ cfg s' e)) (es ++ frameEvents) (start app cfg size scale) []
+    (Fed.refl _ _)
   obtain ⟨xs, h⟩ := this
   refine ⟨xs, h.trans ?_⟩
   rw [hi]

@@ -915,7 +915,7 @@ theorem steps_clock (app : App S) (cfg : Config) (s : State S) (es : List Event)
     s.world.clock.mono ≤ (steps app cfg s es).1.world.clock.mono ∧
       (s.world.booted = true → (steps app cfg s es).1.world.booted = true) :=
   steps_go app cfg (fun s' => Grows s.world s'.world)
-    (fun s' e h => h.trans (step_clock app cfg s' e)) es s [] (Grows.refl _)
+    (fun s' e h => h.trans (step_clock app cfg s' e)) (es ++ frameEvents) s [] (Grows.refl _)
 
 /-- **Timers and replies.** Over any batch of events after the first clock, everything
 delivered to the app is allowed by the book: a timer reaches `receive` only while it is set
@@ -933,7 +933,7 @@ theorem steps_book (app : App S) (cfg : Config) (s : State (S × List Entry)) (e
       refine ⟨(step_clock (logged app) cfg s' e).2 hb', new ++ new', b', ?_, ?_, hag'⟩
       · rw [hl', hl, List.append_assoc]
       · rw [Book.run_append, hr]; exact hr')
-    es s [] ⟨hb, [], b0, (List.append_nil _).symm, rfl, ha⟩
+    (es ++ frameEvents) s [] ⟨hb, [], b0, (List.append_nil _).symm, rfl, ha⟩
   exact this.2
 
 /-! ## Replies and subscription events -/

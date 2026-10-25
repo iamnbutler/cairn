@@ -31,6 +31,8 @@ inductive Op where
   | act (a : Action)
   | click (p : Point) (clicks : Nat)
   | move (p : Point)
+  /-- A wheel or trackpad scroll at `p`, in points (positive toward the end, trusted ^1012). -/
+  | scroll (p : Point) (dx dy : Int)
   | tab (back : Bool)
   | key (k : Key) (mods : Mods)
   | resize (size : Size)
@@ -74,6 +76,7 @@ def actionLean : Action → String
   | .submit c => s!"submit {refLean c}"
   | .cancel c => s!"cancel {refLean c}"
   | .blur c => s!"blur {refLean c}"
+  | .appear c => s!"appear {refLean c}"
 
 def keyText (k : Key) (m : Mods) : String :=
   let name := match k with
@@ -89,6 +92,7 @@ def opText : Op → String
   | .act a => actionLean a
   | .click p n => s!"{if n ≥ 2 then "double-click" else "click"} at ({p.x}, {p.y})"
   | .move p => s!"pointer to ({p.x}, {p.y})"
+  | .scroll p dx dy => s!"scroll ({dx}, {dy}) at ({p.x}, {p.y})"
   | .tab back => if back then "key shift-Tab" else "key Tab"
   | .key k m => s!"key {keyText k m}"
   | .resize z => s!"resize to {z.w}×{z.h}"
@@ -294,8 +298,11 @@ def opToEvents (rt : Runtime.State S) : Op → Option (List Event)
       | .submit _ => if tg.isField then some (focus ++ [.key .enter {}]) else none
       | .cancel _ => if tg.isField then some (focus ++ [.key .escape {}]) else none
       | .blur _ => if tg.isField then some (focus ++ [.key .tab {}]) else none
+      -- The runtime's, not a person's: it comes with the frame that shows the control.
+      | .appear _ => none
   | .click p n => some (clickEvents p n)
   | .move p => some [.pointerMove p]
+  | .scroll p dx dy => some [.pointerMove p, .scroll p dx dy]
   | .tab back => some [.key .tab { shift := back }]
   | .key k mods => some [.key k mods]
   | .resize z => some [.resize z]
@@ -415,6 +422,8 @@ def perform (t : Target) (setup : Setup) (w : World t.S) (op : Op) : IO (Perform
     let plan : Option (Host × List Event × Option Msg) := match op with
       | .host h => hostPlan w.rt w.host h
       | _ => (opToEvents w.rt op).map fun es => (w.host, .clock w.host.now :: es, none)
+    -- Every batch ends with the runtime's frame events, as `Runtime.steps` runs them.
+    let plan := plan.map fun (h, es, m) => (h, es ++ frameEvents, m)
     match plan with
     | none => return { world := w, acts := [], ran := false, maxNs := 0 }
     | some (host, es, msg) =>
@@ -567,6 +576,29 @@ def checks (t : Target) (setup : Setup) (w : World t.S) (act? : Option Action)
       if plantedIn (Dump.effect e) then
         fails := fails.push <| mkFail "secure" r stepIx
           s!"an effect's dump holds text typed into the secure field {r.label} (an unredacted request?)"
+  -- Scrolling: every scroll box's offset is within [0, max 0 (content − viewport)], the box is
+  -- laid at the runtime's offset, and the runtime keeps no offset for a box that isn't there
+  -- (`Runtime.step_clamped`).
+  for sc in scrollersOf laid do
+    ran := ran.push (sc.ref.claim, "scroll")
+    let o := w.rt.ui.scrollOf sc.ref
+    unless 0 ≤ o && o ≤ sc.limit do
+      fails := fails.push <| mkFail "scroll" sc.ref stepIx
+        s!"{sc.ref.label}'s offset {o} is outside [0, {sc.limit}] (content {sc.content}, viewport {sc.viewport})"
+    unless sc.offset == o do
+      fails := fails.push <| mkFail "scroll" sc.ref stepIx
+        s!"{sc.ref.label} is laid at offset {sc.offset}, but the runtime's offset is {o}: the view should pass `ui.scrollOf` (`UI.scrolling`)"
+  for (r, o) in w.rt.ui.scroll do
+    unless (scrollersOf laid).any fun sc => sc.ref == r do
+      fails := fails.push <| mkFail "scroll" r stepIx
+        s!"the runtime keeps offset {o} for {r.label}, which is no scroll box on screen"
+  -- Appear: each appear move the frame delivered names a move that answers it.
+  for a in acts do
+    if let .appear c := a then
+      ran := ran.push (c.claim, "appear")
+      unless (t.move? c.claim).any (·.triggers.contains .appear) do
+        fails := fails.push <| mkFail "appear" c stepIx
+          s!"{c.label} came on screen, but no move answers `appear` for it: mark only controls of moves with `on appear` (`Control.appear`)"
   -- Pressable, at sizes at or above the minimum.
   if fitsWindow then
     let ts := targets laid
@@ -615,7 +647,8 @@ def candidates (t : Target) (w : World t.S) : List (ControlRef × Trigger × Boo
       | some mv =>
         if !mv.enabled s tg.ref.key || !decide tg.visible.nonempty then [] else
         mv.triggers.filterMap fun tr =>
-          let ok := if tg.isField then tr != .press && tr != .doublePress
+          let ok := if tr == .appear then false
+                    else if tg.isField then tr != .press && tr != .doublePress
                     else tr == .press || tr == .doublePress
           if ok then some (tg.ref, tr, tg.isField) else none
   | none =>
@@ -637,6 +670,7 @@ def genAct (t : Target) (w : World t.S) : Gen (Option (List Op)) := do
   | .submit => return some [.act (.submit c)]
   | .cancel => return some [.act (.cancel c)]
   | .blur => return some [.act (.blur c)]
+  | .appear => return some [.act (.appear c)]
   | .edit =>
     let ops ← textScript t w.rt.app c.claim
     -- Plant text in a secure field, for the "secure" check.
@@ -659,10 +693,32 @@ def genSize (min : Size) : Gen Size := do
     return ⟨← Gen.int 0 (max 0 min.w), ← Gen.int 0 (max 0 min.h)⟩
   return ⟨min.w + (← Gen.int 0 400), min.h + (← Gen.int 0 400)⟩
 
+/-- A wheel or trackpad scroll: mostly at a point in a scroll box, by a tick, a flick or (one in
+eight) far past either end, to test the clamp; sometimes sideways. -/
+def genScroll (w : World S) : Gen Op := do
+  let scs := (scrollersOf w.rt.laid).filter fun sc => decide sc.visible.nonempty
+  let p ← if !scs.isEmpty && (← Gen.chance 3 4) then do
+      let sc ← Gen.elem scs
+      let v := sc.visible
+      pure (⟨v.x + (← Gen.int 0 (max 0 (v.w - 1))), v.y + (← Gen.int 0 (max 0 (v.h - 1)))⟩ : Point)
+    else genPoint w
+  let d ← Gen.weighted
+    [ (5, Gen.int (-48) 48), (3, Gen.int (-1200) 1200),
+      (1, do return if ← Gen.bool then 1_000_000 else -1_000_000) ]
+  if ← Gen.chance 1 6 then return .scroll p d 0
+  return .scroll p (← Gen.int (-3) 3) d
+
+/-- The keys that scroll (docs/runtime.md, "Scrolling"). -/
+def scrollKeys : List Key := [.pageUp, .pageDown, .home, .finish, .up, .down, .left, .right, .char ' ']
+
 def genNoise (t : Target) (setup : Setup) (w : World t.S) : Gen (List Op) := do
   if t.app.isNone then return []
+  let scrolls := if (scrollersOf w.rt.laid).isEmpty then 1 else 8
   Gen.weighted
-    [ (6, do return [.click (← genPoint w) (← Gen.elem [1, 1, 1, 2])]),
+    [ (scrolls, do return [← genScroll w]),
+      (scrolls / 2, do return [.key (← Gen.elem scrollKeys) { shift := ← Gen.chance 1 4,
+                                                                 command := ← Gen.chance 1 8 }]),
+      (6, do return [.click (← genPoint w) (← Gen.elem [1, 1, 1, 2])]),
       (4, do return [.move (← genPoint w)]),
       (5, do return [.tab (← Gen.chance 1 4)]),
       (5, do return [.key (← Gen.elem [.enter, .escape, .backspace, .left, .right, .tab])

@@ -13,13 +13,43 @@ theorem tab_fst (s : State S) (back : Bool) :
     (tab s back).1.laid = s.laid ∧ (tab s back).1.app = s.app := by
   unfold tab; split <;> simp
 
+/-- Scrolling changes only the `UI`. -/
+theorem wheel_eq (s : State S) (p : Point) (dx dy : Int) : ∃ ui, wheel s p dx dy = { s with ui } := by
+  unfold wheel; split
+  · exact ⟨_, rfl⟩
+  · exact ⟨s.ui, rfl⟩
+
+theorem keyScrollState_eq (s : State S) (k : Key) (mods : Mods) :
+    ∃ ui, keyScrollState s k mods = { s with ui } := by
+  unfold keyScrollState
+  split
+  · split
+    · split
+      · exact ⟨_, rfl⟩
+      · exact ⟨s.ui, rfl⟩
+    · exact ⟨s.ui, rfl⟩
+  · exact ⟨s.ui, rfl⟩
+
+theorem wheel_fst (s : State S) (p : Point) (dx dy : Int) :
+    (wheel s p dx dy).laid = s.laid ∧ (wheel s p dx dy).app = s.app ∧
+      (wheel s p dx dy).surfaces = s.surfaces := by
+  obtain ⟨ui, h⟩ := wheel_eq s p dx dy
+  rw [h]; exact ⟨rfl, rfl, rfl⟩
+
+theorem keyScrollState_fst (s : State S) (k : Key) (mods : Mods) :
+    (keyScrollState s k mods).laid = s.laid ∧ (keyScrollState s k mods).app = s.app ∧
+      (keyScrollState s k mods).surfaces = s.surfaces := by
+  obtain ⟨ui, h⟩ := keyScrollState_eq s k mods
+  rw [h]; exact ⟨rfl, rfl, rfl⟩
+
 theorem route_laid (m : TextMetrics) (s : State S) (e : Event) :
     (route m s e).1.laid = s.laid ∧ (route m s e).1.app = s.app := by
   induction e with
   | surface p e ih => simp only [route]; split; exact ih; exact ⟨rfl, rfl⟩
   | _ =>
     rw [route.eq_def] <;> (try simp only [withPointer]) <;> (try split) <;> (try split) <;>
-      (try split) <;> (try split) <;> first | contradiction | simp [tab_fst]
+      (try split) <;> (try split) <;>
+      first | contradiction | simp [tab_fst, wheel_fst, keyScrollState_fst]
 
 /-! ## Interaction state is sound -/
 
@@ -95,7 +125,7 @@ theorem steps_sound (app : App S) (cfg : Config) (s : State S) (es : List Event)
   unfold steps
   suffices ∀ (es : List Event) (acc : State S × List Effect), Sound acc.1 →
       Sound (es.foldl (fun (s, effs) e => let (s', e') := step app cfg s e; (s', effs ++ e')) acc).1 from
-    this es (s, []) h
+    this (es ++ frameEvents) (s, []) h
   intro es
   induction es with
   | nil => intro acc h; exact h
@@ -180,6 +210,44 @@ theorem tabTarget_mem (s : State S) (back : Bool) {t : Target} (h : tabTarget s 
     · exact List.mem_of_getElem? h
   exact (List.mem_filter.mp this).1
 
+theorem mem_appearRefs {laid : Laid} {r : ControlRef} :
+    r ∈ appearRefs laid ↔
+      ∃ t ∈ targets laid, t.control.appear = true ∧ t.visible.nonempty ∧ t.ref = r := by
+  unfold appearRefs
+  simp only [List.mem_filterMap]
+  constructor
+  · rintro ⟨t, ht, h⟩
+    split at h
+    · rename_i hc
+      simp only [Bool.and_eq_true, decide_eq_true_eq] at hc
+      simp only [Option.some.injEq] at h
+      exact ⟨t, ht, hc.1, hc.2, h⟩
+    · simp at h
+  · rintro ⟨t, ht, ha, hv, rfl⟩
+    exact ⟨t, ht, by simp [ha, hv]⟩
+
+/-- **Appear, exactly.** The frame event delivers `appear c` exactly when `c` is a control of the
+tree on screen marked `appear` with a visible part, and isn't among the controls seen at the last
+frame. -/
+theorem mem_appearing {laid : Laid} {seen : List ControlRef} {a : Action} :
+    a ∈ appearing laid seen ↔
+      ∃ c, a = .appear c ∧ c ∉ seen ∧
+        ∃ t ∈ targets laid, t.control.appear = true ∧ t.visible.nonempty ∧ t.ref = c := by
+  unfold appearing
+  simp only [List.mem_map, List.mem_filter, Bool.not_eq_eq_eq_not, Bool.not_true,
+    List.contains_eq_mem, decide_eq_false_iff_not]
+  constructor
+  · rintro ⟨c, ⟨hc, hs⟩, rfl⟩
+    exact ⟨c, rfl, hs, mem_appearRefs.mp hc⟩
+  · rintro ⟨c, rfl, hs, h⟩
+    exact ⟨c, ⟨mem_appearRefs.mpr h, hs⟩, rfl⟩
+
+theorem appearing_names (laid : Laid) (seen : List ControlRef) :
+    Names laid (appearing laid seen) := by
+  intro a ha
+  obtain ⟨c, rfl, -, t, ht, -, -, rfl⟩ := mem_appearing.mp ha
+  exact mem_refs ht
+
 theorem tab_names (s : State S) (back : Bool) : Names s.laid (tab s back).2 := by
   unfold tab; split
   · exact names_nil _
@@ -236,6 +304,7 @@ theorem route_names (m : TextMetrics) (s : State S) (e : Event) (hm : e.isMenu =
     cases k <;> simp only [route] <;>
       first | exact tab_names s _ | exact keyActions_names s _ _
   | insertText str rep => exact textActions_names s str rep
+  | frame => exact appearing_names s.laid s.seen
   | _ => first | exact names_nil _ | exact onField_names s _
 
 /-! ### Releasing a slot touches neither the app nor what was delivered -/
@@ -650,7 +719,8 @@ theorem route_surfaces (m : TextMetrics) (s : State S) (e : Event) :
   | surface p e ih => simp only [route]; split; exact ih; rfl
   | _ =>
     rw [route.eq_def] <;> (try simp only [withPointer]) <;> (try split) <;> (try split) <;>
-      (try split) <;> (try split) <;> first | contradiction | simp [tab_surfaces]
+      (try split) <;> (try split) <;>
+      first | contradiction | simp [tab_surfaces, wheel_fst, keyScrollState_fst]
 
 /-- A context that delivered nothing still holds the app state `a`. -/
 def Kept (a : S) (c : Ctx S) : Prop := c.delivered = false → c.app = a
@@ -741,7 +811,7 @@ theorem steps_surfaces (app : App S) (cfg : Config) (es : List Event) :
   suffices ∀ (es : List Event) (acc : State S × List Effect), acc.1.surfaces = shows app cfg acc.1.app →
       (es.foldl (fun (s, effs) e => let (s', e') := step app cfg s e; (s', effs ++ e')) acc).1.surfaces =
         shows app cfg (es.foldl (fun (s, effs) e => let (s', e') := step app cfg s e; (s', effs ++ e')) acc).1.app
-    from fun s h => this es (s, []) h
+    from fun s h => this (es ++ frameEvents) (s, []) h
   intro es
   induction es with
   | nil => intro acc h; exact h
