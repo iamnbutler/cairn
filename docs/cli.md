@@ -38,7 +38,8 @@ kind = "bin"                 # "lib" or "bin" (default "lib"); the site calls a 
 description = "Dictation for the Mac"
 license = "MIT"
 lean = "lean"                # the Lake package's directory (default "lean")
-libs = ["Yap"]               # the Lean libraries cairn-link merges into the app's library
+libs = ["Yap"]               # the Lean libraries cairn-link merges into the app's library,
+                             # and into every app that depends on this package
 swift = "."                  # where Package.swift is (default ".")
 claims = "claims.lock"       # (default)
 
@@ -61,7 +62,7 @@ Unknown tables and keys are errors. Three names must agree, and `cairn build` an
 |---|---|
 | `cairn new <name> [--lib\|--bin]` | writes `cairn.toml` with its `kind`, `claims.lock`, `lean/` (a lakefile.lean that sets the claim scope and requires Cairn), and for an app (`bin`) `Package.swift` and `Sources/`. With neither flag it asks which |
 | `cairn add [<owner>/]<name>[@<range>]` | adds the dependency to `cairn.toml` and puts `require "<owner>" / "<name>" @ "<range>"` (or a `[[require]]` with `scope` and `version`) in the lakefile, replacing a git require of it. It prints the `Package.swift` line instead of editing Swift. With no range, it uses `^` and the latest release. With no owner, it asks the registry for the name's owner (`GET /api/v1/names/<name>`; a name has one owner). It needs no login |
-| `cairn build [--release]` | `lake cache get`, `lake build`, `cairn-link --lib <libs…> --out .cairn/lib/lib<name>.a`, `swift build` |
+| `cairn build [--release]` | `lake cache get`, `lake build`, `cairn-link --lib <libs…> --out .cairn/lib/lib<name>.a` for an app (cairn-link adds each dependency's `libs`), `swift build` |
 | `cairn doc [--private] [--open]` | `lake exe doc --check` and `lake exe claims` on the package's libs, then `tools/doc/cairn-doc.ts` into `build/doc/<name>/`, with each dependency's modules linked to `/docs/<dep>/<version>/` |
 | `cairn publish [--owner <login>] [--dry-run]` | publishes the commit at tag `v<version>`, which must be HEAD with a clean tree, under `--owner` or else the login the token belongs to. It sends no docs. See below |
 | `cairn login` | reads a nexthub token with `package:write` from stdin, checks it with the registry (`GET /-/whoami`), and saves it with the registry's URL to `~/.config/cairn/credentials`, mode 0600. Only `cairn publish` uses it |
@@ -86,9 +87,10 @@ write to the owner.
 `cairn build` runs the same three steps as Cairn's own build: lake, `bin/cairn-link`, swift.
 `cairn-link` is the one place that knows how to link Lean into the host. Cairn's Makefile
 uses it too (agreed with #75). `cairn build` adds only the cache step and the name check.
-`cairn-link` comes from the Cairn checkout that Lake fetched (`lean/.lake/packages/cairn/bin/`),
-and a package with no `libs` of its own (Cairn itself) skips the link step, since Cairn's
-`make lean` writes its library.
+`cairn-link` comes from the Cairn checkout that Lake fetched (`lean/.lake/packages/cairn/bin/`).
+It links each dependency's `libs` from that dependency's cairn.toml, and the app's own `libs` from
+`--lib` (docs/package.md, "Which libraries"). A lib, and an app with no `libs`, skips the link
+step: an app links a lib's `libs`, and Cairn's `make lean` writes its own library.
 
 ### Versions and tags
 

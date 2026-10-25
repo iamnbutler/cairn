@@ -189,6 +189,50 @@ import Testing
     }
 }
 
+/// `cairn build`'s link step (bin/cairn-link) and the libraries a dependency contributes.
+@Suite struct LinkTests {
+    func project(_ text: String) throws -> Project {
+        Project(root: URL(filePath: "/work/app"), manifest: try Manifest.parse(text))
+    }
+
+    /// An app links its own `libs` with Cairn's cairn-link; cairn-link adds its dependencies'.
+    @Test func appLinksItsLibs() throws {
+        let app = try project("[package]\nname = \"yap\"\nversion = \"0.1.0\"\nkind = \"bin\"\nlibs = [\"Yap\", \"YapAbi\"]\n")
+        #expect(app.linkCommand == ["/work/app/lean/.lake/packages/cairn/bin/cairn-link",
+                                    "--lib", "Yap", "--lib", "YapAbi", "--out", "/work/app/.cairn/lib/libyap.a"])
+    }
+
+    /// A lib has nothing to link: the apps that depend on it link its `libs`. Cairn's own
+    /// cairn.toml lists `Cairn`, and `make lean` writes its library.
+    @Test(arguments: [
+        "[package]\nname = \"cairn\"\nversion = \"0.1.2\"\nkind = \"lib\"\nlibs = [\"Cairn\"]\n",
+        "[package]\nname = \"cairn_batteries\"\nversion = \"0.1.0\"\nlibs = [\"Batteries\"]\n",
+        "[package]\nname = \"tool\"\nversion = \"0.1.0\"\nkind = \"bin\"\nlibs = []\n",
+    ])
+    func libsAndEmptyAppsLinkNothing(_ text: String) throws {
+        #expect(try project(text).linkCommand == nil)
+    }
+
+    /// What `cairn doc` links a dependency's modules under. Cairn 0.1.3's cairn.toml lists no libs.
+    @Test func linkedLibs() throws {
+        let old = try Manifest.parse("[package]\nname = \"cairn\"\nversion = \"0.1.3\"\nlibs = []\n")
+        #expect(old.linkedLibs == ["Cairn"])
+        let new = try Manifest.parse("[package]\nname = \"cairn\"\nversion = \"0.1.4\"\nlibs = [\"Cairn\"]\n")
+        #expect(new.linkedLibs == ["Cairn"])
+        let geo = try Manifest.parse("[package]\nname = \"geo\"\nversion = \"0.1.0\"\nlibs = [\"Geo\"]\n")
+        #expect(geo.linkedLibs == ["Geo"])
+        let none = try Manifest.parse("[package]\nname = \"proofs\"\nversion = \"0.1.0\"\n")
+        #expect(none.linkedLibs.isEmpty)
+    }
+
+    /// The repository's own cairn.toml: Cairn links `Cairn` into apps.
+    @Test func cairnDeclaresCairn() throws {
+        let root = URL(filePath: #filePath).deletingLastPathComponent().appending(path: "../../../../cairn.toml").standardizedFileURL
+        let m = try Manifest.parse(String(contentsOf: root, encoding: .utf8))
+        #expect(m.name == "cairn" && m.kind == .lib && m.libs == ["Cairn"])
+    }
+}
+
 /// `cairn new` asks whether the package is a library or an app, unless a flag says.
 @Suite struct NewTests {
     func scratch() throws -> URL {

@@ -1,6 +1,6 @@
 # Packages and the standard library
 
-How Cairn is cut into packages, and what its standard library is. A design: steps 1 and 2 of
+How Cairn is cut into packages, and what its standard library is. A design: steps 1 to 3 of
 the migration (§5) are done, nothing after them is. Measured on `main` at c6176ea (Cairn 0.1.2) and Yap
 at 4d69f7f.
 
@@ -87,9 +87,11 @@ import `Lean`, which the host must never link.
   it imports; separate packages wouldn't shrink that. The cost that is real is
   `bin/cairn-link`'s `lake query @cairn/Cairn:static`, which builds and archives all 48 modules.
   Shrinking the `Cairn` library to the linked closure fixes that without a package split.
-- **`cairn-link`** merges one Cairn archive by name. Several packages would mean finding every
+- **`cairn-link`** merged one Cairn archive by name. Several packages mean finding every
   transitive dependency's libraries, and any Lean module that lands in two archives (as
-  `Cairn.Fuzz.Rng` already sits in the `Todo` library's roots) is a duplicate symbol.
+  `Cairn.Fuzz.Rng` once sat in the `Todo` library's roots) is a duplicate symbol. Since step 3
+  it does both: each dependency's `libs` from its cairn.toml, and a refusal on a module in two
+  archives.
 - **Claim scopes.** The framework itself issues no claims. Every one of the 100 active `cairn^N`
   is either an example app's (^1–^462, 60 ids) or a trusted-base `assume` (^901–^1005, 40 ids in
   `Cairn.Fuzz.Trusted.Claims`). Layout, Text, Runtime and Frame would each get an empty ledger.
@@ -234,7 +236,11 @@ take with no source change, or a one-line one.
 3. **`cairn-link` links dependencies' `libs`.** Instead of `@cairn/Cairn:static` by name, it
    links each dependency's `libs` from its `cairn.toml`. `cairn` declares `libs = ["Cairn"]`. Yap
    gets the same archive. Run #86 (an outside package builds against Cairn) with Yap as the
-   outside package from here on.
+   outside package from here on. Done (#118): cairn-link reads `lake-manifest.json` and each
+   dependency's cairn.toml, refuses a module in two archives, and warns, naming the package, when
+   a linked module imports one from a dependency with no cairn.toml (it links none of that).
+   Without `--lib` it takes the package's own cairn.toml `libs`, so Cairn's Makefile is
+   unchanged. Yap 0.1.2's `--lib Yap` builds and passes `--selftest` against it unchanged.
 4. **Drop the shims** in the next 0.x minor (0.2.0). Yap changes one import
    (`Cairn.Frame.Boundary` → `Cairn.Abi`).
 5. **Examples get their own scope (#88), before 1.0.** `ledger move examples …` for ^1–^462 in a

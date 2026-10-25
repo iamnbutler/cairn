@@ -30,7 +30,7 @@ lean/<App>/…           the app (Lean modules)
 Package.swift          at the repository root (SwiftPM resolves git dependencies only there)
 host/Sources/…         the Swift executable, the app's C exports, its painters
 claims.lock            the app's own claim ids
-cairn.toml             name, version, libs and paths for the `cairn` CLI (docs/cli.md)
+cairn.toml             name, version, libs and paths for the `cairn` CLI and cairn-link (docs/cli.md)
 ```
 
 `cairn.toml`'s `name` has to match the lakefile's package name and its claim
@@ -86,10 +86,30 @@ swift build
 <!-- endregion: package-build -->
 
 `bin/cairn-link` merges into one static library: Lean's runtime (`libInit`, `libleanrt`, `libuv`,
-`libgmp`), Cairn's Lean library, `claims_meta.o` (weak stand-ins for the claim commands'
-initializers, docs/claims.md "Linking") and the app's libraries. It refuses a library with two
-`cairn_app_init`s. Cairn's own Makefile builds `build/lib/libcairn_lean.a` with it too. The
-`cairn` CLI's `build` runs these three steps (lake, cairn-link, swift).
+`libgmp`), every dependency's `libs`, `claims_meta.o` (weak stand-ins for the claim commands'
+initializers, docs/claims.md "Linking") and the app's own libraries (each `--lib`, or without
+one the `libs` of the app's cairn.toml). Cairn's own Makefile builds `build/lib/libcairn_lean.a`
+with it too. The `cairn` CLI's `build` runs these three steps (lake, cairn-link, swift).
+
+### Which libraries
+
+The dependencies are every package in `lean/lake-manifest.json`, transitive ones included. For
+each, cairn-link reads the cairn.toml beside its Lake package (in the package's directory, or in
+its parent when that cairn.toml's `lean` names it, which is how a git checkout lays one out) and
+builds `@<package>/<Lib>:static` for each of its `libs`. Cairn's cairn.toml says
+`libs = ["Cairn"]`, so an app gets Cairn's library this way, and a library like `cairn_batteries`
+gets linked by naming its own. Through 0.1.3 cairn-link linked `@cairn/Cairn:static` by name.
+
+- **A dependency with no cairn.toml** (a plain Lake package) is linked not at all, since it may
+  only be there for proofs. If a linked module imports one of its modules, cairn-link warns,
+  naming the package, and the host's link then fails on that module's initializer. Give the
+  package a cairn.toml with `libs` to link it. The same warning covers a cairn.toml whose `libs`
+  miss a module that linked code imports.
+- **A module in two archives** (two libraries whose roots both reach it) would be a duplicate
+  symbol, so cairn-link refuses, naming the module's initializer and both archives.
+- **A dependency that is an app** (`kind = "bin"`) is refused: nothing depends on an app.
+- **`cairn_app_init`** must be defined exactly once in an app's library (its cairn.toml says
+  `kind = "bin"`, or it has no cairn.toml and passes `--lib`), and not at all in a lib's.
 
 Cairn's tools run from the app's Lake directory, against the app's modules:
 

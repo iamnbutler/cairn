@@ -3,65 +3,163 @@
 #
 #   cairn-link [--lib <LeanLib>]... --out <path/libNAME.a>
 #
-# Run from the app's Lake package directory (the one with its lakefile), with the pinned
-# toolchain on PATH. It builds each named Lean library's static facet and Cairn's, then merges
-# into one archive, with libtool:
+# Run from the app's Lake package directory (the one with its lakefile), after `lake build`,
+# with the pinned toolchain on PATH. It builds the static facet of every library it links,
+# then merges them into one archive with libtool:
 #
 #   - Lean's runtime: libInit, libleanrt, libuv and libgmp from `lean --print-prefix`;
-#   - Cairn's library (libcairn_Cairn.a, with its C glue) and claims_meta.o, the weak stand-ins
-#     for the claim commands' initializers (Cairn's docs/claims.md, "Linking");
-#   - each --lib, the app's own Lean libraries (`Yap` builds `Yap:static`).
+#   - every dependency's `libs`, from the cairn.toml beside the dependency's Lake package
+#     (Cairn's is `Cairn`), for each package in lake-manifest.json, transitive ones included;
+#     a dependency with no cairn.toml (a plain Lake package) is linked not at all;
+#   - claims_meta.o, the weak stand-ins for the claim commands' initializers (Cairn's
+#     docs/claims.md, "Linking");
+#   - the package's own libraries: each --lib (`Yap` builds `Yap:static`), or without --lib the
+#     `libs` of its own cairn.toml.
 #
 # The app's root Package.swift links the result:
 #
 #   linkerSettings: [.unsafeFlags(["-L<dir>", "-l<NAME>"])]
 #
-# With --lib, the library must define `cairn_app_init` exactly once (a v1 app; docs/runtime.md).
-# Without, it is the runtime and Cairn alone (cairn's own Makefile builds build/lib/libcairn_lean.a
-# that way). The minimal entry point for `cairn build`, which runs lake build, this, then swift build.
+# It fails when a Lean module is in two of those archives (duplicate symbols), and when the result doesn't define `cairn_app_init` exactly once for an app (cairn.toml's
+# kind = "bin"; with no cairn.toml, when --lib is given) or at all for a lib. Cairn's own
+# Makefile runs it with no --lib for build/lib/libcairn_lean.a. It warns when a linked module
+# imports one that isn't linked (a dependency with no cairn.toml, or `libs` that miss it).
+# `cairn build` runs lake build, this, then swift build.
 set -eu
 
 die() { echo "cairn-link: $*" >&2; exit 1; }
 
 libs=""
+given=""
 out=""
 while [ $# -gt 0 ]; do
 	case "$1" in
-	--lib) [ $# -ge 2 ] || die "--lib needs a Lean library name"; libs="$libs $2"; shift 2 ;;
+	--lib) [ $# -ge 2 ] || die "--lib needs a Lean library name"; libs="$libs $2"; given=1; shift 2 ;;
 	--out) [ $# -ge 2 ] || die "--out needs a path"; out="$2"; shift 2 ;;
-	-h|--help) sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+	-h|--help) sed -n '2,27p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
 	*) die "unknown argument $1 (cairn-link --help)" ;;
 	esac
 done
 [ -n "$out" ] || die "missing --out <path/libNAME.a>"
 case "$(basename "$out")" in lib*.a) ;; *) die "--out must name lib<NAME>.a, got $out" ;; esac
 [ -f lakefile.lean ] || [ -f lakefile.toml ] || die "run me from a Lake package directory (no lakefile here)"
+[ -f lake-manifest.json ] || die "no lake-manifest.json here; run \`lake build\` first"
 command -v lake >/dev/null || die "lake is not on PATH (export PATH=\$HOME/.elan/bin:\$PATH)"
 command -v libtool >/dev/null || die "libtool is missing (Xcode's command line tools)"
+command -v plutil >/dev/null || die "plutil is missing (it reads lake-manifest.json; macOS has it)"
 
-prefix=$(lean --print-prefix)
-# `lake query` builds each target and prints its path. @cairn/ names Cairn's package whether
-# it is this one or a dependency.
-cairn=$(lake query @cairn/Cairn:static | tail -1)
-stubs=$(lake query @cairn/claims_meta.o | tail -1)
-app=""
-for l in $libs; do
-	app="$app $(lake query "$l:static" | tail -1)"
+# The cairn.toml that belongs to the Lake package in directory $1: in it, or in its parent with
+# `lean` naming it (a repository's root, as `cairn new` lays one out). Prints the file, or nothing.
+toml_for() {
+	d=$(cd "$1" && pwd -P)
+	for t in "$d/cairn.toml" "$(dirname "$d")/cairn.toml"; do
+		[ -f "$t" ] || continue
+		l=$(toml_get "$t" lean); [ -n "$l" ] || l=lean
+		[ "$(cd "$(dirname "$t")" && cd "$l" 2>/dev/null && pwd -P)" = "$d" ] && { echo "$t"; return; }
+	done
+}
+
+# A key of cairn.toml's [package]: a string's value, or a one-line list's items, one per line.
+# The grammar is the `cairn` CLI's (tools/cairn, Manifest.swift): strings and one-line lists of
+# strings, `#` comments.
+toml_get() {
+	awk -v key="$2" '
+		/^[ \t]*\[/ { t = $0; gsub(/[ \t\[\]]|#.*/, "", t); inpkg = (t == "package"); next }
+		!inpkg { next }
+		{
+			line = $0; sub(/^[ \t]+/, "", line)
+			if (index(line, key) != 1) next
+			rest = substr(line, length(key) + 1); sub(/^[ \t]*/, "", rest)
+			if (substr(rest, 1, 1) != "=") next
+			rest = substr(rest, 2)
+			sub(/\][^"]*$/, "", rest)
+			n = split(rest, parts, "\"")
+			for (i = 2; i <= n; i += 2) print parts[i]
+		}' "$1"
+}
+
+# The workspace's packages, from Lake's manifest (it lists transitive ones too): name, then the
+# Lake package's directory.
+manifest() { plutil -extract "$1" raw -o - lake-manifest.json 2>/dev/null; }
+pdir=$(manifest packagesDir || echo .lake/packages)
+deps=""      # "@pkg/Lib" targets
+plain=""     # dependencies with no cairn.toml
+i=0
+n=$(manifest packages || echo 0)
+while [ "$i" -lt "$n" ]; do
+	name=$(manifest "packages.$i.name")
+	case "$(manifest "packages.$i.type")" in
+	path) dir=$(manifest "packages.$i.dir") ;;
+	*) dir="$pdir/$name"; sub=$(manifest "packages.$i.subDir" || true); [ -z "$sub" ] || dir="$dir/$sub" ;;
+	esac
+	i=$((i + 1))
+	[ -d "$dir" ] || die "$name isn't at $dir; run \`lake build\` first"
+	t=$(toml_for "$dir")
+	if [ -z "$t" ]; then plain="$plain $name"; continue; fi
+	[ "$(toml_get "$t" kind)" != bin ] || die "$name is an app (kind = \"bin\" in $t); nothing can depend on one"
+	for l in $(toml_get "$t" libs); do deps="$deps @$name/$l:static"; done
 done
 
+# The package's own libraries, and whether it is an app.
+self=$(toml_for .)
+if [ -n "$self" ]; then
+	[ -n "$given" ] || libs=$(toml_get "$self" libs)
+	if [ "$(toml_get "$self" kind)" = bin ]; then apps=1; else apps=0; fi
+elif [ -n "$given" ]; then apps=1; else apps=0; fi
+own=""
+for l in $libs; do own="$own $l:static"; done
+
+# `lake query` builds each target and prints its path, one line per target, last.
+# shellcheck disable=SC2086
+set -- $deps $own @cairn/claims_meta.o
+paths=$(lake query "$@" | tail -n $#)
+[ "$(printf '%s\n' "$paths" | wc -l | tr -d ' ')" -eq $# ] || die "lake query printed no path for some of: $*"
+for p in $paths; do [ -f "$p" ] || die "lake query printed $p, which isn't a file (targets: $*)"; done
+archives=$(printf '%s\n' "$paths" | grep '\.a$' | awk '!seen[$0]++')
+stubs=$(printf '%s\n' "$paths" | grep 'claims_meta\.o$')
+
+# A Lean module defines `initialize_<package>_<Module>`; in two archives it is a duplicate symbol.
+dup=$(for a in $archives; do
+	nm -gU "$a" 2>/dev/null | awk -v a="$(basename "$a")" '$NF ~ /^_initialize_/ { print substr($NF, 2), a }'
+done | sort | awk '$1 == last { print $1 " is in " lasta " and " $2 } { last = $1; lasta = $2 }')
+[ -z "$dup" ] || die "a Lean module is in two archives (each library archives it; take it out of one's roots):
+$dup"
+
+prefix=$(lean --print-prefix)
 mkdir -p "$(dirname "$out")"
 tmp="$out.tmp.$$"
+trap 'rm -f "$tmp"' EXIT
 # shellcheck disable=SC2086
-libtool -static -o "$tmp" $app "$cairn" "$stubs" \
+libtool -static -o "$tmp" $archives "$stubs" \
 	"$prefix/lib/lean/libInit.a" "$prefix/lib/lean/libleanrt.a" \
 	"$prefix/lib/libuv.a" "$prefix/lib/libgmp.a" 2>&1 | grep -v "has no symbols" >&2 || true
 [ -f "$tmp" ] || die "libtool wrote nothing"
 
-n=$(nm -gU "$tmp" 2>/dev/null | grep -c ' _cairn_app_init$' || true)
-if [ -n "$libs" ]; then
-	[ "$n" -eq 1 ] || { rm -f "$tmp"; die "$out would define cairn_app_init $n times; link exactly one app"; }
+# A linked module that imports a module no archive holds. Only a warning: the host's linker pulls
+# in just the members it needs, so an unlinked import is harmless off the app's export closure
+# (an umbrella module that imports proofs). On it, the host's link fails, and this says why.
+nm -gU "$tmp" 2>/dev/null | awk '{ print $NF }' | sort -u >"$tmp.def"
+missing=$(nm -u "$tmp" 2>/dev/null | awk '$1 ~ /^_initialize_/ { print $1 }' | sort -u | comm -23 - "$tmp.def" | sed 's/^_//')
+rm -f "$tmp.def"
+if [ -n "$missing" ]; then
+	echo "cairn-link: warning: linked modules import modules that no linked library archives:" >&2
+	printf '  %s\n' $missing >&2
+	why=""
+	for p in $plain; do
+		printf '%s\n' "$missing" | grep -q "^initialize_${p}_" \
+			&& why="$why  $p has no cairn.toml, so none of it is linked; give it one with libs (docs/package.md)
+"
+	done
+	printf '%s' "${why:-  if the app's exports need them, add their library to its package's cairn.toml libs
+}" >&2
+fi
+
+c=$(nm -gU "$tmp" 2>/dev/null | grep -c ' _cairn_app_init$' || true)
+if [ "$apps" -eq 1 ]; then
+	[ "$c" -eq 1 ] || die "$out would define cairn_app_init $c times; link exactly one app"
 else
-	[ "$n" -eq 0 ] || { rm -f "$tmp"; die "$out has app exports without --lib"; }
+	[ "$c" -eq 0 ] || die "$out has app exports, but this package isn't an app (kind = \"bin\" in cairn.toml, or --lib)"
 fi
 mv "$tmp" "$out"
+trap - EXIT
 echo "cairn-link: $out ($(du -h "$out" | cut -f1 | tr -d ' '))"

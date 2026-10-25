@@ -102,6 +102,12 @@ public struct Manifest: Equatable, Sendable {
         return lines.joined(separator: "\n") + "\n"
     }
 
+    /// The libraries `cairn-link` links into an app that depends on this package. Cairn 0.1.3
+    /// and earlier list none, and their `cairn-link` linked `Cairn` by name.
+    public var linkedLibs: [String] {
+        libs.isEmpty && name == "cairn" ? ["Cairn"] : libs
+    }
+
     /// Add a dependency or change its range.
     public mutating func require(_ dep: String, _ range: String) {
         if let at = dependencies.firstIndex(where: { $0.name == dep }) {
