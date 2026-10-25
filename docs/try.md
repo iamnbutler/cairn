@@ -47,7 +47,10 @@ once as lossless WebP (text stays crisp at 1:1; smaller than lossy for flat UI) 
 `graph.json`: per state its image, depth, the edge that first reached it, its controls (ref,
 claim, role, label, rect relative to the crop) and its edges; per claim its title, does, sees,
 theorems and reading. The reading is `reading()` from `site/claims.js`, so a chip reads as it
-does on the claim pages and uses the same colours (`packages.css`, `.chip.ev`).
+does on the claim pages and uses the same colours (`packages.css`, `.chip.ev`). The export is
+this build's, the one that drew the frames; the live claim pages read the latest published
+version's, so until a version with an export is published they show `ledger only` where this
+page shows `proved`.
 
 **Bounds** (`BOUNDS` in `tools/try/try.ts`), measured 2026-10-25:
 

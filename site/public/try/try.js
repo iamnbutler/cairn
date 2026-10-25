@@ -72,7 +72,7 @@ export async function mount(root, app) {
 </div>
 <aside class="note"><div class="card px"><p class="label"><img src="/icon.svg" alt="">What this is</p>
 <p>These are frames the ${esc(g.app)} app's real Lean code produced, explored ahead of time: from the first frame, every control was acted on and every new frame kept, ${states.length} states and ${edgeCount} steps in all, within ${g.maxDepth} steps of the start${g.maxStates <= states.length ? `, capped at ${g.maxStates} states` : ""}. A click here follows a step the app took then; nothing runs in your browser but this page. A step that would leave the explored states says so instead of guessing.</p>
-<p>Text fields take the texts the app's own flows type, rather than free typing: those are the inputs the capture tried. Evidence is what the claims export holds, as on <a href="${claimPage(placeId)}">the claim pages</a>.</p>
+<p>Text fields take the texts the app's own flows type, rather than free typing: those are the inputs the capture tried. Each reading comes from the claims export of the build that drew these frames, read the way <a href="${claimPage(placeId)}">the claim pages</a> read a published version's.</p>
 </div></aside>`;
 
 	const $ = (s) => root.querySelector(s);

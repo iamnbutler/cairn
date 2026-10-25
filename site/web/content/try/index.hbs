@@ -11,7 +11,7 @@ lede: "Three of Cairn's example apps, in the browser, with nothing to install. E
 <section class="prose try-about">
 <h2 id="what-this-is">What you are looking at</h2>
 <p>A Cairn app is pure Lean: its state, what it draws and what each input does. Ahead of time, at deploy, the app's own <code>step</code> and <code>frame</code> ran headless from its first frame: every control in each frame was acted on (pressed, double-clicked, or for a text field, typed into with the texts its flows type), and every new frame was kept, up to a bound. These pages replay those recorded frames. The page decides nothing: a click follows the edge the app produced.</p>
-<p>Each control carries its claim id, the same <code>cairn^N</code> the code, the proofs and the claim pages use, and reads as its evidence does on <a href="/packages/cairn/claims/">the claim pages</a>.</p>
+<p>Each control carries its claim id, the same <code>cairn^N</code> the code, the proofs and the claim pages use, and reads as its evidence does, the way <a href="/packages/cairn/claims/">the claim pages</a> read it.</p>
 </section>
 <script type="module">
   import { pick } from "/try/try.js";
