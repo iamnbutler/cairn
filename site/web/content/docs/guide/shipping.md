@@ -8,8 +8,7 @@ lede: Checking an app, putting it in a signed bundle, and publishing it with its
 <bongo:note label="Today">
 An app checks and bundles itself with [the cairn tool](/docs/reference/cairn-tool/), from anywhere
 in its package. The lint, axiom audit and kernel replay that Cairn's `make check` runs have no
-`cairn check` yet; an app's own Makefile calls Cairn's tools for them, as Yap's and the
-[example apps'](/docs/examples/) do.
+`cairn check` yet; an app's own Makefile calls Cairn's tools for them.
 </bongo:note>
 
 ## Check it
@@ -60,11 +59,11 @@ them. `cairn size` builds the app for release, attributes its bytes, and fails p
 package's `bundle/Info.plist` and `bundle/entitlements.plist` go in it when they exist. `--sign`
 signs it with an identity; without it the bundle is signed ad hoc.
 
-Yap shows a release build signed with a stable identity. Signing with the same identity every
+Sign a release build with a stable identity. Signing with the same identity every
 time matters: macOS grants permissions such as Accessibility and the microphone to the code
-signature, so a differently signed build is a new app and has to be granted again. Its package's
-`make yap` finds the first valid Apple Development identity with `security find-identity` and
-passes it to Cairn's bundle script, `tools/bundle/bundle.sh`, which `cairn bundle` runs.
+signature, so a differently signed build is a new app and has to be granted again. A package's
+Makefile can find the first valid Apple Development identity with `security find-identity` and
+pass it to `cairn bundle --sign`.
 
 ## Publish it
 

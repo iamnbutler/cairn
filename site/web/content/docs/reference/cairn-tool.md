@@ -53,7 +53,7 @@ them on its test app, test/fixture. Each writes under the package's `build/`.
 | `cairn conformance [--module M] [--n N]` | the Lean model replayed against the running app through its debug socket. The package has a generator module, `<App>.Conformance` |
 | `cairn bundle [--sign ID] [--name N]` | a release build wrapped in `build/apps/<N>.app`, with the package's `bundle/Info.plist` and `bundle/entitlements.plist` when it has them; signed with `--sign`, else ad hoc |
 
-A package of several apps, like the [example apps](/docs/examples/), picks one with `--app <App>`
+A package of several apps picks one with `--app <App>`
 for `build`, `bench`, `size`, `conformance` and `bundle`. Running an app is still SwiftPM's:
 `swift run <Product>` after `cairn build`.
 

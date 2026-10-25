@@ -83,7 +83,7 @@ up:
 A view whose boxes are fixed in size and clip their text is **rigid**: no rect depends on the
 width of a string. For a rigid view, Cairn can prove every control is pressable in every state,
 with any text measurements, in any window above a minimum size; the next chapter says how.
-Counter, in the [example apps](/docs/examples/), is rigid. The fixture isn't: its buttons hug their
+A counter with fixed-size buttons is rigid. The fixture isn't: its buttons hug their
 labels. A view whose layout depends on its text can still be checked, one concrete layout at a
 time, and the fuzzer checks every control it lays out.
 
@@ -91,6 +91,6 @@ time, and the fuzzer checks every control it lays out.
 
 An app shows a fixed list of **surfaces**: at most one window, overlay panels that never take focus
 or clicks, and menu bar items with native menus built from Lean. Each is identified by a place
-claim. Yap uses all three kinds; the fixture has just its window.
+claim. The fixture has just its window.
 
 <bongo:include src="lean/Cairn/App.lean#app-surface" />

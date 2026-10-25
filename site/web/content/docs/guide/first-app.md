@@ -111,7 +111,7 @@ The lakefile names the package, which is also the claim scope (the fixture's ids
 ## An app in its own repository
 
 An app lives in a repository of its own and depends on a tagged release of Cairn, the way
-[Yap](/docs/examples/yap/) does. One tag pins both halves: the Lean package and the Swift
+the [example apps](/docs/examples/) do. One tag pins both halves: the Lean package and the Swift
 libraries. Start one with [the cairn tool](/docs/reference/cairn-tool/).
 
 `cairn new hello --bin` makes `hello/` with a `cairn.toml`, an empty `claims.lock`, and a `lean/`
@@ -124,7 +124,7 @@ on. The app is a working one, laid out like the fixture: a window with a count a
 
 `cairn add cairn` points the lakefile and `cairn.toml` at Cairn's latest release in the
 registry and prints the line for `Package.swift`. An app can also require Cairn from git at a
-tag, as Yap's lakefile does:
+tag:
 
 <bongo:include src="docs/package.md#package-lakefile" />
 
@@ -145,9 +145,8 @@ The app's `main.swift` hands its three exports to the host, as the fixture's doe
 
 Ids are scoped per package, so an app numbers from ^1. The fixture's are `fixture^1` to
 `fixture^9`, in `test/fixture/claims.lock`; the template's are `hello^1` and `hello^2`. Cairn's own
-are `cairn^N`: the trusted base's assumptions, ^7, ^214, ^900 and up. The example apps took their
-numbers with them to their own package, so Counter's Reset, once `cairn^2`, is
-`cairn_examples^2`; Yap's are `yap^301` to `yap^399`.
+are `cairn^N`: the trusted base's assumptions, ^7, ^214, ^900 and up. Claims that move to another package
+take their numbers with them: one that was `cairn^2` becomes `<scope>^2`.
 
 Give a new claim an id the package hasn't used (look in `claims.lock`), then record it from the
 package's `lean/` directory, and commit `claims.lock` with the claim. For the fixture:

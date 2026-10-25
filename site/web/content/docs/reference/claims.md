@@ -124,9 +124,8 @@ retired only in a new major version, or a new minor version while at 0.x: Cairn 
 retire one in 0.2.0, not in 0.1.3. `lake exe ledger check` finds the last release from the git
 tags and fails otherwise. A claim added since then can go in any version.
 
-Counter, in the [example apps](/docs/examples/), retired an invariant once the runtime took over
-tracking presses: `retire ^6 invariant "Moves never leave a press in progress" because "…"`
-([cairn_examples^6](/packages/cairn_examples/claims/6/)).
+For example, an invariant the runtime took over:
+`retire ^6 invariant "Moves never leave a press in progress" because "…"`.
 
 ## What the build checks
 
@@ -156,15 +155,14 @@ Proved once, in the framework, for every app:
 
 Claim ids are scoped by package. Cairn's own are `cairn^N`. An app in its own repository sets
 its scope once, in its lakefile's `cairn.claims.scope` option (`cairn new` does it for you), and
-its `^311` is then `yap^311`. In code, a bare `^N` always means the module's own scope: `in ^P`
+with the scope `notes`, its `^311` is `notes^311`. In code, a bare `^N` always means the module's own scope: `in ^P`
 and a flow's `witness` find only claims of that scope. Messages name claims in full, and each
 package keeps its own `claims.lock`. Frames and the running app still carry bare numbers, since
 an app's controls are always its own moves.
 
 The scope defaults to `cairn`, so an app that forgets to set it collides with Cairn's ids at
 compile time instead of shipping with them. When claims move with an app to its own package,
-the lock they left marks them `moved:<scope>` (Yap's are `moved:yap`, the example apps'
-`moved:cairn_examples`), so the ids stay issued
+the lock they left marks them `moved:<scope>`, so the ids stay issued
 there and can't come back.
 
 ## The ledger

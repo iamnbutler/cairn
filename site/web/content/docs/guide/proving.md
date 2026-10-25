@@ -37,19 +37,19 @@ stray click.
 
 A move's `enabled` says when it is available. Whether its control is actually on screen is a
 question about the view, so the app proves it: the control's ref is among the view's controls
-exactly when the move is enabled. Counter, in the [example apps](/docs/examples/), proves that
-for Reset, whose button is there only when the count is above zero.
+exactly when the move is enabled. A counter proves it for a
+Reset button that is there only when the count is above zero.
 
 The framework's layout and frame theorems (`Frame.controls_ofLaid_layout`) carry that through to
 every frame the running app shows: the accessibility tree of the frame, for any text measurements
-and any window size. Counter's `reset_on_screen_iff` is that statement for every runtime state.
+and any window size.
 
 ## Pressable: a click at its centre presses it
 
 Being in the tree isn't enough: another node could be painted over the control, or it could be
 laid out with no size. Hit testing is Lean, so this is a theorem too. For a rigid view
 ([chapter 3](/docs/guide/view-and-layout/)) the framework reduces it to a condition on the view
-alone, `FitsIn`, which Counter proves for any window at least 480 × 256. A view that isn't rigid,
+alone, `FitsIn`, proved once for every window above a minimum size. A view that isn't rigid,
 like the fixture's, is checked one concrete layout at a time: `checkPressable` decides it for a
 laid-out frame, and `pressable_of_check` turns that into the theorem. The fuzzer checks that
 each enabled move's control is pressable at its centre, in every state it reaches.
@@ -63,9 +63,7 @@ An invariant's proof is the most work in a typical app: `init` for the starting 
 obligation per handler, each saying that handler keeps the property. The chapter on
 [moves and flows](/docs/guide/moves-and-flows/#invariants) shows the shape. The fixture's ^7
 needs three short lemmas, `add_inv`, `toggle_inv` and `delete_inv`, one per function that changes
-the items; Basics' count of items left,
-[cairn_examples^105](/packages/cairn_examples/claims/105/), takes about thirty lines of ordinary
-list reasoning.
+the items. A count of items left takes about thirty lines of ordinary list reasoning.
 
 ## Runtime checks
 
