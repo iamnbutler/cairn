@@ -1,7 +1,7 @@
 ---
 title: The trusted base
 nav: The trusted base
-eyebrow: Internals
+eyebrow: Reference
 lede: Everything the proofs rely on but don't prove, and how each piece is checked instead.
 ---
 

@@ -1,7 +1,7 @@
 ---
 title: Contributing
 nav: Contributing
-eyebrow: Internals
+eyebrow: Contributing
 lede: The rules every change to Cairn follows, and the one command that checks them.
 ---
 

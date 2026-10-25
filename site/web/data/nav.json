@@ -20,17 +20,8 @@
 			{ "page": "reference/claims" },
 			{ "page": "reference/evidence" },
 			{ "page": "reference/trust" },
-			{ "page": "reference/releases" }
-		]
-	},
-	{
-		"section": "Internals",
-		"items": [
 			{ "page": "internals/trusted-base" },
-			{ "page": "internals/host-protocol" },
-			{ "page": "internals/host-effects" },
-			{ "page": "internals/profiling" },
-			{ "page": "internals/contributing" }
+			{ "page": "reference/releases" }
 		]
 	},
 	{
@@ -41,6 +32,15 @@
 			{ "href": "/packages/cairn/claims/106/", "title": "Basics' claims" },
 			{ "href": "/packages/cairn/claims/201/", "title": "TodoMVC's claims" },
 			{ "href": "/packages/cairn/claims/#assumptions", "title": "The trusted base's claims" }
+		]
+	},
+	{
+		"section": "Contributing",
+		"items": [
+			{ "page": "internals/host-protocol" },
+			{ "page": "internals/host-effects" },
+			{ "page": "internals/profiling" },
+			{ "page": "internals/contributing" }
 		]
 	}
 ]
