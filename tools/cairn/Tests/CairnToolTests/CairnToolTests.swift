@@ -469,3 +469,42 @@ final class FakeRegistry: @unchecked Sendable {
         await #expect(throws: CairnError.self) { try await commands.publish(["--owner"]) }
     }
 }
+
+@Suite struct ChecksTests {
+    @Test func argumentsSplitOptionsFlagsAndPositionals() throws {
+        let a = try Arguments(["Fixture", "--iterations", "200", "-v", "--product", "A", "--product", "B"],
+                              options: ["--iterations", "--product"], flags: ["-v"], usage: "u")
+        #expect(a.positionals == ["Fixture"])
+        #expect(try a.number("--iterations") == 200)
+        #expect(a.options["--product"] == ["A", "B"])
+        #expect(a.flags == ["-v"])
+        #expect(throws: CairnError.self) { try Arguments(["--seed"], options: ["--seed"], usage: "u") }
+        #expect(throws: CairnError.self) { try Arguments(["--nope"], options: [], usage: "u") }
+        #expect(throws: CairnError.self) { try Arguments(["--n", "x"], options: ["--n"], usage: "u").number("--n") }
+    }
+
+    /// The conformance generator's initializer, as Lean's module system names it.
+    @Test func initializerFollowsLeanMangling() {
+        let fixture = Project(root: URL(filePath: "/tmp/fixture"), manifest: Manifest(name: "fixture", version: "0.1.0"))
+        #expect(fixture.initializer(of: "Fixture.Conformance") == "runtime_initialize_fixture_Fixture_Conformance")
+        let demo = Project(root: URL(filePath: "/tmp/demo"), manifest: Manifest(name: "demo_app", version: "0.1.0"))
+        #expect(demo.initializer(of: "DemoApp.Conformance") == "runtime_initialize_demo__app_DemoApp_Conformance")
+    }
+
+    @Test func declaresExeReadsTheLakefile() throws {
+        let dir = FileManager.default.temporaryDirectory.appending(path: "cairn-test-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try FileManager.default.createDirectory(at: dir.appending(path: "lean"), withIntermediateDirectories: true)
+        let project = Project(root: dir, manifest: Manifest(name: "fixture", version: "0.1.0"))
+        try "package fixture\n\nlean_exe fuzzer where\n  root := `F\n".write(to: dir.appending(path: "lean/lakefile.lean"), atomically: true, encoding: .utf8)
+        #expect(!project.declaresExe("fuzz"))
+        try "package fixture\n\nlean_exe fuzz where\n  root := `FuzzMain\n".write(to: dir.appending(path: "lean/lakefile.lean"), atomically: true, encoding: .utf8)
+        #expect(project.declaresExe("fuzz"))
+    }
+
+    @Test func executablesFromSwiftPackageDescribe() {
+        let json = #"{"products": [{"name": "Fixture", "type": {"executable": null}}, {"name": "Lib", "type": {"library": ["automatic"]}}]}"#
+        #expect(SwiftPackage.executables(Data(json.utf8)) == ["Fixture"])
+        #expect(SwiftPackage.executables(Data("nope".utf8)) == [])
+    }
+}

@@ -1,0 +1,10 @@
+# claims.lock: every claim id ever issued. Written by `lake exe ledger update`; never edit by hand.
+# id	kind	status	statement	title
+1	place	active	-	Fixture window
+2	move	active	eaf76f7867560a6d	Type a new item
+3	move	active	1c48ba0c6cb66731	Add
+4	move	active	5efe8e019262cc2b	Toggle an item
+5	move	active	c3b117a2271584d7	Delete an item
+6	move	active	3c75ee9d6aa40637	Flash
+7	invariant	active	8f30931596f4fe93	Item ids stay below the next id
+8	flow	active	779c38f19ebcfef8	Add two items and finish one

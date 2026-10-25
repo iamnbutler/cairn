@@ -1,7 +1,14 @@
 #!/usr/bin/env bun
 // App binary sizes (bench/size.md), and the guard `make size` runs.
 //
-//   bun tools/size/size.ts --bin <release bin dir> --maps <dir> --out <dir> [--limit BYTES] App…
+//   bun tools/size/size.ts --bin <release bin dir> --maps <dir> --out <dir> [--limit BYTES]
+//                          [--lib <libNAME.a> --modules <Mod,…>] [--swift <package dir>] App…
+//
+// Cairn's own example apps link two archives, build/lib/libcairn_lean.a and
+// build/lib/libcairn_app_<app>.a. An app package (`cairn size`, docs/cli.md) links the one
+// archive `cairn build` merges, .cairn/lib/lib<name>.a: --lib names it, and --modules the app's
+// Lean module roots (cairn.toml's `libs`), which tell its objects from Cairn's and the runtime's.
+// --swift is the directory whose .build/ holds the Swift host's objects (default: host/).
 //
 // For each app executable, already built with `swift build -c release --product <App>
 // -Xlinker -map -Xlinker <maps>/<App>.map`, it strips a copy into <out>/<App> (`strip`, every
@@ -37,6 +44,9 @@ const binDir = opt("--bin");
 const mapDir = opt("--maps");
 const outDir = opt("--out", "build/size")!;
 const limit = Number(opt("--limit", "5000000"));
+const mergedLib = opt("--lib");
+const appModules = (opt("--modules") ?? "").split(",").filter((m) => m.length > 0);
+const swiftDir = (opt("--swift") ?? "host").replace(/\/+$/, "");
 const apps = args;
 if (!binDir || !mapDir || apps.length === 0) {
   console.error("usage: size.ts --bin <dir> --maps <dir> [--out dir] [--limit bytes] App…");
@@ -51,6 +61,13 @@ type Bucket =
   | "app library"
   | "Swift host"
   | "Metal shader source";
+
+/** Whether a C symbol is Lean code of module root `m`: `_lp_fixture_Fixture_view` (Lean names
+a package's declarations `lp_<package>_…`), `__init_lp_fixture_Fixture_…`,
+`_initialize_fixture_Fixture_Abi`. */
+function isAppSymbol(sym: string, m: string): boolean {
+  return new RegExp(`^_+(init_)?(lp_\\w*?_|l_|(runtime_)?initialize_\\w*?_)?${m}(_|$)`).test(sym);
+}
 
 /** Bytes per object file and per bucket, from a ld64 link map's live symbols. */
 function attribute(mapPath: string) {
@@ -89,13 +106,14 @@ function attribute(mapPath: string) {
   for (const [file, n] of bytes) {
     const path = files.get(file) ?? "";
     let b: Bucket | "linker" = "linker";
+    const syms = names.get(file) ?? [];
     if (/libcairn_app_[^/]*\.a\(/.test(path)) b = "app library";
-    else if (/libcairn_lean\.a\(/.test(path)) {
-      const syms = names.get(file) ?? [];
-      if (syms.some((s) => /Cairn/.test(s))) b = "Cairn (Lean)";
+    else if (/libcairn_lean\.a\(/.test(path) || (mergedLib && path.includes(`/${mergedLib}(`))) {
+      if (appModules.some((m) => syms.some((s) => isAppSymbol(s, m)))) b = "app library";
+      else if (syms.some((s) => /Cairn/.test(s))) b = "Cairn (Lean)";
       else if (/\.c\.o(\.export)?\)$/.test(path)) b = "Lean runtime: Init, Std";
       else b = "Lean runtime: leanrt, libuv, libgmp";
-    } else if (/\/host\/\.build\//.test(path)) {
+    } else if (path.includes(`${swiftDir}/.build/`)) {
       // SwiftPM's objects: Products/<Mode>/<Target>.o per library target, and the
       // executable's own <App>-p.build/…/main.o.
       b = "Swift host";

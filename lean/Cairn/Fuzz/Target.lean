@@ -4,7 +4,7 @@ import Cairn.Claims.Core
 /-! # What the fuzzer knows about an app
 
 A `Target` bundles a machine (and the `App` built from it, if any) with what the claims say
-about it. `fuzz_targets%` (`Cairn.Fuzz.Collect`) builds one per machine in the `Examples`
+about it. `fuzz_targets%` (`Cairn.Fuzz.Collect`) builds one per machine in the app's
 modules at compile time, so an app needs no fuzz code of its own. -/
 
 namespace Cairn.Fuzz
@@ -19,9 +19,9 @@ structure InvCheck (S : Type) where
   check : Option (S → Bool)
 
 structure Target where
-  /-- `Basics`: what `lake exe fuzz` is given. -/
+  /-- `Fixture`: what `lake exe fuzz` is given. -/
   name : String
-  /-- `Examples.Basics`. -/
+  /-- `Fixture`, the machine's module. -/
   module : String
   /-- The namespace the claims live in, for printed flows. -/
   ns : String

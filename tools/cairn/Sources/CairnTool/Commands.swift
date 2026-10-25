@@ -52,6 +52,14 @@ public struct Project: Sendable {
         return [cairn.appending(path: "bin/cairn-link").path] + manifest.libs.flatMap { ["--lib", $0] } + ["--out", out.path]
     }
 
+    /// The modules `cairn doc` and `cairn claims` read: the package's `libs`, or for Cairn
+    /// itself its umbrellas (the Makefile's DOC_CAIRN).
+    public var documented: [String] {
+        manifest.name == "cairn"
+            ? ["Cairn", "CairnAll", "Cairn.Claims", "Cairn.Fuzz", "Cairn.Fuzz.Trusted.Claims", "Cairn.Fuzz.Trusted.Export"]
+            : manifest.libs
+    }
+
     /// Check that the three names agree: cairn.toml's, the Lake package's, and the claim scope.
     public func agree() throws(CairnError) {
         let (lakefile, url) = try Lakefile.load(lean)
@@ -176,6 +184,15 @@ public struct Commands {
     /// `cairn build [--release]`: `lake cache get`, `lake build`, `cairn-link`, `swift build`.
     public func build(_ args: [String]) throws(CairnError) {
         let project = try project()
+        try buildLean(project)
+        let package = project.swift.appending(path: "Package.swift")
+        guard FileManager.default.fileExists(atPath: package.path) else { return }
+        try shell.run(["swift", "build"] + (args.contains("--release") ? ["-c", "release"] : []), in: project.swift)
+    }
+
+    /// `cairn build` up to SwiftPM: the name check, `lake cache get`, `lake build`, and for an app
+    /// `cairn-link`.
+    func buildLean(_ project: Project) throws(CairnError) {
         try project.agree()
         let env = lakeEnv(registry())
         guard shell.has("lake") else { throw CairnError("lake isn't on PATH; install elan (AGENTS.md, Toolchain)") }
@@ -193,7 +210,6 @@ public struct Commands {
             }
             try shell.run(command, in: project.lean, env: env)
         }
-        try shell.run(["swift", "build"] + (args.contains("--release") ? ["-c", "release"] : []), in: project.swift)
     }
 
     // MARK: doc
@@ -208,9 +224,7 @@ public struct Commands {
         // directory, and the doc and claims tools import modules from the build directory.
         var env = lakeEnv(registry())
         env["LAKE_ARTIFACT_CACHE"] = "false"
-        let modules = name == "cairn"
-            ? ["Cairn", "CairnAll", "Cairn.Claims", "Cairn.Fuzz", "Cairn.Fuzz.Trusted.Claims", "Cairn.Fuzz.Trusted.Export"]
-            : project.manifest.libs
+        let modules = project.documented
         guard !modules.isEmpty else { throw CairnError("cairn.toml lists no `libs` to document") }
         do { try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true) } catch { throw CairnError("couldn't create \(dir.path)") }
         try shell.run(["lake", "build"], in: project.lean, env: env)

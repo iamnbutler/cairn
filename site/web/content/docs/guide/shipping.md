@@ -34,8 +34,9 @@ presence through accessibility, the way an assistive app would see it:
 `make fuzz APP=<App>` generates random sequences of moves from the claims and checks every claim's
 `post`, every invariant, and presence and pressability, after every step. `make conformance
 APP=<App>` replays sequences against the running app through its debug socket and compares it
-with the Lean model at every step. Conformance needs one small file per app, under
-`tools/conformance/lean/Conformance/Apps/`.
+with the Lean model at every step. Conformance needs one small module per app,
+`lean/Examples/<App>/Conformance.lean`. In an app's own repository, `cairn fuzz` and `cairn
+conformance` do the same (see [the cairn tool](/docs/reference/cairn-tool/)).
 
 <bongo:include src="Makefile#make-fuzz" />
 

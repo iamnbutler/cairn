@@ -47,7 +47,9 @@ string); CairnCapture 71,081; CairnFrame 46,262; the app's `main.swift` 23,841; 
 
 ## How it is measured
 
-`make size` (part of `make check`) runs, for each app in `SIZE_APPS`:
+`make size` (part of `make check`) runs `cairn size` on test/fixture, which does the same with the
+app package's one merged library (docs/cli.md, "Checks"). `make examples-size` (in `make check`
+through `examples-check`) runs, for each app in `SIZE_APPS`:
 
 ```sh
 cd host
