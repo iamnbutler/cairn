@@ -17,6 +17,7 @@
 import fixture from "./registry/fixture.json";
 import { CARDS, ogTags, packageCard } from "../tools/og/og.ts";
 import { bar, head } from "./chrome.js";
+import { ID, claimPage, model, overview } from "./claims.js";
 
 const esc = (value) =>
 	String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -73,6 +74,14 @@ function remote(base) {
 			if (!who) return [];
 			return (await data(`${at(who, name)}/versions/${version}/claims`))?.claims ?? [];
 		},
+		// The claims export, which a registry from before it doesn't have (a 404, as for a version
+		// published without one). A version answer that says `export: false` needs no request.
+		async exported(name, version, shown) {
+			if (shown?.export === false) return undefined;
+			const who = await ownerOf(name);
+			if (!who) return undefined;
+			return data(`${at(who, name)}/versions/${version}/claims/export`);
+		},
 	};
 }
 
@@ -105,6 +114,10 @@ function local() {
 		},
 		async claims(name, version) {
 			return find(name)?.claims[version] ?? [];
+		},
+		// The fixture is read from git tags, which carry no export.
+		async exported() {
+			return undefined;
 		},
 	};
 }
@@ -231,6 +244,7 @@ export async function packagePage(src, name, wanted) {
 	const range = `^${shown.version.replace(/-.*$/, "")}`;
 	const app = kindOf(shown.kind ? shown : pkg) === "bin";
 	const deps = Object.entries(shown.dependencies ?? {});
+	const claimsBase = `/packages/${esc(name)}/${wanted ? `${esc(shown.version)}/` : ""}claims/`;
 	const rows = pkg.versions
 		.map(
 			(v) => `<tr${v.version === shown.version ? ' class="on"' : ""}><td><a href="/packages/${esc(name)}/${esc(v.version)}/">${esc(v.version)}</a>${v.yanked ? ' <span class="chip retired">yanked</span>' : ""}</td><td>${esc(date(v.date))}</td><td><code title="${esc(v.revision)}">${esc(v.revision.slice(0, 10))}</code></td><td>${counts(v.claims)}</td><td><a href="/docs/${esc(name)}/${esc(v.version)}/">docs</a></td></tr>`,
@@ -238,7 +252,7 @@ export async function packagePage(src, name, wanted) {
 		.join("\n");
 	const ledger = claims
 		.map(
-			(c) => `<tr id="${esc(c.id)}" class="${esc(c.status.split(/[ :]/)[0])}"><td><code>${esc(name)}^${esc(c.id)}</code></td><td>${esc(c.kind)}</td><td>${esc(c.status)}</td><td>${esc(c.title)}</td></tr>`,
+			(c) => `<tr id="${esc(c.id)}" class="${esc(c.status.split(/[ :]/)[0])}"><td><a href="${claimsBase}${esc(c.id)}/"><code>${esc(name)}^${esc(c.id)}</code></a></td><td>${esc(c.kind)}</td><td>${esc(c.status)}</td><td>${esc(c.title)}</td></tr>`,
 		)
 		.join("\n");
 	const body = `${sample(src)}
@@ -252,7 +266,7 @@ export async function packagePage(src, name, wanted) {
 <div><dt>License</dt><dd>${esc(shown.license ?? "none")}</dd></div>
 <div><dt>Claims</dt><dd>${counts(shown.claims) || "none"}</dd></div>
 </dl>
-<p class="go"><a href="/docs/${esc(name)}/${esc(shown.version)}/">Docs for ${esc(shown.version)}</a></p>
+<p class="go"><a href="${claimsBase}">Claims in ${esc(shown.version)}</a><a href="/docs/${esc(name)}/${esc(shown.version)}/">Docs for ${esc(shown.version)}</a></p>
 </div>
 <section class="prose wide">
 ${
@@ -306,7 +320,7 @@ ${changes
 		: ""
 }
 <h2 id="claims">Claims in ${esc(shown.version)}</h2>
-<p>Every id this package has issued, as its <code>claims.lock</code> held them at this version. An id never moves or changes meaning: the registry refuses a version that drops, renumbers or redefines one.</p>
+<p>Every id this package has issued, as its <code>claims.lock</code> held them at this version. An id never moves or changes meaning: the registry refuses a version that drops, renumbers or redefines one. <a href="${claimsBase}">The claim pages</a> show each claim by place, with what it does and its evidence.</p>
 ${claims.length ? `<div class="wrap"><table class="ledger"><thead><tr><th>Id</th><th>Kind</th><th>Status</th><th>Claim</th></tr></thead><tbody>
 ${ledger}
 </tbody></table></div>` : "<p>This version makes no claims.</p>"}
@@ -317,6 +331,56 @@ ${ledger}
 		lede: shown.description ?? pkg.description ?? "",
 		path: `/packages/${encodeURIComponent(name)}/${wanted ? `${encodeURIComponent(shown.version)}/` : ""}`,
 		body,
+		card: cardOf(pkg, shown),
+	});
+}
+
+/** The version a claim page shows: the one named, or the latest. */
+async function claimsOf(src, name, wanted) {
+	if (!NAME.test(name)) return undefined;
+	const pkg = await src.pkg(name);
+	if (!pkg) return undefined;
+	const shown = wanted ? pkg.versions.find((v) => v.version === wanted) : latestOf(pkg.versions);
+	if (!shown) return undefined;
+	const [ledger, exp] = await Promise.all([src.claims(name, shown.version), src.exported(name, shown.version, shown)]);
+	return { pkg, shown, m: model(name, shown.version, ledger, exp) };
+}
+
+/**
+ * /packages/<name>/[<version>/]claims/: every claim of a version, grouped by place, from its
+ * ledger and its claims export (site/claims.js). Without a version, the latest.
+ */
+export async function claimsPage(src, name, wanted) {
+	const found = await claimsOf(src, name, wanted);
+	if (!found) return undefined;
+	const { pkg, shown, m } = found;
+	const base = `/packages/${esc(name)}/${wanted ? `${esc(shown.version)}/` : ""}claims/`;
+	return page({
+		title: `${name} ${shown.version}: claims`,
+		eyebrow: `Claims · <a href="/packages/${esc(name)}/${wanted ? `${esc(shown.version)}/` : ""}">${esc(name)}</a>`,
+		lede: `Everything ${name} ${shown.version} claims a person can do and see, and what holds, by place, each with its evidence.`,
+		path: base,
+		body: `${sample(src)}\n${overview(m, base)}`,
+		card: cardOf(pkg, shown),
+	});
+}
+
+/** /packages/<name>/[<version>/]claims/<id>/: one claim. */
+export async function claimPageOf(src, name, wanted, id) {
+	if (!ID.test(id)) return undefined;
+	const found = await claimsOf(src, name, wanted);
+	if (!found) return undefined;
+	const { pkg, shown, m } = found;
+	const c = m.byId.get(Number(id));
+	if (!c) return undefined;
+	const base = `/packages/${esc(name)}/${wanted ? `${esc(shown.version)}/` : ""}claims/`;
+	const title = c.detail?.title ?? c.title;
+	return page({
+		title: `${name}^${c.id} ${title}`,
+		eyebrow: `Claim · <a href="${base}">${esc(name)} ${esc(shown.version)}</a>`,
+		lede: `A ${c.kind} of ${name} ${shown.version}${c.place != null ? `, in ${m.byId.get(c.place)?.detail?.title ?? m.byId.get(c.place)?.title}` : ""}.`,
+		path: `${base}${c.id}/`,
+		body: `${sample(src)}\n${claimPage(m, c, base)}`,
 		card: cardOf(pkg, shown),
 	});
 }
@@ -359,11 +423,19 @@ export async function route(request, env) {
 	const src = source(env);
 	if (parts[0] === "packages") {
 		if (parts.length === 1) return Response.redirect(new URL("/packages/", url), 301);
-		const [, name = "", version = "", ...rest] = parts;
-		if (!name && !version) return html(await listPage(src, url.searchParams.get("tab") === "apps" ? "bin" : "lib"));
-		if (rest.length > 1 || rest[0]) return undefined;
+		const [, name = "", ...after] = parts;
+		if (!name && !after.some(Boolean)) return html(await listPage(src, url.searchParams.get("tab") === "apps" ? "bin" : "lib"));
+		// /packages/<name>/[<version>/][claims/[<id>/]]
+		const version = VERSION.test(after[0] ?? "") ? after.shift() : "";
+		if (after[0] === "claims") {
+			const [, id = "", ...more] = after;
+			if (more.length > 1 || more[0] || (id && !ID.test(id))) return undefined;
+			if (!url.pathname.endsWith("/")) return Response.redirect(new URL(`${url.pathname}/`, url), 301);
+			const text = id ? await claimPageOf(src, name, version || undefined, id) : await claimsPage(src, name, version || undefined);
+			return text ? html(text) : undefined;
+		}
+		if (after.length > 1 || after[0]) return undefined;
 		if (!url.pathname.endsWith("/")) return Response.redirect(new URL(`${url.pathname}/`, url), 301);
-		if (version && !VERSION.test(version)) return undefined;
 		const text = await packagePage(src, name, version || undefined);
 		return text ? html(text) : undefined;
 	}

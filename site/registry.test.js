@@ -1,6 +1,8 @@
 // The package pages (registry.js), against the fixture and a fake registry. `make registry-check`.
 import { afterEach, describe, expect, test } from "bun:test";
 import { route } from "./registry.js";
+// Counter's claims and one of the trusted base's, as the registry serves a claims export.
+import sample from "./registry/export-sample.json";
 
 const ORIGIN = "https://cairn.test";
 // The docs placeholder must not reach for any asset, so every asset fetch fails the test.
@@ -135,6 +137,11 @@ describe("with a registry", () => {
 
 	// The one public registry: a URL and no token.
 	const env = { ASSETS: assets, REGISTRY_URL: "https://reg.test/" };
+	// Counter's ledger: the sample's claims, ^6 retired, and ^301 moved to another package.
+	const counterLedger = [
+		...sample.claims.map((c) => ({ id: c.id, kind: c.kind, status: c.retired ? "retired" : "active", statement: c.statement, title: c.title })),
+		{ id: 301, kind: "move", status: "moved:yap", statement: "-", title: "Dictate" },
+	];
 	const release = {
 		version: "1.2.0",
 		revision: "a".repeat(40),
@@ -170,6 +177,18 @@ describe("with a registry", () => {
 		// A pure-Lean library, from a registry that may not say `swift` at all.
 		"/api/v1/packages/carl/pure": { data: { name: "pure", fullName: "carl/pure", owner: "carl", description: "Lean only" } },
 		"/api/v1/packages/carl/pure/versions?yanked=true": { data: [{ ...release, version: "0.1.0", tag: "v0.1.0", swift: undefined }] },
+		// A package with a claims export, and a version before it without one.
+		"/api/v1/names/counter": { data: { owner: "carl", name: "counter" } },
+		"/api/v1/packages/carl/counter": { data: { name: "counter", fullName: "carl/counter", owner: "carl", description: "Counts" } },
+		"/api/v1/packages/carl/counter/versions?yanked=true": {
+			data: [
+				{ ...release, version: "0.2.0", tag: "v0.2.0", export: true },
+				{ ...release, version: "0.1.0", tag: "v0.1.0", export: false },
+			],
+		},
+		"/api/v1/packages/carl/counter/versions/0.2.0/claims": { data: { claims: counterLedger } },
+		"/api/v1/packages/carl/counter/versions/0.1.0/claims": { data: { claims: counterLedger.filter((c) => c.id < 900) } },
+		"/api/v1/packages/carl/counter/versions/0.2.0/claims/export": { data: { ...sample, version: "0.2.0" } },
 		"/api/v1/packages/carl/hello/versions/1.2.0/claims": {
 			data: { claims: [{ id: 1, kind: "move", status: "active", statement: "-", title: "Wave" }] },
 		},
@@ -243,5 +262,95 @@ describe("with a registry", () => {
 		expect(paths.length).toBeGreaterThan(0);
 		expect(paths.filter((path) => path.includes("/docs"))).toEqual([]);
 		expect(await get("/packages/other/", env)).toBeUndefined();
+	});
+
+	test("renders a version's claim pages from its export: places, evidence, steps and source", async () => {
+		globalThis.fetch = fake;
+		const res = await get("/packages/counter/claims/", env);
+		expect(res.status).toBe(200);
+		const text = await res.text();
+		// Grouped by place: the Counter window holds its moves and both flows (a flow's place is
+		// its first step's).
+		expect(text).toContain('<section class="place" id="place-3">');
+		const place = text.slice(text.indexOf('id="place-3"'), text.indexOf("</section>", text.indexOf('id="place-3"')));
+		for (const id of [1, 2, 4, 5]) expect(place).toContain(`<tr id="${id}" `);
+		expect(text).toContain('<tr id="1" class="proved"><td><a href="/packages/counter/claims/1/"><code>counter^1</code></a></td>');
+		expect(text).toContain('<tr id="6" class="retired">');
+		// Assumptions by module: the app's own apart from the trusted base.
+		expect(text).toContain('<section id="assumptions">');
+		expect(text).toContain("<h3><code>Cairn.Fuzz.Trusted.Claims</code></h3>");
+		expect(text).toContain('<tr id="7" class="assumed">');
+		expect(text).toContain('<a href="/packages/yap/claims/301/"><code>yap^301</code></a>');
+		expect(text).toContain("Not shown yet:</strong> fuzzed, tested and seen");
+		expect(text).not.toContain("ledger only");
+
+		const move = await (await get("/packages/counter/claims/2/", env)).text();
+		expect(move).toContain("Press Reset.");
+		expect(move).toContain("The count is zero, and Reset disappears.");
+		expect(move).toContain('<a href="/packages/counter/claims/3/">Counter window</a>');
+		expect(move).toContain("<code>Examples.Counter.reset.press.sound</code>");
+		expect(move).toContain('<span class="chip ev proved">proved</span>');
+		expect(move).toContain("lean/Examples/Counter.lean:");
+		for (const k of ["fuzzed", "tested", "seen"]) expect(move).toContain(`<span class="chip ev later">${k}</span></td><td colspan="2">Not shown yet`);
+
+		const flow = await (await get("/packages/counter/claims/5/", env)).text();
+		expect(flow).toContain('<ol class="steps">');
+		expect(flow).toContain('<span class="trigger">press</span> on <a href="/packages/counter/claims/2/"><code>^2</code></a> Reset</li>');
+
+		const window = await (await get("/packages/counter/claims/3/", env)).text();
+		expect(window).toContain('<h2 id="in">In this place</h2>');
+		expect(window).toContain('<tr id="4" ');
+
+		const trusted = await (await get("/packages/counter/claims/901/", env)).text();
+		expect(trusted).toContain('<span class="chip ev assumed">assumed</span>');
+		expect(trusted).toContain("the trusted-base fuzzer's check <code>");
+
+		const retired = await (await get("/packages/counter/0.2.0/claims/6/", env)).text();
+		expect(retired).toContain("The runtime owns press tracking");
+		expect(retired).toContain('href="/packages/counter/0.2.0/claims/#6"');
+		const moved = await (await get("/packages/counter/claims/301/", env)).text();
+		expect(moved).toContain('Now <a href="/packages/yap/claims/301/">');
+	});
+
+	test("falls back to the ledger for a version without an export, and asks for none it says it lacks", async () => {
+		globalThis.fetch = fake;
+		paths.length = 0;
+		const text = await (await get("/packages/counter/0.1.0/claims/", env)).text();
+		expect(text).toContain("This version also has no claims export");
+		expect(text).toContain('<tr id="1" class="ledger"><td><a href="/packages/counter/0.1.0/claims/1/">');
+		expect(text).toContain("Which claims are in this place is in the claims export");
+		const one = await (await get("/packages/counter/0.1.0/claims/2/", env)).text();
+		expect(one).toContain('<span class="chip ev ledger">ledger only</span>');
+		// The live registry from before exports answers 404, and the pages still render.
+		const hello = await (await get("/packages/hello/claims/1/", env)).text();
+		expect(hello).toContain("<code>hello^1</code>");
+		expect(paths).toContain("/api/v1/packages/carl/hello/versions/1.2.0/claims/export");
+		expect(paths.filter((p) => p.endsWith("/0.1.0/claims/export"))).toEqual([]);
+	});
+
+	test("links the package page to its claim pages, and leaves other paths alone", async () => {
+		globalThis.fetch = fake;
+		const pkg = await (await get("/packages/counter/0.2.0/", env)).text();
+		expect(pkg).toContain('<a href="/packages/counter/0.2.0/claims/">Claims in 0.2.0</a>');
+		expect(pkg).toContain('<a href="/packages/counter/0.2.0/claims/2/"><code>counter^2</code></a>');
+		expect((await get("/packages/counter/claims", env)).headers.get("location")).toBe(`${ORIGIN}/packages/counter/claims/`);
+		expect((await get("/packages/counter/claims/2", env)).headers.get("location")).toBe(`${ORIGIN}/packages/counter/claims/2/`);
+		for (const path of ["/packages/counter/claims/999/", "/packages/counter/claims/x/", "/packages/counter/claims/2/place.svg", "/packages/counter/9.9.9/claims/", "/packages/nope/claims/"]) {
+			expect(await get(path, env)).toBeUndefined();
+		}
+	});
+
+	test("escapes every field of an export", async () => {
+		const evil = { ...sample, claims: sample.claims.map((c) => (c.id === 1 ? { ...c, title: "<img src=x onerror=alert(1)>", does: "<script>x</script>", pos: { file: '"><b>', line: 1 } } : c)) };
+		globalThis.fetch = async (url, init) => {
+			if (url.endsWith("/0.2.0/claims/export")) return Response.json({ data: evil });
+			return fake(url, init);
+		};
+		for (const path of ["/packages/counter/claims/", "/packages/counter/claims/1/", "/packages/counter/claims/3/"]) {
+			const text = await (await get(path, env)).text();
+			expect(text).not.toContain("<img src=x");
+			expect(text).not.toContain("<script>x</script>");
+			expect(text).not.toContain('"><b>');
+		}
 	});
 });
