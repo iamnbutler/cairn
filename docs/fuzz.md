@@ -103,9 +103,14 @@ app: it hears the time and its `initEffects` run. Each operation is one of:
 | `act a`: an action of an enabled move, for an enabled key | ~70% of the rest | the events a person would use: a press is move, down, up at the control's centre; a double press adds a second down with `clicks = 2`; `edit`, `submit`, `cancel` click the field unless it has focus, then send the text event or key (Enter, Escape); `blur` focuses the field, then Tab |
 | `click p`, `move p` at a random point | ~12% of the rest | pointer events, whatever is there |
 | `tab`, `shift-Tab`, a bare key (Enter, Escape, Backspace, arrows) | ~10% of the rest | key events |
+| `scroll p dx dy` | ~16% of the rest when a scroll box is on screen (2% otherwise) | a pointer move to `p`, then the scroll: at a point in a visible scroll box three times in four, by a tick (±48), a flick (±1,200) or one in nine ±1,000,000 (past either end), sideways one time in six |
+| a scroll key (Page Up/Down, Home, End, arrows, space), shift one in four, command one in eight | ~8% of the rest when a scroll box is on screen | key events |
 | `resize`, `pointerExit`, `windowFocus` | ~8% of the rest | window events |
 
-Every batch starts with the host's clock, as the real host's does (^908).
+Every batch starts with the host's clock, as the real host's does (^908), and ends with the
+runtime's two frame events (`Runtime.frameEvents`), as `steps` runs them: the `appear` moves a
+step delivers are among its actions. The fuzzer never chooses an `appear` move itself; only
+the runtime delivers one.
 
 Keys for keyed moves come from the frame (every `^N#k` on screen), plus keys seen earlier in the
 run and one past the largest, so "enabled but missing" is caught too.
@@ -242,6 +247,11 @@ the printout says so and gives the replay command and the shrunk steps.
    box (an empty visible part) is not pressed, not chosen for an operation and not checked:
    nothing of it can be hit (`not_hit_of_hidden`).
 5. **Images held** (above, "The host"): every image the frame draws is held by the host.
+   **Scroll** (counted under the box's ref's claim, `scroll`): every scroll box's offset is within
+   `[0, max 0 (content − viewport)]`, the box is laid at the runtime's offset (the view passes
+   `ui.scrollOf`), and the runtime keeps no offset for a box that isn't on screen
+   (`Runtime.step_clamped`). **Appear** (under the move's claim, `appear`): each `appear` move
+   delivered names a move with an `on appear` handler; these count as the move's steps.
 6. **Relations** (`Custom.relations`), for a host's move or a person's operation.
 7. **Outstanding** (`Custom.outstanding`): the app's checks against the requests the runtime
    still holds for it.
@@ -502,6 +512,7 @@ on after it.
 | `window.min-size` | ^1010 | `WindowSizer` (`apply`, `windowWillResize`) | the latest minimum asked for; the window's frame before each step | 1–12 steps on a hidden resizable window: minimums negative, 0 and 1–2400 a side, drags to 1–2600 × 1–1600 proposed to the delegate and then set |
 | `images.cache` | ^1011 | `ImageStore` (`setBudget`, `setDrawn`, `put`, `remove`), `World` (`imageCache`) | a least-recently-used model of the store; a copy of Lean's `Images` table fed the `World`'s events in order | 5–60 puts (4–32 pixels a side), removals, drawn sets and budgets; 3–10 files loaded concurrently with and without `reload`, deleted and restored, frames drawing what the app takes for ready, budgets of 0–3 large images |
 | `pointer.click` | ^7 | `HostView` (`mouseDown`, `mouseUp`, `point`), `Engine`'s queue | the click's window location flipped and rounded down by the suite; the event's modifier flags | 1–10 clicks a case in a hidden titled window of 40–1600 × 40–1000 whose content is a `HostView` over a recording core; points fractional, whole and on the content's edges; random shift, command, option, control; each event sent to the view AppKit's `hitTest` picks |
+| `pointer.scroll` | ^1012 | `HostView.scrollWheel`, `ScrollAccumulator`, `Engine`'s queue | AppKit's `scrollingDeltaX`/`Y` negated and summed (×16 for lines), within a point; the event's window location flipped and rounded down | one gesture a case at a random point of a hidden 40–1600 × 40–1000 window: 1–30 trackpad pixel deltas (began, changed) or wheel line deltas in 1/64ths, on either axis or both, from `CGEvent(scrollWheelEvent2Source:)` |
 | `pointer.double-click` | ^214 | `HostView.mouseDown`'s `clickCount` | the `clickCount` of each mouse down, at the first click's point | the same cases: double and triple clicks, the later downs and ups `clickCount` 2 and 3, within the double-click interval |
 | `text.secure-input` | ^1020 | `SecureInputGate` as `HostView.updateSecureInput` drives it; Carbon's `EnableSecureEventInput`, `DisableSecureEventInput` | the frame's `TextInput.secure`, the window's key state and the view's life, step by step; `IsSecureEventInputEnabled` read back | 1–30 steps a case of no, plain or secure text input, key or not, live or not, ending closed; one case in eight makes the system's calls |
 | `effects.cancel` | ^1009 | `World` (`Cancellation`, `cancelRequest`), `HTTP.run`, `ImageLoad` | a `URLProtocol` stub recording which loads started and which were stopped early; the store before and after | 1–12 `http` and `loadImage` requests (with and without `reload`), some held open by the stub; cancels in the same frame, while running and after the answer; 0–2 cancels of ids never sent |

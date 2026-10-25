@@ -49,7 +49,10 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
 - **Its evidence.** What a claim reads as depends on the build that computed it. See
   [how much to trust a claim](/docs/reference/trust/).
 
-## Unreleased
+## v0.4.0 (unreleased)
+
+A minor version: `Event`, `Action` and `Trigger` gain constructors, so exhaustive matches on
+them need new cases. The frame format is unchanged (frames 11, events 2).
 
 - **Fuzz targets are scoped by package** ([#221](https://github.com/iamnbutler/cairn/issues/221)).
   `fuzz_targets%` marks a machine from a dependency (cairn_atproto's session, in an app that
@@ -59,6 +62,37 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
   targets with one name fail to compile, naming both, and `Cairn.Fuzz.main` refuses a list with
   a name twice. `Target` gains `package` and `dependency`, and the report gains `package`. An app
   that filtered `fuzz_targets%` to its own modules can drop the filter.
+- **Scroll offsets belong to the runtime** ([#203](https://github.com/iamnbutler/cairn/issues/203)).
+  A scroll box names itself with `Style.scrollRef`, and the runtime keeps its offset in
+  `UI.scroll`, keyed by that ref; the view reads it with `ui.scrollOf ref`, or `ui.scrolling ref
+  style`. The wheel and trackpad move the innermost box under the pointer; Page Up/Down,
+  space/shift-space, Home/End and the arrows move the focused control's box or the one under the
+  pointer; Tab scrolls the control it focuses into view. Every offset is clamped to `[0, max 0
+  (content − viewport)]` after every step (`Runtime.step_clamped`), and a scroll never reaches
+  `update` (`Runtime.step_scroll`). See docs/runtime.md, "Scrolling".
+- **`Action.appear`.** A control with `Control.appear := true` is reported to its move when it
+  comes on screen: after each batch, `steps` runs two `Event.frame`s, which deliver `appear c`
+  for each such control that has a visible part and didn't at the last frame
+  (`Runtime.appear_iff`). Moves answer it with `on appear`. `Event.frame` is the runtime's own
+  and has no wire encoding.
+- **The host's scroll sign is a claim.** New `assume` ^1012 (`hostScroll`): positive `dy` toward
+  the end of the content, 16 points a wheel line, fractions carried. Fuzzed as `pointer.scroll`.
+- **`cairn fuzz` scrolls**: wheel ticks and flicks at random points, far past either end, and
+  the scroll keys; it checks every box's offset against the clamp after every step and counts
+  `appear` moves under their claims.
+
+**Claims.** New `assume` ^1012. The fixture (scope `fixture`, unpublished) retires ^11 for ^15
+and adds ^14 and ^16.
+
+### Upgrading to v0.4.0
+
+- Exhaustive matches on `Event` need a `frame` case, on `Action` an `appear` case, and on
+  `Trigger` an `appear` case.
+- A view that scrolled a box by its own offset should name the box (`ui.scrolling ref style`)
+  and drop the offset from its state; an offset of its own still works, unclamped and unmoved by
+  the runtime.
+- Code that folds `Runtime.step` over a batch by hand to mirror `Runtime.steps` should append
+  `Runtime.frameEvents`.
 
 ## v0.3.0
 
