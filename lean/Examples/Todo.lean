@@ -29,10 +29,13 @@ host in `host/Sources/CairnTodo`.
 | ^211 | move | Clear completed |
 | ^212 | invariant | the counter is the number of active todos; ids are distinct |
 | ^213 | retired | the listed rows, before `Style` had an image (now ^225) |
-| ^214 | assume | the host reports a double click as a second click |
 | ^215 | retired | hash routes and the back button (web only) |
 | ^216–^224 | flow | witnessed paths through the app |
-| ^225 | invariant | the listed rows are the todos the filter accepts, in order | -/
+| ^225 | invariant | the listed rows are the todos the filter accepts, in order |
+
+Editing a title (^205, a double press) relies on the host reporting a double click as a second
+click, ^214, and every press on the host reporting clicks where they happen, ^7: assumptions of
+Cairn's trusted base (docs/trusted.md, `Cairn.Fuzz.Trusted.Claims`), not of this app. -/
 
 @[expose] public section
 
@@ -206,11 +209,6 @@ invariant ^225 listedRows "The list is the filter applied to the todos" for mach
 -- endregion: todo-listed-rows
 
 retire ^213 invariant "The list is the filter applied to the todos" because "Reissued as ^225 with the same meaning: Style gained its image field (Cairn 0.2.0), which changed the statement's hash, and a published claim keeps its statement."
-
--- region: todo-double-click
-assume ^214 doubleClick "The host reports a double click as a second click" where
-  does "The host sends the second click of a double click as a pointer down with a click count of 2, at the same point, within the system's double-click interval; the runtime turns its release into a double press. (T20)"
--- endregion: todo-double-click
 
 -- region: todo-retire
 retire ^215 move "Back through filters" because "Web only (T46): hash routes and the back button walk the filter history in a browser. The Mac app has no filter history and no Back command."

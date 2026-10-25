@@ -97,7 +97,10 @@ Three more kinds complete the set:
   take it as a hypothesis, so every use shows.
 - A **retired** claim is a tombstone. Its id stays issued forever, with the reason it went.
 
-<bongo:include src="lean/Examples/Counter.lean#counter-assume" />
+Every app relies on that one, so Cairn's trusted base declares it, and the host fuzzer gathers its
+evidence (`check`):
+
+<bongo:include src="lean/Cairn/Fuzz/Trusted/Claims.lean#trusted-host-clicks" />
 
 <bongo:include src="lean/Examples/Counter.lean#counter-retire" />
 

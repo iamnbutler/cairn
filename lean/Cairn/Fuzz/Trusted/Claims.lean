@@ -8,6 +8,7 @@ fuzzer that gathers its evidence (`make fuzz-trusted`, `build/fuzz/trusted.json`
 "Trusted base"). Evidence, not proof: these stay assumptions.
 
 Ids 901–999 and 1000 on are for framework-level assumptions; apps' own assumptions use their apps' ranges.
+^7 and ^214 are framework-level too, kept from the examples that first declared them.
 Not imported by `Cairn` (the host links that); the ledger reads this module as a root. -/
 
 namespace Cairn.Fuzz.Trusted.Claims
@@ -207,6 +208,21 @@ assume ^1009 hostCancelRequest "cancelRequest stops a running request's work; it
 assume ^1010 hostWindowMinSize "The window is never smaller than the app's minimum size" where
   does "The host sets the window's contentMinSize to the minimum size of the frame's window record (a negative side as 0), so a person can't drag it smaller, clamps every live resize AppKit proposes to it, and grows a window already smaller to it, keeping its top-left corner; a minimum the window meets leaves it alone. So every resize Lean hears is at least the minimum the app asked for, from the first frame that asks for it."
   check "window.min-size"
+
+/-! Pointer input (`HostView`'s mouse handlers). Every app relies on these, so they are Cairn's,
+not an app's; they keep the ids the Counter and TodoMVC examples first gave them. -/
+
+-- region: trusted-host-clicks
+assume ^7 hostClicks "The host reports clicks where they happen" where
+  does "The host sends a pointer down and up at the logical point the person clicked, in order."
+  check "pointer.click"
+-- endregion: trusted-host-clicks
+
+-- region: trusted-double-click
+assume ^214 doubleClick "The host reports a double click as a second click" where
+  does "The host sends the second click of a double click as a pointer down with a click count of 2, at the same point, within the system's double-click interval; the runtime turns its release into a double press. (T20)"
+  check "pointer.double-click"
+-- endregion: trusted-double-click
 
 /-! The image cache's budget (docs/effects.md, "Images"; `Sub.imageCache`). -/
 

@@ -16,10 +16,10 @@ Cairn's own examples and trusted base are claims of the `cairn` package:
 
 | Place | What it covers |
 |---|---|
-| [Counter](/packages/cairn/claims/3/) | ^1–^7: two moves, two flows, an assumption and a retired claim |
+| [Counter](/packages/cairn/claims/3/) | ^1–^6: two moves, two flows and a retired claim |
 | [Basics](/packages/cairn/claims/106/) | ^101–^109: a field, a keyed list and an invariant |
 | [TodoMVC](/packages/cairn/claims/201/) | ^201–^224: the full TodoMVC spec |
-| [The trusted base](/packages/cairn/claims/#assumptions) | the host's assumptions, ^9xx and ^10xx |
+| [The trusted base](/packages/cairn/claims/#assumptions) | the host's assumptions, ^7, ^214, ^9xx and ^10xx |
 
 The pages show the evidence the export holds: proofs and their axioms, assumptions, flow
 witnesses, retired and moved ids. Fuzzing, conformance and screenshots need a build that runs

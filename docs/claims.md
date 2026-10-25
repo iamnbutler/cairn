@@ -130,7 +130,7 @@ invariant as not runnable; give the predicate a `Decidable` instance to fix that
 assume ^7 hostClicks "The host reports clicks where they happen" where
   does "The host sends a pointer down and up at the logical point the person clicked."
   statement := ∀ m : TextMetrics, m.Valid   -- optional
-  check "frame.decode"                      -- optional
+  check "pointer.click"                     -- optional
 ```
 
 Recorded, never proved: `hostClicks.statement : Prop` is a definition, not an axiom. Theorems
