@@ -53,7 +53,7 @@
   <ol class="trail">
     <li>Images in Cairn: an image node whose size Lean knows before the pixels arrive, and an
       effect that loads one. The host decodes and paints; Lean never holds pixels.</li>
-    <li>JSON as its own package, <code>cairn_batteries</code>, with a proof that decoding what
+    <li>JSON as its own package, <code>cairn_json</code>, with a proof that decoding what
       was encoded gives it back.</li>
     <li>Requests in flight: at most 6 at once, and switching packs cancels the rest. A late reply
       for an old pack never changes the board.</li>

@@ -11,14 +11,14 @@ one Lake package, one SwiftPM package, one tag and one claim scope, so every `ca
 meaning. Inside it, the Lean side is cut into Lake *libraries* by what they are for (linked into
 apps, proofs, compile-time commands, trusted claims, fuzzing, tools), and three module moves
 remove the directory-level cycles so the layering can be checked. New packages start only where
-code doesn't touch the frame format, the ABI or the host: pure-Lean helpers (`cairn_batteries`)
-and, once #84 lands, host capabilities an app declares (`cairn_<capability>`). Each of those is
+code doesn't touch the frame format, the ABI or the host: pure-Lean helpers (`cairn_json`, later
+`cairn_date`) and, once #84 lands, host capabilities an app declares (`cairn_<capability>`). Each of those is
 its own repository with its own scope and `claims.lock`.
 
 ```
             cairn  (lib: std = core runtime + claim language + host + tools; scope cairn)
            ↗    ↖
-cairn_batteries    cairn_<capability>   (later; own repos, own scopes)
+cairn_<topic>      cairn_<capability>   (cairn_json now; own repos, own scopes)
            ↖    ↗
          an app (bin), e.g. yap
 ```
@@ -146,10 +146,10 @@ from std is needed; internal Lake libraries give the same layering.
 | language | the claim commands (`Claims.Elab`, `Registry`), `meta import`ed | `cairn`, library `CairnClaims` |
 | trusted base | the `assume` claims ^901–^1005 and their Swift implementations | `cairn`, library `CairnTrusted`, host products |
 | tooling | ledger, claims export, doc export, audit, fuzz walk and driver, conformance, CairnCapture | `cairn`, libraries `CairnFuzz`, `CairnTools` and their `lean_exe`s; never linked |
-| batteries | pure Lean that touches no ABI: JSON, dates, case folding | `cairn_batteries` |
+| pure-Lean packages | pure Lean that touches no ABI, one topic each: JSON, dates | `cairn_json`, later `cairn_date` |
 | capabilities | an effect, its Swift implementation and its `assume`s | `cairn_<capability>`, after #84 |
 
-Layout and Text stay in std, not batteries: the runtime calls `layout`, and hit testing,
+Layout and Text stay in std, not in a package of their own: the runtime calls `layout`, and hit testing,
 presence theorems and the text-input client are stated over them. Widgets don't exist yet
 (`Cairn.UI` is `Node` alone); when they do they're std too, because a widget's behaviour is moves
 and presence theorems over Layout. Tooling stays in `cairn` for a reason Rust doesn't have: the
@@ -171,8 +171,9 @@ Yap is 11k lines of Lean, and some of it is library code any app would need:
   docs/trusted.md says grapheme clusters aren't modelled, so the caret stalls inside "é" written
   as e + U+0301. That belongs in `Cairn.Text`, with Text.Field moving by clusters.
 - **JSON and dates.** `Yap.Json` (599 lines) is a total JSON parser and encoder plus date
-  arithmetic, needed to read config and write transcripts. The first content of
-  `cairn_batteries`, graduating into std if an effect ever speaks JSON.
+  arithmetic, needed to read config and write transcripts. The JSON half is now `cairn_json`
+  (iamnbutler/cairn_json, published as 0.1.0), graduating into std if an effect ever speaks
+  JSON; the dates become a separate `cairn_date` later.
 - **Calendar.** `Yap.Retention` relies on the host turning file names into local-calendar day
   numbers. A clock that only answers milliseconds leaves every app to ask the host for this some
   other way. A std `localDate` reply or effect is the likely fix (uncertain: one app so far).
@@ -203,10 +204,12 @@ Arrows: `CairnProofs`, `CairnClaims`, `CairnFuzz` → `Cairn`; `CairnTools` → 
 moves, so `import`s in apps keep working. Swift products as today. `cairn.toml`'s
 `libs = ["Cairn"]`.
 
-### `cairn_batteries` (lib, own repository, scope `cairn_batteries`)
+### `cairn_<topic>` (lib, own repository each, own scope)
 
-`require cairn`; pure Lean, no Swift product, no `@[extern]`. Starts from `Yap.Json`. Released on
-its own cadence, but once per Cairn toolchain bump at least.
+`require cairn`; pure Lean, no Swift product, no `@[extern]`. One topic per package. The first
+is `cairn_json` (repository iamnbutler/cairn_json, library `CairnJson`, scope `cairn_json`),
+from `Yap.Json`'s JSON half; `cairn_date` will take its dates. Each is released on its own
+cadence, but once per Cairn toolchain bump at least.
 
 ### `cairn_<capability>` (lib, own repository each, own scope)
 
@@ -246,14 +249,17 @@ take with no source change, or a one-line one.
 5. **Examples get their own scope (#88), before 1.0.** `ledger move examples …` for ^1–^462 in a
    0.x minor, so that std's ledger holds only std's promises: today retiring a Todo move counts
    as a breaking change to Cairn. After 1.0 that move costs a major.
-6. **#84**, then the first capability package. **`cairn_batteries`** when a second app needs
-   JSON: move `Yap.Json` there and have Yap require it.
+6. **#84**, then the first capability package. **`cairn_json`**: started (0.1.0, from
+   `Yap.Json`'s JSON half); Yap moves to it and requires it, and its dates go to `cairn_date`.
 
 ## 6. Registry, `cairn.toml` and `cairn add`
 
 - **Names.** `cairn` is std and stays a lib. `std` is reserved by the registry, so std is never
-  named `std`. The registry should reserve the `cairn_` prefix for Cairn's owner, so
-  `cairn_batteries` and `cairn_<capability>` can't be squatted (a nextpm change).
+  named `std`. Cairn's packages follow the serde / serde_json pattern: `cairn`, then
+  `cairn_<topic>` (`cairn_json`, later e.g. `cairn_date`, `cairn_color`), always snake_case,
+  never hyphens, and each package's repository has the same name as the package
+  (iamnbutler/cairn_json). The registry should reserve the `cairn_` prefix for Cairn's owner, so
+  `cairn_<topic>` and `cairn_<capability>` can't be squatted (a nextpm change).
 - **One package per repository.** `cairn publish` needs `cairn.toml` at the root and the tag
   `v<version>` on HEAD, and SwiftPM needs the root `Package.swift`. Several packages in one
   repository would need per-package tags and manifests in subdirectories; nothing here needs that.
