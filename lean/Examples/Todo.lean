@@ -28,10 +28,11 @@ host in `host/Sources/CairnTodo`.
 | ^208–^210 | move | the filters All, Active, Completed |
 | ^211 | move | Clear completed |
 | ^212 | invariant | the counter is the number of active todos; ids are distinct |
-| ^213 | invariant | the listed rows are the todos the filter accepts, in order |
+| ^213 | retired | the listed rows, before `Style` had an image (now ^225) |
 | ^214 | assume | the host reports a double click as a second click |
 | ^215 | retired | hash routes and the back button (web only) |
-| ^216–^224 | flow | witnessed paths through the app | -/
+| ^216–^224 | flow | witnessed paths through the app |
+| ^225 | invariant | the listed rows are the todos the filter accepts, in order | -/
 
 @[expose] public section
 
@@ -197,12 +198,14 @@ invariant ^212 counterAndIds "Counter and ids" for machine where
       (Move.all_cons (clearDone.preserves _ fun _ _ h => clear_inv h) Move.all_nil)))))))))
 
 -- region: todo-listed-rows
-invariant ^213 listedRows "The list is the filter applied to the todos" for machine where
+invariant ^225 listedRows "The list is the filter applied to the todos" for machine where
   does "The rows on screen are exactly the todos the selected filter accepts, in creation order, under any hover and focus, in every reachable state. (T40, T42)"
   holds s := ∀ ui, (view s ui).controls.filterMap rowKey = (visible s).map (·.id)
   init := fun ui => view_rows _ ui
   step := fun _ _ _ ui => view_rows _ ui
 -- endregion: todo-listed-rows
+
+retire ^213 invariant "The list is the filter applied to the todos" because "Reissued as ^225 with the same meaning: Style gained its image field (Cairn 0.2.0), which changed the statement's hash, and a published claim keeps its statement."
 
 -- region: todo-double-click
 assume ^214 doubleClick "The host reports a double click as a second click" where

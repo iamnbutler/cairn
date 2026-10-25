@@ -72,9 +72,9 @@ the dropped-click case below.
 | T37 | ^211 `enabled := anyDone s` | |
 | T38 | ^211 `post` | `s.todos.filter (!·.completed)`; flow ^222 |
 | T39 | ^208, ^209, ^210 | All, Active, Completed, in that order |
-| T40 | ^213 | the rows are `visible s`, in order, in every reachable state |
+| T40 | ^225 | the rows are `visible s`, in order, in every reachable state |
 | T41 | `View.filterBox` | `selected := s.filter = f`, a border on the current one |
-| T42 | ^213; flow ^221 | rows are recomputed from the todos every frame |
+| T42 | ^225; flow ^221 | rows are recomputed from the todos every frame |
 | T43 | ^208–^210 `post` | `s' = { s with filter := f }` |
 | T44 | — | not yet: persistence is not implemented |
 | T45 | ^206, ^207 `post` | delete keeps the filter |

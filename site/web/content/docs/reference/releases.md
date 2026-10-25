@@ -20,7 +20,7 @@ are published.
   (`v4.35.0` for every release so far), because Lake shares compiled modules only between
   identical toolchains.
 
-## v0.1.4
+## v0.2.0
 
 24 October 2026.
 
@@ -42,10 +42,18 @@ are published.
   by name, so a library such as `cairn_json` is linked by naming its own. Cairn's `cairn.toml`
   says `libs = ["Cairn"]`.
 
-No claim was retired or moved, so it is a patch release. Eight claims are new, and `cairn^213`'s
-statement hash changed when `Style` gained its image field; its meaning didn't. Moving from v0.1.3
-is a change of tag in the lakefile and `Package.swift`, unless an app imports `Cairn` for the
-proofs or tools, which are now in `CairnAll`, or builds frames by hand, which are now version 5.
+- **`cairn^213` is retired and reissued as `cairn^225`**, with the same meaning: the TodoMVC
+  example's rows are the todos the filter accepts. Its statement hash changed when `Style` gained
+  its image field, and the registry keeps a published claim's statement, so the claim needed a new
+  id. Retiring a released claim needs a new minor version while at 0.x, so this is 0.2.0 and not
+  0.1.4. The tag `v0.1.4` exists, but the registry refused it for this reason and it was never
+  published; use `v0.2.0`.
+
+Eight claims are new besides `cairn^225`: `cairn^501`–`cairn^505` (Gallery) and
+`cairn^1006`–`cairn^1008`. The shims from v0.1.3 are still there. Moving from v0.1.3 is a change
+of tag in the lakefile and `Package.swift`, unless an app imports `Cairn` for the proofs or
+tools, which are now in `CairnAll`, builds frames by hand, which are now version 5, or cites
+`cairn^213`.
 
 ## v0.1.3
 

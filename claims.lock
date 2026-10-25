@@ -28,7 +28,7 @@
 210	move	active	853d563eb0439f09	Completed
 211	move	active	d9ddae254bdeffa6	Clear completed
 212	invariant	active	8b1d23f718f063ec	Counter and ids
-213	invariant	active	cdded3b5839c217c	The list is the filter applied to the todos
+213	invariant	retired	cdded3b5839c217c	The list is the filter applied to the todos
 214	assume	active	-	The host reports a double click as a second click
 215	move	retired	-	Back through filters
 216	flow	active	059a40708193b6f5	Add two todos and complete one
@@ -40,6 +40,7 @@
 222	flow	active	b0d8d8a6a65e2c5f	Clear completed
 223	flow	active	36d2b8e708c4eceb	Mark all as complete, then undo it
 224	flow	active	06954be5c9e714a8	A new todo under the Completed filter
+225	invariant	active	cdded3b5839c217c	The list is the filter applied to the todos
 301	place	moved:yap	-	Menu bar menu
 302	move	moved:yap	64ec1c59a4b05b88	Copy Last Transcript
 303	move	moved:yap	b2465772ee2b99fb	Recent transcript
