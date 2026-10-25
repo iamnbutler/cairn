@@ -11,7 +11,28 @@ lake exe fuzz Basics --seed 1234 --iterations 1 --steps 80 -v   # replay one see
 lake exe fuzz --list                  # every fuzzable app
 ```
 
-Code: `lean/Cairn/Fuzz/` and `lean/FuzzMain.lean`. Output: `build/fuzz/<App>.json`.
+Code: `lean/Cairn/Fuzz/`, and an app's `lean_exe fuzz` (test/fixture/lean/FuzzMain.lean; the
+examples' is `lean/Examples/FuzzMain.lean`). Output: `build/fuzz/<App>.json`.
+
+### An app package
+
+`cairn fuzz` (docs/cli.md, "Checks") fuzzes an app in its own package. The package declares the
+executable, since the targets are found at compile time from what its root imports:
+
+```lean
+-- lakefile.lean
+lean_exe fuzz where
+  root := `FuzzMain
+
+-- FuzzMain.lean
+import Checks              -- the app (and anything else to fuzz)
+import Cairn.Fuzz.Collect
+import Cairn.Fuzz.Main
+
+def targets : List Cairn.Fuzz.Target := fuzz_targets%
+
+def main (args : List String) : IO UInt32 := Cairn.Fuzz.main targets args
+```
 
 ## What the claims give the fuzzer
 
@@ -206,8 +227,8 @@ from 28 operations to 5 (the printed flow compiles in the app; its theorem fails
 and holds on the real app); a 10 px row height is caught as pressable-check, blamed on ^103#1 and
 shrunk from 13 operations to 2.
 
-`make check` runs `make fuzz-quick`: Counter and Basics, 200 sequences of 50 steps each, about
-1 s plus linking the exe.
+`make check` runs `make fuzz-quick`: test/fixture, with `cairn fuzz`, 200 sequences of 50 steps,
+about 1.5 s plus linking the exe; and `examples-fuzz-quick`, the same on Counter, Basics and Todo.
 
 ## Yap: a random host
 

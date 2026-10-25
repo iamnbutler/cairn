@@ -37,6 +37,19 @@ needs.
 match the lakefile's package name and the claim scope, and `cairn build` and `cairn publish`
 check that all three agree.
 
+## Checks
+
+Cairn's per-app tools run on any app package, from anywhere in it; Cairn's own `make check` runs
+them on its test app, test/fixture. Each writes under the package's `build/`.
+
+| Command | What it does |
+|---|---|
+| `cairn fuzz [<target>…] [--iterations N] [--seed S] [--steps K]` | claim-driven fuzzing into `build/fuzz/`. The package declares a `lean_exe fuzz` whose `main` runs `Cairn.Fuzz.main fuzz_targets%` |
+| `cairn claims [<module>…] [--out FILE]` | every claim of the package as JSON |
+| `cairn bench [--product P]` | a release build, then the app's own `--bench` |
+| `cairn size [--product P]… [--limit BYTES]` | the stripped release binary, attributed, and a guard at 5 MB |
+| `cairn conformance [--module M] [--n N]` | the Lean model replayed against the running app through its debug socket. The package has a generator module, `<App>.Conformance` |
+
 ## Planned commands
 
 These still run as make targets, from the root of the Cairn repository, for the apps that live
@@ -47,8 +60,6 @@ in it:
 | `cairn run` | open the app in a window | `make demo DEMO=Cairn<App>` |
 | `cairn check` | everything a change must pass | `make check` |
 | `cairn map` | build the app's map | `make map APP=<App>` |
-| `cairn fuzz` | claim-driven fuzzing | `make fuzz APP=<App>` |
-| `cairn conform` | replay the model against the running app | `make conformance APP=<App>` |
 | `cairn bundle --sign` | a signed `.app` | `make bundle APP=<App> SIGN=<identity>`, or Cairn's `tools/bundle/bundle.sh` from an app's own repository |
 | `cairn doctor` | check the toolchain | none |
 

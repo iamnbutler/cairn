@@ -23,24 +23,31 @@ The run has three parts:
 | Part | Where | What it does |
 |---|---|---|
 | Debug socket | `host/Sources/CairnHost/Debug*.swift` | drives one running app and reads back what it shows |
-| Generator | `tools/conformance/lean/` (`Conformance.Gen`, plus one file per app) | walks the model and writes, for each step, the gestures and the frame the app must then show |
+| Generator | `tools/conformance/lean/` (`Conformance.Gen`), plus one module per app (`<App>.Conformance`) | walks the model and writes, for each step, the gestures and the frame the app must then show |
 | Driver | `tools/conformance/driver.ts` (bun) | replays the sequences on the app through the socket, compares, and writes the results |
 
 ## Adding an app
 
-Adding an app takes one file, `tools/conformance/lean/Conformance/Apps/<App>.lean`:
+Adding an app takes one module beside it that exports `cairn_conformance_run`. For an example,
+`lean/Examples/<App>/Conformance.lean`:
 
 ```lean
 module
 public import Conformance.Gen
-public import Examples.Todo
+public import Examples.Todo.Abi
 @[export cairn_conformance_run]
-public def Conformance.Apps.Todo.run (args : List String) : IO UInt32 :=
-  Conformance.run Examples.Todo.machine Examples.Todo.app Examples.Todo.cfg args
+public def Examples.Todo.Conformance.run (args : List String) : IO UInt32 :=
+  _root_.Conformance.run Examples.Todo.machine Examples.Todo.app Examples.Todo.cfg args
 ```
 
-The app must also be in the Makefile's `APPS`, and its host target must be `Cairn<App>`. Its
+The example must also be in the Makefile's `APPS`, and its host target must be `Cairn<App>`. Its
 claims are read with `lake exe claims Examples.<App>`.
+
+An app package runs `cairn conformance` (docs/cli.md, "Checks") instead. Its module is
+`<App>.Conformance` by default, in a `lean_lib` of its own declared after the app's (whose root
+would otherwise claim it), as test/fixture/lean/Fixture/Conformance.lean is. `cairn conformance`
+links it with the app's merged library (`.cairn/lib/lib<name>.a`) and the CairnRender and
+CairnFrame objects of the app's own debug build, which carry the host's Core Text metrics.
 
 ## The debug socket
 

@@ -15,8 +15,10 @@ cd tools/cairn && swift test
 <!-- endregion: cli-install -->
 
 Status: started. `new`, `add`, `build`, `doc`, `publish` and `login` work, with unit tests,
-against the public registry (Cairn 0.2.0 is published there). Not yet: `cairn run`, `check`, `map`, `fuzz` and the rest of the
-planned commands in site/web/content/docs/reference/cairn-tool.md, and installing it (a release binary or
+against the public registry (Cairn 0.2.0 is published there), and so do the checks below
+(`fuzz`, `claims`, `bench`, `size`, `conformance`), which Cairn's own `make check` runs on
+test/fixture. Not yet: `cairn run`, `check`, `map` and the rest of the planned commands in
+site/web/content/docs/reference/cairn-tool.md, and installing it (a release binary or
 `mint`/Homebrew).
 
 ## A package
@@ -91,6 +93,25 @@ uses it too (agreed with #75). `cairn build` adds only the cache step and the na
 It links each dependency's `libs` from that dependency's cairn.toml, and the app's own `libs` from
 `--lib` (docs/package.md, "Which libraries"). A lib, and an app with no `libs`, skips the link
 step: an app links a lib's `libs`, and Cairn's `make lean` writes its own library.
+
+### Checks
+
+The per-app tools that Cairn's Makefile used to run as `make <tool> APP=<App>` on its examples,
+run on any app package, from anywhere in it. Each builds what it needs as `cairn build` does,
+takes Cairn's scripts from the Cairn checkout Lake uses (as `cairn doc` does), and writes under
+the package's `build/`. Cairn's `make check` runs them on test/fixture, its own app, which is a
+package of its own that requires the checkout by path.
+
+| Command | What it does |
+|---|---|
+| `cairn fuzz [<target>…] [--iterations N] [--seed S] [--steps K] [--out DIR] [-v]` | `lake build fuzz`, then the fuzzer (docs/fuzz.md) on every machine `--list` names, or the ones given, into `build/fuzz/<target>.json`. The package declares the executable: `lean_exe fuzz` whose root imports the app, `Cairn.Fuzz.Collect` and `Cairn.Fuzz.Main` and defines `main` over `fuzz_targets%` (test/fixture/lean/FuzzMain.lean) |
+| `cairn claims [<module>…] [--out FILE]` | `lake exe claims` on the package's `libs`, or the modules given: every claim as JSON, on stdout or into the file |
+| `cairn bench [--product P]` | a release build, then the app's own `<product> --bench` with `LEAN_ABORT_ON_NONLINEAR=1`. The host decides what it measures |
+| `cairn size [--product P]… [--limit BYTES]` | a release build of each executable with a link map, stripped into `build/size/` and attributed by Cairn's `tools/size/size.ts` (Lean runtime, Cairn, the app's `libs`, Swift host, shaders); fails over the limit, 5,000,000 bytes by default (bench/size.md) |
+| `cairn conformance [--module M] [--product P] [--n N] [--length L] [--seed S]` | the model replayed on the running app (docs/conformance.md): links the generator from the module `M`, by default `<App>.Conformance` with `<App>` the first of `libs`, with the app's merged library and the host's Core Text metrics, then runs Cairn's driver. Writes `build/conformance/<App>.json` and `build/conformance/<App>/report.md`. The app's window opens while it runs |
+
+`--product` defaults to the only executable product of the package's `Package.swift`.
+`cairn doc` (above) is the sixth: it already took a package.
 
 ### Versions and tags
 
