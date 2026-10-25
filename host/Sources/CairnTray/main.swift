@@ -132,28 +132,65 @@ enum SelfTest {
         }
         if p.isVisible { fail("a detached panel is on screen") }
 
-        // The waveform: an `every 20` subscription moves it. How fast, and what each tick costs,
-        // timed where each frame is published (on the Lean thread), so a stall of this polling
-        // thread can't show up as one of the pipeline's.
-        let published = Published452()
+        // The waveform: an `every 20` subscription moves it. The claim (Tray.lean, docs/surfaces.md
+        // decision 5, bench/surfaces.md) is that frame times allow about 50 Hz: each tick's Lean
+        // step + frame + decode fits well inside the 20 ms period, so Lean keeps up with every
+        // tick the world's timer sends (a tick it hasn't caught up with is merged into the next,
+        // Engine.coalesce, so falling behind shows as fewer ticks published than sent). Both are
+        // checked everywhere. How often the timer itself fires is the OS's: a virtualized runner
+        // doesn't hold a 20 ms dispatch timer (GitHub's macOS runner fired about 14 Hz), so the
+        // wall-clock rate is checked on real hardware only, and the gate says so when it skips.
+        // Timed where ticks are sent (world queue) and published (Lean thread), so a stall of
+        // this polling thread can't show up as one of the pipeline's.
+        let sent = TickLog(), published = TickLog()
+        let forwardSend = engine.world.send
+        engine.world.send = { es in
+            for case .subEvent(_, .tick) in es { sent.add(hostNow()) }
+            forwardSend?(es)
+        }
         let forward = engine.onPublish
         engine.onPublish = { p in
-            if let t = overlayTick(p.frame) { published.add(t, hostNow()) }
+            if let t = overlayTick(p.frame) { published.add(hostNow(), tick: t, through: p.throughSeq) }
             forward?(p)
         }
         engine.stats.reset()
-        usleep(2_000_000)
+        // 2 s, and at least the 100 ticks 2 s gives at 50 Hz: the caption check below needs it
+        // to have grown past two lines, which a slow timer takes longer to do.
+        let start = hostNow()
+        while hostNow() - start < 2 || published.take().ticks.count < 100 {
+            if hostNow() - start > 20 { break }
+            usleep(10_000)
+        }
+        let seconds = hostNow() - start
+        engine.world.send = forwardSend
+        // Lean has stepped every tick sent in the window; frames after it don't count.
+        let end = engine.send([])
+        settle(end)
         engine.onPublish = forward
-        let (ticks, times) = published.take()
-        guard let first = ticks.first, let last = ticks.last, let tf = times.first, let tl = times.last, tl > tf
+        let (ticks, times) = published.take(through: end)
+        let sentTimes = sent.take().times
+        guard let first = ticks.first, let last = ticks.last, let tf = times.first, let tl = times.last, tl > tf,
+              let sf = sentTimes.first, let sl = sentTimes.last, sl > sf
         else { fail("no ticks published in the overlay") }
         let rate = Double(last - first) / (tl - tf)
+        let timerRate = Double(sentTimes.count - 1) / (sl - sf)
+        let advanced = last - first
         let lean = engine.stats.summary(.lean)
         let gaps = zip(times.dropFirst(), times).map { ($0 - $1) * 1000 }.sorted()
-        if rate < 30 { fail(String(format: "the overlay ticks at %.1f Hz", rate)) }
+        if lean.p95 >= 20 {
+            fail(String(format: "a tick's Lean step + frame + decode is p95 %.2f ms, not inside the 20 ms period", lean.p95))
+        }
+        // At the window's edges a tick may be sent just before it or merged with one just after it.
+        if Double(advanced) < 0.9 * Double(sentTimes.count) - 1 {
+            fail("Lean fell behind the timer: \(sentTimes.count) ticks sent, the overlay moved \(advanced)")
+        }
+        let virtualized = isVirtualMachine()
+        if !virtualized && rate < 30 { fail(String(format: "the overlay ticks at %.1f Hz (timer %.1f Hz)", rate, timerRate)) }
         // The caption has grown past two lines; the paragraph keeps the last two, with the tick.
         let lines: [String] = frame.surface(452)?.canvas.draws.compactMap { d -> String? in if case let .text(_, _, _, s) = d { s } else { nil } } ?? []
-        if lines.count != 2 || overlayTick(frame) == nil { fail("caption lines \(lines)") }
+        if lines.count != 2 || overlayTick(frame) == nil {
+            fail(String(format: "caption lines \(lines) after %.1f s at %.1f Hz", seconds, rate))
+        }
 
         // Hide it: the panel goes, and the subscription stops.
         choose("^454")
@@ -169,7 +206,12 @@ enum SelfTest {
         engine.stop()
         func q(_ p: Double) -> String { gaps.isEmpty ? "-" : String(format: "%.2f", gaps[min(gaps.count - 1, Int(Double(gaps.count) * p))]) }
         print("selftest: PASS (Tray: accessory, menu tree, open, add/pick, in-place update, stale choice ignored, overlay panel, quit)")
-        print(String(format: "  overlay ticks published: %.1f Hz over 2 s (every 20 ms asked)", rate))
+        print(String(format: "  overlay ticks published: %.1f Hz over %.1f s (every 20 ms asked); timer sent %.1f Hz, Lean kept %d of %d",
+                     rate, seconds, timerRate, advanced, sentTimes.count))
+        if virtualized {
+            print("  50 Hz end to end: not checked, a virtual machine (kern.hv_vmm_present) doesn't hold the timer;"
+                  + " real hardware only (bench/surfaces.md)")
+        }
         print("  tick → tick at publish, ms: p50 \(q(0.5)) p90 \(q(0.9)) max \(q(1))")
         print("  Lean step+frame+decode per batch while shown, ms: \(lean)")
     }
@@ -186,16 +228,36 @@ nonisolated func overlayTick(_ f: Frame?) -> Int? {
     return Int(text[r.upperBound...])
 }
 
-/// The overlay's tick values and when each was published, from the Lean thread.
-final class Published452: @unchecked Sendable {
+/// Ticks and when each was seen: sent by the world's timer (no tick value), or published in the
+/// overlay (its tick value; a frame that didn't move it is not a new tick).
+final class TickLog: @unchecked Sendable {
     private let lock = NSLock()
     private var ticks: [Int] = []
     private var times: [Double] = []
-    func add(_ t: Int, _ at: Double) {
+    private var throughs: [UInt64] = []
+    func add(_ at: Double, tick t: Int? = nil, through: UInt64 = 0) {
         lock.lock(); defer { lock.unlock() }
-        if ticks.last != t { ticks.append(t); times.append(at) }
+        if let t {
+            if ticks.last == t { return }
+            ticks.append(t)
+        }
+        times.append(at)
+        throughs.append(through)
     }
-    func take() -> ([Int], [Double]) { lock.lock(); defer { lock.unlock() }; return (ticks, times) }
+    /// What was seen in frames through event `seq`.
+    func take(through seq: UInt64 = .max) -> (ticks: [Int], times: [Double]) {
+        lock.lock(); defer { lock.unlock() }
+        let n = throughs.prefix { $0 <= seq }.count
+        return (Array(ticks.prefix(n)), Array(times.prefix(n)))
+    }
+}
+
+/// Whether this is a virtual machine (a CI runner): the hypervisor's flag, false where the sysctl
+/// is missing.
+func isVirtualMachine() -> Bool {
+    var v: Int32 = 0
+    var n = MemoryLayout<Int32>.size
+    return sysctlbyname("kern.hv_vmm_present", &v, &n, nil, 0) == 0 && v == 1
 }
 
 /// Draws nothing; for the headless self test.
