@@ -1,5 +1,16 @@
 [
   {
+    "image": "/m/images/a2ff42128e730c36.png",
+    "title": "The runtime scrolls the fixture's rows",
+    "caption": "Cairn's runtime now owns scroll offsets (#203). A scroll of 100,000 points over the fixture's 200 rows is clamped to the end, the app's state never sees it, and the end line, marked appear, hears that it came on screen: an Action.appear move counted in the app. Offscreen render through the real engine (Fixture --scroll-shots).",
+    "date": "2026-10-25",
+    "published": "2026-10-25T22:51:11Z",
+    "commit": "bed3b86",
+    "width": 960,
+    "height": 1200,
+    "milestone": "m4"
+  },
+  {
     "title": "Cairn 0.3.0: the example apps leave, Keychain secrets, secure fields and scroll boxes",
     "text": [
       "Cairn 0.3.0 is out on the public registry as iamnbutler/cairn. The example apps (Counter, Basics, Todo, Clock, Tray, Gallery) live in their own package, cairn_examples, and their 71 claims keep their numbers there: cairn^202 is now cairn_examples^202, marked moved:cairn_examples in Cairn's ledger, which now holds only framework claims (#219).",
