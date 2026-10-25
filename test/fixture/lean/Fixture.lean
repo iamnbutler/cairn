@@ -8,7 +8,7 @@ What the framework's checks need from an app, in one small window (test/fixture/
 heading and a wrapped paragraph (text, `Node.para`), a text field with Enter (editing, the text
 input client), a secure field (a passcode, sent in a redacted request), a button, a list of rows with keyed controls (hit testing, `^N#k`), a button whose
 effect comes back as a message (a timer), an invariant with a runnable check, a flow, and a scroll box (`Style.scroll`) of 200 keyed rows
-at a fixed offset.
+whose offset the runtime owns, ending in a line that hears `appear`.
 
 | Id | Kind | What |
 |---|---|---|
@@ -22,12 +22,15 @@ at a fixed offset.
 | ^8 | flow | add two items and finish one |
 | ^9 | move | the Passcode field: a secure field; Enter sends it in a redacted request |
 | ^10 | move, keyed | a row of the scroll box, `^10#k` for row `k` (1 to 200): selects it |
-| ^11 | invariant | the rows are where the column puts them, moved up by the offset |
+| ^11 | retired | the rows at a fixed offset (replaced by ^15) |
 | ^12 | invariant | the rows don't overlap, and what shows of them is inside the box |
 | ^13 | invariant | a row is pressed at the centre of what shows of it, and nowhere if nothing does |
+| ^14 | place | the scroll box of rows; its ref keys the offset the runtime owns |
+| ^15 | invariant | the rows are where the column puts them, moved up by the runtime's offset |
+| ^16 | move | the end of the rows comes into view (`appear`): counts it |
 
-^11 to ^13 are Cairn's scroll-box theorems (`Cairn.Layout.Scroll`) stated for this box; they and
-their proofs are in `Checks/Scroll.lean`, which can import the layout proofs.
+^12, ^13 and ^15 are Cairn's scroll-box theorems (`Cairn.Layout.Scroll`) stated for this box;
+they and their proofs are in `Checks/Scroll.lean`, which can import the layout proofs.
 
 Its claims are `fixture^N`, in test/fixture/claims.lock. None of them is in Cairn's ledger, so
 changing the fixture never moves a Cairn claim. -/
@@ -60,6 +63,8 @@ structure State where
   nextReq : Nat := 0
   /-- The scroll box's row last pressed. -/
   selected : Option Nat := none
+  /-- How many times the end of the rows has come into view (^16). -/
+  ends : Nat := 0
 deriving Repr, DecidableEq, Inhabited
 
 def fieldRef : ControlRef := ⟨2, 0⟩
@@ -69,6 +74,9 @@ def deleteRef (k : Nat) : ControlRef := ⟨5, k⟩
 def flashRef : ControlRef := ⟨6, 0⟩
 def passRef : ControlRef := ⟨9, 0⟩
 def rowRef (k : Nat) : ControlRef := ⟨10, k⟩
+/-- The scroll box's ref, keyed by its place: the runtime keeps its offset under it. -/
+def rowsRef : ControlRef := ⟨14, 0⟩
+def endRef : ControlRef := ⟨16, 0⟩
 -- endregion: fixture-state
 
 -- region: fixture-flash-timer
@@ -221,12 +229,14 @@ move ^9 typePasscode (s : State) "Type a passcode" in ^1 where
     sound := by intro s; exact ⟨rfl, rfl, rfl⟩
 
 -- region: fixture-scroll-rows
-/-- The scroll box: how many rows, each one's height, the box's height, and its fixed offset
-(50½ rows, so it opens on row 51 cut in half). -/
+/-- The scroll box: how many rows, each one's height, and the box's height. The runtime owns
+its offset (`ui.scrollOf rowsRef`); it opens at the top. -/
 def rowCount : Nat := 200
 def rowH : Nat := 32
 def rowsH : Nat := 160
-def rowsOffset : Int := 1616
+
+place ^14 rowsPlace "The rows" in ^1 where
+  does "The scroll box of 200 rows and the end line under them. Cairn owns its offset: the wheel, the trackpad and the page keys move it, and the app never hears a scroll."
 
 /-- Rows are numbered from 1, so keyed controls never use key 0. -/
 def isRow (k : Nat) : Bool := 1 ≤ k && k ≤ rowCount
@@ -239,6 +249,14 @@ move ^10 selectRow (s : State) (k : Nat) "Select a row" in ^1 where
     apply := { s with selected := some k }
     post s' := s'.selected = some k ∧ s'.items = s.items
     sound := by intro s k _; exact ⟨rfl, rfl⟩
+
+move ^16 reachEnd (s : State) "Reach the end of the rows" in ^14 where
+  does "Scroll the rows to their end."
+  sees "The end line comes into view and counts one more visit."
+  on appear
+    apply := { s with ends := s.ends + 1 }
+    post s' := s'.ends = s.ends + 1 ∧ s'.items = s.items ∧ s'.selected = s.selected
+    sound := by intro s; exact ⟨rfl, rfl, rfl⟩
 -- endregion: fixture-scroll-rows
 
 -- region: fixture-receive
@@ -264,7 +282,8 @@ invariant ^7 idsBelow "Item ids stay below the next id" for machine where
       (Move.all_cons (deleteItem.preserves _ fun _ k _ h => delete_inv k h)
       (Move.all_cons (flashMove.preserves _ fun _ h => h)
       (Move.all_cons (typePasscode.preserves _ (fun _ _ h => h) fun _ h => h)
-      (Move.all_cons (selectRow.preserves _ fun _ _ _ h => h) Move.all_nil))))))
+      (Move.all_cons (selectRow.preserves _ fun _ _ _ h => h)
+      (Move.all_cons (reachEnd.preserves _ fun _ h => h) Move.all_nil)))))))
   receive := by
     intro s m h
     cases m with
@@ -361,12 +380,22 @@ def row (s : State) (ui : UI) (k : Nat) : Node :=
     [.text { font := { size := 13 }, color := if s.selected = some k then white else ink }
       s!"Row {k}"]
 
-def rows (s : State) (ui : UI) : List Node :=
-  (List.range rowCount).map fun i => row s ui (i + 1)
+/-- The line after the last row, marked `appear`: the runtime tells the app (^16) each time it
+comes into view. -/
+def endLine (s : State) : Node :=
+  .box { width := .fill, height := .fixed rowH, align := .center, padding := ⟨0, 12, 0, 12⟩ }
+    (some { ref := endRef, role := .text, label := "End of the rows", appear := true })
+    [.text { font := { size := 13 }, color := muted }
+      s!"End of the rows · reached {s.ends} {if s.ends = 1 then "time" else "times"}"]
 
-/-- The box of rows, scrolled by `o` (`none`: the same box as a plain column). -/
+def rows (s : State) (ui : UI) : List Node :=
+  (List.range rowCount).map (fun i => row s ui (i + 1)) ++ [endLine s]
+
+/-- The box of rows, scrolled by `o` (`none`: the same box as a plain column). The view passes
+the runtime's offset, `some (ui.scrollOf rowsRef)`. -/
 def rowsBox (o : Option Int) (s : State) (ui : UI) : Node :=
-  .box { width := .fill, height := .fixed rowsH, scroll := o } none (rows s ui)
+  .box { width := .fill, height := .fixed rowsH, scroll := o, scrollRef := some rowsRef } none
+    (rows s ui)
 -- endregion: fixture-scroll-view
 
 -- region: fixture-view
@@ -386,7 +415,7 @@ def view (s : State) (ui : UI) : Node :=
          (if s.flash then [.text { font := body, color := accent } "Flashing"] else [])),
       .box { width := .fill, gap := 4 } none (s.items.map (itemRow ui)),
       .text { font := { size := 13 }, color := muted } (leftLabel (left s)),
-      rowsBox (some rowsOffset) s ui ]
+      rowsBox (some (ui.scrollOf rowsRef)) s ui ]
 -- endregion: fixture-view
 
 -- region: fixture-app

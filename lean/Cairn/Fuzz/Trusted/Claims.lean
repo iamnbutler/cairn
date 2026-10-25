@@ -238,6 +238,12 @@ assume ^214 doubleClick "The host reports a double click as a second click" wher
   check "pointer.double-click"
 -- endregion: trusted-double-click
 
+-- region: trusted-host-scroll
+assume ^1012 hostScroll "The host reports scrolls where they happen, toward the end positive" where
+  does "The host sends each wheel or trackpad scroll as a scroll event at the logical point under the pointer, with positive dy toward the end of the content (AppKit's deltas negated, natural scrolling already applied) and 16 points to a wheel line; fractions carry, so the total stays within a point of AppKit's. The runtime moves the scroll box under that point by it (Runtime.wheel)."
+  check "pointer.scroll"
+-- endregion: trusted-host-scroll
+
 /-! The image cache's budget (docs/effects.md, "Images"; `Sub.imageCache`). -/
 
 assume ^1011 hostImageCache "The image cache reports every image it drops, after it is gone" where

@@ -1,8 +1,8 @@
 # claims.lock: every claim id ever issued. Written by `lake exe ledger update`; never edit by hand.
 # id	kind	status	statement	title
 1	place	active	-	Fixture window
-2	move	active	a358d567f7a5c1e4	Type a new item
-3	move	active	555296cae47a7ba8	Add
+2	move	active	cb9ceaf39b31024a	Type a new item
+3	move	active	13643d56f162a71e	Add
 4	move	active	5efe8e019262cc2b	Toggle an item
 5	move	active	c3b117a2271584d7	Delete an item
 6	move	active	3c75ee9d6aa40637	Flash
@@ -10,6 +10,9 @@
 8	flow	active	779c38f19ebcfef8	Add two items and finish one
 9	move	active	cc3607b9d82df888	Type a passcode
 10	move	active	9ce9cf2862c1aef4	Select a row
-11	invariant	active	2bbc00437e7c3207	Rows are the column, moved up by the offset
-12	invariant	active	cb9eb7df1b4fdb30	Rows stay apart, and what shows is inside the box
-13	invariant	active	1b3dabd3f23a2647	Controls are pressed where they show
+11	invariant	retired	2bbc00437e7c3207	Rows are the column, moved up by the offset
+12	invariant	active	63ce81f67261a169	Rows stay apart, and what shows is inside the box
+13	invariant	active	cccae8c966bfc2ec	Controls are pressed where they show
+14	place	active	-	The rows
+15	invariant	active	8f8c17ca61c7dd4d	Rows are the column, moved up by the runtime's offset
+16	move	active	049eea3d8143f42a	Reach the end of the rows
