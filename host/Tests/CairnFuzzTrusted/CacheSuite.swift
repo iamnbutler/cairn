@@ -36,8 +36,7 @@ final class CacheSuite: Suite {
     var pngs: [Int: Data] = [:]
 
     func setUp() {
-        dir = FileManager.default.temporaryDirectory.appendingPathComponent("cairn-cache-\(getpid())")
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        dir = FileManager.default.temporaryDirectory
         for side in [4, 8, 16, 32] {
             pngs[side] = ImageSuite.encode(ImageSuite.Pic(w: side, h: side, quads: Array(ImageSuite.palette.prefix(4)),
                                                           type: "public.png", orientation: 1))!
@@ -185,7 +184,8 @@ final class CacheSuite: Suite {
     func readyCase(_ g: inout SplitMix, _ r: Recorder) {
         let check = "images.cache"
         r.ran(check)
-        let caseDir = dir.appendingPathComponent("\(g.next())")
+        // Each case's files in a directory of their own, removed when it ends.
+        let caseDir = dir.appendingPathComponent("cairn-cache-\(getpid())-\(g.next())")
         try? FileManager.default.createDirectory(at: caseDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: caseDir) }
         let n = g.range(3, 10)
