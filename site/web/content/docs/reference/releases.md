@@ -81,8 +81,25 @@ them need new cases. The frame format is unchanged (frames 11, events 2).
   the scroll keys; it checks every box's offset against the clamp after every step and counts
   `appear` moves under their claims.
 
+- **Virtual lists** ([#204](https://github.com/iamnbutler/cairn/issues/204)). `VList.node`
+  lays out only the rows of a list that meet its box, widened by an overscan, between two
+  spacers, whatever the list's length: a runtime step costs about 0.17 ms at 1,000 rows and at
+  100,000 (bench/vlist.md). Rows are estimated until laid; the runtime records the heights it
+  lays them at in `UI.lists` and keeps the first row showing still when rows are inserted or
+  heights change above it. Theorems: the rows built are exactly those meeting the widened box
+  and no more than it can hold (`VList.node_rows`), one under the other with no gaps
+  (`Layout.vlist_stacked`), and the offset correction keeps the anchor still unless clamped
+  (`VList.record_keeps`). `Style` gains `rows`, `UI` gains `lists`, and `settleFuel` is 4. See
+  docs/layout.md and docs/runtime.md, "Virtual lists".
+- **`cairn fuzz` checks virtual lists**: presence is "enabled and its row is laid" for controls
+  keyed by their row, and every step checks each list's window against the specification, its
+  stacking, that its rows were laid at their recorded heights, and that the first row showing
+  stays still over operations that don't scroll.
+
 **Claims.** New `assume` ^1012. The fixture (scope `fixture`, unpublished) retires ^11 for ^15
-and adds ^14 and ^16.
+and adds ^14 and ^16; its scroll box becomes a virtual list of 10,000 rows of mixed height, ^15
+is retired for ^19 and ^20 (the rows stacked, and which rows are built), and ^17 and ^18 add rows
+at the head and the tail.
 
 ### Upgrading to v0.4.0
 
@@ -93,6 +110,8 @@ and adds ^14 and ^16.
   the runtime.
 - Code that folds `Runtime.step` over a batch by hand to mirror `Runtime.steps` should append
   `Runtime.frameEvents`.
+- Code that builds a `Style` or a `UI` with every field positionally needs `rows` and `lists`;
+  with named fields and defaults, nothing changes.
 
 ## v0.3.0
 

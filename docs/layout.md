@@ -135,9 +135,65 @@ three below; the rest is in `Proofs.lean` and `Bridge.lean`:
 
 These are theorems, not claims: a Cairn claim is a move, place, flow or invariant of an app's
 machine, or an `assume` about the host, and a framework theorem has no machine. The test fixture
-(test/fixture) has a scroll box of 200 rows at the runtime's offset, and its claims `fixture^12`,
-`fixture^13` and `fixture^15` state the three for it, in every state and at every offset
-(`fixture^11` stated the first at a fixed offset, before the runtime owned it, and is retired).
+(test/fixture) has a scroll box at the runtime's offset (a virtual list, below), and its claims
+`fixture^12` and `fixture^13` state the last two for it, in every state and at every offset
+(`fixture^11` and `fixture^15` stated the first for a plain box of 200 rows, and are retired).
+
+## Virtual lists
+
+`VList.node` (`Cairn/UI/VList.lean`) is a scroll box over a list the view names in full but
+builds only in part: the rows that meet the box, widened by `overscan` points (200 by default)
+above and below, between a spacer as tall as the rows above them and one as tall as the rows
+below. The view passes every row's key, in order, and a function that builds the row with a key:
+
+```lean
+def rowsList : VList := { ref := rowsRef, style := { width := .fill, height := .fixed 160 } }
+VList.node rowsList ui s.keys (fun k => row s ui k)
+```
+
+Keep `keys` in the app's state, so the view doesn't build an array of every key each frame. A
+control in a row should be keyed by the row's key (`^10#k` in row `k`): the fuzzer then knows it
+shows exactly when its row is laid (docs/fuzz.md).
+
+- **Heights are never measured off screen.** A row's height is the list's estimate until the row
+  has been laid; then the runtime records the height it was laid at (`UI.lists`,
+  docs/runtime.md, "Virtual lists"), and the next layout uses it. The estimate is
+  `VList.estimate` if given, else the mean of the first heights laid at the list's width (kept
+  until the width changes, so that recording more heights doesn't move every row below them),
+  else 40. The runtime keeps the heights of the rows within `keepSpan` (500) rows of those laid,
+  so what a frame costs doesn't grow with how much of the list has been seen (bench/vlist.md).
+- **The heights it lays out by** are a `Model`: the known rows, sorted by index, and the
+  estimate. `Model.top i` (the sum of the heights above row `i`) and `Model.height i` are the
+  specification; the view computes them with `topF`, a binary search over the known rows and
+  their prefix sums, and the window with two binary searches (`firstF`, `lastF`), so a frame
+  costs the same whatever the list's length (`topF_eq`, `heightF_eq`: they agree).
+- **Keys move with their rows.** When the keys change, each known height moves to its key's new
+  index (`align`): with the same keys, or every key shifted by the same amount (rows inserted at
+  the head), at no extra cost; otherwise each key is looked up.
+- **The anchor.** The runtime keeps the first row showing still on screen when rows are inserted
+  or heights change above it (docs/runtime.md, "Virtual lists").
+
+Theorems, for every list, every `UI` and every row function (`Cairn/UI/VList.lean`,
+`Cairn/Layout/VList.lean`):
+
+- `node_rows`: the box builds row `i` if and only if its extent `[top i, top i + height i)`, in
+  the heights it lays out by, meets `[offset − overscan, offset + viewport + overscan)`
+  (`window_iff`); and it builds at most `(viewport + 2·overscan) / minHeight + 2` rows,
+  whatever the list's length (`window_count`, `minHeight_le`).
+- `node_eq`: the box is a column scroll box with no gap, justified to the start, at the
+  runtime's offset, holding `spacer (top first)`, the rows `first` to `last − 1` in key order, and
+  `spacer (top count − top last)`.
+- `top_succ`: in the model each row starts where the one before ends; `vlist_stacked`: laid out,
+  the spacer, the rows and the spacer are one under the other from the top of the content box
+  less the offset, whatever height each row turns out to be (`arrange_stacked`, for any column
+  scroll box with no gap justified to the start): no gaps, no overlaps.
+- `record_keeps`: the runtime's corrected offset moves by exactly as much as the kept row's top
+  moved, so the row stays where it was on screen, unless the clamp moved the offset;
+  `top_eq_of_below`: a change wholly below a row doesn't move its top.
+
+The fixture's list (10,000 rows of 24 to 48 points) states `node_rows` as `fixture^20` and
+`vlist_stacked` as `fixture^19`; `cairn fuzz` checks the window, the stacking and the anchor at
+every step (docs/fuzz.md).
 
 ## Grids
 
