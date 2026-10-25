@@ -24,8 +24,8 @@ are published.
 
 A claim id is how everything else refers to a claim: an app's flows, its docs, an issue, a
 review, another package. So an id is a promise about meaning, and the ledger (`lake exe ledger
-check`, part of `make check`) enforces it on every change. Ids are scoped by
-package: `cairn^212` and `yap^212` are different claims.
+check`, part of `make check`) enforces it on every change. Ids are scoped by package:
+`cairn^212` and `yap^212` are different claims.
 
 **What holds, from the release that issues an id onward:**
 
