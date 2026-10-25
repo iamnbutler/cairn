@@ -7,7 +7,7 @@
 extern void lean_initialize_runtime_module(void);
 extern void lean_io_mark_end_initialization(void);
 extern cairn_obj *lean_mk_string_from_bytes(const char *s, size_t sz);
-extern cairn_obj *initialize_cairn_Cairn(uint8_t builtin);
+extern cairn_obj *initialize_cairn_Cairn_Abi(uint8_t builtin);
 // Exported from Cairn/Text/Host.lean. Arguments are owned.
 extern cairn_obj *cairn_text_host_check(uint32_t family, uint32_t size, uint32_t weight,
                                         uint8_t style, uint32_t tracking, cairn_obj *s);
@@ -17,7 +17,7 @@ void cairn_text_test_init(void) {
     if (done) return;
     done = 1;
     lean_initialize_runtime_module();
-    cairn_obj *res = initialize_cairn_Cairn(1);
+    cairn_obj *res = initialize_cairn_Cairn_Abi(1);
     cairn_lean_dec(res);
     lean_io_mark_end_initialization();
 }

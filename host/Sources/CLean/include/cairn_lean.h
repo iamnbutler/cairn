@@ -27,9 +27,10 @@ cairn_obj *cairn_bytes_new(const uint8_t *data, size_t size);
 const uint8_t *cairn_bytes_data(cairn_obj *b);
 size_t cairn_bytes_size(cairn_obj *b);
 
-// The framework's module initializer, in libcairn_lean.a. `Cairn` must be initialized before
-// Lean measures text (`TextMetrics.host`, docs/render.md).
-cairn_obj *initialize_cairn_Cairn(uint8_t builtin);
+// The framework's initializer, in libcairn_lean.a: `Cairn.Abi`, the top of what apps link (the
+// `Cairn` umbrella also imports the proofs, which aren't linked). It must run before Lean
+// measures text (`TextMetrics.host`, docs/render.md).
+cairn_obj *initialize_cairn_Cairn_Abi(uint8_t builtin);
 
 // Everything below is defined by an app library (build/lib/libcairn_app_<name>.a), and each
 // executable links exactly one of them (Makefile, Package.swift). Declaring them all here is
