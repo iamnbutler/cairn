@@ -186,4 +186,56 @@ def boundary : Boundary := Frame.boundary
 #guard ((decodeFrame (frameBytes boundary (initState app cfg 800 600 200))).map
   fun f => f.ax.any (·.control == some (ref 1))) == some true
 
+-- Scrolling (docs/runtime.md, "Scrolling"): a column scroll box (^30) 100 high holding ten
+-- 30-high buttons (^11 to ^20) 10 apart, so its content is 390 and its offset goes to 290.
+-- ^20 is marked `appear`.
+def scrollView (_ : TState) (ui : UI) : Node :=
+  .box { width := .fill, height := .fill } none
+    [.box (ui.scrolling (ref 30) { width := .fixed 200, height := .fixed 100, gap := 10 }) none
+      ((List.range 10).map fun i =>
+        .box { width := .fixed 100, height := .fixed 30 }
+          (some { ref := ref (11 + i), label := s!"Row {i}", appear := i == 9 }) [])]
+def scrollApp : App TState := { app with surfaces := [.window 0 "Scroll" scrollView] }
+def runS (es : List Event) : State TState × List Effect :=
+  steps scrollApp cfg (start scrollApp cfg ⟨800, 600⟩) es
+def offS (es : List Event) : Int := (runS es).1.ui.scrollOf (ref 30)
+def wheelAt (dy : Int) : Event := .scroll ⟨50, 50⟩ 0 dy
+def appears (es : List Event) : Nat := ((runS es).1.app.log.filter (· == .appear (ref 20))).length
+
+#guard offS [] == 0
+#guard (scrollersOf (runS []).1.laid).map (fun sc => (sc.viewport, sc.content)) == [(100, 390)]
+-- The wheel moves the box under the pointer, clamped at both ends; elsewhere it does nothing.
+#guard offS [wheelAt 100] == 100
+#guard offS [wheelAt 100000] == 290
+#guard offS [wheelAt 100, wheelAt (-1000)] == 0
+#guard offS [.scroll ⟨500, 500⟩ 0 100] == 0
+-- A scroll is no action: the app hears nothing but the appear move.
+#guard (runS [wheelAt 100]).1.app.log == []
+#guard (runS [wheelAt 100]).2 == []
+-- Keys move the box under the pointer: a page is the viewport less a line (60).
+#guard offS [.pointerMove ⟨50, 50⟩, .key .pageDown {}] == 60
+#guard offS [.pointerMove ⟨50, 50⟩, .key .finish {}] == 290
+#guard offS [.pointerMove ⟨50, 50⟩, .key .finish {}, .key .home {}] == 0
+#guard offS [.pointerMove ⟨50, 50⟩, .key .down {}] == 40
+#guard offS [.pointerMove ⟨50, 50⟩, .key (.char ' ') {}] == 60
+#guard offS [.pointerMove ⟨50, 50⟩, .key (.char ' ') {}, .key (.char ' ') { shift := true }] == 0
+-- Shift-Tab from nothing focuses ^20, the last row, and scrolls it into view.
+#guard (runS [.key .tab { shift := true }]).1.ui.focus == some (ref 20)
+#guard offS [.key .tab { shift := true }] == 290
+-- ^20 appears once when it comes on screen, not again while it stays, and again after it left.
+#guard appears [] == 0
+#guard appears [wheelAt 100] == 0
+#guard appears [wheelAt 300] == 1
+#guard appears [wheelAt 300, wheelAt (-10)] == 1
+-- Appear is heard at the end of a batch: what came and went inside one isn't.
+#guard appears [wheelAt 300, wheelAt (-300)] == 0
+#guard appears [wheelAt 300, wheelAt (-300), wheelAt 300] == 1
+def batchesS (bs : List (List Event)) : State TState :=
+  bs.foldl (fun s es => (steps scrollApp cfg s es).1) (start scrollApp cfg ⟨800, 600⟩)
+#guard ((batchesS [[wheelAt 300], [wheelAt (-300)], [wheelAt 300]]).app.log.filter
+  (· == .appear (ref 20))).length == 2
+#guard ((batchesS [[wheelAt 300], [wheelAt (-10)], [wheelAt 10]]).app.log.filter
+  (· == .appear (ref 20))).length == 1
+#guard appears [wheelAt 300] == 1 && (runS [wheelAt 300]).1.app.log == [.appear (ref 20)]
+
 end Cairn.Runtime.Tests
