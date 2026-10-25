@@ -72,3 +72,8 @@ results), iOS, other platforms, replacing the original Yap repository, and Ace.
 3. **Yap on Cairn:** the machine moved onto the framework's effects, with the menu, overlay and
    the host's audio, key, network and typing.
 4. **Ship:** signing, install, a day of use, the benchmarks and the map.
+
+## After M2
+
+M3 is [Pairs](docs/goals/m3.md), a memory game that brings images and JSON, then four Bluesky
+milestones. See [docs/roadmap.md](docs/roadmap.md).
