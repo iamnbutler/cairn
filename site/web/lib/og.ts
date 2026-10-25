@@ -1,4 +1,4 @@
-// The cards of the pages bongo doesn't build: the maps and API docs the site copies in
+// The cards of the pages bongo doesn't build: the API docs the site copies in
 // (tools/site/pages.ts, which stamps their tags), and the package pages the Worker renders, one
 // card for every version the registry holds when the site builds. Each is drawn by
 // partials/og/card.ts to og/<name>.png, the URL their tags name (content/og/cards.txt.hbs).

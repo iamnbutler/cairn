@@ -12,8 +12,8 @@ evidence theorems and where it's defined. They are rendered from the claims expo
 `claims.lock`. Nothing on them is written by hand. [The evidence ladder](/docs/reference/evidence/)
 explains what each kind of evidence means.
 
-Cairn's trusted base is claims of the `cairn` package; the [example apps](/docs/examples/) are
-the `cairn_examples` package's:
+Cairn's own claims are its trusted base, in the `cairn` package. Every app's are its own
+package's ([apps on Cairn](/docs/examples/)):
 
 | Place | What it covers |
 |---|---|
@@ -24,6 +24,8 @@ the `cairn_examples` package's:
 | [Clock](/packages/cairn_examples/claims/406/) | cairn_examples^401–^409: time, timers and files |
 | [Tray](/packages/cairn_examples/claims/450/) | cairn_examples^450–^462: a menu bar item, a submenu and an overlay panel |
 | [Gallery](/packages/cairn_examples/claims/503/) | cairn_examples^501–^513: images and a grid that fits the window |
+| [Pairs](/packages/pairs/claims/1/) | pairs^1–^32: a deal of the pack, two cards up at most, and every game can be won |
+| [Yap](/packages/yap/claims/301/) | yap^301–^399: a menu bar menu, an overlay and the dictation machine |
 
 The pages show the evidence the export holds: proofs and their axioms, assumptions, flow
 witnesses, retired and moved ids. Fuzzing, conformance and screenshots need a build that runs
