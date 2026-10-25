@@ -7,6 +7,7 @@ public import Cairn.Font
 public import Cairn.Input
 public import Cairn.UI.Node
 public import Cairn.UI.Images
+public import Cairn.UI.Grid
 public import Cairn.UI.Hit
 public import Cairn.Surface
 public import Cairn.App

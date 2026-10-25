@@ -6,3 +6,4 @@ import Cairn.Layout.Check
 import Cairn.Layout.Rigid
 import Cairn.Layout.Tests
 import Cairn.Layout.Para
+import Cairn.Layout.Grid
