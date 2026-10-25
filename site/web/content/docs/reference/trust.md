@@ -126,8 +126,8 @@ A hostile author has more room:
   The proof is real; it just proves less than the prose says.
 - An app's own Swift code, such as a Metal shader it draws with, is outside the proofs.
 - Cairn's lint, axiom audit and kernel replay run in Cairn's repository. An app in its own
-  repository has no `cairn check` yet, and the package registry records each version's ledger
-  but doesn't rebuild it or re-run its proofs.
+  repository has no `cairn check` yet, and the package registry shows what the publisher sent
+  (its ledger, and its claims with their proofs) without rebuilding it or re-running them.
 
 So read a package you don't trust for its statements, not its green ticks. List its `assume`
 claims and decide whether you believe each one. Read each claim's formal statement beside its
