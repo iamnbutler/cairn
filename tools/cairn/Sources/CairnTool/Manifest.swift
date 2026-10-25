@@ -102,8 +102,8 @@ public struct Manifest: Equatable, Sendable {
         return lines.joined(separator: "\n") + "\n"
     }
 
-    /// The libraries `cairn-link` links into an app that depends on this package. Cairn 0.1.2
-    /// and earlier list none, and `cairn-link` linked their `Cairn` by name.
+    /// The libraries `cairn-link` links into an app that depends on this package. Cairn 0.1.3
+    /// and earlier list none, and their `cairn-link` linked `Cairn` by name.
     public var linkedLibs: [String] {
         libs.isEmpty && name == "cairn" ? ["Cairn"] : libs
     }

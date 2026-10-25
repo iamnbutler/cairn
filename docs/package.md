@@ -98,7 +98,7 @@ each, cairn-link reads the cairn.toml beside its Lake package (in the package's 
 its parent when that cairn.toml's `lean` names it, which is how a git checkout lays one out) and
 builds `@<package>/<Lib>:static` for each of its `libs`. Cairn's cairn.toml says
 `libs = ["Cairn"]`, so an app gets Cairn's library this way, and a library like `cairn_batteries`
-gets linked by naming its own. Before 0.1.3 cairn-link linked `@cairn/Cairn:static` by name.
+gets linked by naming its own. Through 0.1.3 cairn-link linked `@cairn/Cairn:static` by name.
 
 - **A dependency with no cairn.toml** (a plain Lake package) is linked not at all, since it may
   only be there for proofs. If a linked module imports one of its modules, cairn-link warns,

@@ -213,11 +213,11 @@ import Testing
         #expect(try project(text).linkCommand == nil)
     }
 
-    /// What `cairn doc` links a dependency's modules under. Cairn 0.1.2's cairn.toml lists no libs.
+    /// What `cairn doc` links a dependency's modules under. Cairn 0.1.3's cairn.toml lists no libs.
     @Test func linkedLibs() throws {
-        let old = try Manifest.parse("[package]\nname = \"cairn\"\nversion = \"0.1.2\"\nlibs = []\n")
+        let old = try Manifest.parse("[package]\nname = \"cairn\"\nversion = \"0.1.3\"\nlibs = []\n")
         #expect(old.linkedLibs == ["Cairn"])
-        let new = try Manifest.parse("[package]\nname = \"cairn\"\nversion = \"0.1.3\"\nlibs = [\"Cairn\"]\n")
+        let new = try Manifest.parse("[package]\nname = \"cairn\"\nversion = \"0.1.4\"\nlibs = [\"Cairn\"]\n")
         #expect(new.linkedLibs == ["Cairn"])
         let geo = try Manifest.parse("[package]\nname = \"geo\"\nversion = \"0.1.0\"\nlibs = [\"Geo\"]\n")
         #expect(geo.linkedLibs == ["Geo"])
