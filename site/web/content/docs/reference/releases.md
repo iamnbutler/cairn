@@ -49,6 +49,32 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
 - **Its evidence.** What a claim reads as depends on the build that computed it. See
   [how much to trust a claim](/docs/reference/trust/).
 
+## v0.2.1
+
+25 October 2026.
+
+- **Requests in flight.** At most `App.maxInFlight` (6) `http`, `upload` and `loadImage`
+  requests are with the host at once; the rest queue in order. The new `cancelRequest` effect
+  drops a queued request, or cancels a sent one, whose single answer then reaches no app.
+  `Cairn.Runtime.InFlight` proves the cap is never exceeded, every queued request is eventually
+  sent or cancelled, and a cancelled id never delivers. `Cairn.UI.Images` has `cancel`,
+  `cancelAll` and `cancelWhere`. The frame format is version 6: `cancelRequest` is effect 7. The
+  host's side is the trusted claim `cairn^1009`.
+- **A grid that follows the window.** `Cairn.UI.Grid` lays out equal cards in as many columns of
+  `minWidth` as fit the box's width, at least one, and shrinks them together when the rows would
+  be too tall. It is proved for every size and card count: the cells stay inside the box, keep
+  reading order and never overlap. The Gallery example uses it (`cairn^509`, `cairn^510`).
+- **More of the `cairn` tool.** `cairn fuzz`, `claims`, `bench`, `size` and `conformance` run
+  the per-app tools on any app package, as `cairn build` does. `test/fixture` is Cairn's own
+  fixture app, with its own scope and ledger, and `make check` runs against it.
+- **Claim pages.** `cairn publish` also sends the claims export (`cairn claims --ledger`) when the
+  registry takes one, and the site renders every package's claims grouped by place, with a page
+  per claim. The maps (`/map/<app>/`) redirect to them.
+
+No claim was retired, moved or changed, so it is a patch release. Six claims are new:
+`cairn^506`–`cairn^510` (Gallery) and `cairn^1009`. Moving from v0.2.0 is a change of tag in the
+lakefile and `Package.swift`, unless an app builds frames by hand, which are now version 6.
+
 ## v0.2.0
 
 24 October 2026, at commit `16b70b8`.
