@@ -248,7 +248,7 @@ def defaultReply (h : Host) (r : Request) : Gen Reply := do
     | some x, false => return .image x.w x.h
     | _, _ => return .image (← Gen.range 1 1600) (← Gen.range 1 1600)
   | .writeFile .. | .playSound _ | .appendFile .. | .deleteFile _ | .typeText .. | .forgetClip _
-  | .openItem _ | .makeDir _ => return .done
+  | .openItem _ | .makeDir _ | .forgetSecret _ => return .done
 
 /-- The reply to `id`: the app's generator if it has one for this request (a reply of the
 wrong shape becomes a failure), else the default. -/

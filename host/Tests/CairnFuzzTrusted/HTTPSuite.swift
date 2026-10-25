@@ -6,11 +6,14 @@ import Foundation
 /// A URL protocol that answers every request in its session from a script, and records what it
 /// was sent. Keyed by the `X-Cairn-Case` header the suite adds to each request.
 final class StubProtocol: URLProtocol, @unchecked Sendable {
-    enum Answer { case respond(status: Int, headers: [String: String], body: [UInt8]), fail(Int), hang }
+    /// `redirect`: a 302 to `to`, where it answers 200 `landed`.
+    enum Answer { case respond(status: Int, headers: [String: String], body: [UInt8]), fail(Int), hang, redirect(to: String) }
     struct Seen { var method: String; var url: String; var headers: [String: String]; var body: [UInt8] }
 
     static let answers = Locked<[String: Answer]>([:])
     static let seen = Locked<[String: Seen]>([:])
+    /// Every URL each case's requests reached, in order.
+    static let urls = Locked<[String: [String]]>([:])
 
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
@@ -28,6 +31,7 @@ final class StubProtocol: URLProtocol, @unchecked Sendable {
             }
             s.close()
         }
+        Self.urls.update { $0[key, default: []].append(request.url?.absoluteString ?? "") }
         Self.seen.update {
             $0[key] = Seen(method: request.httpMethod ?? "", url: request.url?.absoluteString ?? "",
                            headers: request.allHTTPHeaderFields ?? [:], body: body)
@@ -42,6 +46,21 @@ final class StubProtocol: URLProtocol, @unchecked Sendable {
             client?.urlProtocol(self, didFailWithError: NSError(domain: NSURLErrorDomain, code: code))
         case .hang:
             break  // the session's timeout ends it
+        case let .redirect(to):
+            if request.url?.absoluteString == to {
+                let resp = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: [:])!
+                client?.urlProtocol(self, didReceive: resp, cacheStoragePolicy: .notAllowed)
+                client?.urlProtocol(self, didLoad: Data("landed".utf8))
+                client?.urlProtocolDidFinishLoading(self)
+            } else {
+                let resp = HTTPURLResponse(url: request.url!, statusCode: 302, httpVersion: "HTTP/1.1", headerFields: ["Location": to])!
+                var next = request
+                next.url = URL(string: to)
+                client?.urlProtocol(self, wasRedirectedTo: next, redirectResponse: resp)
+                client?.urlProtocol(self, didReceive: resp, cacheStoragePolicy: .notAllowed)
+                client?.urlProtocol(self, didLoad: Data("moved".utf8))
+                client?.urlProtocolDidFinishLoading(self)
+            }
         }
     }
 
@@ -116,7 +135,9 @@ final class HTTPSuite: Suite {
         headers.append(Header("X-Cairn-Case", key))
         let body = (method == "GET" || method == "HEAD") ? [] : EventsSuite.bytes(&g)
 
-        switch g.below(8) {
+        switch g.below(10) {
+        case 8, 9:  // with a secret (^974): its header, a missing or bad one, redirects
+            secret(&g, r, key: key, method: method, url: url, headers: headers, body: body)
         case 0:  // refused before sending
             var bad = (method, url, headers)
             switch g.below(5) {
@@ -185,6 +206,71 @@ final class HTTPSuite: Suite {
         }
         StubProtocol.answers.update { $0[key] = nil }
         StubProtocol.seen.update { $0[key] = nil }
+        StubProtocol.urls.update { $0[key] = nil }
+    }
+
+    /// `http` with a secret through `SecretHTTP.run`: the header is `scheme ++ value` from the
+    /// environment or the Keychain store; a missing secret is `notFound` and one with CR, LF or
+    /// NUL `invalid`, neither sent; a redirect is followed without a secret and answered as the
+    /// 302 with one, so the header never reaches the other URL.
+    func secret(_ g: inout SplitMix, _ r: Recorder, key: String, method: String, url: String, headers: [Header], body: [UInt8]) {
+        let check = "effects.http"
+        let value = "s-" + String(g.next(), radix: 36)
+        let kind = g.below(4)  // 0 present, 1 missing, 2 bad, 3 none (redirect only)
+        let store = MemoryStore()
+        if kind == 0 { _ = store.write("acct", value) }
+        if kind == 2 { _ = store.write("acct", value + g.elem(["\r\nX-Evil: 1", "\n", "\u{0}"])) }
+        let env = g.bool()
+        let src = SecretSource(environment: { $0 == "K" && kind != 1 ? (kind == 2 ? value + "\r\n" : value) : nil },
+                               readFile: { _ in nil }, store: store)
+        let sec: Secret? = kind == 3 ? nil
+            : env ? Secret(header: "Authorization", scheme: "Bearer ", file: "~/none.env", name: "K")
+            : Secret(header: "Authorization", scheme: "Bearer ", source: .keychain(account: "acct"))
+        let redirect = g.chance(1, 2)
+        let to = "https://other.example.test/landed"
+        StubProtocol.answers.update { $0[key] = redirect ? .redirect(to: to) : .respond(status: 200, headers: [:], body: [7]) }
+        let got = Locked<[Reply]>([])
+        let first = DispatchSemaphore(value: 0)
+        SecretHTTP.run(method: method, url: url, headers: headers, body: body, timeoutMs: 5000, secret: sec, capture: [],
+                       secrets: src, session: session) { rep in
+            got.update { $0.append(rep) }
+            first.signal()
+        }
+        _ = first.wait(timeout: .now() + 5)
+        usleep(1000)
+        let replies = got.value
+        let urls = StubProtocol.urls.value[key] ?? []
+        let seen = StubProtocol.seen.value[key]
+        guard r.expect(check, replies.count == 1, "\(replies.count) answers") else { return }
+        let rep = replies[0]
+        switch kind {
+        case 1:
+            r.expect(check, rep.isFault(.notFound) && urls.isEmpty, "a missing secret answered \(rep), sent \(urls.count)")
+            r.count(check, "secretMissing")
+        case 2:
+            r.expect(check, rep.isFault(.invalid) && urls.isEmpty, "a secret with CR, LF or NUL answered \(rep), sent \(urls.count)")
+            r.count(check, "secretBad")
+        default:
+            if kind == 0 {
+                r.expect(check, seen?.headers["Authorization"] == "Bearer " + value, "the secret's header was not sent as scheme ++ value")
+                if case let .failed(_, m) = rep { r.expect(check, !m.contains(value), "a failure message shows the secret") }
+            }
+            if redirect {
+                if sec != nil {
+                    let ok: Bool = { if case .http(302, _, _) = rep { true } else { false } }()
+                    r.expect(check, ok && urls.count == 1, "with a secret a redirect answered \(rep) and reached \(urls)")
+                    r.count(check, "redirectRefused")
+                } else {
+                    let ok: Bool = { if case let .http(200, _, b) = rep { b == Array("landed".utf8) } else { false } }()
+                    r.expect(check, ok && urls.last == to, "without a secret a redirect answered \(rep), reached \(urls)")
+                    r.count(check, "redirectFollowed")
+                }
+            } else {
+                let ok: Bool = { if case let .http(200, _, b) = rep { b == [7] } else { false } }()
+                r.expect(check, ok, "answered \(rep)")
+                r.count(check, kind == 0 ? "secretSent" : "noSecret")
+            }
+        }
     }
 
     func describe(_ g: inout SplitMix, reproDir: URL, caseIndex: Int) -> String {

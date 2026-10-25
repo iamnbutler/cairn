@@ -37,11 +37,6 @@ public struct Handlers: Sendable {
         0: { r, reply in if case let .readFile(p) = r { reply(Files.read(p)) } },
         1: { r, reply in if case let .writeFile(p, d) = r { reply(Files.write(p, d)) } },
         2: { r, reply in if case let .playSound(n) = r { Sounds.play(n, reply) } },
-        3: { r, reply in
-            if case let .http(m, u, hs, b, t) = r {
-                HTTP.run(method: m, url: u, headers: hs, body: b, timeoutMs: t, session: HTTP.session, reply)
-            }
-        },
         4: { r, reply in if case let .appendFile(p, d) = r { reply(Files.append(p, d)) } },
         5: { r, reply in if case let .listDir(p) = r { reply(Files.list(p)) } },
         6: { r, reply in if case let .deleteFile(p) = r { reply(Files.delete(p)) } },
@@ -56,8 +51,8 @@ public struct Handlers: Sendable {
 // endregion: world-handlers
 
 /// What the host's world reaches through: the microphone, the keyboard, typing into other apps,
-/// secrets and the network. Tests swap in stubs, so `make check` never records, listens to keys,
-/// types into another app or reads a real secret.
+/// secrets (and the Keychain, `secrets.store`) and the network. Tests swap in stubs, so
+/// `make check` never records, listens to keys, types into another app or reads a real secret.
 public struct Devices: Sendable {
     public var microphone: Microphone
     public var keys: KeySource
@@ -72,7 +67,8 @@ public struct Devices: Sendable {
 
     public static let live = Devices(microphone: .live, keys: .live, typist: .live, secrets: .live, session: HTTP.session)
 
-    /// Devices that touch nothing: no microphone, no keys, no Accessibility, no secrets, and a
+    /// Devices that touch nothing: no microphone, no keys, no Accessibility, no secrets (an empty
+    /// in-memory Keychain), and a
     /// session no request reaches the network through. For tests.
     public static let inert = Devices(
         microphone: Microphone { _ throws(ReplyError) in throw ReplyError(.denied, "inert microphone") },
@@ -97,8 +93,8 @@ final class RefuseProtocol: URLProtocol, @unchecked Sendable {
 }
 
 extension Handlers {
-    /// `typeText`, `upload`, `forgetClip` and `loadImage`, which reach the world's clips,
-    /// devices and image store.
+    /// `http`, `typeText`, `upload`, `forgetClip`, `loadImage` and `forgetSecret`, which reach
+    /// the world's clips, devices (the network, secrets, the Keychain) and image store.
     public static func devices(_ clips: Clips, _ d: Devices, images: ImageStore = .shared) -> [UInt8: RequestHandler] {
         [
             9: { r, reply in
@@ -111,6 +107,13 @@ extension Handlers {
                 }
             },
             11: { r, reply in if case let .forgetClip(c) = r { reply(clips.forget(c)) } },
+            3: { r, reply in
+                if case let .http(m, u, hs, b, t, sec, cap) = r {
+                    SecretHTTP.run(method: m, url: u, headers: hs, body: b, timeoutMs: t, secret: sec, capture: cap,
+                                   secrets: d.secrets, session: d.session, reply)
+                }
+            },
+            17: { r, reply in if case let .forgetSecret(a) = r { reply(ForgetSecret.run(a, d.secrets.store)) } },
             16: { r, reply in
                 if case let .loadImage(s, reload) = r {
                     ImageLoad.run(source: s, reload: reload, store: images, session: d.session, reply)
@@ -262,8 +265,10 @@ public final class Cancellation: @unchecked Sendable {
 public enum HTTP {
     public static let session = URLSession(configuration: .ephemeral)
 
+    /// `followRedirects: false` answers a redirect with the 3xx itself: a request carrying a
+    /// secret never takes its header to another URL.
     public static func run(method: String, url: String, headers: [Header], body: [UInt8],
-                           timeoutMs: UInt32, session: URLSession,
+                           timeoutMs: UInt32, session: URLSession, followRedirects: Bool = true,
                            _ reply: @escaping @Sendable (Reply) -> Void) {
         guard let u = URL(string: url), let scheme = u.scheme?.lowercased(),
               scheme == "http" || scheme == "https" else {
@@ -313,8 +318,18 @@ public enum HTTP {
             }.sorted { $0.name < $1.name }
             reply(.http(status: UInt32(max(0, http.statusCode)), headers: hs, body: [UInt8](data ?? Data())))
         }
+        if !followRedirects { task.delegate = NoRedirects.shared }
         Cancellation.current?.onCancel { task.cancel() }
         task.resume()
+    }
+}
+
+/// Refuses redirects, so the 3xx is the reply.
+final class NoRedirects: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+    static let shared = NoRedirects()
+    func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
+                    newRequest request: URLRequest, completionHandler: @escaping @Sendable (URLRequest?) -> Void) {
+        completionHandler(nil)
     }
 }
 

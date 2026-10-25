@@ -61,9 +61,7 @@ assume ^912 hostPlaySound "playSound starts a known sound and refuses an unknown
   does "playSound finds every system sound by its name and answers done once it starts; any other name is answered notFound, once, without playing anything."
   check "effects.sound"
 
-assume ^913 hostHttp "http sends the request as given and returns the response as received" where
-  does "http sends the method, URL, headers and body as given and answers with the response's status, headers sorted by name and body exactly; a connection failure is network, no answer in time is timeout, and a non-http URL, a bad method or a header that could inject another is invalid and sends nothing."
-  check "effects.http"
+retire ^913 assume "http sends the request as given and returns the response as received" because "Reissued as ^974: http gained a secret header and captured reply fields (#205), so a request with them is no longer sent and answered exactly as given; a published claim keeps its statement."
 
 assume ^914 hostReplyOnce "The host answers every request exactly once, with its id" where
   does "Every request the host runs is answered at most once and, when its handler answers, exactly once, under its own id with the handler's first answer; a kind with no handler is answered invalid; after the app starts over no answer to an earlier request is sent."
@@ -123,8 +121,24 @@ assume ^970 hostUpload "upload sends the body assembled from its parts, with the
   does "upload sends one request whose body is its parts in order, each wav part replaced by the clip's WAV, with its headers and, for a secret, the header scheme ++ value; a missing clip, bad range or missing secret fails before anything is sent; otherwise it answers as http does."
   check "effects.upload"
 
-assume ^971 hostSecret "A secret is read from the environment or its file, and never shown" where
-  does "A secret's value is the environment variable if set and not empty, else its line in the KEY=value file as Yap's Secrets.parseDotEnv reads it (comments, export, quotes, a later line wins); a missing one is failed notFound; the value appears in the request's header and in no reply, failure message or debug description."
+retire ^971 assume "A secret is read from the environment or its file, and never shown" because "Reissued as ^975 for environment secrets: a secret can now also be a Keychain item (^972, #205); a published claim keeps its statement."
+
+/-! Secrets in the Keychain (M4, #205, docs/effects.md "Secrets in the Keychain"), ids 972–975. -/
+
+assume ^972 hostKeychain "The Keychain keeps what it was given for this app" where
+  does "The host's Keychain store keeps one generic password item per account, under the app's service (its bundle identifier), in the login keychain (file-based, not synchronized to iCloud, no access group): reading an account gives the value last written to it, exactly, until it is deleted; writing one account changes no other; forgetSecret deletes the item and answers done, also when there was none; a Keychain secret whose item is missing answers failed notFound. Values never appear in a reply, failure message, frame, dump or debug description."
+  check "effects.secret.keychain"
+
+assume ^973 hostCapture "Captured reply fields go to the Keychain and never to Lean" where
+  does "For an http request with captures, a 2xx reply whose body is a JSON object with each listed top-level field present once as a string has each value written exactly to its account's Keychain item, and Lean receives the body with each of those values written as an empty string and every other byte as the server sent it; a body that is not a JSON object, or a listed field that is missing, repeated or not a string, answers failed invalid and writes nothing, and a failed write leaves every item as it was. Any other reply passes through unchanged. A captured value appears in no reply, failure message, frame, dump or debug description."
+  check "effects.http.capture"
+
+assume ^974 hostHttpSecret "http sends the request as given, with its secret header, and returns the response as received" where
+  does "http sends the method, URL, headers and body as given, plus for a secret the header scheme ++ value, and answers with the response's status, headers sorted by name and body exactly (captured fields aside, ^973); a missing secret is notFound and sends nothing; a request with a secret never follows a redirect, answering the 3xx; a connection failure is network, no answer in time is timeout, and a non-http URL, a bad method, a header (the secret's too) that could inject another, or an empty account is invalid and sends nothing."
+  check "effects.http"
+
+assume ^975 hostEnvSecret "An environment secret is read from the environment or its file, and never shown" where
+  does "An environment secret's value is the environment variable if set and not empty, else its line in the KEY=value file as Yap's Secrets.parseDotEnv reads it (comments, export, quotes, a later line wins); a missing one is failed notFound; the value appears in the request's header and in no reply, failure message or debug description."
   check "effects.secret"
 
 /-! Wrapped text (workstream V, docs/layout.md "Wrapped text"), ids 990–999. -/

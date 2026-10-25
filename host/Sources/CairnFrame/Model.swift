@@ -178,12 +178,38 @@ public enum Part: Equatable, Sendable {
 }
 
 /// A header whose value the host reads from a secret (`Cairn.Secret`): `header: scheme value`,
-/// where `value` is the environment variable `name` or else `name`'s line in the file `file`.
+/// where `value` comes from `source`.
 public struct Secret: Equatable, Sendable {
-    public var header, scheme, file, name: String
-    public init(header: String, scheme: String, file: String, name: String) {
-        self.header = header; self.scheme = scheme; self.file = file; self.name = name
+    /// Where the value is (`Cairn.Secret.Source`).
+    public enum Source: Equatable, Sendable {
+        /// The environment variable `name`, or else `name`'s line in the `KEY=value` file `file`.
+        case env(file: String, name: String)
+        /// The generic password item `account` under the app's Keychain service.
+        case keychain(account: String)
     }
+    public var header, scheme: String
+    public var source: Source
+    public init(header: String, scheme: String, source: Source) {
+        self.header = header; self.scheme = scheme; self.source = source
+    }
+    /// An environment secret (Yap's API key).
+    public init(header: String, scheme: String, file: String, name: String) {
+        self.init(header: header, scheme: scheme, source: .env(file: file, name: name))
+    }
+    /// Where it is, for messages: the variable's name or the item's account, never the value.
+    public var label: String {
+        switch source {
+        case let .env(_, name): name
+        case let .keychain(account): "Keychain item \(account)"
+        }
+    }
+}
+
+/// A top-level string field of a 2xx JSON reply that the host writes to Keychain item `account`
+/// and blanks before Lean sees the body (`Request.http`'s `capture`).
+public struct Capture: Equatable, Sendable {
+    public var field, account: String
+    public init(_ field: String, _ account: String) { self.field = field; self.account = account }
 }
 
 /// A TCC permission (`Cairn.Permission`).
@@ -195,7 +221,10 @@ public enum Request: Equatable, Sendable {
     /// Atomic replace, creating missing parent directories.
     case writeFile(path: String, data: [UInt8])
     case playSound(name: String)
-    case http(method: String, url: String, headers: [Header], body: [UInt8], timeoutMs: UInt32)
+    /// With a secret, its header is added as the request is sent; with captures, a 2xx JSON
+    /// object reply's listed fields go to the Keychain and are blanked (docs/effects.md).
+    case http(method: String, url: String, headers: [Header], body: [UInt8], timeoutMs: UInt32,
+              secret: Secret? = nil, capture: [Capture] = [])
     /// Append, creating the file (mode 600) and missing parent directories.
     case appendFile(path: String, data: [UInt8])
     /// The names in a directory, sorted by their UTF-8 bytes.
@@ -224,6 +253,8 @@ public enum Request: Equatable, Sendable {
     /// source, and answer its pixel size. `reload` reads it again rather than answering from the
     /// cache.
     case loadImage(source: String, reload: Bool)
+    /// Delete the Keychain item `account` (`done` when there is none).
+    case forgetSecret(account: String)
 
     /// The kind code on the wire (`Request.Kind.code`).
     public var kindCode: UInt8 {
@@ -245,6 +276,7 @@ public enum Request: Equatable, Sendable {
         case .readDefault: 14
         case .makeDir: 15
         case .loadImage: 16
+        case .forgetSecret: 17
         }
     }
 }

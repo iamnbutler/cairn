@@ -92,13 +92,14 @@ request.
 | Wake-ups | ^909 | a wake comes at or after its deadline, within 40 ms under load, and never after it was cleared |
 | Reading and writing files | ^910, ^911 | files round-trip under random Unicode names; writes are atomic; failures map to the documented faults |
 | Sounds | ^912 | every system sound name resolves; any other name is `notFound` |
-| HTTP | ^913 | method, URL, headers and body arrive as given; replies come back exactly; header injection is refused |
+| HTTP | ^974 | method, URL, headers and body arrive as given, with a secret header if asked; replies come back exactly; header injection is refused; a request with a secret never follows a redirect |
+| Keychain | ^972, ^973 | an item reads back what was written, per account; captured reply fields are stored exactly and blanked before Lean sees the body; values appear in no reply, frame, dump or log |
 | One reply per request | ^914 | each request is answered at most once, under its own id |
 | Timers that repeat | ^915 | ticks only while started, about once per period |
 
 Yap needed more: appending to and listing files, deleting, permissions, the app in front, the
 microphone, a global hot key, typing into another app, uploads and secrets. Each of those is an
-assumption with its own fuzz check too (^960–^971, ^1000–^1003 and ^1005). Every device is replaced by a
+assumption with its own fuzz check too (^960–^975, ^1000–^1003 and ^1005). Every device is replaced by a
 fake in the fuzz suites, so `make check` never records audio, watches the keyboard or types into
 another app.
 

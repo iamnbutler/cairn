@@ -2,7 +2,7 @@
 # version here, and `bin/cairn-link` links `libs` into every app that depends on Cairn.
 [package]
 name = "cairn"
-version = "0.2.5"
+version = "0.3.0"
 kind = "lib"
 description = "Native macOS apps whose behaviour is proved in Lean."
 license = "MIT"

@@ -119,7 +119,7 @@ final class CancelSuite: Suite {
             secrets: Devices.inert.secrets, session: session))
         let s = session!
         world.handlers.table[3] = { req, reply in
-            if case let .http(m, u, hs, b, t) = req {
+            if case let .http(m, u, hs, b, t, _, _) = req {
                 HTTP.run(method: m, url: u, headers: hs, body: b, timeoutMs: t, session: s, reply)
             }
         }

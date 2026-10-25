@@ -3,21 +3,26 @@ import Foundation
 
 // The `upload` request (docs/effects.md): HTTP whose body is assembled from Lean's bytes and
 // the host's recordings, with one header whose value is a secret the host reads as it sends.
-// Trusted: claims ^971 and ^972 in docs/trusted.md. Lean builds the multipart body itself
+// Trusted: claims ^970 and ^976 in docs/trusted.md (and ^972 for Keychain secrets). Lean builds the multipart body itself
 // (boundary, part headers) as `bytes` parts around a `wav` part; the host only splices.
 //
 // The secret's value never leaves this file except in the request's header: it is not in a
 // reply, a message, a frame or a log.
 
-/// Where secrets come from: the environment, then a `KEY=value` file (Yap's Secrets).
+/// Where secrets come from: for an environment secret the environment, then a `KEY=value`
+/// file (Yap's Secrets); for a Keychain secret the store (SecretEffects.swift).
 public struct SecretSource: Sendable {
     public var environment: @Sendable (String) -> String?
     /// The file's text, or nil when it can't be read.
     public var readFile: @Sendable (String) -> String?
+    /// The app's Keychain items.
+    public var store: any SecretStore
 
-    public init(environment: @escaping @Sendable (String) -> String?, readFile: @escaping @Sendable (String) -> String?) {
+    public init(environment: @escaping @Sendable (String) -> String?, readFile: @escaping @Sendable (String) -> String?,
+                store: any SecretStore = MemoryStore()) {
         self.environment = environment
         self.readFile = readFile
+        self.store = store
     }
 
     public static let live = SecretSource(
@@ -25,15 +30,37 @@ public struct SecretSource: Sendable {
         readFile: { path in
             guard Files.invalid(path) == nil else { return nil }
             return try? String(contentsOfFile: Files.expand(path), encoding: .utf8)
-        })
+        },
+        store: KeychainStore.app)
 
-    /// The secret's value: the environment variable if set and not empty, else the file's
-    /// line for it. A missing secret is `failed notFound`, naming where it looked.
+    /// The secret's value. An environment secret: the variable if set and not empty, else the
+    /// file's line for it. A Keychain secret: the item. A missing secret is `failed notFound`,
+    /// naming where it looked (never a value).
     public func resolve(_ s: Secret) -> Result<String, ReplyError> {
-        if let v = environment(s.name), !v.isEmpty { return .success(v) }
-        if let text = readFile(s.file), let v = Self.parseDotEnv(text)[s.name], !v.isEmpty { return .success(v) }
-        // Yap's `Secrets.MissingKey` text, with the file's full path.
-        return .failure(ReplyError(.notFound, "No \(s.name) in the environment or \(Files.expand(s.file))"))
+        switch s.source {
+        case let .env(file, name):
+            if let v = environment(name), !v.isEmpty { return .success(v) }
+            if let text = readFile(file), let v = Self.parseDotEnv(text)[name], !v.isEmpty { return .success(v) }
+            // Yap's `Secrets.MissingKey` text, with the file's full path.
+            return .failure(ReplyError(.notFound, "No \(name) in the environment or \(Files.expand(file))"))
+        case let .keychain(account):
+            if let e = Accounts.check(account) { return .failure(e) }
+            switch store.read(account) {
+            case let .success(v?): return .success(v)
+            case .success(nil): return .failure(ReplyError(.notFound, "No Keychain item \(account)"))
+            case let .failure(e): return .failure(e)
+            }
+        }
+    }
+
+    /// The header the secret adds, `header: scheme ++ value`; `failed invalid` when that would
+    /// have a line break or NUL (no header injection).
+    public func header(_ s: Secret) -> Result<Header, ReplyError> {
+        resolve(s).flatMap { v in
+            (s.scheme + v).utf8.contains(where: { $0 == 0x0D || $0 == 0x0A || $0 == 0 })
+                ? .failure(ReplyError(.invalid, "the secret \(s.label) has a line break or NUL"))
+                : .success(Header(s.header, s.scheme + v))
+        }
     }
 
     /// Yap's `Secrets.parseDotEnv`: `KEY=value` lines, `#` comments, an optional `export `,
@@ -85,16 +112,12 @@ public enum Upload {
         }
         var hs = headers
         if let secret {
-            switch secrets.resolve(secret) {
-            case let .success(v):
-                guard !(secret.scheme + v).utf8.contains(where: { $0 == 0x0D || $0 == 0x0A || $0 == 0 }) else {
-                    reply(.failed(.invalid, "the secret \(secret.name) has a line break or NUL"))
-                    return
-                }
-                hs.append(Header(secret.header, secret.scheme + v))
+            switch secrets.header(secret) {
+            case let .success(h): hs.append(h)
             case let .failure(e): reply(e.reply); return
             }
         }
-        HTTP.run(method: method, url: url, headers: hs, body: body, timeoutMs: timeoutMs, session: session, reply)
+        HTTP.run(method: method, url: url, headers: hs, body: body, timeoutMs: timeoutMs, session: session,
+                 followRedirects: secret == nil, reply)
     }
 }

@@ -132,7 +132,7 @@
 910	assume	active	-	readFile replies with the file's bytes, or failed
 911	assume	active	-	writeFile is atomic, and replies done only when the bytes are there
 912	assume	active	-	playSound starts a known sound and refuses an unknown one
-913	assume	active	-	http sends the request as given and returns the response as received
+913	assume	retired	-	http sends the request as given and returns the response as received
 914	assume	active	-	The host answers every request exactly once, with its id
 915	assume	active	-	every ms ticks while started and never after it is stopped
 940	assume	active	-	The native menu shows exactly the frame's menu records
@@ -151,7 +151,11 @@
 968	assume	active	-	globalKey reports the hotkey's press and release, and other keys while it is held
 969	assume	active	-	typeText types exactly the text into that app, or nothing
 970	assume	active	-	upload sends the body assembled from its parts, with the secret in its header
-971	assume	active	-	A secret is read from the environment or its file, and never shown
+971	assume	retired	-	A secret is read from the environment or its file, and never shown
+972	assume	active	-	The Keychain keeps what it was given for this app
+973	assume	active	-	Captured reply fields go to the Keychain and never to Lean
+974	assume	active	-	http sends the request as given, with its secret header, and returns the response as received
+975	assume	active	-	An environment secret is read from the environment or its file, and never shown
 990	assume	active	-	Wrapped lines paint as wide as Lean measured them
 991	assume	active	-	Lean breaks lines where Core Text would
 1000	assume	active	-	openItem opens exactly the URL or existing file it names

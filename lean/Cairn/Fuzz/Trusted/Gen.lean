@@ -144,10 +144,14 @@ def part : Gen Part := do
   if ← Gen.chance 1 2 then return .bytes (← bytes)
   else return .wav (← u32) (← u32) (← opt u32)
 
-def secret : Gen Secret := do return ⟨← str, ← str, ← str, ← str⟩
+def secret : Gen Secret := do
+  let h ← str
+  let sc ← str
+  if ← Gen.chance 1 2 then return ⟨h, sc, .env (← str) (← str)⟩
+  else return ⟨h, sc, .keychain (← str)⟩
 
 def request : Gen Request := do
-  match ← Gen.below 17 with
+  match ← Gen.below 18 with
   | 0 => return .readFile (← str)
   | 1 => return .writeFile (← str) (← bytes)
   | 2 => return .playSound (← str)
@@ -164,7 +168,8 @@ def request : Gen Request := do
   | 13 => return .readDefault (← str) (← str)
   | 14 => return .makeDir (← str)
   | 15 => return .loadImage (← str) (← Gen.chance 1 2)
-  | _ => return .http (← str) (← str) (← headers) (← bytes) (← u32)
+  | 16 => return .forgetSecret (← str)
+  | _ => return .http (← str) (← str) (← headers) (← bytes) (← u32) (← opt secret) (← headers)
 
 def effect : Gen Effect := do
   match ← Gen.below 8 with

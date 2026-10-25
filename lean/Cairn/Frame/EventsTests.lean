@@ -49,12 +49,16 @@ private def frame : Frame where
     .request 10 (.appendFile "~/t/2026-10-23.jsonl" ⟨#[123, 10]⟩), .request 11 (.listDir "~/t"),
     .request 12 (.deleteFile "~/t/old"), .request 13 .frontmostApp,
     .request 14 (.permission .accessibility true), .request 15 (.typeText 501 "hi 🙂" true),
-    .request 16 (.upload "POST" "https://h/t" [("A", "b")] (some ⟨"Authorization", "Bearer ", "~/s.env", "K"⟩)
+    .request 16 (.upload "POST" "https://h/t" [("A", "b")] (some ⟨"Authorization", "Bearer ", .env "~/s.env" "K"⟩)
       [.bytes ⟨#[1, 2]⟩, .wav 3 0 none, .wav 3 2 (some 5)] 30000),
     .request 17 (.upload "GET" "" [] none [] 0), .request 18 (.forgetClip 3),
     .request 19 (.openItem "~/Library/Application Support/yap"), .request 20 (.appRunning "dev.yap.Yap"),
     .request 21 (.readDefault "dev.yap.Yap" "model"), .request 22 (.makeDir "~/a/b"),
-    .request 23 (.loadImage "images/a.png" true)]
+    .request 23 (.loadImage "images/a.png" true),
+    .request 24 (.http "POST" "https://h/s" [] ⟨#[123, 125]⟩ 5000 (some (.bearer "access"))
+      [("accessJwt", "access"), ("refreshJwt", "refresh")]),
+    .request 25 (.http "GET" "https://h/s" [] .empty 0 none [("token", "t")]),
+    .request 26 (.forgetSecret "access")]
   subs := #[.start 1 (.every 50), .stop 0, .start 2 (.watchFile "~/c.json"), .start 3 (.record 7),
     .start 4 (.globalKey 63 none), .start 5 (.globalKey 49 (some 55)), .start 6 (.imageCache 8388608)]
   wake := some 18446744073709551615
