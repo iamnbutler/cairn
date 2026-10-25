@@ -1,5 +1,60 @@
 [
   {
+    "image": "/m/images/ce23b28c3df48597.png",
+    "title": "Pairs: the win screen",
+    "caption": "All eight pairs of Patterns matched: the board gives way to the result, and the best moves and time for the pack are saved (they only ever improve, pairs^26).",
+    "date": "2026-10-25",
+    "published": "2026-10-25T07:08:54Z",
+    "commit": "e3d4416",
+    "width": 1120,
+    "height": 1280,
+    "milestone": "m3"
+  },
+  {
+    "image": "/m/images/9b697b4fa1908202.png",
+    "title": "Pairs: a pack that fails",
+    "caption": "A pack with a missing image: Pairs says which face didn't load and leaves the game exactly as it was. A 404 manifest and a pack.json that isn't JSON are refused the same way.",
+    "date": "2026-10-25",
+    "published": "2026-10-25T07:08:52Z",
+    "commit": "e3d4416",
+    "width": 1120,
+    "height": 1280,
+    "milestone": "m3"
+  },
+  {
+    "image": "/m/images/3a1f184c6101e886.png",
+    "title": "Pairs: a pack loading over http",
+    "caption": "A pack typed into the field loads beside the game from the URL tests' stub server, whose images answer after three seconds: the game goes on, with Cancel and a count of the images loaded. Choosing another pack or Cancel stops it; its late replies change nothing (pairs^28, ^29).",
+    "date": "2026-10-25",
+    "published": "2026-10-25T07:08:50Z",
+    "commit": "e3d4416",
+    "width": 1120,
+    "height": 1280,
+    "milestone": "m3"
+  },
+  {
+    "image": "/m/images/32893dece0647bb6.png",
+    "title": "Pairs: the grid follows the window",
+    "caption": "The same game in a wider, shorter window: Grid keeps four columns and shrinks the cards to fit the height; nothing scrolls. App.minSize from Grid.minBox keeps every card at least 64 points wide.",
+    "date": "2026-10-25",
+    "published": "2026-10-25T07:08:48Z",
+    "commit": "e3d4416",
+    "width": 1840,
+    "height": 1280,
+    "milestone": "m3"
+  },
+  {
+    "image": "/m/images/f4be29e0a16b0cc3.png",
+    "title": "Pairs: a game in progress",
+    "caption": "Pairs, the M3 memory game, built only from registry packages (cairn 0.2.2, cairn_json). Three pairs of Shapes are matched (green edges); the arrow and the heart don't match and turn back after a second. Rendered offscreen from the app's own frame.",
+    "date": "2026-10-25",
+    "published": "2026-10-25T07:08:46Z",
+    "commit": "e3d4416",
+    "width": 1120,
+    "height": 1280,
+    "milestone": "m3"
+  },
+  {
     "title": "Cairn 0.2.2, with a window minimum and an image budget",
     "text": [
       "Cairn 0.2.2 is out on the public registry as iamnbutler/cairn. An app declares its window's smallest size with App.minSize, and Grid.minBox gives the smallest box in which every card is at least its minimum width, proved for every size; the host keeps the window at least that big (#169, frame format 7). Sub.imageCache keeps the host's images within a byte budget, and the host tells the app with an evicted notice for every image it drops, so ready always means the pixels are there (#170, frame format 8).",

@@ -33,6 +33,11 @@ videos. Record a video whenever something new works on screen.
 - `tools/media/put.sh <take.mov> <title> <caption> [--feature] [--milestone m1|m2]` encodes to H.264, uploads the video
   and a poster under content-hashed keys, and adds an entry to `media.json` (with the date, the time it was published, which the feed
   uses, and the commit). `--feature` makes it the video at the top of the page, and `--milestone` (default `m2`, the current goal) picks which milestone's progress log it appears in. The featured video is whichever best represents the project as it is now (not simply the newest); each time a video lands, decide whether it beats the current one.
+- **Stills**: `tools/media/put.sh <shot.png> <title> <caption> [--milestone m3]` uploads a
+  screenshot as it is (`images/<hash>.png`) and lists it with `image` in place of `video`; the
+  milestones page shows it like a video, without a length, and the feed makes it an item. Use
+  one when a video can't be recorded (the screen is locked) or a still says it all, for instance
+  an app's own offscreen render (`Renderer.image`). A still is never the featured video.
 - **Notes** are log entries with no video, for work that has nothing new to show on screen (a
   release, docs, a measurement). Add one by hand at its place in `media.json` (newest first):
   `title`, `text` (a list of plain-text paragraphs), `date`, `published` (when the work landed:
