@@ -1,11 +1,13 @@
 // "Try it" data (docs/try.md): an app's states, explored ahead of time. The site built pages from
 // it for the examples until 0.3.0.
 //
-//   bun tools/try/try.ts script --app Todo --claims claims.json > script.json
-//       what Cairn<App> --try-capture may do to each claim's controls, and the walk's bounds
-//   bun tools/try/try.ts build --app Todo --dir build/try/Todo --out build/site/try/todo
+// Run in an app's package, with the Cairn checkout Lake uses:
+//
+//   bun $CAIRN/tools/try/try.ts script --claims claims.json [--depth N] [--states N] [--texts N]
+//       what <App> --try-capture may do to each claim's controls, and the walk's bounds
+//   bun $CAIRN/tools/try/try.ts build --app <App> --dir build/try/<App> --out <out>
 //       <dir>/claims.json and <dir>/capture/ (try.json and a PNG per state) → <out>/graph.json
-//       and <out>/img/*.webp
+//       and <out>/img/*.webp; statuses from ./claims.lock (--root <package> for another)
 //
 // The actions come from the claims export: a move's triggers, and for a text field the texts its
 // flows' witnesses type. Every frame is the app's own (host/Sources/CairnCapture/Explore.swift);
@@ -17,13 +19,9 @@ import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { reading } from "../../site/claims.js";
 
-/** How far each app's walk goes: actions from the start, states in all, texts per field. Chosen
- *  so each graph is rich and the whole site stays small (docs/try.md has the sizes). */
-export const BOUNDS: Record<string, { maxDepth: number; maxStates: number; texts: number }> = {
-	Counter: { maxDepth: 20, maxStates: 40, texts: 0 },
-	Basics: { maxDepth: 8, maxStates: 200, texts: 2 },
-	Todo: { maxDepth: 8, maxStates: 400, texts: 2 },
-};
+/** How far a walk goes: actions from the start, states in all, texts per field. The default is
+ *  what the site used for Basics, a rich graph in about 3 MB (docs/try.md has the sizes). */
+export const BOUNDS = { maxDepth: 8, maxStates: 200, texts: 2 };
 
 type Op = { kind: string; text?: string };
 type Step = { trigger: string; claim: number; ref: string; key: number; op?: Op };
@@ -36,7 +34,10 @@ type Action = { label: string; steps: { trigger: string; op?: Op }[] };
 
 const { values: opts, positionals } = parseArgs({
 	allowPositionals: true,
-	options: { app: { type: "string" }, claims: { type: "string" }, dir: { type: "string" }, out: { type: "string" }, root: { type: "string", default: resolve(import.meta.dir, "../..") } },
+	options: {
+		app: { type: "string" }, claims: { type: "string" }, dir: { type: "string" }, out: { type: "string" }, root: { type: "string", default: "." },
+		depth: { type: "string" }, states: { type: "string" }, texts: { type: "string" },
+	},
 });
 const fail = (m: string): never => {
 	console.error(`try: ${m}`);
@@ -73,12 +74,12 @@ export function actions(claims: Claim[], texts: number): Record<string, Action[]
 }
 
 if (positionals[0] === "script") {
-	const app = opts.app || fail("--app <App>");
-	const b = BOUNDS[app] || fail(`no bounds for ${app} in tools/try/try.ts`);
+	const count = (v: string | undefined, d: number) => (v === undefined ? d : /^\d+$/.test(v) ? Number(v) : fail(`not a count: ${v}`));
+	const b = { maxDepth: count(opts.depth, BOUNDS.maxDepth), maxStates: count(opts.states, BOUNDS.maxStates), texts: count(opts.texts, BOUNDS.texts) };
 	const { claims } = json<{ claims: Claim[] }>(opts.claims || fail("--claims <claims.json>"));
 	console.log(JSON.stringify({ scale: 2, maxDepth: b.maxDepth, maxStates: b.maxStates, actions: actions(claims, b.texts) }, null, 2));
 } else if (positionals[0] === "build") build();
-else fail("usage: try.ts script --app <App> --claims <claims.json> | build --app <App> --dir <dir> --out <dir>");
+else fail("usage: try.ts script --claims <claims.json> [--depth N] [--states N] [--texts N] | build --app <App> --dir <dir> --out <dir>");
 
 function build() {
 	const app = opts.app || fail("--app <App>");
