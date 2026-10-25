@@ -1,5 +1,16 @@
 [
   {
+    "title": "Cairn 0.2.1, with claim pages",
+    "text": [
+      "Cairn 0.2.1 is out on the public registry as iamnbutler/cairn. Requests in flight are capped at 6, with a queue and cancelRequest, frame format 6 (#151). Cairn.UI.Grid lays cards out in as many columns as the window fits, proved for every size (#160). cairn fuzz, claims, bench, size and conformance run on any app, and test/fixture is Cairn's own fixture app (#149).",
+      "cairn publish now sends the claims export as well as claims.lock. The registry checked its 117 claims against the ledger and serves it, so Cairn's claim pages group its moves and flows by place instead of showing only ledger rows (#156). No claim was retired, moved or changed, so it is a patch release; six are new, ^506–^510 and ^1009."
+    ],
+    "date": "2026-10-25",
+    "published": "2026-10-25T04:41:35Z",
+    "commit": "d08381d",
+    "milestone": "m3"
+  },
+  {
     "video": "/m/videos/b4346f892137dc00.mp4",
     "poster": "/m/videos/b4346f892137dc00.jpg",
     "title": "Try it: TodoMVC in the browser",

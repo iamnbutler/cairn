@@ -51,7 +51,7 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
 
 ## v0.2.1
 
-25 October 2026.
+25 October 2026, at commit `d08381d`.
 
 - **Requests in flight.** At most `App.maxInFlight` (6) `http`, `upload` and `loadImage`
   requests are with the host at once; the rest queue in order. The new `cancelRequest` effect
