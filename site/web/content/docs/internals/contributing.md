@@ -5,10 +5,8 @@ eyebrow: Internals
 lede: The rules every change to Cairn follows, and the one command that checks them.
 ---
 
-<bongo:note label="Today">
-Cairn's repository isn't public yet, so contributions come from the people and agents already
-working in it. These are the rules they follow; they will be the rules for everyone when it opens.
-</bongo:note>
+Cairn's repository is [public on GitHub](https://github.com/iamnbutler/cairn). These are the rules
+every change follows, from people and agents alike.
 
 ## The rules
 

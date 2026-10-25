@@ -24,7 +24,7 @@ out. The [host protocol](/docs/internals/host-protocol/) describes them.
 - A Mac on macOS 27 with Xcode, for Swift 6 and the Metal toolchain.
 - Lean 4 through elan. The repository pins the version in `lean/lean-toolchain`.
 - bun, for the tools that build maps and these docs.
-- The Cairn repository. It isn't public yet.
+- The Cairn repository: `git clone https://github.com/iamnbutler/cairn`.
 
 `make build` builds the Lean libraries and the Swift host. `make demo DEMO=CairnCounter` opens
 Counter in a window. The first build in a fresh checkout takes a while; later ones are
