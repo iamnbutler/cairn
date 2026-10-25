@@ -14,6 +14,7 @@ import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { evaluate, type Audit, type Capture, type Claim, type Conformance, type Fuzz, type Lock, type Trusted } from "../map/evidence";
 import { render, type DocJson } from "./render";
+import { markdown } from "./markdown";
 import { stylesheet } from "../map/stylesheet";
 import { svg as icon } from "../../site/icons";
 
@@ -101,16 +102,17 @@ const links = (opts.link as string[]).map((l) => {
 	if (at < 1) fail(`--link ${l}: expected Prefix=url`);
 	return [l.slice(0, at), l.slice(at + 1)] as [string, string];
 });
-const pages = render({
+const ctx = {
 	name,
 	command: opts.command || `make doc ${app ? `APP=${app}` : `PKG=${name}`}`,
 	doc,
 	rows,
 	showPrivate: opts.private!,
 	links,
-	size: (f) => sizes.get(f.replace(/\.webp$/, ".png")),
+	size: (f: string) => sizes.get(f.replace(/\.webp$/, ".png")),
 	inputs,
-});
+};
+const pages = { ...render(ctx), "llms.txt": markdown(ctx) };
 for (const [file, content] of Object.entries(pages)) writeFileSync(join(DIST, file), content);
 // The tool's own assets come from its Cairn checkout, not --root, which is the package documented.
 writeFileSync(join(DIST, "style.css"), stylesheet());

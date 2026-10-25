@@ -4,6 +4,7 @@
 {{#var lede = String(p.lede ?? '')}}
 {{#var desc = lede.split('`').join('')}}
 {{#var isTodo = p.status === 'todo'}}
+{{#var md = index ? '/docs/index.md' : $page.path.replace(/\/$/, '.md')}}
 {{#var _ = $utils.checkLinks($page.path, $page.content + $utils.inline(lede), $pages)}}
 <!doctype html>
 <html lang="{{ $site.lang }}">
@@ -23,6 +24,7 @@
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="{{ $page.title }}, over a pixel cairn on a meadow by a lake at night">
 <meta name="twitter:card" content="summary_large_image">
+{{#if !isTodo}}<link rel="alternate" type="text/markdown" href="{{ md }}">{{/if}}
 {{{ $utils.head('/docs/docs.css') }}}
 </head>
 <body>
@@ -45,7 +47,7 @@
 {{{ $utils.pager($page.path, $pages, $data.nav) }}}
 </main>
 </div>
-<footer>Cairn is research, and these docs grow with it. The code samples are included from the source that <code>make check</code> builds.</footer>
+<footer>Cairn is research, and these docs grow with it. The code samples are included from the source that <code>make check</code> builds.{{#if !isTodo}} This page is also <a href="{{ md }}">Markdown</a>, and <a href="/llms.txt">llms.txt</a> lists every page for language models.{{/if}}</footer>
 <script type="module">
   import { mountAnchors } from "/scene.js";
   mountAnchors(document.querySelector("main"));

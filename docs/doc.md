@@ -62,6 +62,7 @@ on the site:
 | `<Module.Name>.html` | the module's doc comment and imports; then its claims, then its declarations grouped by kind (structures, inductive types, classes, definitions, theorems, instances, axioms), with a sidebar of them all. A toggle shows them in source order instead, with the module's section comments (`/-! ## … -/`) between them |
 | `claims.html` | every claim by id, with how it reads and each kind of evidence, linking to its entry: the address book for `^N` |
 | `search-index.js`, `search.js` | client-side search over names, doc comments and claims |
+| `llms.txt` | the same package as one Markdown file for a language model (tools/doc/markdown.ts): every claim with its evidence, formal statement and proofs, then every module's public declarations with their signatures and doc comments |
 
 **A declaration** shows its kind, its full name, its source as text (`lean/Cairn/Layout/Core.lean:329`;
 not linked yet, though the repository is now public), its signature with every constant in the package
