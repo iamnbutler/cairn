@@ -336,6 +336,14 @@ from 28 operations to 5 (the printed flow compiles in the app; its theorem fails
 and holds on the real app); a 10 px row height is caught as pressable-check, blamed on ^103#1 and
 shrunk from 13 operations to 2.
 
+With the host (2026-10-25, seed 7000, 3,000 × 300 per app, [bench/fuzz.md](../bench/fuzz.md)):
+no failures in Counter, Basics, Todo, Clock, Tray, Gallery or test/fixture, over 6.3 million
+steps. The host answered 378,020 requests (60,792 failed, 89,126 after a cancel), sent 18,696
+stray replies, 115,919 wakes (171,068 timers due), 138,816 subscription events (8,524 after a
+stop) and 60,563 evictions. A mutant shows the image check would catch a cache that drops what
+the frame draws: Gallery receiving `evicted` without cancelling the pending load is caught as
+image on ^503 at step 143 and shrunk to 74 operations.
+
 `make check` runs `make fuzz-quick`: test/fixture, with `cairn fuzz`, 200 sequences of 50 steps,
 about 1.5 s plus linking the exe; and `examples-fuzz-quick`, the same on Counter, Basics, Todo,
 Clock, Tray and Gallery (`FUZZ_APPS`), host moves included.

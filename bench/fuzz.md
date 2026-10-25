@@ -28,3 +28,40 @@ Reading:
 - About one step in eight runs below the view's minimum window (resizes go below it one time in
   twenty, and a growing list raises the minimum), where pressability isn't checked.
 - `make fuzz-quick` (both apps, 200 × 50) takes about 1 s plus 1.4 s to link the exe.
+
+## With the host (#181)
+
+`lake exe fuzz <App> --seed 7000 --iterations 3000 --steps 300`, release build, Apple M4 Max,
+macOS 27, 2026-10-25, other agents' builds running. Each sequence boots at a random start time;
+the host takes a share of the steps (docs/fuzz.md, "The host"): it answers requests late, out
+of order, failed or after a cancel, fires timers, advances the clock, sends subscription events
+(some after a stop) and evicts images.
+
+| App | Steps | Time | Steps/s | Slowest step | Failures |
+|---|---:|---:|---:|---:|---:|
+| Counter | 900,000 | 23.0 s | 39,137 | 0.07 ms | 0 |
+| Basics | 900,000 | 140.9 s | 6,388 | 7.38 ms | 0 |
+| Todo | 900,000 | 54.3 s | 16,586 | 0.65 ms | 0 |
+| Clock | 900,000 | 59.8 s | 15,049 | 1.17 ms | 0 |
+| Tray | 900,000 | 20.2 s | 44,570 | 0.87 ms | 0 |
+| Gallery | 900,000 | 164.0 s | 5,489 | 0.94 ms | 0 |
+| Fixture | 900,000 | 126.4 s | 7,119 | 0.21 ms | 0 |
+
+What the host did:
+
+| App | Requests | Cancelled | Answered | Failed | Answers after cancel | Stray | Wakes | Timers due | Sub events (after stop) | Evictions | Max outstanding |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Clock | 232,712 | 0 | 214,423 | 35,817 | 0 | 7,397 | 53,831 | 101,466 | 73,796 (0) | 0 | 26 |
+| Tray | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 65,020 (8,524) | 0 | 0 |
+| Gallery | 270,385 | 103,464 | 163,597 | 24,975 | 89,126 | 11,299 | 0 | 0 | 0 | 60,563 | 6 |
+| Fixture | 0 | 0 | 0 | 0 | 0 | 0 | 62,088 | 69,602 | 0 | 0 | 0 |
+
+Counter, Basics and Todo make no requests and start no timers; the host only moves their clock
+(about 30,000 clock steps each). Gallery also had 20,640 loads finish before their reply.
+
+Reading:
+
+- Basics and Todo are slower than in the table above: the lists grow over 300 steps rather than
+  50–200, and every step lays them out and probes them.
+- Gallery never goes over 6 outstanding loads: `maxInFlight` caps it, and the host never sees
+  more.
