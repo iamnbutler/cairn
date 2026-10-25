@@ -257,9 +257,9 @@ moved to iamnbutler/yap-cairn). A moved id stays issued here: it may not come ba
 
 Cairn's own ledger now holds only framework claims: ^7 and ^214 (host assumptions every app
 relies on, in `Cairn.Fuzz.Trusted.Claims`) and the trusted base, ^9xx and ^10xx. The example
-apps' ids (^1–^5, ^101–^109, ^2xx but 213–215, ^401–^409, ^450–^462, ^501–^513) are
+apps' ids (^1–^5, ^101–^109, ^2xx but 213–215 and 225, ^401–^409, ^450–^462, ^501–^513) are
 `moved:cairn_examples`: the apps are in iamnbutler/cairn_examples, where `cairn^201` is
-`cairn_examples^201`. ^6, ^213 and ^215 stay retired.
+`cairn_examples^201`. ^6, ^213, ^215 and ^225 stay retired.
 
 `lake exe ledger update [--accept]` appends new ids, marks ids retired in the code as retired,
 and with `--accept` records changed hashes and titles. It never removes a line and refuses to
