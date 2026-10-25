@@ -4,6 +4,7 @@ import Examples.Counter.Tests
 import Examples.Basics
 import Examples.Basics.Proofs
 import Examples.Basics.Tests
+import Examples.Basics.Mutant
 import Examples.Todo
 import Examples.Todo.Proofs
 import Examples.Todo.Tests
