@@ -214,7 +214,7 @@ lean_lib Counter <span class="kw">where</span>
 <span class="cm"># links exactly one: v1 apps all export `cairn_app_init/step/frame` (docs/runtime.md), so two</span>
 <span class="cm"># in one binary would clash. The check below keeps the shared library free of app exports and</span>
 <span class="cm"># each app library to one set.</span>
-APPS = Counter:counter Basics:basics Todo:todo Clock:clock Tray:tray</code></pre><figcaption><code>Makefile</code>, lines 11–16</figcaption></figure>
+APPS = Counter:counter Basics:basics Todo:todo Clock:clock Tray:tray Gallery:gallery</code></pre><figcaption><code>Makefile</code>, lines 11–16</figcaption></figure>
 <ol start="5">
 <li><strong>A Swift executable</strong> in <code>host/Package.swift</code>, linking that library, and its <code>main.swift</code> as
 above:</li>

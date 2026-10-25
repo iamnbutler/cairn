@@ -67,7 +67,7 @@ second function, <code>receive</code>, as a <strong>message</strong>.</p>
   | reply (id : Nat) (r : Reply)
   <span class="cm">/-- An event from an active subscription. -/</span>
   | sub (s : Sub) (e : SubEvent)
-<span class="kw">deriving</span> Repr, BEq, Inhabited</code></pre><figcaption><code>lean/Cairn/Effects.lean</code>, lines 206–216</figcaption></figure>
+<span class="kw">deriving</span> Repr, BEq, Inhabited</code></pre><figcaption><code>lean/Cairn/Effects.lean</code>, lines 215–225</figcaption></figure>
 <p>Both return the new state and a list of effects:</p>
 <figure class="code"><pre class="px"><code class="lean"><span class="cm">/-- App → host (and runtime). -/</span>
 <span class="kw">inductive</span> Effect <span class="kw">where</span>
@@ -216,7 +216,13 @@ encoding, a `Reply.answers` case and one host handler (docs/effects.md). -/</spa
   <span class="cm">/-- Create the directory and its missing parents, each private (mode 700); `done` if it is
   already a directory. -/</span>
   | makeDir (path : String)
-<span class="kw">deriving</span> Repr, BEq, Inhabited</code></pre><figcaption><code>lean/Cairn/Effects.lean</code>, lines 56–98</figcaption></figure>
+  <span class="cm">/-- Load the image at `source` (a file path, `~/` for the home folder, or an `http`/`https`
+  URL) and answer its size in pixels (`Reply.image`); the host keeps the decoded pixels under
+  `source` and paints them for `Style.image`s that name it. Lean never sees the pixels. An image
+  the host already holds is answered from what it holds, unless `reload`, which reads `source`
+  again. -/</span>
+  | loadImage (source : String) (reload : Bool)
+<span class="kw">deriving</span> Repr, BEq, Inhabited</code></pre><figcaption><code>lean/Cairn/Effects.lean</code>, lines 56–104</figcaption></figure>
 <h2 id="subscriptions">Subscriptions</h2>
 <p>Some inputs keep coming: a tick every second, a file that changes, the microphone, a global key.
 An app doesn't start and stop them. It says which ones it wants in each state, and after every
@@ -236,7 +242,7 @@ from a stopped subscription never reaches the app, however late it arrives.</p>
   that tells a modifier key's press from its release): `keyDown`, `keyUp`, and `otherKey` for
   any other key pressed while it is down. Needs Accessibility. -/</span>
   | globalKey (code : Nat) (modifier : Option Nat)
-<span class="kw">deriving</span> Repr, DecidableEq, Inhabited</code></pre><figcaption><code>lean/Cairn/Effects.lean</code>, lines 151–165</figcaption></figure>
+<span class="kw">deriving</span> Repr, DecidableEq, Inhabited</code></pre><figcaption><code>lean/Cairn/Effects.lean</code>, lines 160–174</figcaption></figure>
 <h2 id="putting-it-together">Putting it together</h2>
 <p>The machine gains its <code>receive</code>, and the app its subscriptions and the effects to run at launch,
 once the clock is known:</p>

@@ -103,7 +103,13 @@ encoding, a `Reply.answers` case and one host handler (docs/effects.md). -/</spa
   <span class="cm">/-- Create the directory and its missing parents, each private (mode 700); `done` if it is
   already a directory. -/</span>
   | makeDir (path : String)
-<span class="kw">deriving</span> Repr, BEq, Inhabited</code></pre><figcaption><code>lean/Cairn/Effects.lean</code>, lines 56–98</figcaption></figure>
+  <span class="cm">/-- Load the image at `source` (a file path, `~/` for the home folder, or an `http`/`https`
+  URL) and answer its size in pixels (`Reply.image`); the host keeps the decoded pixels under
+  `source` and paints them for `Style.image`s that name it. Lean never sees the pixels. An image
+  the host already holds is answered from what it holds, unless `reload`, which reads `source`
+  again. -/</span>
+  | loadImage (source : String) (reload : Bool)
+<span class="kw">deriving</span> Repr, BEq, Inhabited</code></pre><figcaption><code>lean/Cairn/Effects.lean</code>, lines 56–104</figcaption></figure>
 <figure class="code"><pre class="px"><code class="lean"><span class="kw">inductive</span> Reply <span class="kw">where</span>
   <span class="cm">/-- `writeFile`, `appendFile`, `deleteFile`, `makeDir` and `playSound` succeeded. -/</span>
   | done
@@ -119,6 +125,8 @@ encoding, a `Reply.answers` case and one host handler (docs/effects.md). -/</spa
   | app (pid : Nat) (name : String)
   <span class="cm">/-- `permission`'s or `appRunning`'s answer. -/</span>
   | flag (granted : Bool)
+  <span class="cm">/-- `loadImage`'s answer: the image's size in pixels (after its orientation is applied). -/</span>
+  | image (width height : Nat)
 <span class="kw">deriving</span> Repr, BEq, Inhabited
 
 <span class="cm">/-- Whether a reply has the shape that answers a request of kind `k`. -/</span>
@@ -132,7 +140,8 @@ encoding, a `Reply.answers` case and one host handler (docs/effects.md). -/</spa
   | .listDir, .names _ =&gt; true
   | .frontmostApp, .app .. =&gt; true
   | .permission, .flag _ | .appRunning, .flag _ =&gt; true
-  | _, _ =&gt; false</code></pre><figcaption><code>lean/Cairn/Effects.lean</code>, lines 119–147</figcaption></figure>
+  | .loadImage, .image .. =&gt; true
+  | _, _ =&gt; false</code></pre><figcaption><code>lean/Cairn/Effects.lean</code>, lines 125–156</figcaption></figure>
 <p><code>Reply.answers</code> is what the runtime uses to keep its promise to the app. It keeps a table of
 pending ids and their kinds, and it delivers a reply only when the id is pending and the reply has
 a shape that answers that kind; <code>failed</code> answers anything. A duplicate, late or misshapen reply is
