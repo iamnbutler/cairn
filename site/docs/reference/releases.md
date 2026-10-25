@@ -20,6 +20,30 @@ are published.
   (`v4.35.0` for every release so far), because Lake shares compiled modules only between
   identical toolchains.
 
+## v0.1.3
+
+24 October 2026.
+
+- **Three modules moved, with shims.** `Cairn.Frame.Boundary` is now `Cairn.Abi`,
+  `Cairn.Runtime.Hit` is `Cairn.UI.Hit` and `Cairn.Text.Metrics` is `Cairn.Font`. The old names
+  still work: each is a one-line module that imports the new one, until 0.2.0. `make lint` now
+  fails on any cycle between directories in `lean/`, and there are none.
+- **The `Cairn` library is only what apps link.** It holds the 31 modules `bin/cairn-link`
+  archives into an app. Proofs, claims, fuzzing and tools are their own Lake libraries:
+  `CairnProofs`, `CairnClaims`, `CairnFuzz` (was `Fuzz`), `CairnTools`, and `CairnTrusted` (was
+  `TrustedClaims`). `libcairn_Cairn.a` goes from 3.67 to 2.78 MB and `libcairn_lean.a` from
+  20.84 to 19.94 MB. The host now initializes Lean through `initialize_cairn_Cairn_Abi`.
+- **One public registry.** The `cairn` tool uses `https://cairn.registry.nexthub.sh` by default
+  (`CAIRN_REGISTRY` overrides it). `add`, `build` and `doc` need no login, and `cairn login` is
+  needed only to publish. `cairn publish` publishes under `--owner`, or the token's own login.
+- **Owners by name.** `cairn add <name>` finds a package's owner with
+  `GET /api/v1/names/<name>`, not a search. `cairn publish` sends `swift`, whether the tag has a
+  `Package.swift`, and a package page shows the `.package(url:)` line only when it does.
+
+No claim was retired or changed. Moving from v0.1.2 is a change of tag in the lakefile and
+`Package.swift`, unless an app names the `Fuzz` or `TrustedClaims` libraries, which are now
+`CairnFuzz` and `CairnTrusted`. Yap moved with only its tag changed.
+
 ## v0.1.2
 
 24 October 2026, at commit `597dea8`.

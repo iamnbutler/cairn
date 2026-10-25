@@ -2,7 +2,7 @@
 # version here. Cairn ships no app libs; consumers link it with bin/cairn-link.
 [package]
 name = "cairn"
-version = "0.1.2"
+version = "0.1.3"
 kind = "lib"
 description = "Native macOS apps whose behaviour is proved in Lean."
 license = "MIT"
