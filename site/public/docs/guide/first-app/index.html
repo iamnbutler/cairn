@@ -193,7 +193,7 @@ so that executables linking all of `Examples` (the fuzzer) don't get two `cairn_
 lean_lib Counter <span class="kw">where</span>
   roots := #[`Examples.Counter.Abi, `Examples.Counter]
   defaultFacets := #[LeanLib.staticFacet]
-  moreLinkObjs := #[claims_meta.o]</code></pre><figcaption><code>lean/lakefile.lean</code>, lines 68–74</figcaption></figure>
+  moreLinkObjs := #[claims_meta.o]</code></pre><figcaption><code>lean/lakefile.lean</code>, lines 115–121</figcaption></figure>
 <ol start="4">
 <li><strong>The Makefile's app list</strong>, which copies each app's library where the host links it:</li>
 </ol>
