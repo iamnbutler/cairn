@@ -525,7 +525,8 @@ answered first.
 Example: Gallery (`lean/Examples/Gallery.lean`, host `host/Sources/CairnGallery`, run with
 `cd host && swift run CairnGallery`): six tiles (a PNG, a JPEG stored turned with an EXIF
 orientation, a GIF, a poster over https, a text file, a missing file) in a 4:3 grid that takes as
-many columns as the window's width fits (`Cairn.UI.Grid`, [layout.md](layout.md#grids); ^510),
+many columns as the window's width fits (`Cairn.UI.Grid`, [layout.md](layout.md#grids); ^510)
+and never shrinks a tile below 180 points (the window's minimum size, `Grid.minBox`; ^511),
 Reload (^501), Fit (^502) and a press on a tile to reload that one (^509). Its proofs
 (`Examples/Gallery/Proofs.lean`) show every tile's image is its cell's size whatever its state,
 the tiles land on the grid's cells at every window size, a click in a cell reaches that tile,

@@ -147,7 +147,7 @@ def status (s : StatusFrame) : String := Id.run do
 def surface (s : SurfaceFrame) : String :=
   s!"surface kind={SurfaceKind.code s.kind} place={s.place} shown={bit s.shown} " ++
     s!"anchor={Anchor.code s.anchor} offset={s.anchor.offset} screen={ScreenChoice.code s.screen} " ++
-    s!"title={str s.title}\n" ++ canvas s.canvas ++ status s.status
+    s!"min={s.minSize.w}x{s.minSize.h} title={str s.title}\n" ++ canvas s.canvas ++ status s.status
 
 /-- One line per item, each ending in a newline. -/
 def frame (f : Frame) : String := Id.run do

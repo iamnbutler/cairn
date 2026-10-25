@@ -1,4 +1,4 @@
-# Frame and event format: frames v6, events v2
+# Frame and event format: frames v7, events v2
 
 Two byte buffers cross the boundary between Lean and the Swift host, and nothing else does:
 
@@ -75,7 +75,7 @@ Swift's model uses `Int32` and `UInt32` for these fields, so every Swift value f
 ```
 offset  size  field
 0       4     magic "CAFR" (43 41 46 52)
-4       2     u16 version = 6
+4       2     u16 version = 7
 6       2     u16 flags = 0
 8       4+4   surfaces: u32 count, u32 byteLength, then the surface records
 .       4+4   effects: u32 count, u32 byteLength, then the effect records
@@ -89,7 +89,8 @@ after the effects; version 2 added `subs` and `wake` and the effect records 3–
 replaced the single window (size, draws, ax, text input, cursor after the header) with the list
 of surface records; version 4 added the font's width, tracking and tabular digits to the text
 record and the `paint` and `shape` draws; version 5 added the `image` draw and the `loadImage`
-request (kind 16); version 6 added the `cancelRequest` effect (7).
+request (kind 16); version 6 added the `cancelRequest` effect (7); version 7 added the window's
+minimum size to the surface record.
 
 ### Surface records
 
@@ -98,10 +99,11 @@ for every kind: fields a kind doesn't use are at their defaults (empty title, em
 empty status), so a decoder never branches on the kind to find the next field.
 
 ```
-surface   [kind, shown, anchor, screen]                                12 + fields
+surface   [kind, shown, anchor, screen]                                20 + fields
           4  u32 place: the surface's place claim, its identity across frames
           8  u32 anchor offset (points)
-          12 string: window title
+          12 i32 width, i32 height: the window's minimum content size (points)
+          20 string: window title
           .  canvas
           .  status
 ```
@@ -113,6 +115,9 @@ surface   [kind, shown, anchor, screen]                                12 + fiel
   bottom of its screen's visible frame. **screen** `0` pointer (the screen the pointer is on when
   the panel is shown), `1` main. Both are `0` for other kinds. The host resolves them
   (docs/trusted.md).
+- **minimum size**: the smallest content size the app asks for its window in this state
+  (`App.minSize`); `0 × 0`, no minimum, by default and for other kinds. The host keeps the window
+  at least this big, a negative side taken as 0 (trusted, ^1010).
 
 A **canvas** is what one Metal surface shows:
 

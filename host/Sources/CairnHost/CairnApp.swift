@@ -85,6 +85,8 @@ public enum CairnApp {
         var hasWindow = true
         var statsTimer: Timer?
         var debug: DebugServer?
+        /// Keeps the window at least the app's minimum size (^1010).
+        var sizer: WindowSizer?
 
         init(config: Config) { self.config = config }
 
@@ -99,7 +101,12 @@ public enum CairnApp {
             surfaces = SurfaceHost(engine: engine, mode: debug == nil ? .live : .detached) {
                 MetalRenderer(clearColor: Color(r: 0, g: 0, b: 0, a: 0))
             }
-            view.onApply = { [surfaces] frame in surfaces?.apply(frame) }
+            view.onApply = { [surfaces, weak self] frame in
+                surfaces?.apply(frame)
+                if let self, let window = self.window, let i = frame.windowIndex {
+                    self.sizer?.apply(frame.surfaces[i].minSize, to: window)
+                }
+            }
             engine.start()
             // Whether there is a window is the app's first frame's to say.
             let first = engine.wait(through: 0)
@@ -116,6 +123,13 @@ public enum CairnApp {
                 window.makeFirstResponder(view)
                 window.center()
                 window.setFrameAutosaveName("cairn.\(config.title)")
+                // After the saved frame is restored: it may be smaller than the app's minimum.
+                let sizer = WindowSizer()
+                self.sizer = sizer
+                window.delegate = sizer
+                if let first, let i = first.frame.windowIndex {
+                    sizer.apply(first.frame.surfaces[i].minSize, to: window)
+                }
                 self.window = window
             } else {
                 NSApp.setActivationPolicy(.accessory)  // no Dock icon, no main menu

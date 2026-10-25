@@ -107,7 +107,7 @@ final class FrameSuite: Suite {
     }
 
     /// The empty frame: size 0×0, no draws, no ax, no text input, arrow, no effects, no subs, no wake.
-    static let emptyFrame: [UInt8] = [0x43, 0x41, 0x46, 0x52, 6, 0, 0, 0] + [UInt8](repeating: 0, count: 36)
+    static let emptyFrame: [UInt8] = [0x43, 0x41, 0x46, 0x52, 7, 0, 0, 0] + [UInt8](repeating: 0, count: 36)
 
     enum Outcome: Equatable { case agree, leanOnly, swiftOnly, differ }
 

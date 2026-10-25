@@ -13,6 +13,11 @@ import QuartzCore
 //   CairnGallery --selftest    drive the host headlessly through its real threads and check it
 //   CairnGallery --demo-resize open the window, then widen and narrow it over 12 s so the tile
 //                              grid reflows (for the demo video; docs/media.md)
+//   CairnGallery --demo-min-size  open the window, then drag it smaller than its minimum size
+//                              (1020 × 536, ^511) and back over 12 s: it stops there
+//
+// The demos resize the window as a person dragging its corner does: each size is proposed to
+// the window's delegate (the host's `WindowSizer`, ^1010) before it is set.
 //
 // Load 24 (^506) asks for 24 thumbnails from `https://slow.cairn.test/many/<i>.png`, which
 // `SlowServer` answers from the bundled pictures after a second or two, so the
@@ -196,6 +201,12 @@ enum SelfTest {
         _ = engine.wait(through: engine.send([.resize(size)]))
         if !images().allSatisfy({ $0.0.w == 196 && $0.0.h == 147 }) { fail("boxes after resizing back: \(images())") }
         if count("Offline") != 1 { fail("the URL tile: \(texts())") }
+        // The window asks for its smallest size (^511), where each picture's box is 180 × 135.
+        guard let w = engine.latest?.frame.windowIndex, let minSize = engine.latest?.frame.surfaces[w].minSize,
+              minSize == Size(w: 1020, h: 536) else { fail("window minimum size") }
+        _ = engine.wait(through: engine.send([.resize(minSize)]))
+        if !images().allSatisfy({ $0.0.w == 180 && $0.0.h == 135 }) { fail("boxes at the minimum size: \(images())") }
+        _ = engine.wait(through: engine.send([.resize(size)]))
 
         // Load 24: six at a time, the rest queued in Lean's runtime, never more than six at the server.
         click("^506")
@@ -227,29 +238,55 @@ final class NullRenderer: FrameRenderer {
     func draw(_ frame: Frame, to drawable: CAMetalDrawable, viewport: Viewport) {}
 }
 
-/// `--demo-resize`: after two seconds, sweep the window's width 1120 → 1640 → 860 → 1120 at a
-/// height of 700, a frame at a time, as a person dragging its edge would. Lean sees only the
-/// `resize` events.
-if args.contains("--demo-resize") {
-    let widths: [(Double, Double)] = [(1120, 1640), (1640, 1640), (1640, 860), (860, 860), (860, 1120)]
-    let legs = [3.0, 1.0, 4.0, 1.0, 2.0]
+/// Resize the window's content to `size` as a drag does: the window's delegate (the host's
+/// `WindowSizer`) sees the proposed frame first and may hold it at the minimum.
+@MainActor
+func drag(_ window: NSWindow, to size: NSSize) {
+    var frame = window.frameRect(forContentRect: NSRect(origin: .zero, size: size)).size
+    frame = window.delegate?.windowWillResize?(window, to: frame) ?? frame
+    if frame == window.frame.size { return }
+    let top = window.frame.maxY
+    window.setFrame(NSRect(x: window.frame.minX, y: top - frame.height, width: frame.width, height: frame.height),
+                    display: true)
+}
+
+/// Demo sweeps: after two seconds, drag the window through `legs` (content sizes, each leg's
+/// seconds), a frame at a time, eased. Lean sees only the `resize` events.
+func sweep(_ legs: [(NSSize, NSSize, Double)]) {
     let start = Date().addingTimeInterval(2)
     Timer.scheduledTimer(withTimeInterval: 1.0 / 60, repeats: true) { _ in
         MainActor.assumeIsolated {
             guard let window = NSApp.windows.first(where: { $0.isVisible }) else { return }
             var t = Date().timeIntervalSince(start)
-            if t < 0 { window.setContentSize(NSSize(width: 1120, height: 700)); return }
-            for (leg, (a, b)) in zip(legs, widths) {
+            if t < 0 { drag(window, to: legs[0].0); return }
+            for (a, b, leg) in legs {
                 if t <= leg {
                     let u = t / leg, e = u * u * (3 - 2 * u)
-                    window.setContentSize(NSSize(width: (a + (b - a) * e).rounded(), height: 700))
+                    drag(window, to: NSSize(width: (a.width + (b.width - a.width) * e).rounded(),
+                                            height: (a.height + (b.height - a.height) * e).rounded()))
                     return
                 }
                 t -= leg
             }
-            if window.contentLayoutRect.width != 1120 { window.setContentSize(NSSize(width: 1120, height: 700)) }
+            drag(window, to: legs[legs.count - 1].1)
         }
     }
+}
+
+/// `--demo-resize`: the width 1120 → 1640 → 1020 (the minimum) → 1120 at a height of 700.
+if args.contains("--demo-resize") {
+    func s(_ w: Double) -> NSSize { NSSize(width: w, height: 700) }
+    sweep([(s(1120), s(1640), 3), (s(1640), s(1640), 1), (s(1640), s(1020), 4), (s(1020), s(1020), 1),
+           (s(1020), s(1120), 2)])
+}
+
+/// `--demo-min-size`: from 1280 × 760, drag toward 760 × 420, well under the minimum (1020 ×
+/// 536); the window stops at the minimum, with every tile 180 points wide, then goes back.
+if args.contains("--demo-min-size") {
+    let big = NSSize(width: 1280, height: 760), small = NSSize(width: 760, height: 420)
+    let narrow = NSSize(width: 760, height: 760), short = NSSize(width: 1280, height: 420)
+    sweep([(big, big, 1), (big, narrow, 3), (narrow, big, 2), (big, short, 3), (short, big, 2),
+           (big, small, 3), (small, small, 1.5), (small, big, 2.5)])
 }
 
 MainActor.assumeIsolated {

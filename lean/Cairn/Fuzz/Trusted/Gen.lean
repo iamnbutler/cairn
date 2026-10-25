@@ -212,7 +212,7 @@ def status (big : Bool) : Gen StatusFrame := do
 
 def surface (big : Bool) : Gen SurfaceFrame := do
   return { kind := ← Gen.elem [.window, .panel, .statusItem], place := ← u32, shown := ← Gen.bool,
-           title := ← str, anchor := .bottomCenter (← u32),
+           title := ← str, anchor := .bottomCenter (← u32), minSize := ⟨← i32, ← i32⟩,
            screen := ← Gen.elem [.pointer, .main], canvas := ← canvas big, status := ← status big }
 
 def frame : Gen Frame := do
