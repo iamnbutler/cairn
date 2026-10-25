@@ -30,6 +30,16 @@ public struct Project: Sendable {
     /// Cairn itself, or the Cairn package Lake fetched into the app's lean/.lake/packages/.
     public var cairn: URL { manifest.name == "cairn" ? root : lean.appending(path: ".lake/packages/cairn") }
 
+    /// `cairn build`'s link step: `bin/cairn-link` from the Cairn that Lake fetched, with this
+    /// package's `libs` (cairn-link adds every dependency's own), into .cairn/lib/lib<name>.a.
+    /// None for a lib: an app links it. Cairn's own `make lean` writes build/lib/libcairn_lean.a,
+    /// and a second copy here would only drift.
+    public var linkCommand: [String]? {
+        guard manifest.kind == .bin, !manifest.libs.isEmpty else { return nil }
+        let out = root.appending(path: ".cairn/lib/lib\(manifest.name).a")
+        return [cairn.appending(path: "bin/cairn-link").path] + manifest.libs.flatMap { ["--lib", $0] } + ["--out", out.path]
+    }
+
     /// Check that the three names agree: cairn.toml's, the Lake package's, and the claim scope.
     public func agree() throws(CairnError) {
         let (lakefile, url) = try Lakefile.load(lean)
@@ -217,18 +227,12 @@ public struct Commands {
         try shell.run(["lake", "build"], in: project.lean, env: env)
         let package = project.swift.appending(path: "Package.swift")
         guard FileManager.default.fileExists(atPath: package.path) else { return }
-        // No Lean libraries of its own (Cairn itself): nothing to link; Cairn's `make lean`
-        // writes its own build/lib/libcairn_lean.a, and a second copy here would only drift.
-        if project.manifest.libs.isEmpty {
-            try shell.run(["swift", "build"] + (args.contains("--release") ? ["-c", "release"] : []), in: project.swift)
-            return
+        if let command = project.linkCommand {
+            guard FileManager.default.isExecutableFile(atPath: command[0]) else {
+                throw CairnError("\(command[0]) is missing: Cairn 0.1.0 or later ships it (docs/package.md)")
+            }
+            try shell.run(command, in: project.lean, env: env)
         }
-        let link = project.cairn.appending(path: "bin/cairn-link")
-        guard FileManager.default.isExecutableFile(atPath: link.path) else {
-            throw CairnError("\(link.path) is missing: Cairn 0.1.0 or later ships it (docs/package.md)")
-        }
-        let out = project.root.appending(path: ".cairn/lib/lib\(project.manifest.name).a")
-        try shell.run([link.path] + project.manifest.libs.flatMap { ["--lib", $0] } + ["--out", out.path], in: project.lean, env: env)
         try shell.run(["swift", "build"] + (args.contains("--release") ? ["-c", "release"] : []), in: project.swift)
     }
 
@@ -262,7 +266,7 @@ public struct Commands {
             let checkout = project.lean.appending(path: ".lake/packages/\(dep.name)")
             guard let text = try? String(contentsOf: checkout.appending(path: "cairn.toml"), encoding: .utf8),
                   let theirs = try? Manifest.parse(text) else { continue }
-            let libs = dep.name == "cairn" ? ["Cairn"] : theirs.libs
+            let libs = theirs.linkedLibs
             for lib in libs { links += ["--link", "\(lib).=/docs/\(dep.name)/\(theirs.version)/"] }
         }
         let script = project.cairn.appending(path: "tools/doc/cairn-doc.ts")
