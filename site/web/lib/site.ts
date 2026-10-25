@@ -46,11 +46,14 @@ function absolute(html: string, page: string): string {
 
 // --- Sources ------------------------------------------------------------------------------------
 
-// A log entry is a video or a note: a note has "text" (plain-text paragraphs) instead of a video.
+// A log entry is a video, a still (a screenshot: "image" instead of a video) or a note: a note has
+// "text" (plain-text paragraphs) instead of either.
 type Video = { video: string; poster: string; title: string; caption: string; date: string; published?: string; commit: string; width: number; height: number; seconds: number; milestone?: string };
 type Note = { text: string[]; title: string; date: string; published?: string; commit: string; milestone?: string };
-type Entry = Video | Note;
-const isNote = (e: Entry): e is Note => !("video" in e);
+type Still = { image: string; title: string; caption: string; date: string; published?: string; commit: string; width: number; height: number; milestone?: string };
+type Entry = Video | Still | Note;
+const isNote = (e: Entry): e is Note => !("video" in e) && !("image" in e);
+const isStill = (e: Entry): e is Still => "image" in e;
 type Post = { id: string; title: string; html: string; first: string; date: Date; milestone?: string; ids: string[] };
 type Item = { title: string; link: string; guid: string; permalink: boolean; date: Date; html: string };
 
@@ -95,6 +98,15 @@ function sources() {
 			}
 			const html = v.text.map((t) => `<p>${esc(t)}</p>`).join("") + `<p>As of commit ${esc(v.commit)}${post ? "," : ""}${inLog}.</p>`;
 			items.push({ title: v.title, link: permalink(slug(v.title)), guid: permalink(slug(v.title)), permalink: true, date, html: absolute(html, PAGE) });
+			continue;
+		}
+		if (isStill(v)) {
+			const html =
+				`<figure><img src="${esc(v.image)}" width="${v.width}" height="${v.height}" alt="${esc(v.title)}">` +
+				`<figcaption>${esc(v.caption)}</figcaption></figure>` +
+				`<p>A screenshot at commit ${esc(v.commit)}` + (post ? `,${inLog}.` : ".") + "</p>";
+			// The guid is the image's content-hashed key, which never changes.
+			items.push({ title: v.title, link: permalink(slug(v.title)), guid: `${ORIGIN}${v.image}`, permalink: false, date, html: absolute(html, PAGE) });
 			continue;
 		}
 		const html =
