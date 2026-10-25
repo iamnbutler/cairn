@@ -49,6 +49,31 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
 - **Its evidence.** What a claim reads as depends on the build that computed it. See
   [how much to trust a claim](/docs/reference/trust/).
 
+## v0.2.2
+
+25 October 2026.
+
+- **A window's minimum size.** An app declares its window's smallest content size with
+  `App.minSize`, and the host keeps the window at least that big (the trusted claim
+  `cairn^1010`). `Cairn.UI.Grid.minBox n cols` is the smallest box in which a grid has `cols`
+  columns and every card is at least `minWidth` wide, proved for every card and column count:
+  at any size from it up, no card is narrower, and no smaller box does it. Gallery's window is at
+  least 1020 × 536, three columns of 180-point tiles (`cairn^511`). The frame format is version
+  7: the surface record holds the minimum size.
+- **A budget on the host's images.** An app that subscribes to `Sub.imageCache bytes` has the
+  host keep its decoded images within `bytes`, dropping the ones used least recently, never one
+  the latest frame draws, and sending `SubEvent.evicted source` for each after it is gone (the
+  trusted claim `cairn^1011`). `Cairn.UI.Images.evicted` sets the image back to loading and
+  forgets any load of it in flight, and `Images.Cache` proves that an image the table takes for
+  ready is held by the host or has a notice on its way. Gallery pages 24 thumbnails under an
+  8 MiB budget (`cairn^512`, `cairn^513`). The frame format is version 8: `imageCache` is
+  subscription 4, and `evicted` is subscription event 8.
+
+No claim was retired, moved or changed, so it is a patch release. Five claims are new:
+`cairn^511`–`cairn^513` (Gallery), `cairn^1010` and `cairn^1011`. Moving from v0.2.1 is a change
+of tag in the lakefile and `Package.swift`, unless an app builds frames by hand, which are now
+version 8.
+
 ## v0.2.1
 
 25 October 2026, at commit `d08381d`.
