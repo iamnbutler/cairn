@@ -178,6 +178,11 @@ inductive Sub where
   that tells a modifier key's press from its release): `keyDown`, `keyUp`, and `otherKey` for
   any other key pressed while it is down. Needs Accessibility. -/
   | globalKey (code : Nat) (modifier : Option Nat)
+  /-- Keep the host's decoded images (`Request.loadImage`) within about `bytes` bytes of pixels
+  while active: past it the host drops the images used least recently, never one the latest
+  frame draws nor the one it just loaded, and reports each with `evicted` (^1011). Without it
+  the host keeps every image. The smallest budget of those active wins. -/
+  | imageCache (bytes : Nat)
 deriving Repr, DecidableEq, Inhabited
 -- endregion: effects-sub
 
@@ -210,6 +215,11 @@ inductive SubEvent where
   /-- The subscription could not run (a permission missing, no microphone). It may still be
   running; an app stops it by not asking for it. -/
   | failed (fault : Fault) (message : String)
+  /-- `imageCache`: the host dropped `source`'s pixels; sent after they are gone. An app that
+  forgets the image when it hears this (`Images.evicted`, which also stops waiting for its
+  loads) never takes an image for ready while the host has no pixels for it
+  (`Images.Cache.ready_held`). -/
+  | evicted (source : String)
 deriving Repr, DecidableEq, Inhabited
 
 /-- Runtime → host: start or stop a subscription, under the runtime's id for it. -/

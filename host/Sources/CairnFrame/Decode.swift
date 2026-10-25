@@ -24,11 +24,11 @@ extension Frame {
         self = try bytes.withUnsafeBytes { try Frame(decoding: $0) }
     }
 
-    /// Header (magic, version 7, flags 0), surfaces, effects, subscription commands, wake.
+    /// Header (magic, version 8, flags 0), surfaces, effects, subscription commands, wake.
     public init(decoding raw: UnsafeRawBufferPointer) throws {
         var r = ByteReader(raw)
         try r.need(8)
-        guard r.u8(0) == 0x43, r.u8(1) == 0x41, r.u8(2) == 0x46, r.u8(3) == 0x52, r.u16(4) == 7,
+        guard r.u8(0) == 0x43, r.u8(1) == 0x41, r.u8(2) == 0x46, r.u8(3) == 0x52, r.u16(4) == 8,
               r.u16(6) == 0  // flags: reserved, zero (found by cairn-fuzz-trusted)
         else { throw FrameDecodeError.badHeader }
         r.i = 8
@@ -339,6 +339,10 @@ extension Frame {
                 let has = try sr.flag(12)
                 defer { sr.i += 20 }
                 return .start(id: id, .globalKey(code: sr.u32(8), modifier: has ? sr.u32(16) : nil))
+            case 4:
+                try sr.need(16)
+                defer { sr.i += 16 }
+                return .start(id: id, .imageCache(bytes: sr.u64(8)))
             default: throw FrameDecodeError.badCode(kind, at: sr.i + 1)
             }
         case 1:

@@ -108,6 +108,7 @@ enum Dump {
             case let .start(id, .watchFile(p)): out += "start \(id) watchFile \(str(p))\n"
             case let .start(id, .record(c)): out += "start \(id) record \(c)\n"
             case let .start(id, .globalKey(code, m)): out += "start \(id) globalKey \(code) \(opt(m) { "\($0)" })\n"
+            case let .start(id, .imageCache(n)): out += "start \(id) imageCache \(n)\n"
             case let .stop(id): out += "stop \(id)\n"
             }
         }
@@ -167,6 +168,7 @@ enum Dump {
         case let .otherKey(t): return "5 \(t)"
         case let .failed(f, m): return "6 \(f.rawValue) \(str(m))"
         case let .started(t): return "7 \(t)"
+        case let .evicted(s): return "8 \(str(s))"
         }
     }
 
@@ -374,6 +376,7 @@ enum DumpParser {
                 guard let f = Fault(rawValue: try u8()) else { throw Bad(line: line) }
                 return .subEvent(id: id, .failed(f, try t.string()))
             case 7: return .subEvent(id: id, .started(try u64()))
+            case 8: return .subEvent(id: id, .evicted(try t.string()))
             default: throw Bad(line: line)
             }
         default: throw Bad(line: line)

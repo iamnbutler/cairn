@@ -50,10 +50,10 @@ def Reply.faultCode : Reply → UInt8
   | _ => 0
 
 /-- `tick` 0, `changed` 1, `audio` 2, `keyDown` 3, `keyUp` 4, `otherKey` 5, `failed` 6,
-`started` 7. -/
+`started` 7, `evicted` 8. -/
 def SubEvent.code : SubEvent → UInt8
   | .tick => 0 | .changed => 1 | .audio .. => 2 | .keyDown _ => 3 | .keyUp _ => 4
-  | .otherKey _ => 5 | .failed .. => 6 | .started _ => 7
+  | .otherKey _ => 5 | .failed .. => 6 | .started _ => 7 | .evicted _ => 8
 
 def SubEvent.faultCode : SubEvent → UInt8
   | .failed f _ => Fault.code f
@@ -68,6 +68,7 @@ def fitsSubEvent : SubEvent → Bool
   | .audio n pk ws => fu n && fu pk && fu ws.length && ws.all fitsLevel
   | .keyDown t | .keyUp t | .otherKey t | .started t => fu64 t
   | .failed _ m => fs m
+  | .evicted s => fs s
 
 def fitsReply : Reply → Bool
   | .done => true
@@ -121,6 +122,7 @@ def subEventBody : SubEvent → List UInt8
   | .audio n pk ws => u32 n ++ u32 pk ++ u32 ws.length ++ ws.flatMap level
   | .keyDown t | .keyUp t | .otherKey t | .started t => u64 t
   | .failed _ m => str m
+  | .evicted s => str s
 
 def event : Event → List UInt8
   | .pointerMove p => head 0 0 0 ++ point p
@@ -221,6 +223,7 @@ def subEventBody (code fault : UInt8) : Dec SubEvent :=
     let some f := Fault.ofCode fault | fail
     return .failed f (← str)
   | 7 => if fault = 0 then do return .started (← u64) else fail
+  | 8 => if fault = 0 then do return .evicted (← str) else fail
   | _ => fail
 
 /-- Read a record head, then the rest of the record by its tag. -/
@@ -378,6 +381,10 @@ theorem subEventBody_enc {e : SubEvent} (h : fitsSubEvent e = true) (r : List UI
     simp only [fitsSubEvent, fs_iff] at h
     simp only [subEventBody, SubEvent.code, SubEvent.faultCode, Enc.subEventBody,
         Fault.ofCode_code, bind_apply, str_enc h, pure_apply]
+  | evicted s =>
+    simp only [fitsSubEvent, fs_iff] at h
+    simp only [subEventBody, SubEvent.code, SubEvent.faultCode, Enc.subEventBody, ↓reduceIte,
+        bind_apply, str_enc h, pure_apply]
 
 theorem plain_enc {e : Event} (h : fitsEvent e = true) (hs : e.isSurface = false) (r : List UInt8) :
     plain (Enc.event e ++ r) = some (e, r) := by

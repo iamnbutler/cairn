@@ -210,7 +210,7 @@ final class WorldSuite: Suite {
                         s.active[id] = (ms, now)
                     case let .stop(id):
                         if let old = s.active.removeValue(forKey: id) { periods[id, default: []].append((old.ms, old.since, now)) }
-                    case .start(_, .watchFile), .start(_, .record), .start(_, .globalKey): break  // not generated here
+                    case .start(_, .watchFile), .start(_, .record), .start(_, .globalKey), .start(_, .imageCache): break  // not generated here
                     }
                 }
                 s.inRun = []

@@ -180,11 +180,12 @@ def effect : Gen Effect := do
   | _ => return .quit
 
 def subCmd : Gen SubCmd := do
-  match ← below 5 with
+  match ← below 6 with
   | 0 => return .start (← nat) (.every (← nat))
   | 1 => return .start (← nat) (.watchFile (← str))
   | 2 => return .start (← nat) (.record (← nat))
   | 3 => return .start (← nat) (.globalKey (← nat) (← opt nat))
+  | 4 => return .start (← nat) (.imageCache (← u64))
   | _ => return .stop (← nat)
 
 def fault : Gen Fault := pick #[.notFound, .denied, .timeout, .network, .invalid, .other]
@@ -201,10 +202,11 @@ def reply : Gen Reply := do
   | _ => return .failed (← fault) (← str)
 
 def subEvent : Gen SubEvent := do
-  match ← below 8 with
+  match ← below 9 with
   | 0 => return .tick
   | 1 => return .changed
   | 7 => return .started (← u64)
+  | 8 => return .evicted (← str)
   | 2 => return .audio (← nat) (← nat) (← array 6 (do return ⟨← u64, ← nat⟩)).toList
   | 3 => return .keyDown (← u64)
   | 4 => return .keyUp (← u64)
@@ -374,7 +376,8 @@ def maxFrame : Frame where
     .request 14 (.makeDir "~/Library/Application Support/yap/transcripts"),
     .request 15 (.loadImage "" true), .request 16 (.loadImage "images/日本 🙂.png" false)]
   subs := #[.start 4294967295 (.every 0), .stop 0, .start 1 (.watchFile "~/a 🙂.json"),
-    .start 2 (.record 4294967295), .start 3 (.globalKey 63 none), .start 4 (.globalKey 0 (some 4294967295))]
+    .start 2 (.record 4294967295), .start 3 (.globalKey 63 none), .start 4 (.globalKey 0 (some 4294967295)),
+    .start 5 (.imageCache 18446744073709551615), .start 6 (.imageCache 0)]
   wake := some 18446744073709551615
 
 def emptyFrame : Frame := { surfaces := #[] }
@@ -398,6 +401,7 @@ def edgeEvents : Array Event := #[
   .subEvent 2 (.audio 0 0 []), .subEvent 3 (.keyDown 18446744073709551615), .subEvent 4 (.keyUp 0),
   .subEvent 5 (.otherKey 1), .subEvent 6 (.failed .denied "Accessibility"),
   .subEvent 7 (.failed .other ""), .subEvent 8 (.started 18446744073709551615),
+  .subEvent 9 (.evicted "https://example.com/日本 🙂.png"), .subEvent 10 (.evicted ""),
   .surface 4294967295 (.key (.char 'q') { command := true }), .surface 0 .pointerExit,
   .menuOpen 4294967295, .menuClose 0, .menuSelect 450 ⟨4294967295, 4294967295⟩]
 

@@ -178,11 +178,12 @@ def effect : Gen Effect := do
   | _ => return .quit
 
 def subCmd : Gen SubCmd := do
-  match ← Gen.below 5 with
+  match ← Gen.below 6 with
   | 0 => return .start (← u32) (.every (← u32))
   | 1 => return .start (← u32) (.watchFile (← str))
   | 2 => return .start (← u32) (.record (← u32))
   | 3 => return .start (← u32) (.globalKey (← u32) (← opt u32))
+  | 4 => return .start (← u32) (.imageCache (← u64))
   | _ => return .stop (← u32)
 
 def canvas (big : Bool) : Gen Canvas := do

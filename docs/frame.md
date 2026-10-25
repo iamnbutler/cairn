@@ -1,4 +1,4 @@
-# Frame and event format: frames v7, events v2
+# Frame and event format: frames v8, events v2
 
 Two byte buffers cross the boundary between Lean and the Swift host, and nothing else does:
 
@@ -90,7 +90,7 @@ replaced the single window (size, draws, ax, text input, cursor after the header
 of surface records; version 4 added the font's width, tracking and tabular digits to the text
 record and the `paint` and `shape` draws; version 5 added the `image` draw and the `loadImage`
 request (kind 16); version 6 added the `cancelRequest` effect (7); version 7 added the window's
-minimum size to the surface record.
+minimum size to the surface record; version 8 added the `imageCache` subscription (4).
 
 ### Surface records
 
@@ -333,6 +333,7 @@ stop   [1, 0, 0, 0]    4 u32 id                                          8 bytes
 | 1 | watchFile | string path |
 | 2 | record | u32 clip |
 | 3 | globalKey | u32 key code, `[hasModifier, 0, 0, 0]`, u32 modifier flag (0 and ignored without one) |
+| 4 | imageCache | u64 budget in bytes |
 
 Commands run in order after the frame's effects. `wake`, when present, asks the host to send a
 batch (whose `clock` is all it holds, if nothing else is waiting) once the monotonic clock
@@ -410,7 +411,7 @@ error. `button` is `0` primary, `1` secondary.
 - **Subscription events.** Codes `0` tick and `1` changed (no fields); `2` audio (u32 frames,
   u32 peak, u32 count, then each window as u64 sum of squares and u32 peak: 12 bytes);
   `3` keyDown, `4` keyUp, `5` otherKey (u64 monotonic ms); `6` failed (string message; `b` is
-  the fault, coded as for replies); `7` started (u64 monotonic ms: `record`'s microphone is running since then).
+  the fault, coded as for replies); `7` started (u64 monotonic ms: `record`'s microphone is running since then); `8` evicted (string source: the host dropped that image's pixels).
   For codes other than `6`, `b` is written as 0 and must be 0.
 - **Surfaces.** A bare local event (tags 0–17) is the window's, as in version 1. `surface`
   addresses a local event to the surface with that place: its inner record must be a local
@@ -423,8 +424,8 @@ error. `button` is `0` primary, `1` secondary.
   the chosen item's control ref.
 - **Global events.** `clock`, `reply` and `subEvent` belong to the app, not to a surface.
 
-Version 1 had tags 0–20 only. Reply code 7 came with frames v5; the batch format is unchanged, so
-events stay at version 2.
+Version 1 had tags 0–20 only. Reply code 7 came with frames v5 and subscription event 8 with v8;
+the batch format is unchanged, so events stay at version 2.
 
 Lean drops a batch that fails to decode, whole (`Frame.boundary`): the host's encoder is
 checked against Lean's decoder, so a bad batch means a host bug.
@@ -513,7 +514,7 @@ request ID makeDir "PATH" | request ID loadImage RELOAD "SOURCE"
 request ID upload "METHOD" "URL" timeout=MS HEADERS secret=none|"HEADER" "SCHEME" "FILE" "NAME" parts=N PART…
 subs N
 start ID every MS | start ID watchFile "PATH" | start ID record CLIP
-start ID globalKey CODE MODIFIER|none | stop ID
+start ID globalKey CODE MODIFIER|none | start ID imageCache BYTES | stop ID
 wake MS|none
 
 events N
@@ -521,7 +522,7 @@ move X Y | down X Y BUTTON CLICKS MODS | up X Y BUTTON MODS | exit | scroll X Y 
 key CODE SCALAR MODS | insert "…" replace=A B|none | marked "…" START LEN replace=A B|none
 unmark | copy | cut | selectAll | undo | redo | paste "…" | resize W H | scale P | focus B
 clock MONO WALL ZONE | sub ID 0 | sub ID 1 | sub ID 2 FRAMES PEAK N SUMSQ:PEAK…
-sub ID 3 T | sub ID 4 T | sub ID 5 T | sub ID 6 FAULT "…"
+sub ID 3 T | sub ID 4 T | sub ID 5 T | sub ID 6 FAULT "…" | sub ID 8 "SOURCE"
 surface P EVENT | menuOpen P | menuClose P | menuSelect P CLAIM#KEY
 reply ID done | reply ID bytes BYTES | reply ID http STATUS HEADERS body=BYTES | reply ID failed FAULT "…"
 reply ID names N "…"… | reply ID app PID "NAME" | reply ID flag B | reply ID image W H

@@ -110,6 +110,7 @@ def subCmd : SubCmd → String
   | .start id (.watchFile p) => s!"start {id} watchFile {str p}"
   | .start id (.record c) => s!"start {id} record {c}"
   | .start id (.globalKey code m) => s!"start {id} globalKey {code} {opt toString m}"
+  | .start id (.imageCache n) => s!"start {id} imageCache {n}"
   | .stop id => s!"stop {id}"
 
 def reply : Reply → String
@@ -170,6 +171,7 @@ def subEvent : SubEvent → String
   | .otherKey t => s!"5 {t}"
   | .failed f m => s!"6 {Fault.code f} {str m}"
   | .started t => s!"7 {t}"
+  | .evicted s => s!"8 {str s}"
 
 def event : Event → String
   | .surface p e => s!"surface {p} " ++ event e
