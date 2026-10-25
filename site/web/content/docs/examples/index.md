@@ -10,6 +10,11 @@ executable in `host/Sources/`, and the samples on their pages are included from 
 Yap lives in its own repository, `yap-cairn`, and depends on Cairn as a package, so its page
 describes its code instead of including it.
 
+The six example apps (Counter, Basics, TodoMVC, Clock, Tray and Gallery) are now also in their own
+repository, `iamnbutler/cairn_examples`. It's one package that requires Cairn from the registry,
+and its claims are `cairn_examples^N`, with the same numbers. Cairn 0.3.0 removes them from this
+repository ([#137](https://github.com/iamnbutler/cairn/issues/137)).
+
 | Example | What it shows | Run it |
 |---|---|---|
 | [Counter](/docs/examples/counter/) | two moves, two flows, presence and pressability proved in every state | `make demo DEMO=CairnCounter` |
