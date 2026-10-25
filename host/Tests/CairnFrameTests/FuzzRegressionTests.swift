@@ -6,7 +6,7 @@ import Testing
 @Suite struct FuzzRegressionTests {
     /// The empty frame: "CAFR", version 5, flags 0, no surfaces, no effects, no subscription
     /// commands, no wake.
-    static let empty: [UInt8] = [0x43, 0x41, 0x46, 0x52, 5, 0, 0, 0] + [UInt8](repeating: 0, count: 36)
+    static let empty: [UInt8] = [0x43, 0x41, 0x46, 0x52, 6, 0, 0, 0] + [UInt8](repeating: 0, count: 36)
 
     @Test func emptyFrameDecodes() throws {
         #expect(try Frame(bytes: Self.empty) == Frame(surfaces: []))

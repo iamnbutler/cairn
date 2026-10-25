@@ -346,6 +346,9 @@ public enum Effect: Equatable, Sendable {
     case request(id: UInt32, Request)
     /// Quit the app.
     case quit
+    /// Stop the work of request `id` if it is still running (`URLSession` task cancel); it is
+    /// still answered once, and Lean's runtime drops that reply (^1009).
+    case cancelRequest(id: UInt32)
 }
 
 /// What one Metal surface (the window, a panel) shows (`Cairn.Canvas`).

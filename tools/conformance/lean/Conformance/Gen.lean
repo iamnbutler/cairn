@@ -220,6 +220,7 @@ def jeffect : Effect → String
   | .cancelTimer n => jobj [("cancelTimer", jstr n)]
   | .request id r => jobj [("request", toString id), ("kind", jstr (requestKind r))]
   | .quit => jobj [("quit", "true")]
+  | .cancelRequest id => jobj [("cancelRequest", toString id)]
 
 def opName : TextOp → String
   | .insert s => s!"insert {repr s}" | .deleteBackward => "deleteBackward"

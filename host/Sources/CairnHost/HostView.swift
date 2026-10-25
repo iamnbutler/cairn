@@ -309,7 +309,7 @@ public final class HostView: NSView {
             break  // Lean's runtime already moved the focus (docs/runtime.md)
         case .setTimer, .cancelTimer:
             break  // Lean's runtime keeps the timers; the frame's `wake` drives the clock
-        case .request:
+        case .request, .cancelRequest:
             break  // the engine's World already ran it (docs/effects.md)
         case .quit:
             NSApp.terminate(nil)

@@ -121,6 +121,13 @@ def Request.kind : Request → Request.Kind
   | .openItem .. => .openItem | .appRunning .. => .appRunning | .readDefault .. => .readDefault
   | .makeDir .. => .makeDir | .loadImage .. => .loadImage
 
+/-- The kinds that count toward the cap on requests in flight (`App.maxInFlight`, docs/effects.md
+"Requests in flight"): the ones that can take seconds on the network. The others (files, sounds,
+permissions, typing) are sent at once. -/
+def Request.Kind.capped : Request.Kind → Bool
+  | .http | .upload | .loadImage => true
+  | _ => false
+
 -- region: effects-reply
 inductive Reply where
   /-- `writeFile`, `appendFile`, `deleteFile`, `makeDir` and `playSound` succeeded. -/

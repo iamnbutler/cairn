@@ -97,6 +97,10 @@ structure App (S : Type) where
   claims : List ClaimInfo
   /-- The control that has keyboard focus at launch, if it is focusable there. -/
   initFocus : Option ControlRef := none
+  /-- How many requests of capped kinds (`Request.Kind.capped`: `http`, `upload`, `loadImage`)
+  may be with the host at once (at least 1). The runtime queues the rest (docs/effects.md,
+  "Requests in flight"). -/
+  maxInFlight : Nat := 6
 -- endregion: app-app
 
 namespace App

@@ -98,6 +98,7 @@ enum Dump {
             case let .cancelTimer(n): out += "cancelTimer \(str(n))\n"
             case let .request(id, r): out += "request \(id) \(request(r))\n"
             case .quit: out += "quit\n"
+            case let .cancelRequest(id): out += "cancelRequest \(id)\n"
             }
         }
         out += "subs \(f.subs.count)\n"

@@ -1,5 +1,19 @@
 [
   {
+    "video": "/m/videos/acae0dd6c7806322.mp4",
+    "poster": "/m/videos/acae0dd6c7806322.jpg",
+    "title": "Many requests in flight, and Cancel",
+    "caption": "Gallery asks for 24 thumbnails from a slow server. Lean's runtime sends six at a time and queues the rest; Cancel drops the queued ones and stops the six being fetched, and a late answer for a cancelled one changes nothing.",
+    "date": "2026-10-24",
+    "published": "2026-10-25T02:41:38Z",
+    "commit": "ebac002",
+    "width": 2240,
+    "height": 1184,
+    "seconds": 23,
+    "feature": false,
+    "milestone": "m3"
+  },
+  {
     "title": "Cairn 0.2.0, with images",
     "text": [
       "Cairn 0.2.0 is out, on the public registry as iamnbutler/cairn next to 0.1.3. It has images: Node.image, the loadImage effect, frame format 5 and the Gallery example (#132). import Cairn now links, the old everything-umbrella is CairnAll, and cairn new --bin makes a working app (#134). cairn-link links each dependency's libs from its cairn.toml, and Cairn's says libs = [\"Cairn\"] (#127).",

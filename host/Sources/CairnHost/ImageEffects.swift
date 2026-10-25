@@ -8,7 +8,8 @@ import Foundation
 /// A source starting `http://` or `https://` is fetched; anything else is a path (`~/` is home,
 /// a relative path is from the working directory). Without `reload` a source already in the store
 /// is answered from it without reading. A reload that fails removes the source, so the app's
-/// failed state and the host's pixels agree.
+/// failed state and the host's pixels agree. A cancelled load (`cancelRequest`, ^1009) stops its
+/// download, leaves the store alone and answers `failed`.
 public enum ImageLoad {
     /// The most bytes read or downloaded for one image.
     public static let maxBytes = 64 << 20
@@ -24,7 +25,9 @@ public enum ImageLoad {
         if source.isEmpty { reply(.failed(.invalid, "empty source")); return }
         if source.utf8.contains(0) { reply(.failed(.invalid, "NUL in source")); return }
         if !reload, let e = store.entry(source) { reply(size(e.width, e.height)); return }
+        let token = Cancellation.current
         let finish: @Sendable (Data?, Reply?) -> Void = { data, failure in
+            if token?.isCancelled == true { reply(.failed(.other, "cancelled")); return }
             if let failure {
                 if reload { store.remove(source) }
                 reply(failure)
@@ -69,7 +72,7 @@ public enum ImageLoad {
         }
         var req = URLRequest(url: u)
         req.timeoutInterval = timeoutSeconds
-        session.dataTask(with: req) { data, response, error in
+        let task = session.dataTask(with: req) { data, response, error in
             if let error {
                 let e = error as NSError
                 let f: Fault = switch (e.domain, e.code) {
@@ -93,6 +96,8 @@ public enum ImageLoad {
                 finish(nil, .failed(.invalid, "image too large: \(source)")); return
             }
             finish(data, nil)
-        }.resume()
+        }
+        Cancellation.current?.onCancel { task.cancel() }
+        task.resume()
     }
 }

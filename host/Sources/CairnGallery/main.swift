@@ -12,6 +12,10 @@ import QuartzCore
 //   CairnGallery               open the window
 //   CairnGallery --selftest    drive the host headlessly through its real threads and check it
 //
+// Load 24 (^506) asks for 24 thumbnails from `https://slow.cairn.test/many/<i>.png`, which
+// `SlowServer` answers from the bundled pictures after a second or two, so the
+// runtime's cap on requests in flight (six) and Cancel (^507) can be watched.
+//
 // The app names its bundled pictures by paths relative to its resources (`images/…`), so the
 // host starts there.
 
@@ -22,7 +26,7 @@ let gallery = LeanApp(
     frame: { cairn_app_frame($0) },
     codec: FrameV1Codec())
 
-let size = Size(w: 720, h: 560)
+let size = Size(w: 1120, h: 560)
 let args = CommandLine.arguments
 
 guard let resources = Bundle.module.resourcePath, FileManager.default.changeCurrentDirectoryPath(resources) else {
@@ -42,11 +46,87 @@ if args.contains("--selftest") {
     exit(0)
 }
 
+/// The demo server behind `slow.cairn.test`: answers each request with one of the bundled
+/// pictures after 1.2–2.4 s, and counts how many it is serving at once. A stopped request
+/// (its `URLSession` task cancelled) is never answered. Other hosts go to the network, or with
+/// `offline` fail as if there were none.
+final class SlowServer: URLProtocol, @unchecked Sendable {
+    static let host = "slow.cairn.test"
+    nonisolated(unsafe) static var offline = false
+    private static let lock = NSLock()
+    nonisolated(unsafe) private static var serving = 0
+    nonisolated(unsafe) private static var counts = (most: 0, served: 0, stopped: 0)
+    static var stats: (most: Int, served: Int, stopped: Int) { lock.withLock { counts } }
+    static var now: Int { lock.withLock { serving } }
+    static let pictures = ["images/ridge.png", "images/tide.jpg", "images/moss.gif"].compactMap {
+        FileManager.default.contents(atPath: $0)
+    }
+
+    private var work: DispatchWorkItem?
+    private var open = false
+
+    override class func canInit(with request: URLRequest) -> Bool { offline || request.url?.host == host }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+    override func startLoading() {
+        guard let url = request.url, url.host == Self.host else {
+            client?.urlProtocol(self, didFailWithError: NSError(domain: NSURLErrorDomain, code: NSURLErrorNotConnectedToInternet))
+            return
+        }
+        Self.lock.withLock {
+            Self.serving += 1
+            Self.counts.most = max(Self.counts.most, Self.serving)
+        }
+        open = true
+        let n = Int(url.deletingPathExtension().lastPathComponent) ?? 0
+        let body = Self.pictures.isEmpty ? Data() : Self.pictures[n % Self.pictures.count]
+        let work = DispatchWorkItem { [self] in
+            guard close(stopped: false) else { return }
+            let resp = HTTPURLResponse(url: url, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: [:])!
+            client?.urlProtocol(self, didReceive: resp, cacheStoragePolicy: .notAllowed)
+            client?.urlProtocol(self, didLoad: body)
+            client?.urlProtocolDidFinishLoading(self)
+        }
+        self.work = work
+        DispatchQueue.global().asyncAfter(deadline: .now() + .milliseconds(1200 + (n * 331) % 1200), execute: work)
+    }
+
+    override func stopLoading() {
+        work?.cancel()
+        _ = close(stopped: true)
+    }
+
+    /// Ends this request's count once; false if it had already ended.
+    private func close(stopped: Bool) -> Bool {
+        Self.lock.withLock {
+            guard open else { return false }
+            open = false
+            Self.serving -= 1
+            if stopped { Self.counts.stopped += 1 } else { Self.counts.served += 1 }
+            return true
+        }
+    }
+
+    /// A session that sends `slow.cairn.test` here.
+    static func session() -> URLSession {
+        let c = URLSessionConfiguration.ephemeral
+        c.protocolClasses = [SlowServer.self] + (c.protocolClasses ?? [])
+        return URLSession(configuration: c)
+    }
+
+    static func devices(_ base: Devices) -> Devices {
+        Devices(microphone: base.microphone, keys: base.keys, typist: base.typist, secrets: base.secrets,
+                session: session())
+    }
+}
+
 @MainActor
 enum SelfTest {
     static func run() {
-        // Inert devices: the https tile fails without touching the network.
-        let engine = Engine(size: size, scalePercent: 200, world: World(handlers: .standard, devices: .inert)) {
+        // Inert devices but the demo server: the https tile fails without touching the network.
+        SlowServer.offline = true
+        let engine = Engine(size: size, scalePercent: 200,
+                            world: World(handlers: .standard, devices: SlowServer.devices(.inert))) {
             LeanCore(gallery)
         }
         let view = HostView(engine: engine, renderer: NullRenderer(),
@@ -106,8 +186,26 @@ enum SelfTest {
         until("contain") { $0.contains("Fit: Contain") }
         if !images().allSatisfy({ $0.0.w == 200 && $0.0.h == 150 }) { fail("boxes moved on Fit: \(images())") }
         if count("Offline") != 1 { fail("the URL tile: \(texts())") }
+
+        // Load 24: six at a time, the rest queued in Lean's runtime, never more than six at the server.
+        click("^506")
+        until("six in flight") { $0.contains("In flight 6 of 6 · queued 18") && $0.contains("Loaded 0 of 24 · cancelled 0") }
+        until("some loaded", timeout: 10) { $0.contains { $0.hasPrefix("In flight 6 of 6") } && !$0.contains { $0.hasPrefix("Loaded 0 of") } }
+        // Cancel: those being fetched are stopped at the server, the rest never asked for.
+        click("^507")
+        until("cancelled") { $0.contains("In flight 0 of 6 · queued 0") && $0.contains { $0.hasPrefix("Loaded") && !$0.hasSuffix("cancelled 0") } }
+        let deadline = Date(timeIntervalSinceNow: 5)
+        while SlowServer.now > 0 { if Date() > deadline { fail("server still serving \(SlowServer.now)") }; usleep(1000) }
+        let afterCancel = SlowServer.stats
+        if afterCancel.stopped == 0 { fail("Cancel stopped nothing at the server: \(afterCancel)") }
+        if afterCancel.served + afterCancel.stopped >= 24 { fail("the queue reached the server after Cancel: \(afterCancel)") }
+        // Load 24 again, to the end.
+        click("^506")
+        until("all loaded", timeout: 20) { $0.contains("In flight 0 of 6 · queued 0") && $0.contains("Loaded 24 of 24 · cancelled 0") }
+        let stats = SlowServer.stats
+        if stats.most > 6 { fail("the server saw \(stats.most) requests at once") }
         engine.stop()
-        print("selftest: PASS (Gallery: 3 pictures, 3 faults, reload, fit; boxes fixed)")
+        print("selftest: PASS (Gallery: 3 pictures, 3 faults, reload, fit; boxes fixed; 24 thumbnails, at most \(stats.most) at once, \(afterCancel.stopped) stopped on Cancel)")
         print(String(format: "  launch to every tile answered: %.1f ms", loadMs))
     }
 }
@@ -120,5 +218,8 @@ final class NullRenderer: FrameRenderer {
 }
 
 MainActor.assumeIsolated {
-    CairnApp.main(CairnApp.Config(title: "Gallery", size: size) { LeanCore(gallery) })
+    CairnApp.main(CairnApp.Config(title: "Gallery", size: size,
+                                  makeWorld: { _ in World(handlers: .standard, devices: SlowServer.devices(.live)) }) {
+        LeanCore(gallery)
+    })
 }

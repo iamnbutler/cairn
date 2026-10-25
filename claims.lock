@@ -112,6 +112,9 @@
 503	place	active	-	Gallery window
 504	invariant	active	d34d5b06e8bc82cb	Pending loads have fresh ids
 505	flow	active	27a79d12fd5c56e8	Reload, then fit inside
+506	move	active	632e20fa13162375	Load 24
+507	move	active	46f6f5495ca3efd8	Cancel
+508	flow	active	d73d0400c55b9277	Load many, then cancel
 901	assume	active	-	The Swift frame decoder agrees with Lean's
 902	assume	active	-	Lean decodes what the Swift event encoder writes
 903	assume	active	-	UTF-16 offsets and scalar indices convert exactly
@@ -155,3 +158,4 @@
 1006	assume	active	-	loadImage answers the image's pixel size, or the fault
 1007	assume	active	-	An image's pixels stay inside its box
 1008	assume	active	-	An image is drawn where its oriented pixels are
+1009	assume	active	-	cancelRequest stops a running request's work; it is still answered once

@@ -167,13 +167,14 @@ def request : Gen Request := do
   | _ => return .http (← str) (← str) (← headers) (← bytes) (← u32)
 
 def effect : Gen Effect := do
-  match ← Gen.below 7 with
+  match ← Gen.below 8 with
   | 0 => return .setClipboard (← str)
   | 1 => return .focus (← ref)
   | 2 => return .beep
   | 3 => return .setTimer (← str) (← u32)
   | 4 => return .cancelTimer (← str)
   | 5 => return .request (← u32) (← request)
+  | 6 => return .cancelRequest (← u32)
   | _ => return .quit
 
 def subCmd : Gen SubCmd := do

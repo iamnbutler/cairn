@@ -363,9 +363,23 @@ def boot (app : App S) (c : Ctx S) : Ctx S :=
   let (w, kept) := c.world.absorb app.initEffects
   { c with world := w, effs := c.effs ++ kept, delivered := true }
 
+/-- A slot or an id has freed (`w` is the world after a reply was taken): send what the queue
+can, oldest first, onto the frame. -/
+def release (c : Ctx S) (w : World) : Ctx S :=
+  let (w, es) := w.promote
+  { c with world := w, effs := c.effs ++ es }
+
+/-- The host's reply to a request cancelled after it was sent: no one hears it; it frees the
+slot and the id. -/
+def ack (c : Ctx S) (id : Nat) : Ctx S :=
+  match c.world.takeStop id with
+  | some w => release c w
+  | none => c
+
 /-- What the world events deliver: a clock event fires due timers, a reply is delivered if its
 id is pending and it answers that kind, and a subscription event if its id is active. Other
-events deliver nothing here (their actions come from `route`). -/
+events deliver nothing here (their actions come from `route`). A reply that frees a slot sends
+what was queued before the app hears it (docs/effects.md, "Requests in flight"). -/
 def admit (app : App S) (s : State S) : Event → Ctx S
   | .clock t =>
     let c := boot app { app := s.app, world := s.world.tick t }
@@ -374,12 +388,14 @@ def admit (app : App S) (s : State S) : Event → Ctx S
   | .reply id r =>
     -- The time first, then the reply leaves the pending table: what `receive` makes of the
     -- clock sees the request still pending.
+    -- A reply to a request cancelled after it was sent (also by what the app made of the
+    -- clock) is swallowed.
     if (s.world.takeReply id r).isSome then
       let c := hear app { app := s.app, world := s.world }
       match c.world.takeReply id r with
-      | some w => give app { c with world := w } (.reply id r)
-      | none => c
-    else { app := s.app, world := s.world }
+      | some w => give app (release c w) (.reply id r)
+      | none => ack c id
+    else ack { app := s.app, world := s.world } id
   | .subEvent id e =>
     match s.world.subOf id with
     | some sub => give app (hear app { app := s.app, world := s.world }) (.sub sub e)
@@ -420,7 +436,8 @@ if that control is focusable. -/
 def start (app : App S) (cfg : Config) (size : Size) (scale : Nat := 100) : State S :=
   let ui0 : UI := { size, focus := app.initFocus }
   let (ui, laid) := settle app cfg app.init none ui0 settleFuel ui0
-  { app := app.init, ui, laid, scale, surfaces := shows app cfg app.init }
+  { app := app.init, ui, laid, scale, surfaces := shows app cfg app.init,
+    world := { cap := max 1 app.maxInFlight } }
 
 /-- The cursor the host shows: text over fields, a pointing hand over other controls. -/
 def cursor (s : State S) : Cursor :=

@@ -85,6 +85,7 @@ public enum DebugJSON {
         case .cancelTimer(let n): ["cancelTimer": n]
         case let .request(id, r): ["request": Int(id), "kind": request(r)]
         case .quit: ["quit": true]
+        case let .cancelRequest(id): ["cancelRequest": Int(id)]
         }
     }
 
