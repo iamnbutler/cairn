@@ -44,7 +44,7 @@ package yap where
   leanOptions := #[⟨`autoImplicit, false⟩, ⟨`relaxedAutoImplicit, false⟩,
     ⟨`weak.cairn.claims.scope, "yap"⟩]
 
-require cairn from git "https://github.com/iamnbutler/cairn" @ "v0.2.1" / "lean"
+require cairn from git "https://github.com/iamnbutler/cairn" @ "v0.2.2" / "lean"
 
 @[default_target]
 lean_lib Yap where
@@ -63,7 +63,7 @@ The manifest:
 ```swift
 let lib = Context.packageDirectory + "/.cairn/lib"
 // dependencies:
-.package(url: "https://github.com/iamnbutler/cairn", exact: "0.2.1"),
+.package(url: "https://github.com/iamnbutler/cairn", exact: "0.2.2"),
 // the app's executable:
 .executableTarget(name: "CairnYap",
     dependencies: ["CYap", .product(name: "CairnHost", package: "cairn"), /* … */],
