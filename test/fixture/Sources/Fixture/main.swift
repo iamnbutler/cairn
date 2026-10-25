@@ -205,6 +205,95 @@ if args.contains("--selftest") {
     exit(0)
 }
 
+/// Closing the window while work is in flight: the real app (`CairnApp.main`, its window, its
+/// delegate) with the debug socket on, so it is shown without taking focus. Once a frame is up,
+/// it presses Flash (a timer due 400 ms later), floods the engine with input from another thread,
+/// and closes the window as its close button does, with an invisible window of its own still open
+/// so the run loop keeps turning. The app must quit within a few seconds, apply no frame after the
+/// close, and not crash on a frame hop that lands after it (Pairs 0.1.2 did, on a window AppKit had
+/// already freed). `make selftest` runs it.
+@MainActor
+enum CloseTest {
+    static var closedVersion: Int?
+    static var closedAt = 0.0
+    static var waiting: Timer?
+    static var view: HostView?
+    static var other: NSWindow?
+
+    static func run() -> Never {
+        // Freed memory filled with junk, so a use of the freed window crashes every time rather
+        // than most times: malloc reads this at launch, hence the exec.
+        if getenv("MallocScribble") == nil {
+            setenv("MallocScribble", "1", 1)
+            execv(CommandLine.unsafeArgv[0]!, CommandLine.unsafeArgv)
+            fail("close-test: couldn't exec itself")
+        }
+        setenv("CAIRN_DEBUG_SOCKET", "1", 1)  // shown without activating, deaf to the real mouse
+        // A run-loop timer, not the main queue: the run loop `close` turns must drain the queue.
+        let start = Timer(timeInterval: 0.05, repeats: true) { _ in
+            MainActor.assumeIsolated {
+                guard closedVersion == nil,
+                      let view = NSApp.windows.lazy.compactMap({ $0.contentView as? HostView }).first,
+                      view.shown != nil else { return }
+                waiting?.invalidate()
+                close(view)
+            }
+        }
+        waiting = start
+        RunLoop.main.add(start, forMode: .common)
+        NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: nil) { _ in
+            MainActor.assumeIsolated { finish() }
+        }
+        RunLoop.main.add(Timer(timeInterval: 15, repeats: false) { _ in fail("close-test: still running after 15 s") }, forMode: .common)
+        CairnApp.main(CairnApp.Config(title: "Fixture", size: size) { LeanCore(fixture) })
+    }
+
+    static func close(_ view: HostView) {
+        guard let window = view.window, let frame = view.shown?.frame else { fail("close-test: no window") }
+        guard let flash = frame.ax.first(where: { $0.control?.label == "^6" }) else { fail("close-test: ^6 not in frame") }
+        let engine = view.engine
+        engine.send(click(center(flash.rect)))  // its timer fires after the close
+        let flood = Thread {
+            for i in 0..<4000 {
+                engine.send([.pointerMove(Point(x: Int32(20 + i % 300), y: 300))])
+                usleep(250)
+            }
+        }
+        flood.start()
+        // Let frames start landing, then close with hops queued behind the close.
+        RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
+        Self.view = view
+        // Another window, invisible and deaf, so the app's window isn't AppKit's last: the app
+        // must quit because its window closed, and until it does the run loop keeps turning.
+        let other = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1, height: 1), styleMask: [.borderless],
+                             backing: .buffered, defer: false)
+        other.isReleasedWhenClosed = false
+        other.alphaValue = 0
+        other.ignoresMouseEvents = true
+        other.orderFrontRegardless()
+        Self.other = other
+        closedVersion = view.shown?.version
+        closedAt = hostNow()
+        window.performClose(nil)
+        RunLoop.main.add(Timer(timeInterval: 4, repeats: false) { _ in
+            fail("close-test: the app was still running 4 s after its window closed")
+        }, forMode: .common)
+    }
+
+    static func finish() {
+        guard let closedVersion else { fail("close-test: quit before the window closed") }
+        if let v = view?.shown?.version, v != closedVersion {
+            fail("close-test: frame \(v) applied after the close (at \(closedVersion))")
+        }
+        print(String(format: "close-test: PASS (closed with input, a timer and frame hops in flight; quit %.0f ms later)",
+                     (hostNow() - closedAt) * 1000))
+    }
+}
+
+if args.contains("--close-test") {
+    MainActor.assumeIsolated { CloseTest.run() }
+}
+
 if args.contains("--bench") {
     Bench.run()
     exit(0)

@@ -127,9 +127,11 @@ bench-frame: lean
 
 # region: make-selftest
 # Drives the fixture headlessly through the host's real threads, timers and accessibility
-# mirror; examples-selftest does each example app.
+# mirror; examples-selftest does each example app. Then --close-test: the real app's window
+# (shown without focus) closed with work in flight; it must quit cleanly.
 selftest: fixture-build
 	cd $(FIXTURE) && $$(swift build --show-bin-path)/Fixture --selftest
+	cd $(FIXTURE) && $$(swift build --show-bin-path)/Fixture --close-test
 # endregion: make-selftest
 
 # region: make-demo

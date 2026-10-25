@@ -269,6 +269,11 @@ See [host.md](host.md) for how each piece works.
   `NSSound.beep()`. `quit` calls `NSApp.terminate`. `focus`, `setTimer` and `cancelTimer` are
   the runtime's and ignored. `request` and the subscription commands go to the `World`
   ("Effects (workstream Q)" below).
+- **Closing the window.** Closing the app's window quits the app (docs/host.md, "Closing the
+  window"). AppKit is trusted to post `willClose` before it tears the window down, and
+  `NSApp.terminate` to end the process; between the two, the view applies no frame and runs no
+  effect, so effects in frames published after the close are dropped. Checked by
+  `Fixture --close-test` (`make selftest`), not proved.
 - **Cursor.** The frame's cursor becomes an NSCursor through cursor rects over the whole view.
 - **Live resize.** While a resize is in flight, the last picture is shown for up to 100 ms. It
   can briefly not match the window's size.

@@ -31,6 +31,8 @@ public final class HostView: NSView {
     private var cursor: Cursor = .arrow
     private var tracking: NSTrackingArea?
     private var observers: [NSObjectProtocol] = []
+    /// Set by `shutDown`: no frame is applied after it.
+    public private(set) var isShutDown = false
 
     public init(engine: Engine, renderer: FrameRenderer, size: NSSize) {
         self.engine = engine
@@ -65,7 +67,7 @@ public final class HostView: NSView {
         super.viewDidMoveToWindow()
         observers.forEach(NotificationCenter.default.removeObserver)
         observers = []
-        guard let window else { return }
+        guard !isShutDown, let window else { return }
         updateViewport()
         let nc = NotificationCenter.default
         observers.append(nc.addObserver(forName: NSWindow.didBecomeKeyNotification, object: window, queue: .main) { [weak self] _ in
@@ -284,10 +286,24 @@ public final class HostView: NSView {
 
     // MARK: Frames
 
+    /// The window is closing: stop the engine (and with it the app's subscriptions) and the
+    /// render loop, and stop listening to the window. A frame hop already on its way to the main
+    /// thread lands on nothing: `applyLatestFrame` does nothing from here on, so no effect runs
+    /// and `onApply` is not called. Idempotent.
+    public func shutDown() {
+        guard !isShutDown else { return }
+        isShutDown = true
+        engine.stop()
+        renderLoop.stop()
+        observers.forEach(NotificationCenter.default.removeObserver)
+        observers = []
+        onApply = nil
+    }
+
     /// On the main thread, after one or more frames were published. Tools and tests that run
     /// without a run loop call it directly.
     public func applyLatestFrame() {
-        guard let p = engine.latest else { return }
+        guard !isShutDown, let p = engine.latest else { return }
         let previous = shown
         shown = p
         for effect in engine.takeEffects() { run(effect) }

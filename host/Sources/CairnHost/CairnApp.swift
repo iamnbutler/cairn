@@ -77,6 +77,7 @@ public enum CairnApp {
         return main
     }
 
+    @MainActor
     final class Delegate: NSObject, NSApplicationDelegate {
         let config: Config
         var window: NSWindow?
@@ -87,6 +88,7 @@ public enum CairnApp {
         var debug: DebugServer?
         /// Keeps the window at least the app's minimum size (^1010).
         var sizer: WindowSizer?
+        var closing: NSObjectProtocol?
 
         init(config: Config) { self.config = config }
 
@@ -118,6 +120,9 @@ public enum CairnApp {
                 let window = NSWindow(contentRect: NSRect(origin: .zero, size: size),
                                       styleMask: [.titled, .closable, .resizable, .miniaturizable],
                                       backing: .buffered, defer: false)
+                // The delegate owns the window. AppKit's default for a window made in code is to
+                // release it on close as well, which frees it under this strong reference.
+                window.isReleasedWhenClosed = false
                 window.title = title.isEmpty ? config.title : title
                 window.contentView = view
                 window.makeFirstResponder(view)
@@ -131,6 +136,10 @@ public enum CairnApp {
                     sizer.apply(first.frame.surfaces[i].minSize, to: window)
                 }
                 self.window = window
+                closing = NotificationCenter.default.addObserver(
+                    forName: NSWindow.willCloseNotification, object: window, queue: nil) { [weak self] _ in
+                    MainActor.assumeIsolated { self?.windowWillClose() }
+                }
             } else {
                 NSApp.setActivationPolicy(.accessory)  // no Dock icon, no main menu
             }
@@ -154,6 +163,19 @@ public enum CairnApp {
                 let n = i + 1 < args.count ? Int(args[i + 1]) ?? 200 : 200
                 LatencyProbe(view: view, count: n).start()
             }
+        }
+
+        /// The app's window is the app (docs/host.md, "Closing the window"): closing it stops
+        /// everything that could still reach the window or the view (the engine and the app's
+        /// subscriptions, the render loop, the stats timer, frame hops already queued), then quits.
+        func windowWillClose() {
+            if let closing { NotificationCenter.default.removeObserver(closing) }
+            closing = nil
+            statsTimer?.invalidate()
+            statsTimer = nil
+            view.shutDown()
+            // Not left to "last window closed": a panel or status item may still be up.
+            DispatchQueue.main.async { NSApp.terminate(nil) }
         }
 
         func applicationWillTerminate(_ note: Notification) {
