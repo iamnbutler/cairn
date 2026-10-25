@@ -5,7 +5,7 @@ LEAN_PREFIX = $(shell cd lean && lean --print-prefix)
 LIB = build/lib/libcairn_lean.a
 VENDOR = host/Sources/CLean/vendor/lean
 
-.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest fixture clean record site doc doctest fuzz-quick size fuzz-trusted fuzz-trusted-quick site-build site-dist registry-check new-check cairn-tool cairn-tool-test fixture-build fixture-ledger
+.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest fixture clean record site doc doctest fuzz-quick fuzz-scope size fuzz-trusted fuzz-trusted-quick site-build site-dist registry-check new-check cairn-tool cairn-tool-test fixture-build fixture-ledger
 
 lean:
 	cd lean && lake build
@@ -67,7 +67,7 @@ corpus: lean
 # region: make-check
 # Everything a PR must pass. The per-app checks run on test/fixture, Cairn's own app; the
 # example apps are in their own repository, iamnbutler/cairn_examples.
-check: lint audit ledger kernel doctest test selftest fuzz-quick size fuzz-trusted-quick fixture-ledger site-build registry-check new-check cairn-tool-test
+check: lint audit ledger kernel doctest test selftest fuzz-quick fuzz-scope size fuzz-trusted-quick fixture-ledger site-build registry-check new-check cairn-tool-test
 # endregion: make-check
 
 # region: make-fixture
@@ -210,6 +210,18 @@ doctest: lean
 # evidence.
 fuzz-quick: lean cairn-tool
 	cd $(FIXTURE) && $(CAIRN) fuzz --iterations 200 --out build/fuzz/quick
+
+# Whose machines a fuzz executable runs (cairn#221, test/fuzz-scope/README.md): an app and a
+# dependency each with a machine in a module ending in `Claims`. The app lists only its own,
+# `Claims`; `--deps` adds the dependency's as `fuzzdep/Claims`; building `Clash` checks that two
+# of the app's own machines with one name are a compile error. Both are fuzzed briefly.
+FUZZ_SCOPE = test/fuzz-scope/app
+fuzz-scope: lean
+	cd $(FUZZ_SCOPE) && lake build -q && lake build -q fuzz
+	test "$$($(FUZZ_SCOPE)/.lake/build/bin/fuzz --list)" = "$$(printf 'Claims\tApp.Claims')"
+	test "$$($(FUZZ_SCOPE)/.lake/build/bin/fuzz --list --deps)" = "$$(printf 'Claims\tApp.Claims\nfuzzdep/Claims\tDep.Claims')"
+	cd $(FUZZ_SCOPE) && for t in Claims fuzzdep/Claims; do .lake/build/bin/fuzz $$t --iterations 20 --steps 10 --out build/fuzz > /dev/null || exit 1; done
+	test -f $(FUZZ_SCOPE)/build/fuzz/Claims.json && test -f $(FUZZ_SCOPE)/build/fuzz/fuzzdep/Claims.json
 
 
 # region: make-size

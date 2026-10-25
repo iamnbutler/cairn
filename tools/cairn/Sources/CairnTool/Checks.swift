@@ -119,14 +119,15 @@ extension Commands {
 
     // MARK: fuzz
 
-    /// `cairn fuzz [<target>…] [--iterations N] [--seed S] [--steps K] [--out DIR] [-v]`: Cairn's
-    /// claim-driven fuzzer (docs/fuzz.md) on every fuzzable machine of the package, or the ones
-    /// named, writing `<out>/<target>.json` (default build/fuzz/). The package declares the
+    /// `cairn fuzz [<target>…] [--deps] [--iterations N] [--seed S] [--steps K] [--out DIR] [-v]`:
+    /// Cairn's claim-driven fuzzer (docs/fuzz.md) on every fuzzable machine of the package (and of
+    /// its dependencies, `cairn_atproto/Claims`, with `--deps`), or the ones named, writing
+    /// `<out>/<target>.json` (default build/fuzz/). The package declares the
     /// executable, as test/fixture does: `lean_exe fuzz` with a root that imports the app and
     /// `Cairn.Fuzz.Collect` and `Cairn.Fuzz.Main`, and defines `main` over `fuzz_targets%`.
     public func fuzz(_ args: [String]) throws(CairnError) {
-        let usage = "usage: cairn fuzz [<target>…] [--iterations N] [--seed S] [--steps K] [--out DIR] [-v]"
-        let a = try Arguments(args, options: ["--iterations", "--seed", "--steps", "--out"], flags: ["-v"], usage: usage)
+        let usage = "usage: cairn fuzz [<target>…] [--deps] [--iterations N] [--seed S] [--steps K] [--out DIR] [-v]"
+        let a = try Arguments(args, options: ["--iterations", "--seed", "--steps", "--out"], flags: ["-v", "--deps"], usage: usage)
         let project = try project()
         try project.agree()
         guard project.declaresExe("fuzz") else {
@@ -137,9 +138,12 @@ extension Commands {
         let exe = project.lean.appending(path: ".lake/build/bin/fuzz").path
         var targets = a.positionals
         if targets.isEmpty {
-            targets = try shell.capture([exe, "--list"], in: project.lean).text
+            let list = a.flags.contains("--deps") ? ["--list", "--deps"] : ["--list"]
+            targets = try shell.capture([exe] + list, in: project.lean).text
                 .split(separator: "\n").compactMap { $0.split(separator: "\t").first.map(String.init) }
-            guard !targets.isEmpty else { throw CairnError("the fuzzer found no machine in \(project.manifest.name)") }
+            guard !targets.isEmpty else {
+                throw CairnError("the fuzzer found no machine in \(project.manifest.name)\(a.flags.contains("--deps") ? "" : " (its dependencies' run with --deps)")")
+            }
         }
         let out = a.value("--out").map(path) ?? project.root.appending(path: "build/fuzz")
         var passthrough: [String] = []
