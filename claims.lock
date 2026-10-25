@@ -115,6 +115,8 @@
 506	move	active	632e20fa13162375	Load 24
 507	move	active	46f6f5495ca3efd8	Cancel
 508	flow	active	d73d0400c55b9277	Load many, then cancel
+509	move	active	80ec73812fd26594	Reload a tile
+510	invariant	active	4b77d8ad02a81eb4	Tiles fit the window at every size
 901	assume	active	-	The Swift frame decoder agrees with Lean's
 902	assume	active	-	Lean decodes what the Swift event encoder writes
 903	assume	active	-	UTF-16 offsets and scalar indices convert exactly

@@ -9,6 +9,7 @@ import Cairn.Text.Wrap
 import Cairn.Text.WrapProofs
 import Cairn.UI.Node
 import Cairn.UI.Images
+import Cairn.UI.Grid
 import Cairn.UI.Hit
 import Cairn.Input
 import Cairn.Frame

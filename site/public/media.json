@@ -1,5 +1,19 @@
 [
   {
+    "video": "/m/videos/f059cdc41ffb2079.mp4",
+    "poster": "/m/videos/f059cdc41ffb2079.jpg",
+    "title": "Gallery's grid follows the window",
+    "caption": "Gallery's six tiles in a grid whose column count Lean computes from the window size: three columns at 1120 points, six at 1640, two at 860, in reading order throughout. The host only reports resize events; Lean proves the cells never overlap, stay inside the grid's box, take the most columns that fit, and that a click in a tile reaches that tile.",
+    "date": "2026-10-24",
+    "published": "2026-10-25T03:38:17Z",
+    "commit": "ee9ecbf",
+    "width": 3280,
+    "height": 1464,
+    "seconds": 15,
+    "feature": false,
+    "milestone": "m3"
+  },
+  {
     "video": "/m/videos/acae0dd6c7806322.mp4",
     "poster": "/m/videos/acae0dd6c7806322.jpg",
     "title": "Many requests in flight, and Cancel",

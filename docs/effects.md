@@ -523,11 +523,14 @@ reply to an earlier load of it, or to an id the table never issued, changes noth
 answered first.
 
 Example: Gallery (`lean/Examples/Gallery.lean`, host `host/Sources/CairnGallery`, run with
-`cd host && swift run CairnGallery`): six 200 × 150 tiles (a PNG, a JPEG stored turned with an
-EXIF orientation, a GIF, a poster over https, a text file, a missing file), Reload (^501) and Fit
-(^502). Its proofs (`Examples/Gallery/Proofs.lean`) show every tile is 200 × 150 whatever its
-state and Reload is on screen; ^504 keeps pending loads' ids fresh. The self test runs the real
-host with the network off (the https tile shows "Offline"); every tile was answered 6.8 ms after
+`cd host && swift run CairnGallery`): six tiles (a PNG, a JPEG stored turned with an EXIF
+orientation, a GIF, a poster over https, a text file, a missing file) in a 4:3 grid that takes as
+many columns as the window's width fits (`Cairn.UI.Grid`, [layout.md](layout.md#grids); ^510),
+Reload (^501), Fit (^502) and a press on a tile to reload that one (^509). Its proofs
+(`Examples/Gallery/Proofs.lean`) show every tile's image is its cell's size whatever its state,
+the tiles land on the grid's cells at every window size, a click in a cell reaches that tile,
+and Reload is on screen; ^504 keeps pending loads' ids fresh. The self test runs the real host
+with the network off (the https tile shows "Offline"); every tile was answered 6.8 ms after
 launch.
 
 ## Wire format

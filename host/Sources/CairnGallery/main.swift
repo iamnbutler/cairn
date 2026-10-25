@@ -11,6 +11,8 @@ import QuartzCore
 // "Images").
 //   CairnGallery               open the window
 //   CairnGallery --selftest    drive the host headlessly through its real threads and check it
+//   CairnGallery --demo-resize open the window, then widen and narrow it over 12 s so the tile
+//                              grid reflows (for the demo video; docs/media.md)
 //
 // Load 24 (^506) asks for 24 thumbnails from `https://slow.cairn.test/many/<i>.png`, which
 // `SlowServer` answers from the bundled pictures after a second or two, so the
@@ -170,7 +172,7 @@ enum SelfTest {
         let loadMs = (hostNow() - t0) * 1000
         let drawn = images()
         if drawn.count != 3 { fail("image draws \(drawn)") }
-        if !drawn.allSatisfy({ $0.0.w == 200 && $0.0.h == 150 }) { fail("image boxes \(drawn)") }
+        if !drawn.allSatisfy({ $0.0.w == 196 && $0.0.h == 147 }) { fail("image boxes \(drawn)") }
         for src in ["images/ridge.png", "images/tide.jpg", "images/moss.gif"] {
             guard let e = ImageStore.shared.entry(src) else { fail("\(src) not kept") }
             if src == "images/tide.jpg", (e.pixels.width, e.pixels.height) != (480, 320) { fail("tide not turned: \(e.pixels.width)×\(e.pixels.height)") }
@@ -181,10 +183,18 @@ enum SelfTest {
         until("reloaded") {
             $0.contains("Reloads: 1") && $0.filter { $0 == "480 × 320 px" }.count == 2 && $0.contains("Not found")
         }
-        // Fit cycles; the boxes stay 200 × 150.
+        // Fit cycles; the boxes stay 196 × 147.
         click("^502")
         until("contain") { $0.contains("Fit: Contain") }
-        if !images().allSatisfy({ $0.0.w == 200 && $0.0.h == 150 }) { fail("boxes moved on Fit: \(images())") }
+        if !images().allSatisfy({ $0.0.w == 196 && $0.0.h == 147 }) { fail("boxes moved on Fit: \(images())") }
+        // The tile grid follows the window (^510): at 1600 × 900 the three columns become five
+        // and each picture's box grows to 216 × 162; back at 1120 × 560 it is three again.
+        _ = engine.wait(through: engine.send([.resize(Size(w: 1600, h: 900))]))
+        let wide = images()
+        if wide.count != 3 || !wide.allSatisfy({ $0.0.w == 216 && $0.0.h == 162 }) { fail("boxes at 1600 × 900: \(wide)") }
+        if Set(wide.map { $0.0.y }).count != 1 { fail("not one row of pictures at 1600 × 900: \(wide)") }
+        _ = engine.wait(through: engine.send([.resize(size)]))
+        if !images().allSatisfy({ $0.0.w == 196 && $0.0.h == 147 }) { fail("boxes after resizing back: \(images())") }
         if count("Offline") != 1 { fail("the URL tile: \(texts())") }
 
         // Load 24: six at a time, the rest queued in Lean's runtime, never more than six at the server.
@@ -205,7 +215,7 @@ enum SelfTest {
         let stats = SlowServer.stats
         if stats.most > 6 { fail("the server saw \(stats.most) requests at once") }
         engine.stop()
-        print("selftest: PASS (Gallery: 3 pictures, 3 faults, reload, fit; boxes fixed; 24 thumbnails, at most \(stats.most) at once, \(afterCancel.stopped) stopped on Cancel)")
+        print("selftest: PASS (Gallery: 3 pictures, 3 faults, reload, fit; grid reflows on resize; 24 thumbnails, at most \(stats.most) at once, \(afterCancel.stopped) stopped on Cancel)")
         print(String(format: "  launch to every tile answered: %.1f ms", loadMs))
     }
 }
@@ -215,6 +225,31 @@ final class NullRenderer: FrameRenderer {
     let device = MTLCreateSystemDefaultDevice()!
     func configure(_ layer: CAMetalLayer) { layer.device = device }
     func draw(_ frame: Frame, to drawable: CAMetalDrawable, viewport: Viewport) {}
+}
+
+/// `--demo-resize`: after two seconds, sweep the window's width 1120 → 1640 → 860 → 1120 at a
+/// height of 700, a frame at a time, as a person dragging its edge would. Lean sees only the
+/// `resize` events.
+if args.contains("--demo-resize") {
+    let widths: [(Double, Double)] = [(1120, 1640), (1640, 1640), (1640, 860), (860, 860), (860, 1120)]
+    let legs = [3.0, 1.0, 4.0, 1.0, 2.0]
+    let start = Date().addingTimeInterval(2)
+    Timer.scheduledTimer(withTimeInterval: 1.0 / 60, repeats: true) { _ in
+        MainActor.assumeIsolated {
+            guard let window = NSApp.windows.first(where: { $0.isVisible }) else { return }
+            var t = Date().timeIntervalSince(start)
+            if t < 0 { window.setContentSize(NSSize(width: 1120, height: 700)); return }
+            for (leg, (a, b)) in zip(legs, widths) {
+                if t <= leg {
+                    let u = t / leg, e = u * u * (3 - 2 * u)
+                    window.setContentSize(NSSize(width: (a + (b - a) * e).rounded(), height: 700))
+                    return
+                }
+                t -= leg
+            }
+            if window.contentLayoutRect.width != 1120 { window.setContentSize(NSSize(width: 1120, height: 700)) }
+        }
+    }
 }
 
 MainActor.assumeIsolated {
