@@ -1,4 +1,4 @@
-# Frame and event format: frames v3, events v2
+# Frame and event format: frames v5, events v2
 
 Two byte buffers cross the boundary between Lean and the Swift host, and nothing else does:
 
@@ -75,7 +75,7 @@ Swift's model uses `Int32` and `UInt32` for these fields, so every Swift value f
 ```
 offset  size  field
 0       4     magic "CAFR" (43 41 46 52)
-4       2     u16 version = 4
+4       2     u16 version = 5
 6       2     u16 flags = 0
 8       4+4   surfaces: u32 count, u32 byteLength, then the surface records
 .       4+4   effects: u32 count, u32 byteLength, then the effect records
@@ -88,7 +88,8 @@ version; flags are reserved for compatible additions and must be zero. Version 1
 after the effects; version 2 added `subs` and `wake` and the effect records 3–6; version 3
 replaced the single window (size, draws, ax, text input, cursor after the header) with the list
 of surface records; version 4 added the font's width, tracking and tabular digits to the text
-record and the `paint` and `shape` draws.
+record and the `paint` and `shape` draws; version 5 added the `image` draw and the `loadImage`
+request (kind 16).
 
 ### Surface records
 
@@ -200,6 +201,11 @@ shape     [5, hasFill, hasBorder, hasShadow]                                 56 
           44 u32 shadow radius
           48 i32 shadow x offset
           52 i32 shadow y offset
+
+image     [6, 0, 0, 0]                                                36 + string
+          4  rect: the node's box (the host paints nothing outside it)
+          20 rect: dest, where the whole picture goes (may overhang the box)
+          36 string: the source, as `loadImage` named it
 ```
 
 `width` is `0` standard, `1` condensed, `2` expanded, `3` compressed (the system font's width
@@ -212,6 +218,14 @@ while the draw is on screen. It paints nothing outside its box (trusted, `render
 and nothing at all if no painter has the name. `shape` is a rounded rect drawn by Core Graphics:
 continuous corners, a border inside the edge, and a shadow (blur radius in points, offset)
 under the fill, blurred as SwiftUI's `shadow(color:radius:x:y:)` is.
+
+`image` paints the picture the host holds under that source (docs/effects.md, "Images"),
+scaled to `dest` and cut to the box (and the clip). Lean chooses `dest` with `imageDest` from
+the fit and the pixel size the reply gave, so the host decides no geometry: fill is the box,
+contain fits inside it (rounded down, `imageDest_contain_inside`), cover covers it (rounded up,
+`imageDest_cover_covers`), both centred. If the host has no picture for the source it paints
+nothing (trusted, `render.image.bounds`). `Frame.ofLaid` writes it after the box's own draws and
+before its children.
 
 `pushClip` intersects the clip with its rect until the matching `popClip`. Frames from
 `Frame.ofLaid` are balanced (`balanced_ofLaid`).
@@ -284,6 +298,7 @@ Request kinds and their fields:
 | 13 | appRunning | string bundleId |
 | 14 | readDefault | string domain, string key |
 | 15 | makeDir | string path |
+| 16 | loadImage | `[reload, 0, 0, 0]` (a bool), string source: a file path or an `https` URL |
 
 An upload's `secret` is `[0, 0, 0, 0]` for none, or `[1, 0, 0, 0]` and four strings: the header
 name, the scheme written before the value (`"Bearer "`), the `KEY=value` file and the key. Only
@@ -382,7 +397,8 @@ error. `button` is `0` primary, `1` secondary.
   headers, bytes body), `3` failed (string message; `b` is the fault: `0` notFound, `1` denied,
   `2` timeout, `3` network, `4` invalid, `5` other). For codes other than `3`, `b` is written as
   0 and must be 0. Code `4` names (u32 count, then each name as a string), `5` app (u32 pid,
-  string name), `6` flag (`[granted, 0, 0, 0]`, granted a bool).
+  string name), `6` flag (`[granted, 0, 0, 0]`, granted a bool), `7` image (u32 width, u32 height:
+  the picture's pixel size after its orientation).
 - **Subscription events.** Codes `0` tick and `1` changed (no fields); `2` audio (u32 frames,
   u32 peak, u32 count, then each window as u64 sum of squares and u32 peak: 12 bytes);
   `3` keyDown, `4` keyUp, `5` otherKey (u64 monotonic ms); `6` failed (string message; `b` is
@@ -399,7 +415,8 @@ error. `button` is `0` primary, `1` secondary.
   the chosen item's control ref.
 - **Global events.** `clock`, `reply` and `subEvent` belong to the app, not to a surface.
 
-Version 1 had tags 0–20 only.
+Version 1 had tags 0–20 only. Reply code 7 came with frames v5; the batch format is unchanged, so
+events stay at version 2.
 
 Lean drops a batch that fails to decode, whole (`Frame.boundary`): the host's encoder is
 checked against Lean's decoder, so a bad batch means a host bug.
@@ -461,6 +478,7 @@ draws N
 rect X Y W H fill=R,G,B,A|none radius=N border=W:R,G,B,A|none
 text X Y font=FAMILY,SIZE,WEIGHT,ITALIC,WIDTH,TRACKING,TABULAR color=R,G,B,A "STRING"
 shape X Y W H fill=R,G,B,A|none radius=N border=W:R,G,B,A|none corner=0|1 shadow=R,G,B,A:RADIUS:X:Y|none
+image X Y W H dest=X Y W H "SOURCE"
 paint X Y W H origin=N shader="NAME" scalars=[A,B,…] arrays=[[A,…],[…]]
 push X Y W H
 pop
@@ -483,7 +501,7 @@ request ID appendFile "PATH" BYTES | request ID listDir "PATH" | request ID dele
 request ID frontmostApp | request ID permission CODE PROMPT
 request ID typeText PID RETURN "TEXT" | request ID forgetClip CLIP
 request ID open "TARGET" | request ID appRunning "ID" | request ID readDefault "DOMAIN" "KEY"
-request ID makeDir "PATH"
+request ID makeDir "PATH" | request ID loadImage RELOAD "SOURCE"
 request ID upload "METHOD" "URL" timeout=MS HEADERS secret=none|"HEADER" "SCHEME" "FILE" "NAME" parts=N PART…
 subs N
 start ID every MS | start ID watchFile "PATH" | start ID record CLIP
@@ -498,7 +516,7 @@ clock MONO WALL ZONE | sub ID 0 | sub ID 1 | sub ID 2 FRAMES PEAK N SUMSQ:PEAK�
 sub ID 3 T | sub ID 4 T | sub ID 5 T | sub ID 6 FAULT "…"
 surface P EVENT | menuOpen P | menuClose P | menuSelect P CLAIM#KEY
 reply ID done | reply ID bytes BYTES | reply ID http STATUS HEADERS body=BYTES | reply ID failed FAULT "…"
-reply ID names N "…"… | reply ID app PID "NAME" | reply ID flag B
+reply ID names N "…"… | reply ID app PID "NAME" | reply ID flag B | reply ID image W H
 ```
 
 `BYTES` is `x` followed by two lowercase hex digits per byte (`x` alone when empty);

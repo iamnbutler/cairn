@@ -6,7 +6,7 @@ entries in the section of the workstream that introduces the assumption.
 
 Items marked **Fuzzed** are also checked by the trusted-base fuzzer (`make fuzz-trusted`,
 docs/fuzz.md "Trusted base"), against Lean's proved side or an independent oracle, and are
-declared as `assume` claims ^901–^915, ^940–^944 and ^960–^971 in `lean/Cairn/Fuzz/Trusted/Claims.lean`, each naming its
+declared as `assume` claims ^901–^915, ^940–^944, ^960–^971 and ^1000–^1008 in `lean/Cairn/Fuzz/Trusted/Claims.lean`, each naming its
 check; `build/fuzz/trusted.json` holds the evidence. Items not marked are checked only by the
 tests and reviews they list.
 
@@ -418,6 +418,54 @@ Graphics.
   malformed data, one whose triangle covers 100 times the viewport, one whose triangles land
   anywhere, and an unregistered name. Removing the scissor from the paint batch makes it fail
   in the first 50 cases.
+
+## Images (M3)
+
+`loadImage` (docs/effects.md, "Images") reads a file or a URL, decodes it with ImageIO and keeps
+the pixels in the host (`ImageStore`); Lean gets only the pixel size or the fault. An `image`
+draw (docs/frame.md) names the source, the box and the destination rect Lean computed; the
+renderer uploads the pixels to a texture with mipmaps once per decode and draws it scaled to the
+destination, scissored to the box within the clip.
+
+**What is assumed.**
+- ^1006 `hostLoadImage`: `loadImage` answers once, with the image's pixel size after its EXIF
+  orientation, or with the fault as docs/effects.md lists it; the image is kept for draws naming
+  the same source; without `reload` a kept source is answered without reading, with `reload` it
+  is read again and a failure drops it.
+- ^1007 `hostImageBounds`: an image draw changes no pixel outside its box (snapped as rects are)
+  within the clip in force, whatever its destination; a draw naming a source the host holds no
+  image for changes nothing.
+- ^1008 `hostImagePixels`: the oriented image is scaled to the destination: each quadrant lands
+  in the same quadrant of the destination, in its colour (within 8 per channel, 40 for JPEG and
+  HEIC).
+
+**Also assumed, not fuzzed.** Pixels are kept at most 4096 on their long side (larger images are
+scaled down on decode; the reply still gives the full size). Kept images are never evicted: an
+app that loads many large sources holds them all. Animated GIFs show their first frame. A
+relative path is resolved against the working directory, which a host app sets to its resource
+bundle. Redirects, caching and cookies are Foundation's (an ephemeral session, as for `http`).
+
+**Trusted code.** `host/Sources/CairnHost/ImageEffects.swift`,
+`host/Sources/CairnRender/Images.swift`, `Renderer.swift` (image batches, `image_fragment` in
+`Shaders.swift`), ImageIO, Core Graphics and Metal.
+
+**Evidence.**
+- **Fuzzed** (^1006 `effects.load-image`): files and stubbed URLs holding PNG, JPEG, TIFF, GIF,
+  BMP and HEIC images of random sizes (4–220 pixels a side, some 4097–6000 on one) with all eight EXIF
+  orientations answer their oriented size once and are kept; missing, unreadable, directory,
+  empty, NUL, garbage and truncated sources and HTTP 304/401/403/404/410/418/500 and failed connections
+  answer their faults; a second load without `reload` reads nothing, with it the new bytes are
+  read, and a failed reload drops the source; many loads at once each answer with their own
+  size.
+- **Fuzzed** (^1007 `render.image.bounds`): random frames with image draws between rects and
+  clips, boxes and destinations anywhere in or across the frame, at 1x to 3x, rendered
+  offscreen with and without the image draws; every pixel outside the boxes is the same. A
+  draw naming an unknown source changes nothing.
+- **Fuzzed** (^1008 `render.image.pixels`): a four-quadrant image of random format, size and
+  orientation drawn into a box, minified and magnified, at 1x to 3x; the centre of each quadrant
+  of the destination has that quadrant's colour.
+- **Tested**: Gallery's self test (`swift run CairnGallery --selftest`) loads its five local
+  sources through the real handler and renders them.
 
 ## Yap's devices: recording, keys, typing, uploads (workstream T)
 

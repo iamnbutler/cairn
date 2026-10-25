@@ -298,6 +298,9 @@ on after it.
 | `effects.app-running` | ^1001 | `Opening.running` | a stubbed workspace; `NSRunningApplication` for the live Finder | 0–2 running apps; Yap's, the Finder's and random ids, empty ones; the live Finder and an id no app has |
 | `effects.read-default` | ^1002 | `Opening.readDefault` | a stubbed defaults store and the value's own text | strings from the text pool, booleans, numbers, missing, data and arrays; empty domains and keys |
 | `render.paint.bounds` | ^1004 | `Renderer` (paint batches), `Painters`, `YapTape` | the same frame rendered without its paint draws | 1–8 draws (rects, text, clips, paints) in a 1–160 × 1–120 frame at 1x, 1.5x, 2x, 3x; boxes inside, across, outside and far outside the frame, empty and 2³¹ wide; Yap's tape with random and malformed data, a painter covering 100× the viewport, one scattering triangles, an unregistered name; random times and origins |
+| `effects.load-image` | ^1006 | `ImageLoad.run`, `ImageStore` | the sizes and orientations it encoded; a `URLProtocol` stub keyed by path | PNG, JPEG, TIFF, GIF, BMP, HEIC, 4–220 pixels a side (sometimes 4097–6000 on one), the eight EXIF orientations; files and https URLs; missing, unreadable, directories, empty, NUL, garbage, truncated; statuses 304, 401, 403, 404, 410, 418, 500, connection failures; reloads with new bytes, failed reloads, many loads at once |
+| `render.image.bounds` | ^1007 | `Renderer` (image batches) | the same frame rendered without its image draws | 1–8 draws (rects, clips, images) in a 1–160 × 1–120 frame at 1x, 1.5x, 2x, 3x; boxes and destinations inside, across and outside the frame; unknown sources |
+| `render.image.pixels` | ^1008 | `ImageStore.decode`, `Renderer` (image batches, `image_fragment`) | the colour of each quadrant of the oriented image | four-quadrant images of every format and orientation, boxes up to 160 × 160 (minified, and 4–12 pixel images magnified), at 1x, 1.5x, 2x, 3x |
 | `effects.permission` | ^965 | `Permissions.check` | a stubbed TCC: statuses and the calls made | both permissions × trusted or not × the four microphone statuses × prompt × granted or not; the live system without prompting |
 | `subs.record` | ^966 | `World` (`record`), `LevelMeter`, `Clips` | a fake microphone's delivered samples; levels computed directly from them | 0–2 s of synthetic audio (silence, square waves, noise, ±32768 extremes) split into buffers of 0–4000 samples, delivered from another thread with 0–3 ms pauses; stops and resets after 0–100 ms; failing microphones; the meter over random splits |
 | `effects.clip-wav` | ^967 | `Clips.wav`, `WAV`, `forgetClip` | the RIFF/WAVE layout written out field by field; the samples | 6 ranges a case in and past 0–6000 samples, to the end or not; clips that finish 20 ms after the ask; unknown and forgotten clips; 1–20 clips begun (at most 8 kept) |
@@ -314,7 +317,7 @@ skin tones, flags, tag sequences, keycaps, combining stacks, Devanagari conjunct
 Arabic, bidi controls, and long runs of one scalar.
 
 The effect suites (`clock`, `world`, `files`, `http`, `sound`, `fileops`, `system`, `audio`,
-`input`, `upload`) run fewer cases than N (a
+`input`, `upload`, `image`) run fewer cases than N (a
 twentieth to a quarter): their cases wait on real time. Timing bounds are loose (a wake within
 40 ms, a tick within twenty periods) so that a loaded machine during `make check` doesn't fail
 them; the counters record the actual lateness (`late0ms`, `late1ms`, …).
