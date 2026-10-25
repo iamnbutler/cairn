@@ -12,13 +12,42 @@ are published.
 
 ## What a version promises
 
-- **Claims.** Cairn's `claims.lock` at the tag is its contract. Every `cairn^N` in it keeps its
-  meaning in later versions, or is retired; it is never renumbered or reused.
+- **Claims.** Cairn's `claims.lock` at the tag is its contract; [the id promise](#the-id-promise)
+  below says exactly what that means.
 - **The host protocol.** The frame format carries its own version.
 - **The Lean API** has no stability promise before 1.0.
 - **The toolchain.** An app uses the Lean toolchain in Cairn's `lean/lean-toolchain` at the tag
   (`v4.35.0` for every release so far), because Lake shares compiled modules only between
   identical toolchains.
+
+## The id promise
+
+A claim id is how everything else refers to a claim: an app's flows, its docs, an issue, a
+review, another package. So an id is a promise about meaning, and the ledger (`lake exe ledger
+check`, part of `make check`) enforces it on every change. Ids are scoped by package:
+`cairn^212` and `yap^212` are different claims.
+
+**What holds, from the release that issues an id onward:**
+
+- **An id is issued once.** It is never renumbered, never reused for another claim, and never
+  changes kind. `claims.lock` keeps one line per id ever issued and never removes one.
+- **Its meaning doesn't change quietly.** The ledger hashes each claim's formal statement and the
+  definitions it uses. A change to either, or to the title, is reported and has to be accepted
+  with `lake exe ledger update --accept`, so it shows in review. Cairn's rule is that a new
+  meaning gets a new id; acceptance is for a statement written differently that says the same.
+- **It goes away only by retiring.** A retired id stays in the lock, with its kind, its title
+  and the reason, and can't come back. Retiring a claim the last release had active needs a new
+  major version, or a new minor version while at 0.x.
+- **An id that leaves with an app stays issued.** It is marked `moved:<scope>` where it was, and
+  lives on under the app's own scope.
+
+**What can change in any release:**
+
+- **How a claim is proved, and the code behind it.** Proofs, `apply`, and the names of bound
+  variables aren't in the hash, so refactoring a handler doesn't touch its claim.
+- **The prose.** `does` and `sees` can be reworded to say the same thing more clearly.
+- **Its evidence.** What a claim reads as depends on the build that computed it. See
+  [how much to trust a claim](/docs/reference/trust/).
 
 ## v0.2.0
 
