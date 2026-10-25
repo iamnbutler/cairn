@@ -76,3 +76,15 @@ scratch code is in `lean/raw/`. For every workstream, A–E most.
 | [lean/06-ffi-embedding.md](lean/06-ffi-embedding.md): export/extern ownership, initialization, threads, struct layout, linking, lean-ios | G, E, F | 5 |
 | [lean/07-proofwidgets.md](lean/07-proofwidgets.md): drawing a counterexample frame in the infoview with core widgets | B, C, D | 3 |
 | [lean/raw/release-notes-4.20-4.35.md](lean/raw/release-notes-4.20-4.35.md): release-note digest filtered for Cairn | all | 4 |
+
+## Language and framework sites (`sites/`)
+
+Twelve languages' and frameworks' sites and docs, read against Cairn's: what pulls its weight,
+what Cairn should cut, keep and add, and what the language or tooling suggests for later. The
+meta-analysis is [sites/README.md](sites/README.md).
+
+| Note | For | Relevance |
+|---|---|---|
+| [sites/README.md](sites/README.md): the meta-analysis: code first, a no-install "try it" (an interactive map), evidence per package version, `llms.txt`, errors people can look up | site, package, cli | 4 |
+| [sites/rust/](sites/rust/README.md), [lean/](sites/lean/README.md), [gleam/](sites/gleam/README.md), [elm/](sites/elm/README.md), [roc/](sites/roc/README.md), [dafny/](sites/dafny/README.md) | site, package, claims | 4–5 |
+| [sites/swift/](sites/swift/README.md), [flutter/](sites/flutter/README.md), [svelte/](sites/svelte/README.md), [zig/](sites/zig/README.md), [go/](sites/go/README.md), [elixir/](sites/elixir/README.md) | site, host, cli | 4–5 |

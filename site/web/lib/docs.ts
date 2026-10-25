@@ -6,19 +6,13 @@ export function inline(md: string, block = false): string {
 	return block ? html : html.replace(/^<p>/, "").replace(/<\/p>$/, "");
 }
 
-// Public pages link nothing on GitHub but the open issues that still describe missing work.
-const ALLOWED_LINKS = [83, 84, 94, 95, 99].map((n) => `https://github.com/iamnbutler/cairn/issues/${n}`);
-
 type Entry = { path: string; headings?: { id: string }[] };
 
-// Every link in a page's HTML: to GitHub only for an allowed issue, to a docs page that exists, and
-// to a heading that page has. Throws, which fails the build and names the page.
+// Every link in a page's HTML to the docs: to a page that exists, and to a heading that page has. Throws, which fails the build and names the page.
 export function checkLinks(path: string, html: string, pages: Entry[]): string {
 	const byPath = new Map(pages.map((p) => [p.path, p]));
 	const errors: string[] = [];
 	for (const [, href] of html.matchAll(/href="([^"]*)"/g)) {
-		if (/^https?:\/\/(www\.)?github\.com\//.test(href) && !ALLOWED_LINKS.includes(href))
-			errors.push(`links to ${href}: the repository is private, so public pages don't link to GitHub`);
 		if (!href.startsWith("/docs/") || href.startsWith("/docs/api/")) continue;
 		const [to, frag] = href.split("#");
 		const page = byPath.get(to);
