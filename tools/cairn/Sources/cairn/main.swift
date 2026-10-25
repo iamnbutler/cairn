@@ -17,7 +17,7 @@ let usage = """
       cairn login                     save a token for publishing (read from stdin)
 
     Checks, on an app package (docs/cli.md, "Checks"):
-      cairn fuzz [<target>…] [--iterations N] [--seed S] [--steps K] [--out DIR] [-v]
+      cairn fuzz [<target>…] [--deps] [--iterations N] [--seed S] [--steps K] [--out DIR] [-v]
                                       claim-driven fuzzing (`lean_exe fuzz`), build/fuzz/
       cairn claims [<module>…] [--out FILE]
                                       every claim as JSON (lake exe claims)

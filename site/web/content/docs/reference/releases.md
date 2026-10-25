@@ -49,6 +49,17 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
 - **Its evidence.** What a claim reads as depends on the build that computed it. See
   [how much to trust a claim](/docs/reference/trust/).
 
+## Unreleased
+
+- **Fuzz targets are scoped by package** ([#221](https://github.com/iamnbutler/cairn/issues/221)).
+  `fuzz_targets%` marks a machine from a dependency (cairn_atproto's session, in an app that
+  requires it) and names it with its package first, `cairn_atproto/Claims`, so it no longer
+  shares the app's `Claims` and shadows it. `lake exe fuzz --list` and `cairn fuzz` run only the
+  package's own machines; `--deps` adds the dependencies', and any target can be named. Two
+  targets with one name fail to compile, naming both, and `Cairn.Fuzz.main` refuses a list with
+  a name twice. `Target` gains `package` and `dependency`, and the report gains `package`. An app
+  that filtered `fuzz_targets%` to its own modules can drop the filter.
+
 ## v0.3.0
 
 25 October 2026, at commit `60c4483`.

@@ -131,9 +131,9 @@ behind `lake exe fuzz` (`import Lean`). Not linked into any host binary; its PRN
 lean_lib CairnFuzz where
   roots := #[`Cairn.Fuzz.Metrics, `Cairn.Fuzz.Target, `Cairn.Fuzz.Text, `Cairn.Fuzz.Host,
     `Cairn.Fuzz.Walk, `Cairn.Fuzz.Shrink, `Cairn.Fuzz.Collect, `Cairn.Fuzz.Main,
-    `Cairn.Fuzz.HostTests]
+    `Cairn.Fuzz.HostTests, `Cairn.Fuzz.CollectTests]
   globs := #[.one `Cairn.Fuzz.Metrics, .one `Cairn.Fuzz.Target, .one `Cairn.Fuzz.Text,
-    .one `Cairn.Fuzz.Host, .one `Cairn.Fuzz.HostTests, .one `Cairn.Fuzz.Walk, .one `Cairn.Fuzz.Shrink, .one `Cairn.Fuzz.Collect, .one `Cairn.Fuzz.Main,
+    .one `Cairn.Fuzz.Host, .one `Cairn.Fuzz.HostTests, .one `Cairn.Fuzz.CollectTests, .one `Cairn.Fuzz.Walk, .one `Cairn.Fuzz.Shrink, .one `Cairn.Fuzz.Collect, .one `Cairn.Fuzz.Main,
     .one `Cairn.Fuzz]
 
 /-- Lean's side of the trusted-base fuzzer (docs/fuzz.md, "Trusted base"): generators, the

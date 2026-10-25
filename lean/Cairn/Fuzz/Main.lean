@@ -6,13 +6,15 @@ import Cairn.Fuzz.Shrink
 ```
 lake exe fuzz <App> [--seed S|random] [--iterations N] [--steps K] [--budget-ms M]
                     [--out DIR] [--shrink N] [-v]
-lake exe fuzz --list
+lake exe fuzz --list [--deps]
 ```
 
 Runs sequences with seeds `S, S+1, …, S+N−1` (the `SEED` and `ITERATIONS` environment variables
 set the defaults), stops each at its first failure, shrinks the first failure of each kind,
 prints it as a `flow`, and writes `<DIR>/<App>.json` (docs/fuzz.md). Exit code 1 when anything
-failed. -/
+failed. `--list` names the package's own targets, and its dependencies' too with `--deps`; any
+target can be run by name (`cairn_atproto/Claims`). Two targets with one name are refused (exit
+code 2), never one shadowing the other. -/
 
 namespace Cairn.Fuzz
 open Lean (Json toJson)
@@ -136,6 +138,7 @@ structure Opts where
   shrinks : Nat := 5
   verbose : Bool := false
   list : Bool := false
+  deps : Bool := false
 
 def parseArgs (o : Opts) : List String → Except String Opts
   | [] => .ok o
@@ -148,6 +151,7 @@ def parseArgs (o : Opts) : List String → Except String Opts
   | "--out" :: v :: rest => parseArgs { o with out := some v } rest
   | "-v" :: rest => parseArgs { o with verbose := true } rest
   | "--list" :: rest => parseArgs { o with list := true } rest
+  | "--deps" :: rest => parseArgs { o with deps := true } rest
   | a :: rest =>
     if a.startsWith "-" then .error s!"unknown option {a}"
     else parseArgs { o with app := a } rest
@@ -158,7 +162,7 @@ where
     | none => .error s!"expected a number, got {v}"
 
 def usage : String :=
-  "usage: lake exe fuzz <App> [--seed S|random] [--iterations N] [--steps K] [--budget-ms M] [--out DIR] [--shrink N] [-v]\n       lake exe fuzz --list"
+  "usage: lake exe fuzz <App> [--seed S|random] [--iterations N] [--steps K] [--budget-ms M] [--out DIR] [--shrink N] [-v]\n       lake exe fuzz --list [--deps]"
 
 /-! ## The run -/
 
@@ -282,7 +286,7 @@ def runTarget (t : Target) (o : Opts) : IO UInt32 := do
     if inv.check.isNone && !(t.custom.relations.any (·.1 == inv.info.id)) &&
         !(t.custom.drained.any (·.1 == inv.info.id)) && !(t.custom.outstanding.any (·.1 == inv.info.id)) then IO.println s!"note: ^{inv.info.id} {inv.info.title} is not runnable (no Decidable instance)"
   let json := Json.mkObj [
-    ("app", Json.str t.name), ("module", Json.str t.module),
+    ("app", Json.str t.name), ("module", Json.str t.module), ("package", Json.str t.package),
     ("mode", Json.str (if t.app.isSome then "runtime" else "model")),
     ("seed", toJson seed0), ("iterations", toJson o.iterations), ("steps", toJson o.steps),
     ("sequences", toJson o.iterations), ("stepsRun", toJson stepsRun),
@@ -295,19 +299,31 @@ def runTarget (t : Target) (o : Opts) : IO UInt32 := do
     ("pressableSkipped", toJson skipped), ("droppedClicks", toJson dropped),
     ("host", hostStatsJson host)]
   let dir : System.FilePath := o.out.getD (if ← System.FilePath.pathExists "../claims.lock" then "../build/fuzz" else "build/fuzz")
-  IO.FS.createDirAll dir
-  IO.FS.writeFile (dir / s!"{t.name}.json") (json.pretty ++ "\n")
-  IO.println s!"wrote {dir / s!"{t.name}.json"}"
+  -- A dependency's target, `cairn_atproto/Claims`, goes in a directory of its package's.
+  let file := dir / s!"{t.name}.json"
+  if let some parent := file.parent then IO.FS.createDirAll parent
+  IO.FS.writeFile file (json.pretty ++ "\n")
+  IO.println s!"wrote {file}"
   return if fails.isEmpty then 0 else 1
 
+/-- A name two of `targets` share, if any (cairn#221). -/
+def duplicate? : List Target → Option String
+  | [] => none
+  | t :: ts => if ts.any (·.name == t.name) then some t.name else duplicate? ts
+
 def main (targets : List Target) (args : List String) : IO UInt32 := do
+  if let some n := duplicate? targets then
+    let mods := targets.filter (·.name == n) |>.map (·.module)
+    IO.eprintln s!"two fuzz targets are named {n.quote} ({mods}); a name must pick one machine (cairn#221)"
+    return 2
   let env (k : String) : IO (Option Nat) := do return (← IO.getEnv k).bind String.toNat?
   let o : Opts := { seed := (← env "SEED").getD 0, iterations := (← env "ITERATIONS").getD 100 }
   match parseArgs o args with
   | .error e => IO.eprintln e; IO.eprintln usage; return 2
   | .ok o =>
     if o.list then
-      for t in targets do IO.println s!"{t.name}\t{t.module}"
+      for t in targets do
+        if o.deps || !t.dependency then IO.println s!"{t.name}\t{t.module}"
       return 0
     match targets.find? (·.name == o.app) with
     | some t => runTarget t o

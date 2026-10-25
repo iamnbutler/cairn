@@ -8,7 +8,7 @@ beyond the claims the app already makes.
 ```sh
 cairn fuzz --iterations 1000         # in an app package (test/fixture): every target, into build/fuzz
 cairn fuzz Fixture --seed 1234 --iterations 1 --steps 80 -v   # replay one seed, step by step
-cd lean && lake exe fuzz --list       # every fuzzable app
+cd lean && lake exe fuzz --list       # every fuzzable app of the package
 ```
 
 Code: `lean/Cairn/Fuzz/`, and an app's `lean_exe fuzz` (test/fixture/lean/FuzzMain.lean).
@@ -33,6 +33,29 @@ def targets : List Cairn.Fuzz.Target := fuzz_targets%
 
 def main (args : List String) : IO UInt32 := Cairn.Fuzz.main targets args
 ```
+
+### Targets and dependencies
+
+`fuzz_targets%` sees every machine the root imports, a dependency's too: an app that requires
+cairn_atproto imports its session machine. Which package a machine is in comes from Lake (the
+package each module was built in), and a target is named for it:
+
+| Machine | Target name | Run by `cairn fuzz` |
+|---|---|---|
+| in the fuzz executable's own package, module `Sky.Claims` | `Claims`: the module's last component, and the machine's when the module declares several (`Gallery.machine`) | always |
+| in a dependency, module `CairnAtproto.Claims` of package `cairn_atproto` | `cairn_atproto/Claims`: its package, `/`, then the same | with `--deps`, or when named |
+
+So `lake exe fuzz --list` (and `cairn fuzz` with no targets) is the package's own machines; a
+dependency fuzzes its own in its own package. `--list --deps` and `cairn fuzz --deps` add the
+dependencies'. Any target can be named: `cairn fuzz cairn_atproto/Claims`, whose report is
+`build/fuzz/cairn_atproto/Claims.json`.
+
+Two machines with one target name are an error, not one shadowing the other: `fuzz_targets%`
+fails to compile, naming both (two of the package's modules ending in `Claims`; rename one), and
+`Cairn.Fuzz.main` refuses a list with a name twice (exit code 2). test/fuzz-scope (`make
+fuzz-scope`) is an app and a dependency with a machine in `Claims` each. (Through Cairn 0.3.0 a
+dependency's machine was the app's own and could share its name, and then only one of them ever
+ran: cairn#221.)
 
 ## What the claims give the fuzzer
 
