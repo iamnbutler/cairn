@@ -137,6 +137,9 @@ def flowSource (t : Target) (setup : Setup) (f : Failure) (traced : Array Traced
     | .mono => ""
     | .random sd => s!"\n-- Found with random metrics (seed {sd}); the theorem uses mono, so check it fails before the fix."
   let header := s!"-- {f.check} ^{f.claim}: {f.message}\n-- Replay: lake exe fuzz {t.name} --seed {setup.seed} --iterations 1 -v"
+  let hostOps := traced.toList.filterMap fun tr => match tr.op with | .host h => some h | _ => none
+  unless hostOps.isEmpty do
+    return s!"{header}\n-- The sequence needs the host's moves ({hostOps.length}: replies, the clock, subscription events,\n-- evictions), which a flow's witness can't state. State it as a theorem over `machine.update` and\n-- `machine.receive` from the steps above, or replay it with the command above."
   if acts.isEmpty then
     return s!"{header}\n-- No move leads here (the failure is in the initial state, or only window and pointer events reach it), so there is no witness: state it as a theorem about `{t.machineDecl}.init`."
   let does := s!"Found by fuzzing (seed {setup.seed}): {f.message}"

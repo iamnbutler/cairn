@@ -60,6 +60,45 @@ def keyName : Key → String
   | .home => "home" | .finish => "end" | .pageUp => "pageUp" | .pageDown => "pageDown"
   | .char c => c.toString
 
+def faultName (f : Fault) : String := match f with
+  | .notFound => "notFound" | .denied => "denied" | .timeout => "timeout" | .network => "network"
+  | .invalid => "invalid" | .other => "other"
+
+def hexOf (b : ByteArray) : String :=
+  b.foldl (fun acc x => acc ++ String.ofList (Nat.toDigits 16 (x.toNat / 16) ++ Nat.toDigits 16 (x.toNat % 16))) ""
+
+def replyJson : Reply → Json
+  | .done => Json.mkObj [("kind", "done")]
+  | .bytes b => Json.mkObj [("kind", "bytes"), ("hex", Json.str (hexOf b))]
+  | .http st hs b => Json.mkObj [("kind", "http"), ("status", toJson st),
+      ("headers", Json.arr (hs.toArray.map fun (k, v) => Json.arr #[Json.str k, Json.str v])),
+      ("hex", Json.str (hexOf b))]
+  | .failed f m => Json.mkObj [("kind", "failed"), ("fault", Json.str (faultName f)), ("message", Json.str m)]
+  | .names ns => Json.mkObj [("kind", "names"), ("names", toJson ns)]
+  | .app pid n => Json.mkObj [("kind", "app"), ("pid", toJson pid), ("name", Json.str n)]
+  | .flag b => Json.mkObj [("kind", "flag"), ("granted", toJson b)]
+  | .image w h => Json.mkObj [("kind", "image"), ("w", toJson w), ("h", toJson h)]
+
+def hostJson : HostOp → Json
+  | .advance ms j => Json.mkObj [("host", "advance"), ("ms", toJson ms), ("wallJump", toJson j)]
+  | .wake l => Json.mkObj [("host", "wake"), ("late", toJson l)]
+  | .reply id r => Json.mkObj [("host", "reply"), ("id", toJson id), ("reply", replyJson r)]
+  | .load id w h => Json.mkObj [("host", "load"), ("id", toJson id), ("w", toJson w), ("h", toJson h)]
+  | .sub s e dt => Json.mkObj [("host", "sub"), ("sub", Json.str (subText s)),
+      ("event", Json.str (reprStr e)), ("dt", toJson dt)]
+  | .late id e => Json.mkObj [("host", "late"), ("id", toJson id), ("event", Json.str (reprStr e))]
+  | .evict src => Json.mkObj [("host", "evict"), ("source", Json.str src)]
+  | .stray id r => Json.mkObj [("host", "stray"), ("id", toJson id), ("reply", replyJson r)]
+
+def hostStatsJson (h : HostStats) : Json := Json.mkObj [
+  ("requests", toJson h.requests), ("cancels", toJson h.cancels), ("replies", toJson h.replies),
+  ("failedReplies", toJson h.failed), ("cancelledReplies", toJson h.cancelledReplies),
+  ("strayReplies", toJson h.stray), ("clocks", toJson h.clocks), ("wakes", toJson h.wakes),
+  ("timersDue", toJson h.timersDue), ("subEvents", toJson h.subEvents),
+  ("lateSubEvents", toJson h.lateSubEvents), ("loads", toJson h.loads),
+  ("evictions", toJson h.evictions), ("maxOutstanding", toJson h.maxOutstanding),
+  ("leftOver", toJson h.leftOver)]
+
 def stepJson (tr : Traced) : Json :=
   let hit : Json := match tr.hit with | some r => Json.str r.label | none => Json.null
   match tr.op with
@@ -72,6 +111,7 @@ def stepJson (tr : Traced) : Json :=
   | .resize z => Json.mkObj [("event", "resize"), ("w", toJson z.w), ("h", toJson z.h)]
   | .exit => Json.mkObj [("event", "pointerExit")]
   | .windowFocus b => Json.mkObj [("event", "windowFocus"), ("focused", toJson b)]
+  | .host h => hostJson h
 
 def metricsJson : MetricsChoice → Json
   | .mono => Json.mkObj [("kind", "mono")]
@@ -80,6 +120,8 @@ def metricsJson : MetricsChoice → Json
 def sequenceJson (t : Target) (setup : Setup) (traced : Array Traced) : Json :=
   Json.mkObj [("app", Json.str t.name), ("seed", toJson setup.seed),
     ("window", Json.mkObj [("w", toJson setup.size.w), ("h", toJson setup.size.h)]),
+    ("clock", Json.mkObj [("mono", toJson setup.start.mono), ("wall", toJson setup.start.wall),
+      ("zone", toJson setup.start.zone)]),
     ("metrics", metricsJson setup.metrics), ("steps", Json.arr (traced.map stepJson))]
 
 /-! ## Options -/
@@ -141,7 +183,8 @@ def claimJson (t : Target) (stats : Stats) (fails : Array (Failure × Setup)) (c
   match c.kind with
   | .move | .invariant =>
     let runnable := c.kind == .move ||
-      (t.invariants.any fun (i : InvCheck t.S) => i.info.id == c.id && i.check.isSome)
+      (t.invariants.any fun (i : InvCheck t.S) => i.info.id == c.id && i.check.isSome) ||
+      t.custom.relations.any (·.1 == c.id) || t.custom.drained.any (·.1 == c.id)
     match stats.get? c.id with
     | none => Json.mkObj (base ++ [("pass", Json.null),
         ("note", Json.str (if runnable then "not run" else "not runnable: no Decidable instance"))])
@@ -175,6 +218,7 @@ def runTarget (t : Target) (o : Opts) : IO UInt32 := do
   let mut maxNs := 0
   let mut skipped := 0
   let mut mono := 0
+  let mut host : HostStats := {}
   let t0 ← IO.monoNanosNow
   for i in [0:o.iterations] do
     let seed := seed0 + i
@@ -187,6 +231,7 @@ def runTarget (t : Target) (o : Opts) : IO UInt32 := do
     stepsRun := stepsRun + out.steps
     maxNs := max maxNs out.maxNs
     skipped := skipped + out.skipped
+    host := host.add out.host
     for (step, ns) in out.over do
       if over.size < 20 then
         over := over.push (Json.mkObj [("seed", toJson seed), ("step", toJson step), ("ms", msJson ns)])
@@ -222,8 +267,10 @@ def runTarget (t : Target) (o : Opts) : IO UInt32 := do
     IO.println s!"pressability skipped in {skipped} of {stepsRun} steps (window below the app's minimum); {mono} sequences with mono metrics"
     if dropped > 0 then
       IO.println s!"{dropped} clicks dropped by design: the pointerDown's blur saved an edit that moved the clicked control (T33; counted as {droppedCheck}, not failed)"
+  if t.app.isSome then
+    IO.println s!"host: {host.requests} requests ({host.cancels} cancelled), {host.replies} answered ({host.failed} failed), {host.cancelledReplies} answers to cancelled requests, {host.stray} stray; {host.clocks} clocks, {host.wakes} wakes, {host.timersDue} timers due; {host.subEvents} subscription events ({host.lateSubEvents} after a stop); {host.loads} early loads, {host.evictions} evictions; at most {host.maxOutstanding} outstanding, {host.leftOver} unanswered at the end"
   for inv in t.invariants do
-    if inv.check.isNone then IO.println s!"note: ^{inv.info.id} {inv.info.title} is not runnable (no Decidable instance)"
+    if inv.check.isNone && !(t.custom.relations.any (·.1 == inv.info.id)) then IO.println s!"note: ^{inv.info.id} {inv.info.title} is not runnable (no Decidable instance)"
   let json := Json.mkObj [
     ("app", Json.str t.name), ("module", Json.str t.module),
     ("mode", Json.str (if t.app.isSome then "runtime" else "model")),
@@ -235,7 +282,8 @@ def runTarget (t : Target) (o : Opts) : IO UInt32 := do
     ("failures", Json.arr reports),
     ("failingSequences", toJson fails.size),
     ("budget", Json.mkObj [("maxMs", msJson maxNs), ("over", Json.arr over)]),
-    ("pressableSkipped", toJson skipped), ("droppedClicks", toJson dropped)]
+    ("pressableSkipped", toJson skipped), ("droppedClicks", toJson dropped),
+    ("host", hostStatsJson host)]
   let dir : System.FilePath := o.out.getD (if ← System.FilePath.pathExists "../claims.lock" then "../build/fuzz" else "build/fuzz")
   IO.FS.createDirAll dir
   IO.FS.writeFile (dir / s!"{t.name}.json") (json.pretty ++ "\n")

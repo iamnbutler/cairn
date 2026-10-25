@@ -98,6 +98,23 @@ structure Custom (S : Type) where
   noControl : List ClaimId := []
   /-- The frame-time budget for one step (update, view, layout), in nanoseconds. -/
   budgetNs : Option Nat := none
+  /-- Replies for the fuzzer's host to answer request `id` with, in the current state
+  (docs/fuzz.md, "The host"): for structured answers, such as the JSON a parser expects. `none`
+  keeps the default, which knows only the reply's shape (random bytes, a status, a size, a
+  fault). A reply that doesn't answer the request's kind (`Reply.answers`) is replaced by a
+  failure, since the host never sends one. -/
+  replies : S → Nat → Request → Option (Gen Reply) := fun _ _ _ => none
+  /-- Events for the fuzzer's host to send an active subscription; `none` keeps the default. -/
+  subEvents : S → Sub → Option (Gen SubEvent) := fun _ _ => none
+  /-- Checks over one step, for claims stated about every step rather than every state (a
+  reply to a request not waited for changes nothing; scores only improve): given the state
+  before, the message the host sent if the step was the host's (`none` for a person's), and the
+  state after. Counted under the claim as `relation`. -/
+  relations : List (ClaimId × (S → Option Msg → S → Bool)) := []
+  /-- Checks once a sequence ends and the host has answered everything outstanding (with
+  `replies` or the default): every load finished, nothing still waiting. Counted under the
+  claim as `drained`. -/
+  drained : List (ClaimId × (S → Bool)) := []
 
 instance {S : Type} : Inhabited (Custom S) := ⟨{}⟩
 
