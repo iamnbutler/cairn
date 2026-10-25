@@ -242,7 +242,11 @@ public final class Engine: @unchecked Sendable {
         while true {
             cond.lock()
             waitForInput()
-            if stopping { cond.unlock(); break }
+            if stopping {
+                cond.unlock()
+                world.reset()  // the app's subscriptions stop with it; late answers are dropped
+                break
+            }
             let batch = queue
             queue.removeAll(keepingCapacity: true)
             let restart = restartRequest

@@ -98,6 +98,27 @@ render thread   CADisplayLink (NSView.displayLink) on its own run loop; paints t
   and the main thread takes the queue (`takeEffects`). Repaints and re-reads of `latest` never
   re-run effects.
 
+### Closing the window
+
+An app's window is the app: closing it (the close button, ⌘W) quits it, whatever else is up (a
+panel, a status item). An app with no window quits only through its own `quit` effect. On
+`willClose` the delegate, before AppKit tears the window down:
+
+1. stops the stats timer;
+2. shuts the view down (`HostView.shutDown`): stops the engine (the Lean thread finishes its
+   batch, then resets the `World`, which stops the app's subscriptions and drops late request
+   answers), stops the render loop and the window observers, and from then on
+   `applyLatestFrame` does nothing, so a `MainHop` already queued lands on nothing, no effect
+   runs and `onApply` (the other surfaces, the window's minimum size) is not called;
+3. asks `NSApp` to terminate on the next turn.
+
+The delegate owns the window, so it sets `isReleasedWhenClosed = false`. AppKit's default for a
+window made in code releases it on close as well, which freed it under the delegate's strong
+reference: Pairs 0.1.2 crashed in `objc_retain` when a frame hop that landed after the close
+reached it through `onApply`. `make selftest` runs `Fixture --close-test`, which closes the real
+window with input, a timer and frame hops in flight and checks the app quits with no frame
+applied after the close.
+
 ### Live resize
 
 Policy: **top-left gravity, hold the old picture.**
