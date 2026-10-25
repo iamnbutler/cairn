@@ -6,7 +6,7 @@ entries in the section of the workstream that introduces the assumption.
 
 Items marked **Fuzzed** are also checked by the trusted-base fuzzer (`make fuzz-trusted`,
 docs/fuzz.md "Trusted base"), against Lean's proved side or an independent oracle, and are
-declared as `assume` claims ^901–^915, ^940–^944, ^960–^971 and ^1000–^1011 in `lean/Cairn/Fuzz/Trusted/Claims.lean`, each naming its
+declared as `assume` claims ^7, ^214, ^901–^915, ^940–^944, ^960–^971 and ^1000–^1011 in `lean/Cairn/Fuzz/Trusted/Claims.lean`, each naming its
 check; `build/fuzz/trusted.json` holds the evidence. Items not marked are checked only by the
 tests and reviews they list.
 
@@ -168,6 +168,32 @@ See [host.md](host.md) for how each piece works.
   interval and distance are the user's system settings, not Lean's.
 - **Pointer positions.** View coordinates are rounded down to integer logical points (y down,
   from the top-left). Lean never sees sub-point positions.
+- **Clicks where they happen** (`assume`, ^7 `hostClicks`). A click reaches Lean as
+  `pointerMove p`, `pointerDown p primary` and `pointerUp p primary`, in order and with nothing
+  between, where `p` is the clicked point rounded down as above, with the event's modifiers.
+  Every press of every app relies on it.
+- **A double click is a second click** (`assume`, ^214 `doubleClick`). The second click of a
+  double click reaches Lean as another `pointerMove p` and a `pointerDown p primary` with
+  `clicks: 2` at the same point, then its `pointerUp`; the runtime turns that release into a
+  `doublePress` (TodoMVC's ^205 relies on it). Which clicks make a double click (the interval and
+  distance) is AppKit's, from the user's settings.
+
+  ^7 and ^214 were declared by the Counter and TodoMVC examples; they keep their ids and
+  statements and now live with the other assumptions in `Cairn.Fuzz.Trusted.Claims`, since every
+  app relies on them.
+
+  **Trusted code.** `HostView`'s `mouseDown`, `mouseUp` and `point` (`host/Sources/CairnHost/HostView.swift`),
+  the engine's queue (`Engine.swift`), AppKit's hit testing and its `clickCount`.
+
+  **Evidence.** **Fuzzed** (^7 `pointer.click`, ^214 `pointer.double-click`): a titled window
+  (never shown) of random size whose content view is the host's `HostView`, given AppKit mouse
+  events for random clicks, double clicks and triple clicks (`clickCount` 1, 2, 3, within the
+  double-click interval) with random modifiers, at fractional points and on the content's edges,
+  each sent to the view AppKit's hit testing picks. The events the app's core receives must be
+  exactly the expected ones, with `p` computed from the window location and the content height,
+  not by the host's own conversion. Mutating the host to round to nearest, or to drop
+  `clickCount`, fails both checks. Not covered: AppKit's choice of `clickCount` itself, and
+  routing by `NSWindow.sendEvent` in a shown window.
 - **Coalescing.** Consecutive pointer moves become the last move, and consecutive scrolls
   become one scroll with summed deltas. The host assumes no app needs the intermediate
   positions.

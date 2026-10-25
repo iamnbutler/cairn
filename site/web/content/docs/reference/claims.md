@@ -102,7 +102,7 @@ calls after every step.
 
 Something the proofs rely on but can't prove.
 
-<bongo:include src="lean/Examples/Counter.lean#counter-assume" />
+<bongo:include src="lean/Cairn/Fuzz/Trusted/Claims.lean#trusted-host-clicks" />
 
 Optional clauses: `statement := P`, a formal statement (a definition, never an axiom: theorems
 that rely on it take it as a hypothesis), and `check "name"`, naming the fuzz check that gathers

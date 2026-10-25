@@ -65,7 +65,10 @@ page.
 ### The host's input and output
 
 - **Input.** AppKit delivers events in order; pointer positions are rounded down to whole
-  points; consecutive pointer moves and scrolls are coalesced. Key mapping uses AppKit's own key
+  points; consecutive pointer moves and scrolls are coalesced. A click arrives as a pointer down
+  and up at the point clicked (^7), and the second click of a double click as a pointer down with
+  a click count of 2 at the same point (^214): fuzzed by giving the host's view random clicks,
+  double and triple clicks with modifiers in windows of random size. Key mapping uses AppKit's own key
   bindings inside a text field and a reviewed table outside one.
 - **Text input.** UTF-16 offsets are converted to Unicode scalar indices (fuzzed, ^903). Between
   an input-method call and the next frame, the host answers from its own copy of the field and

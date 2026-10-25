@@ -16,7 +16,6 @@ proofs that reach the screen, runtime tests, a Swift host, a self test and claim
 | ^3 | place | the window |
 | ^4, ^5 | flow | count to three; count up, then reset |
 | ^6 | retired | an invariant the runtime made pointless |
-| ^7 | assume | the host reports clicks where they happen |
 
 Its claims: [Counter window](/packages/cairn/claims/3/).
 

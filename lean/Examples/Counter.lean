@@ -19,7 +19,9 @@ nothing else, so a press on anything that is not a control of ^1 or ^2 changes n
 | ^3 | place | the window |
 | ^4, ^5 | flow | count to three; count up, then reset |
 | ^6 | retired | was an invariant over a press field the v1 runtime made vacuous |
-| ^7 | assumption | the host reports clicks where they happen |
+
+Pressing ^1 and ^2 relies on the host reporting clicks where they happen, ^7, an assumption of
+Cairn's trusted base (docs/trusted.md, `Cairn.Fuzz.Trusted.Claims`), not of this app.
 
 Theorems about the view (presence of ^2, pressability) are in `Examples.Counter.Proofs`; runtime
 checks in `Examples.Counter.Tests`; the v1 exports in `Examples.Counter.Abi`; the host side is
@@ -90,11 +92,6 @@ flow ^5 startOver "Start over" for machine where
 retire ^6 invariant "Moves never leave a press in progress" because "The runtime owns press tracking; Counter's state no longer has a pressed field, so the invariant was vacuous."
 -- endregion: counter-retire
 
--- region: counter-assume
-assume ^7 hostClicks "The host reports clicks where they happen" where
-  does "The host sends a pointer down and up at the logical point the person clicked, in order."
--- endregion: counter-assume
-
 -- region: counter-claims
 /-- Every claim the counter makes. -/
 def claimInfos : List ClaimInfo := claims%
@@ -108,7 +105,7 @@ example : (apply {} 1).count = 1 := by decide
 example : (apply { count := 5 } 2).count = 0 := by decide
 example : apply {} 2 = {} := by decide
 example : apply { count := 2 } 9 = { count := 2 } := by decide
-example : claimInfos.map (·.id) = [1, 2, 3, 4, 5, 6, 7] := by decide
+example : claimInfos.map (·.id) = [1, 2, 3, 4, 5, 6] := by decide
 -- endregion: counter-checks
 
 -- region: counter-unclaimed

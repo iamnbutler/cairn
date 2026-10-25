@@ -22,7 +22,6 @@ claim or to code; each claim's `does` names the requirements it covers.
 | ^211 | move | Clear completed |
 | ^212 | invariant | the counter is the number of active todos; ids are distinct |
 | ^213 | retired | the listed rows, reissued as ^225 when `Style` gained an image |
-| ^214 | assume | the host reports a double click as a second click |
 | ^215 | retired | hash routes and the back button, which only make sense on the web |
 | ^216–^224 | flow | witnessed paths through the app |
 | ^225 | invariant | the listed rows are the todos the filter accepts, in order |
@@ -52,10 +51,14 @@ are exactly the todos the filter accepts, in order:
 
 ## Assumptions and retired claims
 
-A double click is something the host must report correctly, so it is an assumption. The back
-button through filters was a requirement only for the web; its id stays issued with the reason:
+A double click is something the host must report correctly, so it is an assumption, ^214. Every
+app relies on it, so it belongs to Cairn's [trusted base](/docs/internals/trusted-base/), not to
+TodoMVC, and the host fuzzer checks it (`pointer.double-click`):
 
-<bongo:include src="lean/Examples/Todo.lean#todo-double-click" />
+<bongo:include src="lean/Cairn/Fuzz/Trusted/Claims.lean#trusted-double-click" />
+
+The back button through filters was a requirement only for the web; its id stays issued with the
+reason:
 
 <bongo:include src="lean/Examples/Todo.lean#todo-retire" />
 
