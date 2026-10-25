@@ -19,7 +19,8 @@ public final class ImageStore: @unchecked Sendable {
     public struct Entry: Sendable {
         public let width: Int, height: Int
         public let pixels: Pixels
-        /// Increases each time any source is put, so a renderer can tell a replaced image apart.
+        /// Increases each time any source is put in any store, so a renderer can tell a replaced
+        /// image (or another store's) apart.
         public let generation: Int
     }
 
@@ -33,7 +34,8 @@ public final class ImageStore: @unchecked Sendable {
 
     private let lock = NSLock()
     private var entries: [String: Entry] = [:]
-    private var generation = 0
+    private static let generations = NSLock()
+    nonisolated(unsafe) private static var lastGeneration = 0
 
     public init() {}
 
@@ -44,8 +46,11 @@ public final class ImageStore: @unchecked Sendable {
 
     @discardableResult
     public func put(_ source: String, _ decoded: Decoded) -> Entry {
+        Self.generations.lock()
+        Self.lastGeneration += 1
+        let generation = Self.lastGeneration
+        Self.generations.unlock()
         lock.lock(); defer { lock.unlock() }
-        generation += 1
         let e = Entry(width: decoded.width, height: decoded.height, pixels: decoded.pixels, generation: generation)
         entries[source] = e
         return e

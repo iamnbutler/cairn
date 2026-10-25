@@ -28,7 +28,7 @@
 210	move	active	853d563eb0439f09	Completed
 211	move	active	d9ddae254bdeffa6	Clear completed
 212	invariant	active	8b1d23f718f063ec	Counter and ids
-213	invariant	active	5bd4106949e6759c	The list is the filter applied to the todos
+213	invariant	active	cdded3b5839c217c	The list is the filter applied to the todos
 214	assume	active	-	The host reports a double click as a second click
 215	move	retired	-	Back through filters
 216	flow	active	059a40708193b6f5	Add two todos and complete one
@@ -146,3 +146,6 @@
 1003	assume	active	-	makeDir makes a private directory and its parents
 1004	assume	active	-	A painter's pixels stay inside its box
 1005	assume	active	-	record reports started once its microphone is running, before any audio, or fails without it
+1006	assume	active	-	loadImage answers the image's pixel size, or the fault
+1007	assume	active	-	An image's pixels stay inside its box
+1008	assume	active	-	An image is drawn where its oriented pixels are
