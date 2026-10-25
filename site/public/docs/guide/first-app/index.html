@@ -167,7 +167,7 @@ tag, as Yap's lakefile does:</p>
   leanOptions := #[⟨`autoImplicit, false⟩, ⟨`relaxedAutoImplicit, false⟩,
     ⟨`weak.cairn.claims.scope, <span class="str">"yap"</span>⟩]
 
-require cairn from git <span class="str">"https://github.com/iamnbutler/cairn"</span> @ <span class="str">"v0.1.3"</span> / <span class="str">"lean"</span>
+require cairn from git <span class="str">"https://github.com/iamnbutler/cairn"</span> @ <span class="str">"v0.1.4"</span> / <span class="str">"lean"</span>
 
 <span class="kw">@[default_target]</span>
 lean_lib Yap <span class="kw">where</span>
@@ -176,7 +176,7 @@ lean_lib Yap <span class="kw">where</span>
 <p>Then depend on the same tag in <code>Package.swift</code>, and link the library that the build makes:</p>
 <figure class="code"><pre class="px"><code class="swift"><span class="kw">let</span> lib = Context.packageDirectory + <span class="str">"/.cairn/lib"</span>
 <span class="cm">// dependencies:</span>
-.package(url: <span class="str">"https://github.com/iamnbutler/cairn"</span>, exact: <span class="str">"0.1.3"</span>),
+.package(url: <span class="str">"https://github.com/iamnbutler/cairn"</span>, exact: <span class="str">"0.1.4"</span>),
 <span class="cm">// the app's executable:</span>
 .executableTarget(name: <span class="str">"CairnYap"</span>,
     dependencies: [<span class="str">"CYap"</span>, .product(name: <span class="str">"CairnHost"</span>, package: <span class="str">"cairn"</span>), /* … */],
