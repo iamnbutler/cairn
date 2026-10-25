@@ -89,6 +89,8 @@ final class WorldSuite: Suite {
             let plan = byId[id]!
             let k = req.kindCode
             if k == missingKind {
+                // World adds the device handlers (http is one) to any table: take it out.
+                world.handlers.table[k] = nil
                 answered.insert(id)
                 world.run([e], [])
                 continue
