@@ -1,4 +1,5 @@
-// The site's "Try it" pages (/try/<app>/, docs/try.md): an app's states, explored ahead of time.
+// "Try it" data (docs/try.md): an app's states, explored ahead of time. The site built pages from
+// it for the examples until 0.3.0.
 //
 //   bun tools/try/try.ts script --app Todo --claims claims.json > script.json
 //       what Cairn<App> --try-capture may do to each claim's controls, and the walk's bounds
