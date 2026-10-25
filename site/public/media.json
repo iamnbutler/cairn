@@ -1,5 +1,16 @@
 [
   {
+    "image": "/m/images/8e152cdadfa259a1.png",
+    "title": "Secure text field",
+    "caption": "The fixture's Passcode field after typing seven characters: the frame holds seven bullets, never the text, and the host gives it the AXSecureTextField role with no value. An offscreen render of the frame (Renderer.image).",
+    "date": "2026-10-25",
+    "published": "2026-10-25T21:51:15Z",
+    "commit": "1968755",
+    "width": 960,
+    "height": 1200,
+    "milestone": "m4"
+  },
+  {
     "image": "/m/images/bc48859669cf1995.png",
     "title": "Yap on cairn_json",
     "caption": "Yap's overlay mid-dictation, now built on Cairn 0.2.5 with JSON from the cairn_json package instead of its own parser. Yap 0.1.0 is on the registry.",
