@@ -10,7 +10,7 @@ namespace Examples.Gallery.Tests
 open Cairn Cairn.Runtime Examples.Gallery
 
 def tcfg : Config := {}
-def s0 : Runtime.State State := start app tcfg ⟨760, 800⟩
+def s0 : Runtime.State State := start app tcfg ⟨1120, 560⟩
 def runFrom (s : Runtime.State State) (es : List Event) : Runtime.State State × List Effect :=
   steps app tcfg s es
 def run (es : List Event) : Runtime.State State := (runFrom s0 es).1
@@ -74,11 +74,11 @@ def many : List Event := thenClick settled manyRef
 #guard (runFrom (run settled) (clickOn (run settled) manyRef)).2 ==
   ((manySources.zipIdx.take 6).map fun (src, i) => .request (i + 6) (.loadImage src true))
 #guard (run many).world.inFlight == 6 && (run many).world.queued.length == 18
-#guard (manyCounts (st many)) == "In flight 6 of 6 · queued 18 · loaded 0 of 24 · cancelled 0"
+#guard (manyCounts (st many)) == ("In flight 6 of 6 · queued 18", "Loaded 0 of 24 · cancelled 0")
 -- One answer frees a slot; the next waiting thumbnail goes out.
 #guard (runFrom (run many) [.reply 6 (.image 48 36)]).2 == [.request 12 (.loadImage (manySources.getD 6 "") true)]
 def oneIn : List Event := many ++ [.reply 6 (.image 48 36)]
-#guard (manyCounts (st oneIn)) == "In flight 6 of 6 · queued 17 · loaded 1 of 24 · cancelled 0"
+#guard (manyCounts (st oneIn)) == ("In flight 6 of 6 · queued 17", "Loaded 1 of 24 · cancelled 0")
 
 -- Cancel: the six being fetched are cancelled on the frame; the seventeen waiting are dropped
 -- without a word to the host. The cancelled six keep their slots until the host answers.
@@ -86,7 +86,7 @@ def cancelled : List Event := thenClick oneIn cancelRef
 #guard (runFrom (run oneIn) (clickOn (run oneIn) cancelRef)).2 ==
   [.cancelRequest 12, .cancelRequest 11, .cancelRequest 10, .cancelRequest 9, .cancelRequest 8, .cancelRequest 7]
 #guard (run cancelled).world.queued == [] && (run cancelled).world.inFlight == 6
-#guard (manyCounts (st cancelled)) == "In flight 0 of 6 · queued 0 · loaded 1 of 24 · cancelled 23"
+#guard (manyCounts (st cancelled)) == ("In flight 0 of 6 · queued 0", "Loaded 1 of 24 · cancelled 23")
 -- A late answer for a cancelled thumbnail changes nothing, sends nothing, and frees its slot.
 #guard (st (cancelled ++ [.reply 7 (.image 48 36)])).images.state (manySources.getD 1 "") == .loading
 #guard (runFrom (run cancelled) [.reply 7 (.image 48 36)]).2 == []

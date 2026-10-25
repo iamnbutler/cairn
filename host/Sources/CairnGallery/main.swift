@@ -13,7 +13,7 @@ import QuartzCore
 //   CairnGallery --selftest    drive the host headlessly through its real threads and check it
 //
 // Load 24 (^506) asks for 24 thumbnails from `https://slow.cairn.test/many/<i>.png`, which
-// `SlowServer` answers from the bundled pictures after a few hundred milliseconds, so the
+// `SlowServer` answers from the bundled pictures after a second or two, so the
 // runtime's cap on requests in flight (six) and Cancel (^507) can be watched.
 //
 // The app names its bundled pictures by paths relative to its resources (`images/…`), so the
@@ -26,7 +26,7 @@ let gallery = LeanApp(
     frame: { cairn_app_frame($0) },
     codec: FrameV1Codec())
 
-let size = Size(w: 720, h: 760)
+let size = Size(w: 1120, h: 560)
 let args = CommandLine.arguments
 
 guard let resources = Bundle.module.resourcePath, FileManager.default.changeCurrentDirectoryPath(resources) else {
@@ -47,7 +47,7 @@ if args.contains("--selftest") {
 }
 
 /// The demo server behind `slow.cairn.test`: answers each request with one of the bundled
-/// pictures after 300–900 ms, and counts how many it is serving at once. A stopped request
+/// pictures after 1.2–2.4 s, and counts how many it is serving at once. A stopped request
 /// (its `URLSession` task cancelled) is never answered. Other hosts go to the network, or with
 /// `offline` fail as if there were none.
 final class SlowServer: URLProtocol, @unchecked Sendable {
@@ -88,7 +88,7 @@ final class SlowServer: URLProtocol, @unchecked Sendable {
             client?.urlProtocolDidFinishLoading(self)
         }
         self.work = work
-        DispatchQueue.global().asyncAfter(deadline: .now() + .milliseconds(300 + (n * 137) % 600), execute: work)
+        DispatchQueue.global().asyncAfter(deadline: .now() + .milliseconds(1200 + (n * 331) % 1200), execute: work)
     }
 
     override func stopLoading() {
@@ -189,11 +189,11 @@ enum SelfTest {
 
         // Load 24: six at a time, the rest queued in Lean's runtime, never more than six at the server.
         click("^506")
-        until("six in flight") { $0.contains("In flight 6 of 6 · queued 18 · loaded 0 of 24 · cancelled 0") }
-        until("some loaded", timeout: 10) { $0.contains { $0.hasPrefix("In flight 6 of 6") && !$0.contains("loaded 0 of") } }
+        until("six in flight") { $0.contains("In flight 6 of 6 · queued 18") && $0.contains("Loaded 0 of 24 · cancelled 0") }
+        until("some loaded", timeout: 10) { $0.contains { $0.hasPrefix("In flight 6 of 6") } && !$0.contains { $0.hasPrefix("Loaded 0 of") } }
         // Cancel: those being fetched are stopped at the server, the rest never asked for.
         click("^507")
-        until("cancelled") { $0.contains { $0.hasPrefix("In flight 0 of 6 · queued 0") && !$0.hasSuffix("cancelled 0") } }
+        until("cancelled") { $0.contains("In flight 0 of 6 · queued 0") && $0.contains { $0.hasPrefix("Loaded") && !$0.hasSuffix("cancelled 0") } }
         let deadline = Date(timeIntervalSinceNow: 5)
         while SlowServer.now > 0 { if Date() > deadline { fail("server still serving \(SlowServer.now)") }; usleep(1000) }
         let afterCancel = SlowServer.stats
@@ -201,7 +201,7 @@ enum SelfTest {
         if afterCancel.served + afterCancel.stopped >= 24 { fail("the queue reached the server after Cancel: \(afterCancel)") }
         // Load 24 again, to the end.
         click("^506")
-        until("all loaded", timeout: 20) { $0.contains("In flight 0 of 6 · queued 0 · loaded 24 of 24 · cancelled 0") }
+        until("all loaded", timeout: 20) { $0.contains("In flight 0 of 6 · queued 0") && $0.contains("Loaded 24 of 24 · cancelled 0") }
         let stats = SlowServer.stats
         if stats.most > 6 { fail("the server saw \(stats.most) requests at once") }
         engine.stop()

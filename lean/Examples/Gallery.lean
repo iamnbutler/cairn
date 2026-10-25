@@ -62,7 +62,7 @@ def sources : List String := tiles.map (·.source)
 def manyCount : Nat := 24
 
 /-- Thumbnails from the host's demo server (`host/Sources/CairnGallery`, `SlowServer`), which
-answers each after a few hundred milliseconds. -/
+answers each after a second or two. -/
 def manySources : List String :=
   (List.range manyCount).map fun i => s!"https://slow.cairn.test/many/{i}.png"
 
@@ -273,48 +273,56 @@ def header (s : State) (ui : UI) : Node :=
 
 /-! ### Many at once -/
 
-def thumbW : Nat := 48
-def thumbH : Nat := 36
+def thumbW : Nat := 52
+def thumbH : Nat := 39
 
 def thumb (s : State) (src : String) : Node :=
   .image { source := src, width := thumbW, height := thumbH, state := s.images.state src,
            fit := .cover, backdrop := some ⟨228, 228, 234, 255⟩ }
 
 def thumbRow (s : State) (srcs : List String) : Node :=
-  .box { axis := .row, width := .fill, height := .fixed thumbH, gap := 6 } none (srcs.map (thumb s))
+  .box { axis := .row, width := .fill, height := .fixed thumbH, gap := 8 } none (srcs.map (thumb s))
 
 /-- How many of `srcs` satisfy `p`. -/
 def countOf (srcs : List String) (p : String → Bool) : Nat := (srcs.filter p).length
 
-/-- The app's count of its requests: Lean's runtime sends at most `App.maxInFlight` (6) at
-once and queues the rest, oldest first. -/
-def manyCounts (s : State) : String :=
+/-- The thumbnails' counts, in two lines. Lean's runtime sends at most `App.maxInFlight` (6)
+requests at once and queues the rest, oldest first, so of the thumbnails the app is waiting
+for, six at most are in flight. -/
+def manyCounts (s : State) : String × String :=
   let asked := (s.images.pending.filter (isMany ·.2)).length
   let sent := min 6 asked
   let waiting (src : String) : Bool := s.images.pending.any (·.2 == src)
   let loaded := countOf manySources fun src => match s.images.state src with | .ready .. => true | _ => false
   let cancelled := if s.batches = 0 then 0 else
     countOf manySources fun src => !waiting src && s.images.state src == .loading
-  s!"In flight {sent} of 6 · queued {asked - sent} · loaded {loaded} of {manyCount} · cancelled {cancelled}"
+  (s!"In flight {sent} of 6 · queued {asked - sent}",
+   s!"Loaded {loaded} of {manyCount} · cancelled {cancelled}")
 
-def manyHeader (ui : UI) : Node :=
-  .box { axis := .row, width := .fill, height := .fixed 32, gap := 12, align := .center } none
-    [ .box { width := .fill, height := .fixed 32, clip := true } none
-        [.text { font := { size := 17, weight := 700 }, color := ink } "Many at once"],
-      button ui cancelRef "Cancel" grey greyDark,
-      button ui manyRef "Load 24" blue blueDark ]
-
-def view (s : State) (ui : UI) : Node :=
-  .box { width := .fill, height := .fill, padding := ⟨28, 28, 28, 28⟩, gap := 20,
-         background := some bg, clip := true } none
+def galleryColumn (s : State) (ui : UI) : Node :=
+  .box { width := .fixed 664, height := .fill, gap := 20 } none
     [ header s ui,
       tileRow s (tiles.take 3),
       tileRow s (tiles.drop 3),
-      line 12 muted s!"Reloads: {s.reloads}",
-      manyHeader ui,
-      line 13 ink (manyCounts s),
-      thumbRow s (manySources.take 12),
-      thumbRow s (manySources.drop 12) ]
+      line 12 muted s!"Reloads: {s.reloads}" ]
+
+def manyColumn (s : State) (ui : UI) : Node :=
+  .box { width := .fill, height := .fill, gap := 14 } none
+    [ line 17 ink "Many at once" (weight := 700),
+      .box { axis := .row, width := .fill, height := .fixed 32, gap := 12 } none
+        [ button ui manyRef "Load 24" blue blueDark,
+          button ui cancelRef "Cancel" grey greyDark ],
+      line 13 ink (manyCounts s).1,
+      line 13 muted (manyCounts s).2,
+      thumbRow s (manySources.take 6),
+      thumbRow s ((manySources.drop 6).take 6),
+      thumbRow s ((manySources.drop 12).take 6),
+      thumbRow s (manySources.drop 18) ]
+
+def view (s : State) (ui : UI) : Node :=
+  .box { axis := .row, width := .fill, height := .fill, padding := ⟨28, 28, 28, 28⟩, gap := 32,
+         background := some bg, clip := true } none
+    [ galleryColumn s ui, manyColumn s ui ]
 
 -- region: gallery-app
 def app : App State :=
