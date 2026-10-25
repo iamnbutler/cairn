@@ -10,9 +10,7 @@ What the host learns comes back as messages, decoded by a proved decoder. That k
 function in the app pure, so everything in the previous chapters still applies.
 
 This chapter follows the fixture's Flash button, which sets a timer and hears it fire, and the
-framework's own types for the rest. Clock, in the [example apps](/docs/examples/), is a stopwatch
-with Start, Lap, Reset, and Save and Load buttons that write the laps to a file and read them back;
-it uses all of it ([its claims](/packages/cairn_examples/claims/406/)).
+framework's own types for the rest.
 
 ## Two ways in
 
@@ -33,7 +31,7 @@ messages from the world name none.
 
 The host stamps every batch of events with the time, and the app hears it first, before any action
 or message in that batch. So an app that stores the time always has the current time when any of
-its functions run, including when a button is pressed. Clock keeps it in its state, from the
+its functions run, including when a button is pressed. A stopwatch keeps it in its state, from the
 `clock` message, to show the time since Start.
 
 The monotonic clock never goes backwards in the runtime, whatever the host sends; that is a
@@ -68,8 +66,8 @@ make an HTTP request, and more. The app picks the request's id, and the reply co
 
 The runtime keeps a table of pending requests and delivers a reply only to a pending id, in a
 shape that answers its kind. A duplicate, late or misshapen reply is dropped before the app sees
-it. Clock's Save asks for a `writeFile` and its Load a `readFile`, and its `receive` takes the
-`done` and the `bytes` that come back:
+it. A Save button asks for a `writeFile` and a Load button a `readFile`, and `receive` takes
+the `done` and the `bytes` that come back:
 
 <bongo:include src="lean/Cairn/Effects.lean#effects-reply" />
 
@@ -89,8 +87,8 @@ The machine gains its `receive`:
 <bongo:include src="test/fixture/lean/Fixture.lean#fixture-machine" />
 
 `toApp` carries it into the `App`, which also has the app's subscriptions and the effects to run
-at launch, once the clock is known. The fixture has neither. Clock sets both on what `toApp`
-returns: a tick every second, and a `readFile` of its saved laps at launch.
+at launch, once the clock is known. The fixture has neither. A stopwatch would set both on what
+`toApp` returns: a tick every second, and a `readFile` of its saved laps at launch.
 
 <bongo:include src="lean/Cairn/App.lean#app-app" />
 
@@ -100,10 +98,10 @@ Claims about the outside world are proved the same way. An invariant of a machin
 has a third clause, `receive`, proving the property is kept by every message too. It then holds
 whatever the host sends, in any order with the person's actions. The fixture's ^7 has one: the
 timer's message changes nothing it talks about
-([chapter 2](/docs/guide/moves-and-flows/#invariants)). Clock's
-[cairn_examples^409](/packages/cairn_examples/claims/409/) says pending requests always have ids
-below the next one, so a reply to a later request is never taken for an earlier one, and Clock
-proves that a tick arriving after Stop changes nothing.
+([chapter 2](/docs/guide/moves-and-flows/#invariants)). An app
+with requests can prove that pending requests always have ids below the next one, so a reply to a
+later request is never taken for an earlier one, or that a tick arriving after Stop changes
+nothing.
 
 ## What the host promises
 

@@ -100,9 +100,8 @@ evidence (`check`):
 
 <bongo:include src="lean/Cairn/Fuzz/Trusted/Claims.lean#trusted-host-clicks" />
 
-A retired claim keeps its kind, its title and the reason it went. Counter, one of the
-[example apps](/docs/examples/), retired an invariant its state no longer had anything to say
-about: [cairn_examples^6](/packages/cairn_examples/claims/6/).
+A retired claim keeps its kind, its title and the reason it went. An invariant the
+state no longer has anything to say about is retired, not deleted, and its id is never used again.
 
 ## Ids are the contract
 

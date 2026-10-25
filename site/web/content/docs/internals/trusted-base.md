@@ -50,7 +50,7 @@ fixed in the host, not papered over in Lean.
   pixels, nothing paints outside its clip. Checked by golden images at 1x, 1.5x and 2x and
   pixel probes.
 - **Host-drawn content stays in its box.** An app can register a Metal shader to draw inside a
-  box (Yap's level display does). It is assumed that it changes no pixel outside that box
+  box, for something like a live audio level. It is assumed that it changes no pixel outside that box
   (^1004). Fuzzed by rendering random frames with and without the paint and comparing every
   pixel outside.
 
@@ -97,7 +97,7 @@ request.
 | One reply per request | ^914 | each request is answered at most once, under its own id |
 | Timers that repeat | ^915 | ticks only while started, about once per period |
 
-Yap needed more: appending to and listing files, deleting, permissions, the app in front, the
+Apps need more: appending to and listing files, deleting, permissions, the app in front, the
 microphone, a global hot key, typing into another app, uploads and secrets. Each of those is an
 assumption with its own fuzz check too (^960–^975, ^1000–^1003 and ^1005). Every device is replaced by a
 fake in the fuzz suites, so `make check` never records audio, watches the keyboard or types into

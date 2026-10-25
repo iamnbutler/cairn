@@ -39,8 +39,7 @@ On the host, each kind has one handler in a table, keyed by the kind's code:
 A handler runs on a global queue and calls `reply` once. The callback is guarded, so a second
 answer is ignored; a kind with no handler is answered `failed invalid`. Handlers must not call
 Lean. When the app restarts, answers to earlier requests are dropped and every subscription
-stops. Tests swap the table: Clock's self test sends files to a scratch directory and plays no
-sound.
+stops. Tests swap the table: a self test sends files to a scratch directory and plays no sound.
 
 ## Adding a kind of request
 
