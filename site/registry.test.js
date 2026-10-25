@@ -44,6 +44,17 @@ describe("with the fixture", () => {
 		expect(text).toContain("<code>cairn^1</code>");
 	});
 
+	test("shows what changed since the previous version", async () => {
+		const text = await (await get("/packages/cairn/0.2.0/")).text();
+		expect(text).toContain('<h2 id="changes">What changed in 0.2.0</h2>');
+		expect(text).toContain('<a href="/packages/cairn/0.1.3/">0.1.3</a>');
+		expect(text).toContain('<tr class="active"><td><a href="#225"><code>cairn^225</code></a></td><td>new</td>');
+		expect(text).toContain('<tr class="retired"><td><a href="#213"><code>cairn^213</code></a></td><td>retired</td>');
+		expect(text).not.toContain('<a href="#1"><code>cairn^1</code></a>');
+		const first = await (await get("/packages/cairn/0.1.0/")).text();
+		expect(first).not.toContain('id="changes"');
+	});
+
 	test("shows an older version and its own ledger", async () => {
 		const text = await (await get("/packages/cairn/0.1.0/")).text();
 		expect(text).toContain("<dd>0.1.0</dd>");
