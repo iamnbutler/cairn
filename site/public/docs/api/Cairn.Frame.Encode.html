@@ -53,11 +53,11 @@ at most two strings, each <code>u32</code> byte length + UTF-8.</p>
 </section>
 <section class="decl" id="Cairn.Wire.FontWidth.wire" data-line="51">
 <div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.FontWidth.wire"><span class="ns">Cairn.Wire.FontWidth.</span>wire</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:51</span></div>
-<pre class="sig"><b class="nm">wire</b> : <a href="Cairn.Text.Metrics.html#Cairn.FontWidth" title="Cairn.FontWidth">FontWidth</a> → <span title="UInt8">UInt8</span></pre>
+<pre class="sig"><b class="nm">wire</b> : <a href="Cairn.Font.html#Cairn.FontWidth" title="Cairn.FontWidth">FontWidth</a> → <span title="UInt8">UInt8</span></pre>
 </section>
 <section class="decl" id="Cairn.Wire.FontWidth.ofWire" data-line="54">
 <div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.FontWidth.ofWire"><span class="ns">Cairn.Wire.FontWidth.</span>ofWire</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:54</span></div>
-<pre class="sig"><b class="nm">ofWire</b> : <span title="UInt8">UInt8</span> → Option <a href="Cairn.Text.Metrics.html#Cairn.FontWidth" title="Cairn.FontWidth">FontWidth</a></pre>
+<pre class="sig"><b class="nm">ofWire</b> : <span title="UInt8">UInt8</span> → Option <a href="Cairn.Font.html#Cairn.FontWidth" title="Cairn.FontWidth">FontWidth</a></pre>
 </section>
 <section class="decl" id="Cairn.Wire.Corner.code" data-line="61">
 <div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Wire.Corner.code"><span class="ns">Cairn.Wire.Corner.</span>code</a></h3><span class="src" title="source">lean/Cairn/Frame/Encode.lean:61</span></div>
@@ -756,7 +756,7 @@ under 4 GiB (each section's byte length is a <code>u32</code>).</p>
 </section>
 <section class="decl" id="Cairn.Wire.FontWidth.ofWire_wire" data-line="58">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.FontWidth.ofWire_wire"><span class="ns">Cairn.Wire.FontWidth.</span>ofWire_wire</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:58</span></div>
-<pre class="sig"><b class="nm">ofWire_wire</b> (w : <a href="Cairn.Text.Metrics.html#Cairn.FontWidth" title="Cairn.FontWidth">FontWidth</a>) : ofWire (wire w) = some w</pre>
+<pre class="sig"><b class="nm">ofWire_wire</b> (w : <a href="Cairn.Font.html#Cairn.FontWidth" title="Cairn.FontWidth">FontWidth</a>) : ofWire (wire w) = some w</pre>
 </section>
 <section class="decl" id="Cairn.Wire.Corner.ofCode_code" data-line="67">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Wire.Corner.ofCode_code"><span class="ns">Cairn.Wire.Corner.</span>ofCode_code</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Frame/Encode.lean:67</span></div>

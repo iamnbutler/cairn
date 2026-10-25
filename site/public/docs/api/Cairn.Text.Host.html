@@ -16,22 +16,22 @@
 <nav class="bar"><a class="home" href="../../"><img src="icon.svg" alt="">Cairn</a><span class="sep">/</span><a href="index.html">Cairn docs</a><a href="claims.html">Claims</a><span class="search"><input id="search" type="search" placeholder="Search names, docs, ^N  ( / )" autocomplete="off" spellcheck="false"><div id="results" hidden></div></span></nav>
 <div class="layout"><aside class="toc"><div class="pix muted">Cairn.Text.Host</div><a href="#definitions">Definitions <span class="n">13</span></a><ol><li><a href="#Cairn.Text.Host.raw">raw</a></li><li><a href="#Cairn.Text.Host.hostLinked">hostLinked</a></li><li><a href="#Cairn.Text.Host.sat">sat</a></li><li><a href="#Cairn.Text.Host.satI">satI</a></li><li><a href="#Cairn.Text.Host.satI32">satI32</a></li><li><a href="#Cairn.Text.Host.styleByte">styleByte</a></li><li><a href="#Cairn.Text.Host.rawFor">rawFor</a></li><li><a href="#Cairn.Text.Host.word">word</a></li><li><a href="#Cairn.Text.Host.climb">climb</a></li><li><a href="#Cairn.Text.Host.normalise">normalise</a></li><li><a href="#Cairn.TextMetrics.host">host</a></li><li><a href="#Cairn.Text.Host.putI32">putI32</a></li><li><a href="#Cairn.Text.Host.hostCheck">hostCheck</a></li></ol><a href="#theorems">Theorems <span class="n">8</span></a><ol><li><a href="#Cairn.Text.Host.length_climb">length_climb</a></li><li><a href="#Cairn.Text.Host.le_of_mem_climb">le_of_mem_climb</a></li><li><a href="#Cairn.Text.Host.pairwise_climb">pairwise_climb</a></li><li><a href="#Cairn.Text.Host.pairwise_normalised">pairwise_normalised</a></li><li><a href="#Cairn.Text.Host.size_normalise">size_normalise</a></li><li><a href="#Cairn.Text.Host.normalise_zero">normalise_zero</a></li><li><a href="#Cairn.Text.Host.normalise_mono">normalise_mono</a></li><li><a href="#Cairn.TextMetrics.host_valid">host_valid</a></li></ol></aside><main>
 <header class="page"><div class="eyebrow">Cairn · module</div><h1 class="mod">Cairn.Text.Host</h1><p class="src">lean/Cairn/Text/Host.lean</p></header>
-<div class="doc"><p>Core Text metrics from the host, as a <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics"><code>TextMetrics</code></a>.</p>
+<div class="doc"><p>Core Text metrics from the host, as a <a href="Cairn.Font.html#Cairn.TextMetrics"><code>TextMetrics</code></a>.</p>
 <p>The host shapes each (font, string) once with Core Text and reports, in whole logical points,
 the font's ascent and descent and the caret offset at every Unicode scalar boundary; the
 renderer draws glyphs from the very same shaped line (docs/render.md). Lean receives the numbers
 as bytes through <code>cairn_lean_text_metrics</code> (lean/c/text_host.c), decodes them, and normalises
-them so <a href="Cairn.Text.Host.html#Cairn.TextMetrics.host"><code>TextMetrics.host</code></a> satisfies <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics.Valid"><code>TextMetrics.Valid</code></a> <em>by proof</em>, whatever the host sends:
+them so <a href="Cairn.Text.Host.html#Cairn.TextMetrics.host"><code>TextMetrics.host</code></a> satisfies <a href="Cairn.Font.html#Cairn.TextMetrics.Valid"><code>TextMetrics.Valid</code></a> <em>by proof</em>, whatever the host sends:
 <code>host_valid</code> below. What stays trusted is only that the numbers match what is painted (an
 <code>assume</code>, docs/trusted.md).</p>
 <p>Linking: the extern symbols live in <code>text_host.o</code>, which Lake links into every executable and
 puts in <code>libcairn_Cairn.a</code>. The C function it calls, <code>cairn_text_metrics</code>, is defined weakly
 there (returning &quot;no host&quot;), so <code>bench</code>, <code>audit</code> and Lean tests link without the Swift host and
-get <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics.mono"><code>TextMetrics.mono</code></a> numbers; the Swift host's strong definition wins when it is linked.
+get <a href="Cairn.Font.html#Cairn.TextMetrics.mono"><code>TextMetrics.mono</code></a> numbers; the Swift host's strong definition wins when it is linked.
 <code>hostLinked ()</code> says which one is in use. Never evaluate these at elaboration time (<code>#eval</code>,
 <code>#guard</code>): the interpreter has no native implementation to call.</p>
 </div>
-<p class="imports"><span class="pix muted">Imports</span> <a href="Cairn.Text.Metrics.html">Cairn.Text.Metrics</a></p>
+<p class="imports"><span class="pix muted">Imports</span> <a href="Cairn.Font.html">Cairn.Font</a></p>
 <div class="order"><span class="pix muted">Order</span> <button type="button" data-order="kind" class="on">by kind</button><button type="button" data-order="source">as in the source</button></div>
 <div id="items">
 
@@ -65,12 +65,12 @@ The host clamps sizes to 1–1024 and weights to 100–900 itself.</p>
 </section>
 <section class="decl" id="Cairn.Text.Host.styleByte" data-line="46">
 <div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Host.styleByte"><span class="ns">Cairn.Text.Host.</span>styleByte</a></h3><span class="src" title="source">lean/Cairn/Text/Host.lean:46</span></div>
-<pre class="sig"><b class="nm">styleByte</b> (f : <a href="Cairn.Text.Metrics.html#Cairn.Font" title="Cairn.Font">Font</a>) : <span title="UInt8">UInt8</span></pre><div class="doc"><p>The style byte: bit 0 italic, bit 1 tabular digits, bits 2–3 the width's code.</p>
+<pre class="sig"><b class="nm">styleByte</b> (f : <a href="Cairn.Font.html" title="Cairn.Font">Font</a>) : <span title="UInt8">UInt8</span></pre><div class="doc"><p>The style byte: bit 0 italic, bit 1 tabular digits, bits 2–3 the width's code.</p>
 </div>
 </section>
 <section class="decl" id="Cairn.Text.Host.rawFor" data-line="49">
 <div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Host.rawFor"><span class="ns">Cairn.Text.Host.</span>rawFor</a></h3><span class="src" title="source">lean/Cairn/Text/Host.lean:49</span></div>
-<pre class="sig"><b class="nm">rawFor</b> (f : <a href="Cairn.Text.Metrics.html#Cairn.Font" title="Cairn.Font">Font</a>) (s : <span title="String">String</span>) : <span title="ByteArray">ByteArray</span></pre>
+<pre class="sig"><b class="nm">rawFor</b> (f : <a href="Cairn.Font.html" title="Cairn.Font">Font</a>) (s : <span title="String">String</span>) : <span title="ByteArray">ByteArray</span></pre>
 </section>
 <section class="decl" id="Cairn.Text.Host.word" data-line="55">
 <div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Text.Host.word"><span class="ns">Cairn.Text.Host.</span>word</a></h3><span class="src" title="source">lean/Cairn/Text/Host.lean:55</span></div>
@@ -93,7 +93,7 @@ is the identity, and the Swift tests check that it is.</p>
 </section>
 <section class="decl" id="Cairn.TextMetrics.host" data-line="79">
 <div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.TextMetrics.host"><span class="ns">Cairn.TextMetrics.</span>host</a></h3><span class="src" title="source">lean/Cairn/Text/Host.lean:79</span></div>
-<pre class="sig"><b class="nm">host</b> : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a></pre><div class="doc"><p>Core Text's metrics, from the host. Falls back to <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics.mono"><code>mono</code></a> when no host is linked.</p>
+<pre class="sig"><b class="nm">host</b> : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a></pre><div class="doc"><p>Core Text's metrics, from the host. Falls back to <a href="Cairn.Font.html#Cairn.TextMetrics.mono"><code>mono</code></a> when no host is linked.</p>
 </div>
 </section>
 <section class="decl" id="Cairn.Text.Host.putI32" data-line="153">

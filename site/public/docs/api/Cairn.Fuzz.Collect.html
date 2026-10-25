@@ -14,10 +14,10 @@
 </head>
 <body>
 <nav class="bar"><a class="home" href="../../"><img src="icon.svg" alt="">Cairn</a><span class="sep">/</span><a href="index.html">Cairn docs</a><a href="claims.html">Claims</a><span class="search"><input id="search" type="search" placeholder="Search names, docs, ^N  ( / )" autocomplete="off" spellcheck="false"><div id="results" hidden></div></span></nav>
-<div class="layout"><aside class="toc"><div class="pix muted">Cairn.Fuzz.Collect</div><a href="#definitions">Definitions <span class="n">5</span></a><ol><li><a href="#Cairn.Fuzz.Collect.rel">rel</a></li><li><a href="#Cairn.Fuzz.Collect.last">last</a></li><li><a href="#Cairn.Fuzz.Collect.moduleOf">moduleOf</a></li><li><a href="#Cairn.Fuzz.Collect.constsOfType">constsOfType</a></li><li><a href="#Cairn.Fuzz.Collect.«termFuzz_targets%25»">«termFuzz_targets%»</a></li></ol></aside><main>
+<div class="layout"><aside class="toc"><div class="pix muted">Cairn.Fuzz.Collect</div><a href="#definitions">Definitions <span class="n">6</span></a><ol><li><a href="#Cairn.Fuzz.Collect.rel">rel</a></li><li><a href="#Cairn.Fuzz.Collect.last">last</a></li><li><a href="#Cairn.Fuzz.Collect.moduleOf">moduleOf</a></li><li><a href="#Cairn.Fuzz.Collect.appModule">appModule</a></li><li><a href="#Cairn.Fuzz.Collect.constsOfType">constsOfType</a></li><li><a href="#Cairn.Fuzz.Collect.«termFuzz_targets%25»">«termFuzz_targets%»</a></li></ol></aside><main>
 <header class="page"><div class="eyebrow">Cairn · module</div><h1 class="mod">Cairn.Fuzz.Collect</h1><p class="src">lean/Cairn/Fuzz/Collect.lean</p></header>
 <div class="doc"><h1><code>fuzz_targets%</code>: every fuzzable app, found at compile time</h1>
-<p>Elaborates to a <code>List Cairn.Fuzz.Target</code>, one per <code>Machine</code> declared in an <code>Examples</code> module of
+<p>Elaborates to a <code>List Cairn.Fuzz.Target</code>, one per <code>Machine</code> declared in an app module (<a href="Cairn.Fuzz.Collect.html#Cairn.Fuzz.Collect.appModule"><code>appModule</code></a>: <code>Examples</code>, or an app package's own) of
 the imported environment. For each machine it collects, from the claim registry and the
 environment:</p>
 <ul>
@@ -34,7 +34,7 @@ environment:</p>
 <div class="order"><span class="pix muted">Order</span> <button type="button" data-order="kind" class="on">by kind</button><button type="button" data-order="source">as in the source</button></div>
 <div id="items">
 
-<h2 id="definitions">Definitions <span class="n">5</span></h2>
+<h2 id="definitions">Definitions <span class="n">6</span></h2>
 <section class="decl" id="Cairn.Fuzz.Collect.rel" data-line="24">
 <div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Collect.rel"><span class="ns">Cairn.Fuzz.Collect.</span>rel</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Collect.lean:24</span></div>
 <pre class="sig"><b class="nm">rel</b> (ns n : <span title="Lean.Name">Lean.Name</span>) : <span title="String">String</span></pre><div class="doc"><p><code>n</code> relative to namespace <code>ns</code>, as source text.</p>
@@ -48,14 +48,20 @@ environment:</p>
 <div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Collect.moduleOf"><span class="ns">Cairn.Fuzz.Collect.</span>moduleOf</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Collect.lean:31</span></div>
 <pre class="sig"><b class="nm">moduleOf</b> (env : <span title="Lean.Environment">Lean.Environment</span>) (n : <span title="Lean.Name">Lean.Name</span>) : Option <span title="Lean.Name">Lean.Name</span></pre>
 </section>
-<section class="decl" id="Cairn.Fuzz.Collect.constsOfType" data-line="35">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Collect.constsOfType"><span class="ns">Cairn.Fuzz.Collect.</span>constsOfType</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Collect.lean:35</span></div>
-<pre class="sig"><b class="nm">constsOfType</b> (env : <span title="Lean.Environment">Lean.Environment</span>) (head : <span title="Lean.Name">Lean.Name</span>) :
-  Array (<span title="Lean.Name">Lean.Name</span> × <span title="Lean.ConstantInfo">Lean.ConstantInfo</span>)</pre><div class="doc"><p>Constants of <code>Examples</code> modules whose type's head is <code>head</code>.</p>
+<section class="decl" id="Cairn.Fuzz.Collect.appModule" data-line="36">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Collect.appModule"><span class="ns">Cairn.Fuzz.Collect.</span>appModule</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Collect.lean:36</span></div>
+<pre class="sig"><b class="nm">appModule</b> (m : <span title="Lean.Name">Lean.Name</span>) : <span title="Bool">Bool</span></pre><div class="doc"><p>Modules that hold apps: anything but Cairn itself and Lean's libraries. In this repository
+that is <code>Examples</code>; in an app's package, the app's own modules (<code>Yap.*</code>).</p>
 </div>
 </section>
-<section class="decl" id="Cairn.Fuzz.Collect.«termFuzz_targets%»" data-line="44">
-<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Collect.«termFuzz_targets%25»"><span class="ns">Cairn.Fuzz.Collect.</span>«termFuzz_targets%»</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Collect.lean:44</span></div>
+<section class="decl" id="Cairn.Fuzz.Collect.constsOfType" data-line="40">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Collect.constsOfType"><span class="ns">Cairn.Fuzz.Collect.</span>constsOfType</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Collect.lean:40</span></div>
+<pre class="sig"><b class="nm">constsOfType</b> (env : <span title="Lean.Environment">Lean.Environment</span>) (head : <span title="Lean.Name">Lean.Name</span>) :
+  Array (<span title="Lean.Name">Lean.Name</span> × <span title="Lean.ConstantInfo">Lean.ConstantInfo</span>)</pre><div class="doc"><p>Constants of app modules (<a href="Cairn.Fuzz.Collect.html#Cairn.Fuzz.Collect.appModule"><code>appModule</code></a>) whose type's head is <code>head</code>.</p>
+</div>
+</section>
+<section class="decl" id="Cairn.Fuzz.Collect.«termFuzz_targets%»" data-line="49">
+<div class="dhead"><span class="kind pix">def</span><h3><a href="#Cairn.Fuzz.Collect.«termFuzz_targets%25»"><span class="ns">Cairn.Fuzz.Collect.</span>«termFuzz_targets%»</a></h3><span class="src" title="source">lean/Cairn/Fuzz/Collect.lean:49</span></div>
 <pre class="sig"><b class="nm">«termFuzz_targets%»</b> : <span title="Lean.ParserDescr">Lean.ParserDescr</span></pre>
 </section>
 

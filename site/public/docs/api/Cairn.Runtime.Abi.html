@@ -39,7 +39,7 @@ reference to the state into <code>cairn_app_step</code> and keeps the one that c
 <h2 id="structures">Structures <span class="n">1</span></h2>
 <section class="decl" id="Cairn.Runtime.Boundary" data-line="32">
 <div class="dhead"><span class="kind pix">structure</span><h3><a href="#Cairn.Runtime.Boundary"><span class="ns">Cairn.Runtime.</span>Boundary</a></h3><span class="src" title="source">lean/Cairn/Runtime/Abi.lean:32</span></div>
-<pre class="sig"><b class="nm">Boundary</b> : Type</pre><div class="doc"><p>The byte formats at the boundary: <a href="Cairn.Frame.Boundary.html#Cairn.Frame.boundary"><code>Cairn.Frame.boundary</code></a> (<a href="Cairn.Frame.Build.html#Cairn.Frame.ofLaid"><code>Frame.ofLaid</code></a> and the v1
+<pre class="sig"><b class="nm">Boundary</b> : Type</pre><div class="doc"><p>The byte formats at the boundary: <a href="Cairn.Abi.html#Cairn.Frame.boundary"><code>Cairn.Frame.boundary</code></a> (<a href="Cairn.Frame.Build.html#Cairn.Frame.ofLaid"><code>Frame.ofLaid</code></a> and the v1
 encoding, docs/frame.md).</p>
 </div><div class="members"><b class="pix muted">Fields</b><div class="member" id="Cairn.Runtime.Boundary.decode"><pre class="sig"><b class="nm">decode</b> : List <a href="Cairn.Input.html#Cairn.Event" title="Cairn.Event">Event</a></pre><div class="doc"><p>Host event bytes → events, in order.</p>
 </div></div><div class="member" id="Cairn.Runtime.Boundary.render"><pre class="sig"><b class="nm">render</b> : <a href="Cairn.Frame.html#Cairn.Canvas" title="Cairn.Canvas">Canvas</a></pre><div class="doc"><p>The draws, accessibility nodes and text input of a laid tree. It reads the <a href="Cairn.App.html#Cairn.UI"><code>UI</code></a> for the

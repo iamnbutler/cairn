@@ -25,7 +25,7 @@ satisfies <a href="Cairn.Layout.Facts.html"><code>Facts</code></a>. The pieces:<
 <li><a href="Cairn.Layout.Proofs.html#Cairn.Layout.layout_siblingsDisjoint"><code>layout_siblingsDisjoint</code></a>: children of rows and columns don't overlap.</li>
 <li><a href="Cairn.Layout.Proofs.html#Cairn.Layout.layout_fillExact"><code>layout_fillExact</code></a>: fill children make a row or column span its parent exactly.</li>
 <li><a href="Cairn.Layout.Proofs.html#Cairn.Layout.layout_caretPlaced"><code>layout_caretPlaced</code></a>: caret and selection geometry of every field.</li>
-<li><a href="Cairn.Layout.Proofs.html#Cairn.TextMetrics.mono_valid"><code>TextMetrics.mono_valid</code></a>: the test metrics satisfy <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics.Valid"><code>TextMetrics.Valid</code></a>.</li>
+<li><a href="Cairn.Layout.Proofs.html#Cairn.TextMetrics.mono_valid"><code>TextMetrics.mono_valid</code></a>: the test metrics satisfy <a href="Cairn.Font.html#Cairn.TextMetrics.Valid"><code>TextMetrics.Valid</code></a>.</li>
 </ul>
 <p>Each local fact is proved for a single <a href="Cairn.Layout.Core.html#Cairn.Layout.arrange"><code>arrange</code></a> step and lifted to the whole tree by
 <a href="Cairn.Layout.Proofs.html#Cairn.Layout.arrange_everywhere"><code>arrange_everywhere</code></a>, the one induction over the nested <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized"><code>Sized</code></a> tree.</p>
@@ -70,62 +70,62 @@ satisfies <a href="Cairn.Layout.Facts.html"><code>Facts</code></a>. The pieces:<
 <h2 id="theorems">Theorems <span class="n">86</span></h2>
 <section class="decl" id="Cairn.Layout.paraLines_controls" data-line="33">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.paraLines_controls"><span class="ns">Cairn.Layout.</span>paraLines_controls</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:33</span></div>
-<pre class="sig"><b class="nm">paraLines_controls</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (ts : <a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a>) (wr : <a href="Cairn.UI.Node.html#Cairn.Wrap" title="Cairn.Wrap">Wrap</a>) (aw : <span title="Int">Int</span>)
+<pre class="sig"><b class="nm">paraLines_controls</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (ts : <a href="Cairn.UI.Node.html#Cairn.TextStyle" title="Cairn.TextStyle">TextStyle</a>) (wr : <a href="Cairn.UI.Node.html#Cairn.Wrap" title="Cairn.Wrap">Wrap</a>) (aw : <span title="Int">Int</span>)
   (s : <span title="String">String</span>) : Sized.controlsList (paraLines m ts wr aw s) = []</pre><div class="doc"><p>A wrapped text's lines are text, so they have no controls.</p>
 </div>
 </section>
 <section class="decl" id="Cairn.Layout.measure_controls" data-line="43">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.measure_controls"><span class="ns">Cairn.Layout.</span>measure_controls</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:43</span></div>
-<pre class="sig"><b class="nm">measure_controls</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (aw : <span title="Int">Int</span>) (n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
+<pre class="sig"><b class="nm">measure_controls</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (aw : <span title="Int">Int</span>) (n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
   (measure m aw n).controls = n.controls</pre>
 </section>
 <section class="decl" id="Cairn.Layout.measureList_controls" data-line="51">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.measureList_controls"><span class="ns">Cairn.Layout.</span>measureList_controls</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:51</span></div>
-<pre class="sig"><b class="nm">measureList_controls</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (aw : <span title="Int">Int</span>) (ns : List <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
+<pre class="sig"><b class="nm">measureList_controls</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (aw : <span title="Int">Int</span>) (ns : List <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
   Sized.controlsList (measureList m aw ns) = Node.controlsList ns</pre>
 </section>
 <section class="decl" id="Cairn.Layout.arrange_controls" data-line="60">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.arrange_controls"><span class="ns">Cairn.Layout.</span>arrange_controls</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:60</span></div>
-<pre class="sig"><b class="nm">arrange_controls</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (s : <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>) (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) :
+<pre class="sig"><b class="nm">arrange_controls</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (s : <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>) (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) :
   (arrange m c r s).controls = s.controls</pre>
 </section>
 <section class="decl" id="Cairn.Layout.arrangeList_controls" data-line="66">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.arrangeList_controls"><span class="ns">Cairn.Layout.</span>arrangeList_controls</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:66</span></div>
-<pre class="sig"><b class="nm">arrangeList_controls</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (ss : List <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>) (c : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>)
+<pre class="sig"><b class="nm">arrangeList_controls</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (ss : List <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>) (c : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>)
   (rs : List <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) : Laid.controlsList (arrangeList m c rs ss) = Sized.controlsList ss</pre>
 </section>
 <section class="decl" id="Cairn.Layout.layout_controls" data-line="80">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.layout_controls"><span class="ns">Cairn.Layout.</span>layout_controls</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:80</span></div>
-<pre class="sig"><b class="nm">layout_controls</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) (n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
+<pre class="sig"><b class="nm">layout_controls</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) (n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
   (layout m w n).controls = n.controls</pre><div class="doc"><p><strong>Controls preserved.</strong> The controls of the laid-out tree, in paint order, are exactly the
 controls of the view: none lost, none invented, none reordered.</p>
 </div>
 </section>
 <section class="decl" id="Cairn.Layout.arrange_rect" data-line="86">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.arrange_rect"><span class="ns">Cairn.Layout.</span>arrange_rect</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:86</span></div>
-<pre class="sig"><b class="nm">arrange_rect</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (s : <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>) :
+<pre class="sig"><b class="nm">arrange_rect</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (s : <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>) :
   (arrange m c r s).rect = r</pre>
 </section>
 <section class="decl" id="Cairn.Layout.arrange_clip" data-line="90">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.arrange_clip"><span class="ns">Cairn.Layout.</span>arrange_clip</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:90</span></div>
-<pre class="sig"><b class="nm">arrange_clip</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (s : <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>) :
+<pre class="sig"><b class="nm">arrange_clip</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (s : <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>) :
   (arrange m c r s).clip = c</pre>
 </section>
 <section class="decl" id="Cairn.Layout.arrange_sizings" data-line="94">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.arrange_sizings"><span class="ns">Cairn.Layout.</span>arrange_sizings</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:94</span></div>
-<pre class="sig"><b class="nm">arrange_sizings</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (s : <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>) :
+<pre class="sig"><b class="nm">arrange_sizings</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (s : <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>) :
   (arrange m c r s).sizings = s.sizings</pre>
 </section>
 <section class="decl" id="Cairn.Layout.arrange_children_box" data-line="98">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.arrange_children_box"><span class="ns">Cairn.Layout.</span>arrange_children_box</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:98</span></div>
-<pre class="sig"><b class="nm">arrange_children_box</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (st : <a href="Cairn.UI.Node.html#Cairn.Style" title="Cairn.Style">Style</a>)
+<pre class="sig"><b class="nm">arrange_children_box</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (st : <a href="Cairn.UI.Node.html#Cairn.Style" title="Cairn.Style">Style</a>)
   (ctl : Option <a href="Cairn.UI.Node.html#Cairn.Control" title="Cairn.Control">Control</a>) (sz : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) (kids : List <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>) :
   (arrange m c r (Sized.box st ctl sz kids)).children =
     arrangeList m (innerClip st c r) (childRects st r (List.map <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized.item" title="Cairn.Layout.Sized.item">Sized.item</a> kids)) kids</pre>
 </section>
 <section class="decl" id="Cairn.Layout.arrange_children_nil" data-line="104">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.arrange_children_nil"><span class="ns">Cairn.Layout.</span>arrange_children_nil</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:104</span></div>
-<pre class="sig"><b class="nm">arrange_children_nil</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (s : <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>)
+<pre class="sig"><b class="nm">arrange_children_nil</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (s : <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>)
   (h :
     ∀ (st : <a href="Cairn.UI.Node.html#Cairn.Style" title="Cairn.Style">Style</a>) (ctl : Option <a href="Cairn.UI.Node.html#Cairn.Control" title="Cairn.Control">Control</a>) (sz : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) (kids : List <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>),
       s ≠ Sized.box st ctl sz kids) :
@@ -133,17 +133,17 @@ controls of the view: none lost, none invented, none reordered.</p>
 </section>
 <section class="decl" id="Cairn.Layout.arrangeList_clip" data-line="111">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.arrangeList_clip"><span class="ns">Cairn.Layout.</span>arrangeList_clip</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:111</span></div>
-<pre class="sig"><b class="nm">arrangeList_clip</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (c : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (rs : List <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>)
+<pre class="sig"><b class="nm">arrangeList_clip</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (c : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (rs : List <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>)
   (ss : List <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>) (k : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>) : k ∈ arrangeList m c rs ss → k.clip = c</pre>
 </section>
 <section class="decl" id="Cairn.Layout.arrangeList_length" data-line="125">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.arrangeList_length"><span class="ns">Cairn.Layout.</span>arrangeList_length</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:125</span></div>
-<pre class="sig"><b class="nm">arrangeList_length</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (c : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (rs : List <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>)
+<pre class="sig"><b class="nm">arrangeList_length</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (c : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (rs : List <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>)
   (ss : List <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>) : (arrangeList m c rs ss).length = ss.length</pre>
 </section>
 <section class="decl" id="Cairn.Layout.arrangeList_map" data-line="132">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.arrangeList_map"><span class="ns">Cairn.Layout.</span>arrangeList_map</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:132</span></div>
-<pre class="sig"><b class="nm">arrangeList_map</b> {α : Type} (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (c : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>)
+<pre class="sig"><b class="nm">arrangeList_map</b> {α : Type} (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (c : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>)
   (g : <a href="Cairn.UI.Node.html#Cairn.Sizing" title="Cairn.Sizing">Sizing</a> × <a href="Cairn.UI.Node.html#Cairn.Sizing" title="Cairn.Sizing">Sizing</a> → <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a> → α) (rs : List <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (ss : List <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>) :
   rs.length = ss.length →
     List.map (fun k =&gt; g k.sizings k.rect) (arrangeList m c rs ss) =
@@ -152,13 +152,13 @@ controls of the view: none lost, none invented, none reordered.</p>
 </section>
 <section class="decl" id="Cairn.Layout.arrangeList_rects" data-line="149">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.arrangeList_rects"><span class="ns">Cairn.Layout.</span>arrangeList_rects</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:149</span></div>
-<pre class="sig"><b class="nm">arrangeList_rects</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (c : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (rs : List <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>)
+<pre class="sig"><b class="nm">arrangeList_rects</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (c : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (rs : List <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>)
   (ss : List <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>) (h : rs.length = ss.length) :
   List.map <a href="Cairn.UI.Node.html#Cairn.Laid.rect" title="Cairn.Laid.rect">Laid.rect</a> (arrangeList m c rs ss) = rs</pre>
 </section>
 <section class="decl" id="Cairn.Layout.arrange_everywhere" data-line="170">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.arrange_everywhere"><span class="ns">Cairn.Layout.</span>arrange_everywhere</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:170</span></div>
-<pre class="sig"><b class="nm">arrange_everywhere</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (P : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a> → Prop) (Q : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a> → <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a> → Prop)
+<pre class="sig"><b class="nm">arrange_everywhere</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (P : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a> → Prop) (Q : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a> → <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a> → Prop)
   (H :
     ∀ (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (s : <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>),
       Q c r →
@@ -171,7 +171,7 @@ node.</p>
 </section>
 <section class="decl" id="Cairn.Layout.arrangeList_everywhere" data-line="182">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.arrangeList_everywhere"><span class="ns">Cairn.Layout.</span>arrangeList_everywhere</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:182</span></div>
-<pre class="sig"><b class="nm">arrangeList_everywhere</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (P : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a> → Prop)
+<pre class="sig"><b class="nm">arrangeList_everywhere</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (P : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a> → Prop)
   (Q : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a> → <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a> → Prop)
   (H :
     ∀ (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (s : <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>),
@@ -184,7 +184,7 @@ node.</p>
 </section>
 <section class="decl" id="Cairn.Layout.arrange_everywhere'" data-line="199">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.arrange_everywhere'"><span class="ns">Cairn.Layout.</span>arrange_everywhere'</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:199</span></div>
-<pre class="sig"><b class="nm">arrange_everywhere'</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (P : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a> → Prop)
+<pre class="sig"><b class="nm">arrange_everywhere'</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (P : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a> → Prop)
   (H : ∀ (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (s : <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>), P (arrange m c r s)) (s : <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>) (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) :
   Laid.Everywhere P (arrange m c r s)</pre><div class="doc"><p>The unconditional case.</p>
 </div>
@@ -204,12 +204,12 @@ node.</p>
 </section>
 <section class="decl" id="Cairn.Layout.arrange_childClips" data-line="218">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.arrange_childClips"><span class="ns">Cairn.Layout.</span>arrange_childClips</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:218</span></div>
-<pre class="sig"><b class="nm">arrange_childClips</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (s : <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>) :
+<pre class="sig"><b class="nm">arrange_childClips</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (s : <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>) :
   ChildClips (arrange m c r s)</pre>
 </section>
 <section class="decl" id="Cairn.Layout.arrange_clipInside" data-line="229">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.arrange_clipInside"><span class="ns">Cairn.Layout.</span>arrange_clipInside</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:229</span></div>
-<pre class="sig"><b class="nm">arrange_clipInside</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (s : <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>) (hw : 0 ≤ c.w)
+<pre class="sig"><b class="nm">arrange_clipInside</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (s : <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>) (hw : 0 ≤ c.w)
   (hh : 0 ≤ c.h) :
   ClipInside (arrange m c r s) ∧
     ∀ (k : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>), k ∈ (arrange m c r s).children → 0 ≤ k.clip.w ∧ 0 ≤ k.clip.h</pre>
@@ -220,22 +220,22 @@ node.</p>
 </section>
 <section class="decl" id="Cairn.Layout.layout_childClips" data-line="246">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.layout_childClips"><span class="ns">Cairn.Layout.</span>layout_childClips</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:246</span></div>
-<pre class="sig"><b class="nm">layout_childClips</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) (n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
+<pre class="sig"><b class="nm">layout_childClips</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) (n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
   Laid.Everywhere <a href="Cairn.Layout.Facts.html#Cairn.Layout.ChildClips" title="Cairn.Layout.ChildClips">ChildClips</a> (layout m w n)</pre>
 </section>
 <section class="decl" id="Cairn.Layout.layout_clipInside" data-line="250">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.layout_clipInside"><span class="ns">Cairn.Layout.</span>layout_clipInside</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:250</span></div>
-<pre class="sig"><b class="nm">layout_clipInside</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) (n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
+<pre class="sig"><b class="nm">layout_clipInside</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) (n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
   Laid.Everywhere <a href="Cairn.Layout.Facts.html#Cairn.Layout.ClipInside" title="Cairn.Layout.ClipInside">ClipInside</a> (layout m w n)</pre>
 </section>
 <section class="decl" id="Cairn.Layout.layout_rootClip" data-line="255">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.layout_rootClip"><span class="ns">Cairn.Layout.</span>layout_rootClip</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:255</span></div>
-<pre class="sig"><b class="nm">layout_rootClip</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) (n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
+<pre class="sig"><b class="nm">layout_rootClip</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) (n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
   (layout m w n).clip = windowRect w</pre>
 </section>
 <section class="decl" id="Cairn.Layout.layout_rootOrigin" data-line="259">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.layout_rootOrigin"><span class="ns">Cairn.Layout.</span>layout_rootOrigin</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:259</span></div>
-<pre class="sig"><b class="nm">layout_rootOrigin</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) (n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
+<pre class="sig"><b class="nm">layout_rootOrigin</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) (n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
   (layout m w n).rect.x = 0 ∧ (layout m w n).rect.y = 0</pre>
 </section>
 <section class="decl" id="Cairn.Layout.cumShare_mono" data-line="265">
@@ -351,34 +351,34 @@ node.</p>
 </section>
 <section class="decl" id="Cairn.Layout.kid_rect_mem" data-line="398">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.kid_rect_mem"><span class="ns">Cairn.Layout.</span>kid_rect_mem</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:398</span></div>
-<pre class="sig"><b class="nm">kid_rect_mem</b> {m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>} {c : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>} {rs : List <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>} {ss : List <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>}
+<pre class="sig"><b class="nm">kid_rect_mem</b> {m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>} {c : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>} {rs : List <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>} {ss : List <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>}
   (h : rs.length = ss.length) {k : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>} (hk : k ∈ arrangeList m c rs ss) : k.rect ∈ rs</pre>
 </section>
 <section class="decl" id="Cairn.Layout.arrange_rectNonneg" data-line="403">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.arrange_rectNonneg"><span class="ns">Cairn.Layout.</span>arrange_rectNonneg</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:403</span></div>
-<pre class="sig"><b class="nm">arrange_rectNonneg</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (s : <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>) (hw : 0 ≤ r.w)
+<pre class="sig"><b class="nm">arrange_rectNonneg</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (s : <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>) (hw : 0 ≤ r.w)
   (hh : 0 ≤ r.h) :
   RectNonneg (arrange m c r s) ∧
     ∀ (k : <a href="Cairn.UI.Node.html#Cairn.Laid" title="Cairn.Laid">Laid</a>), k ∈ (arrange m c r s).children → 0 ≤ k.rect.w ∧ 0 ≤ k.rect.h</pre>
 </section>
 <section class="decl" id="Cairn.Layout.measure_size_nonneg" data-line="415">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.measure_size_nonneg"><span class="ns">Cairn.Layout.</span>measure_size_nonneg</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:415</span></div>
-<pre class="sig"><b class="nm">measure_size_nonneg</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (aw : <span title="Int">Int</span>) (n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
+<pre class="sig"><b class="nm">measure_size_nonneg</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (aw : <span title="Int">Int</span>) (n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
   0 ≤ (measure m aw n).size.w ∧ 0 ≤ (measure m aw n).size.h</pre>
 </section>
 <section class="decl" id="Cairn.Layout.layout_rectNonneg" data-line="420">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.layout_rectNonneg"><span class="ns">Cairn.Layout.</span>layout_rectNonneg</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:420</span></div>
-<pre class="sig"><b class="nm">layout_rectNonneg</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) (n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
+<pre class="sig"><b class="nm">layout_rectNonneg</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) (n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
   Laid.Everywhere <a href="Cairn.Layout.Facts.html#Cairn.Layout.RectNonneg" title="Cairn.Layout.RectNonneg">RectNonneg</a> (layout m w n)</pre>
 </section>
 <section class="decl" id="Cairn.Layout.arrange_siblingsDisjoint" data-line="431">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.arrange_siblingsDisjoint"><span class="ns">Cairn.Layout.</span>arrange_siblingsDisjoint</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:431</span></div>
-<pre class="sig"><b class="nm">arrange_siblingsDisjoint</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (s : <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>) :
+<pre class="sig"><b class="nm">arrange_siblingsDisjoint</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (s : <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>) :
   SiblingsDisjoint (arrange m c r s)</pre>
 </section>
 <section class="decl" id="Cairn.Layout.layout_siblingsDisjoint" data-line="447">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.layout_siblingsDisjoint"><span class="ns">Cairn.Layout.</span>layout_siblingsDisjoint</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:447</span></div>
-<pre class="sig"><b class="nm">layout_siblingsDisjoint</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) (n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
+<pre class="sig"><b class="nm">layout_siblingsDisjoint</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) (n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
   Laid.Everywhere <a href="Cairn.Layout.Facts.html#Cairn.Layout.SiblingsDisjoint" title="Cairn.Layout.SiblingsDisjoint">SiblingsDisjoint</a> (layout m w n)</pre><div class="doc"><p><strong>Siblings disjoint.</strong> In every row and column of the laid-out tree, distinct children's
 rects are disjoint (earlier children end before later ones start on the main axis).</p>
 </div>
@@ -434,12 +434,12 @@ rects are disjoint (earlier children end before later ones start on the main axi
 </section>
 <section class="decl" id="Cairn.Layout.arrange_fillExact" data-line="537">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.arrange_fillExact"><span class="ns">Cairn.Layout.</span>arrange_fillExact</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:537</span></div>
-<pre class="sig"><b class="nm">arrange_fillExact</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (s : <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>) :
+<pre class="sig"><b class="nm">arrange_fillExact</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (s : <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>) :
   FillExact (arrange m c r s)</pre>
 </section>
 <section class="decl" id="Cairn.Layout.layout_fillExact" data-line="575">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.layout_fillExact"><span class="ns">Cairn.Layout.</span>layout_fillExact</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:575</span></div>
-<pre class="sig"><b class="nm">layout_fillExact</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) (n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
+<pre class="sig"><b class="nm">layout_fillExact</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) (n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
   Laid.Everywhere <a href="Cairn.Layout.Facts.html#Cairn.Layout.FillExact" title="Cairn.Layout.FillExact">FillExact</a> (layout m w n)</pre><div class="doc"><p><strong>Fill exactness.</strong> In every row and column of the laid-out tree with a fill child, if the
 other children, gaps and padding fit, then children, gaps and padding span the parent exactly
 along the main axis.</p>
@@ -452,18 +452,18 @@ along the main axis.</p>
 </section>
 <section class="decl" id="Cairn.Layout.offAt_bounds" data-line="585">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.offAt_bounds"><span class="ns">Cairn.Layout.</span>offAt_bounds</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:585</span></div>
-<pre class="sig"><b class="nm">offAt_bounds</b> {m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>} (hm : m.Valid) (f : <a href="Cairn.Text.Metrics.html#Cairn.Font" title="Cairn.Font">Font</a>) (s : <span title="String">String</span>)
+<pre class="sig"><b class="nm">offAt_bounds</b> {m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>} (hm : m.Valid) (f : <a href="Cairn.Font.html" title="Cairn.Font">Font</a>) (s : <span title="String">String</span>)
   (i : <span title="Nat">Nat</span>) : 0 ≤ offAt (m.offsets f s) i ∧ offAt (m.offsets f s) i ≤ m.width f s</pre><div class="doc"><p>Under valid metrics every caret offset lies between 0 and the text's width.</p>
 </div>
 </section>
 <section class="decl" id="Cairn.Layout.arrange_caretPlaced" data-line="608">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.arrange_caretPlaced"><span class="ns">Cairn.Layout.</span>arrange_caretPlaced</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:608</span></div>
-<pre class="sig"><b class="nm">arrange_caretPlaced</b> {m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>} (hm : m.Valid) (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (s : <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>) :
+<pre class="sig"><b class="nm">arrange_caretPlaced</b> {m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>} (hm : m.Valid) (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (s : <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>) :
   CaretPlaced m (arrange m c r s)</pre>
 </section>
 <section class="decl" id="Cairn.Layout.layout_caretPlaced" data-line="626">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.layout_caretPlaced"><span class="ns">Cairn.Layout.</span>layout_caretPlaced</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:626</span></div>
-<pre class="sig"><b class="nm">layout_caretPlaced</b> {m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>} (hm : m.Valid) (w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) (n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
+<pre class="sig"><b class="nm">layout_caretPlaced</b> {m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>} (hm : m.Valid) (w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) (n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
   Laid.Everywhere (CaretPlaced m) (layout m w n)</pre><div class="doc"><p><strong>Caret placement.</strong> In every field of the laid-out tree, the caret's x is the text origin
 plus the caret's offset, lies within the text's extent, and lies inside the content box whenever
 the box is at least a point wide; the selection runs between the offsets of its ends.</p>
@@ -471,7 +471,7 @@ the box is at least a point wide; the selection runs between the offsets of its 
 </section>
 <section class="decl" id="Cairn.TextMetrics.mono_valid" data-line="632">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.TextMetrics.mono_valid"><span class="ns">Cairn.TextMetrics.</span>mono_valid</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:632</span></div>
-<pre class="sig"><b class="nm">mono_valid</b> : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics.mono" title="Cairn.TextMetrics.mono">mono</a>.Valid</pre>
+<pre class="sig"><b class="nm">mono_valid</b> : <a href="Cairn.Font.html#Cairn.TextMetrics.mono" title="Cairn.TextMetrics.mono">mono</a>.Valid</pre>
 </section>
 <section class="decl" id="Cairn.Layout.mkRect_crossStart" data-line="652">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.mkRect_crossStart"><span class="ns">Cairn.Layout.</span>mkRect_crossStart</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:652</span></div>
@@ -565,12 +565,12 @@ the box is at least a point wide; the selection runs between the offsets of its 
 </section>
 <section class="decl" id="Cairn.Layout.arrange_childrenInside" data-line="838">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.arrange_childrenInside"><span class="ns">Cairn.Layout.</span>arrange_childrenInside</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:838</span></div>
-<pre class="sig"><b class="nm">arrange_childrenInside</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (s : <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>) :
+<pre class="sig"><b class="nm">arrange_childrenInside</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (c r : <a href="Cairn.Geometry.html#Cairn.Rect" title="Cairn.Rect">Rect</a>) (s : <a href="Cairn.Layout.Core.html#Cairn.Layout.Sized" title="Cairn.Layout.Sized">Sized</a>) :
   ChildrenInside (arrange m c r s)</pre>
 </section>
 <section class="decl" id="Cairn.Layout.layout_childrenInside" data-line="879">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.layout_childrenInside"><span class="ns">Cairn.Layout.</span>layout_childrenInside</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:879</span></div>
-<pre class="sig"><b class="nm">layout_childrenInside</b> (m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) (n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
+<pre class="sig"><b class="nm">layout_childrenInside</b> (m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>) (w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) (n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
   Laid.Everywhere <a href="Cairn.Layout.Facts.html#Cairn.Layout.ChildrenInside" title="Cairn.Layout.ChildrenInside">ChildrenInside</a> (layout m w n)</pre><div class="doc"><p><strong>Children that fit stay inside.</strong> In every container of the laid-out tree, if the children
 fit the content box (in size, and along the main axis with gaps), each child's rect is inside
 it.</p>
@@ -578,7 +578,7 @@ it.</p>
 </section>
 <section class="decl" id="Cairn.Layout.facts" data-line="887">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.facts"><span class="ns">Cairn.Layout.</span>facts</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Proofs.lean:887</span></div>
-<pre class="sig"><b class="nm">facts</b> {m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>} (hm : m.Valid) (w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) (n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
+<pre class="sig"><b class="nm">facts</b> {m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>} (hm : m.Valid) (w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>) (n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>) :
   Facts m w n (layout m w n)</pre><div class="doc"><p><strong>Layout facts.</strong> For valid metrics, every window and every view, <a href="Cairn.Layout.Core.html#Cairn.Layout.layout"><code>layout</code></a> satisfies all of
 <a href="Cairn.Layout.Facts.html"><code>Facts</code></a>.</p>
 </div>

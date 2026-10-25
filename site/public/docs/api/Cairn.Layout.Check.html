@@ -101,9 +101,9 @@ sound, so for a concrete view, window and metrics an app proves every control pr
 </section>
 <section class="decl" id="Cairn.Layout.hitTest_center_of_check" data-line="127">
 <div class="dhead"><span class="kind pix">theorem</span><h3><a href="#Cairn.Layout.hitTest_center_of_check"><span class="ns">Cairn.Layout.</span>hitTest_center_of_check</a></h3><span class="m proved pass" title="depends only on propext, Classical.choice and Quot.sound">proved</span><span class="src" title="source">lean/Cairn/Layout/Check.lean:127</span></div>
-<pre class="sig"><b class="nm">hitTest_center_of_check</b> {m : <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>} {w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>} {n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>}
+<pre class="sig"><b class="nm">hitTest_center_of_check</b> {m : <a href="Cairn.Font.html#Cairn.TextMetrics" title="Cairn.TextMetrics">TextMetrics</a>} {w : <a href="Cairn.Geometry.html#Cairn.Size" title="Cairn.Size">Size</a>} {n : <a href="Cairn.UI.Node.html#Cairn.Node" title="Cairn.Node">Node</a>}
   (h : (checkPressable w (layout m w n) &amp;&amp; controlsNonempty (layout m w n)) = <span title="Bool.true">true</span>)
-  (t : <a href="Cairn.Runtime.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>) :
+  (t : <a href="Cairn.UI.Hit.html#Cairn.Runtime.Target" title="Cairn.Runtime.Target">Runtime.Target</a>) :
   t ∈ Runtime.targets (layout m w n) →
     Runtime.hitTest (layout m w n) t.visible.center = some t.control</pre><div class="doc"><p><strong>Every control is pressable at its centre</strong>, for a laid-out view the checker accepts.</p>
 </div>

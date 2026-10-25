@@ -21,7 +21,7 @@
 undo and redo stacks, and placeholder. <a href="Cairn.Text.Field.html#Cairn.Text.Field.apply"><code>Field.apply</code></a> gives the meaning of every <a href="Cairn.Input.html#Cairn.TextOp"><code>TextOp</code></a>;
 <a href="Cairn.Text.Field.html#Cairn.Text.Field.view"><code>Field.view</code></a> turns a field into the <a href="Cairn.UI.Node.html#Cairn.FieldView"><code>FieldView</code></a> the view layer draws.</p>
 <p>The text is a <code>List Char</code>, so every index is a Unicode scalar position, the same unit as
-<code>String.length</code> and <a href="Cairn.Text.Metrics.html#Cairn.TextMetrics.offsets"><code>TextMetrics.offsets</code></a>. Lists are used rather than <code>String</code> because every
+<code>String.length</code> and <a href="Cairn.Font.html#Cairn.TextMetrics.offsets"><code>TextMetrics.offsets</code></a>. Lists are used rather than <code>String</code> because every
 edit is a splice (<code>take a ++ s ++ drop b</code>), and core Lean's <code>List</code> lemmas about <code>take</code>, <code>drop</code>
 and <code>length</code> make the proofs short; <code>String</code>'s byte-indexed API would put a UTF-8 decoding step
 between every theorem and its statement. The view converts with <code>String.ofList</code>
