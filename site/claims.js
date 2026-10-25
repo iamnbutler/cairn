@@ -245,7 +245,7 @@ ${(d.statementDecls ?? []).length ? `<div><dt>Statement</dt><dd>${d.statementDec
 	return `<div class="facts px"><dl>
 ${facts.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("\n")}
 </dl>
-<p class="go"><a href="${base}#${c.id}">All of ${esc(m.name)} ${esc(m.version)}'s claims</a></p>
+<p class="go"><a href="${base}#${m.places.includes(c) ? `place-${c.id}` : c.id}">All of ${esc(m.name)} ${esc(m.version)}'s claims</a></p>
 </div>
 <section class="prose wide claim">
 ${d?.does ? `<h2 id="does">${c.kind === "place" ? "What it is" : c.kind === "assume" || c.kind === "invariant" ? "What it says" : "What you do"}</h2>\n<p class="said">${esc(d.does)}</p>` : ""}

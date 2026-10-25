@@ -47,9 +47,9 @@ Power Profiler isn't available from `xctrace` on macOS.
 
 ## Running it
 
-Yap's package (`yap-cairn`, which moved out of this repository in issue #75) has two make
-targets that build both apps and run the suites: `make bench-yap-overlay` for frame pacing alone,
-about 15 minutes, and `make bench-yap` for every suite, about two hours. Its
+Yap's repository (`yap-cairn`, the package [`yap`](/packages/yap/), out of Cairn's since
+issue #75) has two make targets that build both apps and run the suites: `make bench-yap-overlay`
+for frame pacing alone, about 15 minutes, and `make bench-yap` for every suite, about two hours. Its
 `tools/bench/yap-instruments.sh` runs one suite per template, each with the arguments that put the
 apps in the right state.
 

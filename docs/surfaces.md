@@ -1,6 +1,6 @@
 # Surfaces: the menu bar menu and the overlay panel
 
-Design for GOAL.md M2, "Done means" item 3: a menu bar item whose menu is built from Lean's view,
+Design for M2 (docs/goals/m2.md), "Done means" item 3: a menu bar item whose menu is built from Lean's view,
 every item a move with an id, and a panel that never takes focus or clicks, both mirrored to
 accessibility. Sections 1–7 are the design; [What was built](#what-was-built) says where the
 implementation differs from it, and [Decisions](#decisions) records how the open questions were
@@ -61,7 +61,7 @@ app."
 | Conformance | The socket reads the `NSMenu` AppKit holds and compares it with the frame's menu; it selects items through `NSMenu.performActionForItem(at:)` | As M1, plus window management |
 | Work | A frame section, a reconciler, two events, a few theorems | A popover window kind, submenus, keyboard navigation, dismissal, AX roles, and the theorems for all of it |
 
-**Recommendation: native.** The claims GOAL.md asks of the menu are presence and enablement
+**Recommendation: native.** The claims M2 asks of the menu are presence and enablement
 ("menu presence and enablement, as in M1"); the native design proves both more directly than M1
 does, because the menu description *is* the view, with no layout between the move and the item.
 What it gives up is the pressable proof through hit testing, and what replaces it is one assumption
@@ -456,7 +456,7 @@ records the same size. Proposed: the first. New events: `menuOpen place`, `menuC
 
 Q (lane `effects`) is changing `App.lean`, the runtime, the ABI and both encodings for time,
 requests and subscriptions. At the time of writing its branch had not been pushed and
-`docs/effects.md` did not exist, so this design assumes only what GOAL.md says Q delivers:
+`docs/effects.md` did not exist, so this design assumes only what M2's goal says Q delivers:
 
 - `update` receives the clock, and apps ask for timers: the overlay's clock text (updated every
   0.25 s while recording) is a timer subscription, not a host `TimelineView`;

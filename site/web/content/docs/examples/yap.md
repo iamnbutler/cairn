@@ -1,7 +1,7 @@
 ---
 title: Yap
 nav: Yap
-eyebrow: Example apps
+eyebrow: Apps on Cairn
 lede: Porting a real dictation app to Cairn one to one, with its original as the spec.
 ---
 
@@ -19,10 +19,12 @@ the two.
 This is the example to read for porting an existing app. It isn't a tutorial: the app is large,
 and these sections show the decisions that matter.
 
-Yap is also the first app that lives outside Cairn's repository. It is its own package, `yap-cairn`,
-which depends on Cairn `v0.1.0` the way any app would ([release notes](/docs/reference/releases/)). Its claims are `yap^301` to `yap^399`, beside Cairn's own `cairn^N`. Because its
-sources are no longer in this repository, this page can't include them yet: the parity table is
-`docs/yap-parity.md` and the claims are in `lean/Yap.lean`, both in that package.
+Yap was the first app to live outside Cairn's repository. It is the package
+[`yap`](/packages/yap/), which requires Cairn the way any app does. Its claims are `yap^301` to
+`yap^399`, beside Cairn's own `cairn^N`, and [its claim pages](/packages/yap/claims/) show each
+one with its evidence. The parity table is `docs/yap-parity.md` and the claims are in
+`lean/Yap.lean`, both in that package; this page can't include them, since the docs build reads
+only Cairn's own sources.
 
 ## The original is the spec
 
@@ -49,13 +51,13 @@ each with an issue on the original's tracker, and 7 open questions.
 
 The behaviours a person would most hate to get wrong are invariants of the app's machine, proved
 over everything the host can report, in any order. A key held as part of a shortcut never sends
-(`yap^311`). A transcript is saved before the request that types it is issued, so a failed type
-never loses it (`yap^315`; the original saves after typing, and this is one of the bug fixes).
-However replies arrive (late, twice, out of order, or never), no clip is typed twice (`yap^318`).
+([`yap^311`](/packages/yap/claims/311/)). A transcript is saved before the request that types it
+is issued, so a failed type never loses it ([`yap^315`](/packages/yap/claims/315/); the original
+saves after typing, and this is one of the bug fixes). However replies arrive (late, twice, out
+of order, or never), no clip is typed twice ([`yap^318`](/packages/yap/claims/318/)).
 
 ## What's not covered yet
 
-- Yap's claim pages appear once it is published to the registry.
 - The parity table's open rows need decisions, chiefly whether the port should replace the
   original outright rather than sit beside it.
 - Apps can't yet declare host effects of their own: the effects Yap needed were added to Cairn

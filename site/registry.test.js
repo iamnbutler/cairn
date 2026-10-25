@@ -65,6 +65,16 @@ describe("with the fixture", () => {
 		expect(text).toContain('<a href="/docs/cairn/0.1.0/">Docs for 0.1.0</a>');
 	});
 
+	test("sends a moved claim's page to its new package, but keeps a version's own page for it", async () => {
+		const res = await get("/packages/cairn/claims/301/");
+		expect(res.status).toBe(301);
+		expect(res.headers.get("location")).toBe(`${ORIGIN}/packages/yap/claims/301/`);
+		const old = await get("/packages/cairn/0.1.0/claims/301/");
+		expect(old.status).toBe(200);
+		expect(await old.text()).toContain('Now <a href="/packages/yap/claims/301/"><code>yap^301</code></a>');
+		expect((await get("/packages/cairn/claims/1/")).status).toBe(200);
+	});
+
 	test("links a package's dependencies", async () => {
 		const text = await (await get("/packages/yap/")).text();
 		expect(text).toContain('<a href="/packages/cairn/"><code>cairn</code></a> <code>^0.1.1</code>');
@@ -308,8 +318,11 @@ describe("with a registry", () => {
 		const retired = await (await get("/packages/counter/0.2.0/claims/6/", env)).text();
 		expect(retired).toContain("The runtime owns press tracking");
 		expect(retired).toContain('href="/packages/counter/0.2.0/claims/#6"');
-		const moved = await (await get("/packages/counter/claims/301/", env)).text();
+		// A place's row on the overview is its section, place-<id>.
+		expect(await (await get("/packages/counter/0.2.0/claims/3/", env)).text()).toContain('href="/packages/counter/0.2.0/claims/#place-3"');
+		const moved = await (await get("/packages/counter/0.2.0/claims/301/", env)).text();
 		expect(moved).toContain('Now <a href="/packages/yap/claims/301/">');
+		expect((await get("/packages/counter/claims/301/", env)).headers.get("location")).toBe(`${ORIGIN}/packages/yap/claims/301/`);
 	});
 
 	test("falls back to the ledger for a version without an export, and asks for none it says it lacks", async () => {

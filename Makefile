@@ -159,8 +159,9 @@ new-check: lean
 # The microsite's files, build/site/: site/public, bongo's pages, and Cairn's API reference
 # (`make doc PKG=Cairn`, built fresh each time) at /docs/api/, with the copied pages' link preview
 # tags stamped in (tools/site/pages.ts), and the docs as Markdown for language models
-# (tools/site/llms.ts). bongo empties its own output when a build fails, so it never writes into
-# site/public; a file two of them have is an error.
+# (tools/site/llms.ts), then every internal link checked, the package pages rendered from the
+# registry the Worker reads (tools/site/links.ts). bongo empties its own output when a build
+# fails, so it never writes into site/public; a file two of them have is an error.
 site-dist: site-build
 	$(MAKE) doc PKG=Cairn
 	rm -rf build/site && mkdir -p build && cp -R site/public build/site
@@ -173,6 +174,7 @@ site-dist: site-build
 	bun site/icons.ts build/site
 	bun tools/site/llms.ts build/site
 	mkdir -p build/site/fonts && for w in 400 600 700; do cp site/web/node_modules/@fontsource/pixelify-sans/files/pixelify-sans-latin-$$w-normal.woff2 build/site/fonts/; done
+	bun tools/site/links.ts build/site
 
 # Deploy the microsite (site/) to Cloudflare.
 site: site-dist

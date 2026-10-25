@@ -3,7 +3,7 @@
 M1's apps lived inside one window: every input was a person's move and every effect was a
 clipboard write or a beep. M2's Yap lives almost entirely outside it: a global key, the
 microphone, timers, a network request, files, sounds and typing into another app. This document
-is how the framework, not the app, talks to the outside world. GOAL.md, "Done means" item 2.
+is how the framework, not the app, talks to the outside world. docs/goals/m2.md, "Done means" item 2.
 
 The rule stays the one in AGENTS.md: **Swift performs effects, Lean decides.** Everything the
 host does is asked for by a value Lean computed, and everything it learns comes back as an
@@ -347,7 +347,7 @@ the clock that precedes each tick is the truth. Events that carry data (`audio`,
 
 ## Yap's host effects
 
-What Yap needs beyond the effects above (GOAL.md "Done means" 1 and 2), as more kinds of the
+What Yap needs beyond the effects above (docs/goals/m2.md, "Done means" 1 and 2), as more kinds of the
 same three shapes. Each is a constructor, its encoding and round-trip case (frame.md), a
 `Reply.answers` case, a host handler, and an `assume` claim (^960–^989) with a trusted fuzz
 check that touches nothing outside a scratch directory and prompts no one.

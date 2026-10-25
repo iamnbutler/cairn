@@ -14,7 +14,7 @@ window, events, text and accessibility; and Metal for painting.
 
 - [cairn.iamnbutler.workers.dev](https://cairn.iamnbutler.workers.dev): the site, with demo videos of
   each step.
-- [GOAL.md](GOAL.md): what we are building now, M2: Yap, a dictation app Nate uses every day, rebuilt on Cairn.
+- [GOAL.md](GOAL.md): what we are building now, M4: Sky, a Bluesky client that reads the home feed.
 - [docs/goals/m1.md](docs/goals/m1.md): M1, a proved TodoMVC on the Mac.
 - [docs/architecture.md](docs/architecture.md): how the pieces fit.
 

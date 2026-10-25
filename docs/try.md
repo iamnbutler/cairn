@@ -9,15 +9,15 @@ edge the app recorded.
 
 ## How it is generated
 
-In an app package, with the Cairn checkout Lake uses for `tools/` (as `make site-try` ran them
-on the examples):
+In an app package, with `$CAIRN` the Cairn checkout Lake uses (as `make site-try` ran them on
+the examples before 0.3.0):
 
 | Step | Command | Output in `build/try/<App>/` |
 |---|---|---|
 | Claims | `cairn claims --out build/try/<App>/claims.json` | `claims.json` |
-| Script | `bun tools/try/try.ts script --app <App>` | `script.json`: each claim's actions, and the walk's bounds |
-| Walk | `swift run Cairn<App> --try-capture` | `capture/`: `try.json` and a PNG per state (deleted after the next step) |
-| Data | `bun tools/try/try.ts build --app <App> --dir build/try/<App> --out <out>` | `<out>/graph.json` and `img/<hash>.webp` |
+| Script | `bun $CAIRN/tools/try/try.ts script --claims build/try/<App>/claims.json > build/try/<App>/script.json` | `script.json`: each claim's actions, and the walk's bounds |
+| Walk | `swift run <App> --try-capture build/try/<App>/script.json build/try/<App>/capture` | `capture/`: `try.json` and a PNG per state (deleted after the next step) |
+| Data | `bun $CAIRN/tools/try/try.ts build --app <App> --dir build/try/<App> --out <out>` | `<out>/graph.json` and `img/<hash>.webp` |
 
 **Actions** come from the claims export: `press` and `doublePress` as they are; a text field
 (`edit`) gets one "Type" action per text its flows' witnesses type (the first few, so "  eggs "
@@ -47,7 +47,9 @@ this build's, the one that drew the frames; the live claim pages read the latest
 version's, so until a version with an export is published they show `ledger only` where this
 page shows `proved`.
 
-**Bounds** (`BOUNDS` in `tools/try/try.ts`), measured 2026-10-25, when the site built these three:
+**Bounds**: depth 8, 200 states and 2 texts per field by default (`BOUNDS` in `tools/try/try.ts`),
+or `--depth`, `--states` and `--texts`. Measured 2026-10-25, when the site built these three
+(Counter at depth 20, Todo with 400 states):
 
 | App | Depth | States | Steps (edges) | Beyond | Images | Size |
 |---|---|---|---|---|---|---|

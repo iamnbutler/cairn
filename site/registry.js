@@ -365,6 +365,16 @@ export async function claimsPage(src, name, wanted) {
 	});
 }
 
+/** The package a claim's id has moved to, as the latest version's ledger says, if it has. */
+async function movedNow(src, name, id) {
+	if (!NAME.test(name)) return undefined;
+	const pkg = await src.pkg(name);
+	if (!pkg) return undefined;
+	const row = (await src.claims(name, latestOf(pkg.versions).version)).find((c) => String(c.id) === id);
+	const to = /^moved[: ]([a-z][a-z0-9_]*)$/.exec(row?.status ?? "")?.[1];
+	return to && to !== name ? to : undefined;
+}
+
 /** /packages/<name>/[<version>/]claims/<id>/: one claim. */
 export async function claimPageOf(src, name, wanted, id) {
 	if (!ID.test(id)) return undefined;
@@ -431,6 +441,10 @@ export async function route(request, env) {
 			const [, id = "", ...more] = after;
 			if (more.length > 1 || more[0] || (id && !ID.test(id))) return undefined;
 			if (!url.pathname.endsWith("/")) return Response.redirect(new URL(`${url.pathname}/`, url), 301);
+			// A claim the latest version has moved lives in its new package: send its unversioned URL
+			// there. A version's own page for it (…/<version>/claims/<id>/) still says where it went.
+			const to = id && !version ? await movedNow(src, name, id) : undefined;
+			if (to) return Response.redirect(new URL(`/packages/${to}/claims/${id}/`, url), 301);
 			const text = id ? await claimPageOf(src, name, version || undefined, id) : await claimsPage(src, name, version || undefined);
 			return text ? html(text) : undefined;
 		}
