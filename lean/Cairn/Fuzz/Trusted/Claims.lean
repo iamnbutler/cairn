@@ -196,4 +196,10 @@ assume ^1008 hostImagePixels "An image is drawn where its oriented pixels are" w
   does "An image draw scales the oriented image to its destination rect: each quadrant of the image lands in the same quadrant of the destination, in its colour (within 8 per channel, 40 for JPEG and HEIC), whatever the EXIF orientation, format and scale."
   check "render.image.pixels"
 
+/-! Requests in flight (docs/effects.md "Requests in flight"). -/
+
+assume ^1009 hostCancelRequest "cancelRequest stops a running request's work; it is still answered once" where
+  does "On cancelRequest for a request still running, the host stops its work where it can (an http, upload or loadImage download's URLSession task is cancelled) and still answers it exactly once, failed if the work was stopped, at once if its handler had not started; a cancelled loadImage leaves the image store as it was; a cancel of an id already answered or never requested does nothing."
+  check "effects.cancel"
+
 end Cairn.Fuzz.Trusted.Claims

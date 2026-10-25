@@ -20,7 +20,9 @@ public enum HostClock {
     }
 }
 
-/// Runs one request and answers it through `reply`, which the host calls exactly once.
+/// Runs one request and answers it through `reply`, which the host calls exactly once. A handler
+/// whose work can be stopped registers how on `Cancellation.current` (`HTTP.run` cancels its
+/// `URLSession` task); a cancelled request is still answered once.
 public typealias RequestHandler = @Sendable (Request, _ reply: @escaping @Sendable (Reply) -> Void) -> Void
 
 // region: world-handlers
@@ -202,6 +204,59 @@ public enum Sounds {
     }
 }
 
+/// A request's cancellation (`cancelRequest`, ^1009). The world makes one per request; while its
+/// handler runs (synchronously, on the handler's thread) it is `current`, so the code that
+/// starts the work can register how to stop it.
+public final class Cancellation: @unchecked Sendable {
+    private let lock = NSLock()
+    private var cancelled_ = false
+    private var actions: [@Sendable () -> Void] = []
+    public init() {}
+
+    public var isCancelled: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return cancelled_
+    }
+
+    /// Run `f` when cancelled; at once if it already is.
+    public func onCancel(_ f: @escaping @Sendable () -> Void) {
+        lock.lock()
+        if cancelled_ {
+            lock.unlock()
+            f()
+            return
+        }
+        actions.append(f)
+        lock.unlock()
+    }
+
+    /// Cancel: run the registered actions, once.
+    public func cancel() {
+        lock.lock()
+        if cancelled_ { lock.unlock(); return }
+        cancelled_ = true
+        let a = actions
+        actions = []
+        lock.unlock()
+        for f in a { f() }
+    }
+
+    private static let key = "cairn.cancellation"
+
+    /// The cancellation of the request whose handler is running on this thread.
+    public static var current: Cancellation? { Thread.current.threadDictionary[key] as? Cancellation }
+
+    /// Run `f` with `c` as `current`.
+    public static func with(_ c: Cancellation, _ f: () -> Void) {
+        let d = Thread.current.threadDictionary
+        let old = d[key]
+        d[key] = c
+        defer { d[key] = old }
+        f()
+    }
+}
+
 /// HTTP for `http` (^913): an ephemeral session (no cookies, cache or credentials kept).
 public enum HTTP {
     public static let session = URLSession(configuration: .ephemeral)
@@ -235,7 +290,7 @@ public enum HTTP {
         for h in headers { req.addValue(h.value, forHTTPHeaderField: h.name) }
         if !body.isEmpty { req.httpBody = Data(body) }
         req.timeoutInterval = timeoutMs == 0 ? 60 : Double(timeoutMs) / 1000
-        session.dataTask(with: req) { data, response, error in
+        let task = session.dataTask(with: req) { data, response, error in
             if let error {
                 let e = error as NSError
                 let f: Fault = switch (e.domain, e.code) {
@@ -256,12 +311,15 @@ public enum HTTP {
                 return Header(k, "\(v)")
             }.sorted { $0.name < $1.name }
             reply(.http(status: UInt32(max(0, http.statusCode)), headers: hs, body: [UInt8](data ?? Data())))
-        }.resume()
+        }
+        Cancellation.current?.onCancel { task.cancel() }
+        task.resume()
     }
 }
 
 /// Runs the requests and subscriptions of each published frame. Requests run concurrently and
-/// answer through `send`, each exactly once (^914). Subscriptions start and stop on one serial
+/// answer through `send`, each exactly once (^914); `cancelRequest` stops a running request's
+/// work where its handler can (^1009), and it is still answered once. Subscriptions start and stop on one serial
 /// queue, and every event they send is sent from it, so after a `stop` is handled none of its
 /// events is sent (^915, ^963, ^966, ^969): `every` is a dispatch timer, `watchFile` a dispatch
 /// timer that polls the file, `record` the microphone and `globalKey` the key monitors, whose
@@ -286,6 +344,8 @@ public final class World: @unchecked Sendable {
     public var watchPath: @Sendable (String) -> String = { $0 }
     /// Bumped by `reset`: replies and ticks from before it are dropped.
     private var generation = 0
+    /// The cancellation of each request not yet answered, by id (under `lock`).
+    private var tokens: [UInt32: Cancellation] = [:]
     /// Where replies and ticks go (the engine's `send`).
     public var send: (@Sendable ([Event]) -> Void)?
 
@@ -307,27 +367,54 @@ public final class World: @unchecked Sendable {
         let gen = generation
         lock.unlock()
         for e in effects {
-            guard case let .request(id, r) = e else { continue }
-            perform(id, r, gen)
+            switch e {
+            case let .request(id, r): perform(id, r, gen)
+            case let .cancelRequest(id): cancel(id)
+            default: continue
+            }
         }
         if !subs.isEmpty { queue.sync { for c in subs { apply(c, gen) } } }
     }
 
     private func perform(_ id: UInt32, _ r: Request, _ gen: Int) {
         let once = Once()
+        let token = Cancellation()
+        lock.lock()
+        tokens[id] = token
+        lock.unlock()
         let reply: @Sendable (Reply) -> Void = { [weak self] rep in
             guard once.take(), let self else { return }
             // Sent with the lock held, so a `reset` that has returned has no reply of before
             // still on its way (`send` only enqueues; it never calls back in here).
             self.lock.lock()
             defer { self.lock.unlock() }
+            if self.tokens[id] === token { self.tokens[id] = nil }
             if self.generation == gen { self.send?([.reply(id: id, rep)]) }
         }
         guard let h = handlers.table[r.kindCode] else {
             reply(.failed(.invalid, "no handler for request kind \(r.kindCode)"))
             return
         }
-        DispatchQueue.global(qos: .userInitiated).async { h(r, reply) }
+        DispatchQueue.global(qos: .userInitiated).async {
+            // Cancelled before it started: answered without running.
+            if token.isCancelled { reply(.failed(.other, "cancelled")); return }
+            Cancellation.with(token) { h(r, reply) }
+        }
+    }
+
+    /// `cancelRequest`: stop request `id`'s work if it is still running.
+    private func cancel(_ id: UInt32) {
+        lock.lock()
+        let token = tokens[id]
+        lock.unlock()
+        token?.cancel()
+    }
+
+    /// The ids of requests not yet answered (tests).
+    public var unanswered: Set<UInt32> {
+        lock.lock()
+        defer { lock.unlock() }
+        return Set(tokens.keys)
     }
 
     private func apply(_ c: SubCmd, _ gen: Int) {
@@ -455,7 +542,10 @@ public final class World: @unchecked Sendable {
     public func reset() {
         lock.lock()
         generation += 1
+        let old = tokens.values
+        tokens.removeAll()
         lock.unlock()
+        for t in old { t.cancel() }
         queue.sync {
             for stop in running_.values { stop() }
             running_.removeAll()

@@ -155,3 +155,4 @@
 1006	assume	active	-	loadImage answers the image's pixel size, or the fault
 1007	assume	active	-	An image's pixels stay inside its box
 1008	assume	active	-	An image is drawn where its oriented pixels are
+1009	assume	active	-	cancelRequest stops a running request's work; it is still answered once
