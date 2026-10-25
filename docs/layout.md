@@ -105,7 +105,8 @@ Proved for every size and card count: the column count is the largest that fits
 (`columns_fits`, `le_columns`, `not_fits_succ`); every cell is inside the box (`cell_inside`);
 later cards come later in reading order, so no two overlap (`cell_before`, `cell_disjoint`); the
 laid cells are exactly `Grid.rects` (`cells_rects`); and a point in cell `i` hits what cell `i`
-alone would (`hitTarget_cell`). Gallery uses it for its tiles (^510).
+alone would (`hitTarget_cell`). Gallery (cairn_examples) uses it for its tiles
+(`cairn_examples^510`).
 
 **A floor on card size.** Shrinking every card so the rows fit the height means a short window
 gives tiny cards. `Grid.minBox n cols` is the smallest box with `cols` columns (at least one) in
@@ -118,7 +119,8 @@ count and column count: in any box at least `minBox`, every card is at least `mi
 it is the smallest: it has exactly `cols` columns (`columns_minBox`); a narrower box has fewer
 columns, or with one column cards narrower than `minWidth` (`minBox_narrower`); a shorter one
 with `cols` columns has narrower cards (`minBox_shorter`, when the gap is no taller than a
-card). Gallery's window is at least 1020 × 536, three columns of 180-point tiles (^511).
+card). Gallery's window is at least 1020 × 536, three columns of 180-point tiles
+(`cairn_examples^511`).
 
 ## Text
 

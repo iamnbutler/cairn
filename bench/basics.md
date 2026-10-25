@@ -1,6 +1,10 @@
 # Basics: input → frame, 10 and 1,000 items
 
-`make bench` runs `CairnBasics --bench` (release, `LEAN_ABORT_ON_NONLINEAR=1`): the app's real
+A record from when Basics was in this repository. Basics and its bench are in
+iamnbutler/cairn_examples now; Cairn's own input → frame bench is the fixture's (`make bench`,
+which runs `cairn bench` on test/fixture).
+
+`make bench` ran `CairnBasics --bench` (release, `LEAN_ABORT_ON_NONLINEAR=1`): the app's real
 exports and the v1 codec with no threads, so each sample is encode events (Swift) →
 `cairn_app_step` (route, `machine.update`, view, layout with Core Text metrics, settle) →
 `cairn_app_frame` (`Frame.ofLaid`, encode) → decode (Swift). It clicks the field, adds `n` items

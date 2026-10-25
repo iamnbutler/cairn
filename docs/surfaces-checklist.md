@@ -2,10 +2,11 @@
 
 What the window server does with a status item and an overlay panel can't be asserted from
 inside the app (docs/surfaces.md decision 9, docs/trusted.md ^942, ^943). Run this by hand with
-Tray before a release, or after changing `host/Sources/CairnHost/Surfaces.swift`:
+Tray (in iamnbutler/cairn_examples) before a release, or after changing
+`host/Sources/CairnHost/Surfaces.swift`. In cairn_examples, against that Cairn:
 
 ```sh
-make bundle APP=Tray && open build/apps/Tray.app
+cairn bundle --app Tray --name Tray && open build/apps/Tray.app
 ```
 
 Record the macOS version and the result of each line.

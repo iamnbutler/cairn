@@ -1,7 +1,9 @@
 # Binary size
 
 Release, stripped size of each app executable, and where the bytes come from. Apple M4 Max,
-macOS 27, Swift 6 (Xcode), Lean 4.35.0, 2026-10-23, every app on the v1 ABI.
+macOS 27, Swift 6 (Xcode), Lean 4.35.0, 2026-10-23, every app on the v1 ABI. The apps were then
+in this repository; they are in iamnbutler/cairn_examples now, where `make size` runs
+`cairn size` on each. Cairn's `make size` measures test/fixture.
 
 | App | Stripped | Before strip |
 |---|---:|---:|
@@ -47,30 +49,28 @@ string); CairnCapture 71,081; CairnFrame 46,262; the app's `main.swift` 23,841; 
 
 ## How it is measured
 
-`make size` (part of `make check`) runs `cairn size` on test/fixture, which does the same with the
-app package's one merged library (docs/cli.md, "Checks"). `make examples-size` (in `make check`
-through `examples-check`) runs, for each app in `SIZE_APPS`:
+`make size` (part of `make check`) runs `cairn size` on test/fixture (docs/cli.md, "Checks"),
+which builds each executable for release with a link map and runs:
 
 ```sh
-cd host
-swift build -c release --product CairnCounter -Xlinker -map -Xlinker $PWD/../build/size/CairnCounter.map
-cd ..
-bun tools/size/size.ts --bin $(cd host && swift build -c release --show-bin-path) \
-    --maps build/size --out build/size --limit 5000000 CairnCounter CairnBasics CairnTodo
+bun tools/size/size.ts --bin <release bin dir> --maps build/size --out build/size --limit 5000000 \
+    --lib lib<name>.a --modules <libs> --swift <package dir> <App>…
 ```
 
 `tools/size/size.ts` strips a copy of each binary (`strip -o build/size/<App> <bin>/<App>`,
 which removes every local and debug symbol, as for a shipped binary), prints the size and the
 breakdown, writes `build/size/size.json`, and attributes bytes from the map's live symbols:
 
-- an object from `build/lib/libcairn_app_<app>.a` is the app;
-- an object from `build/lib/libcairn_lean.a` is Cairn if any of its symbols names `Cairn`,
-  otherwise compiled Lean (`*.c.o`) is Init/Std and anything else is leanrt, libuv or libgmp;
-- an object under `host/.build/` is the Swift host, by target;
+- an object of the app's modules (`--modules`) in its archive (`--lib`, `.cairn/lib/lib<name>.a`)
+  is the app; when the examples were here, an object from `build/lib/libcairn_app_<app>.a`;
+- an object from `build/lib/libcairn_lean.a` (in an app package, the rest of its archive) is Cairn
+  if any of its symbols names `Cairn`, otherwise compiled Lean (`*.c.o`) is Init/Std and anything
+  else is leanrt, libuv or libgmp;
+- an object under `host/.build/` (`--swift`) is the Swift host, by target;
 - the string literal starting `#include <metal_stdlib>` is the shader source.
 
-The stripped binaries still run: `build/size/CairnCounter --selftest` and
-`build/size/CairnBasics --selftest` pass.
+The stripped binaries still ran: `build/size/CairnCounter --selftest` and
+`build/size/CairnBasics --selftest` passed.
 
 ## The guard
 

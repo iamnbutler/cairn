@@ -8,12 +8,13 @@ on Lean. Everything it assumes is listed in [trusted.md](trusted.md).
 ## Running
 
 ```
-make demo                      # Basics (lean/Examples/Basics.lean) in a window
-make demo DEMO=CairnCounter    # Counter (lean/Examples/Counter.lean)
-make demo DEMO=CairnFixture    # the Swift fixture app: a text field, a checkbox, a list
+make fixture                   # the Swift fixture app (CairnFixture): a text field, a checkbox, a list
 make test                      # host unit tests (swift test)
-make selftest                  # each app driven headlessly through the real threads and AX mirror
+make selftest                  # test/fixture driven headlessly through the real threads and AX mirror
+cd test/fixture && cairn build && swift run Fixture   # Cairn's fixture app in a window
 ```
+
+The example apps are in iamnbutler/cairn_examples (`swift run CairnTodo` there).
 
 Every app accepts these flags:
 - `--stats`: prints latency percentiles every 2 s and at quit.
@@ -29,33 +30,32 @@ effects (clipboard writes go to a private pasteboard) and draws through `DebugRe
 [conformance.md](conformance.md).
 
 One executable per app, linking one app library. An app describes itself as a `LeanApp` and
-calls `CairnApp.main`. Every app is on the v1 ABI; Basics (`host/Sources/CairnBasics`):
+calls `CairnApp.main`. Every app is on the v1 ABI; the fixture (test/fixture/Sources/Fixture):
 
 ```swift
-let basics = LeanApp(module: runtime_initialize_cairn_Examples_Basics,
-                     initialize: { w, h, scale in cairn_app_init(w, h, scale) },
-                     step: { cairn_app_step($0, $1) },
-                     frame: { cairn_app_frame($0) },
-                     codec: FrameV1Codec())
-CairnApp.main(CairnApp.Config(title: "Basics", size: Size(w: 480, h: 600)) { LeanCore(basics) })
+let fixture = LeanApp(
+    module: runtime_initialize_fixture_Fixture_Abi,
+    initialize: { w, h, scale in cairn_app_init(w, h, scale) },
+    step: { cairn_app_step($0, $1) },
+    frame: { cairn_app_frame($0) },
+    codec: FrameV1Codec())
+CairnApp.main(CairnApp.Config(title: "Fixture", size: size) { LeanCore(fixture) })
 ```
 
-Every v1 app exports the same three symbols (`cairn_app_init/step/frame`), so each app is its
-own `lean_lib` with its own static archive (`lean/lakefile.lean`; `make lean` copies
-`libcairn_<Lib>.a` to `build/lib/libcairn_app_<name>.a`), and its executable target links only
-that archive (`-lcairn_app_basics`). The shared `libcairn_lean.a` holds the `Cairn` library (the
-linked closure, no proofs; docs/packages-and-std.md), `Init` and the runtime and no app; `make
-lean` checks with `nm` that it defines no `cairn_app_*` and that each app archive defines
-`cairn_app_init` once. The module initializer is the module system's
-`runtime_initialize_cairn_Examples_<App>`, which never calls into the claim commands. Apps
-that keep their exports in their own module (`Examples.Counter.Abi`, so that executables linking
-every example, like the fuzzer, don't see two `cairn_app_init`s) start that module instead:
-`runtime_initialize_cairn_Examples_Counter_Abi`.
+Every v1 app exports the same three symbols (`cairn_app_init/step/frame`), so an app is its own
+package, and `cairn build` links its Lean into one archive (`.cairn/lib/lib<name>.a`; docs/cli.md)
+that its executable target links. The shared `libcairn_lean.a` holds the `Cairn` library (the linked
+closure, no proofs; docs/packages-and-std.md), `Init` and the runtime and no app; `make lean` checks
+with `nm` that it defines no `cairn_app_*`. The module initializer is the module system's
+`runtime_initialize_<package>_<Module>`, which never calls into the claim commands. An app that
+keeps its exports in their own module (`Fixture.Abi`) starts that module:
+`runtime_initialize_fixture_Fixture_Abi`.
 
-`CairnBasics --selftest` drives the real engine and view headlessly (AX focus, `insertText`,
-Enter, AXPress, Tab, a pixel probe), and `CairnCounter --selftest` does clicks, the presence of
-^2, AXPress and a press that slides off; both are part of `make check`. `CairnBasics --bench` is
-`bench/basics.md`. Binary sizes are `bench/size.md` (`make size`).
+`Fixture --selftest` drives the real engine and view headlessly (AX focus, `insertText`, Enter,
+AXPress, Tab, a timer, a pixel probe), and `Fixture --close-test` closes the real window with work
+in flight; both are part of `make check` (`make selftest`). `Fixture --bench` is `cairn bench`
+(`make bench`). Binary sizes are `bench/size.md` (`make size`). Each example's self test runs in
+cairn_examples' `make check`.
 
 `AppCore` is the seam: `start(size:scalePercent:)`, `step([Event])`, `frame() -> Frame`.
 `LeanCore` implements it over a `LeanApp`. `CairnFixture` implements it in Swift, as a test

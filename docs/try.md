@@ -1,28 +1,23 @@
 # Try it
 
-`/try/` on the site runs Counter, Basics and Todo in the browser with nothing to install. Every
-frame on those pages is one the app's own Lean code produced; every control is a hotspot that
-shows its claim (`cairn^N`, its title, does and sees, its reading on the claim pages) and links to
-its claim page, `/packages/cairn/claims/<id>/`. The pages decide nothing: a click follows an edge
-the app recorded.
-
-```sh
-make site-try                    # every app in TRY_APPS → build/site/try/<app>/
-make site-try TRY_APPS=Counter   # one
-```
-
-`make site-dist` runs it last, so the data is built at deploy and never committed. On a built
-tree it takes about a minute for all three apps (the walk itself is under ten seconds; the rest
-is building and rendering).
+The site no longer builds `/try/` pages (#137). They ran Counter, Basics and Todo in the browser,
+and those apps are in iamnbutler/cairn_examples now. The tools stay, for an app package: they
+walk an app's frames ahead of time and write the data such a page shows. Every frame is one the
+app's own Lean code produced, and every control carries its claim (`<scope>^N`, its title, does
+and sees, its reading on the claim pages). A page built on it decides nothing: a click follows an
+edge the app recorded.
 
 ## How it is generated
 
-| Step | Command (inside `make site-try`) | Output in `build/try/<App>/` |
+In an app package, with the Cairn checkout Lake uses for `tools/` (as `make site-try` ran them
+on the examples):
+
+| Step | Command | Output in `build/try/<App>/` |
 |---|---|---|
-| Claims | `lake exe claims Examples.<App>` | `claims.json` |
+| Claims | `cairn claims --out build/try/<App>/claims.json` | `claims.json` |
 | Script | `bun tools/try/try.ts script --app <App>` | `script.json`: each claim's actions, and the walk's bounds |
 | Walk | `swift run Cairn<App> --try-capture` | `capture/`: `try.json` and a PNG per state (deleted after the next step) |
-| Data | `bun tools/try/try.ts build --app <App>` | `build/site/try/<app>/graph.json` and `img/<hash>.webp` |
+| Data | `bun tools/try/try.ts build --app <App> --dir build/try/<App> --out <out>` | `<out>/graph.json` and `img/<hash>.webp` |
 
 **Actions** come from the claims export: `press` and `doublePress` as they are; a text field
 (`edit`) gets one "Type" action per text its flows' witnesses type (the first few, so "  eggs "
@@ -52,7 +47,7 @@ this build's, the one that drew the frames; the live claim pages read the latest
 version's, so until a version with an export is published they show `ledger only` where this
 page shows `proved`.
 
-**Bounds** (`BOUNDS` in `tools/try/try.ts`), measured 2026-10-25:
+**Bounds** (`BOUNDS` in `tools/try/try.ts`), measured 2026-10-25, when the site built these three:
 
 | App | Depth | States | Steps (edges) | Beyond | Images | Size |
 |---|---|---|---|---|---|---|
@@ -65,13 +60,8 @@ neighbours, preloaded).
 
 ## The page
 
-`site/web/content/try/` (bongo, layout `site/web/layouts/try/html.hbs`, the shared head and bar
-from `site/chrome.js`) and `site/public/try/try.js` and `try.css`. The frame shows at 1:1 up to
-its width and scales down on a narrow screen; the hotspots are buttons placed in percentages, so
-Tab moves through the controls and Enter or Space acts. A control with several actions (a text
-field) opens a menu of them, each saying where it leads. The steps panel lists the path; Back,
-Start over and any earlier step go back. `#s<N>` links to a state; the page rebuilds the path that
-first reached it.
+The page (`site/web/content/try/`, `site/public/try/try.js` and `try.css`, and its `mount` for
+embedding a compact one) went with the `/try/` pages; it is in git history before 0.3.0.
 
 ## Limits
 
@@ -82,9 +72,3 @@ first reached it.
 - **Seen is the model's frames**, rendered by the real renderer, as with the capture: no AppKit,
   no accessibility mirror. Conformance covers the host (docs/conformance.md).
 - **Bounded.** Past the bound the page stops and says so; it never guesses a frame.
-
-## Embedding
-
-`mount(el, "counter", { compact: true })` from `/try/try.js` draws the frame and the claim panel
-without the steps or the note, and leaves the page's URL alone: for a page such as the homepage,
-with `/try/try.css`, `/docs/docs.css` and `/packages.css` loaded.

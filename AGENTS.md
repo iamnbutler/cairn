@@ -7,15 +7,15 @@ evidence. Read [GOAL.md](GOAL.md) for what we are building now (M2; M1 is in doc
 ## Layout
 
 - `lean/`: the Lake package. `Cairn/` is the framework (claims, UI core, text, frame encoding),
-  `Examples/` holds apps built on it, and proofs live next to the code they are about.
+  and proofs live next to the code they are about. The example apps (Counter, Basics, Todo,
+  Clock, Tray, Gallery) live in iamnbutler/cairn_examples (scope `cairn_examples`).
 - `host/`: the Swift package. The AppKit host, the Metal renderer, text, the accessibility mirror
   and the debug socket. No application logic.
 - `docs/`: design docs, the frame format (`frame.md`) and the trusted base (`trusted.md`).
 - `research/`: sourced notes on prior art, one folder per source.
 - `tools/`: the conformance driver, the app capture, audits, and the `cairn` CLI (`tools/cairn`).
 - `test/fixture/`: Cairn's own app, a package of its own (scope `fixture`, its own claims.lock).
-  The framework's checks run on it with the `cairn` CLI; the examples are checked separately
-  (`examples-check`) and nothing outside them imports them.
+  The framework's checks run on it with the `cairn` CLI.
 - `claims.lock`: every `cairn^N` claim id ever issued. Tools write it; never edit it by hand.
 - `Package.swift` (root) and `bin/cairn-link`: Cairn as a package for apps in their own repos
   (docs/package.md). The root manifest is library-only with no `unsafeFlags`; it declares
@@ -67,8 +67,8 @@ From [research/lean/](research/lean/), measured on our toolchain:
 - Lean via elan, pinned in `lean/lean-toolchain`. `export PATH=$HOME/.elan/bin:$PATH` if `lake`
   is missing.
 - Swift 6 and the Metal toolchain from Xcode.
-- `make build`, `make check` (lint, Lean build, axiom audit, kernel replay, Swift build and tests),
-  `make demo`.
+- `make build`, `make check` (lint, Lean build, axiom audit, kernel replay, Swift build and tests,
+  and the per-app checks on test/fixture).
 
 ## Workflow: lane
 

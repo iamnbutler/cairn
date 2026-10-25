@@ -2,8 +2,7 @@
 
 Cairn's own app, for Cairn's own checks (#137). The framework's per-app checks (the headless
 selftest, fuzzing, binary size, the input → frame bench, conformance) need an app to run on.
-This is that app, so they no longer need the examples in `lean/Examples`, which are on their way
-to a repository of their own.
+This is that app; the examples are in their own repository, iamnbutler/cairn_examples.
 
 It is laid out as an app in its own repository is (`cairn new --bin`), and checked the way one
 checks itself, with the `cairn` CLI (docs/cli.md, "Checks"). The only difference: it requires

@@ -1,5 +1,9 @@
 # Fuzz throughput
 
+Runs on the example apps while they were in this repository, with `lake exe fuzz` of the time.
+They are in iamnbutler/cairn_examples now (`make fuzz` there); Cairn's `make fuzz-quick` fuzzes
+test/fixture with `cairn fuzz`.
+
 `lake exe fuzz <App> --seed 0 --iterations N --steps K` (docs/fuzz.md), release build of the
 fuzz exe, Apple M4 Max, macOS 27, 2026-10-23, other agents' builds running. Each runtime step is
 the operation's events through `Runtime.step` (route, update, view, layout, settle) plus the
@@ -27,7 +31,7 @@ Reading:
   budget.
 - About one step in eight runs below the view's minimum window (resizes go below it one time in
   twenty, and a growing list raises the minimum), where pressability isn't checked.
-- `make fuzz-quick` (both apps, 200 × 50) takes about 1 s plus 1.4 s to link the exe.
+- `make fuzz-quick` then (both apps, 200 × 50) took about 1 s plus 1.4 s to link the exe.
 
 ## With the host (#181)
 

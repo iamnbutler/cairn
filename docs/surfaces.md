@@ -400,7 +400,7 @@ An app with no `window` surface is an accessory app:
 - the bundle yap-cairn's `make yap` builds sets `LSUIElement = YES` in `Info.plist`, so there is no Dock
   icon even for the instant before code runs (Yap does this);
 - the host also calls `setActivationPolicy(.accessory)`, which is what makes a bare executable
-  (`make demo`) behave the same;
+  (`swift run <App>`) behave the same;
 - the host installs no main menu (M1's Hide/Quit/Edit/Window menus): an accessory app's main menu
   is never shown, and Quit is the status menu's move;
 - `applicationShouldTerminateAfterLastWindowClosed` returns `false`.
@@ -608,23 +608,23 @@ wrapped ones, by induction.
   kept until hidden. Each panel has its own `RenderLoop` that selects its canvas from the published
   frame, drawn by `MetalRenderer` on a clear, non-opaque layer. Hiding fades over 0.18 s.
 - **Modes.** `.live` puts status items in the menu bar and panels on screen. `.detached` builds the
-  same AppKit objects without either; the debug socket, Tray's self test and the trusted fuzzer
-  use it, so none of them touches the menu bar or the screen.
+  same AppKit objects without either; the debug socket, Tray's self test (cairn_examples) and the
+  trusted fuzzer use it, so none of them touches the menu bar or the screen.
 - **Launch.** `CairnApp` waits for the first frame: with a window it is `.regular`, with M1's
   main menu and window; without one it is `.accessory`, with no main menu, and closing windows
   doesn't quit it.
-- **Bundles.** `make bundle APP=<App>` writes `build/apps/<App>.app`, taking `Info.plist` and
-  `entitlements.plist` from `host/Bundles/<App>/` when present (Tray's sets `LSUIElement`).
-  Signing is ad hoc unless `SIGN=` names an identity. This is the hook Yap's bundle needs
-  (microphone usage string, audio-input entitlement, hardened runtime, stable signature).
+- **Bundles.** `cairn bundle` (docs/cli.md) writes `build/apps/<N>.app`, taking `Info.plist` and
+  `entitlements.plist` from the package's `bundle/` when present (Tray's, in cairn_examples, sets
+  `LSUIElement`). Signing is ad hoc unless `--sign` names an identity. This is the hook Yap's bundle
+  needs (microphone usage string, audio-input entitlement, hardened runtime, stable signature).
 
-The example is Tray (`lean/Examples/Tray.lean`, claims ^450–^462): a status item whose menu has
-a status line, a ⌘O item, a checkbox item, an item enabled only while the checkbox is on, a
-Recent Items submenu with keyed items and Quit, and an overlay panel with 24 moving bars and a
-wrapped caption. Its theorems (`lean/Examples/Tray/Proofs.lean`): `menu_refs` (presence in every
-state), `menu_enabledRefs`, `add_enabled_iff`, `keep_checked`, `quit_enabled`, and
-`add_ignored_when_off`, which says that in every state the running app reaches, choosing Add Item
-while it is greyed out changes nothing.
+The example is Tray (`lean/Tray.lean` in iamnbutler/cairn_examples, claims
+`cairn_examples^450`–^462): a status item whose menu has a status line, a ⌘O item, a checkbox item,
+an item enabled only while the checkbox is on, a Recent Items submenu with keyed items and Quit, and
+an overlay panel with 24 moving bars and a wrapped caption. Its theorems (`lean/Tray/Proofs.lean`
+there): `menu_refs` (presence in every state), `menu_enabledRefs`, `add_enabled_iff`,
+`keep_checked`, `quit_enabled`, and `add_ignored_when_off`, which says that in every state the
+running app reaches, choosing Add Item while it is greyed out changes nothing.
 
 Evidence: docs/trusted.md "Surfaces" (^940–^944, fuzzed by `SurfacesSuite`), conformance with
 menus (docs/conformance.md "Tray: menus"), bench/surfaces.md (50 Hz), and the manual checklist

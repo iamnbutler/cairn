@@ -6,11 +6,12 @@ keeps up with a 50 Hz tick, and what the menu path costs. Apple M4 Max, macOS 27
 
 ## The overlay
 
-Measured by Tray's self test (`cd host && swift run CairnTray --selftest`, part of
-`make selftest`): the real host threads (main, Lean, world, wake) with `SurfaceHost` detached
-(nothing on screen). The overlay is shown, its `every 20` subscription ticks, and each tick is a
-Lean step that redraws 24 bars and re-wraps a growing caption (`Node.para`, two lines, keep
-tail). Ticks are timed where each frame is published, on the Lean thread, over 2 s. Three runs:
+Measured by Tray's self test (`cd host && swift run CairnTray --selftest`, then part of
+`make selftest`; Tray and its self test are in iamnbutler/cairn_examples now): the real host threads
+(main, Lean, world, wake) with `SurfaceHost` detached (nothing on screen). The overlay is shown, its
+`every 20` subscription ticks, and each tick is a Lean step that redraws 24 bars and re-wraps a
+growing caption (`Node.para`, two lines, keep tail). Ticks are timed where each frame is published,
+on the Lean thread, over 2 s. Three runs:
 
 | | run 1 | run 2 | run 3 |
 |---|---:|---:|---:|
@@ -40,7 +41,7 @@ Not measured here: drawing. The panel's canvas goes through the same `MetalRende
 | `NSMenu.performActionForItem(at:)`, detached menu | about 60 ms per call |
 | `NSApp.sendAction` for comparison | about 3 µs |
 | conformance step (one `menuSelect` through `performActionForItem`, then frame, `menu` and `surfaces` reads) | p50 51.4 ms, p90 54.4 ms, max 62.4 ms |
-| `make conformance APP=Tray N=200` | 2,404 steps, 87.8 s |
+| conformance on Tray, `N=200` (docs/conformance.md) | 2,404 steps, 87.8 s |
 | trusted fuzz `SurfacesSuite`, quick (`--n 500`) | about 5.4 s |
 
 `performActionForItem` dominates both the conformance step and the fuzz suite, which is why the

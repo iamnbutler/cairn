@@ -10,7 +10,7 @@ coding against the contracts below.
 |---|---|---|
 | Geometry | `lean/Cairn/Geometry.lean` | `Point`, `Size`, `Rect`, `Insets`, integer logical points, y down |
 | Claims | `lean/Cairn/Claim.lean` | `ClaimId`, `ClaimKind`, `ClaimInfo`, `ControlRef` (`^5`, `^5#12`) |
-| Text metrics | `lean/Cairn/Font.lean` (`Cairn.Text.Metrics` re-exports it until 0.2.0) | `Font`, `TextMetrics` (caret offsets per scalar), `TextMetrics.Valid`, a mono stand-in |
+| Text metrics | `lean/Cairn/Font.lean` | `Font`, `TextMetrics` (caret offsets per scalar), `TextMetrics.Valid`, a mono stand-in |
 | View and layout | `lean/Cairn/UI/Node.lean` | `Node` (what `view` returns), `Laid` (what layout returns), `Style`, `Control`, `FieldView` |
 | Input | `lean/Cairn/Input.lean` | `Event` (host → Lean), `TextOp`, `Action` (runtime → app), `Effect`, `Cursor` |
 | Frame | `lean/Cairn/Frame.lean` | `Frame`: draws, accessibility nodes, text-input state, cursor, effects |
@@ -50,7 +50,7 @@ list and in this table.
 | F | Renderer and text | `host/Sources/CairnRender/` | Metal: rects with fill, border and radius, clipping, glyph runs from a Core Text–rasterised atlas at the backing scale; Core Text metrics exported to Lean (`cairn_text_metrics`, docs/render.md) with a cache |
 | G | Host | `host/Sources/CairnHost/`, `host/Sources/CLean/` | window, threads (main, Lean, render), AppKit events → `Event`, `NSTextInputClient`, accessibility mirror with `^N` identifiers, effects (clipboard), cursor; a generic app runner any Lean app plugs into |
 | H | Research | `research/` | sourced notes per source; see `research/README.md` |
-| I | TodoMVC | `lean/Examples/Todo/` | the app, its claims and its proofs (after A–E) |
+| I | TodoMVC | `lean/Examples/Todo/` (now `lean/Todo/` in iamnbutler/cairn_examples) | the app, its claims and its proofs (after A–E) |
 | J | Conformance and debug socket | `tools/conformance/`, `host/Sources/CairnHost/Debug*` | debug socket; generated move sequences from the model replayed on the real app (after C, E, G) |
 | K | Map | `tools/map/` | claims + evidence → the map skill's format, with pins from layout (after A, I) |
 

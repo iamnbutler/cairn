@@ -46,7 +46,7 @@ move, leave the directory graph acyclic (rechecked the same way):
 | `Runtime.Hit` → `Cairn.UI.Hit` | It imports only `UI.Node`; hit testing is over `Laid`, not the runtime |
 | `Text.Metrics` → `Cairn.Font` | `Font` and `TextMetrics` are base vocabulary like `Geometry`; `UI.Node` needs them |
 
-Old names stay as one-line re-exporting modules for a release, since Yap imports
+Old names stayed as one-line re-exporting modules until 0.3.0, since Yap imported
 `Cairn.Frame.Boundary` and `docs/plan.md` lists `Text/Metrics.lean` as a contract.
 
 After the moves the layers are:
@@ -106,16 +106,16 @@ import `Lean`, which the host must never link.
   `TextSystem`. One tag pins both (docs/package.md). Separate Lean packages would each still need
   a matching Swift tag, so their versions could never move independently.
 - **Trusted base and audit.** One `docs/trusted.md`, one `make lint`, one fuzz-trusted harness.
-  `lake exe audit` checks theorems in modules rooted at `Cairn`, `Examples` and the app's roots.
+  `lake exe audit` checks theorems in modules rooted at `Cairn` and the app's roots.
   That's sound for dependencies' axioms, since `collectAxioms` is transitive, but `make lint`'s
-  ban on `implemented_by`, `native_decide` and friends greps only `lean/Cairn` and
-  `lean/Examples`. A third-party library's `@[implemented_by]` changes what runs without
+  ban on `implemented_by`, `native_decide` and friends greps only `lean/Cairn` and the
+  fixture. A third-party library's `@[implemented_by]` changes what runs without
   showing up anywhere. Before any non-Cairn lib is published, the registry's builder should run
   lint and the axiom audit over it and show the result next to its docs.
 - **What apps import.** Yap: the six runtime modules above, `meta import Cairn.Claims.Elab`,
   `Cairn.Claims.Deliver` (proofs), and `Cairn.Fuzz.Rng`, `Collect`, `Main` (its fuzz executables).
-  The examples import the same, plus the layout proofs (`Cairn.Layout`, `Frame.Layout`,
-  `Layout.Rigid`). Nobody imports a subset that a split would make cheaper.
+  The examples (cairn_examples) import the same, plus the layout proofs (`Cairn.Layout`,
+  `Frame.Layout`, `Layout.Rigid`). Nobody imports a subset that a split would make cheaper.
 
 ### Swift: one package, several products
 
@@ -197,7 +197,7 @@ Lake libraries, all in the one package `lean/`:
 | `CairnTrusted` | `Fuzz.Trusted.Claims` (today `TrustedClaims`) | no | compile time |
 | `CairnFuzz` | `Fuzz.*` (with `Rng`'s `Custom` hook in `Cairn`, since app modules name it) | no | yes |
 | `CairnTools` | `Claims.Tool/Ledger/Export/Release`, `Doc.Export`, `Audit` | no | yes |
-| `Examples`, per-app libs | as today; not published as packages | — | — |
+| `Examples`, per-app libs | gone: the apps are in iamnbutler/cairn_examples (0.3.0) | — | — |
 
 Arrows: `CairnProofs`, `CairnClaims`, `CairnFuzz` → `Cairn`; `CairnTools` → `CairnClaims`;
 `CairnTrusted` → `Cairn` + `CairnClaims` (meta). Module names don't change apart from the three
@@ -253,11 +253,14 @@ take with no source change, or a one-line one.
    a linked module imports one from a dependency with no cairn.toml (it links none of that).
    Without `--lib` it takes the package's own cairn.toml `libs`, so Cairn's Makefile is
    unchanged. Yap 0.1.2's `--lib Yap` builds and passes `--selftest` against it unchanged.
-4. **Drop the shims** in the next 0.x minor (0.2.0). Yap changes one import
-   (`Cairn.Frame.Boundary` → `Cairn.Abi`).
+4. **Drop the shims** in a 0.x minor. Yap changes one import
+   (`Cairn.Frame.Boundary` → `Cairn.Abi`). Done in 0.3.0: `Cairn.Frame.Boundary`,
+   `Cairn.Runtime.Hit` and `Cairn.Text.Metrics` are gone.
 5. **Examples get their own scope (#88), before 1.0.** `ledger move examples …` for ^1–^462 in a
    0.x minor, so that std's ledger holds only std's promises: today retiring a Todo move counts
-   as a breaking change to Cairn. After 1.0 that move costs a major.
+   as a breaking change to Cairn. After 1.0 that move costs a major. Done in 0.3.0 (#137): the
+   apps are in iamnbutler/cairn_examples, scope `cairn_examples`, and their ids are
+   `moved:cairn_examples` in Cairn's claims.lock; ^7 and ^214 stay, as trusted-base assumptions.
 6. **#84**, then the first capability package. **`cairn_json`**: started (0.1.0, from
    `Yap.Json`'s JSON half); Yap moves to it and requires it, and its dates go to `cairn_date`.
 
@@ -284,4 +287,4 @@ take with no source change, or a one-line one.
   (v4.35.0). Either way all packages end up on one toolchain; the question is only who moves it.
 - The calendar and request-bookkeeping gaps are judged from one app.
 - Whether `Rng`'s `Custom` (a fuzz hook typed in app modules) belongs in `Cairn` or should become a
-  field the fuzzer finds by name. Kept in `Cairn` above because `Examples.Todo` names it today.
+  field the fuzzer finds by name. Kept in `Cairn` above because Todo (cairn_examples) names it.
