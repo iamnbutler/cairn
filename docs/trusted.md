@@ -254,6 +254,12 @@ See [host.md](host.md) for how each piece works.
 - **AX mirror.** The `NSAccessibilityElement` tree is a translation of the frame's AX nodes:
   roles, labels, values, focus and frames. The table in host.md lists the role mapping. It is
   reviewed by hand.
+- **Scrolled-out children.** A scroll box's node has role `scrollArea` (`AXScrollArea`). The
+  frame keeps a node for every control, including those scrolled out of view, whose visible
+  rect is then empty (`controls_ofLaid`); the mirror leaves out every node with an empty rect
+  under a scroll area, and everything under such a node (`AXMirror.hidden`, tested in
+  `AXKeyTests`), so VoiceOver reaches only what is on screen. That a hidden element is never
+  answered is reviewed by hand.
 - **ControlRef uniqueness.** The mirror assumes a ControlRef labels at most one node per
   frame. On duplicates, lookups find the first node.
 - **Screen frames.** AX frames come from the view's rect through `convert(to: nil)` and

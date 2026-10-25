@@ -24,6 +24,16 @@ def Node.controlsList : List Node → List Control
 end
 
 mutual
+/-- Whether a view has a scroll box anywhere in it. -/
+def Node.scrolls : Node → Bool
+  | .box st _ kids => st.scroll.isSome || Node.scrollsList kids
+  | .text .. | .para .. | .field .. => false
+def Node.scrollsList : List Node → Bool
+  | [] => false
+  | n :: ns => n.scrolls || Node.scrollsList ns
+end
+
+mutual
 /-- The controls of a laid-out tree, in paint order. -/
 def Laid.controls : Laid → List Control
   | .box _ _ _ c kids => c.toList ++ Laid.controlsList kids
@@ -84,11 +94,6 @@ def SiblingsDisjoint : Laid → Prop
   | .box _ _ st _ kids => st.axis ≠ .stack → kids.Pairwise fun a b => a.rect.disjoint b.rect
   | _ => True
 
-/-- Whether an axis runs horizontally (rows) or vertically (columns). -/
-def Axis.horiz : Axis → Bool
-  | .row => true
-  | _ => false
-
 /-- Padding along the main axis. -/
 def padMain (horiz : Bool) (p : Insets) : Int := if horiz then p.left + p.right else p.top + p.bottom
 
@@ -105,18 +110,28 @@ def FillExact : Laid → Prop
     padMain h st.padding + (ps.map (·.2)).sum + gaps st.gap ps.length = mainOf h r
   | _ => True
 
-/-- Children that fit stay inside: if every child's rect is no larger than the content box and,
-in a row or column, the children plus gaps fit along the main axis, then every child's rect is
-inside the content box. Together with `SiblingsDisjoint`, this means nothing in one child's
-subtree can cover another child, as long as the view fits. -/
+/-- Children that fit stay inside: in a box that doesn't scroll, if every child's rect is no
+larger than the content box and, in a row or column, the children plus gaps fit along the main
+axis, then every child's rect is inside the content box. Together with `SiblingsDisjoint`, this
+means nothing in one child's subtree can cover another child, as long as the view fits. (A scroll
+box's children are moved by its offset, so they can be anywhere; its clip holds them instead:
+`ClipContained`.) -/
 def ChildrenInside : Laid → Prop
   | .box r _ st _ kids =>
+    st.scroll = none →
     let content := r.inset st.padding
     (∀ k ∈ kids, k.rect.w ≤ content.w ∧ k.rect.h ≤ content.h) →
     (st.axis ≠ .stack →
       (kids.map fun k => mainOf (Axis.horiz st.axis) k.rect).sum + gaps st.gap kids.length
         ≤ mainOf (Axis.horiz st.axis) content) →
     ∀ k ∈ kids, k.rect.inside content
+  | _ => True
+
+/-- A box that clips (`Style.clips`, so every scroll box) holds everything below it: every
+nonempty visible part (`rect ∩ clip`) of every node under it is inside its rect. -/
+def ClipContained : Laid → Prop
+  | .box r _ st _ kids => st.clips = true →
+    ∀ k ∈ kids, k.Everywhere fun d => d.visible.nonempty → d.visible.inside r
   | _ => True
 
 /-- Field geometry: the caret sits at the text origin plus the caret's offset, within the
@@ -153,6 +168,7 @@ structure Facts (m : TextMetrics) (window : Size) (n : Node) (l : Laid) : Prop w
   siblingsDisjoint : l.Everywhere SiblingsDisjoint
   fillExact : l.Everywhere FillExact
   childrenInside : l.Everywhere ChildrenInside
+  clipContained : l.Everywhere ClipContained
   caretPlaced : l.Everywhere (CaretPlaced m)
 
 end Layout

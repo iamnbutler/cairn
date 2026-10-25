@@ -113,12 +113,19 @@ structure Style where
   paint : Option Paint := none
   /-- A loaded image over the background (and the paint), under the children. -/
   image : Option ImageFill := none
+  /-- A scroll box: `some o` lays the children out as the box's axis says,
+  then moves them back by `o` points along that axis (up, or left in a row), and clips them to
+  the box. `none` is an ordinary box. The children keep their real rects, possibly above or
+  below the box; what shows is `rect ∩ clip` (docs/layout.md, "Scroll boxes"). -/
+  scroll : Option Int := none
 deriving Repr, BEq, Inhabited
 -- endregion: node-style
 
 -- region: node-control
 inductive Role where
   | group | button | checkbox | text | textField | link | list | listItem | heading | tab
+  /-- A scroll box (`Style.scroll`): the frame gives one a node of its own. -/
+  | scrollArea
 deriving Repr, BEq, DecidableEq, Inhabited
 
 /-- A node that performs a move. -/

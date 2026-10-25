@@ -9,13 +9,17 @@ order, the accessibility tree, and the focused field's text-input state.
 
 * **Paint order** (back to front, depth first). A box paints its background and border (one
   `rect`, only when it has either), then its children, wrapped in `pushClip`/`popClip` of its
-  rect when it clips. Text paints one `text` at its baseline origin. A field paints its
+  rect when it clips (`Style.clips`: `clip`, or a scroll box). A scroll box paints only the
+  children whose visible part (`rect ∩ clip`) is non-empty; the rest are scrolled out of view. Text paints one `text` at its baseline origin. A field paints its
   background and border, then, clipped to its rect, its selection rects, its text (or its
   placeholder at half alpha when the text is empty), and its caret when focused and the selection
   is empty.
 * **Accessibility.** One `AxNode` per control (boxes with a control, fields) and per text, in
-  paint order, each with its visible rect (`rect ∩ clip`). A node's parent is the nearest
-  enclosing control. A field's value is its text and its role is `textField`; a secure field's
+  paint order, each with its visible rect (`rect ∩ clip`). A scroll box without a control has
+  a node of its own, role `scrollArea`, and is its children's parent; a node's parent is the
+  nearest enclosing control or scroll box. Every control has its node even when it is scrolled
+  out of view (its rect is then empty); the host leaves those out of what it exposes
+  (docs/trusted.md). A field's value is its text and its role is `textField`; a secure field's
   node is marked `secure` and has no value.
 * **Text input** describes the first field whose control has focus.
 
@@ -131,14 +135,19 @@ mutual
 def paint (focus : Option ControlRef) : Laid → List Draw
   | .box r _ s _ kids =>
     boxDraws r s ++
-      (if s.clip then .pushClip r :: (paintAll focus kids ++ [.popClip]) else paintAll focus kids)
+      (if s.clips then .pushClip r :: (paintAll focus s.scroll.isSome kids ++ [.popClip])
+       else paintAll focus false kids)
   | .text r _ baseline ts content => [.text ⟨r.x, baseline⟩ ts.font ts.color content]
   | .field r _ s ts c v origin caret sel =>
     boxDraws r s ++ .pushClip r :: (fieldDraws focus ts c v origin caret sel ++ [.popClip])
 
-def paintAll (focus : Option ControlRef) : List Laid → List Draw
+/-- Draw commands for a box's children, back to front. In a scroll box (`scrolled`), a child
+whose visible part is empty paints nothing. -/
+def paintAll (focus : Option ControlRef) (scrolled : Bool) : List Laid → List Draw
   | [] => []
-  | l :: ls => paint focus l ++ paintAll focus ls
+  | l :: ls =>
+    (if scrolled && !decide l.visible.nonempty then [] else paint focus l) ++
+      paintAll focus scrolled ls
 end
 
 def controlNode (focus : Option ControlRef) (parent : Option Nat) (rect : Rect) (c : Control) :
@@ -146,14 +155,21 @@ def controlNode (focus : Option ControlRef) (parent : Option Nat) (rect : Rect) 
   { control := some c.ref, role := c.role, rect, label := c.label, value := c.value, parent,
     focused := focus == some c.ref, selected := c.selected, checked := c.checked }
 
+/-- A scroll box's own node. -/
+def scrollNode (parent : Option Nat) (rect : Rect) : AxNode :=
+  { control := none, role := .scrollArea, rect, label := "", parent }
+
 mutual
 /-- Append the accessibility nodes of a laid tree to `acc`; `parent` is the index of the
-nearest enclosing control's node. -/
+nearest enclosing control's or scroll box's node. -/
 def axOf (focus : Option ControlRef) (parent : Option Nat) (acc : Array AxNode) :
     Laid → Array AxNode
   | .box r clip _ (some c) kids =>
     axAll focus (some acc.size) (acc.push (controlNode focus parent (r.inter clip) c)) kids
-  | .box _ _ _ none kids => axAll focus parent acc kids
+  | .box r clip s none kids =>
+    if s.scroll.isSome then
+      axAll focus (some acc.size) (acc.push (scrollNode parent (r.inter clip))) kids
+    else axAll focus parent acc kids
   | .text r clip _ _ content =>
     acc.push { control := none, role := .text, rect := r.inter clip, label := content, parent }
   | .field r clip _ _ c v .. =>
@@ -207,9 +223,14 @@ theorem axOf_controls (focus : Option ControlRef) (parent : Option Nat) (acc : A
     simp only [controlNode, Array.toList_push, List.filterMap_append, Option.some.injEq,
         List.filterMap_cons_some, List.filterMap_nil, List.append_assoc, List.cons_append,
         List.nil_append, Laid.controls, Option.toList_some, List.map_cons]
-  | .box _ _ _ none kids =>
-    rw [axOf, axAll_controls]
-    simp only [Laid.controls, Option.toList_none, List.nil_append]
+  | .box _ _ s none kids =>
+    rw [axOf]
+    split
+    · rw [axAll_controls]
+      simp only [scrollNode, Array.toList_push, List.filterMap_append, List.filterMap_cons_none,
+        List.filterMap_nil, List.append_nil, Laid.controls, Option.toList_none, List.nil_append]
+    · rw [axAll_controls]
+      simp only [Laid.controls, Option.toList_none, List.nil_append]
   | .text .. => simp only [axOf, Array.toList_push, List.filterMap_append, List.filterMap_cons_none,
       List.filterMap_nil, List.append_nil, Laid.controls, List.map_nil]
   | .field .. => simp only [axOf, controlNode, Array.toList_push, List.filterMap_append,
@@ -272,7 +293,10 @@ theorem axOf_size (focus : Option ControlRef) (parent : Option Nat) (acc : Array
   | .box r clip s (some c) kids =>
     rw [axOf]; exact Nat.le_trans (by simp only [Array.size_push,
         Nat.le_add_right]) (axAll_size _ _ _ _)
-  | .box _ _ _ none kids => rw [axOf]; exact axAll_size ..
+  | .box _ _ s none kids =>
+    rw [axOf]; split
+    · exact Nat.le_trans (by simp only [Array.size_push, Nat.le_add_right]) (axAll_size _ _ _ _)
+    · exact axAll_size ..
   | .text .. => simp only [axOf, Array.size_push, Nat.le_add_right]
   | .field .. => simp only [axOf, Array.size_push, Nat.le_add_right]
 
@@ -299,7 +323,13 @@ theorem axOf_parents (focus : Option ControlRef) (parent : Option Nat) (acc : Ar
     · exact h.push hp
     · intro q hq; simp only [Option.some.injEq] at hq; simp only [Array.size_push, hq,
         Nat.lt_add_one]
-  | .box _ _ _ none kids => rw [axOf]; exact axAll_parents _ _ _ _ h hp
+  | .box _ _ s none kids =>
+    rw [axOf]; split
+    · apply axAll_parents
+      · exact h.push hp
+      · intro q hq; simp only [Option.some.injEq] at hq; simp only [Array.size_push, hq,
+          Nat.lt_add_one]
+    · exact axAll_parents _ _ _ _ h hp
   | .text .. => exact h.push hp
   | .field .. => exact h.push hp
 
@@ -408,12 +438,15 @@ theorem clipDepth_paint (focus : Option ControlRef) (l : Laid) (d : Nat) (rest :
     rw [clipDepth_noClip (noClip_fieldDraws focus ts c v o caret sel)]
     rfl
 
-theorem clipDepth_paintAll (focus : Option ControlRef) (ls : List Laid) (d : Nat)
-    (rest : List Draw) : clipDepth d (paintAll focus ls ++ rest) = clipDepth d rest := by
+theorem clipDepth_paintAll (focus : Option ControlRef) (sc : Bool) (ls : List Laid) (d : Nat)
+    (rest : List Draw) : clipDepth d (paintAll focus sc ls ++ rest) = clipDepth d rest := by
   match ls with
   | [] => rfl
   | l :: ls =>
-    rw [paintAll, List.append_assoc, clipDepth_paint, clipDepth_paintAll]
+    rw [paintAll, List.append_assoc]
+    split
+    · rw [List.nil_append, clipDepth_paintAll]
+    · rw [clipDepth_paint, clipDepth_paintAll]
 end
 
 /-- **Clips are balanced** in every frame `ofLaid` builds. -/

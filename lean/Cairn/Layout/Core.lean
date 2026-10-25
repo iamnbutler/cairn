@@ -265,12 +265,36 @@ def stackRects (st : Style) (content : Rect) (items : List Item) : List Rect :=
     let y := crossPlace st.align content.y (max 0 content.h) it.height it.size.h it.stretch
     ⟨x.1, y.1, x.2, y.2⟩
 
-/-- Rects for a container's children, given the container's rect. -/
-def childRects (st : Style) (r : Rect) (items : List Item) : List Rect :=
+/-- Rects for a container's children before any scrolling, given the container's rect. -/
+def placeRects (st : Style) (r : Rect) (items : List Item) : List Rect :=
   match st.axis with
   | .row => lineRects true st (r.inset st.padding) items
   | .column => lineRects false st (r.inset st.padding) items
   | .stack => stackRects st (r.inset st.padding) items
+
+/-- Whether an axis runs horizontally (rows) or vertically (columns and stacks). -/
+def Axis.horiz : Axis → Bool
+  | .row => true
+  | _ => false
+
+/-- `q` moved back by `o` points along an axis: left when `horiz`, otherwise up. -/
+def _root_.Cairn.Rect.scrollBy (horiz : Bool) (o : Int) (q : Rect) : Rect :=
+  if horiz then { q with x := q.x - o } else { q with y := q.y - o }
+
+/-- Whether a box clips its children: when it says so, and always when it scrolls. -/
+def _root_.Cairn.Style.clips (st : Style) : Bool := st.clip || st.scroll.isSome
+
+/-- Children's rects moved by a scroll box's offset; unchanged in any other box. -/
+def scrolled (st : Style) (rs : List Rect) : List Rect :=
+  match st.scroll with
+  | none => rs
+  | some o => rs.map (Rect.scrollBy (Axis.horiz st.axis) o)
+
+/-- Rects for a container's children, given the container's rect: placed as its axis says, then,
+in a scroll box (`scroll = some o`), moved back by `o` along that axis (a row scrolls
+horizontally, a column or stack vertically). -/
+def childRects (st : Style) (r : Rect) (items : List Item) : List Rect :=
+  scrolled st (placeRects st r items)
 
 /-! ## Arrange: fields -/
 
@@ -297,8 +321,8 @@ def field (m : TextMetrics) (clip r : Rect) (st : Style) (ts : TextStyle) (ctl :
 /-! ## Arrange -/
 
 /-- Region a container's children may paint in: its own clip, intersected with its rect when
-it clips. -/
-def innerClip (st : Style) (clip r : Rect) : Rect := if st.clip then clip.inter r else clip
+it clips (`Style.clips`: a scroll box always does). -/
+def innerClip (st : Style) (clip r : Rect) : Rect := if st.clips then clip.inter r else clip
 
 mutual
 /-- The arrange pass: lay out `s` in `r`, painting within `clip`. -/

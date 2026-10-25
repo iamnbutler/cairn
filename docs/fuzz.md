@@ -213,9 +213,11 @@ the printout says so and gives the replay command and the shrunk steps.
    its menu's items whether or not the menu is open, a greyed-out item counting as absent. The
    fuzzer presses them as the host does, with `menuOpen` for the button and `menuSelect` for an
    item (Tray's `cairn_examples^453`, cairn#176).
-4. **Pressable** when the window is at or above the minimum: `hitTest` at the centre of each
-   enabled pointer move's control returns it, and `checkPressable && controlsNonempty` holds
-   (so the app's pressability proof at that size can be `by decide +kernel`).
+4. **Pressable** when the window is at or above the minimum: `hitTest` at the centre of the
+   visible part of each enabled pointer move's control returns it, and
+   `checkPressable && controlRectsNonempty` holds. A control scrolled out of view in a scroll
+   box (an empty visible part) is not pressed, not chosen for an operation and not checked:
+   nothing of it can be hit (`not_hit_of_hidden`).
 5. **Images held** (above, "The host"): every image the frame draws is held by the host.
 6. **Relations** (`Custom.relations`), for a host's move or a person's operation.
 7. **Outstanding** (`Custom.outstanding`): the app's checks against the requests the runtime
@@ -273,7 +275,7 @@ printed three ways:
     is the move's enabledness there, true as found), and a **theorem** follows for the app's
     Proofs file, over `layout TextMetrics.mono` of the app's view in the flow's final state at
     the failing window size: `present … = en`, a hit at the control's centre, or
-    `checkPressable && controlsNonempty`, closed by `decide +kernel`. It fails until the bug is
+    `checkPressable && controlRectsNonempty`, closed by `decide +kernel`. It fails until the bug is
     fixed, then stays as the regression test. If the failure was found with random metrics, the
     printout says so: the theorem uses mono metrics, so check that it fails before the fix.
 

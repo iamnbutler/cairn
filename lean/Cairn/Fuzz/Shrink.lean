@@ -132,7 +132,7 @@ def flowSource (t : Target) (setup : Setup) (f : Failure) (traced : Array Traced
        some s!"theorem {name}_present :\n    Cairn.Runtime.present ({laid}) {refT} = {en} := by\n  decide +kernel")
     | "pressable-check" =>
       (s!"{enabledT} = true", s!"{r.label} is enabled, and every control is pressable.",
-       some s!"theorem {name}_pressable :\n    let l := {laid}\n    (Cairn.Layout.checkPressable ⟨{z.w}, {z.h}⟩ l && Cairn.Layout.controlsNonempty l) = true := by\n  decide +kernel")
+       some s!"theorem {name}_pressable :\n    let l := {laid}\n    (Cairn.Layout.checkPressable ⟨{z.w}, {z.h}⟩ l && Cairn.Layout.controlRectsNonempty l) = true := by\n  decide +kernel")
     | _ =>
       (s!"{enabledT} = true", s!"{r.label} is enabled, and a click at its centre reaches it.",
        some s!"theorem {name}_pressable :\n    let l := {laid}\n    ((Cairn.Runtime.find l {refT}).any fun tg =>\n      Cairn.Runtime.hitRef l tg.visible.center == some {refT}) = true := by\n  decide +kernel")

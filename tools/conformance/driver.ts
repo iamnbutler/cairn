@@ -228,8 +228,21 @@ function expectedAx(f: Frame): Record<string, unknown>[] {
 	const role: Record<string, string> = {
 		group: "AXGroup", listItem: "AXGroup", button: "AXButton", checkbox: "AXCheckBox", text: "AXStaticText",
 		textField: "AXTextField", link: "AXLink", list: "AXList", heading: "AXHeading", tab: "AXRadioButton",
+		scrollArea: "AXScrollArea",
 	};
-	return f.ax.map((n) => {
+	// Nodes scrolled out of view (an empty rect under a scroll area, or below such a node) are
+	// left out, and the rest renumbered (AXMirror.hidden).
+	const hidden: boolean[] = [], scrolled: boolean[] = [];
+	f.ax.forEach((n, i) => {
+		const p = n.parent;
+		const ok = p !== null && p !== undefined && p >= 0 && p < i;
+		scrolled[i] = ok ? scrolled[p] || f.ax[p].role === "scrollArea" : false;
+		hidden[i] = ok ? hidden[p] || (scrolled[i] && (n.rect[2] <= 0 || n.rect[3] <= 0)) : false;
+	});
+	const index: number[] = [];
+	let shown = 0;
+	f.ax.forEach((_, i) => { index[i] = hidden[i] ? -1 : shown++; });
+	return f.ax.flatMap((n, i) => hidden[i] ? [] : [{ ...n, parent: n.parent === null || n.parent === undefined ? n.parent : index[n.parent] }]).map((n) => {
 		const field = f.textInput && f.textInput.control === n.control ? f.textInput : null;
 		let value: unknown;
 		switch (n.role) {

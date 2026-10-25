@@ -99,4 +99,14 @@ import Testing
         #expect(AXMirror.cycles(nodes, from: 0))
         _ = AXMirror.keys(nodes)  // terminates
     }
+
+    @Test func scrolledOutChildrenHidden() {
+        let empty = Rect(x: 0, y: 0, w: 10, h: 0)
+        let nodes = [AxNode(control: nil, role: .scrollArea, rect: r, label: ""),
+                     AxNode(control: ControlRef(claim: 1, key: 1), role: .button, rect: r, label: "in", parent: 0),
+                     AxNode(control: ControlRef(claim: 1, key: 2), role: .button, rect: empty, label: "out", parent: 0),
+                     AxNode(control: nil, role: .text, rect: r, label: "under out", parent: 2),
+                     AxNode(control: nil, role: .text, rect: empty, label: "not scrolled")]
+        #expect(AXMirror.hidden(nodes) == [false, false, true, true, false])
+    }
 }

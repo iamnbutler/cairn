@@ -57,9 +57,14 @@ final class AXMirror {
             }
         }
         var newRoots: [AXNodeElement] = []
+        let hidden = Self.hidden(nodes)
         for (i, node) in nodes.enumerated() {
             let el = elements[i]
-            if let p = node.parent, p >= 0, p < nodes.count, p != i, !Self.cycles(nodes, from: i) {
+            if hidden[i] {
+                // Scrolled out of view: kept (so its element survives scrolling back) but exposed
+                // nowhere.
+                el.parentElement = nil
+            } else if let p = node.parent, p >= 0, p < nodes.count, p != i, !Self.cycles(nodes, from: i) {
                 el.parentElement = elements[p]
                 elements[p].children.append(el)
             } else {
@@ -123,6 +128,21 @@ final class AXMirror {
             return k
         }
         return nodes.indices.map { key($0, depth: 0) }
+    }
+
+    /// Which nodes are scrolled out of view: under a scroll area, with an empty rect (the frame
+    /// gives each node its visible rect), or under such a node. A frame lists a parent before its
+    /// children, so one pass in order sees every parent first; a parent that comes later is
+    /// ignored here.
+    static func hidden(_ nodes: [AxNode]) -> [Bool] {
+        var hidden = [Bool](repeating: false, count: nodes.count)
+        var scrolled = [Bool](repeating: false, count: nodes.count)
+        for (i, n) in nodes.enumerated() {
+            guard let p = n.parent, p >= 0, p < i else { continue }
+            scrolled[i] = scrolled[p] || nodes[p].role == .scrollArea
+            hidden[i] = hidden[p] || (scrolled[i] && (n.rect.w <= 0 || n.rect.h <= 0))
+        }
+        return hidden
     }
 
     /// Whether following parents from `i` loops (a malformed frame); such nodes become roots.
@@ -213,6 +233,7 @@ final class AXNodeElement: NSAccessibilityElement, @unchecked Sendable {
         case .list: .list
         case .heading: NSAccessibility.Role(rawValue: "AXHeading")
         case .tab: .radioButton
+        case .scrollArea: .scrollArea
         }
     }
 
