@@ -138,54 +138,48 @@ publisher's report.
 
 ## A bug the tests miss
 
-Basics, the [example app](/docs/examples/basics/) with a list of items, keeps a count of the items
-not done in its state instead of counting them in the view. Invariant ^105 says the count is
-always right:
+The fixture, Cairn's own test app (`test/fixture`), gives each new item the id it keeps in its
+state and counts that id up. Invariant ^7 says every item's id is below the next one, so no two
+items can share an id:
 
-<bongo:include src="lean/Examples/Basics.lean#basics-inv" />
+<bongo:include src="test/fixture/lean/Fixture.lean#fixture-add-inv" />
 
-`delete` keeps the count: it takes one off only when the item it removes wasn't done.
+`add` keeps it: the new item takes the next id, and the next id goes up by one.
 
-<bongo:include src="lean/Examples/Basics.lean#basics-delete" />
+<bongo:include src="test/fixture/lean/Fixture.lean#fixture-add" />
 
-Here is the same function with one plausible slip. It takes one off whatever the item was:
+Here is the same function with one plausible slip. It works the next id out from how many items
+there are:
 
-<bongo:include src="lean/Examples/Basics/Mutant.lean#mutant-delete" />
+<bongo:include src="test/fixture/lean/Fixture/Mutant.lean#mutant-add" />
 
-**The tests pass.** This is Basics' own test of deleting: add two items, check the first, delete
-the second.
+**The tests pass.** As long as nothing is deleted before an add, the number of items is the
+number of ids handed out, so the slip gives the same ids. The fixture's own tests add two items,
+check one off and delete at the end; the same steps, on `addBuggy`:
 
-<bongo:include src="lean/Examples/Basics/Tests.lean#basics-tests-delete" />
+<bongo:include src="test/fixture/lean/Fixture/Mutant.lean#mutant-tests" />
 
-The deleted item wasn't done, so the buggy `delete` takes one off, exactly as it should. Deleting
-the only item, done or not, gives the right answer too, because `Nat` subtraction stops at zero:
-`0 - 1` is `0`. With the bug planted in Basics itself, every one of its tests and all three of
-its flows still build and pass. The same steps, on `deleteBuggy`:
+**The proof doesn't.** ^7's `step` needs a proof that `add` keeps the invariant, and the one that
+works for `add` stops at the next id. This is that proof, written for `addBuggy`, with the message
+Lean gives. `#guard_msgs` makes the build check that the attempt fails with exactly this message:
 
-<bongo:include src="lean/Examples/Basics/Mutant.lean#mutant-tests" />
+<bongo:include src="test/fixture/lean/Fixture/Mutant.lean#mutant-attempt" />
 
-**The proof doesn't.** ^105's `step` needs a proof that `delete` keeps the invariant, and the one
-that works for `delete` stops at the count. This is that proof, written for `deleteBuggy`, with
-the message Lean gives. `#guard_msgs` makes the build check that the attempt fails with exactly
-this message:
+Read the constraints as a description of the bug. `b` is an item's id and `c` the number of items
+before the add; the new next id is `c + 2`, and `b - c ≥ 2` says the item's id isn't below it.
+That needs an id at least two more than the number of items: more ids handed out than items left.
+So the failing case is an add after a delete. Lean didn't need a test to find it. It made it
+concrete, and it can be proved:
 
-<bongo:include src="lean/Examples/Basics/Mutant.lean#mutant-attempt" />
+<bongo:include src="test/fixture/lean/Fixture/Mutant.lean#mutant-counterexample" />
 
-Read the constraints as a description of the bug. `c` is the number of items not done after the
-delete and `d` is the count the state now keeps; `c - d ≥ 1` says the count is too low. `b` is
-what deleting the item should have taken off, and the constraints allow `b = 0`: an item that was
-done. So the failing case is deleting a done item while an item that isn't done remains. Lean
-didn't need a test to find it. It made it concrete, and it can be proved:
-
-<bongo:include src="lean/Examples/Basics/Mutant.lean#mutant-counterexample" />
-
-**What the other evidence would have said.** With the bug planted, `make fuzz APP=Basics` with
-its defaults (200 random sequences from seed 0) failed ^105 in 22 of them, the first at step 49
-of seed 9. Fuzzing would very likely have caught this one. Conformance and the capture would not
+**What the other evidence would have said.** With the bug planted in the fixture, `cairn fuzz`
+with its defaults (100 random sequences from seed 0) failed ^7 in 27 of them, the first at step
+23 of seed 4. Fuzzing would very likely have caught this one. Conformance and a capture would not
 have: the app would match its own buggy model, frame for frame, and the screenshots would look
 fine. The proof is the only evidence that guarantees the case is covered, rather than likely to
-have come up. And because Basics' invariant is proved, `make check` fails before this change can
-merge.
+have come up. And because the fixture's invariant is proved, `make check` fails before this
+change can merge.
 
 ## Checking a claim yourself
 

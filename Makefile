@@ -93,7 +93,7 @@ fixture-build: lean cairn-tool
 # files out of the build directory, and the ledger imports from there: turn it off.
 fixture-ledger: fixture-build
 	cd $(FIXTURE)/lean && export LAKE_ARTIFACT_CACHE=false && lake build -q \
-	  && lake exe ledger check --scope fixture --root Checks --lock ../claims.lock && lake exe audit Checks
+	  && lake exe ledger check --scope fixture --root Checks --lock ../claims.lock && lake exe audit Checks Fixture
 
 # The layout bench (bench/layout.md), the fixture's input → frame bench (`cairn bench`), and the
 # renderer's.
