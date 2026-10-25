@@ -1,5 +1,17 @@
 [
   {
+    "title": "Cairn 0.1.3, on the public registry",
+    "text": [
+      "Cairn 0.1.3 is out, and it is on the public registry at cairn.registry.nexthub.sh as iamnbutler/cairn, next to 0.1.2. Reading it needs no login: cairn add cairn finds the owner by name and writes the version range, and Lake fetches Cairn from the registry's git (#107, #109). /packages/ now reads the registry itself instead of sample data (#111).",
+      "The Cairn library is now only what an app links: 31 modules. Proofs, claims, fuzzing and tools are their own Lake libraries, so libcairn_Cairn.a went from 3.67 to 2.78 MB (#114). Three modules moved so the directories in lean/ have no cycles, and make lint now fails on one; the old names stay as shims until 0.2.0 (#110).",
+      "No claim changed, so it is a patch release. Yap moved to it with only its tag changed."
+    ],
+    "date": "2026-10-24",
+    "published": "2026-10-25T00:39:27Z",
+    "commit": "aea142c",
+    "milestone": "m2"
+  },
+  {
     "title": "Cairn 0.1.2: libraries and apps",
     "text": [
       "Cairn 0.1.2 is out. A package is now a library or an app, as in Cargo: cairn.toml has kind = \"lib\" or \"bin\", cairn new asks which, and /packages/ lists apps under their own tab (#103). Nothing can depend on an app.",
