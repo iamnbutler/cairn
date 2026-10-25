@@ -48,6 +48,8 @@ p { margin: 0 0 14px; }
 .bar a { color: var(--muted); text-decoration: none; }
 .bar a:hover, .bar a.on { color: var(--fg); }
 .bar a.on { box-shadow: inset 0 -3px 0 var(--gold); }
+.bar a.gh { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; }
+.bar a.gh img { width: 18px; height: 18px; image-rendering: pixelated; }
 
 /* The page: the sidebar and the text. */
 .layout { max-width: 1180px; margin: 0 auto; padding: 0 16px; display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 48px; align-items: start; }
