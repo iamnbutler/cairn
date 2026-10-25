@@ -11,8 +11,8 @@ in `Examples.Gallery`. Here:
 
 * **Sizes.** Every tile's image measures 200 × 150 whatever is known of it, so loading, a late
   reply or a failure never moves anything (`tileImage_size`).
-* **Presence.** Fit and Reload are on screen in every state, and nothing else is a control: the
-  tiles aren't (`view_refs`, `reload_in_frame`).
+* **Presence.** Fit, Reload, Cancel and Load 24 are on screen in every state, and nothing else
+  is a control: the tiles and thumbnails aren't (`view_refs`, `reload_in_frame`).
 * ^504 holds in every state the running app reaches (`freshLoads_on_screen`). -/
 
 namespace Examples.Gallery
@@ -48,11 +48,19 @@ theorem tiles_controls (s : State) : ∀ ts : List Tile, (ts.flatMap fun t => (t
   | [] => rfl
   | t :: ts => by rw [List.flatMap_cons, tile_controls, tiles_controls s ts]; rfl
 
+theorem thumbs_controls (s : State) : ∀ xs : List String, Node.controlsList (xs.map (thumb s)) = []
+  | [] => rfl
+  | x :: xs => by
+    simp only [List.map_cons, Node.controlsList, thumb, controls_image,
+      thumbs_controls s xs, List.append_nil]
+
 -- region: gallery-presence
-/-- The view's controls, in every state: Fit, then Reload. The tiles are no controls. -/
+/-- The view's controls, in every state: Fit, Reload, Cancel, then Load 24. The tiles and
+thumbnails are no controls. -/
 theorem view_refs (s : State) (ui : UI) :
-    (view s ui).controls.map (·.ref) = [fitRef, reloadRef] := by
-  simp only [view, header, tileRow, button, line, Node.controls, Node.controlsList, controlsList_map,
+    (view s ui).controls.map (·.ref) = [fitRef, reloadRef, cancelRef, manyRef] := by
+  simp only [view, header, manyHeader, tileRow, thumbRow, thumbs_controls, button, line, Node.controls,
+    Node.controlsList, controlsList_map,
     tiles_controls, Option.toList, List.append_nil, List.nil_append,
     List.cons_append, List.map_cons]
   rfl

@@ -241,6 +241,16 @@ def cancel (t : Images) (source : String) : Images × List Effect :=
 def cancelAll (t : Images) : Images × List Effect :=
   ({ t with pending := [] }, t.pending.map fun p => .cancelRequest p.1)
 
+/-- Stop waiting for the loads of every source `p` picks, and cancel each one. -/
+def cancelWhere (t : Images) (p : String → Bool) : Images × List Effect :=
+  ({ t with pending := t.pending.filter fun q => !p q.2 },
+   (t.pending.filter fun q => p q.2).map fun q => .cancelRequest q.1)
+
+theorem pending_cancelWhere (t : Images) (p : String → Bool) (q : Nat × String)
+    (h : q ∈ (t.cancelWhere p).1.pending) : q ∈ t.pending ∧ p q.2 = false := by
+  simp only [cancelWhere, List.mem_filter, Bool.not_eq_true'] at h
+  exact h
+
 /-- **After `cancelAll`, no reply changes the table.** -/
 theorem receive_cancelAll (t : Images) (id : Nat) (r : Reply) :
     t.cancelAll.1.receive id r = t.cancelAll.1 :=
