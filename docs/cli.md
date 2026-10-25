@@ -15,7 +15,7 @@ cd tools/cairn && swift test
 <!-- endregion: cli-install -->
 
 Status: started. `new`, `add`, `build`, `doc`, `publish` and `login` work, with unit tests,
-against the public registry (Cairn 0.1.3 is published there). Not yet: `cairn run`, `check`, `map`, `fuzz` and the rest of the
+against the public registry (Cairn 0.2.0 is published there). Not yet: `cairn run`, `check`, `map`, `fuzz` and the rest of the
 planned commands in site/web/content/docs/reference/cairn-tool.md, and installing it (a release binary or
 `mint`/Homebrew).
 

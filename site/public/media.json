@@ -1,5 +1,16 @@
 [
   {
+    "title": "Cairn 0.2.0, with images",
+    "text": [
+      "Cairn 0.2.0 is out, on the public registry as iamnbutler/cairn next to 0.1.3. It has images: Node.image, the loadImage effect, frame format 5 and the Gallery example (#132). import Cairn now links, the old everything-umbrella is CairnAll, and cairn new --bin makes a working app (#134). cairn-link links each dependency's libs from its cairn.toml, and Cairn's says libs = [\"Cairn\"] (#127).",
+      "It was going to be 0.1.4, and v0.1.4 is tagged, but the registry refused it: claim ^213's statement hash changed when Style gained its image field, and a published claim keeps its statement. Its meaning didn't change, so the same invariant is now ^225 and ^213 is retired. Retiring a released claim needs a new minor version while at 0.x, hence 0.2.0."
+    ],
+    "date": "2026-10-24",
+    "published": "2026-10-25T02:05:01Z",
+    "commit": "16b70b8",
+    "milestone": "m3"
+  },
+  {
     "title": "cairn new makes an app that links",
     "text": [
       "Since the library split, the Cairn umbrella imported every proof and tool, none of which an app links, so an app that wrote import Cairn, as cairn new's template did, failed at the host's link on initialize_cairn_Cairn (#128). Now Cairn is the linked library's umbrella, with the claim commands at compile time only, and the everything-umbrella the ledger, the audit and the docs read is CairnAll. cairn new --bin writes a working app: a place, a move, its exports, the C declaration of its initializer and a host with a selftest. make check now builds one against the checkout, runs its selftest and locks its two claims, which takes about a minute."
