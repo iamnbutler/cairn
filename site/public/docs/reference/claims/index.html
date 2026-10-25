@@ -56,9 +56,10 @@ nothing else. For an introduction, read <a href="/docs/guide/moves-and-flows/">M
 So an app file is a Lean <code>module</code> that imports the runtime and only <code>meta import</code>s the commands,
 which makes them available at compile time and absent from the binary:</p>
 <ul>
-<li><code>public import Cairn.Claims.Core</code>, the claim types;</li>
-<li><code>meta import Cairn.Claims.Elab</code>, the commands;</li>
-<li><code>public import Cairn.App</code>, and whatever else the app uses;</li>
+<li><code>public import Cairn</code>, which brings in everything an app links and <code>meta</code>-imports the commands;
+or, module by module, <code>public import Cairn.Claims.Core</code> (the claim types),
+<code>meta import Cairn.Claims.Elab</code> (the commands), <code>public import Cairn.App</code> and whatever else
+the app uses;</li>
 <li><code>@[expose] public section</code>, so other modules' proofs can unfold the app's definitions.</li>
 </ul>
 <p>The keywords (<code>move</code>, <code>flow</code>, <code>invariant</code>, <code>assume</code>, <code>place</code>, <code>retire</code>) aren't reserved words, so
