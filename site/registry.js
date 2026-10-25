@@ -108,6 +108,25 @@ function local() {
 	};
 }
 
+/** The release before `shown` that isn't yanked, if any. Versions are listed newest first. */
+function previousOf(versions, shown) {
+	return versions.slice(versions.indexOf(shown) + 1).find((v) => !v.yanked);
+}
+
+/**
+ * How a ledger changed between two versions: ids that are new, and ids whose status went from
+ * active to retired or moved. Statements never change under an id (the registry refuses that).
+ */
+function changed(before, after) {
+	const was = new Map(before.map((c) => [c.id, c.status]));
+	return after.flatMap((claim) => {
+		const prior = was.get(claim.id);
+		if (prior === undefined) return [{ claim, change: claim.status === "active" ? "new" : `new, ${claim.status}` }];
+		if (prior !== claim.status) return [{ claim, change: claim.status }];
+		return [];
+	});
+}
+
 /** The newest version that isn't yanked and isn't a pre-release, else the newest that isn't yanked. */
 function latestOf(versions) {
 	const live = versions.filter((v) => !v.yanked);
@@ -218,6 +237,8 @@ export async function packagePage(src, name, wanted) {
 	const shown = wanted ? pkg.versions.find((v) => v.version === wanted) : latestOf(pkg.versions);
 	if (!shown) return undefined;
 	const claims = await src.claims(name, shown.version);
+	const before = previousOf(pkg.versions, shown);
+	const changes = before ? changed(await src.claims(name, before.version), claims) : [];
 	const range = `^${shown.version.replace(/-.*$/, "")}`;
 	const app = kindOf(shown.kind ? shown : pkg) === "bin";
 	const deps = Object.entries(shown.dependencies ?? {});
@@ -277,6 +298,24 @@ ${deps.length ? `<h2 id="deps">Depends on</h2><ul>${deps.map(([dep, r]) => `<li>
 <div class="wrap"><table><thead><tr><th>Version</th><th>Published</th><th>Commit</th><th>Claims</th><th>Docs</th></tr></thead><tbody>
 ${rows}
 </tbody></table></div>
+${
+	before
+		? `<h2 id="changes">What changed in ${esc(shown.version)}</h2>
+${
+	changes.length
+		? `<p>Claims new, retired or moved since <a href="/packages/${esc(name)}/${esc(before.version)}/">${esc(before.version)}</a>.</p>
+<div class="wrap"><table class="ledger"><thead><tr><th>Id</th><th>Change</th><th>Kind</th><th>Claim</th></tr></thead><tbody>
+${changes
+	.map(
+		({ claim: c, change }) =>
+			`<tr class="${esc(c.status.split(/[ :]/)[0])}"><td><a href="#${esc(c.id)}"><code>${esc(name)}^${esc(c.id)}</code></a></td><td>${esc(change)}</td><td>${esc(c.kind)}</td><td>${esc(c.title)}</td></tr>`,
+	)
+	.join("\n")}
+</tbody></table></div>`
+		: `<p>No claim is new, retired or moved since <a href="/packages/${esc(name)}/${esc(before.version)}/">${esc(before.version)}</a>.</p>`
+}`
+		: ""
+}
 <h2 id="claims">Claims in ${esc(shown.version)}</h2>
 <p>Every id this package has issued, as its <code>claims.lock</code> held them at this version. An id never moves or changes meaning: the registry refuses a version that drops, renumbers or redefines one.</p>
 ${claims.length ? `<div class="wrap"><table class="ledger"><thead><tr><th>Id</th><th>Kind</th><th>Status</th><th>Claim</th></tr></thead><tbody>
