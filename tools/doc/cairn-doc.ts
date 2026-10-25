@@ -14,6 +14,7 @@ import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { evaluate, type Audit, type Capture, type Claim, type Conformance, type Fuzz, type Lock, type Trusted } from "../map/evidence";
 import { render, type DocJson } from "./render";
+import { svg as icon } from "../../site/icons";
 
 const { values: opts } = parseArgs({
 	options: {
@@ -114,7 +115,7 @@ for (const [file, content] of Object.entries(pages)) writeFileSync(join(DIST, fi
 cpSync(join(import.meta.dir, "../map/style.css"), join(DIST, "style.css"));
 cpSync(join(import.meta.dir, "doc.css"), join(DIST, "doc.css"));
 cpSync(join(import.meta.dir, "search.js"), join(DIST, "search.js"));
-cpSync(join(import.meta.dir, "../../site/public/icon.svg"), join(DIST, "icon.svg"));
+writeFileSync(join(DIST, "icon.svg"), icon());
 
 const bytes = [...new Bun.Glob("**/*").scanSync({ cwd: DIST })].reduce((n, f) => n + Bun.file(join(DIST, f)).size, 0);
 console.log(
