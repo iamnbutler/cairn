@@ -37,21 +37,21 @@ fuzzing, mapping and bundling an app are still the Cairn repository's `make` tar
 <a href="/docs/reference/claims/"><b>Claims</b><span>Every claim kind, what each generates, and what the build checks.</span></a>
 <a href="/docs/reference/evidence/"><b>The evidence ladder</b><span>Proved, fuzzed, tested, seen, assumed: how sure we are of each claim.</span></a>
 <a href="/docs/reference/trust/"><b>How much to trust a claim</b><span>What each kind of evidence rules out, what it still trusts, and a bug the tests miss.</span></a>
-<a href="/docs/reference/releases/"><b>Release notes</b><span>What changed in each version, and what an app can rely on across them.</span></a>
-</div>
-
-## Internals
-
-<div class="shelf">
 <a href="/docs/internals/trusted-base/"><b>The trusted base</b><span>What the proofs rely on but can't prove, and how each piece is checked.</span></a>
-<a href="/docs/internals/host-protocol/"><b>The host protocol</b><span>The two byte buffers between Lean and Swift, and the threads around them.</span></a>
-<a href="/docs/internals/host-effects/"><b>Writing host effects</b><span>Adding something the host does for an app, with its assumption and fuzz check.</span></a>
-<a href="/docs/internals/profiling/"><b>Profiling against a reference</b><span>Measuring an app against the one it replaces, with Apple's own tools.</span></a>
-<a href="/docs/internals/contributing/"><b>Contributing</b><span>The rules every change follows.</span></a>
+<a href="/docs/reference/releases/"><b>Release notes</b><span>What changed in each version, and what an app can rely on across them.</span></a>
 </div>
 
 ## Evidence
 
 <div class="shelf">
 <a href="/docs/evidence/"><b>Claim pages</b><span>Every claim each package makes, grouped by place, with its proofs, generated from what it published.</span></a>
+</div>
+
+## Contributing
+
+<div class="shelf">
+<a href="/docs/internals/host-protocol/"><b>The host protocol</b><span>The two byte buffers between Lean and Swift, and the threads around them.</span></a>
+<a href="/docs/internals/host-effects/"><b>Writing host effects</b><span>Adding something the host does for an app, with its assumption and fuzz check.</span></a>
+<a href="/docs/internals/profiling/"><b>Profiling against a reference</b><span>Measuring an app against the one it replaces, with Apple's own tools.</span></a>
+<a href="/docs/internals/contributing/"><b>Contributing</b><span>The rules every change follows.</span></a>
 </div>

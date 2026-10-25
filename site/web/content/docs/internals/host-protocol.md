@@ -1,7 +1,7 @@
 ---
 title: The host protocol
 nav: The host protocol
-eyebrow: Internals
+eyebrow: Contributing
 lede: Two byte buffers, three functions and three threads: everything that crosses between Lean and the Swift host.
 ---
 

@@ -1,7 +1,7 @@
 ---
 title: Profiling against a reference
 nav: Profiling against a reference
-eyebrow: Internals
+eyebrow: Contributing
 lede: How Cairn measured its port of Yap against the original, with Apple's own tools so the harness can't flatter the result.
 ---
 

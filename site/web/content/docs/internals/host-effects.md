@@ -1,7 +1,7 @@
 ---
 title: Writing host effects
 nav: Writing host effects
-eyebrow: Internals
+eyebrow: Contributing
 lede: How a new kind of request reaches the host, and what it takes to trust the answer.
 ---
 
