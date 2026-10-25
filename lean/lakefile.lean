@@ -144,6 +144,13 @@ lean_lib Clock where
   defaultFacets := #[LeanLib.staticFacet]
   moreLinkObjs := #[claims_meta.o]
 
+/-- Gallery (#116, docs/effects.md "Images"): image tiles loaded with `loadImage`. -/
+@[default_target]
+lean_lib Gallery where
+  roots := #[`Examples.Gallery.Abi, `Examples.Gallery]
+  defaultFacets := #[LeanLib.staticFacet]
+  moreLinkObjs := #[claims_meta.o]
+
 /-- Tray (workstream S, docs/surfaces.md): a menu bar item and an overlay panel. -/
 @[default_target]
 lean_lib Tray where

@@ -45,6 +45,22 @@ theorem lookup_setAt {α : Type} (xs : List (String × α)) (k : String) (v : α
       have : (k == k') = false := by simp only [beq_eq_false_iff_ne, ne_eq]; exact fun e => h e.symm
       simp only [this]; exact ih
 
+theorem lookup_setAt_ne {α : Type} (xs : List (String × α)) (k k2 : String) (v : α) (h : k ≠ k2) :
+    (setAt xs k v).lookup k2 = xs.lookup k2 := by
+  induction xs with
+  | nil =>
+    have : (k2 == k) = false := by simp only [beq_eq_false_iff_ne, ne_eq]; exact fun e => h e.symm
+    simp only [setAt, List.lookup, this]
+  | cons p xs ih =>
+    obtain ⟨k', v'⟩ := p
+    unfold setAt
+    by_cases hk : k' = k
+    · subst hk
+      have : (k2 == k') = false := by simp only [beq_eq_false_iff_ne, ne_eq]; exact fun e => h e.symm
+      simp only [↓reduceIte, List.lookup, this]
+    · simp only [hk, ↓reduceIte, List.lookup]
+      split <;> simp_all only
+
 /-- What is known of `source`. -/
 def state (t : Images) (source : String) : ImageState := (t.known.lookup source).getD .loading
 
@@ -122,22 +138,91 @@ theorem superseded_reply (t : Images) (id old : Nat) (source : String) (reload :
     rw [lookup_setAt_ne _ _ _ _ hsrc]
     exact state_load t id source reload
   · exact state_load t id source reload
-where
-  lookup_setAt_ne {α : Type} (xs : List (String × α)) (k k2 : String) (v : α) (h : k ≠ k2) :
-      (setAt xs k v).lookup k2 = xs.lookup k2 := by
-    induction xs with
-    | nil =>
-      have : (k2 == k) = false := by simp only [beq_eq_false_iff_ne, ne_eq]; exact fun e => h e.symm
-      simp only [setAt, List.lookup, this]
-    | cons p xs ih =>
-      obtain ⟨k', v'⟩ := p
-      unfold setAt
-      by_cases hk : k' = k
-      · subst hk
-        have : (k2 == k') = false := by simp only [beq_eq_false_iff_ne, ne_eq]; exact fun e => h e.symm
-        simp only [↓reduceIte, List.lookup, this]
-      · simp only [hk, ↓reduceIte, List.lookup]
-        split <;> simp_all only
+
+/-! ## Loading several sources -/
+
+/-- Load each of `sources` in order, under ids `id`, `id + 1`, …: the table and the requests. -/
+def loadAll (t : Images) (id : Nat) (reload : Bool) : List String → Images × List Effect
+  | [] => (t, [])
+  | src :: rest =>
+    let (t1, e) := t.load id src reload
+    let (t2, es) := t1.loadAll (id + 1) reload rest
+    (t2, e :: es)
+
+theorem state_load_ne (t : Images) (id : Nat) (src other : String) (reload : Bool) (h : src ≠ other) :
+    (t.load id src reload).1.state other = t.state other := by
+  simp only [load, state, lookup_setAt_ne _ _ _ _ h]
+
+theorem state_loadAll_notin (t : Images) (id : Nat) (reload : Bool) (src : String) :
+    ∀ (srcs : List String), src ∉ srcs → (t.loadAll id reload srcs).1.state src = t.state src := by
+  intro srcs
+  induction srcs generalizing t id with
+  | nil => intro _; rfl
+  | cons s rest ih =>
+    intro h
+    have hs : s ≠ src := fun e => h (e ▸ List.mem_cons_self ..)
+    have hr : src ∉ rest := fun m => h (List.mem_cons_of_mem _ m)
+    show ((t.load id s reload).1.loadAll (id + 1) reload rest).1.state src = _
+    rw [ih _ _ hr, state_load_ne _ _ _ _ _ hs]
+
+/-- **After loading a list, each of its sources shows as loading** until its reply. -/
+theorem state_loadAll (t : Images) (id : Nat) (reload : Bool) (src : String) :
+    ∀ (srcs : List String), src ∈ srcs → (t.loadAll id reload srcs).1.state src = .loading := by
+  intro srcs
+  induction srcs generalizing t id with
+  | nil => intro h; cases h
+  | cons s rest ih =>
+    intro h
+    show ((t.load id s reload).1.loadAll (id + 1) reload rest).1.state src = _
+    by_cases hr : src ∈ rest
+    · exact ih _ _ hr
+    · have hs : s = src := by
+        rcases List.mem_cons.mp h with e | e
+        · exact e.symm
+        · exact absurd e hr
+      subst hs
+      rw [state_loadAll_notin _ _ _ _ _ hr]
+      exact state_load t id s reload
+
+/-! ## Pending ids -/
+
+theorem pending_load (t : Images) (id : Nat) (src : String) (reload : Bool) (p : Nat × String)
+    (h : p ∈ (t.load id src reload).1.pending) : p.1 = id ∨ p ∈ t.pending := by
+  simp only [load, List.mem_cons, List.mem_filter] at h
+  rcases h with h | h
+  · exact Or.inl (by rw [h])
+  · exact Or.inr h.1
+
+theorem pending_loadAll (t : Images) (reload : Bool) :
+    ∀ (srcs : List String) (id : Nat) (p : Nat × String), p ∈ (t.loadAll id reload srcs).1.pending →
+      (id ≤ p.1 ∧ p.1 < id + srcs.length) ∨ p ∈ t.pending := by
+  intro srcs
+  induction srcs generalizing t with
+  | nil => intro _ p h; exact Or.inr h
+  | cons s rest ih =>
+    intro id p h
+    have h' : p ∈ ((t.load id s reload).1.loadAll (id + 1) reload rest).1.pending := h
+    rcases ih _ (id + 1) p h' with ⟨h1, h2⟩ | h
+    · left; simp only [List.length_cons]; omega
+    · rcases pending_load t id s reload p h with e | e
+      · left; simp only [List.length_cons]; omega
+      · exact Or.inr e
+
+theorem pending_receive (t : Images) (id : Nat) (r : Reply) (p : Nat × String)
+    (h : p ∈ (t.receive id r).pending) : p ∈ t.pending := by
+  unfold receive at h
+  split at h
+  · exact (List.mem_filter.mp h).1
+  · exact h
+
+theorem loadAll_length (t : Images) (id : Nat) (reload : Bool) :
+    ∀ (srcs : List String), (t.loadAll id reload srcs).2.length = srcs.length := by
+  intro srcs
+  induction srcs generalizing t id with
+  | nil => rfl
+  | cons s rest ih =>
+    show (((t.load id s reload).1.loadAll (id + 1) reload rest).2.length + 1) = rest.length + 1
+    rw [ih]
 
 end Images
 

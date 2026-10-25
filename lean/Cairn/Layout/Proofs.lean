@@ -911,4 +911,9 @@ theorem image_sizings (m : TextMetrics) (aw : Int) (i : Image) :
     (measure m aw (Node.image i)).sizings = (.fixed i.width, .fixed i.height) := by
   simp only [Node.image, measure, Sized.sizings, Image.style]
 
+/-- An image is no control, in any state. -/
+theorem controls_image (i : Image) : (Node.image i).controls = [] := by
+  unfold Node.image Image.children
+  split <;> simp only [Node.controls, Node.controlsList, Option.toList, List.append_nil]
+
 end Cairn.Layout
