@@ -174,3 +174,11 @@ export function movedIds(home: string): string[] {
 	if (both.length) throw new Error(`content/index.hbs: ${both.map((id) => `#${id}`).join(", ")} also on /milestones/; the redirect would hide it`);
 	return moved;
 }
+
+// Cairn's version, for the homepage's Get started: cairn.toml's, so it changes with the release
+// that bumps it.
+export function version(): string {
+	const m = /^version\s*=\s*"([^"]+)"/m.exec(readFileSync(join(ROOT, "cairn.toml"), "utf8"));
+	if (!m) throw new Error("cairn.toml: no version");
+	return m[1];
+}
