@@ -40,7 +40,7 @@ def main (args : List String) : IO UInt32 := Cairn.Fuzz.main targets args
 |---|---|
 | the machine's moves, each with `enabled` and its triggers | the alphabet, filtered to what is enabled in the current state |
 | each `invariant`'s generated `check` (below) | an oracle after every step |
-| each move's `enabled` against the frame | **presence**: a control `^N#k` is in the laid tree iff `^N` is enabled for `k` |
+| each move's `enabled` against the frame | **presence**: a control `^N#k` is in the laid tree, or is an enabled control on a shown status item (its button, or an item of its menu), iff `^N` is enabled for `k` |
 | `Layout.Check` and hit testing | **pressable**: at sizes at or above the minimum, every enabled pointer move's control is hit at its centre, and `checkPressable` accepts the tree |
 | purity of `update`, `view`, `layout` | determinism: a seed replays a run exactly |
 
@@ -112,7 +112,11 @@ default.
    fails, so the click is counted under the claim's `droppedT33` check, not failed, and the
    run's `droppedClicks` totals them. A control that moves on pointerDown without a blur is
    still a failure.
-3. **Presence** for every move and candidate key.
+3. **Presence** for every move and candidate key. A status item's controls (docs/surfaces.md)
+   are on screen without being in the window's laid tree: its button whenever it is shown, and
+   its menu's items whether or not the menu is open, a greyed-out item counting as absent. The
+   fuzzer presses them as the host does, with `menuOpen` for the button and `menuSelect` for an
+   item (Tray's ^453, cairn#176).
 4. **Pressable** when the window is at or above the minimum: `hitTest` at the centre of each
    enabled pointer move's control returns it, and `checkPressable && controlsNonempty` holds
    (so the app's pressability proof at that size can be `by decide +kernel`).
