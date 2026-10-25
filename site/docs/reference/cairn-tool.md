@@ -6,13 +6,10 @@ lede: The command line for Cairn packages. It starts a package, adds dependencie
 ---
 
 :::note What works today
-`cairn` has six commands: `new`, `add`, `build`, `doc`, `publish` and `login`. They have unit
-tests and have been run against a stand-in registry. Cairn has one public registry,
-`https://cairn.registry.nexthub.sh`, but its host isn't live yet
-([issue #97](https://github.com/iamnbutler/cairn/issues/97)). Until it is, `cairn add` and
-`cairn publish` have nowhere to go, and an app requires Cairn from git at a tag instead
-([how](/docs/guide/first-app/#an-app-in-its-own-repository)). Nothing installs `cairn` yet;
-build it from a Cairn checkout.
+`cairn` has six commands: `new`, `add`, `build`, `doc`, `publish` and `login`, with unit tests.
+Cairn has one public registry, `https://cairn.registry.nexthub.sh`: anyone can read it, and
+publishing takes a token. It holds no prebuilt Lean yet, so the first `cairn build` compiles
+Cairn. Nothing installs `cairn` yet; build it from a Cairn checkout.
 :::
 
 ## Building it
