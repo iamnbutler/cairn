@@ -24,18 +24,17 @@ target claims_meta.o pkg : System.FilePath := do
 only which library a module is built and archived in is. Lake gives a module to the *last*
 library declared that matches it, and a root also matches its submodules (`Cairn.Frame` matches
 `Cairn.Frame.Layout`). So the libraries after `Cairn` take back the proofs, tests and tools under
-its roots, and the umbrella modules (`Cairn`, `Cairn.Layout`, `Cairn.Runtime`, `Cairn.Claims`,
-`Cairn.Fuzz`) are only `globs`, never `roots`, so they claim nothing beneath them. The `Cairn`
-umbrella (`Cairn.lean`) still imports everything but the tools and the fuzzer: it is what the
-ledger, the audit and `make doc` read, not what apps link. -/
+its roots, and the umbrella modules (`Cairn`, `CairnAll`, `Cairn.Layout`, `Cairn.Runtime`,
+`Cairn.Claims`, `Cairn.Fuzz`) are only `globs`, never `roots`, so they claim nothing beneath them.
+Two umbrellas: `Cairn` (`Cairn.lean`) imports the `Cairn` library and is in it, so it is what apps
+`import` and link; `CairnAll` imports everything but the tools and the fuzzer, and is what the
+ledger, the audit, the kernel replay and `make doc` read. -/
 
 /-- The linked closure: everything `bin/cairn-link` (`@cairn/Cairn:static`) puts in an app. No
 `import Lean`, no proofs. `Cairn.Abi` is its top (the host runs `initialize_cairn_Cairn_Abi`);
 `Cairn.Fuzz.Rng` is here because app modules name its `Custom` hook. The old names of moved
-modules stay until 0.2.0, since apps import them. -/
-@[default_target]
-lean_lib Cairn where
-  roots := #[`Cairn.Geometry, `Cairn.Claim, `Cairn.Effects, `Cairn.Font, `Cairn.Input,
+modules stay until 0.2.0, since apps import them. The `Cairn` umbrella imports each of these. -/
+def linked : Array Lean.Name := #[`Cairn.Geometry, `Cairn.Claim, `Cairn.Effects, `Cairn.Font, `Cairn.Input,
     `Cairn.UI.Node, `Cairn.UI.Images, `Cairn.UI.Hit, `Cairn.Surface, `Cairn.App,
     `Cairn.Claims.Move, `Cairn.Claims.Machine, `Cairn.Claims.Core,
     `Cairn.Text.Wrap, `Cairn.Text.Field, `Cairn.Text.Host, `Cairn.Layout.Core, `Cairn.Layout.Facts,
@@ -43,6 +42,11 @@ lean_lib Cairn where
     `Cairn.Frame, `Cairn.Frame.Bytes, `Cairn.Frame.Encode, `Cairn.Frame.Events, `Cairn.Frame.Menu,
     `Cairn.Frame.Build, `Cairn.Abi, `Cairn.Fuzz.Rng,
     `Cairn.Frame.Boundary, `Cairn.Runtime.Hit, `Cairn.Text.Metrics]
+
+@[default_target]
+lean_lib Cairn where
+  roots := linked
+  globs := linked.map .one ++ #[.one `Cairn]
   defaultFacets := #[LeanLib.staticFacet]
   moreLinkObjs := #[text_host.o]
 
@@ -52,11 +56,12 @@ def proofs : Array Lean.Name := #[`Cairn.Text.Proofs, `Cairn.Text.WrapProofs, `C
     `Cairn.Runtime.Proofs, `Cairn.Runtime.WorldProofs, `Cairn.Claims.Deliver,
     `Cairn.Frame.Layout, `Cairn.Frame.EventsTests, `Cairn.Frame.BuildTests, `Cairn.Abi.Tests]
 
-/-- Proofs and tests about `Cairn`'s code, and the umbrellas that import them. Never linked. -/
+/-- Proofs and tests about `Cairn`'s code, and the umbrellas that import them (`CairnAll`). Never
+linked. -/
 @[default_target]
 lean_lib CairnProofs where
   roots := proofs
-  globs := proofs.map .one ++ #[.one `Cairn, .one `Cairn.Layout, .one `Cairn.Runtime]
+  globs := proofs.map .one ++ #[.one `CairnAll, .one `Cairn.Layout, .one `Cairn.Runtime]
 
 /-- The claim commands. Apps `meta import` `Cairn.Claims.Elab`, so it runs at compile time only
 (`import Lean`; docs/claims.md, "Linking"). -/
@@ -65,7 +70,7 @@ lean_lib CairnClaims where
   roots := #[`Cairn.Claims.Elab, `Cairn.Claims.Registry]
   globs := #[.one `Cairn.Claims.Elab, .one `Cairn.Claims.Registry, .one `Cairn.Claims]
 
-/-- Tests for the claim commands. Not imported by `Cairn` or `Examples`, so their ids stay out of
+/-- Tests for the claim commands. Not imported by `CairnAll` or `Examples`, so their ids stay out of
 the ledger. -/
 @[default_target]
 lean_lib ClaimsTests where

@@ -155,7 +155,10 @@ input, accessibility, painting) is the shared host, <code>CairnHost</code>.</p>
 libraries. Start one with <a href="/docs/reference/cairn-tool/">the cairn tool</a>.</p>
 <p><code>cairn new hello</code> makes <code>hello/</code> with a <code>cairn.toml</code>, an empty <code>claims.lock</code>, and a <code>lean/</code>
 whose lakefile sets the claim scope to <code>hello</code>, so the app's ids are <code>hello^1</code>, <code>hello^2</code>, and so
-on. It also writes a <code>Package.swift</code> for the host. <code>cairn new hello --lib</code> makes a library
+on. The app is a working one: a window with a count and a Count button (a place, <code>hello^1</code>, and a
+move, <code>hello^2</code>), its exports in <code>lean/Hello/Abi.lean</code>, a <code>Package.swift</code> and a host whose
+<code>--selftest</code> runs it headlessly. Its Lean files start with <code>public import Cairn</code>, which brings in
+everything an app links, the claim commands included. <code>cairn new hello --lib</code> makes a library
 instead, with no host.</p>
 <p><code>cairn add cairn</code> points the lakefile and <code>cairn.toml</code> at Cairn's latest release in the
 registry and prints the line for <code>Package.swift</code>. An app can also require Cairn from git at a
@@ -182,7 +185,7 @@ lean_lib Yap <span class="kw">where</span>
 <code>.cairn/lib/</code>, and builds the host. By hand, that is:</p>
 <figure class="code"><pre class="px"><code class="make">cd lean &amp;&amp; lake build
 cd lean &amp;&amp; .lake/packages/cairn/bin/cairn-link --lib Yap --out ../.cairn/lib/libyap.a
-swift build</code></pre><figcaption><code>docs/package.md</code>, lines 82–84</figcaption></figure>
+swift build</code></pre><figcaption><code>docs/package.md</code>, lines 94–96</figcaption></figure>
 <p>The app's <code>main.swift</code> hands its three exports to the host, as Counter's does above. The app
 declares those exports in a small C target of its own. Cairn's tools (the claim ledger, the
 axiom audit, the bundle script) run from the app's Lake directory against its own modules.</p>
@@ -205,7 +208,7 @@ so that executables linking all of `Examples` (the fuzzer) don't get two `cairn_
 lean_lib Counter <span class="kw">where</span>
   roots := #[`Examples.Counter.Abi, `Examples.Counter]
   defaultFacets := #[LeanLib.staticFacet]
-  moreLinkObjs := #[claims_meta.o]</code></pre><figcaption><code>lean/lakefile.lean</code>, lines 115–121</figcaption></figure>
+  moreLinkObjs := #[claims_meta.o]</code></pre><figcaption><code>lean/lakefile.lean</code>, lines 120–126</figcaption></figure>
 <ol start="4">
 <li><strong>The Makefile's app list</strong>, which copies each app's library where the host links it:</li>
 </ol>

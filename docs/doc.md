@@ -125,7 +125,7 @@ don't exist (`MyApp.State` in `Cairn.Runtime.Abi`). Today there is one doc test,
 | Pages | `bun tools/doc/cairn-doc.ts` | `dist/` |
 
 For `APP=Todo` the modules are `Examples.Todo` and every file under `lean/Examples/Todo/`; for
-`PKG=Cairn`, `DOC_CAIRN` in the Makefile (`Cairn`, `Cairn.Claims`, `Cairn.Fuzz` and the trusted
+`PKG=Cairn`, `DOC_CAIRN` in the Makefile (`Cairn`, `CairnAll`, `Cairn.Claims`, `Cairn.Fuzz` and the trusted
 base's modules; the tool executables `Cairn.Claims.Export`, `Ledger`, `Tool`, `Tests` and
 `Cairn.Doc.Export` are left out). Evidence is whatever `build/` already has, as on the map:
 `build/fuzz/<App>.json`, `build/fuzz/trusted.json`, `build/conformance/<App>.json`, and the map's

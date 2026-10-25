@@ -15,9 +15,10 @@ The commands need Lean's compiler, which an app must not link (it would make the
 So an app file is a Lean `module` that imports the runtime and only `meta import`s the commands,
 which makes them available at compile time and absent from the binary:
 
-- `public import Cairn.Claims.Core`, the claim types;
-- `meta import Cairn.Claims.Elab`, the commands;
-- `public import Cairn.App`, and whatever else the app uses;
+- `public import Cairn`, which brings in everything an app links and `meta`-imports the commands;
+  or, module by module, `public import Cairn.Claims.Core` (the claim types),
+  `meta import Cairn.Claims.Elab` (the commands), `public import Cairn.App` and whatever else
+  the app uses;
 - `@[expose] public section`, so other modules' proofs can unfold the app's definitions.
 
 The keywords (`move`, `flow`, `invariant`, `assume`, `place`, `retire`) aren't reserved words, so

@@ -260,6 +260,22 @@ import Testing
         #expect(throws: CairnError.self) { try commands.new(["both", "--lib", "--bin"]) }
     }
 
+    /// An app's template imports `Cairn` (the linked library) and declares its initializer with
+    /// Lean's mangling of the package name. `make new-check` builds one end to end.
+    @Test func appTemplate() throws {
+        let dir = try scratch()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        var commands = Commands()
+        commands.cwd = dir
+        try commands.new(["my_app", "--bin"])
+        let app = dir.appending(path: "my_app")
+        let read = { (path: String) in try String(contentsOf: app.appending(path: path), encoding: .utf8) }
+        #expect(try read("lean/MyApp.lean").hasPrefix("module\n\npublic import Cairn\n"))
+        #expect(try read("lean/lakefile.lean").contains("roots := #[`MyApp.Abi, `MyApp]"))
+        #expect(try read("Sources/CMyApp/include/my_app.h").contains("runtime_initialize_my__app_MyApp_Abi"))
+        #expect(try read("Sources/MyApp/main.swift").contains("module: runtime_initialize_my__app_MyApp_Abi"))
+    }
+
     @Test func asksUntilItKnows() throws {
         let dir = try scratch()
         defer { try? FileManager.default.removeItem(at: dir) }
