@@ -210,23 +210,52 @@ enum SelfTest {
 
         // Load 24: six at a time, the rest queued in Lean's runtime, never more than six at the server.
         click("^506")
-        until("six in flight") { $0.contains("In flight 6 of 6 · queued 18") && $0.contains("Loaded 0 of 24 · cancelled 0") }
+        until("six in flight") { $0.contains("In flight 6 of 6 · queued 18") && $0.contains("Loaded 0 of 24 · cancelled 0 · evicted 0") }
         until("some loaded", timeout: 10) { $0.contains { $0.hasPrefix("In flight 6 of 6") } && !$0.contains { $0.hasPrefix("Loaded 0 of") } }
         // Cancel: those being fetched are stopped at the server, the rest never asked for.
         click("^507")
-        until("cancelled") { $0.contains("In flight 0 of 6 · queued 0") && $0.contains { $0.hasPrefix("Loaded") && !$0.hasSuffix("cancelled 0") } }
+        until("cancelled") { $0.contains("In flight 0 of 6 · queued 0") && $0.contains { $0.hasPrefix("Loaded") && !$0.contains("cancelled 0 ·") } }
         let deadline = Date(timeIntervalSinceNow: 5)
         while SlowServer.now > 0 { if Date() > deadline { fail("server still serving \(SlowServer.now)") }; usleep(1000) }
         let afterCancel = SlowServer.stats
         if afterCancel.stopped == 0 { fail("Cancel stopped nothing at the server: \(afterCancel)") }
         if afterCancel.served + afterCancel.stopped >= 24 { fail("the queue reached the server after Cancel: \(afterCancel)") }
-        // Load 24 again, to the end.
+        // Load 24 again, to the end. The image cache's budget (8 MiB, ^1011) holds the tiles and
+        // the twelve thumbnails on screen: the host drops most of the other page's, and the app
+        // counts them evicted (^513).
+        func settled(_ texts: [String]) -> (loaded: Int, evicted: Int)? {
+            guard texts.contains("In flight 0 of 6 · queued 0"),
+                  let line = texts.first(where: { $0.hasPrefix("Loaded ") }) else { return nil }
+            let n = line.split(separator: " ").compactMap { Int($0) }
+            guard n.count == 4, n[1] == 24, n[2] == 0, n[0] + n[3] == 24 else { return nil }
+            return (n[0], n[3])
+        }
         click("^506")
-        until("all loaded", timeout: 20) { $0.contains("In flight 0 of 6 · queued 0") && $0.contains("Loaded 24 of 24 · cancelled 0") }
+        until("all loaded or evicted", timeout: 20) { settled($0) != nil }
+        guard let first = settled(texts()), first.evicted > 0 else { fail("nothing evicted under the budget: \(texts())") }
+        // Every image drawn has its pixels in the store.
+        func drawnHeld() {
+            for (_, src) in images() where ImageStore.shared.entry(src) == nil { fail("\(src) drawn as loaded, but the store dropped it") }
+        }
+        drawnHeld()
+        if images().filter({ $0.1.hasPrefix("https://slow.cairn.test/") }).count != 12 { fail("page 1 thumbnails: \(images())") }
+        // Next page (^512): the dropped thumbnails there load again; page 1's are dropped in turn.
+        click("^512")
+        until("page 2 loaded", timeout: 20) {
+            $0.contains("Page 2 of 2") && settled($0) != nil
+                && images().filter({ $0.1.hasPrefix("https://slow.cairn.test/many/") }).count == 12
+        }
+        let page2 = images().map(\.1).filter { $0.hasPrefix("https://slow.cairn.test/") }
+        if !page2.allSatisfy({ Int(($0 as NSString).deletingPathExtension.split(separator: "/").last ?? "") ?? 0 >= 12 }) {
+            fail("page 2 shows \(page2)")
+        }
+        drawnHeld()
+        guard let second = settled(texts()), second.evicted > 0 else { fail("page 1 not evicted: \(texts())") }
+        if ImageStore.shared.bytes > 8 << 20 { fail("the store holds \(ImageStore.shared.bytes) bytes, over the budget") }
         let stats = SlowServer.stats
         if stats.most > 6 { fail("the server saw \(stats.most) requests at once") }
         engine.stop()
-        print("selftest: PASS (Gallery: 3 pictures, 3 faults, reload, fit; grid reflows on resize; 24 thumbnails, at most \(stats.most) at once, \(afterCancel.stopped) stopped on Cancel)")
+        print("selftest: PASS (Gallery: 3 pictures, 3 faults, reload, fit; grid reflows on resize; 24 thumbnails, at most \(stats.most) at once, \(afterCancel.stopped) stopped on Cancel; \(first.evicted) evicted under the budget, then \(second.evicted) after Next page)")
         print(String(format: "  launch to every tile answered: %.1f ms", loadMs))
     }
 }

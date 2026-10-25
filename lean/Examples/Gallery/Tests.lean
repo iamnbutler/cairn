@@ -3,8 +3,8 @@ import Cairn.Runtime
 import Cairn.Frame.Build
 
 /-! Runtime checks for Gallery: launch loads, replies, a stale reply, Reload and Fit through
-the runtime, Load 24 and Cancel against the cap, and the image draws in the frame, with mono
-metrics. -/
+the runtime, Load 24 and Cancel against the cap, evictions and paging, and the image draws in
+the frame, with mono metrics. -/
 
 namespace Examples.Gallery.Tests
 open Cairn Cairn.Runtime Examples.Gallery
@@ -75,11 +75,11 @@ def many : List Event := thenClick settled manyRef
 #guard (runFrom (run settled) (clickOn (run settled) manyRef)).2 ==
   ((manySources.zipIdx.take 6).map fun (src, i) => .request (i + 6) (.loadImage src true))
 #guard (run many).world.inFlight == 6 && (run many).world.queued.length == 18
-#guard (manyCounts (st many)) == ("In flight 6 of 6 · queued 18", "Loaded 0 of 24 · cancelled 0")
+#guard (manyCounts (st many)) == ("In flight 6 of 6 · queued 18", "Loaded 0 of 24 · cancelled 0 · evicted 0")
 -- One answer frees a slot; the next waiting thumbnail goes out.
 #guard (runFrom (run many) [.reply 6 (.image 48 36)]).2 == [.request 12 (.loadImage (manySources.getD 6 "") true)]
 def oneIn : List Event := many ++ [.reply 6 (.image 48 36)]
-#guard (manyCounts (st oneIn)) == ("In flight 6 of 6 · queued 17", "Loaded 1 of 24 · cancelled 0")
+#guard (manyCounts (st oneIn)) == ("In flight 6 of 6 · queued 17", "Loaded 1 of 24 · cancelled 0 · evicted 0")
 
 -- Cancel: the six being fetched are cancelled on the frame; the seventeen waiting are dropped
 -- without a word to the host. The cancelled six keep their slots until the host answers.
@@ -87,7 +87,7 @@ def cancelled : List Event := thenClick oneIn cancelRef
 #guard (runFrom (run oneIn) (clickOn (run oneIn) cancelRef)).2 ==
   [.cancelRequest 12, .cancelRequest 11, .cancelRequest 10, .cancelRequest 9, .cancelRequest 8, .cancelRequest 7]
 #guard (run cancelled).world.queued == [] && (run cancelled).world.inFlight == 6
-#guard (manyCounts (st cancelled)) == ("In flight 0 of 6 · queued 0", "Loaded 1 of 24 · cancelled 23")
+#guard (manyCounts (st cancelled)) == ("In flight 0 of 6 · queued 0", "Loaded 1 of 24 · cancelled 23 · evicted 0")
 -- A late answer for a cancelled thumbnail changes nothing, sends nothing, and frees its slot.
 #guard (st (cancelled ++ [.reply 7 (.image 48 36)])).images.state (manySources.getD 1 "") == .loading
 #guard (runFrom (run cancelled) [.reply 7 (.image 48 36)]).2 == []
@@ -116,5 +116,27 @@ def tileOne : List Event := thenClick settled (tileRef 1)
   [.request 6 (.loadImage "images/tide.jpg" true)]
 #guard (st tileOne).images.state "images/tide.jpg" == .loading
 #guard (st tileOne).images.state "images/ridge.png" == .ready 480 320
+
+-- The image cache: the app runs one `imageCache` subscription (id 1) under its budget.
+#guard (run boot).world.subs.map (·.1) == [1]
+-- The host drops a thumbnail the page shows: the app forgets it and loads it again at once.
+def m0 : String := manySources.getD 0 ""
+def m13 : String := manySources.getD 13 ""
+def evShown : List Event := oneIn ++ [.subEvent 1 (.evicted m0)]
+#guard (st oneIn).images.state m0 == .ready 48 36
+#guard (st evShown).images.state m0 == .loading && (st evShown).dropped == []
+#guard (st evShown).images.pending.any (·.2 == m0) && (st evShown).nextReq == (st oneIn).nextReq + 1
+-- One on the other page: its load is forgotten too (it was still waiting), and it counts as
+-- evicted until Next page loads it again.
+def evOther : List Event := oneIn ++ [.subEvent 1 (.evicted m13)]
+#guard (st evOther).dropped == [m13] && !(st evOther).images.pending.any (·.2 == m13)
+#guard (manyCounts (st evOther)).2 == "Loaded 1 of 24 · cancelled 0 · evicted 1"
+-- A late ready reply to its old load (id 6 + 13) shows nothing.
+#guard (st (evOther ++ [.reply 19 (.image 48 36)])).images.state m13 == .loading
+def paged : List Event := thenClick evOther pageRef
+#guard (st paged).page == 1 && (st paged).dropped == []
+#guard (st paged).images.pending.any (·.2 == m13)
+-- A notice for an image the app never showed changes nothing it draws.
+#guard (st (boot ++ [.subEvent 1 (.evicted "nowhere")])).dropped == []
 
 end Examples.Gallery.Tests
