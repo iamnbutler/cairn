@@ -17,13 +17,13 @@ unsafe def load (roots : List Name) : IO Environment := do
   enableInitializersExecution
   importModules (roots.map ({ module := · })).toArray {} (trustLevel := 1024) (loadExts := true)
 
-/-- Whether a constant comes from Cairn's own modules (`Cairn.*`, `Examples.*`) or from the
+/-- Whether a constant comes from Cairn's own modules (`Cairn.*`) or from the
 claim's own package, the modules under `own` (`Yap` for a claim in `Yap.Model`). -/
 def ours (env : Environment) (own : Name) (n : Name) : Bool :=
   match env.getModuleIdxFor? n with
   | some idx =>
     let m := env.header.moduleNames[idx.toNat]!
-    m.getRoot == `Cairn || m.getRoot == `Examples || m.getRoot == own
+    m.getRoot == `Cairn || m.getRoot == own
   | none => false
 
 /-! ### Statement hashes

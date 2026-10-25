@@ -5,7 +5,7 @@ submodules), as JSON, for the conformance driver, `cairn doc` and the capture.
 
 `lake exe claims --scope <name> [--root <Module>]…`: every claim of one package's scope that the
 roots reach, as the ledger counts them (`lake exe ledger` takes the same roots and the same
-default: `CairnAll`, `Examples` and `Cairn.Fuzz.Trusted.Claims`). This is what `cairn publish`
+default: `CairnAll` and `Cairn.Fuzz.Trusted.Claims`). This is what `cairn publish`
 sends with a version, and what the site's claim pages render (docs/claim-pages.md).
 
 Each claim has its id, kind, title, does, sees, place, module and declaration, the hash of its
@@ -74,7 +74,7 @@ unsafe def claimJson (env : Environment) (e : Entry) : IO Json := do
     ("evidence", Json.arr ev)]
 
 def usage : String :=
-  "usage: lake exe claims <Module>…   (e.g. Examples.Counter)\n" ++
+  "usage: lake exe claims <Module>…   (e.g. Fixture)\n" ++
   "       lake exe claims --scope <name> [--root <Module>]…"
 
 unsafe def main (args : List String) : IO UInt32 := do
@@ -92,7 +92,7 @@ unsafe def main (args : List String) : IO UInt32 := do
   match scope with
   | some s =>
     -- The ledger's roots when none are given (Cairn.Claims.Ledger.main).
-    let mods := if roots.isEmpty then [`CairnAll, `Examples, `Cairn.Fuzz.Trusted.Claims] else roots
+    let mods := if roots.isEmpty then [`CairnAll, `Cairn.Fuzz.Trusted.Claims] else roots
     let env ← load mods
     let cs ← ((entries env).filter (·.scope == s)).mapM (claimJson env)
     IO.println (Json.mkObj [("scope", s), ("modules", toJson (mods.map (·.toString))),

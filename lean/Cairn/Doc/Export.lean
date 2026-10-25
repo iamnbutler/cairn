@@ -168,7 +168,7 @@ unsafe def main (args : List String) : IO UInt32 := do
   let check := args.contains "--check"
   let mods := (args.filter (· != "--check")).map String.toName
   if mods.isEmpty then
-    IO.eprintln "usage: lake exe doc [--check] <Module>…   (e.g. Examples.Todo)"
+    IO.eprintln "usage: lake exe doc [--check] <Module>…   (e.g. Fixture)"
     return 2
   let env ← Cairn.Claims.Tool.load mods
   let ours (m : Name) := mods.any (·.isPrefixOf m)

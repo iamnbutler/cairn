@@ -1,47 +1,47 @@
 # claims.lock: every claim id ever issued. Written by `lake exe ledger update`; never edit by hand.
 # id	kind	status	statement	title
-1	move	active	1c77a9411d162684	Increment
-2	move	active	5ace86b109a74bf5	Reset
-3	place	active	-	Counter window
-4	flow	active	8e8ea87eb87cc917	Count to three
-5	flow	active	a3b193af912012c1	Start over
+1	move	moved:cairn_examples	1c77a9411d162684	Increment
+2	move	moved:cairn_examples	5ace86b109a74bf5	Reset
+3	place	moved:cairn_examples	-	Counter window
+4	flow	moved:cairn_examples	8e8ea87eb87cc917	Count to three
+5	flow	moved:cairn_examples	a3b193af912012c1	Start over
 6	invariant	retired	5de1d6cd863262b8	Moves never leave a press in progress
 7	assume	active	-	The host reports clicks where they happen
-101	move	active	5f27d0063f678333	Type a new item
-102	move	active	e2ed8588311ec433	Add
-103	move	active	c4c2223fb9657a1e	Toggle an item
-104	move	active	754e2e0767b91a5b	Delete an item
-105	invariant	active	50c2cabcfdfc64a9	Items left
-106	place	active	-	Basics window
-107	flow	active	ed3fc7beee378157	Add two items and finish one
-108	flow	active	6e9cfd8339810b4c	Blank text adds nothing
-109	flow	active	1ee050c6a434a9a5	Add an item, then delete it
-201	place	active	-	Todos window
-202	move	active	20a9247beb8fd04e	New todo
-203	move	active	aa45340689c8dfd6	Mark all as complete
-204	move	active	bfb82886ecadd91c	Complete a todo
-205	move	active	2943b794f7d59288	Edit a todo
-206	move	active	6f4391a930943988	Delete a todo
-207	move	active	7896f5dd84b27f5a	Edit field
-208	move	active	10ba46099a3da7d8	All
-209	move	active	612f901d09bb6768	Active
-210	move	active	853d563eb0439f09	Completed
-211	move	active	d9ddae254bdeffa6	Clear completed
-212	invariant	active	8b1d23f718f063ec	Counter and ids
+101	move	moved:cairn_examples	5f27d0063f678333	Type a new item
+102	move	moved:cairn_examples	e2ed8588311ec433	Add
+103	move	moved:cairn_examples	c4c2223fb9657a1e	Toggle an item
+104	move	moved:cairn_examples	754e2e0767b91a5b	Delete an item
+105	invariant	moved:cairn_examples	50c2cabcfdfc64a9	Items left
+106	place	moved:cairn_examples	-	Basics window
+107	flow	moved:cairn_examples	ed3fc7beee378157	Add two items and finish one
+108	flow	moved:cairn_examples	6e9cfd8339810b4c	Blank text adds nothing
+109	flow	moved:cairn_examples	1ee050c6a434a9a5	Add an item, then delete it
+201	place	moved:cairn_examples	-	Todos window
+202	move	moved:cairn_examples	20a9247beb8fd04e	New todo
+203	move	moved:cairn_examples	aa45340689c8dfd6	Mark all as complete
+204	move	moved:cairn_examples	bfb82886ecadd91c	Complete a todo
+205	move	moved:cairn_examples	2943b794f7d59288	Edit a todo
+206	move	moved:cairn_examples	6f4391a930943988	Delete a todo
+207	move	moved:cairn_examples	7896f5dd84b27f5a	Edit field
+208	move	moved:cairn_examples	10ba46099a3da7d8	All
+209	move	moved:cairn_examples	612f901d09bb6768	Active
+210	move	moved:cairn_examples	853d563eb0439f09	Completed
+211	move	moved:cairn_examples	d9ddae254bdeffa6	Clear completed
+212	invariant	moved:cairn_examples	8b1d23f718f063ec	Counter and ids
 213	invariant	retired	cdded3b5839c217c	The list is the filter applied to the todos
 214	assume	active	-	The host reports a double click as a second click
 215	move	retired	-	Back through filters
-216	flow	active	059a40708193b6f5	Add two todos and complete one
-217	flow	active	db76efd1c499092d	Blank text adds nothing
-218	flow	active	0adb86bf72541928	Edit a todo and save with Enter
-219	flow	active	49af08f7a1c67a0b	Saving a blank edit deletes the todo
-220	flow	active	b646e7f81edd3bef	Escape cancels an edit
-221	flow	active	251baf03d4d2fb06	The Active filter hides completed todos
-222	flow	active	b0d8d8a6a65e2c5f	Clear completed
-223	flow	active	36d2b8e708c4eceb	Mark all as complete, then undo it
-224	flow	active	06954be5c9e714a8	A new todo under the Completed filter
+216	flow	moved:cairn_examples	059a40708193b6f5	Add two todos and complete one
+217	flow	moved:cairn_examples	db76efd1c499092d	Blank text adds nothing
+218	flow	moved:cairn_examples	0adb86bf72541928	Edit a todo and save with Enter
+219	flow	moved:cairn_examples	49af08f7a1c67a0b	Saving a blank edit deletes the todo
+220	flow	moved:cairn_examples	b646e7f81edd3bef	Escape cancels an edit
+221	flow	moved:cairn_examples	251baf03d4d2fb06	The Active filter hides completed todos
+222	flow	moved:cairn_examples	b0d8d8a6a65e2c5f	Clear completed
+223	flow	moved:cairn_examples	36d2b8e708c4eceb	Mark all as complete, then undo it
+224	flow	moved:cairn_examples	06954be5c9e714a8	A new todo under the Completed filter
 225	invariant	retired	7ae77f5f10c146de	The list is the filter applied to the todos
-226	invariant	active	7ae77f5f10c146de	The list is the filter applied to the todos
+226	invariant	moved:cairn_examples	7ae77f5f10c146de	The list is the filter applied to the todos
 301	place	moved:yap	-	Menu bar menu
 302	move	moved:yap	64ec1c59a4b05b88	Copy Last Transcript
 303	move	moved:yap	b2465772ee2b99fb	Recent transcript
@@ -86,41 +86,41 @@
 350	invariant	moved:yap	63efc19eb6d9a3eb	Keys wait for the microphone
 351	invariant	moved:yap	7460add6dfa50672	Hold to talk, tap to latch: 300 ms, timed as the original
 399	place	moved:yap	-	Overlay panel
-401	move	active	1b77afe95aa65f24	Start / Stop
-402	move	active	6750765048a4300d	Lap
-403	move	active	b3e0b25d90f70b6f	Reset
-404	move	active	36cac6322fba109e	Save laps
-405	move	active	2585bb4173dd9b28	Load laps
-406	place	active	-	Clock window
-407	flow	active	befa900cd07c80b7	Two laps
-408	flow	active	81892d4491fba6ac	Start over
-409	invariant	active	631e025c1afbf429	Pending requests have fresh ids
-450	place	active	-	Tray menu
-451	place	active	-	Recent Items submenu
-452	place	active	-	Overlay panel
-453	move	active	a29a942e4112db2f	Open the menu
-454	move	active	f1adc3f3e5064483	Show Overlay
-455	move	active	0f22ec1ce535f0de	Keep Recent Items
-456	move	active	1d5a792fc323eec7	Add Item
-457	move	active	54b9516c0a6ee336	Recent item
-458	move	active	31930b1b27c86b45	Clear Recent Items
-459	move	active	7b44b1740999c6d7	Quit Tray
-460	invariant	active	766546c5055d42df	At most five recent items
-461	flow	active	3191456f2212ab29	Show the overlay
-462	flow	active	fbb1f497f8493322	Add an item and pick it
-501	move	active	215b357a8b531aea	Reload
-502	move	active	084ddf664b68d5a1	Fit
-503	place	active	-	Gallery window
-504	invariant	active	d34d5b06e8bc82cb	Pending loads have fresh ids
-505	flow	active	27a79d12fd5c56e8	Reload, then fit inside
-506	move	active	632e20fa13162375	Load 24
-507	move	active	46f6f5495ca3efd8	Cancel
-508	flow	active	d73d0400c55b9277	Load many, then cancel
-509	move	active	80ec73812fd26594	Reload a tile
-510	invariant	active	4b77d8ad02a81eb4	Tiles fit the window at every size
-511	invariant	active	759d8febcfec109a	Tiles are at least 180 points wide
-512	move	active	4c3cef4f3a7d5f3c	Next page
-513	invariant	active	84126e733a7b341d	A dropped thumbnail waits to be loaded again
+401	move	moved:cairn_examples	1b77afe95aa65f24	Start / Stop
+402	move	moved:cairn_examples	6750765048a4300d	Lap
+403	move	moved:cairn_examples	b3e0b25d90f70b6f	Reset
+404	move	moved:cairn_examples	36cac6322fba109e	Save laps
+405	move	moved:cairn_examples	2585bb4173dd9b28	Load laps
+406	place	moved:cairn_examples	-	Clock window
+407	flow	moved:cairn_examples	befa900cd07c80b7	Two laps
+408	flow	moved:cairn_examples	81892d4491fba6ac	Start over
+409	invariant	moved:cairn_examples	631e025c1afbf429	Pending requests have fresh ids
+450	place	moved:cairn_examples	-	Tray menu
+451	place	moved:cairn_examples	-	Recent Items submenu
+452	place	moved:cairn_examples	-	Overlay panel
+453	move	moved:cairn_examples	a29a942e4112db2f	Open the menu
+454	move	moved:cairn_examples	f1adc3f3e5064483	Show Overlay
+455	move	moved:cairn_examples	0f22ec1ce535f0de	Keep Recent Items
+456	move	moved:cairn_examples	1d5a792fc323eec7	Add Item
+457	move	moved:cairn_examples	54b9516c0a6ee336	Recent item
+458	move	moved:cairn_examples	31930b1b27c86b45	Clear Recent Items
+459	move	moved:cairn_examples	7b44b1740999c6d7	Quit Tray
+460	invariant	moved:cairn_examples	766546c5055d42df	At most five recent items
+461	flow	moved:cairn_examples	3191456f2212ab29	Show the overlay
+462	flow	moved:cairn_examples	fbb1f497f8493322	Add an item and pick it
+501	move	moved:cairn_examples	215b357a8b531aea	Reload
+502	move	moved:cairn_examples	084ddf664b68d5a1	Fit
+503	place	moved:cairn_examples	-	Gallery window
+504	invariant	moved:cairn_examples	d34d5b06e8bc82cb	Pending loads have fresh ids
+505	flow	moved:cairn_examples	27a79d12fd5c56e8	Reload, then fit inside
+506	move	moved:cairn_examples	632e20fa13162375	Load 24
+507	move	moved:cairn_examples	46f6f5495ca3efd8	Cancel
+508	flow	moved:cairn_examples	d73d0400c55b9277	Load many, then cancel
+509	move	moved:cairn_examples	80ec73812fd26594	Reload a tile
+510	invariant	moved:cairn_examples	4b77d8ad02a81eb4	Tiles fit the window at every size
+511	invariant	moved:cairn_examples	759d8febcfec109a	Tiles are at least 180 points wide
+512	move	moved:cairn_examples	4c3cef4f3a7d5f3c	Next page
+513	invariant	moved:cairn_examples	84126e733a7b341d	A dropped thumbnail waits to be loaded again
 901	assume	active	-	The Swift frame decoder agrees with Lean's
 902	assume	active	-	Lean decodes what the Swift event encoder writes
 903	assume	active	-	UTF-16 offsets and scalar indices convert exactly
