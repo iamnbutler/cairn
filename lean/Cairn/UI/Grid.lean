@@ -376,8 +376,6 @@ theorem rects_inside (x y : Int) (W H n : Nat) : ∀ r ∈ g.rects x y W H n, r.
   box with `cols` columns has cards narrower than `minWidth` (`minBox_shorter`, when the gap is
   no taller than a card). -/
 
-/-- The scaled part of `minCardH`, `minWidth` at the aspect ratio rounded up. -/
-theorem minCardH_eq : g.minCardH = (g.minW * g.rh + g.rw - 1) / g.rw + g.caption := rfl
 
 /-- Rounding up: `q = ⌈a / b⌉` covers `a` (`a ≤ q * b`) and one less doesn't (`(q - 1) * b < a`
 when `a > 0`). -/
