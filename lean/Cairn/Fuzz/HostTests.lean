@@ -1,4 +1,4 @@
-import Cairn.Fuzz.Walk
+import Cairn.Fuzz.Shrink
 import Cairn.UI.Images
 
 /-! # Tests of the fuzzer's host
@@ -104,5 +104,69 @@ def strangersIgnored (t : Transition S) : Bool :=
   let h : Host := ({} : Host).put "a" 7 9
   ((defaultReply h (.loadImage "a" false)).run (Rng.ofSeed 3)).1 matches (.image 7 9) ∨
   ((defaultReply h (.loadImage "a" false)).run (Rng.ofSeed 3)).1 matches .failed ..
+
+/-! ## Outstanding requests
+
+A second toy makes three HTTP requests at launch with one request in flight at a time, so two wait in
+the runtime's queue, and keeps the ids it still waits for. `Custom.outstanding` compares them
+with the ids the runtime holds after every step: the correct toy passes; one that forgets every
+request once the first is answered is caught, under the claim, and shrinks like any failure. -/
+
+namespace Lost
+
+structure S where
+  live : List Nat := [0, 1, 2]
+
+def receive (lose : Bool) (s : S) : Msg → S × List Effect
+  | .reply id _ => ({ live := if lose then [] else s.live.erase id }, [])
+  | _ => (s, [])
+
+def app (lose : Bool) : App S where
+  init := {}
+  surfaces := [.window 9910 "Lost" fun _ _ => .box {} none []]
+  update := fun s _ => (s, [])
+  receive := receive lose
+  initEffects := [0, 1, 2].map fun id => .request id (.http "GET" s!"https://example.test/{id}" [] .empty 0)
+  maxInFlight := 1
+  claims := []
+
+def sorted (xs : List Nat) : List Nat := xs.mergeSort
+
+def target (lose : Bool) : Target :=
+  { name := "Lost", module := "Cairn.Fuzz.HostTests", ns := "Cairn.Fuzz.HostTests.Lost",
+    machineDecl := "machine", appDecl := some "app", S := S,
+    machine := { init := {}, moves := [], receive := receive lose }, app := some (app lose),
+    keyed := [], invariants := [], claims := [],
+    custom := { outstanding := [(9905, fun s ids => sorted ids == sorted s.live)] } }
+
+def run (lose : Bool) (seed : Nat) : IO Outcome := do
+  let t := target lose
+  let (setup, rng) := genSetup t seed
+  runSeq t setup (.gen rng 100)
+
+-- The correct toy passes, and the check ran.
+#eval show IO Unit from do
+  for seed in [0:20] do
+    let o ← run false seed
+    if let some f := o.failure then
+      throw (IO.userError s!"seed {seed}: {f.check} ^{f.claim}: {f.message}")
+    unless ((o.stats.get? 9905).bind (·.checks.get? "outstanding")).isSome do
+      throw (IO.userError "the outstanding check should run")
+
+-- The toy that loses requests is caught, and the failure shrinks to the one reply that loses them.
+#eval show IO Unit from do
+  let t := target true
+  let some (seed, o) ← (List.range 20).findSomeM? fun seed => do
+      let o ← run true seed
+      return if o.failure.isSome then some (seed, o) else none
+    | throw (IO.userError "a lost request should be caught")
+  let some f := o.failure | unreachable!
+  unless f.check == "outstanding" && f.claim == 9905 do
+    throw (IO.userError s!"seed {seed}: wrong failure {f.check} ^{f.claim}")
+  let (ops, _) ← shrink t o.setup f o.ops
+  unless ops.size == 1 && ops[0]! matches .host (.reply 0 _) do
+    throw (IO.userError s!"seed {seed}: shrunk to {ops.size} operations: {ops.toList.map opText}")
+
+end Lost
 
 end Cairn.Fuzz.HostTests

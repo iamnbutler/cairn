@@ -125,6 +125,12 @@ structure Custom (S : Type) where
   `replies` or the default): every load finished, nothing still waiting. Counted under the
   claim as `drained`. -/
   drained : List (ClaimId × (S → Bool)) := []
+  /-- Checks against what the runtime still owes the app, after every step (the first frame
+  included): the state, and the ids of the requests the runtime holds for it, sent and not
+  answered or queued behind its in-flight limit, and not cancelled (`World.entries`: sent oldest
+  first, then queued). These are exactly the ids the app can still hear a reply under. Counted
+  under the claim as `outstanding`. -/
+  outstanding : List (ClaimId × (S → List Nat → Bool)) := []
 
 instance {S : Type} : Inhabited (Custom S) := ⟨{}⟩
 

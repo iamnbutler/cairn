@@ -152,6 +152,9 @@ def fuzz : Cairn.Fuzz.Custom State where
     | _ => true)]
   -- Checked once the sequence is over and the host has answered everything outstanding.
   drained := [(30, fun s => s.core.loading.isNone)]
+  -- Checked after every step against the ids the runtime still holds for the app.
+  -- (Pairs's ^27: no request is lost.)
+  outstanding := [(27, fun s ids => ids.mergeSort == s.reqs.live.mergeSort)]
 ```
 
 - `replies s id r`: a generator for request `r` (id `id`) in state `s`. A reply that doesn't
@@ -166,6 +169,13 @@ def fuzz : Cairn.Fuzz.Custom State where
 - `drained`: after the last operation the host answers everything outstanding, oldest first,
   with `replies` or the default (up to 1,000 replies), and these are checked. Counted as
   `drained`. Only run when the app has some.
+- `outstanding s ids`: checked after every step, the first frame included, with the ids of the
+  requests the runtime holds for the app: sent and not answered, or queued behind the in-flight
+  limit (`App.maxInFlight`), and not cancelled (`World.entries`, sent oldest first, then
+  queued). Those are exactly the ids a reply can still reach the app under, so a claim that the
+  app's own bookkeeping matches them ("no request is lost") is checkable at every step, not
+  only once drained. A step's `effects` can't stand in for this: a queued request goes on a
+  later step's frame. Counted as `outstanding`; a failure shrinks like any other.
 
 **Determinism.** The host's every decision (which request, what reply, how far the clock moves,
 what to drop) is drawn from the sequence's seed and recorded in the operation, so a seed
@@ -208,7 +218,9 @@ the printout says so and gives the replay command and the shrunk steps.
    (so the app's pressability proof at that size can be `by decide +kernel`).
 5. **Images held** (above, "The host"): every image the frame draws is held by the host.
 6. **Relations** (`Custom.relations`), for a host's move or a person's operation.
-7. **Frame-time budget:** wall-clock time of `Runtime.step` (update, view, layout, settle) per
+7. **Outstanding** (`Custom.outstanding`): the app's checks against the requests the runtime
+   still holds for it.
+8. **Frame-time budget:** wall-clock time of `Runtime.step` (update, view, layout, settle) per
    step, against `--budget-ms` (default 8, a 120 Hz frame). Over-budget states are reported with
    their seed and step, but never fail a run: timing is not deterministic.
 
