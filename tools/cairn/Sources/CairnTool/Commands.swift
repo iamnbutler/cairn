@@ -92,7 +92,7 @@ public struct Project: Sendable {
     /// The modules whose imports reach every claim of the package: its `libs`, or for Cairn
     /// itself the roots its ledger reads (the Makefile's `ledger`).
     public var claimRoots: [String] {
-        manifest.name == "cairn" ? ["CairnAll", "Examples", "Cairn.Fuzz.Trusted.Claims"] : manifest.libs
+        manifest.name == "cairn" ? ["CairnAll", "Cairn.Fuzz.Trusted.Claims"] : manifest.libs
     }
 
     /// Check that the three names agree: cairn.toml's, the Lake package's, and the claim scope.

@@ -6,9 +6,9 @@ import Darwin
 /// The debug socket (docs/conformance.md): a Unix socket through which a tool drives one running
 /// app and reads back what it shows. Off unless asked for:
 ///
-///     CAIRN_DEBUG_SOCKET=1 CairnBasics            # $TMPDIR/cairn-<title>-<pid>.sock
-///     CAIRN_DEBUG_SOCKET=/path/x.sock CairnBasics
-///     CairnBasics --debug-socket [/path/x.sock]
+///     CAIRN_DEBUG_SOCKET=1 Fixture                # $TMPDIR/cairn-<title>-<pid>.sock
+///     CAIRN_DEBUG_SOCKET=/path/x.sock Fixture
+///     Fixture --debug-socket [/path/x.sock]
 ///
 /// Requests and replies are one JSON object per line. Input goes into this app's own view as
 /// NSEvents passed to its responder methods (`mouseDown(with:)`, `keyDown(with:)`, …), or through

@@ -6,7 +6,8 @@ are claims too. Claims are a language feature: an app module imports the runtime
 `meta import`s the commands (see "Linking"), then declares claims with the commands below. An app's `update` is built from its moves and nothing else, so "every behaviour
 is a claim" holds by construction, and theorems say so.
 
-Code: `lean/Cairn/Claims/`. Example: `lean/Examples/Counter.lean`. Tests, including one failing
+Code: `lean/Cairn/Claims/`. Examples: Counter (`lean/Counter.lean` in iamnbutler/cairn_examples)
+and the fixture (`test/fixture/lean/Fixture.lean`). Tests, including one failing
 declaration per check: `lean/Cairn/Claims/Tests.lean`.
 
 ## Syntax
@@ -96,7 +97,7 @@ enabled move, so the path is real and not a run of no-ops), and
 ### `invariant`
 
 ```lean
-invariant ^105 itemsLeft "Items left" for machine where   -- Examples.Basics
+invariant ^105 itemsLeft "Items left" for machine where   -- Basics (cairn_examples)
   does "The footer's count equals the number of items not done, …"
   holds s := Inv s
   init := ⟨rfl, trivial, fun _ h => by simp only [machine, List.not_mem_nil] at h, Nat.one_pos⟩
@@ -115,7 +116,7 @@ handler, stated over its own `apply`.
 A machine that hears the outside world (`Machine.receive`: the clock, timers, replies,
 subscription events; docs/effects.md) needs a third clause, `receive : ∀ s m, holds s → holds
 (machine.receive s m).1`, so the invariant holds whatever the host sends, in any order with the
-person's actions (Clock's ^409 in `Examples.Clock`). For a machine that ignores the world the
+person's actions (Clock's `cairn_examples^409`). For a machine that ignores the world the
 clause is optional and proved for you. Also generates
 `itemsLeft.reachable : ∀ s, machine.Reachable s → holds s`,
 `itemsLeft.reachableAll : ∀ s, machine.ReachableAll s → holds s` (actions and messages), and, when `Decidable (holds s)` can
@@ -158,7 +159,8 @@ A region of the view where moves appear; `in ^P` on moves, flows and places refe
 retire ^9 move "Toggle all (old)" because "Split into ^14 and ^15."
 ```
 
-Counter retired ^6, an invariant over a `pressed` field that the v1 runtime made pointless:
+Counter (now in cairn_examples) retired ^6, an invariant over a `pressed` field that the v1 runtime
+made pointless:
 
 ```lean
 retire ^6 invariant "Moves never leave a press in progress" because "The runtime owns press tracking; Counter's state no longer has a pressed field, so the invariant was vacuous."
@@ -221,12 +223,13 @@ compile time instead of shipping with them silently.
 
 ```
 # id	kind	status	statement	title
-2	move	active	5ace86b109a74bf5	Reset
-3	place	active	-	Counter window
+2	move	moved:cairn_examples	5ace86b109a74bf5	Reset
+6	invariant	retired	5de1d6cd863262b8	Moves never leave a press in progress
+7	assume	active	-	The host reports clicks where they happen
 ```
 
-One tab-separated line per id ever issued: kind, `active` or `retired`, a 64-bit FNV-1a hash of
-the claim's formal statement (`-` when it has none), and the title.
+One tab-separated line per id ever issued: kind, `active`, `retired` or `moved:<scope>`, a 64-bit
+FNV-1a hash of the claim's formal statement (`-` when it has none), and the title.
 
 **The statement hash** covers the claim's kind, a move's triggers and keyedness, and the
 definitions that make up its formal statement: a move's `enabled` and each `post`; a flow's
@@ -252,11 +255,17 @@ package has its own `claims.lock`, and an app's ledger never reads Cairn's lock.
 move <scope> <id>…` marks ids that left with another package as `moved:<scope>` (Yap's, when it
 moved to iamnbutler/yap-cairn). A moved id stays issued here: it may not come back in this scope.
 
+Cairn's own ledger now holds only framework claims: ^7 and ^214 (host assumptions every app
+relies on, in `Cairn.Fuzz.Trusted.Claims`) and the trusted base, ^9xx and ^10xx. The example
+apps' ids (^1–^5, ^101–^109, ^2xx but 213–215 and 225, ^401–^409, ^450–^462, ^501–^513) are
+`moved:cairn_examples`: the apps are in iamnbutler/cairn_examples, where `cairn^201` is
+`cairn_examples^201`. ^6, ^213, ^215 and ^225 stay retired.
+
 `lake exe ledger update [--accept]` appends new ids, marks ids retired in the code as retired,
 and with `--accept` records changed hashes and titles. It never removes a line and refuses to
 write while `check` has errors other than new ids. Both take `--lock PATH` and `--root MODULE`
-(default roots `CairnAll`, `Examples` and `Cairn.Fuzz.Trusted.Claims`: a claim in a module neither imports is invisible to the
-ledger, so every app module must be reachable from `Examples.lean`).
+(default roots `CairnAll` and `Cairn.Fuzz.Trusted.Claims`: a claim in a module neither imports
+is invisible to the ledger).
 
 ### Retiring needs a major version
 
@@ -276,26 +285,26 @@ when a version is published (nextpm's cairn kind), against the version before it
 
 ## The claims export
 
-`lake exe claims Examples.Counter` (any modules; submodules included) prints JSON. `lake exe
-claims --scope cairn` prints exactly one package's claims instead, from the modules it builds
-(`--root M`, repeatable), with `"scope"` added: that is what `cairn claims --ledger` writes and
-`cairn publish` sends, and what the claim pages show (docs/claim-pages.md).
+`lake exe claims Counter` (any modules; submodules included) prints JSON; here, in cairn_examples.
+`lake exe claims --scope cairn` prints exactly one package's claims instead, from the modules it
+builds (`--root M`, repeatable), with `"scope"` added: that is what `cairn claims --ledger` writes
+and `cairn publish` sends, and what the claim pages show (docs/claim-pages.md).
 
 ```json
-{"modules": ["Examples.Counter"],
+{"modules": ["Counter"],
  "claims": [{"id": 2, "ref": "^2", "kind": "move", "title": "Reset",
    "does": "Press Reset.", "sees": "The count is zero, and Reset disappears.",
-   "place": 3, "retired": null, "module": "Examples.Counter", "decl": "Examples.Counter.reset",
+   "place": 3, "retired": null, "module": "Counter", "decl": "Examples.Counter.reset",
    "statement": "5ace86b109a74bf5",
    "statementDecls": ["Examples.Counter.reset.enabled", "Examples.Counter.reset.press.post"],
    "triggers": ["press"], "keyed": false, "passes": [], "witness": null, "machine": null,
-   "pos": {"file": "lean/Examples/Counter.lean", "line": 41},
+   "pos": {"file": "lean/Counter.lean", "line": 59},
    "evidence": [{"role": "sound press", "theorem": "Examples.Counter.reset.press.sound",
                  "proved": true, "extraAxioms": []}]}]}
 ```
 
-Each claim also carries `"scope"` (`cairn`) and `"qualified"` (`cairn^2`); `"ref"` stays the
-bare `^2` the capture labels pins with.
+Each claim also carries `"scope"` (`cairn_examples`) and `"qualified"` (`cairn_examples^2`); `"ref"`
+stays the bare `^2` the capture labels pins with.
 
 `passes` is a flow's path through move ids, and `witness` its steps (`{"trigger": "press", "ref": "^1", "claim": 1, "key": 0}`, plus `op` for edits), for drivers that replay it (the capture, docs/claim-pages.md); `pos` is where the claim is declared; `machine` is the machine a flow or invariant is
 stated against. Evidence roles: `sound <trigger>` (moves), `live` and `reaches` (flows),
@@ -325,8 +334,8 @@ public import Cairn.App
 ```
 
 With that, the app's compiled code and its `runtime_initialize_*` never touch `Lean` or the
-commands; the host calls `runtime_initialize_cairn_Examples_Counter_Abi` or
-`runtime_initialize_cairn_Examples_Basics` (host/Sources/CLean; one library per app). The
+commands; the host calls the app's `runtime_initialize_*` (the fixture's
+`runtime_initialize_fixture_Fixture_Abi`, declared in test/fixture/Sources/CFixture). The
 generated declarations are `public` and, in a module, `@[expose]`, so other modules' proofs
 can unfold them. `Cairn.Claims` is an umbrella (`Core` plus `meta import Elab`) for non-module
 files such as the tests.
@@ -347,7 +356,8 @@ Consequences of the module system for the modules an app imports: every one of t
 …) import them unchanged and see everything. `#guard` does not work in a module without
 `meta`-importing what it evaluates, so checks there are `example … := by decide`.
 
-Measured (`make check`, Debug; before the per-app split): `libcairn_Examples.a` 48 KB, `libcairn_lean.a` 18.5 MB (of
+Measured (`make check`, Debug; before the per-app split, when the examples were in this
+repository): `libcairn_Examples.a` 48 KB, `libcairn_lean.a` 18.5 MB (of
 which `libInit` is 15 MB); the `CairnCounter` binary contains no symbols from `libLean`.
 
 ## What is not enforced, and why
@@ -356,7 +366,7 @@ which `libInit` is 15 MB); the `CairnCounter` binary contains no symbols from `l
   `in ^P` or a witness; Yap's ^348 cites `cairn^1005` in its text.
 - **Ids are global only as far as imports reach.** Two modules that are never imported together
   can issue the same id; the ledger catches it because it imports everything reachable from
-  `CairnAll` and `Examples`, and the `Issued.«^N»` declarations make importing both fail.
+  `CairnAll`, and the `Issued.«^N»` declarations make importing both fail.
 - **"Meaning changed" is a warning, not an error.** The hash can't tell a refactor from a change
   of meaning; a person decides, and `--accept` records the decision in the diff.
 - **Prose isn't checked against the formal statement.** `does`/`sees` are for reviewers; nothing
@@ -364,7 +374,7 @@ which `libInit` is 15 MB); the `CairnCounter` binary contains no symbols from `l
 - **`post` constrains the state, not the effects.** Effects come only from moves (proved), but a
   move's `post` says nothing about which effects it emits.
 - **Presence and pressability are not generated.** They depend on the view and layout; apps
-  prove them per move (`Examples.Counter.reset_present_iff_enabled`, in `Examples.Counter.Proofs`).
+  prove them per move (Counter's `reset_present_iff_enabled`, in cairn_examples' `Counter.Proofs`).
 - **`claims%` is per namespace.** An app spread over several namespaces collects each and
   concatenates.
 - **Unkeyed moves ignore the key.** `^1#7` reaches an unkeyed `^1` as if it were `^1`; the view

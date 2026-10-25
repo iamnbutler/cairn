@@ -16,14 +16,14 @@ This chapter covers the claim kinds you write most: moves, flows and invariants.
 
 ## A move
 
-Here is Counter's Increment:
+Here is the fixture's Add:
 
-<bongo:include src="lean/Examples/Counter.lean#counter-increment" />
+<bongo:include src="test/fixture/lean/Fixture.lean#fixture-add-item" />
 
 Reading it top to bottom:
 
-- `move ^1 increment (s : State) "Increment" in ^3`: the id, a Lean name, the state's name, the
-  title, and the place the control appears in.
+- `move ^3 addItem (s : State) "Add" in ^1`: the id, a Lean name, the state's name, the title,
+  and the place the control appears in.
 - `does` and `sees`: what a person does and what follows. Reviewers read these, and its
   [claim pages](/docs/evidence/) show them. Both are required.
 - `on press`: one block per kind of action the move answers. The triggers are `press`,
@@ -33,20 +33,21 @@ Reading it top to bottom:
 - `post s'`: what must be true of the new state `s'`, stated against the old one, `s`.
 - `sound`: the proof that `apply` meets `post`. A move without it doesn't compile.
 
-A move can say when it is available with `enabled`. Reset is only enabled above zero, and the
-[view](/docs/guide/view-and-layout/) only shows its button then:
+A move can say when it is available with `enabled`. An item's delete button is only enabled for an
+item in the list, and the [view](/docs/guide/view-and-layout/) only shows it then:
 
-<bongo:include src="lean/Examples/Counter.lean#counter-reset" />
+<bongo:include src="test/fixture/lean/Fixture.lean#fixture-delete" />
 
-With `enabled`, `sound` may assume it: the goal is "for every enabled state, `post` holds after
-`apply`", which is why its proof takes two arguments (`intro s _`).
+With `enabled`, `sound` may assume it: the goal is "for every key and every enabled state, `post`
+holds after `apply`", which is why its proof takes three arguments (`intro s k _`).
 
 ## Keyed moves: one control per item
 
 A list shows one checkbox per item, and they are all the same move. A **keyed** move takes a key
-after the state, and each control carries it: `^103#12` is item 12's checkbox. From Basics:
+after the state, and each control carries it: `^4#12` is item 12's checkbox. Delete, above, is
+one too, and so is the checkbox:
 
-<bongo:include src="lean/Examples/Basics.lean#basics-toggle" />
+<bongo:include src="test/fixture/lean/Fixture.lean#fixture-toggle" />
 
 ## Text fields
 
@@ -54,7 +55,7 @@ A field's move answers `edit` with the text operation, and usually `submit` for 
 framework's `Text.Field.apply` does the editing (the caret, the selection, undo, input methods),
 and returns the effects an edit needs, such as a clipboard write for copy:
 
-<bongo:include src="lean/Examples/Basics.lean#basics-type-item" />
+<bongo:include src="test/fixture/lean/Fixture.lean#fixture-type-item" />
 
 ## Flows
 
@@ -62,30 +63,27 @@ A **flow** is a goal and a path that reaches it: a list of actions, each naming 
 the path through the machine at compile time and checks two things: that every step is answered
 by an enabled move (so the path isn't a run of no-ops), and that the end state meets the goal.
 
-<bongo:include src="lean/Examples/Counter.lean#counter-flows" />
+<bongo:include src="test/fixture/lean/Fixture.lean#fixture-flow" />
 
-A witness step names a control: `press ^1`, `press ^103#1`, `edit ^101 (.insert "milk")`,
-`submit ^101`. Basics adds a path with text and keys:
-
-<bongo:include src="lean/Examples/Basics.lean#basics-flows" />
-
-Flows are also what the capture replays to take screenshots, and what the conformance driver replays
-against the running app.
+A witness step names a control: `press ^3`, `press ^4#1`, `edit ^2 (.insert "milk")`,
+`submit ^2`. Flows are also what the conformance driver replays against the running app.
 
 ## Invariants
 
 An **invariant** is a property that holds in every state the app can reach. You prove it holds
 at the start (`init`) and that every move keeps it (`step`). The commands then derive that it
-holds in every reachable state, and the runtime theorems carry that onto the screen. Basics' count
-of items left:
+holds in every reachable state, and the runtime theorems carry that onto the screen. The fixture's
+says every item's id is below the id the next item gets, so a new item's id is never one already
+in the list:
 
-<bongo:include src="lean/Examples/Basics.lean#basics-invariant" />
+<bongo:include src="test/fixture/lean/Fixture.lean#fixture-invariant" />
 
 The `step` proof goes one move at a time: `machine.preserves` splits it, and each move's
 generated `preserves` lemma leaves one obligation per handler, stated over that handler's own
 `apply`. The lemmas it uses (`add_inv`, `toggle_inv`, `delete_inv`) are ordinary theorems in the
-same file. When the invariant is decidable, the command also makes it a runnable check, which the
-fuzzer runs after every step.
+same file. The fixture's machine also hears the world (Flash's timer), so the invariant has a
+third clause, `receive`: every message keeps it too. When the invariant is decidable, the command
+also makes it a runnable check, which the fuzzer runs after every step.
 
 ## Places, assumptions and retired claims
 
@@ -102,7 +100,9 @@ evidence (`check`):
 
 <bongo:include src="lean/Cairn/Fuzz/Trusted/Claims.lean#trusted-host-clicks" />
 
-<bongo:include src="lean/Examples/Counter.lean#counter-retire" />
+A retired claim keeps its kind, its title and the reason it went. Counter, one of the
+[example apps](/docs/examples/), retired an invariant its state no longer had anything to say
+about: [cairn_examples^6](/packages/cairn_examples/claims/6/).
 
 ## Ids are the contract
 

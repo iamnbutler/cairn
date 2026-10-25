@@ -10,6 +10,7 @@ app with `runtime_initialize_fixture_Fixture_Abi`. -/
 namespace Fixture
 open Cairn
 
+-- region: fixture-abi
 /-- Core Text metrics in the running app. -/
 def cfg : Runtime.Config := { metrics := TextMetrics.host }
 
@@ -23,5 +24,6 @@ def appStep (s : Runtime.State State) (events : ByteArray) : Runtime.State State
 
 @[export cairn_app_frame]
 def appFrame (s : Runtime.State State) : ByteArray := Runtime.frameBytes Frame.boundary s
+-- endregion: fixture-abi
 
 end Fixture

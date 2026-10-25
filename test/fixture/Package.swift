@@ -10,6 +10,7 @@ let lib = Context.packageDirectory + "/.cairn/lib"
 let cairnDir = URL(fileURLWithPath: Context.packageDirectory).deletingLastPathComponent().deletingLastPathComponent()
 let cairn = cairnDir.lastPathComponent.lowercased()
 
+// region: package-fixture
 let package = Package(
     name: "fixture",
     platforms: [.macOS("27.0")],
@@ -27,3 +28,4 @@ let package = Package(
             linkerSettings: [.unsafeFlags(["-L" + lib, "-lfixture"])]),
     ]
 )
+// endregion: package-fixture

@@ -179,7 +179,7 @@ export function evaluate(inp: Inputs, image: (file: string) => string = (f) => f
 		if (c.kind === "move" || c.kind === "invariant") {
 			const f = fuzz?.claims[c.ref];
 			const model = fuzz?.mode === "model" ? " of the model (no App yet)" : "";
-			if (!fuzz) mark("fuzzed", "gap", "not fuzzed", `No \`build/fuzz/${app}.json\`: run \`make fuzz APP=${app}\`.`);
+			if (!fuzz) mark("fuzzed", "gap", "not fuzzed", `No \`build/fuzz/${app}.json\`: run \`cairn fuzz\`.`);
 			else if ((!f || f.pass === null) && c.kind === "move" && fuzz.mode === "model")
 				mark("fuzzed", "gap", "not fuzzed", "The app is fuzzed at the model level only (it has no `App` yet), where a move has no checks of its own: presence and pressability need a frame.");
 			else if (!f || f.pass === null)

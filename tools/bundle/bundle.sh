@@ -1,8 +1,7 @@
 #!/bin/sh
 # Wraps an app's host executable in an .app bundle.
 #
-#   make bundle APP=<App> [NAME=<name>]   Cairn's examples: Cairn<App> into build/apps/<name>.app
-#   cairn bundle                          an app package's executable (docs/cli.md)
+#   cairn bundle    an app package's executable (docs/cli.md)
 #
 # bundle.sh <App> <bin dir> [<sign identity>] [<name>], with, from the environment:
 #   EXE      the executable's name in <bin dir> (default Cairn<App>)

@@ -5,10 +5,10 @@ works for an app and for Cairn itself, and Cairn's output is the API reference o
 docs (#73), at `/docs/api/`, built from main on each deploy (`make site`).
 
 ```sh
-make doc APP=Todo           # Examples.Todo and its submodules → build/doc/Todo/dist/
 make doc PKG=Cairn          # the framework → build/doc/Cairn/dist/
-make doc APP=Todo OPEN=1    # …and open it; PRIVATE=1 shows private declarations
+make doc PKG=Cairn OPEN=1   # …and open it; PRIVATE=1 shows private declarations
 make doctest                # the doc tests alone (in make check)
+cairn doc                   # in an app package (docs/cli.md) → build/doc/<name>/dist/
 ```
 
 On a built tree `make doc` takes about 8 s, nearly all of it Lake checking the build and two
@@ -72,25 +72,25 @@ theorem carries a chip: `proved` when it depends only on `propext`, `Classical.c
 `Quot.sound`, red with the axioms otherwise. Left out: recursors, `noConfusion`, matchers,
 equation lemmas, structure projections (they are the fields) and the methods of instances.
 
-**A claim** is a card, on the page of the module that declares it: its id, title, kind
-and how it reads; `does` and `sees`; the place it is in; its **formal statement**, each
-statement declaration as written (`edit.post s op s' := s'.newField = …`); the evidence ladder
-with what each kind rests on; its proofs, linked to their declarations; a flow's witness; for a
-move, the before and after screenshots when `make capture` took them; its source and ledger
-state; and, folded, the declarations the claim command generated (`newTodo.edit.sound`,
-`newTodo.info`, …), which therefore aren't listed again as loose definitions.
+**A claim** is a card, on the page of the module that declares it: its id, title, kind and how it
+reads; `does` and `sees`; the place it is in; its **formal statement**, each statement declaration
+as written (`edit.post s op s' := s'.newField = …`); the evidence ladder with what each kind rests
+on; its proofs, linked to their declarations; a flow's witness; for a move, the before and after
+screenshots when the capture took them (docs/claim-pages.md); its source and ledger state; and,
+folded, the declarations the claim command generated (`newTodo.edit.sound`, `newTodo.info`, …),
+which therefore aren't listed again as loose definitions.
 
 **Anchors never change while the name does not.** A declaration's anchor is its full name
 (`Cairn.Layout.Core.html#Cairn.Layout.layout`), a field's `Type.field`, a claim's its number
-(`Examples.Todo.html#202`, as on the claim pages). A claim keeps its id for ever, so `#202` is
-permanent; a declaration's anchor is as stable as its name.
+(`Todo.html#202` in cairn_examples, as on the claim pages). A claim keeps its id for ever, so `#202`
+is permanent; a declaration's anchor is as stable as its name.
 
 **Links.** `^N` anywhere (doc comments, `does`/`sees`, witnesses, evidence details) links to the
 claim's entry. In doc comments, a name in backticks links when it resolves from the documented
 declaration's namespace the way Lean would (`layout` from `Cairn.Layout`) or is a module name.
 Signatures link every constant in the package. Constants from another package link when it was
-given with `--link`: an app's docs link `Cairn.*` to `../../Cairn/dist/` (`make doc` does this),
-so `build/doc/Todo/dist/` links into `build/doc/Cairn/dist/`.
+given with `--link`: `cairn doc` links each dependency's modules to `/docs/<dep>/<version>/`
+(docs/cli.md).
 
 **Search** is a static index (names, kinds, the first 280 characters of each doc comment, and
 `^N` with each claim's title and prose), loaded as a script so it works from `file://`. Names
@@ -110,7 +110,7 @@ Lean code blocks in doc comments are checked, like rustdoc's doc tests. `lake ex
 elaborates each ` ```lean ` block, in an environment with the documented modules imported,
 inside the namespace of the declaration (or module) it documents, with `autoImplicit` off. Any
 error is reported with the block's file and line, and the exit code is 1, so `make doc` stops.
-`make doctest` runs them for Cairn and every example, and is part of `make check`.
+`make doctest` runs them for Cairn, and is part of `make check`.
 
 A block fenced ` ```lean ignore ` is shown and not checked: for sketches that name things that
 don't exist (`MyApp.State` in `Cairn.Runtime.Abi`). Today there is one doc test,
@@ -124,16 +124,15 @@ don't exist (`MyApp.State` in `Cairn.Runtime.Abi`). Today there is one doc test,
 | Claims | `lake exe claims <modules>` | `claims.json` |
 | Pages | `bun tools/doc/cairn-doc.ts` | `dist/` |
 
-For `APP=Todo` the modules are `Examples.Todo` and every file under `lean/Examples/Todo/`; for
-`PKG=Cairn`, `DOC_CAIRN` in the Makefile (`Cairn`, `CairnAll`, `Cairn.Claims`, `Cairn.Fuzz` and the trusted
+For `PKG=Cairn` the modules are `DOC_CAIRN` in the Makefile (`Cairn`, `CairnAll`, `Cairn.Claims`, `Cairn.Fuzz` and the trusted
 base's modules; the tool executables `Cairn.Claims.Export`, `Ledger`, `Tool`, `Tests` and
-`Cairn.Doc.Export` are left out). Evidence is whatever `build/` already has:
+`Cairn.Doc.Export` are left out); `cairn doc` documents an app package's `libs`. Evidence is whatever `build/` already has:
 `build/fuzz/<App>.json`, `build/fuzz/trusted.json`, `build/conformance/<App>.json`, and
-`make capture`'s screenshots in `build/map/<App>/capture/`. Proved comes from the export's own axiom
+the capture's screenshots in `build/map/<App>/capture/`. Proved comes from the export's own axiom
 check, so `make doc` doesn't need the whole-package audit (60 s).
 
 Sizes on this build: Cairn 59 modules with pages, 2,124 declarations (1,924 listed: the public
-ones not generated by a claim command), 665 theorems, 40 claims, 2.2 MB in 66 files; Todo 6 modules, 388 declarations, 24 claims, 0.9 MB with its screenshots.
+ones not generated by a claim command), 665 theorems, 40 claims, 2.2 MB in 66 files; Todo (when it was in this repository) 6 modules, 388 declarations, 24 claims, 0.9 MB with its screenshots.
 
 ## Not yet
 

@@ -19,7 +19,7 @@ event Lean decodes with a proved decoder. No `IO` below the app boundary.
 | Theorems | `lean/Cairn/Runtime/WorldProofs.lean` |
 | Wire format | [frame.md](frame.md) (frame v2, new event tags), `lean/Cairn/Frame/{Encode,Events}.lean` |
 | Host: clock, wake, the handler table, subscriptions | `host/Sources/CairnHost/World.swift`, `Engine.swift` |
-| Example | `lean/Examples/Clock.lean`, `host/Sources/CairnClock` |
+| Example | Clock in iamnbutler/cairn_examples (`lean/Clock.lean`, `host/Sources/CairnClock`); the fixture's Flash timer (test/fixture) |
 | Trusted claims ^908–^915, ^960– | `lean/Cairn/Fuzz/Trusted/Claims.lean`, [trusted.md](trusted.md) |
 | Yap's host effects (files, watch, frontmost app, permissions) | `host/Sources/CairnHost/FileEffects.swift`, `SystemEffects.swift`; "Yap's host effects" below |
 | Yap's devices (recording, the hotkey, typing, uploads and secrets) | `host/Sources/CairnHost/AudioEffects.swift`, `InputEffects.swift`, `UploadEffects.swift`; "Recording, keys, typing, uploads" below |
@@ -57,13 +57,13 @@ Why two functions and not one `Msg` type wrapping `Action`: the claim language i
 the world name no control. Folding them into `Action` would make every one of those theorems
 carry a side condition. Keeping them apart costs one more field with a default.
 
-A claim machine has the same split: `Machine.receive` (default: ignore the world) beside its
-moves, and `toApp` passes it through. An `invariant` must then also be kept by `receive` (its
-`receive` clause), and it holds over any interleaving of actions and messages
-(`Invariant.reachableAll`) and on screen through the runtime, whatever the host sends
-(`steps_reachableAll`, built on `Cairn.Runtime.step_fed`: every step is some updates and
-messages). Clock's ^409 is one. A claim kind for messages themselves ("when a reply arrives,
-…", with a `post` like a move's) is future work.
+A claim machine has the same split: `Machine.receive` (default: ignore the world) beside its moves,
+and `toApp` passes it through. An `invariant` must then also be kept by `receive` (its `receive`
+clause), and it holds over any interleaving of actions and messages (`Invariant.reachableAll`) and
+on screen through the runtime, whatever the host sends (`steps_reachableAll`, built on
+`Cairn.Runtime.step_fed`: every step is some updates and messages). Clock's `cairn_examples^409` is
+one. A claim kind for messages themselves ("when a reply arrives, …", with a `post` like a move's)
+is future work.
 
 ## Time
 
@@ -613,20 +613,19 @@ server down) would never be reported, and a file that changed could come back at
 size under geometry Lean already laid out. With a notice, what the screen shows is still a
 function of Lean's state.
 
-Example: Gallery (`lean/Examples/Gallery.lean`, host `host/Sources/CairnGallery`, run with
-`cd host && swift run CairnGallery`): six tiles (a PNG, a JPEG stored turned with an EXIF
-orientation, a GIF, a poster over https, a text file, a missing file) in a 4:3 grid that takes as
-many columns as the window's width fits (`Cairn.UI.Grid`, [layout.md](layout.md#grids); ^510)
-and never shrinks a tile below 180 points (the window's minimum size, `Grid.minBox`; ^511),
-Reload (^501), Fit (^502) and a press on a tile to reload that one (^509). Its proofs
-(`Examples/Gallery/Proofs.lean`) show every tile's image is its cell's size whatever its state,
-the tiles land on the grid's cells at every window size, a click in a cell reaches that tile,
-and Reload is on screen; ^504 keeps pending loads' ids fresh. Its "Many at once" column shows
-24 thumbnails twelve at a time under an 8 MiB budget: after Load 24 the host drops most of the
-other page's, the app counts them evicted and Next page (^512) loads them again; ^513 proves a
-dropped thumbnail shows as not loaded until it is. The self test runs the real host
-with the network off (the https tile shows "Offline"); every tile was answered 6.8 ms after
-launch.
+Example: Gallery, in iamnbutler/cairn_examples (`lean/Gallery.lean`, host
+`host/Sources/CairnGallery`, run with `swift run CairnGallery` there): six tiles (a PNG, a JPEG
+stored turned with an EXIF orientation, a GIF, a poster over https, a text file, a missing file) in
+a 4:3 grid that takes as many columns as the window's width fits (`Cairn.UI.Grid`,
+[layout.md](layout.md#grids); ^510) and never shrinks a tile below 180 points (the window's minimum
+size, `Grid.minBox`; ^511), Reload (^501), Fit (^502) and a press on a tile to reload that one
+(^509). Its proofs (`lean/Gallery/Proofs.lean` there) show every tile's image is its cell's size
+whatever its state, the tiles land on the grid's cells at every window size, a click in a cell
+reaches that tile, and Reload is on screen; ^504 keeps pending loads' ids fresh. Its "Many at once"
+column shows 24 thumbnails twelve at a time under an 8 MiB budget: after Load 24 the host drops most
+of the other page's, the app counts them evicted and Next page (^512) loads them again; ^513 proves
+a dropped thumbnail shows as not loaded until it is. The self test runs the real host with the
+network off (the https tile shows "Offline"); every tile was answered 6.8 ms after launch.
 
 ## Wire format
 
@@ -681,16 +680,16 @@ is generic in the app, what it delivers to the wrapper is what it delivers to an
 
 ## Example: Clock
 
-`lean/Examples/Clock.lean` (host: `host/Sources/CairnClock`, run with `cd host && swift run CairnClock`)
-is a stopwatch: Start/Stop (^401) sets and cancels a 100 ms `tick` timer, Lap (^402) records
-the reading and plays "Tink", Reset (^403), Save (^404) writes the laps to
-`~/Library/Application Support/Cairn/Clock/laps.txt`, Load (^405) reads them back (also once
-at launch, from `initEffects`), and the time of day comes from an `every 1000` subscription.
-`stopped_tick` proves a tick that arrives after Stop changes nothing; the invariant ^409
-(pending requests have ids below the next request's) is kept by its moves and by `receive`,
-and `freshRequests_on_screen` (`Examples/Clock/Proofs.lean`) carries it through the runtime. Its self test drives the
-real host threads: launch read, the reading moving with no input, cancel on Stop (no `wake`,
-reading frozen), save, reset, load, and measures the numbers below.
+Clock, in iamnbutler/cairn_examples (`lean/Clock.lean`, host `host/Sources/CairnClock`, run with
+`swift run CairnClock` there), is a stopwatch: Start/Stop (^401) sets and cancels a 100 ms `tick`
+timer, Lap (^402) records the reading and plays "Tink", Reset (^403), Save (^404) writes the laps to
+`~/Library/Application Support/Cairn/Clock/laps.txt`, Load (^405) reads them back (also once at
+launch, from `initEffects`), and the time of day comes from an `every 1000` subscription.
+`stopped_tick` proves a tick that arrives after Stop changes nothing; the invariant ^409 (pending
+requests have ids below the next request's) is kept by its moves and by `receive`, and
+`freshRequests_on_screen` (`lean/Clock/Proofs.lean` there) carries it through the runtime. Its self
+test drives the real host threads: launch read, the reading moving with no input, cancel on Stop (no
+`wake`, reading frozen), save, reset, load, and measures the numbers below.
 
 Measured on an Apple M4 Max, debug host build (bench/effects.md):
 

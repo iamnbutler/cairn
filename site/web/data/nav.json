@@ -8,7 +8,7 @@
 			},
 			{
 				"page": "examples/index",
-				"children": ["examples/counter", "examples/basics", "examples/todo", "examples/yap"]
+				"children": ["examples/yap"]
 			}
 		]
 	},
@@ -28,10 +28,8 @@
 		"section": "Evidence",
 		"items": [
 			{ "page": "evidence/index" },
-			{ "href": "/packages/cairn/claims/3/", "title": "Counter's claims" },
-			{ "href": "/packages/cairn/claims/106/", "title": "Basics' claims" },
-			{ "href": "/packages/cairn/claims/201/", "title": "TodoMVC's claims" },
-			{ "href": "/packages/cairn/claims/#assumptions", "title": "The trusted base's claims" }
+			{ "href": "/packages/cairn/claims/#assumptions", "title": "The trusted base's claims" },
+			{ "href": "/packages/cairn_examples/claims/", "title": "The example apps' claims" }
 		]
 	},
 	{

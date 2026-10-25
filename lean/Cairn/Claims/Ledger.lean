@@ -23,14 +23,15 @@ retired, a hash of its formal statement and its title. Ids are the contract, so:
   hashes and titles. It never removes a line, and refuses while `check` has errors other than
   new ids.
 
-The code's claims are those reachable by importing the roots (`CairnAll`, `Examples` and
+The code's claims are those reachable by importing the roots (`CairnAll` and
 `Cairn.Fuzz.Trusted.Claims`, the trusted base's assumptions, by default) and declared in one
 package scope (`--scope`, default `cairn`; see `cairn.claims.scope`). Each package keeps its own
 `claims.lock` for its own scope: an app's ledger never reads Cairn's ids, and Cairn's never reads
 the app's.
 
 A claim that moves to another package keeps its number there and is marked `moved:<scope>` in
-the lock it left (Yap's ids, `moved:yap`, after Yap moved to its own repository): the id stays
+the lock it left (Yap's ids, `moved:yap`, after Yap moved to its own repository, and the
+example apps', `moved:cairn_examples`): the id stays
 issued in the old scope, and can't come back in it. -/
 
 namespace Cairn.Claims.Ledger
@@ -225,7 +226,7 @@ unsafe def main (args : List String) : IO UInt32 := do
         if cmd == some "move" then operands := operands ++ [c]; rest := r else
         IO.eprintln usage; return 2
     | [] => rest := []
-  if roots.isEmpty then roots := [`CairnAll, `Examples, `Cairn.Fuzz.Trusted.Claims]
+  if roots.isEmpty then roots := [`CairnAll, `Cairn.Fuzz.Trusted.Claims]
   let env ← load roots
   let text ← if ← lock.pathExists then IO.FS.readFile lock else pure ""
   let locked ← match parse text with

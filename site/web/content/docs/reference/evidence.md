@@ -16,9 +16,9 @@ Strongest first:
 | Kind | Where it comes from | Passes when |
 |---|---|---|
 | **proved** | the axiom audit of every theorem | every theorem the claim names (each handler's `sound`; a flow's `live` and `reaches`; an invariant's `init`, `step` and `reachable`) exists and uses only `propext`, `Classical.choice` and `Quot.sound` |
-| **fuzzed** | `make fuzz APP=<App>` | the claim's checks held in every random sequence that exercised it; for an assumption, every trusted-base check naming it held |
-| **tested** | `make conformance APP=<App>` | the running app matched the Lean model at every step that exercised it |
-| **seen** | the app capture (`make capture`) | a move's control is in a captured frame; a flow's whole witness was replayed, each step on the control it names |
+| **fuzzed** | `cairn fuzz` | the claim's checks held in every random sequence that exercised it; for an assumption, every trusted-base check naming it held |
+| **tested** | `cairn conformance` | the running app matched the Lean model at every step that exercised it |
+| **seen** | the app capture (none runs today: it went with the example apps, [#137](https://github.com/iamnbutler/cairn/issues/137)) | a move's control is in a captured frame; a flow's whole witness was replayed, each step on the control it names |
 | **assumed** | the claim is an `assume` | always: it is stated, never proved |
 
 Proved and fuzzed are about the Lean model; tested and seen are about the app. A proof says more,

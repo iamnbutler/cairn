@@ -1,6 +1,10 @@
 # TodoMVC: input → frame at 100, 1,000 and 10,000 nodes
 
-`make bench` runs `CairnTodo --bench` (release, `LEAN_ABORT_ON_NONLINEAR=1`, which never
+A record from when TodoMVC was in this repository. TodoMVC and its bench are in
+iamnbutler/cairn_examples now; Cairn's own input → frame bench is the fixture's (`make bench`,
+which runs `cairn bench` on test/fixture).
+
+`make bench` ran `CairnTodo --bench` (release, `LEAN_ABORT_ON_NONLINEAR=1`, which never
 aborted). It uses the app's real exports and the v1 codec, with no threads. Each sample has
 three parts:
 

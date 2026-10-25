@@ -89,8 +89,13 @@ its kind can have as "not shown yet"; a CI step will publish them as JSON beside
 A claim's page leaves room for a picture of it: its place with its control highlighted, as PNG
 or SVG at `…/claims/<id>/<file>`. That isn't built. The pieces it can reuse are kept:
 
+There is no target for it since the examples moved to cairn_examples. In an app package, with
+`$CAIRN` the Cairn checkout Lake uses:
+
 ```sh
-make capture APP=Counter     # headless screenshots → build/map/Counter/capture/, which cairn doc reads
+cairn claims --out build/map/App/claims.json
+bun $CAIRN/tools/map/capture-script.ts --claims build/map/App/claims.json > build/map/App/script.json
+swift run App --map-capture build/map/App/script.json build/map/App/capture  # cairn doc reads it
 ```
 
 `tools/map/capture-script.ts` turns an app's export into a script: the initial state, each

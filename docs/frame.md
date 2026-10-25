@@ -19,7 +19,7 @@ Two byte buffers cross the boundary between Lean and the Swift host, and nothing
 | Event encoder, decoder, round trip | `lean/Cairn/Frame/Events.lean` |
 | `Frame.ofLaid` and its theorems | `lean/Cairn/Frame/Build.lean` |
 | `Frame.ofMenu`, `Frame.ofStatus` and their theorems | `lean/Cairn/Frame/Menu.lean` |
-| The runtime's `Boundary` | `lean/Cairn/Abi.lean` (`Cairn.Frame.Boundary` re-exports it until 0.2.0) |
+| The runtime's `Boundary` | `lean/Cairn/Abi.lean` |
 | Canonical text dump | `lean/Cairn/Frame/Dump.lean`, `host/Tests/CairnFrameTests/Dump.swift` |
 | Swift frame decoder | `host/Sources/CairnFrame/Decode.swift` |
 | Swift event encoder | `host/Sources/CairnFrame/Encode.swift` |

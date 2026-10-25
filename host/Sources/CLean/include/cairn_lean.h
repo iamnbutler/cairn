@@ -32,9 +32,8 @@ size_t cairn_bytes_size(cairn_obj *b);
 // measures text (`TextMetrics.host`, docs/render.md).
 cairn_obj *initialize_cairn_Cairn_Abi(uint8_t builtin);
 
-// Everything below is defined by an app library (build/lib/libcairn_app_<name>.a), and each
-// executable links exactly one of them (Makefile, Package.swift). Declaring them all here is
-// fine; referencing one from a binary that doesn't link its library is a link error.
+// Everything below is defined by the app's own library, which the app's executable links next to
+// this one (bin/cairn-link, docs/package.md).
 
 // The v1 app ABI (docs/runtime.md), exported by every v1 app. Every argument is owned
 // (consumed): `step` consumes the state and the event bytes and returns the new state; `frame`
@@ -46,20 +45,5 @@ cairn_obj *cairn_app_frame(cairn_obj *state);
 // App libraries are Lean `module`s whose apps may `meta import` the claim commands (which use the
 // Lean compiler). Their `runtime_` initializers run only what the app needs at run time; the full
 // `initialize_*` would also initialize the commands, and so all of `Lean`, which the host does
-// not link (docs/claims.md, "Linking").
-
-// libcairn_app_counter.a: lean/Examples/Counter.lean, exports in Examples/Counter/Abi.lean.
-cairn_obj *runtime_initialize_cairn_Examples_Counter_Abi(uint8_t builtin);
-
-// libcairn_app_clock.a: lean/Examples/Clock.lean, exports in Examples/Clock/Abi.lean.
-cairn_obj *runtime_initialize_cairn_Examples_Clock_Abi(uint8_t builtin);
-cairn_obj *runtime_initialize_cairn_Examples_Tray_Abi(uint8_t builtin);
-
-// libcairn_app_gallery.a: lean/Examples/Gallery.lean, exports in Examples/Gallery/Abi.lean.
-cairn_obj *runtime_initialize_cairn_Examples_Gallery_Abi(uint8_t builtin);
-
-// libcairn_app_basics.a: lean/Examples/Basics.lean.
-cairn_obj *runtime_initialize_cairn_Examples_Basics(uint8_t builtin);
-
-// libcairn_app_todo.a: lean/Examples/Todo.lean (TodoMVC), exported from Examples/Todo/Abi.lean.
-cairn_obj *runtime_initialize_cairn_Examples_Todo_Abi(uint8_t builtin);
+// not link (docs/claims.md, "Linking"). An app declares its own (`cairn new` writes the
+// declaration into Sources/C<App>/include).

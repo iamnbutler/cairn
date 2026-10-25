@@ -6,13 +6,13 @@ app's claims after every step, with failing seeds replayed and shrunk. It needs 
 beyond the claims the app already makes.
 
 ```sh
-make fuzz APP=Basics N=1000          # = cd lean && lake exe fuzz Basics --iterations 1000 --out ../build/fuzz
-lake exe fuzz Basics --seed 1234 --iterations 1 --steps 80 -v   # replay one seed, step by step
-lake exe fuzz --list                  # every fuzzable app
+cairn fuzz --iterations 1000         # in an app package (test/fixture): every target, into build/fuzz
+cairn fuzz Fixture --seed 1234 --iterations 1 --steps 80 -v   # replay one seed, step by step
+cd lean && lake exe fuzz --list       # every fuzzable app
 ```
 
-Code: `lean/Cairn/Fuzz/`, and an app's `lean_exe fuzz` (test/fixture/lean/FuzzMain.lean; the
-examples' is `lean/Examples/FuzzMain.lean`). Output: `build/fuzz/<App>.json`.
+Code: `lean/Cairn/Fuzz/`, and an app's `lean_exe fuzz` (test/fixture/lean/FuzzMain.lean).
+Output: `build/fuzz/<App>.json`.
 
 ### An app package
 
@@ -44,10 +44,10 @@ def main (args : List String) : IO UInt32 := Cairn.Fuzz.main targets args
 | `Layout.Check` and hit testing | **pressable**: at sizes at or above the minimum, every enabled pointer move's control is hit at its centre, and `checkPressable` accepts the tree |
 | purity of `update`, `view`, `layout` | determinism: a seed replays a run exactly |
 
-The fuzzer finds every `Machine` in the `Examples` modules at compile time (`fuzz_targets%` in
-`Cairn/Fuzz/Collect.lean`), with its moves, invariants and the `App` built from it, so a new app
-is fuzzable as soon as `Examples.lean` imports it. An app with a machine and no `App` would be
-fuzzed at the model level only: actions straight into `machine.update`, checked against its
+The fuzzer finds every `Machine` in the app's modules at compile time (`fuzz_targets%` in
+`Cairn/Fuzz/Collect.lean`), with its moves, invariants and the `App` built from it, so a new app is
+fuzzable as soon as the fuzz executable's root imports it. An app with a machine and no `App` would
+be fuzzed at the model level only: actions straight into `machine.update`, checked against its
 invariants. Every app has an `App` now (Counter since it moved to v1), so both run through the
 runtime.
 
@@ -212,7 +212,7 @@ the printout says so and gives the replay command and the shrunk steps.
    are on screen without being in the window's laid tree: its button whenever it is shown, and
    its menu's items whether or not the menu is open, a greyed-out item counting as absent. The
    fuzzer presses them as the host does, with `menuOpen` for the button and `menuSelect` for an
-   item (Tray's ^453, cairn#176).
+   item (Tray's `cairn_examples^453`, cairn#176).
 4. **Pressable** when the window is at or above the minimum: `hitTest` at the centre of each
    enabled pointer move's control returns it, and `checkPressable && controlsNonempty` holds
    (so the app's pressability proof at that size can be `by decide +kernel`).
@@ -288,7 +288,7 @@ A pressability failure names the claim to blame: the control nearest the first n
 ## Output: `build/fuzz/<App>.json`
 
 ```json
-{"app": "Basics", "module": "Examples.Basics", "mode": "runtime", "seed": 0, "iterations": 1000,
+{"app": "Basics", "module": "Basics", "mode": "runtime", "seed": 0, "iterations": 1000,
  "steps": 50, "sequences": 1000, "stepsRun": 50000, "seconds": 2.04,
  "sequencesPerSecond": 490, "stepsPerSecond": 24546, "pressableSkipped": 5869,
  "failingSequences": 0, "budgetMs": 8, "budget": {"maxMs": 0.95, "over": []},
@@ -350,7 +350,8 @@ gap. A claim the fuzzer didn't reach, or can't run, is a gap.
 
 ## Results
 
-Apple M4 Max, 2026-10-23, seed 0 (details in [bench/fuzz.md](../bench/fuzz.md)):
+Apple M4 Max, 2026-10-23, seed 0 (details in [bench/fuzz.md](../bench/fuzz.md)), on the
+examples while they were in this repository; they are in cairn_examples now (`make fuzz` there):
 
 | App | Mode | Sequences × steps | Time | Sequences/s | Steps/s | Failures |
 |---|---|---|---:|---:|---:|---:|
@@ -373,8 +374,8 @@ the frame draws: Gallery receiving `evicted` without cancelling the pending load
 image on ^503 at step 143 and shrunk to 74 operations.
 
 `make check` runs `make fuzz-quick`: test/fixture, with `cairn fuzz`, 200 sequences of 50 steps,
-about 1.5 s plus linking the exe; and `examples-fuzz-quick`, the same on Counter, Basics, Todo,
-Clock, Tray and Gallery (`FUZZ_APPS`), host moves included.
+about 1.5 s plus linking the exe, host moves included. cairn_examples' `make fuzz-quick` runs the
+same on its six apps, against the released Cairn.
 
 ## Yap: a random host
 

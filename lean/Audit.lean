@@ -18,7 +18,7 @@ def ours (env : Environment) (roots : List Name) (n : Name) : Bool :=
   match env.getModuleIdxFor? n with
   | some idx =>
     let m := env.header.moduleNames[idx.toNat]!
-    m.getRoot == `Cairn || m.getRoot == `Examples || roots.any (·.getRoot == m.getRoot)
+    m.getRoot == `Cairn || roots.any (·.getRoot == m.getRoot)
   | none => false
 
 /-- Split `--json PATH` out of the arguments. -/
@@ -29,7 +29,7 @@ def jsonPath : List String → Option String × List String
 
 def main (args : List String) : IO UInt32 := do
   let (json, args) := jsonPath args
-  let roots := if args.isEmpty then [`CairnAll, `Examples, `Cairn.Fuzz] else args.map String.toName
+  let roots := if args.isEmpty then [`CairnAll, `Cairn.Fuzz] else args.map String.toName
   initSearchPath (← findSysroot)
   let env ← importModules (roots.map ({ module := · })).toArray {} (trustLevel := 1024)
   let mut checked := 0

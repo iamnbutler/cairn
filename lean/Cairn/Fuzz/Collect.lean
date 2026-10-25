@@ -33,7 +33,7 @@ def moduleOf (env : Environment) (n : Name) : Option Name :=
   env.getModuleIdxFor? n |>.map fun i => env.header.moduleNames[i.toNat]!
 
 /-- Modules that hold apps: anything but Cairn itself and Lean's libraries, so an app package's
-own modules (`Fixture.*`, `Yap.*`, and Cairn's examples, `Examples.*`). -/
+own modules (`Fixture.*`, `Yap.*`). -/
 def appModule (m : Name) : Bool :=
   ![`Cairn, `Init, `Std, `Lean, `Lake].contains m.getRoot
 

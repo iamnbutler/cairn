@@ -1,10 +1,10 @@
 # Effects: latency and timers
 
-How long the outside world takes to reach a Lean app through the host (docs/effects.md).
-Apple M4 Max, macOS 27, Swift 6 (Xcode), Lean 4.35.0, 2026-10-23, debug host build, measured by
-the Clock app's self test (`cd host && swift run CairnClock --selftest`, part of
-`make selftest`), which drives the real host threads (main, Lean, world, wake) with no window
-on screen.
+How long the outside world takes to reach a Lean app through the host (docs/effects.md). Apple M4
+Max, macOS 27, Swift 6 (Xcode), Lean 4.35.0, 2026-10-23, debug host build, measured by the Clock
+app's self test (`cd host && swift run CairnClock --selftest`, then part of `make selftest`; Clock
+and its self test are in iamnbutler/cairn_examples now), which drives the real host threads (main,
+Lean, world, wake) with no window on screen.
 
 ## Request round trip
 
@@ -67,7 +67,7 @@ A clip is kept as 16-bit samples, 32 KB a second: a 10-minute dictation is 19.2 
 
 ## Size
 
-`make size` (bench/size.md), release, stripped:
+`make size` as it was then (bench/size.md), release, stripped:
 
 | App | Stripped |
 |---|---:|

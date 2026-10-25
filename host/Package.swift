@@ -1,14 +1,12 @@
 // swift-tools-version: 6.0
 import PackageDescription
 
-// The development package: the example apps, tests and fuzzers. Apps outside this repository
-// depend on the root package (../Package.swift) at a tag instead; its library targets are these
-// sources again, without the development link line below.
+// The development package: the host's tests and fuzzers. Apps depend on the root package
+// (../Package.swift) at a tag instead; its library targets are these sources again, without the
+// development link line below.
 //
 // `make lean` builds the Lean libraries, merges the framework with Lean's runtime into
-// ../build/lib/libcairn_lean.a (linked through CLean), puts each app in its own
-// ../build/lib/libcairn_app_<name>.a (linked by that app's executable only: v1 apps share the
-// `cairn_app_*` export names) and vendors lean.h into Sources/CLean/vendor.
+// ../build/lib/libcairn_lean.a (linked through CLean) and vendors lean.h into Sources/CLean/vendor.
 let leanLib = Context.packageDirectory + "/../build/lib"
 
 let package = Package(
@@ -39,26 +37,10 @@ let package = Package(
         // The generic AppKit host: threads, input, text input, accessibility, effects.
         .target(name: "CairnHost", dependencies: ["CLean", "CairnFrame", "CairnRender"]),
 
-        // Headless screenshots with pins (`make capture`): each app executable calls
-        // MapCapture.main, since each links its own app.
+        // Headless screenshots with pins (`--map-capture`, `--try-capture`): each app's executable
+        // calls MapCapture.main, since each links its own app.
         .target(name: "CairnCapture", dependencies: ["CairnHost", "CairnFrame", "CairnRender"]),
 
-        // Apps: one executable per Lean app, each linking its own app library.
-        // region: package-counter
-        .executableTarget(name: "CairnCounter", dependencies: ["CairnHost", "CLean", "CairnFrame", "CairnCapture"],
-                          linkerSettings: [.unsafeFlags(["-L" + leanLib, "-lcairn_app_counter"])]),
-        // endregion: package-counter
-        .executableTarget(name: "CairnBasics", dependencies: ["CairnHost", "CLean", "CairnFrame", "CairnRender", "CairnCapture"],
-                          linkerSettings: [.unsafeFlags(["-L" + leanLib, "-lcairn_app_basics"])]),
-        .executableTarget(name: "CairnTodo", dependencies: ["CairnHost", "CLean", "CairnFrame", "CairnRender", "CairnCapture"],
-                          linkerSettings: [.unsafeFlags(["-L" + leanLib, "-lcairn_app_todo"])]),
-        .executableTarget(name: "CairnClock", dependencies: ["CairnHost", "CLean", "CairnFrame", "CairnCapture"],
-                          linkerSettings: [.unsafeFlags(["-L" + leanLib, "-lcairn_app_clock"])]),
-        .executableTarget(name: "CairnTray", dependencies: ["CairnHost", "CLean", "CairnFrame", "CairnCapture"],
-                          linkerSettings: [.unsafeFlags(["-L" + leanLib, "-lcairn_app_tray"])]),
-        .executableTarget(name: "CairnGallery", dependencies: ["CairnHost", "CLean", "CairnFrame", "CairnRender", "CairnCapture"],
-                          resources: [.copy("images")],
-                          linkerSettings: [.unsafeFlags(["-L" + leanLib, "-lcairn_app_gallery"])]),
         // A Swift stand-in app with a text field, for checking the host by hand (IME, AX) before
         // a Lean app has one. Not product code.
         .executableTarget(name: "CairnFixture", dependencies: ["CairnHost", "CairnFrame", "CairnRender"]),

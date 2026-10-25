@@ -51,7 +51,8 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
 
 ## v0.3.0 (unreleased)
 
-The next minor version: it retires claims and changes the frame format.
+The next minor version: it retires and moves claims, removes modules and changes the frame
+format.
 
 - **Secrets in the Keychain** ([#205](https://github.com/iamnbutler/cairn/issues/205)). A
   `Secret` now has a `source`: `.env file name` (what `Secret` was before) or `.keychain
@@ -72,15 +73,33 @@ The next minor version: it retires claims and changes the frame format.
   `Request.http` gains `redact` (defaulted to `false`): a redacted request dumps as
   `<redacted N bytes>` in `Frame.Dump`, the debug socket and fuzz output. A dump of a frame
   holds none of a secure field's text (`secure_frame` in `Cairn.Frame.Dump`). The fuzzer plants text in
-  secure fields and fails if it appears in any dump. The Todo example's ^225 is retired as ^226.
+  secure fields and fails if it appears in any dump. The Todo example's ^225 is retired as ^226, which moved to
+  `cairn_examples` with the rest of Todo (below).
 - **Frame format version 10.** Adds the secure flag to accessibility nodes and text inputs and
   `http`'s redact flag. A host and a Lean library must both be at 10; version 9 never shipped
   in a release.
+- **The example apps are out of Cairn** ([#137](https://github.com/iamnbutler/cairn/issues/137)).
+  Counter, Basics, Todo, Clock, Tray and Gallery are in their own package,
+  [`cairn_examples`](/packages/cairn_examples/), which requires Cairn from the registry like any
+  app. Their 71 claims keep their numbers and statements there and are `moved:cairn_examples` in
+  Cairn's `claims.lock` (^1–^5, ^101–^109, ^201–^226 but for ^213–^215 and ^225, ^401–^409,
+  ^450–^462, ^501–^513): `cairn^202` is now `cairn_examples^202`. ^6, ^213, ^215 and ^225 stay
+  retired, and ^7 and ^214 stay in Cairn's trusted base. Cairn's ledger now holds only
+  framework claims. The ledger counts a move like a retirement, so it needs this minor version
+  (`Cairn.Claims.LedgerTests`). `lean/Examples`, the `Examples` Lake library, the host's
+  `Cairn<App>` executables, the `/try/` pages and the Makefile's `demo`, `bundle`, `capture`,
+  `conformance`, `fuzz`, `doc APP=` and `examples-*` targets are gone; the per-app checks run
+  on test/fixture with the `cairn` CLI. `CLean`'s header no longer declares the examples'
+  initializers.
+- **The 0.1.3 shims are gone.** `Cairn.Frame.Boundary`, `Cairn.Runtime.Hit` and
+  `Cairn.Text.Metrics` no longer exist; import `Cairn.Abi`, `Cairn.UI.Hit` and `Cairn.Font`.
 - **Upgrading.** Write an environment secret as
   `{ header, scheme, source := .env file name }` (Yap's `apiKey`; its `upload` is unchanged
   otherwise). A pattern that lists `http`'s five arguments (`| .http m u hs b t =>`) now matches
   only requests with no secret, no captures and no redaction: write
   `| .http m u hs b t _ _ _ =>` or `| .http m u ..`. Exhaustive matches on `Request` need a `forgetSecret` case.
+  Replace an import of a shim with its module (Yap's `Cairn.Frame.Boundary` is `Cairn.Abi`). An
+  app that cited a Cairn example claim (`cairn^202`) cites `cairn_examples^202`.
 
 ## v0.2.5
 

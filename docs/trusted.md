@@ -175,12 +175,12 @@ See [host.md](host.md) for how each piece works.
 - **A double click is a second click** (`assume`, ^214 `doubleClick`). The second click of a
   double click reaches Lean as another `pointerMove p` and a `pointerDown p primary` with
   `clicks: 2` at the same point, then its `pointerUp`; the runtime turns that release into a
-  `doublePress` (TodoMVC's ^205 relies on it). Which clicks make a double click (the interval and
-  distance) is AppKit's, from the user's settings.
+  `doublePress` (TodoMVC's `cairn_examples^205` relies on it). Which clicks make a double click
+  (the interval and distance) is AppKit's, from the user's settings.
 
-  ^7 and ^214 were declared by the Counter and TodoMVC examples; they keep their ids and
-  statements and now live with the other assumptions in `Cairn.Fuzz.Trusted.Claims`, since every
-  app relies on them.
+  ^7 and ^214 were declared by the Counter and TodoMVC examples (now in cairn_examples); they keep
+  their ids and statements and now live with the other assumptions in `Cairn.Fuzz.Trusted.Claims`,
+  since every app relies on them.
 
   **Trusted code.** `HostView`'s `mouseDown`, `mouseUp` and `point` (`host/Sources/CairnHost/HostView.swift`),
   the engine's queue (`Engine.swift`), AppKit's hit testing and its `clickCount`.
@@ -310,7 +310,9 @@ the host sends. What the host is trusted with is that what it sends is true: the
 deadline, and the outcome of each request. Trusted code: `host/Sources/CairnHost/World.swift`
 (HostClock, Handlers, Files, Sounds, HTTP, World) and the clock and wake parts of
 `Engine.swift`. Each item is an `assume` claim with a fuzz check (docs/fuzz.md, "Trusted base");
-`WorldTests` and the Clock self test (`make selftest`) cover them end to end.
+`WorldTests` and the fixture's self test (its Flash timer, `make selftest`) cover them end to
+end. Clock's self test (clock, timers and wake, file reads and writes, a subscription) runs only
+in cairn_examples' `make check`, against the released Cairn.
 
 - **Fuzzed** (^908 `clock.monotonic`): every batch starts with exactly one clock; `mono` is
   `CLOCK_MONOTONIC` in ms (it counts sleep), never decreases between batches, is not ahead of
@@ -505,8 +507,9 @@ bundle. Redirects, caching and cookies are Foundation's (an ephemeral session, a
 - **Fuzzed** (^1008 `render.image.pixels`): a four-quadrant image of random format, size and
   orientation drawn into a box, minified and magnified, at 1x to 3x; the centre of each quadrant
   of the destination has that quadrant's colour.
-- **Tested**: Gallery's self test (`swift run CairnGallery --selftest`) loads its five local
-  sources through the real handler and renders them.
+- **Tested** (in cairn_examples' `make check`, against the released Cairn; not in Cairn's):
+  Gallery's self test (`swift run CairnGallery --selftest`) loads its five local sources through the
+  real handler and renders them.
 
 ### Cancelling a request (`assume`, ^1009)
 
@@ -535,9 +538,10 @@ reaches no app; what it relies on from the host is that the answer still comes.
   while running and after the answer, and cancels of ids never sent. Every request answers
   exactly once; every held load that started was stopped and answered `failed`; cancelled
   reloads keep the stored image; stray cancels are answered by nothing.
-- **Tested**: Gallery's self test asks for 24 thumbnails from a slow stub server, checks it
-  never serves more than six at once, cancels mid-load and checks the stopped requests ended at
-  the server and the queued ones never reached it.
+- **Tested** (in cairn_examples' `make check`, against the released Cairn; not in Cairn's):
+  Gallery's self test asks for 24 thumbnails from a slow stub server, checks it never serves more
+  than six at once, cancels mid-load and checks the stopped requests ended at the server and the
+  queued ones never reached it.
 
 ## Yap's devices: recording, keys, typing, uploads (workstream T)
 
@@ -696,10 +700,10 @@ accepts are refused by the scan (`invalid`).
 ## Surfaces: menus and overlay panels (workstream S)
 
 See [surfaces.md](surfaces.md). Presence, enablement and checkmarks are proved on the menu
-*description* (`Frame.controls_ofMenu`, `Frame.enabled_ofMenu`, Tray's theorems), and a stale or
-unknown selection is proved to change nothing (`Runtime.menu_select_stale`). What AppKit does
-with the description is assumed. The host code is `host/Sources/CairnHost/Surfaces.swift`
-(`SurfaceHost`, `MenuHost`, `StatusHost`, `PanelHost`).
+*description* (`Frame.controls_ofMenu`, `Frame.enabled_ofMenu`, Tray's theorems in cairn_examples),
+and a stale or unknown selection is proved to change nothing (`Runtime.menu_select_stale`). What
+AppKit does with the description is assumed. The host code is
+`host/Sources/CairnHost/Surfaces.swift` (`SurfaceHost`, `MenuHost`, `StatusHost`, `PanelHost`).
 
 Every check below runs `SurfaceHost` in `.detached` mode: the menus and panels are real AppKit
 objects, but no status item is added to the menu bar and no panel is ordered onto the screen.
@@ -723,10 +727,11 @@ effective flag (the item's and every enclosing submenu's).
   reading of the records (titles, kind, effective enablement, state, identifier, key equivalent
   and modifier mask through the suite's own key table, submenu nesting). Counters: records,
   rebuilds.
-- Conformance (`make conformance APP=Tray`): the socket's `menu` against the model's menu after
-  every step.
-- `CairnTray --selftest`: the tree, ⌘O on Show Overlay, the checkmark, a submenu rebuilt when its
-  shape changes and the same `NSMenuItem` updated in place when it doesn't.
+- Conformance (`cairn conformance --app Tray` in cairn_examples, by hand; it was never in
+  `make check`): the socket's `menu` against the model's menu after every step.
+- `CairnTray --selftest` (in cairn_examples' `make check`, against the released Cairn; not in
+  Cairn's): the tree, ⌘O on Show Overlay, the checkmark, a submenu rebuilt when its shape changes
+  and the same `NSMenuItem` updated in place when it doesn't.
 
 ### Choosing an item reports its ref (`assume`, ^941)
 
@@ -739,8 +744,9 @@ update harmless (`menu_select_stale`).
   through `NSMenu.performActionForItem(at:)` (AppKit's dispatch, about 60 ms per call, which is
   why it is sampled) and exactly one `menuSelect(place, ref)` must arrive; for a disabled item,
   `performActionForItem` must send nothing (`disabledNotSent`).
-- Conformance: every enabled item is chosen through `performActionForItem`, and greyed-out
-  items are chosen directly, with the model expecting no change.
+- Conformance (Tray, in cairn_examples, by hand): every enabled item is chosen through
+  `performActionForItem`, and greyed-out items are chosen directly, with the model expecting no
+  change.
 
 ### Opening and closing are reported once each (`assume`, ^942)
 
@@ -761,8 +767,9 @@ the delegate when a person clicks the status item (manual checklist,
 honours them (no focus change, clicks pass through, shown over full-screen apps and on every
 Space) is window-server behaviour with no API to assert from inside the app: manual checklist.
 
-**Evidence.** **Fuzzed** (`panel.inert`): the properties after every random frame, shown or
-hidden. `CairnTray --selftest` and the socket's `surfaces` read the same properties.
+**Evidence.** **Fuzzed** (`panel.inert`): the properties after every random frame, shown or hidden.
+`CairnTray --selftest` (in cairn_examples' `make check`, against the released Cairn; not in Cairn's)
+and the socket's `surfaces` read the same properties.
 
 ### The panel is where its anchor says (`assume`, ^944)
 
@@ -788,8 +795,8 @@ through size changes until hidden.
 
 An app asks for its window's smallest content size in every state (`App.minSize`, carried by
 the frame's window record, docs/frame.md). Lean proves what the view does at every size from
-that one up (Gallery's ^511 with `Grid.minBox`: every tile at least 180 points wide); that the
-window never gets smaller is the host's.
+that one up (Gallery's `cairn_examples^511` with `Grid.minBox`: every tile at least 180 points
+wide); that the window never gets smaller is the host's.
 
 ### The window is never smaller than the app's minimum size (`assume`, ^1010)
 
@@ -816,8 +823,9 @@ A minimum larger than the screen gives a window larger than the screen.
   every step `contentMinSize` is the minimum, the content and the view's whole-point size are at
   least it, a met minimum moved nothing, a grown window kept its top-left corner, and a drag at
   or above the minimum was left as proposed.
-- **Tested**: Gallery's self test checks the window record asks for 1020 × 536 and that the
-  pictures are 180 × 135 there.
+- **Tested** (in cairn_examples' `make check`, against the released Cairn; not in Cairn's):
+  Gallery's self test checks the window record asks for 1020 × 536 and that the pictures are 180 ×
+  135 there.
 
 ## The image cache's budget (M3)
 
@@ -825,8 +833,8 @@ An app that subscribes to `Sub.imageCache bytes` has the host keep its decoded i
 that budget (docs/effects.md, "A budget on the host's images"). Lean proves, in a model of the
 table, the store and the messages between them (`Images.Cache.ready_held_quiet`), that an image
 the app takes for ready has its pixels with the host once every message is heard, given the
-host's two moves below; the app's side (`Images.evicted`) is proved, and Gallery's ^513 keeps
-its dropped thumbnails not loaded until loaded again.
+host's two moves below; the app's side (`Images.evicted`) is proved, and Gallery's
+`cairn_examples^513` keeps its dropped thumbnails not loaded until loaded again.
 
 ### The image cache reports every image it drops (`assume`, ^1011)
 
@@ -856,8 +864,9 @@ can be drawn), `host/Sources/CairnHost/ImageEffects.swift`.
   what the app takes for ready, files deleted and restored; the events, fed in order to a copy of
   Lean's `Images` table, leave every image it takes for ready in the store once every request is
   answered.
-- **Tested**: Gallery's self test loads 24 thumbnails under its 8 MiB budget, checks some are
-  evicted and every drawn image is in the store, pages, and checks again.
+- **Tested** (in cairn_examples' `make check`, against the released Cairn; not in Cairn's):
+  Gallery's self test loads 24 thumbnails under its 8 MiB budget, checks some are evicted and every
+  drawn image is in the store, pages, and checks again.
 
 ## Secure fields (M4)
 

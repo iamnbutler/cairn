@@ -32,16 +32,15 @@ ledger, the audit, the kernel replay and `make doc` read. -/
 
 /-- The linked closure: everything `bin/cairn-link` (`@cairn/Cairn:static`) puts in an app. No
 `import Lean`, no proofs. `Cairn.Abi` is its top (the host runs `initialize_cairn_Cairn_Abi`);
-`Cairn.Fuzz.Rng` is here because app modules name its `Custom` hook. The old names of moved
-modules stay until 0.2.0, since apps import them. The `Cairn` umbrella imports each of these. -/
+`Cairn.Fuzz.Rng` is here because app modules name its `Custom` hook. The `Cairn` umbrella imports
+each of these. -/
 def linked : Array Lean.Name := #[`Cairn.Geometry, `Cairn.Claim, `Cairn.Effects, `Cairn.Font, `Cairn.Input,
     `Cairn.UI.Node, `Cairn.UI.Images, `Cairn.UI.Grid, `Cairn.UI.Hit, `Cairn.Surface, `Cairn.App,
     `Cairn.Claims.Move, `Cairn.Claims.Machine, `Cairn.Claims.Core,
     `Cairn.Text.Wrap, `Cairn.Text.Field, `Cairn.Text.Host, `Cairn.Layout.Core, `Cairn.Layout.Facts,
     `Cairn.Runtime.World, `Cairn.Runtime.Step, `Cairn.Runtime.Abi,
     `Cairn.Frame, `Cairn.Frame.Bytes, `Cairn.Frame.Encode, `Cairn.Frame.Events, `Cairn.Frame.Menu,
-    `Cairn.Frame.Build, `Cairn.Abi, `Cairn.Fuzz.Rng,
-    `Cairn.Frame.Boundary, `Cairn.Runtime.Hit, `Cairn.Text.Metrics]
+    `Cairn.Frame.Build, `Cairn.Abi, `Cairn.Fuzz.Rng]
 
 @[default_target]
 lean_lib Cairn where
@@ -71,8 +70,7 @@ lean_lib CairnClaims where
   roots := #[`Cairn.Claims.Elab, `Cairn.Claims.Registry]
   globs := #[.one `Cairn.Claims.Elab, .one `Cairn.Claims.Registry, .one `Cairn.Claims]
 
-/-- Tests for the claim commands. Not imported by `CairnAll` or `Examples`, so their ids stay out of
-the ledger. -/
+/-- Tests for the claim commands. Not imported by `CairnAll`, so their ids stay out of the ledger. -/
 @[default_target]
 lean_lib ClaimsTests where
   roots := #[`Cairn.Claims.Tests]
@@ -88,13 +86,8 @@ lean_lib CairnTrusted where
 default target: `make kernel` replays the default targets in one environment, and each of these
 defines a root `main`. -/
 lean_lib CairnTools where
-  roots := #[`Cairn.Claims.Tool, `Cairn.Claims.Ledger, `Cairn.Claims.Export,
-    `Cairn.Claims.Release, `Cairn.Doc.Export, `Audit]
-
-/-- Every example app and its proofs (`Examples.lean`): what the ledger, the axiom audit and the
-kernel replay read. The host links the per-app libraries below, never this one. -/
-@[default_target]
-lean_lib Examples
+  roots := #[`Cairn.Claims.Tool, `Cairn.Claims.Ledger, `Cairn.Claims.LedgerTests,
+    `Cairn.Claims.Export, `Cairn.Claims.Release, `Cairn.Doc.Export, `Audit]
 
 /-- `lake exe ledger check|update`: guards `claims.lock` (see docs/claims.md). -/
 lean_exe ledger where
@@ -112,58 +105,6 @@ lean_exe doc where
   root := `Cairn.Doc.Export
   supportInterpreter := true
 
-/-! One static library per app, and each host executable links exactly one (`make lean`,
-host/Package.swift): v1 apps all export `cairn_app_init/step/frame`, so two in one binary would
-clash. Each needs `claims_meta.o` (docs/claims.md, "Linking"). The host calls the app module's
-`runtime_initialize_*`. -/
-
--- region: lakefile-counter
-/-- Counter: its exports (`Examples.Counter.Abi`) and the app. The exports are a separate module
-so that executables linking all of `Examples` (the fuzzer) don't get two `cairn_app_init`s. -/
-@[default_target]
-lean_lib Counter where
-  roots := #[`Examples.Counter.Abi, `Examples.Counter]
-  defaultFacets := #[LeanLib.staticFacet]
-  moreLinkObjs := #[claims_meta.o]
--- endregion: lakefile-counter
-
-/-- Basics (`Examples.Basics`). -/
-@[default_target]
-lean_lib Basics where
-  roots := #[`Examples.Basics]
-  defaultFacets := #[LeanLib.staticFacet]
-  moreLinkObjs := #[claims_meta.o]
-
-/-- TodoMVC (workstream I): its exports (`Examples.Todo.Abi`), the app, model and view. The exports
-are a separate module so that executables linking all of `Examples` (the fuzzer) don't get two
-`cairn_app_init`s. -/
-@[default_target]
-lean_lib Todo where
-  roots := #[`Examples.Todo.Abi, `Examples.Todo, `Examples.Todo.Model, `Examples.Todo.View]
-  defaultFacets := #[LeanLib.staticFacet]
-  moreLinkObjs := #[claims_meta.o]
-
-/-- Clock (workstream Q, docs/effects.md): its exports (`Examples.Clock.Abi`) and the app. -/
-@[default_target]
-lean_lib Clock where
-  roots := #[`Examples.Clock.Abi, `Examples.Clock]
-  defaultFacets := #[LeanLib.staticFacet]
-  moreLinkObjs := #[claims_meta.o]
-
-/-- Gallery (#116, docs/effects.md "Images"): image tiles loaded with `loadImage`. -/
-@[default_target]
-lean_lib Gallery where
-  roots := #[`Examples.Gallery.Abi, `Examples.Gallery]
-  defaultFacets := #[LeanLib.staticFacet]
-  moreLinkObjs := #[claims_meta.o]
-
-/-- Tray (workstream S, docs/surfaces.md): a menu bar item and an overlay panel. -/
-@[default_target]
-lean_lib Tray where
-  roots := #[`Examples.Tray.Abi, `Examples.Tray]
-  defaultFacets := #[LeanLib.staticFacet]
-  moreLinkObjs := #[claims_meta.o]
-
 lean_exe bench where
   root := `Bench
 
@@ -176,9 +117,8 @@ lean_exe framecorpus where
 
 /-- The conformance generator (tools/conformance, docs/conformance.md): walks an app's model and
 writes move sequences with the frames the app must show. Each app has an entry-point module of
-its own (`Examples.<App>.Conformance`, an app package's `<App>.Conformance`), which `make
-conformance` and `cairn conformance` link with that app's library and the host's Core Text
-metrics. Never linked into the host. -/
+its own (an app package's `<App>.Conformance`), which `cairn conformance` links with that app's
+library and the host's Core Text metrics. Never linked into the host. -/
 @[default_target]
 lean_lib Conformance where
   srcDir := "../tools/conformance/lean"
@@ -195,12 +135,6 @@ lean_lib CairnFuzz where
   globs := #[.one `Cairn.Fuzz.Metrics, .one `Cairn.Fuzz.Target, .one `Cairn.Fuzz.Text,
     .one `Cairn.Fuzz.Host, .one `Cairn.Fuzz.HostTests, .one `Cairn.Fuzz.Walk, .one `Cairn.Fuzz.Shrink, .one `Cairn.Fuzz.Collect, .one `Cairn.Fuzz.Main,
     .one `Cairn.Fuzz]
-
-/-- `lake exe fuzz <App> [--seed S] [--iterations N] [--steps K]` (docs/fuzz.md): the fuzzer on
-the example apps, for `make fuzz APP=…` and the maps. Cairn's own checks fuzz test/fixture with
-`cairn fuzz`, which builds that package's `fuzz`. -/
-lean_exe fuzz where
-  root := `Examples.FuzzMain
 
 /-- Lean's side of the trusted-base fuzzer (docs/fuzz.md, "Trusted base"): generators, the
 proved decoders' verdicts and a one-field app, exported over C for the Swift executable

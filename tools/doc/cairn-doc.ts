@@ -104,7 +104,7 @@ const links = (opts.link as string[]).map((l) => {
 });
 const ctx = {
 	name,
-	command: opts.command || `make doc ${app ? `APP=${app}` : `PKG=${name}`}`,
+	command: opts.command || (app ? "cairn doc" : `make doc PKG=${name}`),
 	doc,
 	rows,
 	showPrivate: opts.private!,

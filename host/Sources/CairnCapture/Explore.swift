@@ -4,7 +4,7 @@ import CairnRender
 import CoreGraphics
 import Foundation
 
-/// The states behind the site's "Try it" pages (/try/<app>/, docs/try.md).
+/// The states behind a "Try it" page (docs/try.md; the site built them for the examples until 0.3.0).
 ///
 /// A bounded breadth-first walk of an app's real `step` and `frame`, headless like the map capture:
 /// from the initial frame, act on every control in the frame's accessibility nodes with each

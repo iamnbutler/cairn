@@ -5,8 +5,8 @@ on the running app as real input. After every step, the app's frame, accessibili
 and pixels are compared with the model's.
 
 ```sh
-make conformance APP=Basics            # N=1000 walks of LEN=12 steps, SEED=1
-make conformance APP=Basics N=50 LEN=20 SEED=7
+cd test/fixture && cairn conformance            # 1000 walks of 12 steps, seed 1
+cd test/fixture && cairn conformance --n 50 --length 20 --seed 7
 ```
 
 The run writes:
@@ -28,24 +28,21 @@ The run has three parts:
 
 ## Adding an app
 
-Adding an app takes one module beside it that exports `cairn_conformance_run`. For an example,
-`lean/Examples/<App>/Conformance.lean`:
+Adding an app takes one module beside it that exports `cairn_conformance_run`. The fixture's,
+test/fixture/lean/Fixture/Conformance.lean:
 
 ```lean
 module
 public import Conformance.Gen
-public import Examples.Todo.Abi
+public import Fixture.Abi
 @[export cairn_conformance_run]
-public def Examples.Todo.Conformance.run (args : List String) : IO UInt32 :=
-  _root_.Conformance.run Examples.Todo.machine Examples.Todo.app Examples.Todo.cfg args
+public def Fixture.Conformance.run (args : List String) : IO UInt32 :=
+  _root_.Conformance.run Fixture.machine Fixture.app Fixture.cfg args
 ```
 
-The example must also be in the Makefile's `APPS`, and its host target must be `Cairn<App>`. Its
-claims are read with `lake exe claims Examples.<App>`.
-
-An app package runs `cairn conformance` (docs/cli.md, "Checks") instead. Its module is
+The app package runs `cairn conformance` (docs/cli.md, "Checks"). Its module is
 `<App>.Conformance` by default, in a `lean_lib` of its own declared after the app's (whose root
-would otherwise claim it), as test/fixture/lean/Fixture/Conformance.lean is. `cairn conformance`
+would otherwise claim it), as the fixture's is. `cairn conformance`
 links it with the app's merged library (`.cairn/lib/lib<name>.a`) and the CairnRender and
 CairnFrame objects of the app's own debug build, which carry the host's Core Text metrics.
 
@@ -223,6 +220,10 @@ For the first failure of each kind, the driver shrinks the failing sequence:
 The repro in `report.md` is therefore re-verified on the app, one step per line, in the
 generator's gesture format.
 
+The runs below were on the examples while they were in this repository, with the Makefile's
+`make conformance APP=<App>`. The apps are in cairn_examples now, where
+`cairn conformance --app <App>` runs them; none of these runs is part of a `make check`.
+
 ## Basics
 
 `make conformance APP=Basics N=1000` on this branch, rebased on b28cb50 (macOS 27, Apple silicon, debug build,
@@ -290,8 +291,8 @@ steps, ^2 419).
 
 ## Tray: menus
 
-Tray (lean/Examples/Tray.lean) has no window: a status item with a native menu and an overlay
-panel. The generator offers, for each shown status item:
+Tray (`lean/Tray.lean` in cairn_examples) has no window: a status item with a native menu and an
+overlay panel. The generator offers, for each shown status item:
 
 - **open the menu**: `menuOpen` then `menuClose`, the move being a press on the item's control;
 - **choose an item**: `menuSelect` for each item that is enabled (with every submenu around it)

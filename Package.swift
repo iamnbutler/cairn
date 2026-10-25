@@ -10,8 +10,8 @@ import PackageDescription
 // Lean's runtime, Cairn's Lean library and the app's own (docs/package.md), from its own root
 // manifest, where `unsafeFlags` are allowed. Lean's header ships in CLean/vendor.
 //
-// The sources are host/'s. host/Package.swift is the development package (the example apps,
-// tests and fuzzers, linked against ../build/lib); it declares these targets again with the
+// The sources are host/'s. host/Package.swift is the development package (the host's tests and
+// fuzzers, linked against ../build/lib); it declares these targets again with the
 // development link line. Keep the two in step.
 let package = Package(
     name: "Cairn",

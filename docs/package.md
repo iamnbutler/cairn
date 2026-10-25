@@ -78,7 +78,7 @@ let lib = Context.packageDirectory + "/.cairn/lib"
 `import Cairn` (in a `module`, `public import Cairn`): the `Cairn` umbrella imports every module
 of the `Cairn` library, which is exactly what cairn-link links, and `meta`-imports the claim
 commands, so they run at compile time only (docs/claims.md, "Linking"). Importing single
-modules (`Cairn.App`, `Cairn.Abi`, …) works too, as Yap and the examples do. Don't import
+modules (`Cairn.App`, `Cairn.Abi`, …) works too, as Yap and cairn_examples do. Don't import
 `CairnAll`: it imports the proofs, tests and tool modules too, for the ledger, the axiom audit
 and `make doc`, and none of those are linked, so an app that imports it doesn't link (missing
 `initialize_cairn_*` symbols; cairn-link warns first).

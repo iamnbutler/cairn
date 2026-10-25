@@ -20,6 +20,7 @@ def clickOn (rs : Runtime.State State) (r : ControlRef) : List Event :=
   | some p => [.pointerMove p, .pointerDown p .primary 1 {}, .pointerUp p .primary {}]
   | none => []
 
+-- region: fixture-tests
 def typed : List Event :=
   clickOn (run []) fieldRef ++ [.insertText "  milk ", .key .enter {}, .insertText "eggs"]
 def two : List Event := typed ++ clickOn (run typed) addRef
@@ -41,6 +42,7 @@ def flashed : List Event := clickOn (run []) flashRef
 #guard ((decodeFrame (frameBytes Frame.boundary (run two))).map fun f =>
   f.ax.toList.filterMap (·.control)) ==
   some [fieldRef, addRef, passRef, flashRef, toggleRef 1, deleteRef 1, toggleRef 2, deleteRef 2]
+-- endregion: fixture-tests
 
 -- The Passcode field: bullets on screen, nothing in the accessibility value, a redacted request.
 def secret : List Event := clickOn (run []) passRef ++ [.insertText "hunter2"]

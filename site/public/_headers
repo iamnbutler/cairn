@@ -8,6 +8,3 @@
   Content-Type: text/plain; charset=utf-8
 /docs/*.md
   Content-Type: text/markdown; charset=utf-8
-# The try pages' frames (make site-try) are named by their content hash.
-/try/*/img/*
-  Cache-Control: public, max-age=31536000, immutable

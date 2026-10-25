@@ -32,10 +32,6 @@ import Cairn.Claims.Core
 import Cairn.Runtime
 import Cairn.Claims.Deliver
 import Cairn.Layout
--- Old names of moved modules, re-exporting the new ones until 0.2.0 (docs/packages-and-std.md).
-import Cairn.Frame.Boundary
-import Cairn.Runtime.Hit
-import Cairn.Text.Metrics
 
 /-! # Everything in Cairn
 

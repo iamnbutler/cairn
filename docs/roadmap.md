@@ -19,16 +19,15 @@ actions (like, repost, reply, follow, mute) are moves with clear rules, such as 
 posts appear nowhere".
 
 Work that runs alongside the milestones: host capabilities an app declares (#84), the docs
-builder (#94), artifacts only from CI (#95), examples in their own scope (#88).
+builder (#94), artifacts only from CI (#95). Done: examples in their own scope (#88), in
+iamnbutler/cairn_examples since 0.3.0.
 
 ## Planned `cairn` commands
 
-These are still make targets in the Cairn repository, for the apps that live in it
-(site/web/content/docs/reference/cairn-tool.md documents them as they are):
+Not in `cairn` yet (site/web/content/docs/reference/cairn-tool.md documents the plan):
 
 | Command | What it will do | Today |
 |---|---|---|
-| `cairn run` | open the app in a window | `make demo DEMO=Cairn<App>` |
+| `cairn run` | open the app in a window | `cairn build`, then `swift run <App>` |
 | `cairn check` | everything a change must pass | `make check` |
-| `cairn bundle --sign` | a signed `.app` | `make bundle APP=<App> SIGN=<identity>`, or Cairn's `tools/bundle/bundle.sh` from an app's own repository |
 | `cairn doctor` | check the toolchain | none |
