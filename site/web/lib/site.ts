@@ -1,5 +1,4 @@
-// The milestones' posts and the progress log, for the feed and the homepage. Moved from
-// tools/site/build.ts.
+// The milestones' posts and the progress log, for the feed and the homepage.
 //
 // Nothing is written twice by hand. The posts are the `article.post`s in
 // content/milestones/index.hbs, each an h2 with a permanent id and a <time datetime>; the

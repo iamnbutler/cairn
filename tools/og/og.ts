@@ -1,9 +1,8 @@
 // Link previews: the Open Graph and Twitter tags every page carries, and the card each one shows.
 // The docs, the homepage and /milestones/ write their own tags and cards (site/web, built by
-// bongo). These tags are stamped by tools/site/build.ts into the copied output of the map and
-// cairn doc, and the package pages (site/registry.js) write them in the Worker. Each tag block
-// names its card in an `<!-- og card {…} -->` comment; bongo reads those (site/web/lib/og.ts) and
-// draws og/<name>.png with the same satori partial as every other card.
+// bongo). These tags are stamped by tools/site/pages.ts into the built copies of the maps and the
+// API reference, and the package pages (site/registry.js) write them in the Worker. bongo draws
+// every card, og/<name>.png, with the same satori partial (site/web/lib/og.ts lists them).
 
 export const ORIGIN = "https://cairn.iamnbutler.workers.dev";
 
@@ -44,7 +43,6 @@ export function ogTags(o: { title: string; description?: string; path: string; c
 	const c = o.card;
 	return [
 		"<!-- og -->",
-		`<!-- og card ${JSON.stringify(c).replace(/--/g, "\\u002d\\u002d")} -->`,
 		`<meta property="og:type" content="website">`,
 		`<meta property="og:site_name" content="Cairn">`,
 		`<meta property="og:title" content="${esc(o.title)}">`,
@@ -58,9 +56,6 @@ export function ogTags(o: { title: string; description?: string; path: string; c
 		"<!-- /og -->",
 	].filter(Boolean).join("\n");
 }
-
-// Every card named in a page's HTML.
-export const cardsIn = (html: string): Card[] => [...html.matchAll(/<!-- og card (\{.*?\}) -->/g)].map((m) => JSON.parse(m[1]));
 
 const unesc = (s: string) => s.replace(/&(amp|lt|gt|quot|#39);/g, (_, e) => ({ amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'" })[e as string]!);
 

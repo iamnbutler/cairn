@@ -5,7 +5,7 @@ LEAN_PREFIX = $(shell cd lean && lean --print-prefix)
 LIB = build/lib/libcairn_lean.a
 VENDOR = host/Sources/CLean/vendor/lean
 
-.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest demo fixture clean record site site-maps map map-trusted doc doctest site-api conformance fuzz fuzz-quick size fuzz-trusted fuzz-trusted-quick bundle site-build site-dist registry-check new-check
+.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest demo fixture clean record site site-maps map map-trusted doc doctest conformance fuzz fuzz-quick size fuzz-trusted fuzz-trusted-quick bundle site-build site-dist registry-check new-check
 
 # region: make-apps
 # build/lib/libcairn_lean.a: the framework (`Cairn`) and Lean's runtime, linked by every host
@@ -152,15 +152,14 @@ site-maps:
 	rm -rf site/public/map && mkdir -p site/public/map
 	@for a in $(MAP_APPS); do cp -R build/map/$$a/dist site/public/map/$$(echo $$a | tr A-Z a-z); done
 	cp -R build/map/Trusted/dist site/public/map/trusted
-	bun tools/site/build.ts
 
 # The site's pages, built by bongo (site/web/bongo.config.ts) into site/web/public/: the developer
 # docs (content/docs/*.md), the homepage, /milestones/ and /feed.xml, each page with a link
 # preview card. Docs code is included from source by region; a missing file or region, a fenced
 # code block or a broken link fails the build. The feed and the homepage's latest milestone come
 # from content/milestones/index.hbs and site/public/media.json (lib/site.ts). The output isn't
-# committed: site-dist merges it with site/public. site/public/docs/api/ is
-# `cairn doc`'s, and site/public/docs/docs.css is shared with the package pages. --fresh: bongo
+# committed: site-dist merges it with site/public. site/public/docs/docs.css is shared with the
+# package pages. --fresh: bongo
 # rebuilds a page when its Markdown changes, not when a file it includes does.
 site-build:
 	cd site/web && bun install --frozen-lockfile --silent && bun --bun ./node_modules/.bin/bongo build --fresh
@@ -176,17 +175,22 @@ registry-check:
 new-check: lean
 	tools/cairn/new-check.sh
 
-# The microsite's files, build/site/: site/public with bongo's pages on top. bongo empties its own
-# output when a build fails, so it never writes into site/public; a file both have is an error.
+# The microsite's files, build/site/: site/public, bongo's pages, and Cairn's API reference
+# (`make doc PKG=Cairn`, built fresh each time) at /docs/api/, with the copied pages' link preview
+# tags stamped in (tools/site/pages.ts). bongo empties its own output when a build fails, so it
+# never writes into site/public; a file two of them have is an error.
 site-dist: site-build
+	$(MAKE) doc PKG=Cairn
 	rm -rf build/site && mkdir -p build && cp -R site/public build/site
 	@clash=$$(cd site/web/public && find . -type f -exec test -e ../../public/{} \; -print); \
 		if [ -n "$$clash" ]; then echo "site-dist: site/public and the docs build both have $$clash"; exit 1; fi
 	cp -R site/web/public/. build/site/
+	@if [ -e build/site/docs/api ]; then echo "site-dist: something else wrote docs/api/"; exit 1; fi
+	cp -R build/doc/Cairn/dist build/site/docs/api
+	bun tools/site/pages.ts build/site
 
-# Deploy the microsite (site/) to Cloudflare, once the copied pages' tags are fresh (site-tags-check,
-# below).
-site: site-dist site-tags-check
+# Deploy the microsite (site/) to Cloudflare.
+site: site-dist
 	cd site && npx -y wrangler@4 deploy
 
 clean:
@@ -235,16 +239,8 @@ doc:
 	cd lean && lake build && lake build doc claims
 	cd lean && lake exe doc --check $(DOC_MODULES) > ../$(DOCDIR)/doc.json
 	cd lean && lake exe claims $(DOC_MODULES) > ../$(DOCDIR)/claims.json
-	bun tools/doc/cairn-doc.ts --name $(DOC_NAME) --dir $(DOCDIR) $(if $(APP),--app $(APP) --link Cairn.=../../Cairn/dist/) \
+	bun tools/doc/cairn-doc.ts --name $(DOC_NAME) --dir $(DOCDIR) $(if $(PKG),,--app $(APP) --link Cairn.=../../Cairn/dist/) \
 		$(if $(PRIVATE),--private) $(if $(OPEN),--open)
-
-# Cairn's docs as the developer docs' API reference, site/public/docs/api/ (committed; the
-# docs build in site/web links to it and never writes it). Deploying is still `make site`.
-site-api:
-	$(MAKE) doc PKG=Cairn
-	rm -rf site/public/docs/api && mkdir -p site/public/docs
-	cp -R build/doc/Cairn/dist site/public/docs/api
-	bun tools/site/build.ts
 
 # Doc tests alone, for `make check`: every Lean code block in a doc comment in Cairn and the
 # examples elaborates (docs/doc.md, "Doc tests").
@@ -330,20 +326,9 @@ fuzz-trusted-quick: lean
 	cd host && swift build --product CairnFuzzTrusted
 	host/.build/debug/CairnFuzzTrusted --n 500 --claims build/fuzz/quick/trusted-claims.json --out build/fuzz/quick/trusted.json
 
-# Link preview tags in the copied map and API pages (tools/site/build.ts). They are committed;
-# site-tags-check fails when any is stale. It is part of check (on its own line, so the check:
-# list stays as the docs include it) and runs before every deploy.
-.PHONY: site-tags site-tags-check og-scene
-site-tags:
-	bun tools/site/build.ts
-
-site-tags-check:
-	bun tools/site/build.ts --check
-
+.PHONY: og-scene
 # The background of every link preview card, site/web/assets/og/scene.png (tools/og/scene.ts):
 # the homepage's scene, screenshotted by Google Chrome. Redraw it after a change to the scene and
-# commit it. The cards themselves are drawn by satori when bongo builds (site/web/partials/og/card.hbs).
+# commit it. The cards themselves are drawn by satori when bongo builds (tools/og/card.ts).
 og-scene:
 	bun tools/og/scene.ts
-
-check: site-tags-check

@@ -1,7 +1,7 @@
 // The progress log: media.json, newest first. Videos are written by tools/media/put.sh; a note is
 // an entry with "text" (plain-text paragraphs) and no video, for work with nothing to show on
 // screen. The homepage shows the featured video; /milestones/ puts each entry in its milestone's
-// progress log. tools/site/build.ts reads the same list for the feed, and links each entry to the
+// progress log. site/web/lib/site.ts reads the same list for the feed, and links each entry to the
 // id that videoId gives it here.
 
 export const list = () => fetch("/media.json").then(r => r.json());

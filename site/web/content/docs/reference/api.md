@@ -22,6 +22,6 @@ Anchors don't change while the name doesn't: a declaration's is its full name
 To build the same docs for an app in its own repository, run `cairn doc` there (output in
 `build/doc/<name>/`). Inside the Cairn
 repository, `make doc APP=Todo` documents an example (output in `build/doc/Todo/dist/`), and
-`make site-api` regenerates `/docs/api/`. Lean code blocks in doc comments are doc tests: `make
+`make site` builds `/docs/api/` from the framework on each deploy. Lean code blocks in doc comments are doc tests: `make
 check` compiles them, and a ` ```lean ignore ` block is shown but not checked. The design is in
 `docs/doc.md`.
