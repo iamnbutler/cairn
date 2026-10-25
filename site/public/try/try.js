@@ -34,8 +34,10 @@ export async function pick(list) {
 	}
 }
 
-/** /try/<app>/: the app. */
-export async function mount(root, app) {
+/** /try/<app>/: the app. `{ compact: true }` leaves out the steps and the note, for embedding
+ *  (the homepage, say): `<div class="try-app"></div>` and `mount(el, "counter", { compact: true })`,
+ *  with /try/try.css and the site's stylesheets. */
+export async function mount(root, app, opts = {}) {
 	let g;
 	try {
 		g = await load(app);
@@ -75,6 +77,11 @@ export async function mount(root, app) {
 <p>Text fields take the texts the app's own flows type, rather than free typing: those are the inputs the capture tried. Each reading comes from the claims export of the build that drew these frames, read the way <a href="${claimPage(placeId)}">the claim pages</a> read a published version's.</p>
 </div></aside>`;
 
+	if (opts.compact) {
+		root.querySelector(":scope > .note")?.remove();
+		root.querySelector(".trail").hidden = true;
+		root.classList.add("compact");
+	}
 	const $ = (s) => root.querySelector(s);
 	const img = $(".try-frame img"), spots = $(".spots"), menu = $(".menu"), info = $(".info"), steps = $(".steps"), msg = $(".msg"), where = $(".where");
 	const back = $(".back"), reset = $(".reset"), pins = $(".pins input"), frame = $(".try-frame");
@@ -123,7 +130,7 @@ export async function mount(root, app) {
 		trail();
 		// The next frames, so a click shows its frame at once.
 		for (const e of s.edges) if (typeof e[2] === "number") new Image().src = `/try/${app}/img/${states[e[2]].image}`;
-		try { history.replaceState(null, "", k ? `#s${k}` : location.pathname); } catch {}
+		if (!opts.compact) try { history.replaceState(null, "", k ? `#s${k}` : location.pathname); } catch {}
 	}
 
 	// ---- The side panel ------------------------------------------------------------------------
@@ -267,7 +274,7 @@ ${acts ? `<p class="label">From this frame</p><ul class="acts">${acts}</ul>` : `
 	pins.addEventListener("change", () => frame.classList.toggle("pinned", pins.checked));
 
 	// A link to a state (#s12) rebuilds the path that first reached it.
-	const want = /^#s(\d+)$/.exec(location.hash)?.[1];
+	const want = !opts.compact && /^#s(\d+)$/.exec(location.hash)?.[1];
 	if (want && states[Number(want)]) {
 		const chain = [];
 		for (let k = Number(want); k && states[k].from; k = states[k].from[0]) {

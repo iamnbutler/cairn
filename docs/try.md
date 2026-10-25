@@ -82,3 +82,9 @@ first reached it.
 - **Seen is the model's frames**, rendered by the real renderer, as with the capture: no AppKit,
   no accessibility mirror. Conformance covers the host (docs/conformance.md).
 - **Bounded.** Past the bound the page stops and says so; it never guesses a frame.
+
+## Embedding
+
+`mount(el, "counter", { compact: true })` from `/try/try.js` draws the frame and the claim panel
+without the steps or the note, and leaves the page's URL alone: for a page such as the homepage,
+with `/try/try.css`, `/docs/docs.css` and `/packages.css` loaded.
