@@ -9,8 +9,8 @@ export const ORIGIN = "https://cairn.iamnbutler.workers.dev";
 // label: the small gold line above the title ("" for none); line: an optional sentence below it.
 export type Card = { name: string; label: string; title: string; line?: string };
 
-// The cards pages share. The package pages are drawn by the Worker from live data, so they share
-// one; so do the API reference's module pages.
+// The cards pages share: the package pages without a card of their own (the index, and a version
+// published since the last deploy) and the API reference's module pages.
 export const CARDS = {
 	packages: { name: "packages", label: "Cairn", title: "Packages", line: "Libraries to build on and apps to run, with the claims they make." },
 	api: { name: "api", label: "Cairn docs", title: "API reference", line: "Every module, declaration and claim, generated from the code." },

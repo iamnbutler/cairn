@@ -16,6 +16,7 @@
 // say (nextpm before kinds) means a library.
 import fixture from "./registry/fixture.json";
 import { CARDS, ogTags, packageCard } from "../tools/og/og.ts";
+import { bar } from "./nav.js";
 
 const esc = (value) =>
 	String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -154,14 +155,7 @@ ${ogTags({ title, description: lede, path, card })}
 <link rel="stylesheet" href="/packages.css">
 </head>
 <body>
-<header class="bar">
-  <a class="home" href="/"><img src="/icon.svg" alt="">Cairn</a>
-  <a href="/milestones/">Milestones</a>
-  <a href="/docs/">Docs</a>
-  <a href="/packages/"${on === "packages" ? ' class="on"' : ""}>Packages</a>
-  <a href="/docs/evidence/">Maps</a>
-  <a class="gh" href="https://github.com/iamnbutler/cairn"><img src="/github.svg" alt="">GitHub</a>
-</header>
+${bar(on)}
 <main class="registry">
 <header class="page">
 <p class="eyebrow">${eyebrow}</p>
