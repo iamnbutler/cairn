@@ -36,13 +36,10 @@
 </header>
 <article class="prose">
 <aside class="note"><div class="card px"><p class="label"><img src="/icon.svg" alt="">What works today</p>
-<p><code>cairn</code> has six commands: <code>new</code>, <code>add</code>, <code>build</code>, <code>doc</code>, <code>publish</code> and <code>login</code>. They have unit
-tests and have been run against a stand-in registry. Cairn has one public registry,
-<code>https://cairn.registry.nexthub.sh</code>, but its host isn't live yet
-(<a href="https://github.com/iamnbutler/cairn/issues/97">issue #97</a>). Until it is, <code>cairn add</code> and
-<code>cairn publish</code> have nowhere to go, and an app requires Cairn from git at a tag instead
-(<a href="/docs/guide/first-app/#an-app-in-its-own-repository">how</a>). Nothing installs <code>cairn</code> yet;
-build it from a Cairn checkout.</p>
+<p><code>cairn</code> has six commands: <code>new</code>, <code>add</code>, <code>build</code>, <code>doc</code>, <code>publish</code> and <code>login</code>, with unit tests.
+Cairn has one public registry, <code>https://cairn.registry.nexthub.sh</code>: anyone can read it, and
+publishing takes a token. It holds no prebuilt Lean yet, so the first <code>cairn build</code> compiles
+Cairn. Nothing installs <code>cairn</code> yet; build it from a Cairn checkout.</p>
 </div></aside>
 <h2 id="building-it">Building it</h2>
 <p><code>cairn</code> is its own Swift package in Cairn's <code>tools/cairn</code>, with no dependencies:</p>
