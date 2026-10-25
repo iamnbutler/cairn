@@ -182,4 +182,18 @@ assume ^1004 hostPaintBounds "A painter's pixels stay inside its box" where
   does "A paint draw changes no pixel outside its rect (snapped to device pixels as rects are) within the clip in force, whatever its painter draws and whatever data, time or scale it is given; a paint naming no registered painter changes nothing. Checked offscreen against the same frame without its paint draws, with Yap's tape painter and painters whose triangles cover the whole target or land anywhere."
   check "render.paint.bounds"
 
+/-! Images (docs/effects.md "Images", docs/frame.md `image` draws). -/
+
+assume ^1006 hostLoadImage "loadImage answers the image's pixel size, or the fault" where
+  does "loadImage of a file path (~/ is home, relative to the working directory) or an http(s) URL decodes the first image with ImageIO, applying its EXIF orientation, keeps it for image draws naming the same source and answers image with the oriented pixel size, exactly once; a missing file is notFound, an unreadable one denied, a directory, an empty source, NUL or bytes that are no image invalid; HTTP 404 and 410 notFound, 401 and 403 denied, any other status outside 2xx other, a failed connection network, a timeout timeout. Without reload a kept source is answered from the store without reading; with reload it is read again, and a failure removes it."
+  check "effects.load-image"
+
+assume ^1007 hostImageBounds "An image's pixels stay inside its box" where
+  does "An image draw changes no pixel outside its rect (snapped to device pixels as rects are) within the clip in force, whatever its destination rect and scale; a draw naming a source the host holds no image for changes nothing."
+  check "render.image.bounds"
+
+assume ^1008 hostImagePixels "An image is drawn where its oriented pixels are" where
+  does "An image draw scales the oriented image to its destination rect: each quadrant of the image lands in the same quadrant of the destination, in its colour (within 8 per channel, 40 for JPEG and HEIC), whatever the EXIF orientation, format and scale."
+  check "render.image.pixels"
+
 end Cairn.Fuzz.Trusted.Claims

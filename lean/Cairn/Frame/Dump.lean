@@ -47,6 +47,7 @@ def draw : Draw → String
     let ints (xs : List Int) : String := "[" ++ ",".intercalate (xs.map toString) ++ "]"
     s!"paint {rect r} origin={p.origin} shader={str p.shader} scalars={ints p.scalars} arrays=[" ++
       ",".intercalate (p.arrays.map ints) ++ "]"
+  | .image r d src => s!"image {rect r} dest={rect d} {str src}"
 
 def ax (n : AxNode) : String :=
   s!"node role={Role.code n.role} control={opt ref n.control} parent={opt toString n.parent} " ++
@@ -92,6 +93,7 @@ def request : Request → String
   | .appRunning b => s!"appRunning {str b}"
   | .readDefault d k => s!"readDefault {str d} {str k}"
   | .makeDir p => s!"makeDir {str p}"
+  | .loadImage src r => s!"loadImage {bit r} {str src}"
 
 def effect : Effect → String
   | .setClipboard s => s!"clipboard {str s}"
@@ -117,6 +119,7 @@ def reply : Reply → String
   | .names ns => s!"names {ns.length}" ++ ns.foldl (fun acc n => acc ++ s!" {str n}") ""
   | .app pid n => s!"app {pid} {str n}"
   | .flag b => s!"flag {bit b}"
+  | .image w h => s!"image {w} {h}"
 
 def canvas (c : Canvas) : String := Id.run do
   let mut out := s!"canvas {c.size.w} {c.size.h}\ndraws {c.draws.size}\n"

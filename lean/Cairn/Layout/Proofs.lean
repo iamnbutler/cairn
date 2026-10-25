@@ -897,4 +897,23 @@ theorem facts {m : TextMetrics} (hm : m.Valid) (w : Size) (n : Node) :
   childrenInside := layout_childrenInside m w n
   caretPlaced := layout_caretPlaced hm w n
 
+/-! ## Images -/
+
+/-- **An image's box doesn't depend on its state.** `Node.image` measures at the size the app
+gave it whether it is loading, loaded at any pixel size, or failed, so nothing around it moves
+when the pixels arrive or the load fails. -/
+theorem measure_image (m : TextMetrics) (aw : Int) (i : Image) :
+    (measure m aw (Node.image i)).size = ⟨i.width, i.height⟩ := by
+  simp only [Node.image, measure, Sized.size, Image.style, resolve]
+
+/-- An image's size is fixed on both axes, so rows and columns never stretch or shrink it. -/
+theorem image_sizings (m : TextMetrics) (aw : Int) (i : Image) :
+    (measure m aw (Node.image i)).sizings = (.fixed i.width, .fixed i.height) := by
+  simp only [Node.image, measure, Sized.sizings, Image.style]
+
+/-- An image is no control, in any state. -/
+theorem controls_image (i : Image) : (Node.image i).controls = [] := by
+  unfold Node.image Image.children
+  split <;> simp only [Node.controls, Node.controlsList, Option.toList, List.append_nil]
+
 end Cairn.Layout

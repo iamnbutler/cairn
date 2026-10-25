@@ -3,7 +3,7 @@ module
 public import Cairn.Frame
 public import Cairn.Frame.Bytes
 
-/-! Frame byte format v1 (docs/frame.md): specification encoder `Wire.Enc.frame`, decoder
+/-! Frame byte format (docs/frame.md; version 5): specification encoder `Wire.Enc.frame`, decoder
 `Wire.Dec.frame`, the executable encoder `encodeFrame` (proved equal to the specification and
 installed with `@[csimp]`), and the round trip `decodeFrame_encodeFrame`.
 
@@ -81,12 +81,14 @@ def Request.Kind.code : Request.Kind → UInt8
   | .appendFile => 4 | .listDir => 5 | .deleteFile => 6 | .frontmostApp => 7 | .permission => 8
   | .typeText => 9 | .upload => 10 | .forgetClip => 11
   | .openItem => 12 | .appRunning => 13 | .readDefault => 14 | .makeDir => 15
+  | .loadImage => 16
 
 def Request.Kind.ofCode : UInt8 → Option Request.Kind
   | 0 => some .readFile | 1 => some .writeFile | 2 => some .playSound | 3 => some .http
   | 4 => some .appendFile | 5 => some .listDir | 6 => some .deleteFile | 7 => some .frontmostApp
   | 8 => some .permission | 9 => some .typeText | 10 => some .upload | 11 => some .forgetClip
   | 12 => some .openItem | 13 => some .appRunning | 14 => some .readDefault | 15 => some .makeDir
+  | 16 => some .loadImage
   | _ => none
 
 @[simp] theorem Request.Kind.ofCode_code (k : Request.Kind) :
@@ -241,6 +243,7 @@ def fitsDraw : Draw → Bool
   | .shape r _ radius border _ shadow =>
     fitsRect r && fu radius && (border.all fun b => fu b.width) && shadow.all fitsShadow
   | .paint r p => fitsRect r && fitsPaint p
+  | .image r d src => fitsRect r && fitsRect d && fs src
 
 def fitsAx (n : AxNode) : Bool :=
   n.control.all fitsRef && n.parent.all fu && fitsRect n.rect && fs n.label && fs n.value
@@ -284,6 +287,7 @@ def fitsRequest : Request → Bool
   | .forgetClip c => fu c
   | .openItem t | .appRunning t => fs t
   | .readDefault d k => fs d && fs k
+  | .loadImage src _ => fs src
 
 def fitsEffect : Effect → Bool
   | .setClipboard s => fs s
@@ -369,6 +373,7 @@ def draw : Draw → List UInt8
       u32 (border.elim 0 (·.width)) ++ color (border.elim noColor (·.color)) ++
       color (shadow.elim noColor (·.color)) ++ u32 (shadow.elim 0 (·.radius)) ++
       i32 (shadow.elim 0 (·.x)) ++ i32 (shadow.elim 0 (·.y))
+  | .image r d src => [6] ++ pad 3 ++ rect r ++ rect d ++ str src
 
 def ax (n : AxNode) : List UInt8 :=
   [Role.code n.role] ++ bool n.focused ++ bool n.selected ++ [checkedCode n.checked] ++
@@ -422,6 +427,7 @@ def requestBody : Request → List UInt8
   | .appRunning b => str b
   | .readDefault d k => str d ++ str k
   | .makeDir p => str p
+  | .loadImage src reload => bool reload ++ pad 3 ++ str src
 
 def effect : Effect → List UInt8
   | .setClipboard s => [0] ++ pad 3 ++ str s
@@ -469,8 +475,8 @@ def surface (s : SurfaceFrame) : List UInt8 :=
   [SurfaceKind.code s.kind] ++ bool s.shown ++ [Anchor.code s.anchor, ScreenChoice.code s.screen] ++
     u32 s.place ++ u32 s.anchor.offset ++ str s.title ++ canvas s.canvas ++ status s.status
 
-/-- Magic, version 4, flags 0. -/
-def header : List UInt8 := magic ++ [4, 0, 0, 0]
+/-- Magic, version 5, flags 0. -/
+def header : List UInt8 := magic ++ [5, 0, 0, 0]
 
 def frame (f : Frame) : List UInt8 :=
   header ++ list surface f.surfaces.toList ++ list effect f.effects.toList ++
@@ -561,6 +567,11 @@ def draw : Dec Draw := do
     return .shape r (if hasFill then some fill else none) radius
       (if hasBorder then some ⟨bw, bc⟩ else none) corner
       (if hasShadow then some ⟨sc, sr, sx, sy⟩ else none)
+  | 6 =>
+    skip 3
+    let r ← rect
+    let d ← rect
+    return .image r d (← str)
   | _ => fail
 
 def ax : Dec AxNode := do
@@ -683,6 +694,10 @@ def requestBody : Request.Kind → Dec Request
     let d ← str
     return .readDefault d (← str)
   | .makeDir => do return .makeDir (← str)
+  | .loadImage => do
+    let reload ← bool
+    skip 3
+    return .loadImage (← str) reload
 
 def effect : Dec Effect := do
   match (← byte) with
@@ -910,6 +925,11 @@ theorem draw_enc {x : Draw} (h : fitsDraw x = true) (r : List UInt8) :
             byte_cons, bool_enc, Bool.false_eq_true, ↓reduceIte, skip_pad, rect_enc, color_enc,
             u32_enc, i32_enc, fitsU32_zero, pure_apply, Option.all_some, fu_iff,
             Option.isSome_some, Option.elim_some, Option.getD_some, Corner.ofCode_code]
+  | image rc d src =>
+    simp only [fitsDraw, Bool.and_eq_true, fs_iff] at h
+    obtain ⟨⟨hr, hd⟩, hs⟩ := h
+    simp only [draw, Enc.draw, List.cons_append, List.nil_append, List.append_assoc, bind_apply,
+        byte_cons, skip_pad, rect_enc hr, rect_enc hd, str_enc hs, pure_apply]
 
 theorem ax_enc {x : AxNode} (h : fitsAx x = true) (r : List UInt8) :
     ax (Enc.ax x ++ r) = some (x, r) := by
@@ -1052,6 +1072,10 @@ theorem requestBody_enc {q : Request} (h : fitsRequest q = true) (r : List UInt8
   | makeDir p =>
     simp only [fitsRequest, fs_iff] at h
     simp only [Request.kind, requestBody, Enc.requestBody, bind_apply, str_enc h, pure_apply]
+  | loadImage src reload =>
+    simp only [fitsRequest, fs_iff] at h
+    simp only [Request.kind, requestBody, Enc.requestBody, List.append_assoc, bind_apply,
+        bool_enc, skip_pad, str_enc h, pure_apply]
 
 theorem effect_enc {x : Effect} (h : fitsEffect x = true) (r : List UInt8) :
     effect (Enc.effect x ++ r) = some (x, r) := by
@@ -1240,6 +1264,7 @@ def draw : Draw → Nat
   | .popClip => 4
   | .paint _ p => 28 + str p.shader + ints p.scalars + intLists p.arrays
   | .shape .. => 56
+  | .image _ _ src => 36 + str src
 
 def ax (n : AxNode) : Nat := 36 + str n.label + str n.value
 
@@ -1274,6 +1299,7 @@ def requestBody : Request → Nat
   | .forgetClip _ => 4
   | .openItem t | .appRunning t => str t
   | .readDefault d k => str d + str k
+  | .loadImage src _ => 4 + str src
 
 def effect : Effect → Nat
   | .setClipboard s => 4 + str s
@@ -1463,6 +1489,7 @@ def draw (b : ByteArray) : Draw → ByteArray
       (border.elim 0 (·.width))) (border.elim Enc.noColor (·.color))
     i32 (i32 (u32 (color b (shadow.elim Enc.noColor (·.color))) (shadow.elim 0 (·.radius)))
       (shadow.elim 0 (·.x))) (shadow.elim 0 (·.y))
+  | .image r d src => str (rect (rect (pad (b.push 6) 3) r) d) src
 
 def ax (b : ByteArray) (n : AxNode) : ByteArray :=
   let b := bool (bool (b.push (Role.code n.role)) n.focused) n.selected
@@ -1511,6 +1538,7 @@ def requestBody (b : ByteArray) : Request → ByteArray
   | .forgetClip c => u32 b c
   | .openItem t | .appRunning t => str b t
   | .readDefault d k => str (str b d) k
+  | .loadImage src reload => str (pad (bool b reload) 3) src
 
 def effect (b : ByteArray) : Effect → ByteArray
   | .setClipboard s => str (pad (b.push 0) 3) s

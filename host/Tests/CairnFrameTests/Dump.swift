@@ -37,6 +37,8 @@ enum Dump {
             func ints(_ xs: [Int32]) -> String { "[" + xs.map { "\($0)" }.joined(separator: ",") + "]" }
             return "paint \(rect(r)) origin=\(p.origin) shader=\(str(p.shader)) scalars=\(ints(p.scalars)) arrays=["
                 + p.arrays.map(ints).joined(separator: ",") + "]"
+        case let .image(r, d, src):
+            return "image \(rect(r)) dest=\(rect(d)) \(str(src))"
         }
     }
 
@@ -143,6 +145,7 @@ enum Dump {
         case let .appRunning(b): return "appRunning \(str(b))"
         case let .readDefault(d, k): return "readDefault \(str(d)) \(str(k))"
         case let .makeDir(p): return "makeDir \(str(p))"
+        case let .loadImage(src, r): return "loadImage \(bit(r)) \(str(src))"
         }
     }
 
@@ -175,6 +178,7 @@ enum Dump {
         case let .names(ns): return "names \(ns.count)" + ns.map { " " + str($0) }.joined()
         case let .app(pid, n): return "app \(pid) \(str(n))"
         case let .flag(b): return "flag \(bit(b))"
+        case let .image(w, h): return "image \(w) \(h)"
         }
     }
 
@@ -333,6 +337,9 @@ enum DumpParser {
                 let pid = try u()
                 return .reply(id: id, .app(pid: pid, name: try t.string()))
             case "flag": return .reply(id: id, .flag(try u8() == 1))
+            case "image":
+                let w = try u()
+                return .reply(id: id, .image(width: w, height: try u()))
             default: throw Bad(line: line)
             }
         case "surface":

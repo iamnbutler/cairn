@@ -16,6 +16,7 @@ private def axB : AxNode :=
 private def canvas : Canvas where
   size := ⟨800, -600⟩
   draws := #[.rect ⟨-5, 0, 10, 10⟩ (some ⟨1, 2, 3, 4⟩) 6 none, .pushClip ⟨0, 0, 1, 1⟩,
+    .image ⟨0, 0, 40, 30⟩ ⟨-5, 0, 50, 30⟩ "a.png",
     .text ⟨3, 4⟩ { weight := 700, italic := true } ⟨9, 9, 9, 255⟩ "日本 🙂", .popClip,
     .rect ⟨0, 0, 1, 1⟩ none 0 (some ⟨2, ⟨0, 0, 0, 255⟩⟩)]
   ax := #[axA, axB]
@@ -52,7 +53,8 @@ private def frame : Frame where
       [.bytes ⟨#[1, 2]⟩, .wav 3 0 none, .wav 3 2 (some 5)] 30000),
     .request 17 (.upload "GET" "" [] none [] 0), .request 18 (.forgetClip 3),
     .request 19 (.openItem "~/Library/Application Support/yap"), .request 20 (.appRunning "dev.yap.Yap"),
-    .request 21 (.readDefault "dev.yap.Yap" "model"), .request 22 (.makeDir "~/a/b")]
+    .request 21 (.readDefault "dev.yap.Yap" "model"), .request 22 (.makeDir "~/a/b"),
+    .request 23 (.loadImage "images/a.png" true)]
   subs := #[.start 1 (.every 50), .stop 0, .start 2 (.watchFile "~/c.json"), .start 3 (.record 7),
     .start 4 (.globalKey 63 none), .start 5 (.globalKey 49 (some 55))]
   wake := some 18446744073709551615
@@ -78,7 +80,7 @@ private def events : Array Event := #[.pointerMove ⟨-1, 2⟩,
   .reply 3 .done, .reply 4 (.bytes ⟨#[9, 8]⟩), .reply 5 (.http 404 [("Content-Type", "x")] .empty),
   .reply 6 (.failed .timeout "slow"), .subEvent 2 .tick, .subEvent 3 .changed,
   .reply 7 (.names ["a", "日本"]), .reply 8 (.names []), .reply 9 (.app 501 "Terminal"),
-  .reply 10 (.flag true), .subEvent 4 (.audio 160 900 [⟨123456789012, 900⟩, ⟨0, 0⟩]),
+  .reply 10 (.flag true), .reply 11 (.image 640 480), .subEvent 4 (.audio 160 900 [⟨123456789012, 900⟩, ⟨0, 0⟩]),
   .subEvent 4 (.audio 0 0 []), .subEvent 5 (.keyDown 18446744073709551615), .subEvent 5 (.keyUp 0),
   .subEvent 5 (.otherKey 7), .subEvent 4 (.failed .denied "no microphone"),
   .subEvent 4 (.started 18446744073709551615), .subEvent 4 (.started 0),

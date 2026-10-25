@@ -78,7 +78,7 @@ with the Lean model at every step. Conformance needs one small file per app, und
 <figure class="code"><pre class="px"><code class="make"><span class="cm"># Claim-driven fuzzing (docs/fuzz.md): `make fuzz APP=Basics N=1000` runs N sequences from seed</span>
 <span class="cm"># SEED (default 0) and writes build/fuzz/$(APP).json, which `make map` reads.</span>
 <span class="kw">fuzz</span>: lean
-	cd lean &amp;&amp; lake build fuzz &amp;&amp; .lake/build/bin/fuzz $(APP) --seed $(or $(SEED),0) --iterations $(or $(N),200) --out ../build/fuzz</code></pre><figcaption><code>Makefile</code>, lines 268–271</figcaption></figure>
+	cd lean &amp;&amp; lake build fuzz &amp;&amp; .lake/build/bin/fuzz $(APP) --seed $(or $(SEED),0) --iterations $(or $(N),200) --out ../build/fuzz</code></pre><figcaption><code>Makefile</code>, lines 269–272</figcaption></figure>
 <h2 id="size">Size</h2>
 <p>A Cairn app should be a few megabytes. The commands that declare claims need Lean's compiler at
 build time, and linking the compiler into an app makes it about 100 MB, so apps only <code>meta import</code>
@@ -87,15 +87,15 @@ them. <code>make size</code> builds each app for release and fails past 5 MB:</p
 <span class="cm"># into build/size/, attributed (Lean runtime, Cairn, the app, Swift host, shaders), and checked</span>
 <span class="cm"># against SIZE_LIMIT bytes. No host app links `Lean` (the compiler, about 100 MB), so each is a</span>
 <span class="cm"># few MB; crossing the limit almost always means something imported `Lean`.</span>
-SIZE_APPS = CairnCounter CairnBasics CairnTodo CairnClock CairnTray
-SIZE_LIMIT = 5000000</code></pre><figcaption><code>Makefile</code>, lines 283–288</figcaption></figure>
+SIZE_APPS = CairnCounter CairnBasics CairnTodo CairnClock CairnTray CairnGallery
+SIZE_LIMIT = 5000000</code></pre><figcaption><code>Makefile</code>, lines 284–289</figcaption></figure>
 <h2 id="bundle-and-sign">Bundle and sign</h2>
 <p><code>make bundle APP=&lt;App&gt;</code> writes a <code>.app</code> bundle. Per-app <code>Info.plist</code> and entitlements go in
 <code>host/Bundles/&lt;App&gt;/</code>:</p>
 <figure class="code"><pre class="px"><code class="make"><span class="cm"># An app bundle: `make bundle APP=Tray [SIGN=identity]` writes build/apps/Tray.app. Per-app</span>
 <span class="cm"># Info.plist and entitlements go in host/Bundles/&lt;App&gt;/ (tools/bundle/bundle.sh).</span>
 <span class="kw">bundle</span>: host
-	tools/bundle/bundle.sh $(APP) $$(cd host &amp;&amp; swift build --show-bin-path) $(or $(SIGN),-) "$(or $(NAME),$(APP))"</code></pre><figcaption><code>Makefile</code>, lines 119–122</figcaption></figure>
+	tools/bundle/bundle.sh $(APP) $$(cd host &amp;&amp; swift build --show-bin-path) $(or $(SIGN),-) "$(or $(NAME),$(APP))"</code></pre><figcaption><code>Makefile</code>, lines 120–123</figcaption></figure>
 <p>Yap shows a release build signed with a stable identity. Signing with the same identity every
 time matters: macOS grants permissions such as Accessibility and the microphone to the code
 signature, so a differently signed build is a new app and has to be granted again. Its package's
@@ -119,7 +119,7 @@ MAPDIR = build/map/$(APP)
 	bun tools/map/cairn-map.ts script --claims $(MAPDIR)/claims.json &gt; $(MAPDIR)/script.json
 	rm -rf $(MAPDIR)/capture
 	cd host &amp;&amp; swift run Cairn$(APP) --map-capture ../$(MAPDIR)/script.json ../$(MAPDIR)/capture
-	bun tools/map/cairn-map.ts build --app $(APP) --dir $(MAPDIR)</code></pre><figcaption><code>Makefile</code>, lines 179–192</figcaption></figure>
+	bun tools/map/cairn-map.ts build --app $(APP) --dir $(MAPDIR)</code></pre><figcaption><code>Makefile</code>, lines 180–193</figcaption></figure>
 
 </article>
 <nav class="pager" aria-label="Chapters"><a class="prev" rel="prev" href="/docs/guide/effects/"><small>Previous</small>Effects and the host</a><span></span></nav>

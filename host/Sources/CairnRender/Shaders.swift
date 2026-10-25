@@ -106,4 +106,14 @@ fragment float4 glyph_fragment(GlyphOut in [[stage_in]],
     }
     return in.color * mask.sample(s, in.uv).r;
 }
+
+// `image` draws: the glyph vertex stage with uv in 0…1 over the destination rect, sampled
+// linearly between mip levels, anisotropically so an image squeezed on one axis isn't blurred on
+// the other (the texture is premultiplied).
+fragment float4 image_fragment(GlyphOut in [[stage_in]],
+                               texture2d<float> image [[texture(1)]]) {
+    constexpr sampler s(coord::normalized, filter::linear, mip_filter::linear,
+                        max_anisotropy(16), address::clamp_to_edge);
+    return image.sample(s, in.uv);
+}
 """

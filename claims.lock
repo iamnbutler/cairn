@@ -28,7 +28,7 @@
 210	move	active	853d563eb0439f09	Completed
 211	move	active	d9ddae254bdeffa6	Clear completed
 212	invariant	active	8b1d23f718f063ec	Counter and ids
-213	invariant	active	5bd4106949e6759c	The list is the filter applied to the todos
+213	invariant	active	cdded3b5839c217c	The list is the filter applied to the todos
 214	assume	active	-	The host reports a double click as a second click
 215	move	retired	-	Back through filters
 216	flow	active	059a40708193b6f5	Add two todos and complete one
@@ -106,6 +106,11 @@
 460	invariant	active	766546c5055d42df	At most five recent items
 461	flow	active	3191456f2212ab29	Show the overlay
 462	flow	active	fbb1f497f8493322	Add an item and pick it
+501	move	active	215b357a8b531aea	Reload
+502	move	active	084ddf664b68d5a1	Fit
+503	place	active	-	Gallery window
+504	invariant	active	d34d5b06e8bc82cb	Pending loads have fresh ids
+505	flow	active	27a79d12fd5c56e8	Reload, then fit inside
 901	assume	active	-	The Swift frame decoder agrees with Lean's
 902	assume	active	-	Lean decodes what the Swift event encoder writes
 903	assume	active	-	UTF-16 offsets and scalar indices convert exactly
@@ -146,3 +151,6 @@
 1003	assume	active	-	makeDir makes a private directory and its parents
 1004	assume	active	-	A painter's pixels stay inside its box
 1005	assume	active	-	record reports started once its microphone is running, before any audio, or fails without it
+1006	assume	active	-	loadImage answers the image's pixel size, or the fault
+1007	assume	active	-	An image's pixels stay inside its box
+1008	assume	active	-	An image is drawn where its oriented pixels are

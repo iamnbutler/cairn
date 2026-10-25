@@ -23,6 +23,9 @@ inductive Draw where
       (corner : Corner) (shadow : Option Shadow)
   /-- Host-drawn pixels inside `r` (`Style.paint`). -/
   | paint (r : Rect) (p : Paint)
+  /-- The image the host holds for `source`, scaled to `dest` and painted only inside `r`
+  (`Style.image`; `dest` is `Frame.imageDest`'s). Nothing if the host holds no image for it. -/
+  | image (r : Rect) (dest : Rect) (source : String)
 deriving Repr, BEq, Inhabited
 
 structure AxNode where

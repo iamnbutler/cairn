@@ -81,7 +81,7 @@ the identifier <code>^N</code>.</p>
   value : String := <span class="str">""</span>
   checked : Option Bool := none
   selected : Bool := false
-<span class="kw">deriving</span> Repr, BEq, Inhabited</code></pre><figcaption><code>lean/Cairn/UI/Node.lean</code>, lines 100–112</figcaption></figure>
+<span class="kw">deriving</span> Repr, BEq, Inhabited</code></pre><figcaption><code>lean/Cairn/UI/Node.lean</code>, lines 120–132</figcaption></figure>
 <h2 id="nodes">Nodes</h2>
 <p>There are four kinds of node: a box, a line of text, wrapped text, and a text field.</p>
 <figure class="code"><pre class="px"><code class="lean"><span class="kw">inductive</span> Node <span class="kw">where</span>
@@ -91,7 +91,7 @@ the identifier <code>^N</code>.</p>
   it into a clipping column of one `text` per line, so it has no `Laid` form of its own. -/</span>
   | para (style : TextStyle) (wrap : Wrap) (content : String)
   | field (style : Style) (text : TextStyle) (control : Control) (view : FieldView)
-<span class="kw">deriving</span> Repr, Inhabited</code></pre><figcaption><code>lean/Cairn/UI/Node.lean</code>, lines 157–164</figcaption></figure>
+<span class="kw">deriving</span> Repr, Inhabited</code></pre><figcaption><code>lean/Cairn/UI/Node.lean</code>, lines 177–184</figcaption></figure>
 <p>A box has a style: how it lays out its children, how big it is, and how it is painted.</p>
 <figure class="code"><pre class="px"><code class="lean"><span class="kw">structure</span> Style <span class="kw">where</span>
   axis : Axis := .column
@@ -113,7 +113,9 @@ the identifier <code>^N</code>.</p>
   shadow : Option Shadow := none
   <span class="cm">/-- Host-drawn pixels over the background, under the children. -/</span>
   paint : Option Paint := none
-<span class="kw">deriving</span> Repr, BEq, Inhabited</code></pre><figcaption><code>lean/Cairn/UI/Node.lean</code>, lines 76–96</figcaption></figure>
+  <span class="cm">/-- A loaded image over the background (and the paint), under the children. -/</span>
+  image : Option ImageFill := none
+<span class="kw">deriving</span> Repr, BEq, Inhabited</code></pre><figcaption><code>lean/Cairn/UI/Node.lean</code>, lines 94–116</figcaption></figure>
 <h2 id="layout">Layout</h2>
 <p>Layout is a small subset of flexbox, and everything is in <strong>integer logical points</strong>, origin at
 the top left, y down. There are no floats anywhere a theorem looks.</p>
@@ -121,7 +123,7 @@ the top left, y down. There are no floats anywhere a theorem looks.</p>
 takes the parent's full cross-axis size. -/</span>
 <span class="kw">inductive</span> Sizing <span class="kw">where</span>
   | fixed (n : Nat) | hug | fill
-<span class="kw">deriving</span> Repr, BEq, DecidableEq, Inhabited</code></pre><figcaption><code>lean/Cairn/UI/Node.lean</code>, lines 36–40</figcaption></figure>
+<span class="kw">deriving</span> Repr, BEq, DecidableEq, Inhabited</code></pre><figcaption><code>lean/Cairn/UI/Node.lean</code>, lines 37–41</figcaption></figure>
 <ul>
 <li>A <strong>row</strong> lays its children out left to right, a <strong>column</strong> top to bottom, and a <strong>stack</strong>
 places them all in the same box, later ones on top.</li>

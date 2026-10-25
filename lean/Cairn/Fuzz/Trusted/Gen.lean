@@ -84,7 +84,7 @@ def ints : Gen (List Int) := do
   (List.range n).mapM fun _ => i32
 
 def draw : Gen Draw := do
-  match ← Gen.below 6 with
+  match ← Gen.below 7 with
   | 0 => return .rect (← rect) (← opt color) (← u32) (← opt (do return ⟨← u32, ← color⟩))
   | 1 => return .text ⟨← i32, ← i32⟩ (← font) (← color) (← str)
   | 2 => return .pushClip (← rect)
@@ -104,6 +104,7 @@ def draw : Gen Draw := do
     let scalars ← ints
     let arrays ← (List.range k).mapM fun _ => ints
     return .paint r { shader, origin, scalars, arrays }
+  | 5 => return .image (← rect) (← rect) (← str)
   | _ => return .popClip
 
 def role : Gen Role :=
@@ -146,7 +147,7 @@ def part : Gen Part := do
 def secret : Gen Secret := do return ⟨← str, ← str, ← str, ← str⟩
 
 def request : Gen Request := do
-  match ← Gen.below 16 with
+  match ← Gen.below 17 with
   | 0 => return .readFile (← str)
   | 1 => return .writeFile (← str) (← bytes)
   | 2 => return .playSound (← str)
@@ -162,6 +163,7 @@ def request : Gen Request := do
   | 12 => return .appRunning (← str)
   | 13 => return .readDefault (← str) (← str)
   | 14 => return .makeDir (← str)
+  | 15 => return .loadImage (← str) (← Gen.chance 1 2)
   | _ => return .http (← str) (← str) (← headers) (← bytes) (← u32)
 
 def effect : Gen Effect := do

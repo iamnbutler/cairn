@@ -94,7 +94,8 @@ final class RefuseProtocol: URLProtocol, @unchecked Sendable {
 }
 
 extension Handlers {
-    /// `typeText`, `upload` and `forgetClip`, which reach the world's clips and devices.
+    /// `typeText`, `upload`, `forgetClip` and `loadImage`, which reach the world's clips and
+    /// devices.
     public static func devices(_ clips: Clips, _ d: Devices) -> [UInt8: RequestHandler] {
         [
             9: { r, reply in
@@ -107,6 +108,11 @@ extension Handlers {
                 }
             },
             11: { r, reply in if case let .forgetClip(c) = r { reply(clips.forget(c)) } },
+            16: { r, reply in
+                if case let .loadImage(s, reload) = r {
+                    ImageLoad.run(source: s, reload: reload, store: .shared, session: d.session, reply)
+                }
+            },
         ]
     }
 }

@@ -143,6 +143,7 @@ inductive Request where
   | appRunning (bundleId : String)
   | readDefault (domain key : String)
   | makeDir (path : String)
+  | loadImage (source : String) (reload : Bool)     -- Images, below
 
 inductive Part where
   | bytes (b : ByteArray)
@@ -160,6 +161,7 @@ inductive Reply where
   | names (names : List String)                       -- listDir
   | app (pid : Nat) (name : String)                   -- frontmostApp
   | flag (granted : Bool)                             -- permission, appRunning
+  | image (width height : Nat)                        -- loadImage: pixel size
 
 inductive Fault where
   | notFound | denied | timeout | network | invalid | other
@@ -442,6 +444,46 @@ changes with every build, so every rebuild would ask again (Yap signs with an Ap
 certificate for this). A bare `swift run` binary is attributed to the terminal that started
 it, whose grants it borrows. No new permission is needed for anything else here.
 
+## Images
+
+`loadImage source reload` asks the host for a picture: a file path (`~/` is home, a relative path
+starts at the app's working directory, which the host sets to its resources) or an `http`/`https`
+URL. The host reads it, decodes the first image with ImageIO (applying its EXIF orientation),
+keeps the pixels under `source` and answers `image width height`, the oriented pixel size, or
+`failed`: a missing file or HTTP 404/410 is `notFound`, an unreadable file or 401/403 `denied`,
+an empty source, a directory or bytes that are no image `invalid`, another status outside 2xx
+`other`, a failed connection `network`, a timeout (30 s) `timeout`. Without `reload` a source the
+host already holds is answered from what it holds; with `reload` it is read again, and a failed
+reload drops what was held. Lean never holds pixels.
+
+The view shows a picture with `Node.image` (`Cairn/UI/Node.lean`):
+
+```lean
+.image { source := src, width := 200, height := 150, state := s.images.state src, fit := .cover }
+```
+
+It is a fixed box of the size the app gives, clipping, in every state, so layout knows it before
+any pixels exist and nothing moves when they arrive or fail (`Layout.measure_image`). While
+`loading` it is filled with a placeholder colour; once `ready w h` its style carries
+`Style.image`, which `Frame.ofLaid` turns into an `image` draw (frame.md, "Draw records") with
+the destination rect computed in Lean (`Frame.imageDest`: `fill`, `contain` inside the box,
+`cover` over it, centred); when `failed` it is a bordered box with the fault in words. The host
+only scales its texture into the destination and cuts it to the box.
+
+`Cairn/UI/Images.lean` is the table an app keeps: `load`/`loadAll` issue the requests and mark
+the sources loading, `receive` takes a reply. Only the reply to a source's latest load counts: a
+reply to an earlier load of it, or to an id the table never issued, changes nothing
+(`receive_stale`, `superseded_reply`), so a slow first load can't overwrite a reload that
+answered first.
+
+Example: Gallery (`lean/Examples/Gallery.lean`, host `host/Sources/CairnGallery`, run with
+`cd host && swift run CairnGallery`): six 200 × 150 tiles (a PNG, a JPEG stored turned with an
+EXIF orientation, a GIF, a poster over https, a text file, a missing file), Reload (^501) and Fit
+(^502). Its proofs (`Examples/Gallery/Proofs.lean`) show every tile is 200 × 150 whatever its
+state and Reload is on screen; ^504 keeps pending loads' ids fresh. The self test runs the real
+host with the network off (the https tile shows "Offline"); every tile was answered 6.8 ms after
+launch.
+
 ## Wire format
 
 The frame becomes **version 2**: after the effects list it has a subscription-command list and
@@ -553,7 +595,10 @@ Each kind of host effect is an `assume` claim naming a check of the trusted-base
 | ^1001 | `appRunning` answers whether an app with that bundle id runs | `effects.app-running` |
 | ^1002 | `readDefault` answers the default's value as text | `effects.read-default` |
 | ^1003 | `makeDir` makes a private directory and its parents | `effects.make-dir` |
+| ^1006 | `loadImage` answers the image's pixel size, or the fault | `effects.load-image` |
+| ^1007 | an image's pixels stay inside its box | `render.image.bounds` |
+| ^1008 | an image is drawn where its oriented pixels are | `render.image.pixels` |
 
 The new records are also covered by ^901 and ^902 (the Swift codecs against Lean's), whose
-generators now produce them. The suites (`clock`, `world`, `files`, `http`, `sound`, `fileops`, `system`, `audio`, `input`, `upload` in
+generators now produce them. The suites (`clock`, `world`, `files`, `http`, `sound`, `fileops`, `system`, `audio`, `input`, `upload`, `image` in
 `host/Tests/CairnFuzzTrusted`) are described in docs/fuzz.md.

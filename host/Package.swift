@@ -56,6 +56,9 @@ let package = Package(
                           linkerSettings: [.unsafeFlags(["-L" + leanLib, "-lcairn_app_clock"])]),
         .executableTarget(name: "CairnTray", dependencies: ["CairnHost", "CLean", "CairnFrame", "CairnCapture"],
                           linkerSettings: [.unsafeFlags(["-L" + leanLib, "-lcairn_app_tray"])]),
+        .executableTarget(name: "CairnGallery", dependencies: ["CairnHost", "CLean", "CairnFrame", "CairnRender", "CairnCapture"],
+                          resources: [.copy("images")],
+                          linkerSettings: [.unsafeFlags(["-L" + leanLib, "-lcairn_app_gallery"])]),
         // A Swift stand-in app with a text field, for checking the host by hand (IME, AX) before
         // a Lean app has one. Not product code.
         .executableTarget(name: "CairnFixture", dependencies: ["CairnHost", "CairnFrame", "CairnRender"]),

@@ -36,14 +36,83 @@ namespace Frame
 /-- Selection highlight: the macOS accent blue at 30%. -/
 def selectionColor : Color := ⟨0, 122, 255, 77⟩
 
+/-- Where an image of `f.width`×`f.height` pixels is painted for the box `r`, in logical points:
+the box itself for `fill` (or when either has no area); for `contain` the largest rect of the
+image's aspect ratio inside the box, and for `cover` the smallest one covering it, centred.
+Lengths are rounded down for `contain` and up for `cover`, so `contain` never spills out of the
+box and `cover` never leaves a gap (`imageDest_contain_inside`, `imageDest_cover_covers`). -/
+def imageDest (r : Rect) (f : ImageFill) : Rect :=
+  let pw : Int := f.width
+  let ph : Int := f.height
+  if f.fit = .fill ∨ pw = 0 ∨ ph = 0 ∨ r.w ≤ 0 ∨ r.h ≤ 0 then r else
+  -- `wide`: the image is at least as wide for its height as the box is.
+  let wide := decide (r.w * ph ≤ r.h * pw)
+  let (w, h) : Int × Int :=
+    match f.fit, wide with
+    | .contain, true => (r.w, r.w * ph / pw)
+    | .contain, false => (r.h * pw / ph, r.h)
+    | _, true => ((r.h * pw + ph - 1) / ph, r.h)
+    | _, false => (r.w, (r.w * ph + pw - 1) / pw)
+  ⟨r.x + (r.w - w) / 2, r.y + (r.h - h) / 2, w, h⟩
+
+/-- `contain` stays inside the box. -/
+theorem imageDest_contain_inside (r : Rect) (f : ImageFill) (hf : f.fit = .contain) :
+    let d := imageDest r f
+    r.x ≤ d.x ∧ d.x + d.w ≤ r.x + r.w ∧ r.y ≤ d.y ∧ d.y + d.h ≤ r.y + r.h := by
+  intro d
+  by_cases hn : f.fit = .fill ∨ (f.width : Int) = 0 ∨ (f.height : Int) = 0 ∨ r.w ≤ 0 ∨ r.h ≤ 0
+  · simp only [d, imageDest, hn, ↓reduceIte]; omega
+  · simp only [d, imageDest, hn, ↓reduceIte]; simp only [hf]
+    have hpw : (0 : Int) < f.width := by omega
+    have hph : (0 : Int) < f.height := by omega
+    have hw : 0 < r.w := by omega
+    have hh : 0 < r.h := by omega
+    by_cases hwide : r.w * f.height ≤ r.h * f.width
+    · simp only [hwide, decide_true]
+      have h1 : r.w * f.height / f.width ≤ r.h := Int.ediv_le_of_le_mul hpw hwide
+      have h0 : 0 ≤ r.w * f.height / f.width :=
+        (Int.ediv_nonneg_iff_of_pos hpw).mpr (Int.mul_nonneg (by omega) (by omega))
+      generalize r.w * f.height / f.width = h at h0 h1
+      omega
+    · simp only [hwide, decide_false]
+      have hwide' : r.h * f.width ≤ r.w * f.height := by omega
+      have h1 : r.h * f.width / f.height ≤ r.w := Int.ediv_le_of_le_mul hph hwide'
+      have h0 : 0 ≤ r.h * f.width / f.height :=
+        (Int.ediv_nonneg_iff_of_pos hph).mpr (Int.mul_nonneg (by omega) (by omega))
+      generalize r.h * f.width / f.height = w at h0 h1
+      omega
+
+/-- `cover` leaves no part of the box uncovered. -/
+theorem imageDest_cover_covers (r : Rect) (f : ImageFill) (hf : f.fit = .cover) :
+    let d := imageDest r f
+    d.x ≤ r.x ∧ r.x + r.w ≤ d.x + d.w ∧ d.y ≤ r.y ∧ r.y + r.h ≤ d.y + d.h := by
+  intro d
+  by_cases hn : f.fit = .fill ∨ (f.width : Int) = 0 ∨ (f.height : Int) = 0 ∨ r.w ≤ 0 ∨ r.h ≤ 0
+  · simp only [d, imageDest, hn, ↓reduceIte]; omega
+  · simp only [d, imageDest, hn, ↓reduceIte]; simp only [hf]
+    have hpw : (0 : Int) < f.width := by omega
+    have hph : (0 : Int) < f.height := by omega
+    by_cases hwide : r.w * f.height ≤ r.h * f.width
+    · simp only [hwide, decide_true]
+      have h1 : r.w ≤ (r.h * f.width + f.height - 1) / f.height :=
+        (Int.le_ediv_iff_mul_le hph).mpr (by omega)
+      generalize (r.h * f.width + f.height - 1) / f.height = w at h1
+      omega
+    · simp only [hwide, decide_false]
+      have h1 : r.h ≤ (r.w * f.height + f.width - 1) / f.width :=
+        (Int.le_ediv_iff_mul_le hpw).mpr (by omega)
+      generalize (r.w * f.height + f.width - 1) / f.width = h at h1
+      omega
+
 /-- A box's own paint: its background and border (one `rect`, or one `shape` when it has a
-shadow or continuous corners), then its host-drawn pixels. -/
+shadow or continuous corners), then its host-drawn pixels, then its image. -/
 def boxDraws (r : Rect) (s : Style) : List Draw :=
   (if s.shadow.isSome || (s.corner == .continuous && (s.background.isSome || s.border.isSome)) then
     [.shape r s.background s.radius s.border s.corner s.shadow]
    else if s.background.isSome || s.border.isSome then [.rect r s.background s.radius s.border]
    else []) ++
-  (match s.paint with | some p => [.paint r p] | none => [])
+  (match s.paint with | some p => [.paint r p] | none => []) ++
+  (match s.image with | some i => [.image r (imageDest r i) i.source] | none => [])
 
 def halfAlpha (c : Color) : Color := { c with a := c.a / 2 }
 
@@ -259,6 +328,7 @@ def clipDepth : Nat → List Draw → Option Nat
   | d, .text .. :: ds => clipDepth d ds
   | d, .shape .. :: ds => clipDepth d ds
   | d, .paint .. :: ds => clipDepth d ds
+  | d, .image .. :: ds => clipDepth d ds
 
 /-- Every `popClip` closes an earlier `pushClip`, and every `pushClip` is closed. -/
 def Balanced (ds : List Draw) : Prop := clipDepth 0 ds = some 0
@@ -278,6 +348,7 @@ theorem clipDepth_noClip {ds : List Draw} (h : NoClip ds) (d : Nat) (rest : List
     | text o f c s => simpa [clipDepth] using ih
     | shape r f rad b c sh => simpa [clipDepth] using ih
     | paint r p => simpa [clipDepth] using ih
+    | image r d src => simpa [clipDepth] using ih
     | pushClip r => exact absurd rfl (hx r).1
     | popClip => exact absurd rfl (hx ⟨0, 0, 0, 0⟩).2
 
@@ -285,7 +356,7 @@ theorem noClip_boxDraws (r : Rect) (s : Style) : NoClip (boxDraws r s) := by
   unfold boxDraws NoClip
   intro d hd q
   simp only [List.mem_append] at hd
-  rcases hd with hd | hd
+  rcases hd with (hd | hd) | hd
   · split at hd
     · simp only [List.mem_cons, List.not_mem_nil, or_false] at hd; subst hd
       simp only [ne_eq, reduceCtorEq, not_false_eq_true, and_self]
@@ -293,7 +364,8 @@ theorem noClip_boxDraws (r : Rect) (s : Style) : NoClip (boxDraws r s) := by
       · simp only [List.mem_cons, List.not_mem_nil, or_false] at hd; subst hd
         simp only [ne_eq, reduceCtorEq, not_false_eq_true, and_self]
       · simp only [List.not_mem_nil] at hd
-  · split at hd
+  all_goals
+    split at hd
     · simp only [List.mem_cons, List.not_mem_nil, or_false] at hd; subst hd
       simp only [ne_eq, reduceCtorEq, not_false_eq_true, and_self]
     · simp only [List.not_mem_nil] at hd
