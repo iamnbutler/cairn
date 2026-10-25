@@ -615,4 +615,525 @@ theorem steps_fine (app : App S) (cfg : Config) (size : Size) (scale : Nat) (es 
       (steps app cfg (start app cfg size scale) es).1.world.Settled :=
   (carries_fine.steps app cfg _ es (start_fine app cfg size scale)).1
 
+/-! ## A cancelled request's reply -/
+
+theorem stopping_not_pending {w : World} (h : w.Fine) {id : Nat} (hs : w.isStopping id = true) :
+    w.pending.lookup id = none := by
+  cases hl : w.pending.lookup id with
+  | none => rfl
+  | some k =>
+    have := h.apart _ (lookup_some_mem hl)
+    simp only at this
+    rw [hs] at this; cases this
+
+theorem takeReply_stopping {w : World} (h : w.Fine) {id : Nat} (hs : w.isStopping id = true)
+    (r : Reply) : w.takeReply id r = none := by
+  simp only [World.takeReply, stopping_not_pending h hs]
+
+theorem promote_stopping (w : World) : w.promote.1.stopping = w.stopping := by
+  obtain ⟨⟨p, q, he⟩, -⟩ := promote_spec w
+  rw [he]
+
+/-- **A cancelled id never delivers.** The host's one reply to a request cancelled after it was
+sent reaches no app, whatever it says, and the id stops being held: its slot is free and a
+request under it can be sent. -/
+theorem step_reply_cancelled (app : App S) (cfg : Config) (s : State S) {id : Nat} (r : Reply)
+    (h : s.world.Fine) (hs : s.world.isStopping id = true) :
+    (step app cfg s (.reply id r)).1.app = s.app ∧
+      (step app cfg s (.reply id r)).1.world.stopping = s.world.stopping.filter (·.1 != id) := by
+  have hn := takeReply_stopping h hs r
+  refine ⟨step_reply_ignored app cfg s hn, ?_⟩
+  obtain ⟨-, subs, next, hw⟩ := step_ctx app cfg s (.reply id r)
+  rw [hw, route_reply, act_nil]
+  simp only [admit, hn, Option.isSome_none, Bool.false_eq_true, ↓reduceIte, ack, World.takeStop, hs,
+    release]
+  exact promote_stopping _
+
+/-! ## Every queued request is eventually sent or cancelled
+
+Fix a queued request `q` with ticket `t`. `ahead w t` counts what holds the requests up to `t`:
+the capped ones among them (each needs a slot) and those whose id is still stopping (each needs
+that reply). Nothing the runtime does makes it grow (`step_wait_le`), and the reply to whatever
+blocks `q` either takes `q` out of the queue or makes it shrink (`step_drains`). -/
+
+namespace World
+
+def capAhead (w : World) (t : Nat) : Nat :=
+  w.queued.countP fun q => decide (q.1 ≤ t) && q.2.2.kind.capped
+
+def stopAhead (w : World) (t : Nat) : Nat :=
+  w.queued.countP fun q => decide (q.1 ≤ t) && w.isStopping q.2.1
+
+/-- What holds up the queued requests with tickets up to `t`. -/
+def ahead (w : World) (t : Nat) : Nat := w.capAhead t + w.stopAhead t
+
+/-- From `w` to `w'`, nothing ahead grew and no queued request up to `t` appeared, or saw its id
+start stopping. -/
+def Drains (t : Nat) (w w' : World) : Prop :=
+  w'.ahead t ≤ w.ahead t ∧ ∀ q, q.1 ≤ t → q ∈ w'.queued →
+    q ∈ w.queued ∧ (w'.isStopping q.2.1 = true → w.isStopping q.2.1 = true)
+
+theorem Drains.trans {t : Nat} {a b c : World} (h1 : Drains t a b) (h2 : Drains t b c) :
+    Drains t a c :=
+  ⟨Nat.le_trans h2.1 h1.1, fun q hq m =>
+    let x := h2.2 q hq m
+    let y := h1.2 q hq x.1
+    ⟨y.1, fun e => y.2 (x.2 e)⟩⟩
+
+theorem drains_same {t : Nat} {w w' : World} (hq : w'.queued = w.queued) (hs : w'.stopping = w.stopping) :
+    Drains t w w' := by
+  have hi : ∀ id, w'.isStopping id = w.isStopping id := by intro id; simp only [isStopping, hs]
+  refine ⟨?_, fun q _ m => ⟨hq ▸ m, fun e => (hi _) ▸ e⟩⟩
+  simp only [ahead, capAhead, stopAhead, hq, hi, Nat.le_refl]
+
+theorem drains_sub {t : Nat} {w w' : World} (hq : w'.queued.Sublist w.queued)
+    (hs : ∀ id, w'.isStopping id = true → w.isStopping id = true) : Drains t w w' := by
+  refine ⟨?_, fun q _ m => ⟨hq.subset m, hs _⟩⟩
+  have h1 : w'.capAhead t ≤ w.capAhead t := hq.countP_le
+  have h2 : w'.stopAhead t ≤ w.stopAhead t := by
+    unfold stopAhead
+    refine Nat.le_trans (List.countP_mono_left ?_) hq.countP_le
+    intro q _ e
+    simp only [Bool.and_eq_true, decide_eq_true_eq] at e ⊢
+    exact ⟨e.1, hs _ e.2⟩
+  unfold ahead; omega
+
+theorem live_apart {w : World} (h : w.Keys) {id : Nat} {k : Request.Kind}
+    (hl : w.pending.lookup id = some k) : ∀ q ∈ w.queued, q.2.1 ≠ id := by
+  intro q hq he
+  have hp : id ∈ w.pending.map (·.1) := List.mem_map.mpr ⟨(id, k), lookup_some_mem hl, rfl⟩
+  have hw : id ∈ w.waiting.map (·.1) := by
+    simp only [waiting, List.map_map]
+    exact List.mem_map.mpr ⟨q, hq, he⟩
+  exact keys_disjoint h hp hw
+
+theorem stopOne_drains {t : Nat} {w : World} (h : w.Keys) {id : Nat} {k : Request.Kind}
+    (hl : w.pending.lookup id = some k) : Drains t w (w.stopOne id k) := by
+  have ha := live_apart h hl
+  have hi : ∀ q ∈ w.queued, (w.stopOne id k).isStopping q.2.1 = w.isStopping q.2.1 := by
+    intro q hq
+    simp only [stopOne, isStopping, List.any_append, List.any_cons, List.any_nil, Bool.or_false]
+    have : (id == q.2.1) = false := by
+      simp only [beq_eq_false_iff_ne, ne_eq]; exact fun e => ha q hq e.symm
+    rw [this, Bool.or_false]
+  refine ⟨?_, fun q _ m => ⟨m, fun e => (hi q m) ▸ e⟩⟩
+  have : (w.stopOne id k).stopAhead t = w.stopAhead t := by
+    unfold stopAhead
+    exact List.countP_congr fun q hq => by rw [hi q hq]
+  unfold ahead capAhead; rw [this]; exact Nat.le_refl _
+
+theorem absorb1_drains {t : Nat} {w : World} (h : w.Fine) (ht : t < w.nextTicket) (e : Effect) :
+    t < (w.absorb1 e).1.nextTicket ∧ Drains t w (w.absorb1 e).1 := by
+  rcases absorb1_cases w e with hr | ⟨id, k, hs, he⟩ | ⟨id, r, hs, he⟩ | ⟨id, he⟩
+  · obtain ⟨h1, h2, h3, h4, h5⟩ := hr
+    exact ⟨h5 ▸ ht, drains_same h2 h3⟩
+  · rw [he]; exact ⟨ht, drains_same rfl rfl⟩
+  · rw [he]
+    refine ⟨Nat.lt_succ_of_lt ht, ?_, ?_⟩
+    · have hn : decide (w.nextTicket ≤ t) = false := by
+        simp only [decide_eq_false_iff_not, Nat.not_le]; exact ht
+      simp only [ahead, capAhead, stopAhead, enqueue, List.countP_append, List.countP_cons,
+        List.countP_nil, hn, Bool.false_and, Bool.false_eq_true, ↓reduceIte, Nat.add_zero]
+      simp only [isStopping, Nat.le_refl]
+    · intro q hq m
+      rcases List.mem_append.mp m with m | m
+      · exact ⟨m, fun e => e⟩
+      · rw [List.mem_singleton] at m; subst m
+        simp only at hq; omega
+  · rw [he]
+    rcases cancel_cases w id with e | ⟨k, hl, e⟩ | e
+    · rw [e]
+      exact ⟨ht, drains_sub List.filter_sublist (fun _ x => x)⟩
+    · rw [e]; exact ⟨ht, stopOne_drains h.keys hl⟩
+    · rw [e]; exact ⟨ht, drains_same rfl rfl⟩
+
+theorem takeStop_isStopping {w w' : World} {id : Nat} (hw : w.takeStop id = some w') (x : Nat) :
+    w'.isStopping x = true → w.isStopping x = true := by
+  obtain ⟨-, rfl⟩ := takeStop_some hw
+  simp only [isStopping, List.any_filter, List.any_eq_true, Bool.and_eq_true]
+  rintro ⟨y, hy, -, e⟩; exact ⟨y, hy, e⟩
+
+theorem promote_queued (w : World) : w.promote.1.queued.Sublist w.queued ∧
+    w.promote.1.stopping = w.stopping ∧ w.promote.1.nextTicket = w.nextTicket := by
+  obtain ⟨sent, l, he, hl, -⟩ := promoteGo_parts w.queued { w with queued := [] }
+  have he' : w.promote.1 = { w with pending := w.pending ++ sent, queued := l } := by
+    unfold promote; rw [he]; simp only [List.nil_append]
+  rw [he']; exact ⟨hl, rfl, rfl⟩
+
+theorem promote_drains' {t : Nat} (w : World) : Drains t w w.promote.1 := by
+  obtain ⟨h1, h2, -⟩ := promote_queued w
+  exact drains_sub h1 (fun x e => by simp only [isStopping, h2] at e ⊢; exact e)
+
+end World
+
+/-- Fine worlds stay fine, the ticket bound holds, and nothing ahead of a ticket grows. -/
+theorem carries_drains (t : Nat) :
+    Carries (fun w => w.Fine ∧ t < w.nextTicket) (World.Drains t) where
+  trans := World.Drains.trans
+  reqs hr h := by
+    obtain ⟨h1, h2, h3, h4, h5⟩ := hr
+    exact ⟨⟨World.fine_reqs ⟨h1, h2, h3, h4, h5⟩ h.1, h5 ▸ h.2⟩, World.drains_same h2 h3⟩
+  absorb1 _ e h :=
+    let d := World.absorb1_drains h.1 h.2 e
+    ⟨⟨(World.absorb1_fine h.1 e).1, d.1⟩, d.2⟩
+  reply w w' _ _ h hw := by
+    have hn := (World.promote_queued w').2.2
+    have hn' : w'.nextTicket = w.nextTicket := by obtain ⟨k, -, -, rfl⟩ := takeReply_some hw; rfl
+    have hd : World.Drains t w w' := by
+      obtain ⟨k, -, -, rfl⟩ := takeReply_some hw; exact World.drains_same rfl rfl
+    exact ⟨⟨World.promote_fine (World.takeReply_fine h.1 hw), by rw [hn, hn']; exact h.2⟩,
+      hd.trans (World.promote_drains' _)⟩
+  stop w w' _ h hw := by
+    have hn := (World.promote_queued w').2.2
+    have hn' : w'.nextTicket = w.nextTicket := by obtain ⟨-, rfl⟩ := takeStop_some hw; rfl
+    have hq : w'.queued = w.queued := by obtain ⟨-, rfl⟩ := takeStop_some hw; rfl
+    have hd : World.Drains t w w' :=
+      World.drains_sub (hq ▸ List.Sublist.refl _) (World.takeStop_isStopping hw)
+    exact ⟨⟨World.promote_fine (World.takeStop_fine h.1 hw), by rw [hn, hn']; exact h.2⟩,
+      hd.trans (World.promote_drains' _)⟩
+
+/-- **Nothing ahead grows.** Over any event, the count of what holds up the queued requests with
+tickets up to `t` does not grow, and no request up to `t` joins the queue (every ticket issued is
+below `nextTicket`). -/
+theorem step_wait_le (app : App S) (cfg : Config) (s : State S) (e : Event) {t : Nat}
+    (h : s.world.Fine) (ht : t < s.world.nextTicket) :
+    World.Drains t s.world (step app cfg s e).1.world :=
+  ((carries_drains t).step app cfg s e ⟨h, ht⟩).2
+
+namespace World
+
+theorem countP_lt {α : Type} {p p' : α → Bool} {a : α} :
+    ∀ (l : List α), (∀ y ∈ l, p' y = true → p y = true) → a ∈ l → p a = true → p' a = false →
+      l.countP p' < l.countP p := by
+  intro l
+  induction l with
+  | nil => intro _ h; cases h
+  | cons b l ih =>
+    intro hm ha hp hp'
+    have hle : l.countP p' ≤ l.countP p :=
+      List.countP_mono_left fun y hy e => hm y (List.mem_cons_of_mem _ hy) e
+    simp only [List.countP_cons]
+    rcases List.mem_cons.mp ha with e | e
+    · subst e; simp only [hp, hp', ↓reduceIte, Bool.false_eq_true]; omega
+    · have := ih (fun y hy e => hm y (List.mem_cons_of_mem _ hy) e) e hp hp'
+      cases hb : p' b
+      · simp only [Bool.false_eq_true, ↓reduceIte]; split <;> omega
+      · simp only [hm b List.mem_cons_self hb, ↓reduceIte]; omega
+
+/-- The capped requests with tickets up to `t` in a list. -/
+def capIn (t : Nat) (l : List (Nat × Nat × Request)) : Nat :=
+  l.countP fun q => decide (q.1 ≤ t) && q.2.2.kind.capped
+
+/-- With a slot free, `promoteGo` reaching a capped request `q` whose id is not stopping sends a
+capped request with ticket up to `t`: `q`, or one before it. -/
+theorem promoteGo_strict {t : Nat} {q : Nat × Nat × Request} (hq1 : q.1 ≤ t)
+    (hqc : q.2.2.kind.capped = true) (post : List (Nat × Nat × Request)) :
+    ∀ (pre : List (Nat × Nat × Request)) (w : World), (∀ p ∈ pre, p.1 ≤ t) →
+      w.isStopping q.2.1 = false → w.inFlight < w.cap →
+      ∃ l, (promoteGo w (pre ++ q :: post)).1.queued = w.queued ++ l ∧
+        l.Sublist (pre ++ q :: post) ∧ capIn t l < capIn t (pre ++ q :: post) := by
+  intro pre
+  induction pre with
+  | nil =>
+    intro w _ hs hc
+    have hcs : w.canSend q.2.1 q.2.2.kind = true := by
+      simp only [canSend, hs, hqc, Bool.not_false, Bool.not_true, Bool.true_and, Bool.false_or,
+        decide_eq_true_eq]; exact hc
+    obtain ⟨sent, l, he, hl, -⟩ := promoteGo_parts post (w.send q.2.1 q.2.2.kind)
+    refine ⟨l, ?_, hl.cons _, ?_⟩
+    · simp only [List.nil_append, promoteGo, hcs, ↓reduceIte]; rw [he]; rfl
+    · have : capIn t l ≤ capIn t post := hl.countP_le
+      simp only [capIn, List.nil_append, List.countP_cons, hqc, Bool.and_true, decide_eq_true_eq] at this ⊢
+      simp only [hq1, ↓reduceIte]; omega
+  | cons p pre ih =>
+    intro w hp hs hc
+    have hp1 : p.1 ≤ t := hp p List.mem_cons_self
+    have hpre : ∀ y ∈ pre, y.1 ≤ t := fun y hy => hp y (List.mem_cons_of_mem _ hy)
+    simp only [List.cons_append, promoteGo]
+    split
+    · rename_i hcs
+      cases hpc : p.2.2.kind.capped
+      · obtain ⟨l, he, hl, hlt⟩ := ih (w.send p.2.1 p.2.2.kind) hpre hs (by
+          rw [send_inFlight]; simp only [hpc, Bool.false_eq_true, ↓reduceIte, Nat.add_zero]; exact hc)
+        refine ⟨l, by rw [he]; rfl, hl.cons _, ?_⟩
+        simp only [capIn, List.countP_cons, hpc, Bool.and_false, Bool.false_eq_true, ↓reduceIte,
+          Nat.add_zero] at hlt ⊢
+        exact hlt
+      · obtain ⟨sent, l, he, hl, -⟩ := promoteGo_parts (pre ++ q :: post) (w.send p.2.1 p.2.2.kind)
+        refine ⟨l, by rw [he]; rfl, hl.cons _, ?_⟩
+        have : capIn t l ≤ capIn t (pre ++ q :: post) := hl.countP_le
+        simp only [capIn, List.countP_cons, hpc, Bool.and_true, decide_eq_true_eq, hp1,
+          ↓reduceIte] at this ⊢
+        omega
+    · obtain ⟨l, he, hl, hlt⟩ := ih { w with queued := w.queued ++ [p] } hpre hs hc
+      refine ⟨p :: l, by rw [he]; simp only [List.append_assoc, List.singleton_append], hl.cons_cons _, ?_⟩
+      simp only [capIn, List.countP_cons] at hlt ⊢
+      split <;> omega
+
+/-- With a slot free and a capped queued request whose id is not stopping, `promote` makes the
+count ahead of it shrink. -/
+theorem promote_strict {w : World} (h : w.Fine) {q : Nat × Nat × Request} (hq : q ∈ w.queued)
+    (hqc : q.2.2.kind.capped = true) (hs : w.isStopping q.2.1 = false) (hc : w.inFlight < w.cap) :
+    w.promote.1.ahead q.1 < w.ahead q.1 := by
+  obtain ⟨pre, post, hsplit⟩ := List.append_of_mem hq
+  have hpre : ∀ p ∈ pre, p.1 ≤ q.1 := by
+    have := h.sorted; rw [hsplit] at this
+    intro p hp
+    exact Nat.le_of_lt ((List.pairwise_append.mp this).2.2 p hp q List.mem_cons_self)
+  obtain ⟨l, he, hl, hlt⟩ := promoteGo_strict (Nat.le_refl q.1) hqc post pre { w with queued := [] }
+    hpre hs hc
+  have hpq : w.promote.1.queued = l := by
+    unfold promote; rw [hsplit, he]; rfl
+  obtain ⟨-, hst, -⟩ := promote_queued w
+  have hi : ∀ x, w.promote.1.isStopping x = w.isStopping x := by
+    intro x; simp only [isStopping, hst]
+  have h2 : w.promote.1.stopAhead q.1 ≤ w.stopAhead q.1 := by
+    unfold stopAhead
+    simp only [hi]
+    exact (promote_queued w).1.countP_le
+  have h1 : w.promote.1.capAhead q.1 < w.capAhead q.1 := by
+    unfold capAhead; rw [hpq, hsplit]; exact hlt
+  unfold ahead; omega
+
+/-- What `q` waits for, by id: the host's reply to its id's cancelled request, or (for a capped
+request whose id is free) the reply to any capped request with the host. -/
+def Blocks (w : World) (q : Nat × Nat × Request) (x : Nat) : Prop :=
+  (w.isStopping q.2.1 = true ∧ x = q.2.1) ∨
+  (q.2.2.kind.capped = true ∧ w.isStopping q.2.1 = false ∧
+    ∃ k, k.capped = true ∧ ((x, k) ∈ w.pending ∨ (x, k) ∈ w.stopping))
+
+/-- **Every queued request has a blocker**: in a fine, settled world a queued request waits for
+a request that is with the host. -/
+theorem queued_blocked {w : World} (h : w.Fine) (hs : w.Settled) {q : Nat × Nat × Request}
+    (hq : q ∈ w.queued) : ∃ x, w.Blocks q x := by
+  rcases canSend_false.mp (hs q hq) with e | ⟨hc, hle⟩
+  · exact ⟨q.2.1, Or.inl ⟨e, rfl⟩⟩
+  · cases hst : w.isStopping q.2.1
+    · have hpos : 0 < w.inFlight := Nat.lt_of_lt_of_le h.pos hle
+      unfold inFlight at hpos
+      by_cases hp : 0 < w.pending.countP (·.2.capped)
+      · obtain ⟨a, ha, hac⟩ := List.countP_pos_iff.mp hp
+        exact ⟨a.1, Or.inr ⟨hc, hst, a.2, hac, Or.inl ha⟩⟩
+      · have hp2 : 0 < w.stopping.countP (·.2.capped) := by omega
+        obtain ⟨a, ha, hac⟩ := List.countP_pos_iff.mp hp2
+        exact ⟨a.1, Or.inr ⟨hc, hst, a.2, hac, Or.inr ha⟩⟩
+    · exact ⟨q.2.1, Or.inl ⟨hst, rfl⟩⟩
+
+/-- Taking a capped request out of the tables frees a slot; then `promote` shrinks the count
+ahead of a capped queued request whose id is free. -/
+theorem freed_strict {w w2 : World} (h2 : w2.Fine) {q : Nat × Nat × Request} (hq : q ∈ w2.queued)
+    (hqc : q.2.2.kind.capped = true) (hs : w2.isStopping q.2.1 = false)
+    (hc : w2.inFlight < w2.cap) (hd : w2.ahead q.1 ≤ w.ahead q.1) :
+    w2.promote.1.ahead q.1 < w.ahead q.1 :=
+  Nat.lt_of_lt_of_le (promote_strict h2 hq hqc hs hc) hd
+
+theorem takeReply_frees {w w2 : World} (h : w.Fine) {x : Nat} {k : Request.Kind} {r : Reply}
+    (hm : (x, k) ∈ w.pending) (hk : k.capped = true) (hw : w.takeReply x r = some w2) :
+    w2.inFlight < w2.cap := by
+  obtain ⟨k0, -, -, rfl⟩ := takeReply_some hw
+  have := countP_filter_ne (fun p : Nat × Request.Kind => p.2.capped) w.pending hm
+  have hc := h.cap
+  simp only [hk, ↓reduceIte, inFlight] at this hc ⊢
+  omega
+
+theorem takeStop_frees {w w2 : World} (h : w.Fine) {x : Nat} {k : Request.Kind}
+    (hm : (x, k) ∈ w.stopping) (hk : k.capped = true) (hw : w.takeStop x = some w2) :
+    w2.inFlight < w2.cap := by
+  obtain ⟨-, rfl⟩ := takeStop_some hw
+  have := countP_filter_ne (fun p : Nat × Request.Kind => p.2.capped) w.stopping hm
+  have hc := h.cap
+  simp only [hk, ↓reduceIte, inFlight] at this hc ⊢
+  omega
+
+theorem takeStop_some_of {w : World} {x : Nat} {k : Request.Kind} (hm : (x, k) ∈ w.stopping) :
+    ∃ w2, w.takeStop x = some w2 := by
+  have : w.isStopping x = true := (isStopping_iff w x).mpr ⟨k, hm⟩
+  exact ⟨{ w with stopping := w.stopping.filter (·.1 != x) }, by simp only [takeStop, this, ↓reduceIte]⟩
+
+/-- How a request with the host fares: still pending with its kind, or moved to `stopping`. -/
+def Track (x : Nat) (k : Request.Kind) (w w' : World) : Prop :=
+  ((x, k) ∈ w.pending → (x, k) ∈ w'.pending ∨ (x, k) ∈ w'.stopping) ∧
+    ((x, k) ∈ w.stopping → (x, k) ∈ w'.stopping)
+
+theorem Track.trans {x : Nat} {k : Request.Kind} {a b c : World} (h1 : Track x k a b)
+    (h2 : Track x k b c) : Track x k a c :=
+  ⟨fun m => (h1.1 m).elim h2.1 (fun e => Or.inr (h2.2 e)), fun m => h2.2 (h1.2 m)⟩
+
+theorem absorb1_track {w : World} (h : w.Fine) (e : Effect) (x : Nat) (k : Request.Kind) :
+    Track x k w (w.absorb1 e).1 := by
+  rcases absorb1_cases w e with hr | ⟨id, k0, hs, he⟩ | ⟨id, r, hs, he⟩ | ⟨id, he⟩
+  · obtain ⟨h1, -, h3, -, -⟩ := hr
+    exact ⟨fun m => Or.inl (h1 ▸ m), fun m => h3 ▸ m⟩
+  · rw [he]; exact ⟨fun m => Or.inl (List.mem_append_left _ m), fun m => m⟩
+  · rw [he]; exact ⟨fun m => Or.inl m, fun m => m⟩
+  · rw [he]
+    rcases cancel_cases w id with e | ⟨k0, hl, e⟩ | e
+    · rw [e]; exact ⟨fun m => Or.inl m, fun m => m⟩
+    · rw [e]
+      refine ⟨fun m => ?_, fun m => List.mem_append_left _ m⟩
+      by_cases hx : x = id
+      · subst hx
+        have : w.pending.lookup x = some k := lookup_of_mem (pending_nodup h.keys) m
+        rw [hl] at this; cases this
+        exact Or.inr (List.mem_append_right _ List.mem_cons_self)
+      · refine Or.inl (List.mem_filter.mpr ⟨m, ?_⟩)
+        simp only [bne_iff_ne, ne_eq]; exact hx
+    · rw [e]; exact ⟨fun m => Or.inl m, fun m => m⟩
+
+end World
+
+/-- Absorbing effects keeps the drain and tracks a request with the host. -/
+theorem through_track (t x : Nat) (k : Request.Kind) :
+    Through (fun w => w.Fine ∧ t < w.nextTicket) (fun w w' => World.Drains t w w' ∧ World.Track x k w w') where
+  trans h1 h2 := ⟨h1.1.trans h2.1, h1.2.trans h2.2⟩
+  reqs hr h := by
+    have d := (carries_drains t).reqs hr h
+    obtain ⟨h1, -, h3, -, -⟩ := hr
+    exact ⟨d.1, d.2, fun m => Or.inl (h1 ▸ m), fun m => h3 ▸ m⟩
+  absorb1 w e h :=
+    let d := (carries_drains t).absorb1 w e h
+    ⟨d.1, d.2, World.absorb1_track h.1 e x k⟩
+
+/-- **The reply to a blocker drains the queue.** If `x` blocks a queued request `q` and the host
+answers `x` (in the shape that answers its kind, if it is pending), then afterwards `q` has left
+the queue (sent or cancelled), or the count ahead of it is smaller. With `step_wait_le` and
+`queued_blocked`, `q` leaves the queue after at most `ahead q.1` replies to its blockers. -/
+theorem step_drains (app : App S) (cfg : Config) (s : State S) {q : Nat × Nat × Request}
+    {x : Nat} {r : Reply} (h : s.world.Fine) (hq : q ∈ s.world.queued) (hb : s.world.Blocks q x)
+    (hr : ∀ k, s.world.pending.lookup x = some k → r.answers k = true) :
+    q ∉ (step app cfg s (.reply x r)).1.world.queued ∨
+      (step app cfg s (.reply x r)).1.world.ahead q.1 < s.world.ahead q.1 := by
+  obtain ⟨-, subs, next, hw⟩ := step_ctx app cfg s (.reply x r)
+  rw [hw, route_reply, act_nil]
+  have ht : q.1 < s.world.nextTicket := h.fresh q hq
+  -- What follows the point where a reply is taken keeps the drain.
+  have after : ∀ (W w1 : World), World.Drains q.1 s.world w1 → World.Drains q.1 w1 W →
+      (q ∈ w1.queued → W.ahead q.1 < s.world.ahead q.1) →
+      q ∉ ({ W with subs, nextSub := next } : World).queued ∨
+        ({ W with subs, nextSub := next } : World).ahead q.1 < s.world.ahead q.1 := by
+    intro W w1 _ hd2 hs
+    by_cases hq1 : q ∈ w1.queued
+    · exact Or.inr (hs hq1)
+    · exact Or.inl fun m => hq1 (hd2.2 q (Nat.le_refl _) m).1
+  have hnp : ∀ k, (x, k) ∈ s.world.pending → (s.world.takeReply x r).isSome = true := by
+    intro k m
+    have hl := lookup_of_mem (World.pending_nodup h.keys) m
+    simp only [World.takeReply, hl, hr k hl, ↓reduceIte, Option.isSome_some]
+  simp only [admit]
+  split
+  · rename_i hsome
+    -- `x` is pending, so it blocks `q` as a capped request with the host.
+    obtain ⟨k0, hl0, -⟩ : ∃ k0, s.world.pending.lookup x = some k0 ∧ True := by
+      cases e : s.world.pending.lookup x with
+      | none => simp only [World.takeReply, e, Option.isSome_none, Bool.false_eq_true] at hsome
+      | some k0 => exact ⟨k0, rfl, trivial⟩
+    have hxs : s.world.isStopping x = false := h.apart _ (lookup_some_mem hl0)
+    obtain ⟨hqc, hqs, k, hkc, hm⟩ : q.2.2.kind.capped = true ∧ s.world.isStopping q.2.1 = false ∧
+        ∃ k, k.capped = true ∧ ((x, k) ∈ s.world.pending ∨ (x, k) ∈ s.world.stopping) := by
+      rcases hb with ⟨hst, rfl⟩ | hb
+      · rw [hst] at hxs; cases hxs
+      · exact hb
+    have hmp : (x, k) ∈ s.world.pending := by
+      rcases hm with m | m
+      · exact m
+      · have := (World.isStopping_iff _ _).mpr ⟨k, m⟩; rw [this] at hxs; cases hxs
+    have c0 := (through_track q.1 x k).hear app ({ app := s.app, world := s.world } : Ctx S) ⟨h, ht⟩
+    generalize hc1 : hear app ({ app := s.app, world := s.world } : Ctx S) = c1 at c0
+    obtain ⟨⟨hf1, ht1⟩, hd1, htr⟩ := c0
+    have hq1s : q ∈ c1.world.queued → c1.world.isStopping q.2.1 = false := by
+      intro m
+      cases e : c1.world.isStopping q.2.1
+      · rfl
+      · have := (hd1.2 q (Nat.le_refl _) m).2 e; rw [hqs] at this; cases this
+    split
+    · rename_i w2 hw2
+      have hI2 : w2.promote.1.Fine ∧ q.1 < w2.promote.1.nextTicket :=
+        ((carries_drains q.1).reply _ _ _ _ ⟨hf1, ht1⟩ hw2).1
+      have hd2 := ((carries_drains q.1).reply _ _ _ _ ⟨hf1, ht1⟩ hw2).2
+      have hg := (carries_drains q.1).toThrough.give app (release c1 w2) (.reply x r) hI2
+      refine after _ c1.world hd1 (hd2.trans hg.2) fun m => ?_
+      obtain ⟨k2, -, -, he2⟩ := takeReply_some hw2
+      have hpm : (x, k) ∈ c1.world.pending := by
+        rcases htr.1 hmp with m' | m'
+        · exact m'
+        · have hst : c1.world.isStopping x = true := (World.isStopping_iff _ _).mpr ⟨k, m'⟩
+          rw [takeReply_stopping hf1 hst] at hw2; cases hw2
+      have hm2 : q ∈ w2.queued := by rw [he2]; exact m
+      have hs2 : w2.isStopping q.2.1 = false := by rw [he2]; exact hq1s m
+      have hd2' : w2.ahead q.1 ≤ s.world.ahead q.1 := by
+        rw [he2]; exact Nat.le_trans (World.drains_same (t := q.1) rfl rfl).1 hd1.1
+      exact Nat.lt_of_le_of_lt hg.2.1
+        (World.freed_strict (World.takeReply_fine hf1 hw2) hm2 hqc hs2
+          (World.takeReply_frees hf1 hpm hkc hw2) hd2')
+    · rename_i hnone
+      have hsm : (x, k) ∈ c1.world.stopping := by
+        rcases htr.1 hmp with m' | m'
+        · have hl := lookup_of_mem (World.pending_nodup hf1.keys) m'
+          have hl0' := lookup_of_mem (World.pending_nodup h.keys) hmp
+          simp only [World.takeReply, hl, hr k hl0', ↓reduceIte] at hnone; cases hnone
+        · exact m'
+      obtain ⟨w2, hw2⟩ := World.takeStop_some_of hsm
+      have hack : (ack c1 x).world = w2.promote.1 := by
+        simp only [ack, hw2, release]
+      rw [hack]
+      have hd2 := ((carries_drains q.1).stop _ _ _ ⟨hf1, ht1⟩ hw2).2
+      refine after _ c1.world hd1 hd2 fun m => ?_
+      obtain ⟨-, he2⟩ := takeStop_some hw2
+      have hm2 : q ∈ w2.queued := by rw [he2]; exact m
+      have hs2 : w2.isStopping q.2.1 = false := by
+        cases e : w2.isStopping q.2.1
+        · rfl
+        · have := World.takeStop_isStopping hw2 _ e; rw [hq1s m] at this; cases this
+      have hd2' : w2.ahead q.1 ≤ s.world.ahead q.1 :=
+        Nat.le_trans (World.drains_sub (t := q.1) (by rw [he2]; exact List.Sublist.refl _)
+          (World.takeStop_isStopping hw2)).1 hd1.1
+      exact World.freed_strict (World.takeStop_fine hf1 hw2) hm2 hqc hs2
+        (World.takeStop_frees hf1 hsm hkc hw2) hd2'
+  · rename_i hnot
+    have hnp' : ∀ k, (x, k) ∉ s.world.pending := fun k m => hnot (hnp k m)
+    rcases hb with ⟨hst, rfl⟩ | ⟨hqc, hqs, k, hkc, hm⟩
+    · -- `q`'s own id is stopping: its reply clears it.
+      have hst' := hst
+      obtain ⟨k, hm⟩ := (World.isStopping_iff _ _).mp hst
+      obtain ⟨w2, hw2⟩ := World.takeStop_some_of hm
+      have hack : (ack ({ app := s.app, world := s.world } : Ctx S) q.2.1).world = w2.promote.1 := by
+        simp only [ack, hw2, release]
+      rw [hack]
+      have hd2 := ((carries_drains q.1).stop _ _ _ ⟨h, ht⟩ hw2).2
+      refine after _ s.world (World.drains_same rfl rfl) hd2 fun _ => ?_
+      obtain ⟨-, he2⟩ := takeStop_some hw2
+      have hlt : w2.stopAhead q.1 < s.world.stopAhead q.1 := by
+        rw [he2]; unfold World.stopAhead
+        refine World.countP_lt _ ?_ hq ?_ ?_
+        · intro y _ e
+          simp only [Bool.and_eq_true, decide_eq_true_eq] at e ⊢
+          refine ⟨e.1, ?_⟩
+          have := e.2; simp only [World.isStopping, List.any_filter, List.any_eq_true,
+            Bool.and_eq_true] at this ⊢
+          obtain ⟨z, hz, -, hz2⟩ := this; exact ⟨z, hz, hz2⟩
+        · simp only [Nat.le_refl, decide_true, Bool.true_and]; exact hst'
+        · simp only [Nat.le_refl, decide_true, Bool.true_and, World.isStopping, List.any_filter,
+            List.any_eq_false, Bool.and_eq_true, not_and, bne_iff_ne, ne_eq, beq_iff_eq]
+          intro z _ hz e; exact hz e
+      have hca : w2.capAhead q.1 = s.world.capAhead q.1 := by rw [he2]; rfl
+      have := (World.promote_drains' (t := q.1) w2).1
+      unfold World.ahead at this ⊢; omega
+    · have hsm : (x, k) ∈ s.world.stopping := hm.resolve_left (hnp' k)
+      obtain ⟨w2, hw2⟩ := World.takeStop_some_of hsm
+      have hack : (ack ({ app := s.app, world := s.world } : Ctx S) x).world = w2.promote.1 := by
+        simp only [ack, hw2, release]
+      rw [hack]
+      have hd2 := ((carries_drains q.1).stop _ _ _ ⟨h, ht⟩ hw2).2
+      refine after _ s.world (World.drains_same rfl rfl) hd2 fun _ => ?_
+      obtain ⟨-, he2⟩ := takeStop_some hw2
+      have hm2 : q ∈ w2.queued := by rw [he2]; exact hq
+      have hs2 : w2.isStopping q.2.1 = false := by
+        cases e : w2.isStopping q.2.1
+        · rfl
+        · have := World.takeStop_isStopping hw2 _ e; rw [hqs] at this; cases this
+      exact World.freed_strict (World.takeStop_fine h hw2) hm2 hqc hs2
+        (World.takeStop_frees h hsm hkc hw2)
+        (World.drains_sub (t := q.1) (by rw [he2]; exact List.Sublist.refl _)
+          (World.takeStop_isStopping hw2)).1
+
 end Cairn.Runtime
