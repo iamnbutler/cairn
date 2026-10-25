@@ -337,7 +337,8 @@ and holds on the real app); a 10 px row height is caught as pressable-check, bla
 shrunk from 13 operations to 2.
 
 `make check` runs `make fuzz-quick`: test/fixture, with `cairn fuzz`, 200 sequences of 50 steps,
-about 1.5 s plus linking the exe; and `examples-fuzz-quick`, the same on Counter, Basics and Todo.
+about 1.5 s plus linking the exe; and `examples-fuzz-quick`, the same on Counter, Basics, Todo,
+Clock, Tray and Gallery (`FUZZ_APPS`), host moves included.
 
 ## Yap: a random host
 
@@ -369,6 +370,11 @@ Each claim's entry has `hostSteps` and `appSteps`; `steps` is their sum.
 - It fuzzes the Lean model and runtime, not the host: no AppKit, Core Text or Metal. J's
   conformance driver covers the running app, and can replay fuzz sequences; the trusted-base
   fuzzer below covers the host's codecs, text input and metrics.
+- The host is a model of the trusted claims, not the host: it never sends what they rule out
+  (duplicate replies, wrong shapes, a clock going back), its replies' contents mean nothing
+  unless the app supplies `replies`, a batch holds one host event, and it doesn't coalesce
+  ticks or model the 4096-pixel cap. Images are evicted only by the least-recently-used rule
+  over the pixel sizes it answered.
 - Flows are not fuzzed (their witnesses are proved live); they are n/a.
 - Presence assumes every move has a control while enabled. A move meant to be keyboard-only
   would need an opt-out in `Custom`.
