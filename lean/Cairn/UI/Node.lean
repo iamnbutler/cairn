@@ -126,6 +126,10 @@ structure Known where
   /-- The box's length the last time it was laid; 0 before then. -/
   viewport : Int := 0
   anchor : Option Anchor := none
+  /-- The estimate for the rows not yet laid: the mean of the first heights recorded at this
+  width, kept until the width changes, so that recording more heights doesn't move every row
+  below them; 0 before any. -/
+  est : Nat := 0
 deriving Repr, BEq, DecidableEq, Inhabited
 
 /-- What a laid virtual list says of itself (`Style.rows`), for the runtime to record and the

@@ -9,7 +9,7 @@ in part: the rows that meet the viewport, plus `overscan` points above and below
 for the rest above and one for the rest below (docs/layout.md, "Virtual lists").
 
 * **Heights are never measured off screen.** A row's height is known once it has been laid; until
-  then it is the list's estimate (given, or the mean of the known heights). The runtime records
+  then it is the list's estimate (given, or the mean of the first heights laid at its width, kept until the width changes). The runtime records
   the real heights from every layout (`record`, called by `Runtime.fixUI`), keyed by row key and
   forgotten when the list's width changes, and `settle` runs the view again when they change.
 * **The anchor.** The runtime also records the first row showing and where its top was. When the
@@ -538,16 +538,22 @@ def align (keys : Array Nat) (known : Known) : Array Row :=
 /-- A row's height when nothing is known and no estimate is given. -/
 def defaultEstimate : Nat := 40
 
-/-- The estimate: the given one, else the mean of the known heights; at least a point. -/
-def estOf (guess : Option Nat) (rows : Array Row) : Nat :=
+/-- The mean of the rows' heights; 0 when there are none. -/
+def mean (rows : Array Row) : Nat :=
+  if rows.size = 0 then 0 else (rows.foldl (fun a r => a + r.height) 0) / rows.size
+
+/-- The estimate: the given one, else the one the runtime keeps (`Known.est`), else the mean of
+the known heights; at least a point. -/
+def estOf (guess : Option Nat) (stored : Nat) (rows : Array Row) : Nat :=
   max 1 <| guess.getD <|
-    if rows.size = 0 then defaultEstimate
-    else (rows.foldl (fun a r => a + r.height) 0) / rows.size
+    if 0 < stored then stored
+    else if rows.size = 0 then defaultEstimate
+    else mean rows
 
 /-- The model a view lays `keys` out by, from what the runtime knows. -/
 def model (keys : Array Nat) (known : Known) (guess : Option Nat) : Model :=
   let rows := align keys known
-  { rows, est := estOf guess rows, count := keys.size }
+  { rows, est := estOf guess known.est rows, count := keys.size }
 
 theorem align_spec (keys : Array Nat) (known : Known) :
     Sorted (align keys known).toList ∧ ∀ r ∈ (align keys known).toList,
@@ -733,10 +739,15 @@ def merged (info : Info) (width : Int) (kids : List Laid) : Array Row :=
   (base.filter (·.index < info.first)) ++ (laidRows info kids).toArray ++
     (base.filter (info.last ≤ ·.index))
 
+/-- The estimate kept after a layout: the one kept before, unless the width changed; else the
+mean of the heights now known. -/
+def keptEst (info : Info) (width : Int) (rows : Array Row) : Nat :=
+  if info.known.width = width ∧ 0 < info.known.est then info.known.est else mean rows
+
 /-- The model after a layout. -/
 def after (info : Info) (width : Int) (kids : List Laid) : Model :=
   let rows := merged info width kids
-  { rows, est := estOf info.estimate rows, count := info.keys.size }
+  { rows, est := estOf info.estimate (keptEst info width rows) rows, count := info.keys.size }
 
 /-- The row to keep still, as its index in the new model and its top before: the anchor, if the
 offset is where it was recorded (nothing scrolled since) and its key is still known; otherwise
@@ -777,7 +788,8 @@ def record (info : Info) (r : Rect) (pad : Insets) (o lim : Int) (kids : List La
     if info.first ≤ i1 ∧ i1 < info.last then
       some { key := info.keys[i1]?.getD 0, top := M'.topF pre' i1, offset := o' }
     else keepAt.map fun (i, _) => { key := info.keys[i]?.getD 0, top := M'.topF pre' i, offset := o' }
-  ({ width, count := info.keys.size, rows := M'.rows, viewport := r.h, anchor }, o')
+  ({ width, count := info.keys.size, rows := M'.rows, viewport := r.h, anchor,
+     est := keptEst info width M'.rows }, o')
 
 /-- **The anchor stays still.** When the runtime keeps a row still (the anchor, or the row
 showing at the laid offset), the corrected offset moves by exactly as much as that row's top

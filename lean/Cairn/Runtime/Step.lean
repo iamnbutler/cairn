@@ -535,7 +535,7 @@ def settle (app : App S) (cfg : Config) (st : S) (pointer : Option Point) (ui0 :
     | f + 1 => if UI.same ui' ui then (ui', l) else settle app cfg st pointer ui0 f ui'
 
 /-- How many times `settle` may re-run the view after the first layout. -/
-def settleFuel : Nat := 2
+def settleFuel : Nat := 4
 
 /-- A shown panel's size: its width and its content's height at that width. -/
 def panelSize (cfg : Config) (v : PanelView) : Size :=
