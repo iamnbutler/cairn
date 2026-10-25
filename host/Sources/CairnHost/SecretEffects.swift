@@ -94,7 +94,14 @@ public struct KeychainStore: SecretStore {
         add[kSecAttrLabel] = "\(service) (\(account))"
         var st = SecItemAdd(add as CFDictionary, nil)
         if st == errSecDuplicateItem {
-            st = SecItemUpdate(query(account) as CFDictionary, [kSecValueData: data] as CFDictionary)
+            if data.isEmpty {
+                // The file-based keychain answers success to an update with empty data and keeps
+                // the old value (found by the fuzzer, ^972): replace the item instead.
+                st = SecItemDelete(query(account) as CFDictionary)
+                if st == errSecSuccess { st = SecItemAdd(add as CFDictionary, nil) }
+            } else {
+                st = SecItemUpdate(query(account) as CFDictionary, [kSecValueData: data] as CFDictionary)
+            }
         }
         return st == errSecSuccess ? .success(()) : .failure(failure(st, "write"))
     }
