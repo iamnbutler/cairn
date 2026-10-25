@@ -13,7 +13,8 @@ this checkout by path, Lean (`require cairn from "../../../lean"`) and Swift
 What it covers, in one window (lean/Fixture.lean):
 
 - layout: columns and rows, fill and fixed sizes, padding, gaps, clipping;
-- text: a heading, a wrapped paragraph (`Node.para`) and a text field with Enter;
+- text: a heading, a wrapped paragraph (`Node.para`), a text field with Enter, and a secure
+  field (Passcode, `^9`) whose Enter sends it in a redacted request;
 - hit testing: buttons, and keyed rows (`^4#k`, `^5#k`) that come and go;
 - effects: Flash sets a timer, and the timer's message comes back through `receive`;
 - claims: places, moves (press, edit, submit, keyed, emit), an invariant with a runnable check, a

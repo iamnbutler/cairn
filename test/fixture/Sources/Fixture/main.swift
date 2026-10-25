@@ -145,8 +145,24 @@ enum SelfTest {
             expect("Add fill", "\(c.r),\(c.g),\(c.b)", "0,122,255")
         } catch { fail("render: \(error)") }
 
+        // The Passcode field (^9) is secure: bullets in the frame, an AXSecureTextField with no
+        // value, and Enter clears it (its request is redacted; nothing listens at its URL).
+        need("^9").setAccessibilityFocused(true)
+        f = settle()
+        if f.textInput?.control.label != "^9" || f.textInput?.secure != true { fail("^9 is not a focused secure field") }
+        type("hunter2")
+        f = settle()
+        expect("^9 frame text", f.textInput?.text ?? "", String(repeating: "\u{2022}", count: 7))
+        if need("^9").accessibilitySubrole() != .secureTextField { fail("^9 is not an AXSecureTextField") }
+        if need("^9").accessibilityValue() != nil { fail("^9 has an accessibility value") }
+        if f.ax.contains(where: { $0.value.contains("hunter2") || $0.label.contains("hunter2") }) { fail("the frame holds ^9's text") }
+        view.doCommand(by: #selector(NSResponder.insertNewline(_:)))
+        f = settle()
+        expect("^9 after Enter", f.textInput?.text ?? "", "")
+        if view.shadowDivergences.count != 0 { fail("text shadow diverged: \(view.shadowDivergences)") }
+
         engine.stop()
-        print("selftest: PASS (Fixture: focus, type, Enter, Add, toggle, delete, timer, Tab, AX, paint)")
+        print("selftest: PASS (Fixture: focus, type, Enter, Add, toggle, delete, timer, Tab, AX, paint, secure field)")
     }
 }
 

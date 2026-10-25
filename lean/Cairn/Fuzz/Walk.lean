@@ -4,6 +4,7 @@ import Cairn.Fuzz.Metrics
 import Cairn.Fuzz.Host
 import Cairn.Runtime
 import Cairn.Layout.Check
+import Cairn.Frame.Dump
 import Std.Data.HashMap
 import Std.Data.HashSet
 
@@ -96,6 +97,36 @@ def opText : Op → String
   | .host h => h.text
 
 
+/-! ### Secure fields: printed as their length
+
+What a person typed into a secure field (`FieldView.secure`) is printed as bullets, one per
+scalar, in every report, shrunk sequence, flow and failure message: a fuzz report never holds
+it (docs/fuzz.md, "Secure fields"). -/
+
+/-- The secure fields in a laid tree. -/
+def secureRefs (l : Laid) : List ControlRef :=
+  (targets l).filterMap fun tg => match tg.node with
+    | .field _ _ _ _ c v .. => if v.secure then some c.ref else none
+    | _ => none
+
+def bulletsOf (s : String) : String := Text.bullets s.length
+
+/-- A text operation with its text replaced by bullets. -/
+def redactText : TextOp → TextOp
+  | .insert s => .insert (bulletsOf s)
+  | .paste s => .paste (bulletsOf s)
+  | .setMarked s a b => .setMarked (bulletsOf s) a b
+  | op => op
+
+/-- An action, with an edit of one of `secure` redacted. -/
+def redactAction (secure : List ControlRef) : Action → Action
+  | .edit c op => .edit c (if secure.contains c then redactText op else op)
+  | a => a
+
+def Op.redactIn (secure : List ControlRef) : Op → Op
+  | .act a => .act (redactAction secure a)
+  | op => op
+
 /-- A failed check: which check, on which claim and key, after which operation. -/
 structure Failure where
   check : String
@@ -161,6 +192,8 @@ structure World (S : Type) where
   seen : Std.HashMap ClaimId Nat := {}
   /-- The host: what the frames asked of it, its clock, its images. -/
   host : Host := {}
+  /-- Every secure field seen on screen so far, whose edits are printed redacted. -/
+  secure : List ControlRef := []
 
 /-- The host after a step: it takes in the effects the frame carried, the frame's images count
 as used, and the subscriptions the runtime stopped are remembered (their events can still be in
@@ -431,7 +464,8 @@ def probeKeys (t : Target) (w : World t.S) (id : ClaimId) : List Nat :=
   (onScreen ++ [top, top + 1, 0]).eraseDups
 
 def World.noteSeen (w : World S) (laid : Laid) : World S :=
-  { w with seen := (refs laid ++ (statusControls w.rt).map (·.2.1)).foldl (fun m r => m.insert r.claim (max r.key ((m.get? r.claim).getD 0))) w.seen }
+  { w with seen := (refs laid ++ (statusControls w.rt).map (·.2.1)).foldl (fun m r => m.insert r.claim (max r.key ((m.get? r.claim).getD 0))) w.seen,
+           secure := (w.secure ++ secureRefs laid).eraseDups }
 
 def isPointer (m : Move S) : Bool := m.triggers.any fun tr => tr == .press || tr == .doublePress
 
@@ -455,7 +489,7 @@ def droppedCheck : String := "droppedT33"
 /-- Every check after an operation: the checks that ran and the failures. `act?` is the
 action the operation meant to perform, if it ran. -/
 def checks (t : Target) (setup : Setup) (w : World t.S) (act? : Option Action)
-    (acts : List Action) (stepIx : Nat) (dropped : Bool := false) :
+    (acts : List Action) (stepIx : Nat) (dropped : Bool := false) (effects : List Effect := []) :
     List Ran × List Failure := Id.run do
   let s := w.rt.app
   let mut ran : Array Ran := #[]
@@ -490,7 +524,7 @@ def checks (t : Target) (setup : Setup) (w : World t.S) (act? : Option Action)
       ran := ran.push (c.claim, "performed")
       unless acts.contains a do
         fails := fails.push <| mkFail "performed" c stepIx
-          s!"{reprStr a} was meant, but the runtime delivered {reprStr acts}"
+          s!"{reprStr (redactAction w.secure a)} was meant, but the runtime delivered {reprStr (acts.map (redactAction w.secure))}"
   -- Presence.
   for mv in t.machine.moves do
     if t.custom.noControl.contains mv.id then continue
@@ -514,6 +548,23 @@ def checks (t : Target) (setup : Setup) (w : World t.S) (act? : Option Action)
       unless (w.host.heldOf src).isSome do
         fails := fails.push <| mkFail "image" ⟨place, 0⟩ stepIx
           s!"the frame draws {src.quote}, whose pixels the host doesn't hold (never loaded, or dropped with no `evicted` the app heeded)"
+  -- Secure fields: the planted text (`Text.planted`, typed into secure fields only) is in no
+  -- dump of the frame and no dump of the step's effects (a request carrying it must be
+  -- redacted, `Request.redact`).
+  -- Dumps print bytes as hex, so the planted text is looked for as text and as hex.
+  let plantedIn (d : String) : Bool :=
+    Dump.occurs Text.planted d || Dump.occurs ((Dump.bytes Text.planted.toUTF8).drop 1).toString d
+  -- Once a secure field has been seen, every later frame and effect is checked too: its text
+  -- must not turn up after the field is gone either.
+  if let some r := (secureRefs laid).head?.orElse fun _ => w.secure.head? then
+    ran := ran.push (r.claim, "secure")
+    if plantedIn (Dump.canvas (Frame.ofLaid w.rt.ui laid)) then
+      fails := fails.push <| mkFail "secure" r stepIx
+        s!"the frame's dump holds text typed into the secure field {r.label}"
+    for e in effects do
+      if plantedIn (Dump.effect e) then
+        fails := fails.push <| mkFail "secure" r stepIx
+          s!"an effect's dump holds text typed into the secure field {r.label} (an unredacted request?)"
   -- Pressable, at sizes at or above the minimum.
   if fitsWindow then
     let ts := targets laid
@@ -584,6 +635,8 @@ def genAct (t : Target) (w : World t.S) : Gen (Option (List Op)) := do
   | .blur => return some [.act (.blur c)]
   | .edit =>
     let ops ← textScript t w.rt.app c.claim
+    -- Plant text in a secure field, for the "secure" check.
+    let ops := if w.secure.contains c && (← Gen.chance 1 3) then .insert Text.planted :: ops else ops
     return some (ops.map fun op => .act (.edit c op))
 
 def genPoint (w : World S) : Gen Point := do
@@ -713,6 +766,8 @@ structure Outcome where
   skipped : Nat
   /-- What the host did. -/
   host : HostStats := {}
+  /-- The secure fields seen, whose edits are printed redacted. -/
+  secure : List ControlRef := []
 
 /-- Where a sequence's operations come from: the generator, or a fixed list (replay). -/
 inductive Source where
@@ -732,7 +787,7 @@ def runSeq (t : Target) (setup : Setup) (src : Source) (stats : Stats := {})
   let (ran0, f0) := checks t setup w none [] 0
   stats := stats.record setup.seed ran0
   if let some f := f0.head? then
-    return { setup, ops, failure := some f, stats, steps := 0, over, maxNs, skipped, host := w.host.stats }
+    return { setup, ops, failure := some f, stats, steps := 0, over, maxNs, skipped, host := w.host.stats, secure := w.secure }
   let (rng0, total, fixed) := match src with
     | .gen r n => (r, n, #[])
     | .replay os => (Rng.ofSeed 0, os.size, os)
@@ -757,7 +812,7 @@ def runSeq (t : Target) (setup : Setup) (src : Source) (stats : Stats := {})
     maxNs := max maxNs p.maxNs
     if p.maxNs > t.budgetNs then over := over.push (i, p.maxNs)
     let act? := match op with | .act a => if p.ran then some a else none | _ => none
-    let (ran, fs) := checks t setup w act? p.acts i p.dropped
+    let (ran, fs) := checks t setup w act? p.acts i p.dropped p.effects
     let (ran, fs) := if p.ran && !t.custom.relations.isEmpty then
         let (r2, f2) := relationChecks t { before := s0, msg := p.msg, after := w.rt.app, effects := p.effects } i
         -- A message the runtime dropped is also given to `receive` directly.
@@ -773,9 +828,9 @@ def runSeq (t : Target) (setup : Setup) (src : Source) (stats : Stats := {})
       unless min.w ≤ w.rt.ui.size.w && min.h ≤ w.rt.ui.size.h do skipped := skipped + 1
     stats := stats.record setup.seed ran
     if verbose then
-      IO.println s!"  {i}. {opText op}{if p.ran then "" else "  (skipped: no such control)"} → {", ".intercalate (p.acts.map actionLean)}{if p.dropped then "  (click dropped: the blur's save moved the control, T33)" else ""}"
+      IO.println s!"  {i}. {opText (op.redactIn w.secure)}{if p.ran then "" else "  (skipped: no such control)"} → {", ".intercalate (p.acts.map (actionLean ∘ redactAction w.secure))}{if p.dropped then "  (click dropped: the blur's save moved the control, T33)" else ""}"
     if let some f := fs.head? then
-      return { setup, ops, failure := some f, stats, steps := i, over, maxNs, skipped, host := w.host.stats }
+      return { setup, ops, failure := some f, stats, steps := i, over, maxNs, skipped, host := w.host.stats, secure := w.secure }
   -- Once the operations are done, the host answers everything outstanding, if the app has
   -- checks for then.
   if t.app.isSome && !t.custom.drained.isEmpty then
@@ -791,8 +846,8 @@ def runSeq (t : Target) (setup : Setup) (src : Source) (stats : Stats := {})
           s!"^{id} is false once the host has answered everything ({n} more replies, {w.host.sent.length} still unanswered)"
     stats := stats.record setup.seed ran.toList
     if let some f := fails[0]? then
-      return { setup, ops, failure := some f, stats, steps := i, over, maxNs, skipped, host := w.host.stats }
+      return { setup, ops, failure := some f, stats, steps := i, over, maxNs, skipped, host := w.host.stats, secure := w.secure }
   let host := { w.host.stats with leftOver := w.host.sent.length }
-  return { setup, ops, failure := none, stats, steps := i, over, maxNs, skipped, host }
+  return { setup, ops, failure := none, stats, steps := i, over, maxNs, skipped, host, secure := w.secure }
 
 end Cairn.Fuzz

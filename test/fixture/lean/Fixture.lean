@@ -6,7 +6,7 @@ public import Cairn
 
 What the framework's checks need from an app, in one small window (test/fixture/README.md): a
 heading and a wrapped paragraph (text, `Node.para`), a text field with Enter (editing, the text
-input client), a button, a list of rows with keyed controls (hit testing, `^N#k`), a button whose
+input client), a secure field (a passcode, sent in a redacted request), a button, a list of rows with keyed controls (hit testing, `^N#k`), a button whose
 effect comes back as a message (a timer), an invariant with a runnable check, and a flow.
 
 | Id | Kind | What |
@@ -19,6 +19,7 @@ effect comes back as a message (a timer), an invariant with a runnable check, an
 | ^6 | move | Flash: sets a timer; the note shows until it fires |
 | ^7 | invariant | item ids are positive and below the next id |
 | ^8 | flow | add two items and finish one |
+| ^9 | move | the Passcode field: a secure field; Enter sends it in a redacted request |
 
 Its claims are `fixture^N`, in test/fixture/claims.lock. None of them is in Cairn's ledger, so
 changing the fixture never moves a Cairn claim. -/
@@ -29,6 +30,7 @@ namespace Fixture
 open Cairn Cairn.Claims
 
 def placeholder : String := "New item"
+def passPlaceholder : String := "Passcode"
 
 structure Item where
   id : Nat
@@ -43,6 +45,10 @@ structure State where
   field : Text.Field := Text.Field.empty placeholder
   /-- Whether the Flash note shows: from a press of Flash until its timer fires. -/
   flash : Bool := false
+  /-- The Passcode field: a secure field (docs/text.md, "Secure fields"). -/
+  passcode : Text.SecureField := Text.SecureField.empty passPlaceholder
+  /-- The id the next request gets. -/
+  nextReq : Nat := 0
 deriving Repr, DecidableEq, Inhabited
 
 def fieldRef : ControlRef := ⟨2, 0⟩
@@ -50,10 +56,20 @@ def addRef : ControlRef := ⟨3, 0⟩
 def toggleRef (k : Nat) : ControlRef := ⟨4, k⟩
 def deleteRef (k : Nat) : ControlRef := ⟨5, k⟩
 def flashRef : ControlRef := ⟨6, 0⟩
+def passRef : ControlRef := ⟨9, 0⟩
 
 /-- The timer Flash sets, and how long the note shows. -/
 def flashTimer : String := "flash"
 def flashMs : Nat := 400
+
+/-- Where Enter in the Passcode field sends it. Nothing listens there; the request is what
+the fuzzer and the frame dump check (`Request.redact`). -/
+def signInUrl : String := "http://127.0.0.1:9/sign-in"
+
+/-- The passcode in a request's body, marked `redact`, so dumps, the debug socket and fuzz
+reports print its size only. -/
+def signIn (p : Text.SecureField) : Request :=
+  .http "POST" signInUrl [] p.text.toUTF8 5000 (redact := true)
 
 /-! ## The model -/
 
@@ -108,7 +124,7 @@ theorem delete_inv (k : Nat) {s : State} (h : Inv s) : Inv (delete k s) :=
 /-! ## Claims -/
 
 place ^1 window "Fixture window" where
-  does "The window: a heading, a paragraph, the New item field and Add, Flash, the items and the count left."
+  does "The window: a heading, a paragraph, the New item field and Add, the Passcode field, Flash, the items and the count left."
 
 move ^2 typeItem (s : State) "Type a new item" in ^1 where
   does "Type in the New item field, and press Enter."
@@ -157,6 +173,22 @@ move ^6 flashMove (s : State) "Flash" in ^1 where
     post s' := s'.flash = true ∧ s'.items = s.items
     sound := by intro s; exact ⟨rfl, rfl⟩
 
+move ^9 typePasscode (s : State) "Type a passcode" in ^1 where
+  does "Type in the Passcode field, and press Enter."
+  sees "One bullet per character; copy, cut and undo beep. Enter sends the passcode in a redacted request and clears the field."
+  on edit (op : TextOp)
+    emit := ({ s with passcode := (Text.SecureField.apply op s.passcode).1 },
+      (Text.SecureField.apply op s.passcode).2)
+    post s' := s'.passcode = (Text.SecureField.apply op s.passcode).1 ∧ s'.items = s.items ∧
+      s'.nextId = s.nextId
+    sound := by intro s op; exact ⟨rfl, rfl, rfl⟩
+  on submit
+    emit := ({ s with passcode := Text.SecureField.empty passPlaceholder, nextReq := s.nextReq + 1 },
+      [.request s.nextReq (signIn s.passcode)])
+    post s' := s'.passcode = Text.SecureField.empty passPlaceholder ∧ s'.items = s.items ∧
+      s'.nextId = s.nextId
+    sound := by intro s; exact ⟨rfl, rfl, rfl⟩
+
 /-- The world's messages: Flash's timer clears the note. -/
 def receive (s : State) : Msg → State × List Effect
   | .timer n => (if n = flashTimer then { s with flash := false } else s, [])
@@ -173,7 +205,8 @@ invariant ^7 idsBelow "Item ids stay below the next id" for machine where
       (Move.all_cons (addItem.preserves _ fun _ h => add_inv h)
       (Move.all_cons (toggleItem.preserves _ fun _ k _ h => toggle_inv k h)
       (Move.all_cons (deleteItem.preserves _ fun _ k _ h => delete_inv k h)
-      (Move.all_cons (flashMove.preserves _ fun _ h => h) Move.all_nil))))
+      (Move.all_cons (flashMove.preserves _ fun _ h => h)
+      (Move.all_cons (typePasscode.preserves _ (fun _ _ h => h) fun _ h => h) Move.all_nil)))))
   receive := by
     intro s m h
     cases m with
@@ -222,6 +255,13 @@ def inputRow (s : State) (ui : UI) : Node :=
         (s.field.view (ui.focus = some fieldRef)),
       button ui addRef "Add" ]
 
+def passcodeRow (s : State) (ui : UI) : Node :=
+  .field { width := .fill, padding := ⟨6, 8, 6, 8⟩, background := some white, radius := 6,
+           border := ring ui passRef (some ⟨1, line⟩) }
+    { font := body, color := ink }
+    { ref := passRef, role := .textField, label := passPlaceholder }
+    (s.passcode.view (ui.focus = some passRef))
+
 def itemRow (ui : UI) (it : Item) : Node :=
   .box { axis := .row, width := .fill, height := .fixed 36, gap := 10, align := .center,
          padding := ⟨0, 8, 0, 10⟩, background := some white, radius := 6 } none
@@ -248,6 +288,7 @@ def view (s : State) (ui : UI) : Node :=
         "Cairn's test app. Type an item and press Enter or Add, check it off or delete it, and \
          press Flash to set a timer. Lean breaks this paragraph to the window's width.",
       inputRow s ui,
+      passcodeRow s ui,
       .box { axis := .row, width := .fill, gap := 8, align := .center } none
         ([button ui flashRef "Flash"] ++
          (if s.flash then [.text { font := body, color := accent } "Flashing"] else [])),

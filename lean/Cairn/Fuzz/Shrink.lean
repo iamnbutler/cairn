@@ -68,10 +68,12 @@ structure Traced where
   hit : Option ControlRef
   accepted : List Action
 
-/-- Replay operations, recording what each did. -/
+/-- Replay operations, recording what each did. Edits of a secure field are recorded redacted
+(`Op.redactIn`), so a report, its sequence and its flow never hold what was typed into one. -/
 def trace (t : Target) (setup : Setup) (ops : Array Op) : IO (Array Traced) := do
   let mut w := World.start t setup
   let mut out := #[]
+  let mut sec := secureRefs w.rt.laid
   for op in ops do
     let hit := match op with
       | .click p _ | .move p => hitRef w.rt.laid p
@@ -81,8 +83,9 @@ def trace (t : Target) (setup : Setup) (ops : Array Op) : IO (Array Traced) := d
     let (_, acc) := p.acts.foldl (fun (st, acc) a =>
       let acc := if accepts t.machine.moves st a then acc.push a else acc
       ((t.machine.update st a).1, acc)) (s0, (#[] : Array Action))
-    out := out.push { op, hit, accepted := acc.toList }
     w := p.world
+    sec := (sec ++ secureRefs w.rt.laid).eraseDups
+    out := out.push { op := op.redactIn sec, hit, accepted := acc.toList.map (redactAction sec) }
   return out
 
 /-! ## As Lean source -/
