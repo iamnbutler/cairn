@@ -158,9 +158,10 @@ site-maps:
 # (site/web/bongo.config.ts) with a link preview card per page. Code is included from source by
 # region; a missing file or region, a fenced code block or a broken link fails the build. The
 # output isn't committed: site-dist merges it with site/public. site/public/docs/api/ is
-# `cairn doc`'s, and site/public/docs/docs.css is shared with the package pages.
+# `cairn doc`'s, and site/public/docs/docs.css is shared with the package pages. --fresh: bongo
+# rebuilds a page when its Markdown changes, not when a file it includes does.
 docs:
-	cd site/web && bun install --frozen-lockfile --silent && bun --bun ./node_modules/.bin/bongo build
+	cd site/web && bun install --frozen-lockfile --silent && bun --bun ./node_modules/.bin/bongo build --fresh
 
 # The package pages (site/registry.js) against the registry fixture and a fake registry. The
 # fixture comes from the release tags: `bun tools/registry/fixture.ts` rewrites it, `--check` diffs it.
