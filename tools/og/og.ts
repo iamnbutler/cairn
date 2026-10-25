@@ -17,6 +17,19 @@ export const CARDS = {
 	api: { name: "api", label: "Cairn docs", title: "API reference", line: "Every module, declaration and claim, generated from the code." },
 } satisfies Record<string, Card>;
 
+// The card for one version of a package: its kind and version, its name, its description. The
+// docs build draws one for every version the registry holds (site/web/lib/og.ts); a version
+// published since the last deploy has none yet, and the Worker serves the Packages card for it.
+export function packageCard(name: string, version: string, kind: string, description?: string): Card {
+	const line = (description ?? "").trim();
+	return {
+		name: `pkg/${name}/${version}`,
+		label: `${kind === "bin" ? "App" : "Library"} · ${version}`,
+		title: name,
+		line: line.length > 120 ? `${line.slice(0, 119).trimEnd()}…` : line,
+	};
+}
+
 // A card of its own for the page at `path`: /docs/guide/proving/ draws og/docs-guide-proving.png.
 export const cardFor = (path: string, label: string, title: string): Card => ({
 	name: path.replace(/\.html$/, "").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "home",

@@ -15,7 +15,7 @@
 // it. /packages/ shows the libraries and /packages/?tab=apps the apps; a registry that doesn't
 // say (nextpm before kinds) means a library.
 import fixture from "./registry/fixture.json";
-import { CARDS, ogTags } from "../tools/og/og.ts";
+import { CARDS, ogTags, packageCard } from "../tools/og/og.ts";
 
 const esc = (value) =>
 	String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -135,7 +135,7 @@ function latestOf(versions) {
 
 const date = (iso) => new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
 
-function page({ title, lede, eyebrow, body, path, on = "packages" }) {
+function page({ title, lede, eyebrow, body, path, on = "packages", card = CARDS.packages }) {
 	return `<!doctype html>
 <html lang="en">
 <head>
@@ -150,7 +150,7 @@ function page({ title, lede, eyebrow, body, path, on = "packages" }) {
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/docs/docs.css">
-${ogTags({ title, description: lede, path, card: CARDS.packages })}
+${ogTags({ title, description: lede, path, card })}
 <link rel="stylesheet" href="/packages.css">
 </head>
 <body>
@@ -328,7 +328,16 @@ ${ledger}
 		lede: shown.description ?? pkg.description ?? "",
 		path: `/packages/${encodeURIComponent(name)}/${wanted ? `${encodeURIComponent(shown.version)}/` : ""}`,
 		body,
+		card: cardOf(pkg, shown),
 	});
+}
+
+const cardOf = (pkg, v) => packageCard(pkg.name, v.version, kindOf(v.kind ? v : pkg), v.description ?? pkg.description);
+
+/** Every version's card, for the site build to draw (site/web/lib/og.ts). */
+export async function packageCards(src) {
+	const all = await Promise.all((await src.list()).map((one) => src.pkg(one.name)));
+	return all.filter(Boolean).flatMap((pkg) => pkg.versions.map((v) => cardOf(pkg, v)));
 }
 
 /** /docs/<name>/<version>/: a placeholder until the registry builds docs from source. */
