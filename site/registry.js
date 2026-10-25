@@ -15,7 +15,7 @@
 // it. /packages/ shows the libraries and /packages/?tab=apps the apps; a registry that doesn't
 // say (nextpm before kinds) means a library.
 import fixture from "./registry/fixture.json";
-import { ogTags } from "../tools/og/og.ts";
+import { CARDS, ogTags } from "../tools/og/og.ts";
 
 const esc = (value) =>
 	String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -131,7 +131,7 @@ function page({ title, lede, eyebrow, body, path, on = "packages" }) {
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/docs/docs.css">
-${ogTags({ title, description: lede, path, card: "packages" })}
+${ogTags({ title, description: lede, path, card: CARDS.packages })}
 <link rel="stylesheet" href="/packages.css">
 </head>
 <body>

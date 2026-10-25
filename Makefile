@@ -169,7 +169,7 @@ registry-check:
 	bun test site/registry.test.js
 
 # Deploy the microsite (site/) to Cloudflare, once the feed is fresh (site-feed-check, below).
-site: site-feed-check
+site: site-feed-check og-check
 	cd site && npx -y wrangler@4 deploy
 
 clean:
@@ -317,16 +317,23 @@ fuzz-trusted-quick: lean
 # site/public/milestones/index.html and the videos in site/public/media.json (tools/site/build.ts).
 # Both are committed; site-feed-check fails when either is stale. It is part of check (on its own
 # line, so the check: list stays as the docs include it) and runs before every deploy.
-.PHONY: site-feed site-feed-check og
+.PHONY: site-feed site-feed-check og og-check
 site-feed:
 	bun tools/site/build.ts
 
 site-feed-check:
 	bun tools/site/build.ts --check
 
-# The link preview cards, site/public/og/*.png (tools/og/render.ts). Needs Google Chrome; redraw
-# them when the scene or a card's text changes, and commit them.
+# The link preview cards, site/public/og/*.png (tools/og/render.ts): one per page, drawn from the
+# card each page's tags name. `make og` draws the missing and changed ones (Google Chrome);
+# `make og ALL=1` redraws all of them after a change to the card or the scene. og-check needs no
+# Chrome and fails when a page names a card that is missing or stale. Commit the PNGs.
 og:
-	bun tools/og/render.ts
+	bun tools/og/render.ts $(if $(ALL),--all)
+
+og-check:
+	bun tools/og/render.ts --check
+
+check: og-check
 
 check: site-feed-check

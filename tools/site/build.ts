@@ -24,7 +24,7 @@
 // bun.
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
-import { type CardName, stamp } from "../og/og.ts";
+import { CARDS, type Card, cardFor, stamp, titleOf } from "../og/og.ts";
 
 const ROOT = resolve(import.meta.dir, "../..");
 const PUBLIC = join(ROOT, "site/public");
@@ -180,16 +180,25 @@ const movedRe = /\/\* moved-ids \*\/[\s\S]*?\/\* \/moved-ids \*\//;
 if (!movedRe.test(home)) fail(HOME, "has no /* moved-ids */ … /* /moved-ids */ markers");
 home = home.replace(movedRe, () => `/* moved-ids */${JSON.stringify(moved)}/* /moved-ids */`);
 for (const id of moved) if (home.includes(`id="${id}"`)) fail(HOME, `#${id} is both here and on /milestones/; the redirect would hide it`);
-home = stamp(home, "/", "home");
+home = stamp(home, "/", CARDS.home);
 
 // Link preview tags in the pages nothing else here writes.
 const htmlUnder = (dir: string): string[] =>
 	existsSync(dir) ? readdirSync(dir).flatMap((n) => (statSync(join(dir, n)).isDirectory() ? htmlUnder(join(dir, n)) : n.endsWith(".html") ? [join(dir, n)] : [])) : [];
 const stamped: [string, string][] = [
-	...([["milestones", "milestones"], ["map", "maps"], ["docs/api", "docs"]] as [string, CardName][]).flatMap(([dir, card]) =>
+	...([
+		["milestones", () => CARDS.milestones],
+		// A map page is titled "Counter map", or "Evidence · Counter map" below it.
+		["map", (path, title) => {
+			const [page, map] = title.includes(" · ") ? title.split(" · ") : ["", title];
+			return page ? cardFor(path, map, page) : cardFor(path, "Maps", map.replace(/ map$/, ""));
+		}],
+		["docs/api", () => CARDS.api],
+	] as [string, (path: string, title: string) => Card][]).flatMap(([dir, card]) =>
 		htmlUnder(join(PUBLIC, dir)).map((file): [string, string] => {
 			const path = "/" + relative(PUBLIC, file).replace(/(^|\/)index\.html$/, "$1");
-			return [relative(ROOT, file), stamp(readFileSync(file, "utf8"), path, card)];
+			const html = readFileSync(file, "utf8");
+			return [relative(ROOT, file), stamp(html, path, card(path, titleOf(html)))];
 		}),
 	),
 ];
