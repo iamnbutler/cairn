@@ -36,7 +36,7 @@ fuzzing, mapping and bundling an app are still the Cairn repository's `make` tar
 <a href="/docs/reference/cairn-tool/"><b>The cairn tool</b><span>Starting, building, documenting and publishing a package, and the make targets for the rest.</span></a>
 <a href="/docs/reference/claims/"><b>Claims</b><span>Every claim kind, what each generates, and what the build checks.</span></a>
 <a href="/docs/reference/evidence/"><b>The evidence ladder</b><span>Proved, fuzzed, tested, seen, assumed: how sure we are of each claim.</span></a>
-<a href="/docs/reference/errors/"><b>Errors<i class="todo">to do</i></b><span>Every error the claim commands and the ledger report.</span></a>
+<a href="/docs/reference/trust/"><b>How much to trust a claim</b><span>What each kind of evidence rules out, what it still trusts, and a bug the tests miss.</span></a>
 <a href="/docs/reference/releases/"><b>Release notes</b><span>What changed in each version, and what an app can rely on across them.</span></a>
 </div>
 
