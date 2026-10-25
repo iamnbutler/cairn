@@ -21,10 +21,11 @@ claim or to code; each claim's `does` names the requirements it covers.
 | ^208–^210 | move | the filters All, Active, Completed |
 | ^211 | move | Clear completed |
 | ^212 | invariant | the counter is the number of active todos; ids are distinct |
-| ^213 | invariant | the listed rows are the todos the filter accepts, in order |
+| ^213 | retired | the listed rows, reissued as ^225 when `Style` gained an image |
 | ^214 | assume | the host reports a double click as a second click |
 | ^215 | retired | hash routes and the back button, which only make sense on the web |
 | ^216–^224 | flow | witnessed paths through the app |
+| ^225 | invariant | the listed rows are the todos the filter accepts, in order |
 
 Its map: [/map/todo/](/map/todo/). Run it with `make demo`.
 
@@ -44,7 +45,7 @@ The edit field's move answers four triggers. Enter and blur save; Escape cancels
 
 ## The view as a claim
 
-An invariant can be about the view. ^213 says that, under any hover and focus, the rows on screen
+An invariant can be about the view. ^225 says that, under any hover and focus, the rows on screen
 are exactly the todos the filter accepts, in order:
 
 <bongo:include src="lean/Examples/Todo.lean#todo-listed-rows" />
