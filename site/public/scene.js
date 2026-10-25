@@ -501,10 +501,82 @@ function dissolve(L, g, bg) {
 
 // --- Assembly --------------------------------------------------------------------------------
 
+// --- The Octocat ---------------------------------------------------------------------------------
+
+// GitHub's Octocat, swimming in the lake left of the middle: it bobs, blinks now and then, and
+// waves a tentacle, often while someone points at it. The link laid over it goes to the
+// repository; scene.js moves the link wherever the cat is drawn. Lit from the upper right.
+const CAT = { o: "#1d1a36", h: "#eeeaff", L: "#aca1db", M: "#7d72b3", D: "#5a4f93", F: "#f6dccb", f: "#d9b2a4", e: "#1d1a36", n: "#d9879c" };
+const CAT_ART = [
+  ".oo..........oo.",
+  "oMMo........oMho",
+  "oDMMo......oMMLo",
+  "oDMMMooooooMMMLo",
+  "oDMMMMMMMMMMMMLo",
+  "oDMFFFFFFFFFFMLo",
+  "oDfFehFFFFehFMLo",
+  "oDfFeeFFFFeeFMLo",
+  "oDffFFFnnFFFFMLo",
+  ".oDffFFFFFFFFMo.",
+  "..oDffffffffMo..",
+  "...oDMMMMMMMLo..",
+];
+const CAT_WATER = 9; // rows from here down are under the surface
+const LAKE_TINT = rgb("#2f3172");
+const tint = (c, a) => { const v = rgb(c); return `rgb(${v.map((x, i) => Math.round(x * (1 - a) + LAKE_TINT[i] * a)).join(",")})`; };
+
+function drawOctocat(ctx, cat, t, waving) {
+  const { x, wl } = cat;
+  const bob = Math.round(Math.sin(t * 1.6) * 0.6) - (waving ? 1 : 0);
+  const blink = t % 4.3 > 4.16;
+  const top = wl - CAT_WATER + bob;
+  CAT_ART.forEach((row, r) => {
+    for (let c = 0; c < row.length; c++) {
+      let k = row[c];
+      if (k === ".") continue;
+      if (blink && r === 6 && (k === "e" || k === "h")) k = "F";
+      const y = top + r;
+      ctx.fillStyle = y >= wl ? tint(CAT[k], 0.6) : CAT[k];
+      ctx.fillRect(x + c, y, 1, 1);
+    }
+  });
+  // A tentacle out of the water a little to its right: it bends more towards the tip, which curls
+  // outwards, and sways while it waves.
+  const lift = waving ? 1 : Math.max(0, Math.sin(t * 0.7) * 3 - 2); // idle: now and then
+  const n = Math.round(2 + lift * 6);
+  const bend = 1 + Math.sin(t * (waving ? 6 : 2.5)) * (waving ? 2.5 : 1.2);
+  let px = x + 19;
+  for (let k = 0; k < n; k++) {
+    px = x + 19 + Math.round(bend * (k / 7) ** 2);
+    const py = wl - 1 - k;
+    ctx.fillStyle = CAT.o; ctx.fillRect(px - 1, py, 1, 1); ctx.fillRect(px + 2, py, 1, 1);
+    ctx.fillStyle = CAT.M; ctx.fillRect(px, py, 1, 1);
+    ctx.fillStyle = CAT.L; ctx.fillRect(px + 1, py, 1, 1);
+  }
+  if (n > 4) { // the curl at the tip
+    const py = wl - 1 - n;
+    ctx.fillStyle = CAT.o; ctx.fillRect(px, py, 4, 1); ctx.fillRect(px + 4, py + 1, 1, 2);
+    ctx.fillStyle = CAT.L; ctx.fillRect(px + 2, py + 1, 2, 1);
+    ctx.fillStyle = CAT.M; ctx.fillRect(px + 3, py + 2, 1, 1);
+  }
+  // Ripples on the surface on either side, drifting outwards.
+  ctx.fillStyle = T.glint[0];
+  const step = Math.floor(t * 3);
+  for (let j = 0; j < 9; j++) {
+    if ((j + step) % 4 === 0) continue;
+    ctx.fillRect(x - 2 - j, wl, 1, 1);
+    ctx.fillRect(x + 24 + j, wl, 1, 1);
+  }
+}
+
 export function mountScene(canvas, layout = {}) {
   const reduce = matchMedia("(prefers-reduced-motion: reduce)");
   const header = canvas.parentElement;
-  let state = null, raf = 0, visible = true, lastKey = "";
+  let state = null, raf = 0, visible = true, lastKey = "", waving = false;
+  if (layout.octocat) {
+    const wave = on => () => { waving = on; if (reduce.matches) frame(performance.now()); };
+    for (const [type, on] of [["pointerenter", true], ["pointerleave", false], ["focus", true], ["blur", false]]) layout.octocat.addEventListener(type, wave(on));
+  }
 
   // Where the featured video sits, in canvas pixels from the canvas's top.
   function measure(s) {
@@ -567,7 +639,16 @@ export function mountScene(canvas, layout = {}) {
     const sparkles = [[-0.3, 0.06], [-0.14, 0.2], [0.06, 0.05], [0.17, 0.24], [-0.44, 0.27], [0.4, 0.31], [-0.6, 0.12], [0.58, 0.2], [-0.8, 0.18], [0.82, 0.08]]
       .map(([fx, fy], k) => ({ x: cx + Math.round(fx * Math.min(W, 760)), y: Math.round(horizon * 2 * fy), phase: k * 1.7 }));
     const count = Math.round(Math.min(70, spots.length / 8));
-    state = { W, H, L, spots, sparkles, motes: [], t0: performance.now() };
+    const cat = { x: cx - Math.round(Math.min(W * 0.2, 110)) - 8, wl: g.lakeTop + 14 };
+    if (layout.octocat) {
+      const c = canvas.getBoundingClientRect(), hd = header.getBoundingClientRect();
+      Object.assign(layout.octocat.style, {
+        left: `${c.left - hd.left + (cat.x - 3) * s}px`, top: `${c.top - hd.top + (cat.wl - CAT_WATER - 8) * s}px`,
+        width: `${30 * s}px`, height: `${(CAT_WATER + 10) * s}px`,
+      });
+      layout.octocat.hidden = false;
+    }
+    state = { W, H, L, spots, sparkles, motes: [], cat, t0: performance.now() };
     for (let k = 0; k < count; k++) state.motes.push(spawn(true));
     last = 0;
     frame(performance.now());
@@ -595,6 +676,7 @@ export function mountScene(canvas, layout = {}) {
       ctx.fillStyle = T.sparkle;
       for (let d = 1; d <= arm; d++) { ctx.fillRect(s.x + d, s.y, 1, 1); ctx.fillRect(s.x - d, s.y, 1, 1); ctx.fillRect(s.x, s.y + d, 1, 1); ctx.fillRect(s.x, s.y - d, 1, 1); }
     }
+    drawOctocat(ctx, state.cat, t, waving);
     // Fireflies rise slowly and twinkle.
     for (let k = 0; k < motes.length; k++) {
       const m = motes[k];

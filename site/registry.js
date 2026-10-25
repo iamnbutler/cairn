@@ -160,6 +160,7 @@ ${ogTags({ title, description: lede, path, card })}
   <a href="/docs/">Docs</a>
   <a href="/packages/"${on === "packages" ? ' class="on"' : ""}>Packages</a>
   <a href="/docs/evidence/">Maps</a>
+  <a class="gh" href="https://github.com/iamnbutler/cairn"><img src="/github.svg" alt="">GitHub</a>
 </header>
 <main class="registry">
 <header class="page">
