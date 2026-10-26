@@ -653,7 +653,7 @@ draw a ⋯ button pressed while its menu is open.
 
 **The frame.**
 - The window's surface record carries the open menu in its `status`: `control` is the owner and
-  `menu` is the records, in the same shape as a status item's (docs/frame.md, v12).
+  `menu` is the records, in the same shape as a status item's (docs/frame.md, v13).
 - An ax node whose control has a menu sets `menu`, so the mirror gives it `AXShowMenu`. A menu
   button's node is an `AXMenuButton`.
 

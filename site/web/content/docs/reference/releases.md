@@ -104,7 +104,7 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
   - The main menu auto-enabled greyed items, so their key equivalents pressed them.
     `MenuHost.validateMenuItem` now answers with the record's own flag.
   - See docs/trusted.md.
-- **Frames v12.** The format adds:
+- **Frames v13.** The format adds:
   - the `menuBar` surface kind (3);
   - the window's open control menu, in its `status`;
   - an ax record's `menu` byte;
@@ -126,7 +126,7 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
   - A new check, `menu-greyed`, chooses greyed items and expects nothing.
 - **The fixture** gains an item menu (⋯ and the checkbox's secondary click; `fixture^25`–^27),
   Clear Done and a Go menu in the menu bar (^28–^32), and flow ^33. The statements of `fixture^12`,
-  ^13 and ^19 quantify over the fixture's view, which changed, and were accepted.
+  ^13 and ^48 quantify over the fixture's view, which changed, and were accepted.
 - `Cairn.Fuzz.Custom` is in `Type 1` now (it can hold a server's world type); `World` and
   `Performed` take the world's type.
 - **`Effect.scrollTo`** (cairn#234). An app moves a scroll box or a virtual list: `scrollTo ref

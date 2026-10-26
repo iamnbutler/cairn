@@ -24,11 +24,11 @@ extension Frame {
         self = try bytes.withUnsafeBytes { try Frame(decoding: $0) }
     }
 
-    /// Header (magic, version 12, flags 0), surfaces, effects, subscription commands, wake.
+    /// Header (magic, version 13, flags 0), surfaces, effects, subscription commands, wake.
     public init(decoding raw: UnsafeRawBufferPointer) throws {
         var r = ByteReader(raw)
         try r.need(8)
-        guard r.u8(0) == 0x43, r.u8(1) == 0x41, r.u8(2) == 0x46, r.u8(3) == 0x52, r.u16(4) == 12,
+        guard r.u8(0) == 0x43, r.u8(1) == 0x41, r.u8(2) == 0x46, r.u8(3) == 0x52, r.u16(4) == 13,
               r.u16(6) == 0  // flags: reserved, zero (found by cairn-fuzz-trusted)
         else { throw FrameDecodeError.badHeader }
         r.i = 8

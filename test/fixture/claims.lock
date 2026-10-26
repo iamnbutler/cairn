@@ -40,4 +40,4 @@
 45	move	active	27a9d64e36802efc	Badge the Dock tile
 46	move	active	d79a646c6eda849e	Clear the badge
 47	move	active	8c83216dc291c9c1	Announce
-48	invariant	active	c99c72609ed4862a	Rows are one under the other from the offset while shown
+48	invariant	active	0f833e0134ea7b8b	Rows are one under the other from the offset while shown

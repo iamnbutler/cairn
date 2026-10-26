@@ -1,4 +1,4 @@
-# Frame and event format: frames v12, events v2
+# Frame and event format: frames v13, events v2
 
 Two byte buffers cross the boundary between Lean and the Swift host, and nothing else does:
 
@@ -465,7 +465,7 @@ error. `button` is `0` primary, `1` secondary.
 
 Version 1 had tags 0–20 only. Reply code 7 came with frames v5 and subscription event 8 with v8;
 the batch format is unchanged, so events stay at version 2. Runtime scroll offsets and `appear`
-(#203) changed no record. Key code 14 (frames v12) is a new code in the same record, and
+(#203) changed no record. Key code 14 (frames v13) is a new code in the same record, and
 `menuSelect`/`menuClose` with the window's place choose from and close a control's menu: events
 stay at version 2.
 

@@ -74,7 +74,8 @@ enum Corpus {
         #expect(throws: FrameDecodeError.badHeader) { try Frame(bytes: Array(bin[0..<4]) + [9, 0] + bin.dropFirst(6)) }
         #expect(throws: FrameDecodeError.badHeader) { try Frame(bytes: Array(bin[0..<4]) + [10, 0] + bin.dropFirst(6)) }
         #expect(throws: FrameDecodeError.badHeader) { try Frame(bytes: Array(bin[0..<4]) + [11, 0] + bin.dropFirst(6)) }
-        #expect(throws: FrameDecodeError.badHeader) { try Frame(bytes: Array(bin[0..<4]) + [13, 0] + bin.dropFirst(6)) }
+        #expect(throws: FrameDecodeError.badHeader) { try Frame(bytes: Array(bin[0..<4]) + [12, 0] + bin.dropFirst(6)) }
+        #expect(throws: FrameDecodeError.badHeader) { try Frame(bytes: Array(bin[0..<4]) + [14, 0] + bin.dropFirst(6)) }
         #expect(throws: FrameDecodeError.trailingBytes(at: bin.count)) { try Frame(bytes: bin + [0]) }
         for n in [0, 3, 15, 16, 20, bin.count / 2, bin.count - 1] {
             #expect(throws: FrameDecodeError.self) { try Frame(bytes: Array(bin[0..<n])) }
@@ -90,7 +91,7 @@ enum Corpus {
             + [0, 0, 0, 0] + [0, 0, 0, 0]
         let status: [UInt8] = u32(0) + u32(0) + u32(0) + u32(0) + u32(0) + u32(0) + u32(0)
         let surface: [UInt8] = [0, 1, 0, 0] + u32(0) + u32(0) + u32(0) + u32(0) + u32(0) + canvas + status
-        return Array("CAFR".utf8) + [12, 0, 0, 0] + u32(1) + u32(surface.count) + surface
+        return Array("CAFR".utf8) + [13, 0, 0, 0] + u32(1) + u32(surface.count) + surface
             + u32(0) + u32(0) + u32(0) + u32(0) + [UInt8](repeating: 0, count: 12)
     }
 
