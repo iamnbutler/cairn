@@ -169,4 +169,91 @@ def run (lose : Bool) (seed : Nat) : IO Outcome := do
 
 end Lost
 
+/-! ## A server
+
+A toy that asks a counter server to count, once, at launch: the server's world is the count.
+A 2xx reply never arrives unless the server counted (checked every step), and once everything
+is answered the count is at most one (it never handles a request twice by default). A drained
+check that says the app heard every count (`acked = count`) is wrong exactly when a reply is
+lost after the server acted, and the fuzzer finds that and shrinks it to the lost reply. -/
+
+namespace Counted
+
+structure S where
+  acked : Nat := 0
+deriving Inhabited
+
+def receive (s : S) : Msg → S × List Effect
+  | .reply 0 (.http 200 ..) => ({ s with acked := s.acked + 1 }, [])
+  | _ => (s, [])
+
+def machine : Claims.Machine S := { init := {}, moves := [], receive }
+
+def app : App S where
+  init := {}
+  surfaces := [.window 9900 "Toy" fun _ _ => .box {} none []]
+  update := fun s _ => (s, [])
+  receive
+  initEffects := [.request 0 (.http "POST" "https://example.test/count" [] .empty 0)]
+  claims := []
+
+abbrev Checks := List (ClaimId × (S → Nat → Bool))
+
+def server (checks drained : Checks) : Server S where
+  W := Nat
+  init := pure 0
+  handle := fun n _ _ => pure (n + 1, .http 200 [] .empty)
+  checks := checks
+  drained := (9906, fun _ n => n ≤ 1) :: drained
+  loseAfter := 20
+  failBefore := 20
+
+def target (checks : Checks) (drained : Checks := []) : Target :=
+  { name := "Toy", module := "Cairn.Fuzz.HostTests", ns := "Cairn.Fuzz.HostTests",
+    machineDecl := "machine", appDecl := some "app", S := S, machine, app := some app,
+    keyed := [], invariants := [], claims := [], custom := { server := some (server checks drained) } }
+
+def run (checks : Checks) (drained : Checks := []) (seed : Nat) : IO Outcome := do
+  let t := target checks drained
+  let (setup, rng) := genSetup t seed
+  runSeq t setup (.gen rng 60)
+
+-- A 2xx means the server counted; both faults happen; the checks ran.
+#eval show IO Unit from do
+  let mut host : HostStats := {}
+  for seed in [0:40] do
+    let o ← run [(9905, fun s n => s.acked ≤ n)] [] seed
+    if let some f := o.failure then
+      throw (IO.userError s!"seed {seed}: {f.check} ^{f.claim}: {f.message}")
+    unless ((o.stats.get? 9905).bind (·.checks.get? "server")).isSome &&
+        ((o.stats.get? 9906).bind (·.checks.get? "serverDrained")).isSome do
+      throw (IO.userError "the server's checks should run")
+    host := host.add o.host
+  unless host.served > 0 && host.lostAfter > 0 && host.failedBefore > 0 && host.ticks > 0 do
+    throw (IO.userError s!"the server did too little: {reprStr host}")
+
+-- "The app heard every count" is false after a reply lost after the server counted, and the
+-- failure shrinks to the request reaching the server and its reply being lost.
+#eval show IO Unit from do
+  let drained : Checks := [(9907, fun s n => s.acked == n)]
+  let t := target [] drained
+  let some (seed, o) ← (List.range 40).findSomeM? fun seed => do
+      let o ← run [] drained seed
+      return if o.failure.isSome then some (seed, o) else none
+    | throw (IO.userError "a lost reply should be caught")
+  let some f := o.failure | unreachable!
+  unless f.check == "serverDrained" && f.claim == 9907 do
+    throw (IO.userError s!"seed {seed}: wrong failure {f.check} ^{f.claim}")
+  let (ops, _) ← shrink t o.setup f o.ops
+  unless ops.size == 2 && ops[0]! matches .host (.serve 0 _) && ops[1]! matches .host (.lose 0 _) do
+    throw (IO.userError s!"seed {seed}: shrunk to {ops.size} operations: {ops.toList.map opText}")
+
+end Counted
+
+-- Weights: a weight of 0 is never picked, and all 0 picks nothing.
+#guard ((List.range 200).foldl (fun (acc : List Nat × Rng) _ =>
+    let (x, r) := (Gen.pick [(0, 7), (3, 8), (0, 9)]).run acc.2
+    (x.toList ++ acc.1, r)) ([], Rng.ofSeed 1)).1.all (· == 8)
+#guard ((Gen.pick [(0, 7), (0, 8)]).run (Rng.ofSeed 1)).1 == none
+
 end Cairn.Fuzz.HostTests

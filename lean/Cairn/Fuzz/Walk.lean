@@ -188,9 +188,11 @@ end
 
 /-! ## The world a sequence runs in -/
 
-variable {S : Type}
+variable {S W : Type}
 
-structure World (S : Type) where
+/-- A sequence's state: the runtime's, what the fuzzer has seen, the host's, and the world of
+the app's server (`Custom.server`; `Unit` without one). -/
+structure World (S W : Type) where
   rt : Runtime.State S
   /-- The largest key seen on screen per keyed move, so "enabled but missing" can be probed. -/
   seen : Std.HashMap ClaimId Nat := {}
@@ -198,6 +200,9 @@ structure World (S : Type) where
   host : Host := {}
   /-- Every secure field seen on screen so far, whose edits are printed redacted. -/
   secure : List ControlRef := []
+  /-- What the app's server holds. Only `perform` and `drain` change it, and they hold its only
+  reference while they do. -/
+  server : W
 
 /-- The host after a step: it takes in the effects the frame carried, the frame's images count
 as used, and the subscriptions the runtime stopped are remembered (their events can still be in
@@ -211,17 +216,22 @@ def Host.after (h : Host) (before : List (Nat × Sub)) (rt : Runtime.State S) (e
   { h with stopped := (gone ++ h.stopped).take 8, started := h.started.filter live,
            keysDown := h.keysDown.filter live }
 
+/-- The server's world a sequence starts with: `Server.init` from the sequence's seed. -/
+def serverStart (t : Target) (setup : Setup) : t.W :=
+  (t.srv.init.run (Rng.ofSeed (setup.seed + 0x5e7e7))).1
+
 /-- The first frame, then the host's first clock, which boots the app (`App.initEffects`). -/
-def World.start (t : Target) (setup : Setup) : World t.S :=
+def World.start (t : Target) (setup : Setup) : World t.S t.W :=
   let cfg := cfgOf setup.metrics
   let rt0 := Runtime.start t.runApp cfg setup.size
   let h0 : Host := { now := setup.start }
   match t.app with
-  | none => { rt := rt0, host := h0 }
+  | none => { rt := rt0, host := h0, server := serverStart t setup }
   | some app =>
     let (rt, es) := step app cfg rt0 (.clock setup.start)
     let rt := { rt with subCmds := #[] }
-    { rt, host := { h0 with stats := { clocks := 1 } }.after rt0.world.subs rt es }
+    { rt, host := { h0 with stats := { clocks := 1 } }.after rt0.world.subs rt es,
+      server := serverStart t setup }
 
 /-- The events a text operation arrives as. `setCaret` has none (it comes from clicks). -/
 def opEvents : TextOp → List Event
@@ -381,10 +391,181 @@ def hostPlan (rt : Runtime.State S) (h : Host) : HostOp → Option (Host × List
     if h.isSent id || (rt.world.pending.lookup id).isSome || rt.world.isStopping id then none else
     some ({ h with stats := { h.stats with stray := h.stats.stray + 1 } },
       [.clock h.now, .reply id r], some (.reply id r))
+  -- A server's moves (`hostStep`).
+  | .serve .. | .lose .. | .fail .. | .tick _ => none
+
+/-- The host's move with server `sv` (`Custom.server`), whose world is `sw`: the world after,
+and the host, events and message as `hostPlan`'s, or `none` when the move can't happen now (then
+the world is `sw`). `serve` and `tick` change the world; a `reply` to a request the server takes
+sends the reply it gave (and can't happen until it has given one); `lose` (lost after) and
+`fail` (failed before) answer a request it takes with a fault, after and before it handled it.
+Every other move is `hostPlan`'s, and leaves the world alone. The world is returned even when
+the move can't happen, so the caller never keeps a second reference to it. -/
+def hostStep (sv : Server S) (rt : Runtime.State S) (h : Host) (sw : sv.W) :
+    HostOp → sv.W × Option (Host × List Event × Option Msg)
+  | .serve id seed =>
+    match h.request? id with
+    | none => (sw, none)
+    | some req =>
+      if !sv.takes req then (sw, none) else
+      let again := (h.ready.lookup id).isSome
+      let ((sw', rep), _) := (sv.handle sw id req).run (Rng.ofSeed seed)
+      let rep := if rep.answers req.kind then rep
+        else .failed .other "fuzz: the server answered the wrong kind"
+      (sw', some ({ h with ready := (id, rep) :: h.ready.filter (·.1 != id),
+                           stats := { h.stats with served := h.stats.served + 1,
+                                                   retransmits := h.stats.retransmits + (if again then 1 else 0) } },
+                  [], none))
+  | .tick seed =>
+    if sv.ticks == 0 then (sw, none) else
+    (((sv.tick sw).run (Rng.ofSeed seed)).1,
+     some ({ h with stats := { h.stats with ticks := h.stats.ticks + 1 } }, [], none))
+  | .reply id r =>
+    (sw, match h.request? id with
+      | none => none
+      | some req =>
+        if !sv.takes req then hostPlan rt h (.reply id r)
+        else match h.ready.lookup id with
+          | none => none
+          | some rep => hostPlan rt h (.reply id rep))
+  | .lose id r =>
+    (sw, match h.request? id with
+      | none => none
+      | some req =>
+        if sv.takes req && (h.ready.lookup id).isSome then
+          (hostPlan rt h (.reply id r)).map fun (h', es, m) =>
+            ({ h' with stats := { h'.stats with lostAfter := h'.stats.lostAfter + 1 } }, es, m)
+        else none)
+  | .fail id r =>
+    (sw, match h.request? id with
+      | none => none
+      | some req =>
+        if sv.takes req && (h.ready.lookup id).isNone then
+          (hostPlan rt h (.reply id r)).map fun (h', es, m) =>
+            ({ h' with stats := { h'.stats with failedBefore := h'.stats.failedBefore + 1 } }, es, m)
+        else none)
+  | op => (sw, hostPlan rt h op)
+
+/-! ### What the host does with a server
+
+Two facts about `hostStep`, which hold with any server (`Server.empty` included), so with a
+server present the host answers as it did without one:
+
+- each request is answered at most once: a `reply`, a `lose` or a `fail` answers only a request
+  the host holds, and the host holds it no more after (`hostStep_answers_once`), so a second
+  answer to it can't happen (`hostStep_no_second_answer`). A request the app cancelled is
+  answered once too (^1009), and the runtime swallows it (`step_reply_ignored`); a `stray` goes
+  only to ids neither holds (`hostPlan`);
+- a failed-before answer leaves the server's world as it was, as do a lost-after answer and a
+  `reply` (`hostStep_fail_world`): only `serve` and `tick` change it. -/
+
+/-- The moves that answer request `id`. -/
+def HostOp.answers (id : Nat) : HostOp → Bool
+  | .reply i _ | .lose i _ | .fail i _ => i == id
+  | _ => false
+
+theorem lookup_filter_ne (l : List (Nat × Request)) (id : Nat) :
+    (l.filter (·.1 != id)).lookup id = none := by
+  induction l with
+  | nil => rfl
+  | cons p ps ih =>
+    obtain ⟨i, q⟩ := p
+    by_cases hi : i = id
+    · rw [List.filter_cons_of_neg (by simp [hi])]; exact ih
+    · rw [List.filter_cons_of_pos (by simp [hi])]
+      simp only [List.lookup, show (id == i) = false from by simp [Ne.symm hi]]
+      exact ih
+
+/-- A reply leaves the host holding every request but the one answered. -/
+theorem hostPlan_reply_sent {rt : Runtime.State S} {h h' : Host} {id : Nat} {r : Reply}
+    {es : List Event} {m : Option Msg} (hp : hostPlan rt h (.reply id r) = some (h', es, m)) :
+    h'.sent = h.sent.filter (·.1 != id) := by
+  simp only [hostPlan] at hp
+  split at hp
+  · cases hp
+  · simp only [Option.some.injEq, Prod.mk.injEq] at hp
+    obtain ⟨rfl, -, -⟩ := hp
+    split <;> (try split) <;> rfl
+
+/-- **Each request is answered at most once**, with or without a server: a move that answers
+request `id` happens only while the host holds it, and the host holds it no more after. -/
+theorem hostStep_answers_once (sv : Server S) (rt : Runtime.State S) (h : Host) (sw : sv.W)
+    (op : HostOp) (id : Nat) (ha : op.answers id = true) {h' : Host} {es : List Event}
+    {m : Option Msg} (hs : (hostStep sv rt h sw op).2 = some (h', es, m)) :
+    (h.request? id).isSome ∧ h'.request? id = none := by
+  have gone : ∀ {r : Reply} {h'' : Host} {es' : List Event} {m' : Option Msg},
+      hostPlan rt h (.reply id r) = some (h'', es', m') → h''.request? id = none := by
+    intro r h'' es' m' hp
+    simp only [Host.request?, hostPlan_reply_sent hp, lookup_filter_ne]
+  cases op with
+  | reply i r =>
+    simp only [HostOp.answers, beq_iff_eq] at ha; subst ha
+    simp only [hostStep] at hs
+    split at hs
+    · cases hs
+    · rename_i req hreq
+      refine ⟨by simp [hreq], ?_⟩
+      split at hs
+      · exact gone hs
+      · split at hs
+        · cases hs
+        · exact gone hs
+  | lose i r =>
+    simp only [HostOp.answers, beq_iff_eq] at ha; subst ha
+    simp only [hostStep] at hs
+    split at hs
+    · cases hs
+    · rename_i req hreq
+      refine ⟨by simp [hreq], ?_⟩
+      split at hs
+      · obtain ⟨⟨h'', es', m'⟩, hp, he⟩ := Option.map_eq_some_iff.mp hs
+        simp only [Prod.mk.injEq] at he
+        obtain ⟨rfl, -, -⟩ := he
+        simpa only [Host.request?] using gone hp
+      · cases hs
+  | fail i r =>
+    simp only [HostOp.answers, beq_iff_eq] at ha; subst ha
+    simp only [hostStep] at hs
+    split at hs
+    · cases hs
+    · rename_i req hreq
+      refine ⟨by simp [hreq], ?_⟩
+      split at hs
+      · obtain ⟨⟨h'', es', m'⟩, hp, he⟩ := Option.map_eq_some_iff.mp hs
+        simp only [Prod.mk.injEq] at he
+        obtain ⟨rfl, -, -⟩ := he
+        simpa only [Host.request?] using gone hp
+      · cases hs
+  | _ => simp [HostOp.answers] at ha
+
+/-- So no second answer: once a move has answered request `id`, no move answers it again from
+the host it leaves (until a new request with that id is sent, which the runtime never does). -/
+theorem hostStep_no_second_answer (sv : Server S) (rt rt' : Runtime.State S) (h : Host)
+    (sw sw' : sv.W) (op op' : HostOp) (id : Nat) (ha : op.answers id = true)
+    (ha' : op'.answers id = true) {h' : Host} {es : List Event} {m : Option Msg}
+    (hs : (hostStep sv rt h sw op).2 = some (h', es, m)) :
+    (hostStep sv rt' h' sw' op').2 = none := by
+  have hn := (hostStep_answers_once sv rt h sw op id ha hs).2
+  cases op' with
+  | reply i r | lose i r | fail i r =>
+    simp only [HostOp.answers, beq_iff_eq] at ha'; subst ha'
+    simp only [hostStep, hn]
+  | _ => simp [HostOp.answers] at ha'
+
+/-- **A failed-before answer leaves the world as it was** (by construction), and so do a
+lost-after answer and a reply. -/
+theorem hostStep_fail_world (sv : Server S) (rt : Runtime.State S) (h : Host) (sw : sv.W)
+    (id : Nat) (r : Reply) : (hostStep sv rt h sw (.fail id r)).1 = sw := rfl
+
+theorem hostStep_lose_world (sv : Server S) (rt : Runtime.State S) (h : Host) (sw : sv.W)
+    (id : Nat) (r : Reply) : (hostStep sv rt h sw (.lose id r)).1 = sw := rfl
+
+theorem hostStep_reply_world (sv : Server S) (rt : Runtime.State S) (h : Host) (sw : sv.W)
+    (id : Nat) (r : Reply) : (hostStep sv rt h sw (.reply id r)).1 = sw := rfl
 
 /-- The result of performing one operation. -/
-structure Performed (S : Type) where
-  world : World S
+structure Performed (S W : Type) where
+  world : World S W
   /-- The actions delivered to `update`, in order. -/
   acts : List Action
   /-- Whether the operation ran at all (an `act` whose control is missing is skipped). -/
@@ -407,7 +588,8 @@ structure Performed (S : Type) where
 /-- Perform an operation: through the runtime with an `App`, or straight into the machine.
 A person's operation is one batch, stamped with the host's clock (^908); a host's move is its
 own batch. The host takes in the effects of every step. -/
-def perform (t : Target) (setup : Setup) (w : World t.S) (op : Op) : IO (Performed t.S) := do
+def perform (t : Target) (setup : Setup) (w : World t.S t.W) (op : Op) :
+    IO (Performed t.S t.W) := do
   let cfg := cfgOf setup.metrics
   match t.app with
   | none =>
@@ -419,14 +601,20 @@ def perform (t : Target) (setup : Setup) (w : World t.S) (op : Op) : IO (Perform
       return { world := { w with rt := { w.rt with app := s' } }, acts, ran := true, maxNs := 0 }
     | _ => return { world := w, acts := [], ran := false, maxNs := 0 }
   | some app =>
-    let plan : Option (Host × List Event × Option Msg) := match op with
-      | .host h => hostPlan w.rt w.host h
-      | _ => (opToEvents w.rt op).map fun es => (w.host, .clock w.host.now :: es, none)
+    -- Take the world apart first, so the server's world has one reference when `hostStep`
+    -- hands it to the server (`LEAN_ABORT_ON_NONLINEAR=1`).
+    let { rt := rt0, seen, host := host0, secure, server := sw0 } := w
+    let (sw, plan) : t.W × Option (Host × List Event × Option Msg) := match op with
+      | .host h => hostStep t.srv rt0 host0 sw0 h
+      | _ => (sw0, (opToEvents rt0 op).map fun es => (host0, .clock host0.now :: es, none))
     -- Every batch ends with the runtime's frame events, as `Runtime.steps` runs them.
     let plan := plan.map fun (h, es, m) => (h, es ++ frameEvents, m)
     match plan with
-    | none => return { world := w, acts := [], ran := false, maxNs := 0 }
+    | none =>
+      return { world := { rt := rt0, seen, host := host0, secure, server := sw }, acts := [],
+               ran := false, maxNs := 0 }
     | some (host, es, msg) =>
+      let w : World t.S Unit := { rt := rt0, seen, host := host0, secure, server := () }
       let mut rt := w.rt
       let mut host := host
       let mut acts : Array Action := #[]
@@ -460,13 +648,13 @@ def perform (t : Target) (setup : Setup) (w : World t.S) (op : Op) : IO (Perform
         host := host.after rt.world.subs rt' effs
         effects := effects ++ effs.toArray
         rt := { rt' with subCmds := #[] }
-      return { world := { w with rt, host }, acts := acts.toList, ran := true, maxNs, dropped, msg,
-               effects := effects.toList, msgDropped }
+      return { world := { rt, seen, host, secure, server := sw }, acts := acts.toList, ran := true,
+               maxNs, dropped, msg, effects := effects.toList, msgDropped }
 
 /-! ## Checks -/
 
 /-- Keys to probe for a move: those on screen, the largest seen so far, and one past it. -/
-def probeKeys (t : Target) (w : World t.S) (id : ClaimId) : List Nat :=
+def probeKeys (t : Target) (w : World t.S W) (id : ClaimId) : List Nat :=
   if !t.isKeyed id then [0] else
   let shown := refs w.rt.laid ++ (statusControls w.rt).map (·.2.1)
   let onScreen := shown.filterMap fun r => if r.claim = id then some r.key else none
@@ -479,7 +667,7 @@ def probeKeys (t : Target) (w : World t.S) (id : ClaimId) : List Nat :=
      ks[ll.info.last]?].filterMap fun x => x
   (onScreen ++ [top, top + 1, 0] ++ rowKeys).eraseDups
 
-def World.noteSeen (w : World S) (laid : Laid) : World S :=
+def World.noteSeen (w : World S W) (laid : Laid) : World S W :=
   { w with seen := (refs laid ++ (statusControls w.rt).map (·.2.1)).foldl (fun m r => m.insert r.claim (max r.key ((m.get? r.claim).getD 0))) w.seen,
            secure := (w.secure ++ secureRefs laid).eraseDups }
 
@@ -603,7 +791,7 @@ def droppedCheck : String := "droppedT33"
 
 /-- Every check after an operation: the checks that ran and the failures. `act?` is the
 action the operation meant to perform, if it ran. -/
-def checks (t : Target) (setup : Setup) (w : World t.S) (act? : Option Action)
+def checks (t : Target) (setup : Setup) (w : World t.S W) (act? : Option Action)
     (acts : List Action) (stepIx : Nat) (dropped : Bool := false) (effects : List Effect := []) :
     List Ran × List Failure := Id.run do
   let s := w.rt.app
@@ -752,7 +940,7 @@ def checks (t : Target) (setup : Setup) (w : World t.S) (act? : Option Action)
 /-- The actions available now: for each control on screen whose move is enabled, each trigger
 it can take there, and a press on each enabled status-item control (`statusControls`). Without
 an `App`, each enabled move and probed key. -/
-def candidates (t : Target) (w : World t.S) : List (ControlRef × Trigger × Bool) :=
+def candidates (t : Target) (w : World t.S W) : List (ControlRef × Trigger × Bool) :=
   let s := w.rt.app
   match t.app with
   | some _ =>
@@ -779,10 +967,11 @@ def candidates (t : Target) (w : World t.S) : List (ControlRef × Trigger × Boo
 def textScript (t : Target) (s : t.S) (id : ClaimId) : Gen (List TextOp) :=
   (t.custom.edits s id).getD Text.script
 
-def genAct (t : Target) (w : World t.S) : Gen (Option (List Op)) := do
-  let cs := candidates t w
-  if cs.isEmpty then return none
-  let (c, tr, _) ← Gen.elem cs
+/-- An action of a control on screen, picked in proportion to the control's weight
+(`Custom.weights`, default 1; 0 never). `none` when nothing can be picked. -/
+def genAct (t : Target) (w : World t.S W) : Gen (Option (List Op)) := do
+  let cs := (candidates t w).map fun x => (t.custom.weights w.rt.app x.1, x)
+  let some (c, tr, _) ← Gen.pick cs | return none
   match tr with
   | .press => return some [.act (.press c)]
   | .doublePress => return some [.act (.doublePress c)]
@@ -796,7 +985,7 @@ def genAct (t : Target) (w : World t.S) : Gen (Option (List Op)) := do
     let ops := if w.secure.contains c && (← Gen.chance 1 3) then .insert Text.planted :: ops else ops
     return some (ops.map fun op => .act (.edit c op))
 
-def genPoint (w : World S) : Gen Point := do
+def genPoint (w : World S W) : Gen Point := do
   let ts := targets w.rt.laid
   let ts := ts.filter fun tg => decide tg.visible.nonempty
   if !ts.isEmpty && (← Gen.bool) then
@@ -814,7 +1003,7 @@ def genSize (min : Size) : Gen Size := do
 
 /-- A wheel or trackpad scroll: mostly at a point in a scroll box, by a tick, a flick or (one in
 eight) far past either end, to test the clamp; sometimes sideways. -/
-def genScroll (w : World S) : Gen Op := do
+def genScroll (w : World S W) : Gen Op := do
   let scs := (scrollersOf w.rt.laid).filter fun sc => decide sc.visible.nonempty
   let p ← if !scs.isEmpty && (← Gen.chance 3 4) then do
       let sc ← Gen.elem scs
@@ -830,7 +1019,7 @@ def genScroll (w : World S) : Gen Op := do
 /-- The keys that scroll (docs/runtime.md, "Scrolling"). -/
 def scrollKeys : List Key := [.pageUp, .pageDown, .home, .finish, .up, .down, .left, .right, .char ' ']
 
-def genNoise (t : Target) (setup : Setup) (w : World t.S) : Gen (List Op) := do
+def genNoise (t : Target) (setup : Setup) (w : World t.S W) : Gen (List Op) := do
   if t.app.isNone then return []
   let scrolls := if (scrollersOf w.rt.laid).isEmpty then 1 else 8
   Gen.weighted
@@ -849,7 +1038,7 @@ def genNoise (t : Target) (setup : Setup) (w : World t.S) : Gen (List Op) := do
 /-- The next operations: the host's move (`Host.share`: one time in five or more while it has
 something to say, a request, a timer or a subscription, one in thirty otherwise); else mostly an enabled
 action, otherwise pointer, key or window noise. -/
-def genOps (t : Target) (setup : Setup) (w : World t.S) : Gen (List Op) := do
+def genOps (t : Target) (setup : Setup) (w : World t.S W) : Gen (List Op) := do
   if t.app.isSome then
     if ← Gen.chance (w.host.share w.rt) 100 then
       return [.host (← genHost t.custom w.host w.rt)]
@@ -886,13 +1075,24 @@ def relationChecks (t : Target) (tr : Transition t.S) (stepIx : Nat) (direct : B
 
 /-- The host answers everything outstanding, oldest first, with the app's replies (or the
 default), until nothing is or `fuel` runs out. Returns the world and how many replies it sent. -/
-def drain (t : Target) (setup : Setup) (w : World t.S) (rng : Rng) (fuel : Nat) :
-    IO (World t.S × Nat) := do
+def drain (t : Target) (setup : Setup) (w : World t.S t.W) (rng : Rng) (fuel : Nat) :
+    IO (World t.S t.W × Nat) := do
   let mut w := w
   let mut rng := rng
   let mut n := 0
   for _ in [0:fuel] do
     let some (id, r) := w.host.sent.head? | break
+    -- A request the server takes reaches it first, if it hasn't, then gets its reply: no
+    -- faults once the sequence is over.
+    if t.srv.takes r then
+      if (w.host.ready.lookup id).isNone then
+        let (sd, rng') := Gen.seed.run rng
+        rng := rng'
+        w := (← perform t setup w (.host (.serve id sd))).world
+      let rep := (w.host.ready.lookup id).getD .done
+      w := (← perform t setup w (.host (.reply id rep))).world
+      n := n + 1
+      continue
     let gen : Gen Reply := if w.host.isCancelled id then genCancelled t.custom w.rt.app w.host id r
       else match w.host.ready.lookup id with
         | some rep => pure rep
@@ -903,6 +1103,18 @@ def drain (t : Target) (setup : Setup) (w : World t.S) (rng : Rng) (fuel : Nat) 
     w := p.world
     n := n + 1
   return (w, n)
+
+/-- The server's checks (`Server.checks`) on the app's state and the world: the checks that ran
+and the failures, each failure's message naming the world (`Server.describe`). -/
+def serverChecks (t : Target) (w : World t.S t.W) (stepIx : Nat) (kind : String)
+    (cks : List (ClaimId × (t.S → t.W → Bool))) (after : String) : List Ran × List Failure :=
+  cks.foldl (fun (ran, fs) (id, ck) =>
+    (ran ++ [(id, kind)],
+     if ck w.rt.app w.server then fs else
+     let d := t.srv.describe w.server
+     fs ++ [mkFail kind ⟨id, 0⟩ stepIx
+       s!"^{id} is false {after}, against the server's world{if d.isEmpty then "" else s!": {d}"}"]))
+    ([], [])
 
 /-! ## Running a sequence -/
 
@@ -965,6 +1177,8 @@ def runSeq (t : Target) (setup : Setup) (src : Source) (stats : Stats := {})
   let mut skipped := 0
   -- The initial state is checked too.
   let (ran0, f0) := checks t setup w none [] 0
+  let (ranS, fS) := serverChecks t w 0 "server" t.srv.checks "in the first frame"
+  let (ran0, f0) := (ran0 ++ ranS, f0 ++ fS)
   stats := stats.record setup.seed ran0
   if let some f := f0.head? then
     return { setup, ops, failure := some f, stats, steps := 0, over, maxNs, skipped, host := w.host.stats, secure := w.secure }
@@ -995,6 +1209,7 @@ def runSeq (t : Target) (setup : Setup) (src : Source) (stats : Stats := {})
     let act? := match op with | .act a => if p.ran then some a else none | _ => none
     let (ran, fs) := checks t setup w act? p.acts i p.dropped p.effects
     let (ran, fs) := let (r4, f4) := anchorChecks lists0 (listsOf w.rt.laid) op i; (ran ++ r4, fs ++ f4)
+    let (ran, fs) := let (r5, f5) := serverChecks t w i "server" t.srv.checks "after this step"; (ran ++ r5, fs ++ f5)
     let (ran, fs) := if p.ran && !t.custom.relations.isEmpty then
         let (r2, f2) := relationChecks t { before := s0, msg := p.msg, after := w.rt.app, effects := p.effects } i
         -- A message the runtime dropped is also given to `receive` directly.
@@ -1015,17 +1230,20 @@ def runSeq (t : Target) (setup : Setup) (src : Source) (stats : Stats := {})
       return { setup, ops, failure := some f, stats, steps := i, over, maxNs, skipped, host := w.host.stats, secure := w.secure }
   -- Once the operations are done, the host answers everything outstanding, if the app has
   -- checks for then.
-  if t.app.isSome && !t.custom.drained.isEmpty then
+  if t.app.isSome && (!t.custom.drained.isEmpty || !t.srv.drained.isEmpty) then
     let (w', n) ← drain t setup w (Rng.ofSeed (setup.seed + 0x5eed)) 1000
     w := w'
     let s := w.rt.app
     let mut ran : Array Ran := #[]
     let mut fails : Array Failure := #[]
+    let after := s!"once the host has answered everything ({n} more replies, {w.host.sent.length} still unanswered)"
     for (id, ck) in t.custom.drained do
       ran := ran.push (id, "drained")
       unless ck s do
-        fails := fails.push <| mkFail "drained" ⟨id, 0⟩ i
-          s!"^{id} is false once the host has answered everything ({n} more replies, {w.host.sent.length} still unanswered)"
+        fails := fails.push <| mkFail "drained" ⟨id, 0⟩ i s!"^{id} is false {after}"
+    let (rS, fS) := serverChecks t w i "serverDrained" t.srv.drained after
+    ran := ran ++ rS.toArray
+    fails := fails ++ fS.toArray
     stats := stats.record setup.seed ran.toList
     if let some f := fails[0]? then
       return { setup, ops, failure := some f, stats, steps := i, over, maxNs, skipped, host := w.host.stats, secure := w.secure }

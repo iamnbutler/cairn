@@ -115,6 +115,20 @@ the runtime delivers one.
 Keys for keyed moves come from the frame (every `^N#k` on screen), plus keys seen earlier in the
 run and one past the largest, so "enabled but missing" is caught too.
 
+**Weights** (cairn#226). An `act` picks among the enabled (control, trigger) pairs on screen in
+proportion to the control's weight, `Custom.weights s ref` (default 1). Weight a move that is
+only reachable deep in an app up, one that ends the state under test (Sign out) down, or a few
+keys up so that presses race their own replies. A weight of 0 never picks the control, but its
+presence is still checked; if every weight is 0, the operation is noise instead. The report
+counts presses per move as before (`performed`).
+
+```lean
+def fuzz : Cairn.Fuzz.Custom State where
+  -- Most presses on post 1's Like, so a press races its own write's reply; never Sign out.
+  weights := fun _ r => if r.claim = 21 then (if r.key = 1 then 12 else 2)
+    else if r.claim = 11 then 0 else 1
+```
+
 **Text edits** use the default generator unless the app supplies one: inserts drawn from words,
 blanks, emoji with modifiers and ZWJ sequences (`👍🏽`, `👨‍👩‍👧`), combining marks (`e` +
 U+0301), CJK, long strings; deletes and word deletes; caret and word moves, with and without
@@ -224,6 +238,129 @@ click, fails as a person's move would. One check is new, and runs after every st
 A failure that needs the host's moves can't be printed as a flow (a witness is actions only);
 the printout says so and gives the replay command and the shrunk steps.
 
+## A server
+
+`Custom.replies` keeps no state between replies, so a claim can't be stated against what the
+server holds ("once every reply is in, each post shows what the server holds"). An app (or a
+library with a fake server, like cairn_atproto's fake PDS) can give the fuzz host a **server**
+with a world of its own (cairn#246; `Cairn.Fuzz.Server` in `lean/Cairn/Fuzz/Rng.lean`, a module,
+so it needs no `Lean`):
+
+```lean
+structure Server (S : Type) where
+  W : Type                                   -- what the server holds
+  init : Gen W                               -- the world a sequence starts with, from its seed
+  handles : Request → Bool := fun _ => true  -- which requests go to it
+  handle : W → Nat → Request → Gen (W × Reply)  -- request `id` reaches it: world after, reply
+  tick : W → Gen W := pure                   -- the world acting on its own between steps
+  fault : Request → Gen Reply := …           -- what the app hears for a fault: timeout, network
+  checks : List (ClaimId × (S → W → Bool)) := []   -- after every step
+  drained : List (ClaimId × (S → W → Bool)) := []  -- once everything is answered
+  describe : W → String := fun _ => ""       -- the world in a failure's message
+  failBefore : Nat := 3                      -- weights, against 30 for handling and replying
+  loseAfter : Nat := 3
+  ticks : Nat := 4
+  retransmit : Nat := 0
+```
+
+```lean
+def fuzz : Cairn.Fuzz.Custom State where
+  server := some server
+```
+
+**Scheduling.** A request the server takes (one it `handles`; never a `loadImage`, whose answer
+the host's images follow) is answered in two moves, each picked at random among everything the
+host could do, so replies are still late and out of order:
+
+| Host move | What happens to the world | What the app hears |
+|---|---|---|
+| `serve id seed`: the request reaches the server | `handle` runs on it (seeded `seed`); its reply waits | nothing yet |
+| `reply id r`, after `serve` | nothing more | the reply `handle` gave |
+| `lose id r`, after `serve`: **lost after** | nothing more: it already changed | `r`, a fault (`Server.fault`: a timeout or a network failure) |
+| `fail id r`, before `serve`: **failed before** | nothing: the request never reached it | `r`, the same kind of fault |
+| `tick seed` | `tick` runs: other accounts like, post, the AppView catches up | nothing |
+| `serve id seed` again, after `serve` (`retransmit`, off by default) | `handle` runs again (a proxy's retry) | the second answer |
+
+The two faults look the same to the app, which is the point: it can't tell whether a lost write
+happened, and has to find out (read it back). A claim stated against the world can tell. A
+request the app cancelled is answered `failed other "cancelled"` before it reaches the server,
+or with its reply (or lost) after (^1009). `retransmit` is off by default: a second delivery
+refused after the first was applied is a "refused" write that happened, which no client can
+tell from its reply, so turn it on only for a server that answers a repeated request as it did
+the first time. Requests the server doesn't take are answered as without one, by `replies` or
+the default.
+
+**Checks.** `checks` run after every step (the first frame included) on the app's state and the
+world, counted under the claim as `server`; `drained` once the sequence is over and the host has
+answered everything outstanding, every request reaching the server first and no faults, counted
+as `serverDrained`. A failure's message has the world in words (`describe`).
+
+**What the host promises** (theorems in `lean/Cairn/Fuzz/Walk.lean`, over `hostStep`, which
+does the host's move with a server, `Server.empty` standing for none):
+
+- **Each request is answered at most once**, with or without a server: a `reply`, `lose` or
+  `fail` answers only a request the host holds, and it holds it no more after
+  (`hostStep_answers_once`), so no second answer to it can happen
+  (`hostStep_no_second_answer`). A cancelled request is answered once too, and the runtime
+  swallows it, as before.
+- **A failed-before answer leaves the world as it was**, by construction
+  (`hostStep_fail_world`), as do a lost-after answer and a reply: only `serve` and `tick`
+  change the world.
+
+**Replay and shrinking.** Every server move records the seed its generator runs from, so a
+sequence replays without the stream it came from, and the world is rebuilt as the sequence
+replays: a shrunk sequence keeps the requests reaching the server that its failure needs. A
+`reply` to a request that never reached the server in the replay is skipped, like a reply to a
+request the replay never made. The report names each fault where it was injected:
+
+```
+FAIL seed 22 step 31: server ^22: ^22 is false after this step, against the server's world: liked [true, false, true, false], …
+  shrunk 42 → 8 operations:
+    press ^21#1
+    press ^21#3
+    host: #1 reaches the server, which handles it (reply not sent yet)
+    press ^21#4
+    host: FAILED BEFORE: #2 never reached the server; the app hears failed Cairn.Fault.network "fuzz"
+    host: LOST AFTER: the server handled #1, but the reply is lost; the app hears failed Cairn.Fault.timeout "fuzz"
+    host: #4 reaches the server, which handles it (reply not sent yet)
+    host: answers #4 with HTTP 429, 12 bytes
+```
+
+That is the fixture's mutant (test/fixture/lean/Fixture/LikeMutant.lean, `make fuzz-quick`): a
+Like that retries a lost write blind instead of reading it back. Post 1's write was lost after
+the server applied it, the blind retry was refused (429), and the post rolled back to a value
+the server no longer holds.
+
+**The world is threaded, not copied.** The walk holds the only reference to the world while
+`handle` and `tick` run (`perform` takes the sequence's state apart first; `hostStep` returns
+the world even when the move can't happen), so an `Array` or `HashMap` in it is updated in
+place. Build `init`'s arrays from the generator (not as a constant, which would be shared) and
+mark them with `markLinear`; then a run with `LEAN_ABORT_ON_NONLINEAR=1` aborts on any copy. The
+fixture's server does, and `make fuzz-quick` runs with it.
+
+**Writing a fake server for a library** (cairn_atproto's fake PDS): define the world and a
+`Server S` generic in the app's state, with a way for the app to say what to check, and let the
+app plug it in:
+
+```lean
+-- In the library (a `module`, no `Lean`):
+def Fake.server {S : Type} (shows : S → Fake.World → Bool) : Cairn.Fuzz.Server S where
+  W := Fake.World
+  init := Fake.World.gen
+  handles := Fake.isXrpc
+  handle := Fake.handle
+  tick := Fake.othersAct
+  checks := [(52, shows)]
+  drained := [(52, shows)]
+  describe := Fake.World.describe
+-- In the app:
+def fuzz : Cairn.Fuzz.Custom State where
+  server := some (Fake.server fun s w => …)
+```
+
+The request id the host passes `handle` is the app's; a server that needs its own ids (record
+keys, cursors) keeps them in the world. `handle` sees only the request, never the app's state.
+
 ## What is checked, after every step
 
 1. **Invariants:** every runnable invariant's `check` on the app state.
@@ -268,7 +405,8 @@ the printout says so and gives the replay command and the shrunk steps.
    its place in the box, unless the offset ends at 0 or the limit or the row is gone.
 6. **Relations** (`Custom.relations`), for a host's move or a person's operation.
 7. **Outstanding** (`Custom.outstanding`): the app's checks against the requests the runtime
-   still holds for it.
+   still holds for it. **Server** (`Server.checks`, above, "A server"): the app's checks against
+   the server's world.
 8. **Secure fields** (`secure`), once a secure field (`FieldView.secure`) has been on screen:
    neither the frame's dump (`Dump.canvas` of `Frame.ofLaid`) nor any effect's dump (`Dump.effect`)
    holds the planted text, as text or as hex. See "Secure fields" below.
@@ -357,7 +495,9 @@ A pressability failure names the claim to blame: the control nearest the first n
 frames carried, replies to awaited requests (and how many failed), replies to cancelled ones,
 stray replies, clocks sent, wakes, timers due at them, subscription events (and late ones),
 pixels put before the answer, evictions, the most requests outstanding at once, and requests
-still unanswered when sequences ended. A place claim's entry has the `image` checks.
+still unanswered when sequences ended; with a server, `served` (requests it handled),
+`retransmits`, `lostAfter`, `failedBefore` and `ticks`. A place claim's entry has the `image`
+checks.
 
 `mode` is `runtime` (through `Runtime.step` and the view) or `model` (no `App`: actions into
 `machine.update`). `pass` is `true`, `false`, or `null` with a `note`: `not run` (no step
@@ -382,7 +522,9 @@ exercised it), `not runnable: no Decidable instance`, `n/a` (flows, places, assu
 The setup also has the host's first `clock` (`mono`, `wall`, `zone`). Host steps are
 `{"host": kind, …}`: `advance` (`ms`, `wallJump`), `wake` (`late`), `reply` and `stray` (`id`,
 `reply`: `kind` and its fields, bytes as `hex`), `load` (`id`, `w`, `h`), `sub` (`sub`,
-`event`, `dt`), `late` (`id`, `event`) and `evict` (`source`).
+`event`, `dt`), `late` (`id`, `event`) and `evict` (`source`); with a server, `serve` and
+`tick` (`id`, `seed`), and the two faults, `lose` and `fail` (`id`, `reply`, and `fault`:
+`lostAfter` or `failedBefore`).
 
 Action steps have exactly the shape of a flow's witness in `lake exe claims` (`trigger`, `ref`,
 `claim`, `key`, `op`), which the capture already replays, with `op` extended to every
@@ -461,6 +603,9 @@ Each claim's entry has `hostSteps` and `appSteps`; `steps` is their sum.
   unless the app supplies `replies`, a batch holds one host event, and it doesn't coalesce
   ticks or model the 4096-pixel cap. Images are evicted only by the least-recently-used rule
   over the pixel sizes it answered.
+- A server is only as faithful as the fake: its world, its refusals and its lag are the
+  app's or the library's model of the real one, and a pass says the app agrees with that model.
+  Its world is printed only through `describe`, not in the sequence JSON.
 - Flows are not fuzzed (their witnesses are proved live); they are n/a.
 - Presence assumes every move has a control while enabled. A move meant to be keyboard-only
   would need an opt-out in `Custom`.

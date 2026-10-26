@@ -205,11 +205,14 @@ doc:
 doctest: lean
 	cd lean && lake build doc && lake exe doc --check $(DOC_CAIRN) > /dev/null
 
-# The quick run in `make check`: the fixture, 200 sequences of 50 steps (about a second), with
+# The quick run in `make check`: the fixture, 200 sequences of 50 steps (a few seconds), with
 # `cairn fuzz`. Written to test/fixture/build/fuzz/quick/ so it doesn't replace a longer run's
-# evidence.
+# evidence. `LEAN_ABORT_ON_NONLINEAR=1`: the fixture's fake server marks its posts linear, so a
+# copy of the server's world aborts the run. Then the likes' mutant, which the server must catch
+# (test/fixture/lean/Fixture/LikeMutant.lean).
 fuzz-quick: lean cairn-tool
-	cd $(FIXTURE) && $(CAIRN) fuzz --iterations 200 --out build/fuzz/quick
+	cd $(FIXTURE) && LEAN_ABORT_ON_NONLINEAR=1 $(CAIRN) fuzz --iterations 200 --out build/fuzz/quick
+	cd $(FIXTURE)/lean && lake build -q likeMutant && LEAN_ABORT_ON_NONLINEAR=1 .lake/build/bin/likeMutant > /dev/null
 
 # Whose machines a fuzz executable runs (cairn#221, test/fuzz-scope/README.md): an app and a
 # dependency each with a machine in a module ending in `Claims`. The app lists only its own,

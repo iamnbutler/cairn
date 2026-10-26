@@ -91,6 +91,10 @@ def hostJson : HostOp → Json
   | .late id e => Json.mkObj [("host", "late"), ("id", toJson id), ("event", Json.str (reprStr e))]
   | .evict src => Json.mkObj [("host", "evict"), ("source", Json.str src)]
   | .stray id r => Json.mkObj [("host", "stray"), ("id", toJson id), ("reply", replyJson r)]
+  | .serve id sd => Json.mkObj [("host", "serve"), ("id", toJson id), ("seed", toJson sd)]
+  | .lose id r => Json.mkObj [("host", "lose"), ("fault", "lostAfter"), ("id", toJson id), ("reply", replyJson r)]
+  | .fail id r => Json.mkObj [("host", "fail"), ("fault", "failedBefore"), ("id", toJson id), ("reply", replyJson r)]
+  | .tick sd => Json.mkObj [("host", "tick"), ("seed", toJson sd)]
 
 def hostStatsJson (h : HostStats) : Json := Json.mkObj [
   ("requests", toJson h.requests), ("cancels", toJson h.cancels), ("replies", toJson h.replies),
@@ -99,7 +103,9 @@ def hostStatsJson (h : HostStats) : Json := Json.mkObj [
   ("timersDue", toJson h.timersDue), ("subEvents", toJson h.subEvents),
   ("lateSubEvents", toJson h.lateSubEvents), ("loads", toJson h.loads),
   ("evictions", toJson h.evictions), ("maxOutstanding", toJson h.maxOutstanding),
-  ("leftOver", toJson h.leftOver)]
+  ("leftOver", toJson h.leftOver), ("served", toJson h.served),
+  ("retransmits", toJson h.retransmits), ("lostAfter", toJson h.lostAfter),
+  ("failedBefore", toJson h.failedBefore), ("ticks", toJson h.ticks)]
 
 def stepJson (tr : Traced) : Json :=
   let hit : Json := match tr.hit with | some r => Json.str r.label | none => Json.null
@@ -191,7 +197,8 @@ def claimJson (t : Target) (stats : Stats) (fails : Array (Failure × Setup)) (c
     let runnable := c.kind == .move ||
       (t.invariants.any fun (i : InvCheck t.S) => i.info.id == c.id && i.check.isSome) ||
       t.custom.relations.any (·.1 == c.id) || t.custom.drained.any (·.1 == c.id) ||
-      t.custom.outstanding.any (·.1 == c.id)
+      t.custom.outstanding.any (·.1 == c.id) || t.srv.checks.any (·.1 == c.id) ||
+      t.srv.drained.any (·.1 == c.id)
     match stats.get? c.id with
     | none => Json.mkObj (base ++ [("pass", Json.null),
         ("note", Json.str (if runnable then "not run" else "not runnable: no Decidable instance"))])
@@ -284,9 +291,12 @@ def runTarget (t : Target) (o : Opts) : IO UInt32 := do
       IO.println s!"{dropped} clicks dropped by design: the pointerDown's blur saved an edit that moved the clicked control (T33; counted as {droppedCheck}, not failed)"
   if t.app.isSome then
     IO.println s!"host: {host.requests} requests ({host.cancels} cancelled), {host.replies} answered ({host.failed} failed), {host.cancelledReplies} answers to cancelled requests, {host.stray} stray; {host.clocks} clocks, {host.wakes} wakes, {host.timersDue} timers due; {host.subEvents} subscription events ({host.lateSubEvents} after a stop); {host.loads} early loads, {host.evictions} evictions; at most {host.maxOutstanding} outstanding, {host.leftOver} unanswered at the end"
+    if t.custom.server.isSome then
+      IO.println s!"server: {host.served} requests handled ({host.retransmits} delivered twice), {host.lostAfter} replies lost after it acted, {host.failedBefore} requests failed before reaching it, {host.ticks} times its world acted on its own"
   for inv in t.invariants do
     if inv.check.isNone && !(t.custom.relations.any (·.1 == inv.info.id)) &&
-        !(t.custom.drained.any (·.1 == inv.info.id)) && !(t.custom.outstanding.any (·.1 == inv.info.id)) then IO.println s!"note: ^{inv.info.id} {inv.info.title} is not runnable (no Decidable instance)"
+        !(t.custom.drained.any (·.1 == inv.info.id)) && !(t.custom.outstanding.any (·.1 == inv.info.id)) &&
+        !(t.srv.checks.any (·.1 == inv.info.id)) && !(t.srv.drained.any (·.1 == inv.info.id)) then IO.println s!"note: ^{inv.info.id} {inv.info.title} is not runnable (no Decidable instance)"
   let json := Json.mkObj [
     ("app", Json.str t.name), ("module", Json.str t.module), ("package", Json.str t.package),
     ("mode", Json.str (if t.app.isSome then "runtime" else "model")),
