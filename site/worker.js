@@ -32,6 +32,7 @@ export default {
     object.writeHttpMetadata(headers);
     headers.set("etag", object.httpEtag);
     headers.set("accept-ranges", "bytes");
+    headers.set("access-control-allow-origin", "*"); // the Nexthub mirror reads /try/ graphs from here
     headers.set("cache-control", "public, max-age=31536000, immutable");
     if (!("body" in object)) return new Response(null, { status: 304, headers });
 
