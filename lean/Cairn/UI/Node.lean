@@ -90,6 +90,68 @@ structure ImageFill where
   fit : Fit := .cover
 deriving Repr, BEq, DecidableEq, Inhabited
 
+/-! ### Virtual lists: what the runtime knows of one
+
+The data a virtual list (`Cairn.VList`, docs/layout.md, "Virtual lists") and the runtime pass
+each other. The logic is in `Cairn.VList`. -/
+
+namespace VList
+
+/-- A row whose height is known: it was laid at that height. -/
+structure Row where
+  /-- Its place in the list's keys. -/
+  index : Nat
+  key : Nat
+  /-- Its height as laid, at least one point. -/
+  height : Nat
+deriving Repr, BEq, DecidableEq, Inhabited
+
+/-- The row the reader is at: the first row showing at the offset `offset`, whose top in the
+list's content was `top` in the heights it was recorded with. -/
+structure Anchor where
+  key : Nat
+  top : Int
+  offset : Int
+deriving Repr, BEq, DecidableEq, Inhabited
+
+/-- What the runtime knows of one list (`UI.lists`), recorded after every layout: the heights of
+the rows it has laid, sorted by index, at the width they were laid at; the box's length; and
+the anchor. -/
+structure Known where
+  /-- The width the rows were laid at: a different width forgets every height. -/
+  width : Int := 0
+  /-- The number of rows when they were recorded. -/
+  count : Nat := 0
+  rows : Array Row := #[]
+  /-- The box's length the last time it was laid; 0 before then. -/
+  viewport : Int := 0
+  anchor : Option Anchor := none
+  /-- The estimate for the rows not yet laid: the mean of the first heights recorded at this
+  width, kept until the width changes, so that recording more heights doesn't move every row
+  below them; 0 before any. -/
+  est : Nat := 0
+deriving Repr, BEq, DecidableEq, Inhabited
+
+/-- What a laid virtual list says of itself (`Style.rows`), for the runtime to record and the
+fuzzer to check: what the view read, the heights it laid out by, and the window it laid. -/
+structure Info where
+  /-- What the runtime knew when the view ran (`UI.listOf`). -/
+  known : Known
+  /-- The known heights for these keys (`VList.model`): `known.rows` moved to the keys' indices. -/
+  model : Array Row
+  keys : Array Nat
+  /-- The estimate the view was given, if any, and the one it used. -/
+  estimate : Option Nat
+  est : Nat
+  overscan : Nat
+  viewport : Int
+  /-- The rows laid: indices `[first, last)`. -/
+  first : Nat
+  last : Nat
+deriving Repr, BEq, Inhabited
+
+end VList
+
 -- region: node-style
 structure Style where
   axis : Axis := .column
@@ -123,6 +185,10 @@ structure Style where
   `UI.scrollOf` (`UI.scrolling` sets both fields). Usually a `place` claim's ref. A box with
   `scroll` and no `scrollRef` scrolls only as far as the view says. -/
   scrollRef : Option ControlRef := none
+  /-- A virtual list's box (`Cairn.VList`): which rows it laid and the heights it laid them
+  by. The runtime records the rows' real heights from it after every layout. Set by `VList.node`
+  only. -/
+  rows : Option VList.Info := none
 deriving Repr, BEq, Inhabited
 -- endregion: node-style
 

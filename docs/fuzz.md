@@ -241,6 +241,12 @@ the printout says so and gives the replay command and the shrunk steps.
    its menu's items whether or not the menu is open, a greyed-out item counting as absent. The
    fuzzer presses them as the host does, with `menuOpen` for the button and `menuSelect` for an
    item (Tray's `cairn_examples^453`, cairn#176).
+   In a virtual list (docs/layout.md, "Virtual lists") a move whose controls are keyed by their
+   row's key is present iff it is enabled **and its row is laid**: the moves with a control in a
+   laid row keyed like the row are found in the frame, and for them a key whose row the list
+   didn't lay must be absent. Any other move keyed like a row that isn't laid may be absent. The
+   probed keys include each list's first and last keys and the keys either side of the rows it
+   laid.
 4. **Pressable** when the window is at or above the minimum: `hitTest` at the centre of the
    visible part of each enabled pointer move's control returns it, and
    `checkPressable && controlRectsNonempty` holds. A control scrolled out of view in a scroll
@@ -252,6 +258,14 @@ the printout says so and gives the replay command and the shrunk steps.
    `ui.scrollOf`), and the runtime keeps no offset for a box that isn't on screen
    (`Runtime.step_clamped`). **Appear** (under the move's claim, `appear`): each `appear` move
    delivered names a move with an `on appear` handler; these count as the move's steps.
+   **Virtual lists** (under the list's ref's claim, `vlist`): the rows laid are exactly those
+   whose extent, by `Model.top` and `Model.height` (the specification, not the fast path the view
+   used), meets the box widened by the overscan, and no more than `(viewport + 2·overscan) /
+   minHeight + 2`; the spacers and rows are one under the other from the content's top less the
+   offset; and every row laid was laid at the height the list laid it out by (the runtime had
+   recorded it: `settle` didn't run out). **Anchor** (`anchor`): over an operation that doesn't
+   scroll or resize (not a wheel, key, Tab or resize), the first row showing in each list keeps
+   its place in the box, unless the offset ends at 0 or the limit or the row is gone.
 6. **Relations** (`Custom.relations`), for a host's move or a person's operation.
 7. **Outstanding** (`Custom.outstanding`): the app's checks against the requests the runtime
    still holds for it.
@@ -450,6 +464,9 @@ Each claim's entry has `hostSteps` and `appSteps`; `steps` is their sum.
 - Flows are not fuzzed (their witnesses are proved live); they are n/a.
 - Presence assumes every move has a control while enabled. A move meant to be keyboard-only
   would need an opt-out in `Custom`.
+- In a virtual list, presence assumes a row's controls are keyed by the row's key. A move with
+  controls in rows keyed otherwise is checked as if it were outside the list, and one keyed like a
+  row that isn't laid is allowed to be absent.
 - Wall-clock budget checks depend on the machine; they report, they don't fail.
 - Printed theorems use mono metrics; a failure found only with random metrics may need a
   different size or text to fail under mono.

@@ -11,6 +11,7 @@ public import Cairn.UI.Grid
 public import Cairn.UI.Hit
 public import Cairn.Surface
 public import Cairn.App
+public import Cairn.VList
 public import Cairn.Claims.Move
 public import Cairn.Claims.Machine
 public import Cairn.Claims.Core

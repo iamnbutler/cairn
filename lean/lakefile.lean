@@ -36,6 +36,7 @@ ledger, the audit, the kernel replay and `make doc` read. -/
 each of these. -/
 def linked : Array Lean.Name := #[`Cairn.Geometry, `Cairn.Claim, `Cairn.Effects, `Cairn.Font, `Cairn.Input,
     `Cairn.UI.Node, `Cairn.UI.Images, `Cairn.UI.Grid, `Cairn.UI.Hit, `Cairn.Surface, `Cairn.App,
+    `Cairn.VList,
     `Cairn.Claims.Move, `Cairn.Claims.Machine, `Cairn.Claims.Core,
     `Cairn.Text.Wrap, `Cairn.Text.Field, `Cairn.Text.Host, `Cairn.Layout.Core, `Cairn.Layout.Facts,
     `Cairn.Runtime.World, `Cairn.Runtime.Step, `Cairn.Runtime.Abi,
@@ -51,7 +52,7 @@ lean_lib Cairn where
 
 def proofs : Array Lean.Name := #[`Cairn.Text.Proofs, `Cairn.Text.WrapProofs, `Cairn.Text.FieldTests,
     `Cairn.Layout.Proofs, `Cairn.Layout.Bridge, `Cairn.Layout.Check, `Cairn.Layout.Rigid,
-    `Cairn.Layout.Para, `Cairn.Layout.Grid, `Cairn.Layout.Tests, `Cairn.Layout.Scroll,
+    `Cairn.Layout.Para, `Cairn.Layout.Grid, `Cairn.Layout.Tests, `Cairn.Layout.Scroll, `Cairn.Layout.VList,
     `Cairn.Runtime.Proofs, `Cairn.Runtime.ScrollProofs, `Cairn.Runtime.WorldProofs, `Cairn.Runtime.InFlight,
     `Cairn.Claims.Deliver,
     `Cairn.Frame.Layout, `Cairn.Frame.EventsTests, `Cairn.Frame.BuildTests, `Cairn.Abi.Tests]

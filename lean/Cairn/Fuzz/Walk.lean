@@ -472,7 +472,12 @@ def probeKeys (t : Target) (w : World t.S) (id : ClaimId) : List Nat :=
   let onScreen := shown.filterMap fun r => if r.claim = id then some r.key else none
   let top := (w.seen.get? id).getD 0
   let top := onScreen.foldl max top
-  (onScreen ++ [top, top + 1, 0]).eraseDups
+  -- Each virtual list's first and last keys, and the keys either side of the rows it laid.
+  let rowKeys := (listsOf w.rt.laid).flatMap fun ll =>
+    let ks := ll.info.keys
+    [ks[0]?, ks.back?, if 0 < ll.info.first then ks[ll.info.first - 1]? else none,
+     ks[ll.info.last]?].filterMap fun x => x
+  (onScreen ++ [top, top + 1, 0] ++ rowKeys).eraseDups
 
 def World.noteSeen (w : World S) (laid : Laid) : World S :=
   { w with seen := (refs laid ++ (statusControls w.rt).map (·.2.1)).foldl (fun m r => m.insert r.claim (max r.key ((m.get? r.claim).getD 0))) w.seen,
@@ -493,6 +498,105 @@ def firstBadList : List Laid → Option (String × Laid)
   | [] => none
   | k :: ks => (firstBad k).orElse fun _ => firstBadList ks
 end
+
+/-! ### Virtual lists (docs/fuzz.md, "Virtual lists") -/
+
+/-- The index of key `k` among a laid list's keys, if it is one. -/
+def _root_.Cairn.Runtime.LaidList.indexOf (ll : LaidList) (k : Nat) : Option Nat := ll.info.keys.findIdx? (· == k)
+
+/-- Whether the list laid its row `i`. -/
+def _root_.Cairn.Runtime.LaidList.laidAt (ll : LaidList) (i : Nat) : Bool := ll.info.first ≤ i && i < ll.info.last
+
+/-- The rows the list laid, each with its index: its children between the two spacers. -/
+def _root_.Cairn.Runtime.LaidList.rows (ll : LaidList) : List (Nat × Laid) :=
+  ((ll.kids.drop 1).take (ll.info.last - ll.info.first)).zipIdx.map fun (k, j) => (ll.info.first + j, k)
+
+/-- The top of the list's content box, on screen. -/
+def _root_.Cairn.Runtime.LaidList.contentTop (ll : LaidList) : Int := (ll.rect.inset ll.pad).y
+
+/-- `k` is the key of a row of a list on screen that the list didn't lay. -/
+def hiddenRow (lists : List LaidList) (k : Nat) : Bool :=
+  lists.any fun ll => match ll.indexOf k with
+    | some i => !ll.laidAt i
+    | none => false
+
+/-- The moves with a control in a laid row of a list, keyed by the row's key: their controls
+show exactly when their row is laid. -/
+def rowClaims (lists : List LaidList) : List ClaimId :=
+  (lists.flatMap fun ll => ll.rows.flatMap fun (i, k) =>
+    let key := ll.info.keys[i]?.getD 0
+    (refs k).filterMap fun r => if r.key == key then some r.claim else none).eraseDups
+
+/-- What is wrong with a laid list, if anything: the rows laid are exactly those whose extent
+meets the viewport widened by the overscan, in the heights the view laid out by (`Model.top`,
+the specification, not the fast path the view used; `VList.node_rows`); there are no more than
+`(viewport + 2·overscan) / minHeight + 2` of them; and the spacers and rows are one under the
+other from the content's top less the offset (`Layout.vlist_stacked`). -/
+def vlistFault (ll : LaidList) : Option String := Id.run do
+  let info := ll.info
+  let M := info.modelOf
+  let o := ll.offset
+  let lo := o - info.overscan
+  let hi := o + info.viewport + info.overscan
+  let meets (i : Nat) : Bool := decide (lo < M.top i + M.height i) && decide (M.top i < hi)
+  let (f, l) := (info.first, info.last)
+  unless f ≤ l && l ≤ M.count do
+    return some s!"it laid rows [{f}, {l}) of {M.count}"
+  if let some i := (List.range' f (l - f)).find? (!meets ·) then
+    return some s!"it laid row {i} at [{M.top i}, {M.top i + M.height i}), which misses [{lo}, {hi})"
+  if 0 < f && meets (f - 1) then
+    return some s!"it didn't lay row {f - 1} at [{M.top (f - 1)}, {M.top f}), which meets [{lo}, {hi})"
+  if l < M.count && meets l then
+    return some s!"it didn't lay row {l} at [{M.top l}, {M.top (l + 1)}), which meets [{lo}, {hi})"
+  let bound := (info.viewport + 2 * info.overscan) / (max 1 M.minHeight : Nat) + 2
+  unless ((l - f : Nat) : Int) ≤ bound do
+    return some s!"it laid {l - f} rows, more than (viewport + 2·overscan) / minHeight + 2 = {bound}"
+  unless ll.kids.length == l - f + 2 do
+    return some s!"it has {ll.kids.length} children for {l - f} rows and two spacers"
+  let mut y := ll.contentTop - o
+  for k in ll.kids do
+    unless k.rect.y == y do
+      return some s!"a child is at y {k.rect.y}, not {y} where the one before it ends"
+    y := k.rect.y + k.rect.h
+  return none
+
+/-- A laid row whose height isn't the one the view laid the list out by: the runtime hadn't
+recorded it yet when `settle` ran out (`Runtime.settleFuel`). -/
+def unsettledRow (ll : LaidList) : Option (Nat × Int × Int) :=
+  (ll.rows.find? fun (i, k) => decide (max 1 k.rect.h ≠ ll.info.modelOf.height i)).map
+    fun (i, k) => (i, k.rect.h, ll.info.modelOf.height i)
+
+/-- The first row of a laid list that shows: its key and its top, relative to the content's top. -/
+def _root_.Cairn.Runtime.LaidList.anchor (ll : LaidList) : Option (Nat × Int) :=
+  (ll.rows.find? fun (_, k) => ll.contentTop < k.rect.y + k.rect.h).map
+    fun (i, k) => (ll.info.keys[i]?.getD 0, k.rect.y - ll.contentTop)
+
+/-- An operation that may scroll or resize, after which the anchor needn't stay still. -/
+def Op.moves : Op → Bool
+  | .scroll .. | .key .. | .tab _ | .resize _ => true
+  | _ => false
+
+/-- **The anchor stays still.** Over an operation that doesn't scroll or resize, the first row
+showing in each virtual list keeps its place in the box, wherever rows were inserted or heights
+changed above it (`VList.record_keeps`), unless the clamp moved the offset (to 0 or the
+limit) or the row is gone. -/
+def anchorChecks (before after : List LaidList) (op : Op) (stepIx : Nat) :
+    List Ran × List Failure := Id.run do
+  if op.moves then return ([], [])
+  let mut ran : Array Ran := #[]
+  let mut fails : Array Failure := #[]
+  for ll in after do
+    let some ll0 := before.find? (·.ref == ll.ref) | continue
+    let some (key, y0) := ll0.anchor | continue
+    ran := ran.push (ll.ref.claim, "anchor")
+    if ll.offset == 0 || ll.offset == ll.limit then continue
+    let some i := ll.indexOf key | continue
+    let some (_, k) := ll.rows.find? (·.1 == i) | continue
+    let y := k.rect.y - ll.contentTop
+    unless y == y0 do
+      fails := fails.push <| mkFail "anchor" ll.ref stepIx
+        s!"row {key}, the first showing in {ll.ref.label}, moved from {y0} to {y} in the box (offset {ll0.offset} → {ll.offset}, limit {ll.limit})"
+  return (ran.toList, fails.toList)
 
 /-- The check name a dropped click is counted under (`Performed.dropped`). -/
 def droppedCheck : String := "droppedT33"
@@ -536,7 +640,11 @@ def checks (t : Target) (setup : Setup) (w : World t.S) (act? : Option Action)
       unless acts.contains a do
         fails := fails.push <| mkFail "performed" c stepIx
           s!"{reprStr (redactAction w.secure a)} was meant, but the runtime delivered {reprStr (acts.map (redactAction w.secure))}"
-  -- Presence.
+  -- Presence: a control is in the frame iff its move is enabled, and, for a move whose controls
+  -- live in a virtual list's rows, its row is laid. A control keyed like a row the list didn't
+  -- lay may be missing.
+  let lists := listsOf laid
+  let inRows := rowClaims lists
   for mv in t.machine.moves do
     if t.custom.noControl.contains mv.id then continue
     ran := ran.push (mv.id, "presence")
@@ -544,10 +652,21 @@ def checks (t : Target) (setup : Setup) (w : World t.S) (act? : Option Action)
       let r : ControlRef := ⟨mv.id, k⟩
       let on := present laid r || onStatus w.rt r
       let en := mv.enabled s k
-      if on != en then
+      let hid := hiddenRow lists k
+      let ok := if inRows.contains mv.id then on == (en && !hid) else if hid then !on || en else on == en
+      unless ok do
         fails := fails.push <| mkFail "presence" r stepIx
-          (if en then s!"{r.label} is enabled but has no control in the frame"
-           else s!"{r.label} is in the frame but its move is disabled")
+          (if !on then s!"{r.label} is enabled{if inRows.contains mv.id then " and its row is laid" else ""} but has no control in the frame"
+           else if !en then s!"{r.label} is in the frame but its move is disabled"
+           else s!"{r.label} is in the frame, but its row is not laid")
+  -- Virtual lists: the rows laid, how many, one under the other, at their real heights.
+  for ll in lists do
+    ran := ran.push (ll.ref.claim, "vlist")
+    if let some why := vlistFault ll then
+      fails := fails.push <| mkFail "vlist" ll.ref stepIx s!"{ll.ref.label}: {why}"
+    if let some (i, h, hm) := unsettledRow ll then
+      fails := fails.push <| mkFail "vlist" ll.ref stepIx
+        s!"{ll.ref.label}: row {i} is laid {h} high but laid out as {hm}: its height wasn't recorded before the frame"
   -- Images: everything the frame draws is held by the host. An app takes an image for ready
   -- only from the host's answer and forgets it when told it was dropped (^1006, ^1011;
   -- `Images.Cache.ready_held`); a draw of a source the host doesn't hold paints nothing.
@@ -867,6 +986,7 @@ def runSeq (t : Target) (setup : Setup) (src : Source) (stats : Stats := {})
         | [] => pure Op.exit
     ops := ops.push op
     let s0 := w.rt.app
+    let lists0 := listsOf w.rt.laid
     let p ← perform t setup w op
     i := i + 1
     w := p.world.noteSeen p.world.rt.laid
@@ -874,6 +994,7 @@ def runSeq (t : Target) (setup : Setup) (src : Source) (stats : Stats := {})
     if p.maxNs > t.budgetNs then over := over.push (i, p.maxNs)
     let act? := match op with | .act a => if p.ran then some a else none | _ => none
     let (ran, fs) := checks t setup w act? p.acts i p.dropped p.effects
+    let (ran, fs) := let (r4, f4) := anchorChecks lists0 (listsOf w.rt.laid) op i; (ran ++ r4, fs ++ f4)
     let (ran, fs) := if p.ran && !t.custom.relations.isEmpty then
         let (r2, f2) := relationChecks t { before := s0, msg := p.msg, after := w.rt.app, effects := p.effects } i
         -- A message the runtime dropped is also given to `receive` directly.

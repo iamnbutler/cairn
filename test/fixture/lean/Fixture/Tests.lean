@@ -15,7 +15,7 @@ def texts (s : State) : List (Nat × String × Bool) := s.items.map fun i => (i.
 
 def at? (rs : Runtime.State State) (r : ControlRef) : Option Point :=
   (find rs.laid r).map (·.visible.center)
-/-- Not in the scroll box: one of its rows (`^10#k`) or its end line (^16). -/
+/-- Not in the list: one of its rows (`^10#k`) or its end line (^16). -/
 def notRow (r : ControlRef) : Bool := r.claim != 10 && r.claim != 16
 
 def clickOn (rs : Runtime.State State) (r : ControlRef) : List Event :=
@@ -35,17 +35,19 @@ def toggled : List Event := two ++ clickOn (run two) (toggleRef 1)
 #guard left (st toggled) == 1
 def deleted : List Event := toggled ++ clickOn (run toggled) (deleteRef 2)
 #guard texts (st deleted) == [(1, "milk", true)]
--- Tab order: field, Add, Passcode, Flash, then each item's checkbox and delete button (and
--- then the scroll box's rows, `notRow`).
+-- Tab order: field, Add, Passcode, Flash, Add above, Add below, then each item's checkbox and
+-- delete button (and then the list's rows, `notRow`).
 #guard ((tabOrder (run two).laid).map (·.ref)).filter notRow ==
-  [fieldRef, addRef, passRef, flashRef, toggleRef 1, deleteRef 1, toggleRef 2, deleteRef 2]
+  [fieldRef, addRef, passRef, flashRef, addTopRef, addEndRef, toggleRef 1, deleteRef 1,
+   toggleRef 2, deleteRef 2]
 -- Flash sets its timer; the note shows until it fires.
 def flashed : List Event := clickOn (run []) flashRef
 #guard (st flashed).flash
 -- The frame through the v1 boundary carries the keyed controls.
 #guard ((decodeFrame (frameBytes Frame.boundary (run two))).map fun f =>
   (f.ax.toList.filterMap (·.control)).filter notRow) ==
-  some [fieldRef, addRef, passRef, flashRef, toggleRef 1, deleteRef 1, toggleRef 2, deleteRef 2]
+  some [fieldRef, addRef, passRef, flashRef, addTopRef, addEndRef, toggleRef 1, deleteRef 1,
+        toggleRef 2, deleteRef 2]
 -- endregion: fixture-tests
 
 -- The Passcode field: bullets on screen, nothing in the accessibility value, a redacted request.
@@ -61,58 +63,79 @@ def secret : List Event := clickOn (run []) passRef ++ [.insertText "hunter2"]
 #guard (st (secret ++ [.key .enter {}])).passcode.len == 0
 
 -- region: fixture-scroll-tests
--- The scroll box: 200 rows of 32 points and the end line in a box 160 high. It opens at the top;
--- a wheel tick over it of 1,616 points (50½ rows) scrolls it there.
+-- The list: 10,000 rows of 24 to 48 points (row k is 24 + 8·(k mod 4)) and the end line, in a box
+-- 160 high. It opens at the top, and lays only the rows that meet the box widened by 200 points
+-- above and below: rows 1 to 10 (360 points).
 def box : Rect := ((run []).laid.children.getD 7 default).rect
-def down : List Event := [.scroll box.center 0 1616]
-def rectOf (k : Nat) : Option Rect := (find (run down).laid (rowRef k)).map (·.node.rect)
-def visibleOf (k : Nat) : Option Rect := (find (run down).laid (rowRef k)).map (·.visible)
+def rectIn (rs : Runtime.State State) (k : Nat) : Option Rect := (find rs.laid (rowRef k)).map (·.node.rect)
+def rectOf (es : List Event) (k : Nat) : Option Rect := rectIn (run es) k
 def click (p : Point) : List Event := [.pointerMove p, .pointerDown p .primary 1 {}, .pointerUp p .primary {}]
 def offset (es : List Event) : Int := (run es).ui.scrollOf rowsRef
+/-- The rows the list laid: their keys. -/
+def laidKeys (es : List Event) : List Nat :=
+  ((targets (run es).laid).map (·.ref)).filterMap fun r => if r.claim = 10 then some r.key else none
+/-- Each laid row starts where the one before it ends. -/
+def stacked (es : List Event) : Bool :=
+  let rs := (laidKeys es).filterMap (rectOf es)
+  (rs.zip (rs.drop 1)).all fun (a, b) => b.y == a.y + a.h
 
 #guard box.h == 160
 #guard offset [] == 0
-#guard (find (run []).laid (rowRef 1)).map (·.node.rect) == some ⟨box.x, box.y, box.w, 32⟩
-#guard offset down == 1616
--- The app hears nothing of it: its state is the same.
+#guard laidKeys [] == List.range' 1 10
+#guard rectOf [] 1 == some ⟨box.x, box.y, box.w, 32⟩
+#guard rectOf [] 2 == some ⟨box.x, box.y + 32, box.w, 40⟩
+#guard stacked []
+-- A wheel tick of 1,616 points: the runtime lays rows 40 to 55, records their heights, and keeps
+-- the first row showing (46) still as estimates turn into heights, which moves the offset to
+-- 1,604. The app hears nothing of it.
+def down : List Event := [.scroll box.center 0 1616]
+#guard offset down == 1604
+#guard laidKeys down == List.range' 40 16
+#guard stacked down
+#guard rectOf down 46 == some ⟨box.x, box.y, box.w, 40⟩
 #guard st down == st []
--- Every row is laid, at the column's y less the offset: row k at the box's top + 32·(k − 1) − 1616.
-#guard rectOf 1 == some ⟨box.x, box.y - 1616, box.w, 32⟩
-#guard rectOf 51 == some ⟨box.x, box.y - 16, box.w, 32⟩
-#guard rectOf 200 == some ⟨box.x, box.y + 32 * 199 - 1616, box.w, 32⟩
--- Row 51's lower half shows, rows 52 to 55 whole, row 56's upper half; rows 50 and 57 not at all.
-#guard visibleOf 51 == some ⟨box.x, box.y, box.w, 16⟩
-#guard visibleOf 52 == some ⟨box.x, box.y + 16, box.w, 32⟩
-#guard visibleOf 56 == some ⟨box.x, box.y + 144, box.w, 16⟩
-#guard (visibleOf 50).map (·.h) == some 0
-#guard (visibleOf 57).map (·.h) == some 0
--- A click at the centre of row 51's visible half selects it; just above the box, nothing.
-#guard (st (down ++ ((visibleOf 51).map (click ·.center) |>.getD []))).selected == some 51
-#guard (st (down ++ ((visibleOf 54).map (click ·.center) |>.getD []))).selected == some 54
-#guard (st (down ++ click ⟨box.x + 10, box.y - 2⟩)).selected == none
--- The offset is clamped: content 201 × 32 = 6,432, so at most 6,432 − 160 = 6,272; and back to 0.
-#guard offset [.scroll box.center 0 100000] == 6272
-#guard offset [.scroll box.center 0 100, .scroll box.center 0 (-5000)] == 0
+-- A click on a row selects it, and it grows to 72 points: the rows under it move down, the
+-- first showing stays.
+def sel : List Event := down ++ ((rectOf down 47).map (click ·.center) |>.getD [])
+#guard (st sel).selected == some 47
+#guard rectOf sel 47 == some ⟨box.x, box.y + 40, box.w, 72⟩
+#guard rectOf sel 48 == some ⟨box.x, box.y + 112, box.w, 24⟩
+#guard rectOf sel 46 == rectOf down 46
+#guard stacked sel
+-- A row added at the top, while scrolled: every row on screen stays where it was.
+def addAbove : List Event := down ++ clickOn (run down) addTopRef
+#guard (st addAbove).keys[0]? == some 10001
+#guard (List.range' 40 16).all fun k => rectOf addAbove k == rectOf down k
+-- At the top too: row 1 stays at the top of the box, and the new row is just above it.
+def addAbove0 : List Event := clickOn (run []) addTopRef
+#guard offset addAbove0 == 32
+#guard rectOf addAbove0 1 == rectOf [] 1
+#guard rectOf addAbove0 10001 == some ⟨box.x, box.y - 32, box.w, 32⟩
+-- A row added at the end goes above the end line.
+#guard ((st (clickOn (run []) addEndRef)).keys.toList.drop 10000) == [10001, 0]
+-- Far past the end: clamped to the end, where the end line shows and ^16 counts it, once per
+-- visit. The content's length is an estimate until the rows are laid.
+def far : List Event := [.scroll box.center 0 10000000]
+#guard laidKeys far == List.range' 9991 10
+#guard (find (run far).laid endRef).map (fun t => t.node.rect.y + t.node.rect.h) == some (box.y + box.h)
+#guard (st far).ends == 1
+#guard (st (far ++ [.scroll box.center 0 (-10)])).ends == 1
+#guard (st down).ends == 0
+#guard (((steps app tcfg (run far) [.scroll box.center 0 (-10000000)]).1 |>
+  fun r => steps app tcfg r [.scroll box.center 0 10000000]).1.app.ends) == 2
+#guard offset (far ++ [.scroll box.center 0 (-20000000)]) == 0
 -- Keys move the box under the pointer: a page is the box less a line (120), End goes to the end.
 #guard offset [.pointerMove box.center, .key .pageDown {}] == 120
-#guard offset [.pointerMove box.center, .key .finish {}] == 6272
+#guard offset [.pointerMove box.center, .key .finish {}] == offset far
 #guard offset [.pointerMove box.center, .key .finish {}, .key .home {}] == 0
--- The end line comes into view at the end: ^16 counts it, once per visit.
-#guard (st [.scroll box.center 0 100000]).ends == 1
-#guard (st [.scroll box.center 0 100000, .scroll box.center 0 (-10)]).ends == 1
-#guard (st [.scroll box.center 0 100]).ends == 0
-#guard (((steps app tcfg (run [.scroll box.center 0 100000]) [.scroll box.center 0 (-100000)]).1 |>
-  fun r => steps app tcfg r [.scroll box.center 0 100000]).1.app.ends) == 2
--- Tab from the last control before the rows goes to row 1, then on down; shift-Tab from nothing
--- goes to row 200 and scrolls it into view (just above the end line).
-#guard (run [.key .tab { shift := true }]).ui.focus == some (rowRef 200)
-#guard offset [.key .tab { shift := true }] == 32 * 199 + 32 - 160
--- The frame names every row (presence), draws only the six that show, and gives the box a node
--- of its own.
-def frame0 : Option Frame := decodeFrame (frameBytes Frame.boundary (run down))
-#guard (frame0.map fun f => ((f.ax.toList.filterMap (·.control)).filter (·.claim == 10)).length) == some 200
+-- Tab reaches only the rows laid: shift-Tab from nothing goes to the last of them.
+#guard (run [.key .tab { shift := true }]).ui.focus == some (rowRef 10)
+-- The frame names only the rows laid, draws only the five that show (rows 1 to 5 at the top),
+-- and gives the box a node of its own.
+def frame0 : Option Frame := decodeFrame (frameBytes Frame.boundary (run []))
+#guard (frame0.map fun f => ((f.ax.toList.filterMap (·.control)).filter (·.claim == 10)).length) == some 10
 #guard (frame0.map fun f => (f.draws.toList.filter fun
-  | .text _ _ _ t => t.startsWith "Row " | _ => false).length) == some 6
+  | .text _ _ _ t => t.startsWith "Row " | _ => false).length) == some 5
 #guard (frame0.map fun f => (f.ax.toList.filter (·.role == .scrollArea)).length) == some 1
 -- endregion: fixture-scroll-tests
 

@@ -13,8 +13,8 @@ import QuartzCore
 //   Fixture               open the window
 //   Fixture --selftest    drive the host headlessly through its real threads and check it
 //   Fixture --bench       input → frame and frame size with 10 and 1,000 items
-//   Fixture --scroll-shots <dir>   offscreen renders of the scroll box: at the top, scrolled,
-//                         and at the end (docs/media.md, "Stills")
+//   Fixture --scroll-shots <dir>   offscreen renders of the virtual list: at the top, scrolled,
+//                         with a row selected, and at the end (docs/media.md, "Stills")
 
 // region: fixture-leanapp
 let fixture = LeanApp(
@@ -170,34 +170,46 @@ enum SelfTest {
         if view.shadowDivergences.count != 0 { fail("text shadow diverged: \(view.shadowDivergences)") }
 
         // region: fixture-selftest-scroll
-        // The scroll box (^14 holds the rows, ^10): it opens at the top; a scroll of 1,616 points
-        // over it (50½ rows) moves it there, and the app hears nothing of it. Then the frame has a
-        // node for every row, draws only the six that show (rows 51 to 56), and the mirror exposes
-        // only those, under an AXScrollArea.
+        // The list (^14 holds the rows, ^10): 10,000 rows of 24 to 48 points that open at the top,
+        // with only rows 1 to 10 laid. A scroll of 1,616 points over it lays rows 40 to 55, and the
+        // runtime keeps the first row showing (46) at the top of the box as their heights come in,
+        // at offset 1,604; the app hears nothing of it. The frame has a node for each row laid,
+        // draws only the five that show (rows 46 to 50), and the mirror exposes only those, under an
+        // AXScrollArea.
         f = settle()
         guard let box = f.ax.first(where: { $0.role == .scrollArea }) else { fail("no scroll area in the frame") }
         expect("first row showing at the top", f.ax.first { $0.control?.claim == 10 && $0.rect.h > 0 }?.control?.label ?? "", "^10#1")
+        expect("row nodes at the top", f.ax.filter { $0.control?.claim == 10 }.count, 10)
         f = settle(engine.send([.scroll(center(box.rect), dx: 0, dy: 1616)]))
-        expect("row nodes in the frame", f.ax.filter { $0.control?.claim == 10 }.count, 200)
+        expect("row nodes in the frame", f.ax.filter { $0.control?.claim == 10 }.map { $0.control!.label }, (40...55).map { "^10#\($0)" })
         guard let area = elements().first(where: { $0.accessibilityRole() == .scrollArea }) else { fail("no AXScrollArea") }
         let shown = (area.accessibilityChildren() ?? []).compactMap { ($0 as? NSAccessibilityElement)?.accessibilityIdentifier() }
-        expect("rows exposed", shown, (51...56).map { "^10#\($0)" })
+        expect("rows exposed", shown, (46...50).map { "^10#\($0)" })
         if !ids("^10#").allSatisfy(shown.contains) { fail("a scrolled-out row is exposed: \(ids("^10#"))") }
         let rowTexts = f.draws.filter { if case .text(_, _, _, let t) = $0 { return t.hasPrefix("Row ") } else { return false } }
-        expect("row texts drawn", rowTexts.count, 6)
-        // Row 51 shows only its lower half: a click at that half's centre selects it.
-        guard let r51 = f.ax.first(where: { $0.control?.label == "^10#51" }) else { fail("^10#51 not in frame") }
-        expect("^10#51's visible height", r51.rect.h, 16)
-        f = settle(engine.send(click(center(r51.rect))))
-        expect("^10#51 selected", f.ax.first { $0.control?.label == "^10#51" }?.selected ?? false, true)
+        expect("row texts drawn", rowTexts.count, 5)
+        guard let r46 = f.ax.first(where: { $0.control?.label == "^10#46" }) else { fail("^10#46 not in frame") }
+        expect("^10#46 at the top of the box", r46.rect.y, box.rect.y)
+        // Row 50 shows only its top 16 points: a click at their centre selects it, and it grows to
+        // 72 points under row 49, which stays where it was.
+        guard let r50 = f.ax.first(where: { $0.control?.label == "^10#50" }) else { fail("^10#50 not in frame") }
+        expect("^10#50's visible height", r50.rect.h, 16)
+        f = settle(engine.send(click(center(r50.rect))))
+        expect("^10#50 selected", f.ax.first { $0.control?.label == "^10#50" }?.selected ?? false, true)
+        expect("^10#46 still at the top", f.ax.first { $0.control?.label == "^10#46" }?.rect.y ?? -1, box.rect.y)
         // An accessibility press is a click at the centre of the node's visible rect, through Lean.
-        press("^10#54")
+        press("^10#48")
         f = settle()
-        expect("^10#54 selected", f.ax.first { $0.control?.label == "^10#54" }?.selected ?? false, true)
+        expect("^10#48 selected", f.ax.first { $0.control?.label == "^10#48" }?.selected ?? false, true)
+        // A row added at the top (^17) leaves every row on screen where it was.
+        let before = f.ax.filter { $0.control?.claim == 10 && $0.rect.h > 0 }.map { "\($0.control!.label)@\($0.rect.y)" }
+        press("^17")
+        f = settle()
+        expect("rows on screen after Add above", f.ax.filter { $0.control?.claim == 10 && $0.rect.h > 0 }.map { "\($0.control!.label)@\($0.rect.y)" }, before)
         // endregion: fixture-selftest-scroll
 
         engine.stop()
-        print("selftest: PASS (Fixture: focus, type, Enter, Add, toggle, delete, timer, Tab, AX, paint, secure field, scroll box)")
+        print("selftest: PASS (Fixture: focus, type, Enter, Add, toggle, delete, timer, Tab, AX, paint, secure field, virtual list)")
     }
 }
 
@@ -251,9 +263,9 @@ enum Bench {
     }
 }
 
-/// Offscreen renders of the scroll box (^14) through the real engine: at the top, after a scroll
-/// of 1,616 points over it, and after one to the end, where the end line (^16) has heard
-/// `appear`. PNGs at 2×, no window.
+/// Offscreen renders of the virtual list (^14) through the real engine: at the top, after a
+/// scroll of 1,616 points over it, with row 47 selected (72 points high), and after a scroll to the
+/// end of its 10,000 rows, where the end line (^16) has heard `appear`. PNGs at 2×, no window.
 @MainActor
 enum ScrollShots {
     static func run(_ dir: String) {
@@ -271,7 +283,11 @@ enum ScrollShots {
         shot("scroll-top")
         f = engine.wait(through: engine.send([.pointerMove(center(box)), .scroll(center(box), dx: 0, dy: 1616)]))!.frame
         shot("scroll-1616")
-        f = engine.wait(through: engine.send([.scroll(center(box), dx: 0, dy: 100_000)]))!.frame
+        if let r = f.ax.first(where: { $0.control?.label == "^10#47" })?.rect {
+            f = engine.wait(through: engine.send(click(center(r))))!.frame
+            shot("scroll-selected")
+        }
+        f = engine.wait(through: engine.send([.scroll(center(box), dx: 0, dy: 10_000_000)]))!.frame
         shot("scroll-end")
         engine.stop()
     }

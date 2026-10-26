@@ -26,7 +26,17 @@ structure UI where
   moves them (the wheel, the trackpad, the page keys, Tab into a box) and clamps them to the box's
   content; the view reads them with `scrollOf` (docs/runtime.md, "Scrolling"). -/
   scroll : List (ControlRef × Int) := []
+  /-- What the runtime knows of each virtual list on screen, by its `scrollRef`: the heights of
+  the rows it has laid, and the anchor (docs/runtime.md, "Virtual lists"). The runtime records
+  them after every layout; `VList.node` reads them. -/
+  lists : List (ControlRef × VList.Known) := []
 deriving Repr, DecidableEq, Inhabited
+
+/-- What the runtime knows of the virtual list `r`: nothing until it has been laid. -/
+def UI.listOf (ui : UI) (r : ControlRef) : VList.Known :=
+  match ui.lists.find? (·.1 == r) with
+  | some (_, k) => k
+  | none => {}
 
 /-- The runtime's offset for the scroll box `r`: 0 until it has scrolled. -/
 def UI.scrollOf (ui : UI) (r : ControlRef) : Int :=

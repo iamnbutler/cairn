@@ -95,10 +95,10 @@ fixture-ledger: fixture-build
 	cd $(FIXTURE)/lean && export LAKE_ARTIFACT_CACHE=false && lake build -q \
 	  && lake exe ledger check --scope fixture --root Checks --lock ../claims.lock && lake exe audit Checks Fixture
 
-# The layout bench (bench/layout.md), the fixture's input → frame bench (`cairn bench`), and the
+# The layout bench (bench/layout.md), the virtual-list bench (bench/vlist.md), the fixture's input → frame bench (`cairn bench`), and the
 # renderer's.
 bench: lean cairn-tool
-	cd lean && lake build bench && .lake/build/bin/bench
+	cd lean && lake build bench && .lake/build/bin/bench && .lake/build/bin/bench --vlist
 	cd $(FIXTURE) && $(CAIRN) bench
 	cd host && CAIRN_BENCH=1 swift test -c release -Xswiftc -enable-testing --filter RenderBench
 

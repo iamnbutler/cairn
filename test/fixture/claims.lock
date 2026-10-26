@@ -1,18 +1,22 @@
 # claims.lock: every claim id ever issued. Written by `lake exe ledger update`; never edit by hand.
 # id	kind	status	statement	title
 1	place	active	-	Fixture window
-2	move	active	cb9ceaf39b31024a	Type a new item
-3	move	active	13643d56f162a71e	Add
+2	move	active	ff6d725e3cee2399	Type a new item
+3	move	active	e381439940bb181d	Add
 4	move	active	5efe8e019262cc2b	Toggle an item
 5	move	active	c3b117a2271584d7	Delete an item
 6	move	active	3c75ee9d6aa40637	Flash
 7	invariant	active	8f30931596f4fe93	Item ids stay below the next id
 8	flow	active	779c38f19ebcfef8	Add two items and finish one
 9	move	active	cc3607b9d82df888	Type a passcode
-10	move	active	9ce9cf2862c1aef4	Select a row
+10	move	active	5d6a5b5a913e63d4	Select a row
 11	invariant	retired	2bbc00437e7c3207	Rows are the column, moved up by the offset
-12	invariant	active	63ce81f67261a169	Rows stay apart, and what shows is inside the box
-13	invariant	active	cccae8c966bfc2ec	Controls are pressed where they show
+12	invariant	active	8274af74351d6457	Rows stay apart, and what shows is inside the box
+13	invariant	active	2da26a6f6e0b7492	Controls are pressed where they show
 14	place	active	-	The rows
-15	invariant	active	8f8c17ca61c7dd4d	Rows are the column, moved up by the runtime's offset
+15	invariant	retired	8f8c17ca61c7dd4d	Rows are the column, moved up by the runtime's offset
 16	move	active	049eea3d8143f42a	Reach the end of the rows
+17	move	active	407d462a4cb8f9ab	Add a row above
+18	move	active	0226dae0979149e7	Add a row below
+19	invariant	active	115371e5f61f6748	Rows are one under the other from the offset
+20	invariant	active	ad91352c374f9714	Only the rows near the view are built

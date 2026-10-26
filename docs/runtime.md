@@ -171,6 +171,35 @@ step, against the tree just laid: when content shrinks, the offset follows it. A
 box has left the tree is dropped. A scroll is never an action: `update` never sees it, and the
 app's state, the world and the effects are unchanged by it (`step_scroll`).
 
+## Virtual lists
+
+A virtual list (`VList.node`, docs/layout.md, "Virtual lists") is a scroll box whose `scrollRef`
+also keys what the runtime knows of it, in `UI.lists : List (ControlRef × VList.Known)`: the
+heights of the rows it has laid, the width they were laid at, the estimate, the box's length and
+the anchor. The view reads it with `ui.listOf ref`. After every layout, `fixUI` records each list
+in the tree (`recordLists`, `VList.record`), before the clamp:
+
+- **Heights.** The rows just laid are recorded at the heights they were laid at, keyed by
+  their keys, with the heights kept from before within `VList.keepSpan` rows of them. A change of
+  width forgets every height, and the estimate with them.
+- **The anchor.** The row to keep still is the anchor recorded last time if nothing has scrolled
+  since (the offset is the one it was recorded at), wherever its key now is; otherwise the first
+  row showing at the offset the list was laid at. The offset moves by as much as that row's top
+  moved between the heights the list was laid by and the heights now known, so it shows where it
+  did; then the clamp applies. So rows inserted above the rows on screen, or heights corrected
+  above them, move nothing on screen (`VList.record_keeps`) unless the offset is clamped (at the
+  top, a row inserted above the first row showing is above the box: the offset moves down by
+  its height). The anchor recorded is the first row showing at the corrected offset.
+
+`settle` lays the view out again while the record changes, so the frame shown is laid at the
+heights just recorded: a first layout lays rows at the estimate, the second at their heights.
+Rows that only the second layout brings into the window take a third; `settleFuel` is 4, and
+the fuzzer checks that every row on screen was laid at its recorded height.
+
+Focus moves only among the rows laid: Tab into a list reaches its first row laid, and each Tab
+scrolls the next row into view, so the next one after it is laid; shift-Tab from outside reaches
+the last row laid, not the list's last row.
+
 ## Appear
 
 A control with `Control.appear := true` tells the app when it comes on screen: the runtime
