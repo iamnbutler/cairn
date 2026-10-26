@@ -25,6 +25,8 @@ package's ([apps on Cairn](/docs/examples/)):
 | [Tray](/packages/cairn_examples/claims/450/) | cairn_examples^450–^462: a menu bar item, a submenu and an overlay panel |
 | [Gallery](/packages/cairn_examples/claims/503/) | cairn_examples^501–^513: images and a grid that fits the window |
 | [Pairs](/packages/pairs/claims/1/) | pairs^1–^32: a deal of the pack, two cards up at most, and every game can be won |
+| [Sky](/packages/sky/claims/1/) | sky^1–^36: sign in, the session, and a feed with no duplicates or gaps however its pages and refreshes race |
+| [cairn_atproto](/packages/cairn_atproto/claims/) | cairn_atproto^1–^16: the session machine, one refresh at a time, each call sent at most twice |
 | [Yap](/packages/yap/claims/301/) | yap^301–^399: a menu bar menu, an overlay and the dictation machine |
 
 The pages show the evidence the export holds: proofs and their axioms, assumptions, flow
