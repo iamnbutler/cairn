@@ -141,13 +141,15 @@ h3.sub { font: 600 var(--fs-m)/1.3 var(--pixel); margin: 36px 0 10px; }
 .anatomy li b { font: 600 var(--fs-s)/1.3 var(--pixel); color: var(--gold); margin-right: 4px; font-variant-ligatures: none; }
 .anatomy li.people b { color: #9fd3b4; }
 .anatomy li i { color: var(--muted); }
-.anatomy svg.leaders { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.anatomy svg.leaders { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; opacity: 0; transition: opacity 0.3s; }
+.anatomy svg.leaders.on { opacity: 1; }
 .anatomy svg.leaders path { fill: none; stroke: var(--muted); stroke-width: 2; stroke-dasharray: 2 4; shape-rendering: crispEdges; }
 .anatomy svg.leaders rect { fill: var(--muted); }
 @media (min-width: 1100px) {
   .anatomy { position: relative; margin: 30px calc((100% - min(1240px, 100vw - 32px)) / 2) 24px; padding: 24px 8px;
-    background: var(--bg); display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); column-gap: 56px; align-items: center; }
-  .anatomy pre { grid-column: 2; grid-row: 1; line-height: 2.3; padding: 18px 26px 18px 14px; }
+    background: var(--bg); display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); grid-template-rows: repeat(4, auto);
+    grid-auto-flow: dense; gap: 22px 56px; align-content: center; }
+  .anatomy pre { grid-column: 2; grid-row: 1 / -1; align-self: center; line-height: 2.3; padding: 18px 26px 18px 14px; }
   .anatomy .mk { display: none; }
   .anatomy .br { --c: var(--gold); padding-bottom: 2px;
     background: linear-gradient(var(--c), var(--c)) left bottom / 100% 2px no-repeat,
@@ -157,9 +159,11 @@ h3.sub { font: 600 var(--fs-m)/1.3 var(--pixel); margin: 36px 0 10px; }
   .anatomy li { list-style: none; padding: 0; margin: 0; line-height: 1.5; }
   .anatomy li::before { display: none; }
   .anatomy li b { display: block; margin-bottom: 2px; }
-  .anatomy .side { grid-row: 1; display: grid; gap: 22px; align-content: center; }
-  .anatomy .side.l { grid-column: 1; text-align: right; }
-  .anatomy .side.r { grid-column: 3; }
+  /* The notes take the margins in CSS alone, so the figure paints in its final shape and
+     annotate.js only adds the leaders. Dense flow stacks each side's notes in their own column. */
+  .anatomy li { align-self: center; }
+  .anatomy li.l { grid-column: 1; text-align: right; }
+  .anatomy li.r { grid-column: 3; }
 }
 table.kinds { width: 100%; border-collapse: collapse; margin: 8px 0 4px; }
 .kinds th { font: 600 var(--fs-s) var(--pixel); color: var(--muted); text-align: left; letter-spacing: 0.04em; padding: 0 12px 6px 0; }

@@ -1,30 +1,18 @@
 // The anatomy of a claim on the homepage: on a wide window its notes stand in the margins either
-// side of the code (site.css), and this draws a dotted leader from each note to what it names, a
-// bracketed span or a half's gutter bar. Narrower, the notes are a numbered list and need none.
+// side of the code (site.css places them), and this draws a dotted leader from each note to what
+// it names, a bracketed span or a half's gutter bar. Narrower, the notes are a numbered list and
+// need none.
 export function mountLeaders(fig) {
   const wide = matchMedia("(min-width: 1100px)");
-  const list = fig.querySelector(".callouts"), pre = fig.querySelector("pre");
-  const notes = [...list.children];
-  // The notes go in two columns; the list keeps their order for the narrow layout.
-  const sides = { l: document.createElement("div"), r: document.createElement("div") };
-  for (const k of ["l", "r"]) sides[k].className = `side ${k}`;
+  const pre = fig.querySelector("pre");
+  const notes = [...fig.querySelectorAll(".callouts li")];
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.classList.add("leaders");
   svg.setAttribute("aria-hidden", "true");
-
-  function place() {
-    if (wide.matches) {
-      for (const li of notes) sides[li.classList.contains("l") ? "l" : "r"].append(li);
-      if (!sides.l.isConnected) fig.append(sides.l, sides.r, svg);
-    } else if (sides.l.isConnected) {
-      for (const li of notes) list.append(li);
-      sides.l.remove(); sides.r.remove(); svg.remove();
-    }
-    draw();
-  }
+  fig.append(svg);
 
   function draw() {
-    if (!wide.matches) return;
+    if (!wide.matches) { svg.innerHTML = ""; return; }
     const f = fig.getBoundingClientRect(), p = pre.getBoundingClientRect();
     const rel = (x, y) => [Math.round(x - f.left), Math.round(y - f.top)];
     const parts = [];
@@ -56,10 +44,10 @@ export function mountLeaders(fig) {
       });
     }
     svg.innerHTML = parts.join("");
+    svg.classList.add("on");
   }
 
-  place();
-  wide.addEventListener("change", place);
+  wide.addEventListener("change", draw);
   new ResizeObserver(draw).observe(fig);
   document.fonts?.ready.then(draw);
 }
