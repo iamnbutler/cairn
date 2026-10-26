@@ -210,7 +210,7 @@ footer img { width: 32px; height: 32px; image-rendering: pixelated; }
 footer .feed { margin-left: auto; }
 footer a { color: var(--accent); }
 .scene .title .links { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 14px 0 0; font: 600 17px/1 var(--pixel); font-variant-ligatures: none; }
-.scene .title .links a { color: var(--fg); text-decoration: none; box-shadow: inset 0 -3px 0 var(--chip); padding-bottom: 3px; }
+.scene .title .links a { color: var(--fg); text-shadow: 1px 1px 0 var(--ink); text-decoration: none; box-shadow: inset 0 -3px 0 var(--chip); padding-bottom: 3px; }
 .scene .title .links a[aria-current="page"] { box-shadow: inset 0 -3px 0 var(--gold); }
 .scene .title .links a:hover { color: var(--accent); }
 .scene .title .links a.end { margin-left: auto; }
