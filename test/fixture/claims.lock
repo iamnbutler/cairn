@@ -1,8 +1,8 @@
 # claims.lock: every claim id ever issued. Written by `lake exe ledger update`; never edit by hand.
 # id	kind	status	statement	title
 1	place	active	-	Fixture window
-2	move	active	485c755feefeeb19	Type a new item
-3	move	active	b9cc2883f934c335	Add
+2	move	active	977a9365ee368eca	Type a new item
+3	move	active	478668de10015b46	Add
 4	move	active	5efe8e019262cc2b	Toggle an item
 5	move	active	c3b117a2271584d7	Delete an item
 6	move	active	3c75ee9d6aa40637	Flash
@@ -21,4 +21,6 @@
 19	invariant	active	d95e7dedf84c0db6	Rows are one under the other from the offset
 20	invariant	active	ad91352c374f9714	Only the rows near the view are built
 21	move	active	1b548d01e944a74c	Like a post
-22	invariant	active	e7e9225823df6b51	A post with nothing in flight shows the server's value
+22	invariant	active	5438b8d941f84349	A post with nothing in flight shows the server's value
+23	move	active	0b2dd78aaaa83db4	Refresh the counts
+24	invariant	active	911b0533bb9993c9	A post's count is never below its own like

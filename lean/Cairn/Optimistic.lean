@@ -589,4 +589,54 @@ theorem writes_le_sets (dflt : V) (same : V → V → Bool) (hs : Same same)
 
 end Table
 
+/-! ### At rest, a key shows the server's value -/
+
+namespace Entry
+variable {V : Type} (same : V → V → Bool)
+
+/-- With no write in flight or in doubt (`idle`, or `checking` a view), what is shown is the
+server's last confirmed value (by `same`). -/
+def Calm (e : Entry V) : Prop := e.phase.isOpen = true → same e.want e.server = true
+
+theorem calm_step (hs : Same same) (e : Entry V) (h : Calm same e) (ev : Ev V) :
+    Calm same (e.step same ev).1 := by
+  have hrefl := hs.refl
+  unfold Calm at h ⊢
+  cases ev <;> simp only [step, send, ask, settle, rollback] <;> (repeat' split) <;>
+    simp_all [Phase.isOpen]
+  all_goals (cases hp : e.phase <;> simp_all [Phase.isIdle])
+
+end Entry
+
+namespace Table
+variable {K V : Type} [Ord K] [Std.TransOrd K] [Std.LawfulEqOrd K] [DecidableEq K]
+
+/-- Every key at rest shows the server's last confirmed value. -/
+def Calm (t : Table K V) : Prop := ∀ k, Entry.Calm t.same (t.get k)
+
+theorem calm_empty (dflt : V) (same : V → V → Bool) (hs : Same same) :
+    (empty dflt same : Table K V).Calm := by
+  intro k _
+  simp only [empty, get, Std.TreeMap.getElem?_emptyc, Option.getD_none, Entry.fresh]
+  exact hs.refl dflt
+
+/-- **At rest, a key shows the server's value**, after any input. -/
+theorem calm_feed (t : Table K V) (hs : Same t.same) (h : t.Calm) (i : Input K V) :
+    (t.feed i).1.Calm := by
+  intro k
+  rw [feed_same, get_feed]
+  split
+  · subst_vars; exact Entry.calm_step t.same hs _ (h _) _
+  · exact h k
+
+/-- A settled key shows what the table last heard from the server. -/
+theorem Calm.settled {t : Table K V} (h : t.Calm) {k : K} (hk : t.settled k = true) :
+    t.same (t.shown k) (t.server k) = true := by
+  apply h k
+  unfold Table.settled at hk
+  revert hk
+  cases (t.get k).phase <;> simp [Phase.isIdle, Phase.isOpen]
+
+end Table
+
 end Cairn.Optimistic

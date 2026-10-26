@@ -36,10 +36,10 @@ def toggled : List Event := two ++ clickOn (run two) (toggleRef 1)
 def deleted : List Event := toggled ++ clickOn (run toggled) (deleteRef 2)
 #guard texts (st deleted) == [(1, "milk", true)]
 -- Tab order: field, Add, Passcode, Flash, Add above, Add below, then each item's checkbox and
--- delete button, the posts' Like buttons (and then the list's rows, `notRow`).
+-- delete button, the posts' Like buttons and Refresh (and then the list's rows, `notRow`).
 #guard ((tabOrder (run two).laid).map (·.ref)).filter notRow ==
   [fieldRef, addRef, passRef, flashRef, addTopRef, addEndRef, toggleRef 1, deleteRef 1,
-   toggleRef 2, deleteRef 2, likeRef 1, likeRef 2, likeRef 3, likeRef 4]
+   toggleRef 2, deleteRef 2, likeRef 1, likeRef 2, likeRef 3, likeRef 4, refreshRef]
 -- Flash sets its timer; the note shows until it fires.
 def flashed : List Event := clickOn (run []) flashRef
 #guard (st flashed).flash
@@ -47,7 +47,7 @@ def flashed : List Event := clickOn (run []) flashRef
 #guard ((decodeFrame (frameBytes Frame.boundary (run two))).map fun f =>
   (f.ax.toList.filterMap (·.control)).filter notRow) ==
   some [fieldRef, addRef, passRef, flashRef, addTopRef, addEndRef, toggleRef 1, deleteRef 1,
-        toggleRef 2, deleteRef 2, likeRef 1, likeRef 2, likeRef 3, likeRef 4]
+        toggleRef 2, deleteRef 2, likeRef 1, likeRef 2, likeRef 3, likeRef 4, refreshRef]
 -- endregion: fixture-tests
 
 -- The Passcode field: bullets on screen, nothing in the accessibility value, a redacted request.
@@ -138,5 +138,37 @@ def frame0 : Option Frame := decodeFrame (frameBytes Frame.boundary (run []))
   | .text _ _ _ t => t.startsWith "Row " | _ => false).length) == some 5
 #guard (frame0.map fun f => (f.ax.toList.filter (·.role == .scrollArea)).length) == some 1
 -- endregion: fixture-scroll-tests
+
+-- region: fixture-like-tests
+/-! The likes on their own (Fixture/Like.lean), replies fed by hand: request ids from 0. -/
+section Likes
+open Like
+def l0 : Likes := {}
+/-- Press post 1: it shows liked at once, and one write (request 0) goes out. -/
+def p1 : Out := Like.press 1 l0 0
+#guard p1.1.shown 1 && p1.1.busy 1 && p1.2.1 == 1
+-- A second press while the write is in flight shows unliked and sends nothing.
+#guard ((Like.press 1 p1.1 p1.2.1).1.shown 1, (Like.press 1 p1.1 p1.2.1).2.2.length) == (false, 0)
+-- Refused (429): back to unliked in that step, with a line saying so.
+def refused : Out := Like.receive false p1.1 1 (.reply 0 (.http 429 [] .empty))
+#guard !refused.1.shown 1 && refused.1.table.settled 1
+#guard refused.1.line == some "Couldn't like post 1: the server said 429"
+-- Lost (a timeout): still shown liked, in doubt, and a read back (request 1) goes out.
+def lost : Out := Like.receive false p1.1 1 (.reply 0 (.failed .timeout "t"))
+#guard lost.1.shown 1 && lost.1.table.inDoubt 1 && lost.2.1 == 2
+-- The read finds the write applied: settled, liked. Finds it not: rolled back, said.
+#guard (Like.receive false lost.1 2 (.reply 1 (.http 200 [] (bit true)))).1 |> fun (l : Likes) =>
+  l.shown 1 && l.table.settled 1 && l.line == none
+#guard (Like.receive false lost.1 2 (.reply 1 (.http 200 [] (bit false)))).1 |> fun (l : Likes) =>
+  !l.shown 1 && l.line == some "Couldn't like post 1: it never reached the server"
+-- The mutant takes the lost write for a refusal and rolls back at once.
+#guard !(Like.receive true p1.1 1 (.reply 0 (.failed .timeout "t"))).1.shown 1
+-- A view: post 2 has 17 likes, not the viewer's. Liking it shows 18 at once.
+def viewedL : Out := Like.receive false (Like.refresh l0 0).1 4 (.reply 1 (.http 200 [] (viewBody 17 false)))
+#guard viewedL.1.countOf 2 == 17 && (Like.press 2 viewedL.1 4).1.countOf 2 == 18
+-- A view never moves a post pressed this session.
+#guard (Like.receive false (Like.refresh p1.1 1).1 5 (.reply 1 (.http 200 [] (viewBody 3 false)))).1.shown 1
+end Likes
+-- endregion: fixture-like-tests
 
 end Fixture.Tests

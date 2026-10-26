@@ -3,12 +3,12 @@ import Cairn.Fuzz.Shrink
 
 /-! # The likes' mutant, caught by the fuzzer's server
 
-`blindReceive` is the fixture's `receive` with one plausible slip: after a lost write it sends
-the write again instead of reading the value back (`Like.answer`'s `blind`). The tests the
-fixture has for presses and replies pass with it; ^22's proof still goes through, since a
-blind retry keeps the post in flight. What breaks is the server's side: a lost write that the
-server applied, then a refusal of the retry, rolls the post back to a value the server no longer
-holds.
+`blindReceive` is the fixture's `receive` with one plausible slip: it takes a write whose reply
+was lost (a timeout, a 503) for a refused one, and rolls the post back instead of reading the
+value back (`Like.wrote`'s `blind`). The tests the fixture has for presses and replies pass with
+it, and ^22's proof still goes through: a rollback leaves the post showing the value last heard
+from the server. What breaks is the server's side: when the server applied the write before its
+reply was lost, the post rolls back to a value the server no longer holds.
 
 Below, `cairn fuzz`'s walk runs the fixture with its server (`Fixture.fuzz`) on the real
 `receive` and on the mutant: the real one passes, the mutant fails ^22's `server` check, and the
@@ -18,7 +18,7 @@ shrunk failure has a reply lost after the server acted. Nothing here declares a 
 namespace Fixture.LikeMutant
 open Cairn Cairn.Fuzz Fixture
 
-/-- `receive`, but a lost write is retried blind. -/
+/-- `receive`, but a lost write is taken for a refused one. -/
 def blindReceive (s : State) (m : Msg) : State × List Effect :=
   let o := Like.receive true s.likes s.nextReq m
   ({ s with flash := if isFlash m then false else s.flash, likes := o.1, nextReq := o.2.1 }, o.2.2)
@@ -57,12 +57,12 @@ def main : IO UInt32 := do
   IO.println "receive: ^22 held against the server over 100 sequences"
   let t := target blindReceive
   let some (f, setup, ops) ← firstFailure t 100 80
-    | IO.eprintln "the fuzzer missed the blind retry"; return 1
+    | IO.eprintln "the fuzzer missed the lost write taken for a refusal"; return 1
   unless f.claim == 22 && (f.check == "server" || f.check == "serverDrained") do
-    IO.eprintln s!"the blind retry failed {f.check} ^{f.claim}, not ^22 against the server: {f.message}"
+    IO.eprintln s!"the mutant failed {f.check} ^{f.claim}, not ^22 against the server: {f.message}"
     return 1
   let (shrunk, _) ← shrink t setup f ops
-  IO.println s!"blind retry: {f.check} ^22 failed at seed {setup.seed}: {f.message}"
+  IO.println s!"lost taken for refused: {f.check} ^22 failed at seed {setup.seed}: {f.message}"
   IO.println s!"  shrunk {ops.size} → {shrunk.size} operations:"
   for op in shrunk do IO.println s!"    {opText op}"
   unless shrunk.any isLose do
