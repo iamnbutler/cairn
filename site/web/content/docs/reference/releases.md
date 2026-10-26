@@ -49,9 +49,11 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
 - **Its evidence.** What a claim reads as depends on the build that computed it. See
   [how much to trust a claim](/docs/reference/trust/).
 
-## Unreleased (0.5.2)
+## v0.5.2
 
-Not published yet. Two virtual-list fixes Sky turned up.
+26 October 2026.
+
+A patch release: two virtual-list fixes Sky turned up.
 
 - **A list settles however many layouts it takes**
   ([#276](https://github.com/iamnbutler/cairn/issues/276)). A list learns heights one window at
@@ -74,9 +76,11 @@ Not published yet. Two virtual-list fixes Sky turned up.
   shrink to 1 point at once, and a short list that rows are added above and that loads more when
   they appear, with a box that grows and shrinks in separate batches. Both failed before.
 
-No claim is new, retired, moved or changed. `Runtime.steps` now ends with `State.shown`, and
-`VList.Anchor` has a new field, `hold`, 0 by default; code that folds `Runtime.step` over a batch
-itself (as the fuzzer and conformance do) applies `State.shown` after the frame events.
+No claim is new, retired, moved or changed, so it is a patch release. Moving from v0.5.1 is a
+change of tag in the lakefile and `Package.swift`; the frame format stays v13. `Runtime.steps` now
+ends with `State.shown`, and `VList.Anchor` has a new field, `hold`, 0 by default; code that folds
+`Runtime.step` over a batch itself (as the fuzzer and conformance do) applies `State.shown` after
+the frame events.
 
 ## v0.5.1
 
