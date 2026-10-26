@@ -132,13 +132,14 @@ card: { label: Cairn, title: Milestones, line: "What each one sets out to show, 
 <footer><img src="/icon.svg" alt=""><span>MIT licensed. Built in the open, slowly. <a href="/docs/">Read the docs</a>.</span><a class="feed" href="/feed.xml">RSS feed</a></footer>
 
 <script type="module">
-  import { mountScene, mountFrames, mountSprigs, mountAnchors } from "/scene.js";
+  import { mountScene, mountFrames, mountSprigs, mountAnchors, mountPeek } from "/scene.js";
   import { list, fillLogs } from "/media.js";
   const main = document.querySelector("main");
   mountFrames(main);
   mountSprigs(main);
   mountAnchors(main);
   mountScene(document.getElementById("scene"));
+  mountPeek(document.querySelector("footer"));
   // The logs arrive after the page has drawn, so a link to a video's heading scrolls once they do.
   list().then(all => {
     fillLogs(main, all);

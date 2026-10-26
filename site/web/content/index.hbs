@@ -137,7 +137,7 @@ card: { label: "", title: Cairn, line: "Mac apps where every action is a claim, 
 <footer><img src="/icon.svg" alt=""><span>MIT licensed. Built in the open, slowly. <a href="/docs/">Read the docs</a>.</span><a class="feed" href="/feed.xml">RSS feed</a></footer>
 
 <script type="module">
-  import { mountScene, mountFrames, mountSprigs, mountAnchors } from "/scene.js";
+  import { mountScene, mountFrames, mountSprigs, mountAnchors, mountPeek } from "/scene.js";
   import { list, figure } from "/media.js";
   // The featured video tops the page; every video is in its milestone's log on /milestones/.
   list().then(all => {
@@ -148,5 +148,6 @@ card: { label: "", title: Cairn, line: "Mac apps where every action is a claim, 
   mountFrames(document.querySelector("main"));
   mountSprigs(document.querySelector("main"));
   mountAnchors(document.querySelector("main"));
+  mountPeek(document.querySelector("footer"));
   mountScene(document.getElementById("scene"), { feature: document.getElementById("feature"), octocat: document.getElementById("octocat") });
 </script>
