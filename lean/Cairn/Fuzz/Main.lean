@@ -105,7 +105,8 @@ def hostStatsJson (h : HostStats) : Json := Json.mkObj [
   ("evictions", toJson h.evictions), ("maxOutstanding", toJson h.maxOutstanding),
   ("leftOver", toJson h.leftOver), ("served", toJson h.served),
   ("retransmits", toJson h.retransmits), ("lostAfter", toJson h.lostAfter),
-  ("failedBefore", toJson h.failedBefore), ("ticks", toJson h.ticks)]
+  ("failedBefore", toJson h.failedBefore), ("ticks", toJson h.ticks),
+  ("badges", toJson h.badges), ("announcements", toJson h.announcements)]
 
 def stepJson (tr : Traced) : Json :=
   let hit : Json := match tr.hit with | some r => Json.str r.label | none => Json.null
@@ -290,7 +291,7 @@ def runTarget (t : Target) (o : Opts) : IO UInt32 := do
     if dropped > 0 then
       IO.println s!"{dropped} clicks dropped by design: the pointerDown's blur saved an edit that moved the clicked control (T33; counted as {droppedCheck}, not failed)"
   if t.app.isSome then
-    IO.println s!"host: {host.requests} requests ({host.cancels} cancelled), {host.replies} answered ({host.failed} failed), {host.cancelledReplies} answers to cancelled requests, {host.stray} stray; {host.clocks} clocks, {host.wakes} wakes, {host.timersDue} timers due; {host.subEvents} subscription events ({host.lateSubEvents} after a stop); {host.loads} early loads, {host.evictions} evictions; at most {host.maxOutstanding} outstanding, {host.leftOver} unanswered at the end"
+    IO.println s!"host: {host.requests} requests ({host.cancels} cancelled), {host.replies} answered ({host.failed} failed), {host.cancelledReplies} answers to cancelled requests, {host.stray} stray; {host.clocks} clocks, {host.wakes} wakes, {host.timersDue} timers due; {host.subEvents} subscription events ({host.lateSubEvents} after a stop); {host.loads} early loads, {host.evictions} evictions; at most {host.maxOutstanding} outstanding, {host.leftOver} unanswered at the end; {host.badges} badges, {host.announcements} announcements"
     if t.custom.server.isSome then
       IO.println s!"server: {host.served} requests handled ({host.retransmits} delivered twice), {host.lostAfter} replies lost after it acted, {host.failedBefore} requests failed before reaching it, {host.ticks} times its world acted on its own"
   for inv in t.invariants do

@@ -117,18 +117,18 @@ enum SelfTest {
         type("  Buy milk ")
         view.doCommand(by: #selector(NSResponder.insertNewline(_:)))
         settle()
-        expect("checkboxes after Enter", ids("^4"), ["^4#1"])
+        expect("checkboxes after Enter", ids("^4#"), ["^4#1"])
         expect("item label (trimmed)", need("^4#1").accessibilityLabel() ?? "", "Buy milk")
 
         // Type again, then press Add; toggle item 1; delete item 2.
         type("Eggs")
         press("^3")
-        expect("checkboxes after Add", ids("^4"), ["^4#1", "^4#2"])
+        expect("checkboxes after Add", ids("^4#"), ["^4#1", "^4#2"])
         press("^4#1")
         expect("^4#1 value", need("^4#1").accessibilityValue() as? Int ?? -1, 1)
         expect("left after toggle", label(" left") ?? "", "1 item left")
         press("^5#2")
-        expect("delete buttons after delete", ids("^5"), ["^5#1"])
+        expect("delete buttons after delete", ids("^5#"), ["^5#1"])
         // endregion: fixture-selftest
 
         // region: fixture-selftest-timer
@@ -209,10 +209,39 @@ enum SelfTest {
         press("^17")
         f = settle()
         expect("rows on screen after Add above", f.ax.filter { $0.control?.claim == 10 && $0.rect.h > 0 }.map { "\($0.control!.label)@\($0.rect.y)" }, before)
+        // Hidden (^44), the list lays nothing; shown again, it comes back where it was (#234).
+        press("^44")
+        f = settle()
+        expect("row nodes while hidden", f.ax.filter { $0.control?.claim == 10 }.count, 0)
+        press("^44")
+        f = settle()
+        expect("rows on screen after Hide and Show", f.ax.filter { $0.control?.claim == 10 && $0.rect.h > 0 }.map { "\($0.control!.label)@\($0.rect.y)" }, before)
+        // End (^42) scrolls to the end line (^16), Top (^41) back to the first row.
+        press("^42")
+        f = settle()
+        if !f.ax.contains(where: { $0.control?.label == "^16" && $0.rect.h > 0 }) { fail("the end line is not showing after End") }
+        press("^41")
+        f = settle()
+        expect("first row showing after Top", f.ax.first { $0.control?.claim == 10 && $0.rect.h > 0 }?.control?.label ?? "", "^10#10001")
         // endregion: fixture-selftest-scroll
 
+        // Badge (^45), Clear badge (^46) and Announce (^47) hand the host one effect each, which it
+        // runs with `Notices` (recorded here instead: no Dock tile, nothing spoken).
+        var notices: [Effect] = []
+        view.effectHook = { e in
+            switch e {
+            case .badge, .announce: notices.append(e); return true
+            default: return false
+            }
+        }
+        press("^45")
+        press("^45")
+        press("^46")
+        press("^47")
+        expect("notices", notices, [Effect.badge("1"), .badge("2"), .badge(nil), .announce("Announcement 1", priority: .high)])
+
         engine.stop()
-        print("selftest: PASS (Fixture: focus, type, Enter, Add, toggle, delete, timer, Tab, AX, paint, secure field, virtual list)")
+        print("selftest: PASS (Fixture: focus, type, Enter, Add, toggle, delete, timer, Tab, AX, paint, secure field, virtual list, scrollTo, kept offset, badge, announce)")
     }
 }
 

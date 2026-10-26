@@ -59,11 +59,11 @@ def Sound (s : State S) : Prop :=
   (∀ r, s.ui.hover = some r → r ∈ refs s.laid) ∧
   (∀ r, s.ui.pressed = some r → r ∈ refs s.laid)
 
-theorem fixUI_sound (laid : Laid) (pointer : Option Point) (ui : UI) :
-    (∀ r, (fixUI laid pointer ui).focus = some r →
+theorem fixUI_sound (laid : Laid) (pointer : Option Point) (ui : UI) (keep : List ControlRef) :
+    (∀ r, (fixUI laid pointer ui keep).focus = some r →
       ∃ t ∈ targets laid, t.ref = r ∧ t.focusable = true) ∧
-    (∀ r, (fixUI laid pointer ui).hover = some r → r ∈ refs laid) ∧
-    (∀ r, (fixUI laid pointer ui).pressed = some r → r ∈ refs laid) := by
+    (∀ r, (fixUI laid pointer ui keep).hover = some r → r ∈ refs laid) ∧
+    (∀ r, (fixUI laid pointer ui keep).pressed = some r → r ∈ refs laid) := by
   refine ⟨fun r h => ?_, fun r h => ?_, fun r h => ?_⟩
   · simp only [fixUI, Option.filter_eq_some_iff] at h
     obtain ⟨-, h⟩ := h
@@ -81,13 +81,45 @@ theorem fixUI_sound (laid : Laid) (pointer : Option Point) (ui : UI) :
 
 /-- `settle` always returns `ui0` repaired against the tree it returns. -/
 theorem settle_spec (app : App S) (cfg : Config) (st : S) (pointer : Option Point) (ui0 : UI) :
-    ∀ fuel ui, ∃ l, settle app cfg st pointer ui0 fuel ui = (fixUI l pointer ui0, l)
+    ∀ fuel ui, ∃ l, settle app cfg st pointer ui0 fuel ui = (fixUI l pointer ui0 (app.keepScroll st), l)
   | 0, ui => ⟨relayout app cfg st ui, rfl⟩
   | f + 1, ui => by
     simp only [settle]
     split
     · exact ⟨_, rfl⟩
     · exact settle_spec app cfg st pointer ui0 f _
+
+/-- What `aim` returns is still a `UI` repaired against the tree returned with it, from one with
+`ui1`'s focus and press. -/
+theorem aim_spec (app : App S) (cfg : Config) (st : S) (pointer : Option Point) (ui1 : UI)
+    (goals : List (ControlRef × ScrollTarget)) :
+    ∀ fuel x, (∃ l u, x = (fixUI l pointer u (app.keepScroll st), l) ∧ u.focus = ui1.focus ∧
+        u.pressed = ui1.pressed) →
+      ∃ l u, aim app cfg st pointer ui1 goals fuel x = (fixUI l pointer u (app.keepScroll st), l) ∧
+        u.focus = ui1.focus ∧ u.pressed = ui1.pressed
+  | 0, _, h => h
+  | f + 1, (ui, laid), h => by
+    simp only [aim]
+    split
+    · exact h
+    · apply aim_spec
+      obtain ⟨l, hl⟩ := settle_spec app cfg st pointer _ settleFuel (aimScroll goals laid ui)
+      exact ⟨l, _, hl, rfl, rfl⟩
+
+/-- `lay` returns a `UI` repaired against the tree returned with it, from one with `ui1`'s focus
+and press (`ui1` itself, unless a scroll request moved an offset). -/
+theorem lay_spec (app : App S) (cfg : Config) (st : S) (pointer : Option Point)
+    (goals : List (ControlRef × ScrollTarget)) (ui1 : UI) :
+    ∃ l u, lay app cfg st pointer goals ui1 = (fixUI l pointer u (app.keepScroll st), l) ∧
+      u.focus = ui1.focus ∧ u.pressed = ui1.pressed := by
+  obtain ⟨l, hl⟩ := settle_spec app cfg st pointer ui1 settleFuel ui1
+  have h0 : ∃ l u, settle app cfg st pointer ui1 settleFuel ui1 =
+      (fixUI l pointer u (app.keepScroll st), l) ∧ u.focus = ui1.focus ∧ u.pressed = ui1.pressed :=
+    ⟨l, ui1, hl, rfl, rfl⟩
+  unfold lay
+  split
+  · exact h0
+  · exact aim_spec app cfg st pointer ui1 goals aimFuel _ h0
 
 theorem sound_settle (app : App S) (cfg : Config) (st : S) (pointer : Option Point) (ui0 : UI)
     (fuel : Nat) (ui : UI) (s : State S)
@@ -96,7 +128,16 @@ theorem sound_settle (app : App S) (cfg : Config) (st : S) (pointer : Option Poi
   rw [hl] at h
   simp only [Prod.mk.injEq] at h
   obtain ⟨h1, h2⟩ := h
-  unfold Sound; rw [h1, h2]; exact fixUI_sound l pointer ui0
+  unfold Sound; rw [h1, h2]; exact fixUI_sound l pointer ui0 _
+
+theorem sound_lay (app : App S) (cfg : Config) (st : S) (pointer : Option Point)
+    (goals : List (ControlRef × ScrollTarget)) (ui1 : UI) (s : State S)
+    (h : (s.ui, s.laid) = lay app cfg st pointer goals ui1) : Sound s := by
+  obtain ⟨l, u, hl, -, -⟩ := lay_spec app cfg st pointer goals ui1
+  rw [hl] at h
+  simp only [Prod.mk.injEq] at h
+  obtain ⟨h1, h2⟩ := h
+  unfold Sound; rw [h1, h2]; exact fixUI_sound l pointer u _
 
 /-- **Focus is sound** at start. -/
 theorem start_sound (app : App S) (cfg : Config) (size : Size) (scale : Nat) :
@@ -118,7 +159,7 @@ theorem step_sound (app : App S) (cfg : Config) (s : State S) (e : Event) (h : S
       have hl := (route_laid cfg.metrics s e).1
       rw [heq] at hl
       unfold Sound; simp only; rw [hui, hl]; exact h
-    · exact sound_settle app cfg _ _ _ _ _ _ rfl
+    · exact sound_lay app cfg _ _ _ _ _ rfl
 
 theorem steps_sound (app : App S) (cfg : Config) (s : State S) (es : List Event)
     (h : Sound s) : Sound (steps app cfg s es).1 := by
@@ -583,11 +624,11 @@ theorem step_down_pressed (app : App S) (cfg : Config) (s : State S) (t : Target
   · intro _; exact hr
   · intro hpres
     generalize act app (admit app s _) acts = c at hpres ⊢
-    obtain ⟨l, hl⟩ := settle_spec app cfg c.app s1.pointer (applyFocus c.effs s1.ui) settleFuel
+    obtain ⟨l, u, hl, -, hp⟩ := lay_spec app cfg c.app s1.pointer (requestedScrolls c.effs)
       (applyFocus c.effs s1.ui)
     simp only [hl] at hpres ⊢
     refine ⟨?_, hr.2⟩
-    simp only [fixUI, Option.filter_eq_some_iff, applyFocus_pressed]
+    simp only [fixUI, Option.filter_eq_some_iff, hp, applyFocus_pressed]
     exact ⟨hr.1, by simpa [present] using hpres⟩
 
 /-- The actions of a pointerDown on a non-field control: at most a blur of the field that

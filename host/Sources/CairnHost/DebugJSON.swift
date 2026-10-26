@@ -78,6 +78,14 @@ public enum DebugJSON {
          "textInput": opt(f.textInput, textInput), "cursor": cursorName(f.cursor)]
     }
 
+    static func scrollTarget(_ t: ScrollTarget) -> String {
+        switch t {
+        case .start: "start"
+        case .finish: "end"
+        case let .key(k): "key \(k)"
+        }
+    }
+
     static func effect(_ e: Effect) -> [String: Any] {
         switch e {
         case .setClipboard(let s): ["clipboard": s]
@@ -88,6 +96,9 @@ public enum DebugJSON {
         case let .request(id, r): ["request": Int(id), "kind": request(r)]
         case .quit: ["quit": true]
         case let .cancelRequest(id): ["cancelRequest": Int(id)]
+        case let .scrollTo(c, t): ["scrollTo": c.label, "to": scrollTarget(t)]
+        case let .badge(l): ["badge": l.map { $0 as Any } ?? NSNull()]
+        case let .announce(t, p): ["announce": t, "priority": p == .high ? "high" : "low"]
         }
     }
 

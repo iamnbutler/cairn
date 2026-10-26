@@ -224,6 +224,10 @@ def jeffect : Effect → String
   | .request id r => jobj [("request", toString id), ("kind", jstr (requestKind r))]
   | .quit => jobj [("quit", "true")]
   | .cancelRequest id => jobj [("cancelRequest", toString id)]
+  | .scrollTo c t => jobj [("scrollTo", jstr (refLabel c)),
+      ("to", jstr (match t with | .start => "start" | .finish => "end" | .key k => s!"key {k}"))]
+  | .badge l => jobj [("badge", match l with | some l => jstr l | none => "null")]
+  | .announce t p => jobj [("announce", jstr t), ("priority", jstr (match p with | .low => "low" | .high => "high"))]
 
 def opName : TextOp → String
   | .insert s => s!"insert {repr s}" | .deleteBackward => "deleteBackward"

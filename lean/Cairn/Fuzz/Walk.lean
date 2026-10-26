@@ -203,6 +203,12 @@ structure World (S W : Type) where
   /-- What the app's server holds. Only `perform` and `drain` change it, and they hold its only
   reference while they do. -/
   server : W
+  /-- The virtual lists the app keeps (`App.keepScroll`) that are not on screen, with the row
+  that was first showing when each left, and where in the box. -/
+  parked : List (ControlRef × Nat × Int) := []
+  /-- Each virtual list as it was last on screen: while a list is off screen (hidden, kept), none
+  of its rows is laid, so a control keyed like one of its rows may be missing. -/
+  lastLists : List LaidList := []
 
 /-- The host after a step: it takes in the effects the frame carried, the frame's images count
 as used, and the subscriptions the runtime stopped are remembered (their events can still be in
@@ -603,7 +609,7 @@ def perform (t : Target) (setup : Setup) (w : World t.S t.W) (op : Op) :
   | some app =>
     -- Take the world apart first, so the server's world has one reference when `hostStep`
     -- hands it to the server (`LEAN_ABORT_ON_NONLINEAR=1`).
-    let { rt := rt0, seen, host := host0, secure, server := sw0 } := w
+    let { rt := rt0, seen, host := host0, secure, server := sw0, parked, lastLists } := w
     let (sw, plan) : t.W × Option (Host × List Event × Option Msg) := match op with
       | .host h => hostStep t.srv rt0 host0 sw0 h
       | _ => (sw0, (opToEvents rt0 op).map fun es => (host0, .clock host0.now :: es, none))
@@ -611,10 +617,10 @@ def perform (t : Target) (setup : Setup) (w : World t.S t.W) (op : Op) :
     let plan := plan.map fun (h, es, m) => (h, es ++ frameEvents, m)
     match plan with
     | none =>
-      return { world := { rt := rt0, seen, host := host0, secure, server := sw }, acts := [],
+      return { world := { rt := rt0, seen, host := host0, secure, server := sw, parked, lastLists }, acts := [],
                ran := false, maxNs := 0 }
     | some (host, es, msg) =>
-      let w : World t.S Unit := { rt := rt0, seen, host := host0, secure, server := () }
+      let w : World t.S Unit := { rt := rt0, seen, host := host0, secure, server := (), parked, lastLists }
       let mut rt := w.rt
       let mut host := host
       let mut acts : Array Action := #[]
@@ -648,7 +654,7 @@ def perform (t : Target) (setup : Setup) (w : World t.S t.W) (op : Op) :
         host := host.after rt.world.subs rt' effs
         effects := effects ++ effs.toArray
         rt := { rt' with subCmds := #[] }
-      return { world := { rt, seen, host, secure, server := sw }, acts := acts.toList, ran := true,
+      return { world := { rt, seen, host, secure, server := sw, parked, lastLists }, acts := acts.toList, ran := true,
                maxNs, dropped, msg, effects := effects.toList, msgDropped }
 
 /-! ## Checks -/
@@ -715,6 +721,10 @@ def rowClaims (lists : List LaidList) : List ClaimId :=
     let key := ll.info.keys[i]?.getD 0
     (refs k).filterMap fun r => if r.key == key then some r.claim else none).eraseDups
 
+/-- `lastLists` after a frame: each list on screen replaces what was known of it. -/
+def noteLists (known lists : List LaidList) : List LaidList :=
+  known.filter (fun ll => !lists.any (·.ref == ll.ref)) ++ lists
+
 /-- What is wrong with a laid list, if anything: the rows laid are exactly those whose extent
 meets the viewport widened by the overscan, in the heights the view laid out by (`Model.top`,
 the specification, not the fast path the view used; `VList.node_rows`); there are no more than
@@ -764,16 +774,91 @@ def Op.moves : Op → Bool
   | .scroll .. | .key .. | .tab _ | .resize _ => true
   | _ => false
 
+/-- A step's scroll requests, the last for each box. -/
+def lastScrolls (effects : List Effect) : List (ControlRef × ScrollTarget) :=
+  (requestedScrolls effects).foldl (fun acc (r, t) => (r, t) :: acc.filter (·.1 != r)) []
+
+/-- **`scrollTo` lands** (`Runtime.aimOff_start`, `aimOff_finish`, `aimOff_key`,
+`firstF_top`). After a step that asked for it, a box on screen is at 0 for `start` and at its
+limit for `finish`; for `key k`, the row with key `k` is the first showing, at the top of the
+box, unless the clamp holds the list at its end. -/
+def scrollToChecks (laid : Laid) (ui : UI) (effects : List Effect) (stepIx : Nat) :
+    List Ran × List Failure := Id.run do
+  let mut ran : Array Ran := #[]
+  let mut fails : Array Failure := #[]
+  for (r, t) in lastScrolls effects do
+    let some sc := (scrollersOf laid).find? (·.ref == r) | continue
+    ran := ran.push (r.claim, "scrollTo")
+    let o := ui.scrollOf r
+    match t with
+    | .start =>
+      unless o == 0 do
+        fails := fails.push <| mkFail "scrollTo" r stepIx s!"scrollTo {r.label} start left it at offset {o}"
+    | .finish =>
+      unless o == sc.limit do
+        fails := fails.push <| mkFail "scrollTo" r stepIx
+          s!"scrollTo {r.label} end left it at offset {o}, not its limit {sc.limit} (content {sc.content}, viewport {sc.viewport})"
+    | .key k =>
+      let some ll := (listsOf laid).find? (·.ref == r) | continue
+      unless ll.info.keys.contains k do continue
+      if o == ll.limit then continue
+      match ll.anchor with
+      | some (k', y) =>
+        unless k' == k && y == 0 do
+          fails := fails.push <| mkFail "scrollTo" r stepIx
+            s!"scrollTo {r.label} key {k}: the first row showing is {k'}, {y} points into the box (offset {o}, limit {ll.limit})"
+      | none =>
+        fails := fails.push <| mkFail "scrollTo" r stepIx s!"scrollTo {r.label} key {k}: no row shows"
+  return (ran.toList, fails.toList)
+
+/-- **A kept list comes back where it was** (`Runtime.fixUI_keeps_offset`,
+`fixUI_keeps_list`). A virtual list the app keeps (`App.keepScroll`) that leaves the view keeps
+its offset while it is away, and when it comes back the row that was first showing when it left
+is first showing again, at the same place in the box, unless the clamp moved it (to 0 or the
+limit) or the row is gone. Returns the lists parked now. -/
+def keptChecks (keep : List ControlRef) (ui0 ui : UI) (before after : List LaidList)
+    (parked : List (ControlRef × Nat × Int)) (stepIx : Nat) :
+    List Ran × List Failure × List (ControlRef × Nat × Int) := Id.run do
+  let mut ran : Array Ran := #[]
+  let mut fails : Array Failure := #[]
+  let mut park : Array (ControlRef × Nat × Int) := #[]
+  for r in keep do
+    match after.find? (·.ref == r) with
+    | none =>
+      -- Away: its offset is the one it had.
+      ran := ran.push (r.claim, "kept")
+      unless ui.scrollOf r == ui0.scrollOf r do
+        fails := fails.push <| mkFail "kept" r stepIx
+          s!"{r.label} is kept and not on screen, but its offset went from {ui0.scrollOf r} to {ui.scrollOf r}"
+      match before.find? (·.ref == r) with
+      | some ll0 => if let some (k, y) := ll0.anchor then park := park.push (r, k, y)
+      | none => if let some p := parked.find? (·.1 == r) then park := park.push p
+    | some ll =>
+      if before.any (·.ref == r) then continue
+      let some (_, key, y0) := parked.find? (·.1 == r) | continue
+      ran := ran.push (r.claim, "kept")
+      if ll.offset == 0 || ll.offset == ll.limit then continue
+      let some i := ll.indexOf key | continue
+      let some (_, k) := ll.rows.find? (·.1 == i) | continue
+      let y := k.rect.y - ll.contentTop
+      unless y == y0 do
+        fails := fails.push <| mkFail "kept" r stepIx
+          s!"{r.label} came back with row {key}, first showing when it left at {y0}, at {y} in the box (offset {ll.offset}, limit {ll.limit})"
+  return (ran.toList, fails.toList, park.toList)
+
 /-- **The anchor stays still.** Over an operation that doesn't scroll or resize, the first row
 showing in each virtual list keeps its place in the box, wherever rows were inserted or heights
 changed above it (`VList.record_keeps`), unless the clamp moved the offset (to 0 or the
 limit) or the row is gone. -/
-def anchorChecks (before after : List LaidList) (op : Op) (stepIx : Nat) :
-    List Ran × List Failure := Id.run do
+def anchorChecks (before after : List LaidList) (op : Op) (stepIx : Nat)
+    (effects : List Effect := []) : List Ran × List Failure := Id.run do
   if op.moves then return ([], [])
   let mut ran : Array Ran := #[]
   let mut fails : Array Failure := #[]
+  let aimed := (requestedScrolls effects).map (·.1)
   for ll in after do
+    -- A list the step asked to scroll moves by design (`scrollToChecks`).
+    if aimed.contains ll.ref then continue
     let some ll0 := before.find? (·.ref == ll.ref) | continue
     let some (key, y0) := ll0.anchor | continue
     ran := ran.push (ll.ref.claim, "anchor")
@@ -813,6 +898,12 @@ def checks (t : Target) (setup : Setup) (w : World t.S W) (act? : Option Action)
       unless ck s ids do
         fails := fails.push <| mkFail "outstanding" ⟨id, 0⟩ stepIx
           s!"^{id} is false after this step, with the runtime holding {ids.length} requests for the app: {ids.map (s!"#{·}")}"
+  -- The Dock badge: the app's checks against the label the host shows (^1030).
+  for (id, ck) in t.custom.badge do
+    ran := ran.push (id, "badge")
+    unless ck s w.host.badge do
+      fails := fails.push <| mkFail "badge" ⟨id, 0⟩ stepIx
+        s!"^{id} is false after this step, with the Dock badge {reprStr w.host.badge}"
   let laid := w.rt.laid
   let m := setup.metrics.metrics
   let size := w.rt.ui.size
@@ -830,9 +921,12 @@ def checks (t : Target) (setup : Setup) (w : World t.S W) (act? : Option Action)
           s!"{reprStr (redactAction w.secure a)} was meant, but the runtime delivered {reprStr (acts.map (redactAction w.secure))}"
   -- Presence: a control is in the frame iff its move is enabled, and, for a move whose controls
   -- live in a virtual list's rows, its row is laid. A control keyed like a row the list didn't
-  -- lay may be missing.
+  -- lay may be missing, and so may one keyed like a row of a list off screen (hidden while the
+  -- app keeps it, `App.keepScroll`): none of its rows is laid.
   let lists := listsOf laid
   let inRows := rowClaims lists
+  let away := w.lastLists.filter fun ll => !lists.any (·.ref == ll.ref)
+  let awayRows := rowClaims away
   for mv in t.machine.moves do
     if t.custom.noControl.contains mv.id then continue
     ran := ran.push (mv.id, "presence")
@@ -840,8 +934,9 @@ def checks (t : Target) (setup : Setup) (w : World t.S W) (act? : Option Action)
       let r : ControlRef := ⟨mv.id, k⟩
       let on := present laid r || onStatus w.rt r
       let en := mv.enabled s k
-      let hid := hiddenRow lists k
-      let ok := if inRows.contains mv.id then on == (en && !hid) else if hid then !on || en else on == en
+      let hid := hiddenRow lists k || awayRows.contains mv.id || away.any fun ll => (ll.indexOf k).isSome
+      let ok := if inRows.contains mv.id then on == (en && !hid)
+        else if hid then !on || en else on == en
       unless ok do
         fails := fails.push <| mkFail "presence" r stepIx
           (if !on then s!"{r.label} is enabled{if inRows.contains mv.id then " and its row is laid" else ""} but has no control in the frame"
@@ -1170,6 +1265,7 @@ inductive Source where
 def runSeq (t : Target) (setup : Setup) (src : Source) (stats : Stats := {})
     (verbose : Bool := false) : IO Outcome := do
   let mut w := (World.start t setup).noteSeen (World.start t setup).rt.laid
+  w := { w with lastLists := listsOf w.rt.laid }
   let mut stats := stats
   let mut ops : Array Op := #[]
   let mut over : Array (Nat × Nat) := #[]
@@ -1200,16 +1296,26 @@ def runSeq (t : Target) (setup : Setup) (src : Source) (stats : Stats := {})
         | [] => pure Op.exit
     ops := ops.push op
     let s0 := w.rt.app
+    let ui0 := w.rt.ui
     let lists0 := listsOf w.rt.laid
     let p ← perform t setup w op
     i := i + 1
     w := p.world.noteSeen p.world.rt.laid
+    w := { w with lastLists := noteLists w.lastLists (listsOf w.rt.laid) }
     maxNs := max maxNs p.maxNs
     if p.maxNs > t.budgetNs then over := over.push (i, p.maxNs)
     let act? := match op with | .act a => if p.ran then some a else none | _ => none
     let (ran, fs) := checks t setup w act? p.acts i p.dropped p.effects
-    let (ran, fs) := let (r4, f4) := anchorChecks lists0 (listsOf w.rt.laid) op i; (ran ++ r4, fs ++ f4)
-    let (ran, fs) := let (r5, f5) := serverChecks t w i "server" t.srv.checks "after this step"; (ran ++ r5, fs ++ f5)
+    let (ran, fs) := let (r4, f4) := anchorChecks lists0 (listsOf w.rt.laid) op i p.effects; (ran ++ r4, fs ++ f4)
+    let (ran, fs) := let (r5, f5) := scrollToChecks w.rt.laid w.rt.ui p.effects i; (ran ++ r5, fs ++ f5)
+    let (ran, fs) ← match t.app with
+      | some app =>
+        let (r6, f6, park) := keptChecks (app.keepScroll w.rt.app) ui0 w.rt.ui lists0
+          (listsOf w.rt.laid) w.parked i
+        w := { w with parked := park }
+        pure (ran ++ r6, fs ++ f6)
+      | none => pure (ran, fs)
+    let (ran, fs) := let (r7, f7) := serverChecks t w i "server" t.srv.checks "after this step"; (ran ++ r7, fs ++ f7)
     let (ran, fs) := if p.ran && !t.custom.relations.isEmpty then
         let (r2, f2) := relationChecks t { before := s0, msg := p.msg, after := w.rt.app, effects := p.effects } i
         -- A message the runtime dropped is also given to `receive` directly.

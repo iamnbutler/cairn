@@ -396,6 +396,25 @@ public enum Effect: Equatable, Sendable {
     /// Stop the work of request `id` if it is still running (`URLSession` task cancel); it is
     /// still answered once, and Lean's runtime drops that reply (^1009).
     case cancelRequest(id: UInt32)
+    /// Run by Lean's runtime (it moves a scroll offset); the host has nothing to do.
+    case scrollTo(ControlRef, ScrollTarget)
+    /// Set the Dock tile's badge to exactly this label; `nil` clears it.
+    case badge(String?)
+    /// Post an accessibility announcement of exactly this text, once.
+    case announce(String, priority: Priority)
+}
+
+/// Where `Effect.scrollTo` moves a box (Lean's runtime runs it).
+public enum ScrollTarget: Equatable, Sendable {
+    case start
+    case finish
+    case key(UInt32)
+}
+
+/// An announcement's priority: `low` waits for speech in progress, `high` interrupts it.
+public enum Priority: UInt8, Equatable, Sendable {
+    case low = 0
+    case high = 1
 }
 
 /// What one Metal surface (the window, a panel) shows (`Cairn.Canvas`).

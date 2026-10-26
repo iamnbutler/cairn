@@ -30,8 +30,8 @@ theorem clampScroll_clamped (scs : List Scroller) (offs : List (ControlRef × In
   simp only [decide_eq_true_eq] at hp
   exact ⟨sc, List.mem_of_find?_eq_some hf, hp, clampOff_mem _ _⟩
 
-theorem fixUI_clamped (laid : Laid) (pointer : Option Point) (ui : UI) :
-    Clamped laid (fixUI laid pointer ui) :=
+theorem fixUI_clamped (laid : Laid) (pointer : Option Point) (ui : UI) (keep : List ControlRef) :
+    Clamped laid (fixUI laid pointer ui keep) :=
   clampScroll_clamped _ _
 
 theorem clamped_settle (app : App S) (cfg : Config) (st : S) (pointer : Option Point) (ui0 : UI)
@@ -41,7 +41,16 @@ theorem clamped_settle (app : App S) (cfg : Config) (st : S) (pointer : Option P
   rw [hl] at h
   simp only [Prod.mk.injEq] at h
   obtain ⟨h1, h2⟩ := h
-  rw [h1, h2]; exact fixUI_clamped l pointer ui0
+  rw [h1, h2]; exact fixUI_clamped l pointer ui0 _
+
+theorem clamped_lay (app : App S) (cfg : Config) (st : S) (pointer : Option Point)
+    (goals : List (ControlRef × ScrollTarget)) (ui1 : UI) (s : State S)
+    (h : (s.ui, s.laid) = lay app cfg st pointer goals ui1) : Clamped s.laid s.ui := by
+  obtain ⟨l, u, hl, -, -⟩ := lay_spec app cfg st pointer goals ui1
+  rw [hl] at h
+  simp only [Prod.mk.injEq] at h
+  obtain ⟨h1, h2⟩ := h
+  rw [h1, h2]; exact fixUI_clamped l pointer u _
 
 /-- **Offsets are clamped** at start. -/
 theorem start_clamped (app : App S) (cfg : Config) (size : Size) (scale : Nat) :
@@ -64,7 +73,7 @@ theorem step_clamped (app : App S) (cfg : Config) (s : State S) (e : Event)
       have hl := (route_laid cfg.metrics s e).1
       rw [heq] at hl
       simp only; rw [hui, hl]; exact h
-    · exact clamped_settle app cfg _ _ _ _ _ (State.mk ..) rfl
+    · exact clamped_lay app cfg _ _ _ _ (State.mk ..) rfl
 
 theorem steps_clamped (app : App S) (cfg : Config) (s : State S) (es : List Event)
     (h : Clamped s.laid s.ui) : Clamped (steps app cfg s es).1.laid (steps app cfg s es).1.ui := by
@@ -114,6 +123,237 @@ theorem revealOff_shows (sc : Scroller) (cur : Int) (q : Rect)
   simp only [Scroller.limit] at hcur
   simp only [revealOff, clampOff, Scroller.limit]
   split <;> (try split) <;> omega
+
+/-! ## Scrolling to a place (`Effect.scrollTo`) -/
+
+theorem scrollOf_setScroll (ui : UI) (r : ControlRef) (o : Int) : (ui.setScroll r o).scrollOf r = o := by
+  unfold UI.setScroll
+  split
+  · assumption
+  · simp [UI.scrollOf]
+
+/-- **`start` lands at 0**, for a box on screen. -/
+theorem aimOff_start {laid : Laid} {ui : UI} {r : ControlRef} {sc : Scroller}
+    (h : (scrollersOf laid).find? (fun sc => decide (sc.ref = r)) = some sc) :
+    aimOff laid ui r .start = some 0 := by
+  simp only [aimOff, h]
+
+/-- **`finish` lands at the box's limit**, `max 0 (content − viewport)`: the content's end at the
+box's end. -/
+theorem aimOff_finish {laid : Laid} {ui : UI} {r : ControlRef} {sc : Scroller}
+    (h : (scrollersOf laid).find? (fun sc => decide (sc.ref = r)) = some sc) :
+    aimOff laid ui r .finish = some sc.limit := by
+  simp only [aimOff, h]
+
+/-- **`key k` lands at the row's top**: for a virtual list on screen whose row `i` has key `k`,
+the offset is the row's top in the heights the runtime knows, clamped as every offset is. -/
+theorem aimOff_key {laid : Laid} {ui : UI} {r : ControlRef} {sc : Scroller} {ll : LaidList}
+    {k i : Nat} (hs : (scrollersOf laid).find? (fun sc => decide (sc.ref = r)) = some sc)
+    (hl : (listsOf laid).find? (fun ll => decide (ll.ref = r)) = some ll)
+    (hi : ll.info.keys.findIdx? (· == k) = some i) :
+    aimOff laid ui r (.key k) = some (clampOff
+      ((VList.model ll.info.keys (ui.listOf r) ll.info.estimate).top i) sc.limit) := by
+  simp only [aimOff, hs, hl, hi,
+    VList.Model.topF_eq _ (VList.model_good ll.info.keys (ui.listOf r) ll.info.estimate).1.sorted]
+
+/-- **Clamped as every offset is**: an aimed offset lies in `[0, max 0 (content − viewport)]` of
+the box it names. -/
+theorem aimOff_clamped {laid : Laid} {ui : UI} {r : ControlRef} {t : ScrollTarget} {o : Int}
+    (h : aimOff laid ui r t = some o) :
+    ∃ sc ∈ scrollersOf laid, sc.ref = r ∧ 0 ≤ o ∧ o ≤ max 0 (sc.content - sc.viewport) := by
+  unfold aimOff at h
+  split at h
+  · nomatch h
+  · rename_i sc hs
+    have hm := List.mem_of_find?_eq_some hs
+    have hr := List.find?_some hs
+    simp only [decide_eq_true_eq] at hr
+    have hlim : 0 ≤ sc.limit := by unfold Scroller.limit; omega
+    refine ⟨sc, hm, hr, ?_⟩
+    split at h
+    · cases h; omega
+    · cases h; exact ⟨hlim, by unfold Scroller.limit; omega⟩
+    · split at h
+      · nomatch h
+      · split at h
+        · nomatch h
+        · cases h; exact clampOff_mem _ _
+
+/-- A request for a box on screen sets its offset to the aimed one (the last request wins). -/
+theorem aimScroll_single (laid : Laid) (ui : UI) (r : ControlRef) (t : ScrollTarget) {o : Int}
+    (h : aimOff laid ui r t = some o) : (aimScroll [(r, t)] laid ui).scrollOf r = o := by
+  simp only [aimScroll, List.foldl_cons, List.foldl_nil, h, scrollOf_setScroll]
+
+/-- **The key's row is the one at the top.** Laid at the top of row `i` (in a model whose rows
+are at least a point tall), the first row showing is row `i`: so `scrollTo` a key, unclamped,
+lays that row first, and it is the row the runtime then keeps still (`VList.keepRow`,
+`VList.record_keeps`). -/
+theorem firstF_top (M : VList.Model) (hM : M.Good) (hpos : ∀ j, 1 ≤ M.height j) {i : Nat}
+    (hi : i < M.count) : M.firstF M.pre (M.top i) = i := by
+  obtain ⟨-, -, h3, h4, -, -⟩ := M.window_spec hM (M.top i) (M.top i)
+  have hw : (M.window (M.top i) (M.top i)).1 = M.firstF M.pre (M.top i) := rfl
+  rw [hw] at h3 h4
+  generalize M.firstF M.pre (M.top i) = f at h3 h4
+  rcases Nat.lt_trichotomy f i with hlt | heq | hgt
+  · have := h4 (by omega)
+    have := M.top_mono hM.pos (i := f + 1) (j := i) (by omega)
+    omega
+  · exact heq
+  · have := h3 i hgt
+    have := M.top_succ i
+    have := hpos i
+    omega
+
+/-! ## A box the app keeps (`App.keepScroll`) -/
+
+theorem find?_clampScroll_none (scs : List Scroller) (offs : List (ControlRef × Int))
+    {r : ControlRef} (h : onScreen scs r = false) :
+    (clampScroll scs offs).find? (·.1 == r) = none := by
+  rw [List.find?_eq_none]
+  intro e he
+  obtain ⟨sc, hsc, hr, -⟩ := clampScroll_clamped scs offs e he
+  intro hb
+  simp only [beq_iff_eq] at hb
+  simp only [onScreen, List.any_eq_false, decide_eq_true_eq] at h
+  exact h sc hsc (hr.trans hb)
+
+theorem find?_filter_of {α : Type} (l : List α) (p q : α → Bool)
+    (h : ∀ a, q a = true → p a = true) : (l.filter p).find? q = l.find? q := by
+  induction l with
+  | nil => rfl
+  | cons a l ih =>
+    by_cases hq : q a = true
+    · simp [h a hq, hq]
+    · cases hp : p a <;> simp [hp, hq, ih]
+
+theorem find?_keepOff {α : Type} (on : ControlRef → Bool) (keep : List ControlRef)
+    (now old : List (ControlRef × α)) {r : ControlRef} (hk : r ∈ keep) (ho : on r = false) :
+    (keepOff on keep now old).find? (·.1 == r) =
+      (now.find? (·.1 == r)).or (old.find? (·.1 == r)) := by
+  unfold keepOff
+  rw [List.find?_append, find?_filter_of _ _ _ (fun e he => by
+    simp only [beq_iff_eq] at he; subst he; simp [ho, hk])]
+  cases hn : now.find? (·.1 == r) with
+  | some x => rfl
+  | none =>
+    simp only [Option.none_or]
+    apply find?_filter_of
+    intro e he
+    simp only [beq_iff_eq] at he; subst he
+    have : now.any (fun x => decide (x.1 = e.1)) = false := by
+      rw [List.any_eq_false]
+      intro x hx hxe
+      have := List.find?_eq_none.mp hn x hx
+      simp_all
+    simp [ho, hk, this]
+
+/-- **A box the app keeps keeps its offset while it is not on screen**: the offset the view
+reads for it (`UI.scrollOf`) is the one it had before the repair. -/
+theorem fixUI_keeps_offset (laid : Laid) (pointer : Option Point) (ui : UI)
+    (keep : List ControlRef) {r : ControlRef} (hk : r ∈ keep)
+    (hs : onScreen (scrollersOf laid) r = false) :
+    (fixUI laid pointer ui keep).scrollOf r = ui.scrollOf r := by
+  simp only [UI.scrollOf, fixUI, find?_clampScroll_none _ _ hs,
+    find?_keepOff _ keep _ _ hk hs]
+  cases ui.scroll.find? (·.1 == r) <;> rfl
+
+/-- **A list the app keeps keeps what the runtime knew of it** while it is not on screen: its
+heights, estimate and anchor, as the view reads them (`UI.listOf`). -/
+theorem fixUI_keeps_list (laid : Laid) (pointer : Option Point) (ui : UI)
+    (keep : List ControlRef) {r : ControlRef} (hk : r ∈ keep)
+    (hs : (recordLists laid).any (fun x => decide (x.1 = r)) = false) :
+    (fixUI laid pointer ui keep).listOf r = ui.listOf r := by
+  have hn : ((recordLists laid).map fun (x : ControlRef × VList.Known × Int) => (x.1, x.2.1)).find?
+      (·.1 == r) = none := by
+    rw [List.find?_eq_none]
+    intro e he hb
+    simp only [List.mem_map] at he
+    obtain ⟨x, hx, rfl⟩ := he
+    simp only [beq_iff_eq] at hb
+    simp only [List.any_eq_false, decide_eq_true_eq] at hs
+    exact hs x hx hb
+  simp only [UI.listOf, fixUI, hn, find?_keepOff (fun r => (recordLists laid).any fun x => decide (x.1 = r)) keep _ _ hk hs]
+  cases ui.lists.find? (·.1 == r) <;> rfl
+
+theorem find?_setOff (offs : List (ControlRef × Int)) {r r' : ControlRef} (o : Int)
+    (h : r' ≠ r) : (setOff offs r' o).find? (·.1 == r) = offs.find? (·.1 == r) := by
+  have key : ∀ c : Int, (if c = o then offs else (r', o) :: offs.filter fun e => !decide (e.1 = r')).find?
+      (·.1 == r) = offs.find? (·.1 == r) := by
+    intro c
+    split
+    · rfl
+    · rw [List.find?_cons]
+      have : ((r', o).1 == r) = false := by simpa using h
+      rw [this]
+      apply find?_filter_of
+      intro e he
+      simp only [beq_iff_eq] at he
+      subst he
+      simpa using fun h' => h h'.symm
+  unfold setOff
+  split <;> exact key _
+
+theorem find?_foldl_setOff (recs : List (ControlRef × VList.Known × Int))
+    {r : ControlRef} (h : ∀ x ∈ recs, x.1 ≠ r) :
+    ∀ offs : List (ControlRef × Int),
+      (recs.foldl (fun offs (x : ControlRef × VList.Known × Int) => setOff offs x.1 x.2.2) offs).find?
+        (·.1 == r) = offs.find? (·.1 == r) := by
+  induction recs with
+  | nil => intro offs; rfl
+  | cons x xs ih =>
+    intro offs
+    simp only [List.foldl_cons]
+    rw [ih (fun y hy => h y (List.mem_cons_of_mem _ hy)),
+      find?_setOff _ _ (h x List.mem_cons_self)]
+
+theorem find?_clampScroll (scs : List Scroller) {r : ControlRef} {sc : Scroller}
+    (hs : scs.find? (fun sc => decide (sc.ref = r)) = some sc) :
+    ∀ offs : List (ControlRef × Int), (clampScroll scs offs).find? (·.1 == r) =
+      (offs.find? (·.1 == r)).map fun e => (e.1, clampOff e.2 sc.limit) := by
+  intro offs
+  induction offs with
+  | nil => rfl
+  | cons e es ih =>
+    simp only [clampScroll, List.filterMap_cons] at ih ⊢
+    by_cases he : e.1 = r
+    · subst he
+      simp [hs]
+    · have : (e.1 == r) = false := by simpa using he
+      cases hf : scs.find? (fun sc => decide (sc.ref = e.1)) with
+      | none => simp only [List.find?_cons, this]; exact ih
+      | some sc' => simp only [Option.map_some, List.find?_cons, this]; exact ih
+
+/-- **A kept box comes back where it was**: a box back on screen with no offset of its own
+resumes its kept offset, clamped to its content as every offset is. (A virtual list's is first
+corrected by its record, `VList.record`, from what was kept of it, `fixUI_keeps_list`; this is
+the box that is no virtual list.) -/
+theorem fixUI_revives (laid : Laid) (pointer : Option Point) (ui : UI) (keep : List ControlRef)
+    {r : ControlRef} {sc : Scroller} {o : Int}
+    (hs : (scrollersOf laid).find? (fun sc => decide (sc.ref = r)) = some sc)
+    (hl : (recordLists laid).any (fun x => decide (x.1 = r)) = false)
+    (hn : ui.scroll.find? (·.1 == r) = none) (hk : ui.kept.find? (·.1 == r) = some (r, o)) :
+    (fixUI laid pointer ui keep).scrollOf r = clampOff o sc.limit := by
+  have hrecs : ∀ x ∈ recordLists laid, x.1 ≠ r := by
+    simp only [List.any_eq_false, decide_eq_true_eq] at hl
+    exact hl
+  have hon : onScreen (scrollersOf laid) r = true := by
+    simp only [onScreen, List.any_eq_true, decide_eq_true_eq]
+    exact ⟨sc, List.mem_of_find?_eq_some hs, by simpa using List.find?_some hs⟩
+  have hrev : (revive (scrollersOf laid) ui).find? (·.1 == r) = some (r, o) := by
+    unfold revive
+    rw [find?_filter_of _ _ _ (fun e he => by
+      simp only [beq_iff_eq] at he; subst he
+      have : ui.scroll.any (fun x => decide (x.1 = e.1)) = false := by
+        rw [List.any_eq_false]
+        intro x hx hxe
+        have := List.find?_eq_none.mp hn x hx
+        simp_all
+      simp [hon, this])]
+    exact hk
+  simp only [UI.scrollOf, fixUI]
+  rw [find?_clampScroll _ hs, find?_foldl_setOff _ hrecs, List.find?_append, hn, Option.none_or,
+    hrev]
+  rfl
 
 /-! ## Appear -/
 

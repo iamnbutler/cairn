@@ -78,6 +78,26 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
   checked).
 - `Cairn.Fuzz.Custom` is in `Type 1` now (it can hold a server's world type); `World` and
   `Performed` take the world's type.
+- **`Effect.scrollTo`** (cairn#234). An app moves a scroll box or a virtual list: `scrollTo ref
+  .start`, `.finish` or `.key k` (the row keyed `k` at the top of the box). The runtime runs it
+  after layout, lays out again until the offset settles, and clamps it like every offset; the
+  list's anchor then keeps that row still. Theorems: `aimOff_start`, `aimOff_finish`,
+  `aimOff_key`, `firstF_top`; `step_clamped` holds with it. `cairn fuzz` checks it lands
+  (`scrollTo`). Frame format version 12 (effect tag 8).
+- **Kept scroll boxes.** `App.keepScroll` names boxes whose offsets, and for virtual lists whose
+  heights and anchor, survive while they are out of the view; shown again, they come back where
+  they were (`fixUI_keeps_offset`, `fixUI_keeps_list`, `fixUI_revives`; fuzzed as `kept`).
+- **The Dock badge and announcements** (cairn#248). `Effect.badge (label : Option String)` sets
+  the Dock tile's badge (`none` clears it), and `Effect.announce text priority` posts an
+  accessibility announcement. Each is one AppKit call (`Notices`). Two new `assume` claims, each
+  fuzzed by the trusted fuzzer's new `notices` suite: ^1030 (`hostBadge`, `dock.badge`), the
+  badge is the last `badge` effect's label or none, and ^1031 (`hostAnnounce`, `ax.announce`),
+  an announcement is posted once with exactly its text. The fuzz host records both
+  (`Custom.badge` checks the badge), and announcement text goes through the secure-field check
+  like every effect. Effect tags 9 and 10.
+- **The fixture** gains Top, End, Go to row and Hide rows (`fixture^41`–`^44`), Badge, Clear
+  badge and Announce (`fixture^45`–`^47`). `fixture^19` is retired for `fixture^48`, which states
+  the rows' stacking while they are shown.
 
 ## v0.4.1
 

@@ -382,7 +382,8 @@ keys, cursors) keeps them in the world. `handle` sees only the request, never th
    laid row keyed like the row are found in the frame, and for them a key whose row the list
    didn't lay must be absent. Any other move keyed like a row that isn't laid may be absent. The
    probed keys include each list's first and last keys and the keys either side of the rows it
-   laid.
+   laid. While a list seen before is off screen (hidden while the app keeps it), none of its rows
+   is laid: the moves found in its rows, and any move keyed like one of its rows, may be absent.
 4. **Pressable** when the window is at or above the minimum: `hitTest` at the centre of the
    visible part of each enabled pointer move's control returns it, and
    `checkPressable && controlRectsNonempty` holds. A control scrolled out of view in a scroll
@@ -400,9 +401,19 @@ keys, cursors) keeps them in the world. `handle` sees only the request, never th
    minHeight + 2`; the spacers and rows are one under the other from the content's top less the
    offset; and every row laid was laid at the height the list laid it out by (the runtime had
    recorded it: `settle` didn't run out). **Anchor** (`anchor`): over an operation that doesn't
-   scroll or resize (not a wheel, key, Tab or resize), the first row showing in each list keeps
-   its place in the box, unless the offset ends at 0 or the limit or the row is gone.
+   scroll or resize (not a wheel, key, Tab or resize) or ask to (`scrollTo`), the first row
+   showing in each list keeps its place in the box, unless the offset ends at 0 or the limit or
+   the row is gone. **`scrollTo`** (under the box's ref's claim, `scrollTo`): after a step whose
+   effects ask for it, a box on screen is at 0 for `start`, at its limit for `finish`, and for
+   `key k` the row keyed `k` is the first showing, at the top of the box, unless the clamp holds
+   the list at its end (`aimOff_*`, `firstF_top`). **Kept** (`kept`): a list the app keeps
+   (`App.keepScroll`) keeps its offset while it is off screen, and when it comes back the row
+   that was first showing when it left is first showing again at the same place, unless the
+   clamp moved it or the row is gone (`fixUI_keeps_offset`, `fixUI_keeps_list`).
 6. **Relations** (`Custom.relations`), for a host's move or a person's operation.
+   **Badge** (`Custom.badge`, under the claim each names, `badge`): the app's checks against the
+   Dock badge the host shows, which is the last `badge` effect's label or none (^1030). The
+   fixture checks its badge is its count (^45).
 7. **Outstanding** (`Custom.outstanding`): the app's checks against the requests the runtime
    still holds for it. **Server** (`Server.checks`, above, "A server"): the app's checks against
    the server's world.
@@ -678,6 +689,8 @@ on after it.
 | `text.secure-input` | ^1020 | `SecureInputGate` as `HostView.updateSecureInput` drives it; Carbon's `EnableSecureEventInput`, `DisableSecureEventInput` | the frame's `TextInput.secure`, the window's key state and the view's life, step by step; `IsSecureEventInputEnabled` read back | 1–30 steps a case of no, plain or secure text input, key or not, live or not, ending closed; one case in eight makes the system's calls |
 | `ax.scroll` | ^1021 | `AXMirror` (`update`, `hidden`, `hitTest`), `HostView`'s accessibility overrides | the frame's AX nodes, each node's parent chain walked by the suite: scrolled out when it or a node above it has an empty rect with a scroll area above that | 1–40 nodes a case of every role, scroll areas nested anywhere, a parent before its children; 1–4 frames of one tree with new rects (empty with w, h or both 0, or visible), a focused node or none; the tree walked through `accessibilityChildren` and `accessibilityParent`, 8 hit tests a frame, in a hidden window |
 | `ax.secure` | ^1022 | `AXNodeElement` (subrole, value, text, selection), `DebugJSON.describe` | text planted in secure nodes' values, the focused secure field's text input, and requests' headers, bodies and redacted URLs, looked for in every attribute and description; plain fields' values as a control | the same trees, half the text fields secure; 4 `http` requests a case, redacted or not, with or without a Keychain secret and captures |
+| `dock.badge` | ^1030 | `Notices.badge` as `HostView.run` runs it | the labels sent, against `NSApp.dockTile.badgeLabel` read back | 1–3 frames a case of up to 4 effects: `badge` with none, empty, digits, `99+`, up to 40 characters or any Unicode, mixed with `announce`, `scrollTo` and `focus`, through the engine into a `HostView` in a hidden window; ends with `badge none` |
+| `ax.announce` | ^1031 | `Notices.announce` as `HostView.run` runs it | the texts and priorities sent, against a recorder in place of `NSAccessibility.post` | the same frames: announcements of any text at either priority |
 | `effects.cancel` | ^1009 | `World` (`Cancellation`, `cancelRequest`), `HTTP.run`, `ImageLoad` | a `URLProtocol` stub recording which loads started and which were stopped early; the store before and after | 1–12 `http` and `loadImage` requests (with and without `reload`), some held open by the stub; cancels in the same frame, while running and after the answer; 0–2 cancels of ids never sent |
 | `effects.permission` | ^965 | `Permissions.check` | a stubbed TCC: statuses and the calls made | both permissions × trusted or not × the four microphone statuses × prompt × granted or not; the live system without prompting |
 | `subs.record` | ^966 | `World` (`record`), `LevelMeter`, `Clips` | a fake microphone's delivered samples; levels computed directly from them | 0–2 s of synthetic audio (silence, square waves, noise, ±32768 extremes) split into buffers of 0–4000 samples, delivered from another thread with 0–3 ms pauses; stops and resets after 0–100 ms; failing microphones; the meter over random splits |

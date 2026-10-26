@@ -23,6 +23,7 @@ event Lean decodes with a proved decoder. No `IO` below the app boundary.
 | Trusted claims ^908–^915, ^960– | `lean/Cairn/Fuzz/Trusted/Claims.lean`, [trusted.md](trusted.md) |
 | Yap's host effects (files, watch, frontmost app, permissions) | `host/Sources/CairnHost/FileEffects.swift`, `SystemEffects.swift`; "Yap's host effects" below |
 | Yap's devices (recording, the hotkey, typing, uploads and secrets) | `host/Sources/CairnHost/AudioEffects.swift`, `InputEffects.swift`, `UploadEffects.swift`; "Recording, keys, typing, uploads" below |
+| The Dock badge and announcements (`badge`, `announce`) | `host/Sources/CairnHost/NoticeEffects.swift`; "The Dock badge and announcements" below |
 
 ## The app's side
 
@@ -632,6 +633,34 @@ of the other page's, the app counts them evicted and Next page (^512) loads them
 a dropped thumbnail shows as not loaded until it is. The self test runs the real host with the
 network off (the https tile shows "Offline"); every tile was answered 6.8 ms after launch.
 
+## The Dock badge and announcements
+
+Two effects for things the app tells the person outside its window. Each is one AppKit call with
+no policy in Swift (`host/Sources/CairnHost/NoticeEffects.swift`, `Notices`):
+
+```lean
+| badge (label : Option String)                -- an Effect: the Dock tile's badge
+| announce (text : String) (priority : Priority)  -- an Effect: say this to assistive apps
+```
+
+- **`badge label`** sets `NSApp.dockTile.badgeLabel` to exactly `label`, as it is: the app
+  decides whether a count shows as `3`, `99+` or not at all. `badge none` clears it. The badge
+  is the label of the last `badge` effect, or none (^1030). An app with no Dock icon (an
+  accessory, a menu bar app) shows nothing.
+- **`announce text priority`** posts one `announcementRequested` accessibility notification for
+  the window (the app when there is none) with exactly `text` and the priority (`low` waits for
+  speech in progress, `high` interrupts it; `NSAccessibilityPriorityLevel` 10 and 90). VoiceOver
+  speaks it; with no assistive app running nothing happens. It is posted once (^1031).
+
+Neither is a request: nothing is answered. Announcement text is the app's, so it goes through the
+same secret checks as dumps and logs: `cairn fuzz` looks for text typed into a secure field in
+every effect's dump (`Dump.effect`), announcements included, and fails when it is there.
+
+The fake host of `cairn fuzz` (`Cairn.Fuzz.Host`) records both: the badge showing and the last
+64 announcements, which an app's custom checks read (`Custom.badge`: the fixture checks its badge
+is its count, ^45). The debug socket records them and runs neither. The test fixture has Badge
+(^45), Clear badge (^46) and Announce (^47).
+
 ## Wire format
 
 The frame becomes **version 2**: after the effects list it has a subscription-command list and
@@ -750,7 +779,9 @@ Each kind of host effect is an `assume` claim naming a check of the trusted-base
 | ^1007 | an image's pixels stay inside its box | `render.image.bounds` |
 | ^1008 | an image is drawn where its oriented pixels are | `render.image.pixels` |
 | ^1009 | `cancelRequest` stops a running request's work; it is still answered once | `effects.cancel` |
+| ^1030 | the badge the host shows is the label of the last `badge` effect, or none | `dock.badge` |
+| ^1031 | an announcement is posted once, with exactly its text | `ax.announce` |
 
 The new records are also covered by ^901 and ^902 (the Swift codecs against Lean's), whose
-generators now produce them. The suites (`clock`, `world`, `files`, `http`, `sound`, `fileops`, `system`, `audio`, `input`, `upload`, `image`, `cancel`, `secrets` in
+generators now produce them. The suites (`clock`, `world`, `files`, `http`, `sound`, `fileops`, `system`, `audio`, `input`, `upload`, `image`, `cancel`, `secrets`, `notices` in
 `host/Tests/CairnFuzzTrusted`) are described in docs/fuzz.md.

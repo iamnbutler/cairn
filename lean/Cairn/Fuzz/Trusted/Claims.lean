@@ -266,4 +266,14 @@ assume ^1022 hostAxSecure "A secure field shows assistive apps nothing typed" wh
   does "A frame node marked secure is an AXTextField with subrole AXSecureTextField, no value, no characters, no selected text and an empty string for every range, whatever its node or the text input holds; no other element shows its text. The debug socket's description of an http request shows no header value, body or secret, and no URL when the request is redact."
   check "ax.secure"
 
+/-! The Dock badge and announcements (docs/effects.md, "The Dock badge and announcements"). -/
+
+assume ^1030 hostBadge "The badge the host shows is the label of the last badge effect, or none" where
+  does "The host sets the Dock tile's badge label (NSApp.dockTile.badgeLabel) to exactly the label of each badge effect, as it is, in the order the frames hand them over, and clears it for badge none; it never sets the badge otherwise. So the badge shown is the label of the last badge effect, or none."
+  check "dock.badge"
+
+assume ^1031 hostAnnounce "An announcement is posted once, with exactly its text" where
+  does "For each announce effect the host posts one announcementRequested accessibility notification (NSAccessibility.post) for its window, carrying exactly the effect's text and its priority (low or high), in order, and posts none otherwise. Its text is the app's: the fuzzer checks that text typed into a secure field never reaches an effect's dump, announcements included."
+  check "ax.announce"
+
 end Cairn.Fuzz.Trusted.Claims

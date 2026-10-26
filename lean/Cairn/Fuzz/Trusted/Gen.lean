@@ -175,7 +175,7 @@ def request : Gen Request := do
     return .http (← str) (← str) (← headers) (← bytes) (← u32) (← opt secret) (← headers) (← Gen.bool)
 
 def effect : Gen Effect := do
-  match ← Gen.below 8 with
+  match ← Gen.below 11 with
   | 0 => return .setClipboard (← str)
   | 1 => return .focus (← ref)
   | 2 => return .beep
@@ -183,6 +183,15 @@ def effect : Gen Effect := do
   | 4 => return .cancelTimer (← str)
   | 5 => return .request (← u32) (← request)
   | 6 => return .cancelRequest (← u32)
+  | 7 =>
+    let r ← ref
+    let to : ScrollTarget ← match ← Gen.below 3 with
+      | 0 => pure .start
+      | 1 => pure .finish
+      | _ => pure (.key (← u32))
+    return .scrollTo r to
+  | 8 => return .badge (← opt str)
+  | 9 => return .announce (← str) (if ← Gen.bool then .high else .low)
   | _ => return .quit
 
 def subCmd : Gen SubCmd := do

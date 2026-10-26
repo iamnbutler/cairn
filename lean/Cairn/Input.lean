@@ -137,6 +137,23 @@ inductive Cursor where
   | arrow | pointer | text
 deriving Repr, BEq, DecidableEq, Inhabited
 
+/-- Where `Effect.scrollTo` moves a scroll box or a virtual list (docs/runtime.md, "Scrolling"). -/
+inductive ScrollTarget where
+  /-- Offset 0: the content's start. -/
+  | start
+  /-- The furthest the offset goes: the content's end at the box's end. -/
+  | finish
+  /-- A virtual list's row with key `k` at the top of the box. Nothing on a plain scroll box, or
+  for a key the list doesn't have. -/
+  | key (k : Nat)
+deriving Repr, BEq, DecidableEq, Inhabited
+
+/-- How urgently assistive apps should say an announcement (`Effect.announce`): `low` waits for
+what is being spoken; `high` interrupts it. -/
+inductive Priority where
+  | low | high
+deriving Repr, BEq, DecidableEq, Inhabited
+
 -- region: input-effect
 /-- App → host (and runtime). -/
 inductive Effect where
@@ -163,6 +180,17 @@ inductive Effect where
   | cancelRequest (id : Nat)
   /-- End the app. The host terminates after running the frame's other effects. -/
   | quit
+  /-- Move the scroll box or virtual list `box` (its `Style.scrollRef`) to `to`, clamped as every
+  offset is. The runtime runs this one, like `focus`: after the step's deliveries and layout it
+  sets the offset against the tree just laid and lays out again (docs/runtime.md, "Scrolling").
+  A box not on screen is left alone. The host decodes it and does nothing. -/
+  | scrollTo (box : ControlRef) (to : ScrollTarget)
+  /-- Set the Dock tile's badge to `label`; `none` clears it (docs/effects.md, "The Dock badge
+  and announcements"). The host shows exactly the label; Lean decides what it says. -/
+  | badge (label : Option String)
+  /-- Ask assistive apps (VoiceOver) to speak `text`, for news that has no focus of its own
+  ("Couldn't like the post; it's back as it was"). Posted once, with exactly this text. -/
+  | announce (text : String) (priority : Priority)
 deriving Repr, BEq, Inhabited
 -- endregion: input-effect
 
