@@ -1,5 +1,16 @@
 [
   {
+    "image": "/m/images/7a91994661a0e8c8.png",
+    "title": "Try it, back in the browser",
+    "caption": "TodoMVC from cairn_examples on /try/todo/: every frame one its Lean code drew, captured headless by make try. The pointer is on a todo's checkbox, cairn_examples^204, proved, with its claim page a click away.",
+    "date": "2026-10-26",
+    "published": "2026-10-26T14:46:47Z",
+    "commit": "dccde9a0",
+    "width": 2296,
+    "height": 1392,
+    "milestone": "m5"
+  },
+  {
     "image": "/m/images/316bbff1e81f0fae.png",
     "title": "Sky: the notifications list",
     "caption": "Grouped likes, follows with Follow back, replies and mentions as posts with Like, Repost and ⋯; the unread count on the tab.",
