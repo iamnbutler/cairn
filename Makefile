@@ -5,7 +5,7 @@ LEAN_PREFIX = $(shell cd lean && lean --print-prefix)
 LIB = build/lib/libcairn_lean.a
 VENDOR = host/Sources/CLean/vendor/lean
 
-.PHONY: try lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest fixture clean record site doc doctest fuzz-quick fuzz-scope size fuzz-trusted fuzz-trusted-quick site-build site-dist registry-check new-check cairn-tool cairn-tool-test fixture-build fixture-ledger
+.PHONY: try lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest fixture clean record site doc doctest fuzz-quick fuzz-scope size fuzz-trusted fuzz-trusted-quick site-build site-dist site-nexthub registry-check new-check cairn-tool cairn-tool-test fixture-build fixture-ledger
 
 lean:
 	cd lean && lake build
@@ -179,6 +179,12 @@ site-dist: site-build
 # Deploy the microsite (site/) to Cloudflare.
 site: site-dist
 	cd site && npx -y wrangler@4 deploy
+	bun tools/site/nexthub.ts build/site
+
+# The same build on Nexthub Pages alone (https://cairn.iamnbutler.pages.nexthub.sh); the token
+# comes from the Keychain (nexthub.sh).
+site-nexthub: site-dist
+	bun tools/site/nexthub.ts build/site
 
 # region: make-try
 # The "Try it" pages' data (docs/try.md): Counter, Basics and Todo from iamnbutler/cairn_examples
