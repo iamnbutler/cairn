@@ -46,6 +46,10 @@ public final class Engine: @unchecked Sendable {
     /// a 100 ms wait (timer coalescing), a strict timer about 0.1 ms (bench/effects.md).
     private var wakeTimer: DispatchSourceTimer?
     private var wakeDue = false
+    /// Bumped by every `scheduleWake`: a timer's handler that was already on its way when its
+    /// timer was replaced or cancelled finds a newer generation and does nothing (`cancel` stops
+    /// only handlers not yet started).
+    private var wakeGen = 0
     private let wakeQueue = DispatchQueue(label: "cairn.wake", qos: .userInteractive)
     /// The sequence number the latest frame accounts for.
     private var through: UInt64 = 0
@@ -208,14 +212,19 @@ public final class Engine: @unchecked Sendable {
         defer { cond.unlock() }
         clockHeld = true
         scheduleWake(nil)
+        wakeDue = false  // a wake that fired before the hold would be a batch with no events
     }
 
-    /// A batch with the time in front, unless the clock is held.
-    private func timed(_ events: [Event]) -> [Event] {
+    /// A batch with the time in front, unless the clock is held. `held` is read under `cond`
+    /// when the batch is taken, so a batch taken before `holdClock` keeps its clock.
+    private func timed(_ events: [Event], held: Bool) -> [Event] {
+        sendsClock && !held ? [.clock(HostClock.now())] + events : events
+    }
+
+    private var isClockHeld: Bool {
         cond.lock()
-        let held = clockHeld
-        cond.unlock()
-        return sendsClock && !held ? [.clock(HostClock.now())] + events : events
+        defer { cond.unlock() }
+        return clockHeld
     }
 
     /// Waits for input, a restart or a stop, or the wake deadline (then returns with nothing
@@ -231,7 +240,9 @@ public final class Engine: @unchecked Sendable {
     private func scheduleWake(_ w: UInt64?) {
         wakeTimer?.cancel()
         wakeTimer = nil
+        wakeGen &+= 1
         guard let w else { return }
+        let gen = wakeGen
         let now = HostClock.monoMs()
         let t = DispatchSource.makeTimerSource(flags: .strict, queue: wakeQueue)
         t.schedule(deadline: .now() + .milliseconds(Int(min(w > now ? w - now : 0, 1 << 40))),
@@ -239,6 +250,7 @@ public final class Engine: @unchecked Sendable {
         t.setEventHandler { [weak self] in
             guard let self else { return }
             self.cond.lock()
+            guard self.wakeGen == gen else { self.cond.unlock(); return }
             self.wakeDue = true
             self.cond.broadcast()
             self.cond.unlock()
@@ -252,7 +264,7 @@ public final class Engine: @unchecked Sendable {
         core.start(size: initialSize, scalePercent: initialScale)
         publish(core, throughSeq: 0, inputTime: nil, stepMs: 0)
         if sendsClock {  // the first clock: the app hears the time and runs its init effects
-            core.step(timed([]))
+            core.step(timed([], held: isClockHeld))
             publish(core, throughSeq: 0, inputTime: nil, stepMs: 0)
         }
         while true {
@@ -268,21 +280,25 @@ public final class Engine: @unchecked Sendable {
             let restart = restartRequest
             restartRequest = nil
             let lastThrough = through
+            let held = clockHeld
             cond.unlock()
+            // A wake taken as the clock was held: no clock to send, so nothing for Lean to hear.
+            if batch.isEmpty && restart == nil && held { continue }
 
             if let r = restart {
                 // Events sent before the restart run first; those sent after it run on the new state.
                 let before = batch.filter { $0.seq < r.seq }, after = batch.filter { $0.seq > r.seq }
-                if !before.isEmpty { core.step(timed(before.map(\.event))) }
+                if !before.isEmpty { core.step(timed(before.map(\.event), held: held)) }
                 world.reset()
                 core.start(size: r.size, scalePercent: r.scalePercent)
-                core.step(timed(after.map(\.event)))
+                // Held, the app boots on the driver's first clock, as the model does: no empty batch.
+                if !(held && after.isEmpty) { core.step(timed(after.map(\.event), held: held)) }
                 publish(core, throughSeq: after.last?.seq ?? r.seq, inputTime: nil, stepMs: 0)
                 continue
             }
 
             let t0 = hostNow()
-            core.step(timed(batch.map(\.event)))
+            core.step(timed(batch.map(\.event), held: held))
             let stepMs = (hostNow() - t0) * 1000
             if batch.isEmpty {
                 // A timer's deadline: only the clock.

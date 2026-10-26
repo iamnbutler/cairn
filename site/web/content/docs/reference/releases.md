@@ -75,8 +75,21 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
   feed), every control keyed like one of the old list's rows failed presence ("in the frame, but
   its row is not laid") though its own row was laid. Only lists the app keeps
   (`App.keepScroll`) count as hidden now.
+- **The trusted base for M5** ([#257](https://github.com/iamnbutler/cairn/issues/257)).
+  docs/trusted.md gains "New in M5": every assumption M5 added to the host (control menus and
+  menu bar items, ^945–^950; the Dock badge and announcements, ^1030 and ^1031; conformance's
+  held world, ^1032) with its fuzz check, and what M5 proved on the Lean side instead. The
+  full `make fuzz-trusted` run is green.
+- **Fixed: an empty batch as the clock was held.** A wake timer that fired as `holdWorld` held
+  the clock handed the app a batch with no events, so it ran two frame events the conformance
+  model never runs. The engine now drops a wake that a newer one replaced or the hold
+  cancelled, and never steps an app with an empty batch while the clock is held; a held
+  restart steps nothing until the driver's first `clock`. Outside conformance nothing
+  changes, except that a wake whose timer was replaced as it fired no longer sends a stray
+  clock.
 
-No claim is new, retired, moved or changed.
+New: `cairn^1032` (`assume`, "Under holdWorld the host sends no clock, wake or reply of its
+own", fuzzed by `world.hold`). No claim is retired, moved or changed.
 
 ## v0.5.0
 

@@ -133,7 +133,8 @@ The socket changes four things about the app, and a fifth when the driver asks:
   with the host's time and no wake is armed, so time moves only with the driver's `clock`
   events. `World.holdRequests`: no request is run, so no request reaches the network, the disk
   or another app, and every reply is the driver's `reply`. Each is an event with a seq, so `wait`
-  covers it like input. Subscriptions still run.
+  covers it like input. Subscriptions still run. That the host then hears only the driver is assumed and fuzzed
+  (docs/trusted.md, ^1032 `world.hold`).
 
 ## The generator
 
