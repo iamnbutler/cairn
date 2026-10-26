@@ -44,4 +44,10 @@ structure Target where
   claims : List ClaimInfo
   custom : Custom S := {}
 
+/-- The app's server, or `Server.empty` (no world, nothing handled). -/
+def Target.srv (t : Target) : Server t.S := t.custom.server.getD Server.empty
+
+/-- What the app's server holds (`Unit` without one). -/
+abbrev Target.W (t : Target) : Type := t.srv.W
+
 end Cairn.Fuzz

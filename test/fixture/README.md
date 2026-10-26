@@ -21,13 +21,18 @@ What it covers, in one window (lean/Fixture.lean):
   that add rows at the head and the tail (^17, ^18), and an end line that hears `appear` (^16);
   `Fixture --scroll-shots <dir>` renders it offscreen at the top, scrolled and at the end;
 - effects: Flash sets a timer, and the timer's message comes back through `receive`;
+- a server: four Like buttons (`^21#k`), toggles a server keeps, written one at a time per post,
+  rolled back on refusal and read back when a reply is lost (lean/Fixture/Like.lean); `cairn
+  fuzz` checks ^22 against a fake server whose replies fail before it acts and are lost after
+  (lean/Fixture/Fuzz.lean), and `lake exe likeMutant` checks that it catches a Like that retries
+  a lost write blind (lean/Fixture/LikeMutant.lean);
 - claims: places, moves (press, edit, submit, keyed, emit), an invariant with a runnable check, a
   flow; its own scope `fixture` and its own claims.lock, so nothing here is in Cairn's ledger.
 
 | Make target (Cairn's root) | What it runs here |
 |---|---|
 | `selftest` | `cairn build`, then `Fixture --selftest` (Sources/Fixture/main.swift) |
-| `fuzz-quick` | `cairn fuzz --iterations 200 --out build/fuzz/quick` |
+| `fuzz-quick` | `cairn fuzz --iterations 200 --out build/fuzz/quick` with `LEAN_ABORT_ON_NONLINEAR=1`, then `lake exe likeMutant` |
 | `size` | `cairn size` |
 | `fixture-ledger` | the ledger (scope `fixture`) and the axiom audit, rooted at `Checks` |
 | `bench` | `cairn bench` (`Fixture --bench`), with Cairn's layout and render benches |

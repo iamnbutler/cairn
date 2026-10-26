@@ -11,8 +11,8 @@ layout proofs aren't in a `module`, and `Fixture` is one (the host links it). -/
 namespace Fixture.Scroll
 open Cairn Cairn.Claims Cairn.Layout Cairn.Runtime Fixture
 
-/-- The list in a laid-out fixture view: the root's eighth and last child. -/
-def rowsOf (l : Laid) : Laid := l.children.getD 7 default
+/-- The list in a laid-out fixture view: the root's ninth and last child. -/
+def rowsOf (l : Laid) : Laid := l.children.getD 8 default
 
 /-- The view's scroll box is `rowsBox`, measured and arranged somewhere in the window. -/
 theorem rowsOf_layout (m : TextMetrics) (w : Size) (s : State) (ui : UI) :
@@ -22,7 +22,7 @@ theorem rowsOf_layout (m : TextMetrics) (w : Size) (s : State) (ui : UI) :
 
 theorem rowsOf_mem (m : TextMetrics) (w : Size) (s : State) (ui : UI) :
     rowsOf (layout m w (view s ui)) ∈ (layout m w (view s ui)).children := by
-  have hl : (layout m w (view s ui)).children.length = 8 := by
+  have hl : (layout m w (view s ui)).children.length = 9 := by
     simp only [layout, view, Layout.measure, arrange_children_box, arrangeList_length, measureList,
       List.length_cons, List.length_nil]
   unfold rowsOf

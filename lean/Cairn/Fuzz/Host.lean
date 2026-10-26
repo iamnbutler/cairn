@@ -51,6 +51,18 @@ inductive HostOp where
   | evict (source : String)
   /-- Beyond the contract: a reply to an id the runtime doesn't hold. -/
   | stray (id : Nat) (r : Reply)
+  /-- With a server (`Custom.server`): request `id` reaches the server, which handles it with
+  the generator seeded `seed` (`Server.handle`); the world changes, and its reply waits until
+  the host sends it (`reply`) or loses it (`lose`). A second `serve` of the same request is a
+  retransmission: the server handles it again. -/
+  | serve (id : Nat) (seed : Nat)
+  /-- Lost after: the server handled request `id`, but its reply is lost; the app hears `r`. -/
+  | lose (id : Nat) (r : Reply)
+  /-- Failed before: request `id` never reached the server, so the world is as it was; the app
+  hears `r`. -/
+  | fail (id : Nat) (r : Reply)
+  /-- The server's world acts on its own (`Server.tick`, seeded `seed`). -/
+  | tick (seed : Nat)
 deriving Repr, BEq, Inhabited
 
 /-- An image the host holds. -/
@@ -87,6 +99,14 @@ structure HostStats where
   maxOutstanding : Nat := 0
   /-- Requests still unanswered when sequences ended. -/
   leftOver : Nat := 0
+  /-- With a server: requests it handled (retransmissions included), of which
+  retransmissions; replies lost after it handled them; requests failed before reaching it; and
+  times the world acted on its own. -/
+  served : Nat := 0
+  retransmits : Nat := 0
+  lostAfter : Nat := 0
+  failedBefore : Nat := 0
+  ticks : Nat := 0
 deriving Repr, Inhabited
 
 def HostStats.add (a b : HostStats) : HostStats where
@@ -105,6 +125,11 @@ def HostStats.add (a b : HostStats) : HostStats where
   evictions := a.evictions + b.evictions
   maxOutstanding := max a.maxOutstanding b.maxOutstanding
   leftOver := a.leftOver + b.leftOver
+  served := a.served + b.served
+  retransmits := a.retransmits + b.retransmits
+  lostAfter := a.lostAfter + b.lostAfter
+  failedBefore := a.failedBefore + b.failedBefore
+  ticks := a.ticks + b.ticks
 
 structure Host where
   now : Time := {}
@@ -112,7 +137,8 @@ structure Host where
   sent : List (Nat × Request) := []
   /-- Of those, the ones a later frame cancelled. -/
   cancelled : List Nat := []
-  /-- Answers decided before they are sent (a load whose pixels are already put). -/
+  /-- Answers decided before they are sent: a load whose pixels are already put, or a request
+the server has handled (`HostOp.serve`). -/
   ready : List (Nat × Reply) := []
   /-- Ids answered lately, for stray replies. -/
   answered : List Nat := []
@@ -135,6 +161,7 @@ def isCancelled (h : Host) (id : Nat) : Bool := h.cancelled.contains id
 def request? (h : Host) (id : Nat) : Option Request := h.sent.lookup id
 def heldOf (h : Host) (src : String) : Option Held := h.held.find? (·.source == src)
 def heldBytes (h : Host) : Nat := h.held.foldl (· + ·.bytes) 0
+
 
 /-- Put `src`'s pixels: it becomes the most recently used and the last put. -/
 def put (h : Host) (src : String) (w ht : Nat) : Host :=
@@ -168,6 +195,11 @@ def answer (h : Host) (id : Nat) : Host :=
            ready := h.ready.filter (·.1 != id), answered := (id :: h.answered).take 32 }
 
 end Host
+
+/-- Whether request `r` goes to server `sv`: one it `handles`, never a `loadImage`, whose answer
+the host's images follow (^1006). -/
+def Server.takes {S : Type} (sv : Server S) (r : Request) : Bool :=
+  !(r matches .loadImage ..) && sv.handles r
 
 /-! ## What the runtime and the frame say -/
 
@@ -318,8 +350,10 @@ def Host.share {S : Type} (h : Host) (rt : Runtime.State S) : Nat :=
 /-- The host's next move, given the latest frame. -/
 def genHost {S : Type} (c : Custom S) (h : Host) (rt : Runtime.State S) : Gen HostOp := do
   let s := rt.app
-  let awaited := h.sent.filter fun p => !h.isCancelled p.1
-  let cancelled := h.sent.filter fun p => h.isCancelled p.1
+  let srv := fun (p : Nat × Request) => c.server.any (·.takes p.2)
+  -- Requests the server handles are scheduled below; the rest as without one.
+  let awaited := h.sent.filter fun p => !h.isCancelled p.1 && !srv p
+  let cancelled := h.sent.filter fun p => h.isCancelled p.1 && !srv p
   let unloaded := awaited.filter fun
     | (id, .loadImage ..) => (h.ready.lookup id).isNone
     | _ => false
@@ -354,6 +388,30 @@ def genHost {S : Type} (c : Custom S) (h : Host) (rt : Runtime.State S) : Gen Ho
       return .late id (← genSubEvent c s h id sub))]
   if let some src := evictable h rt then
     gs := gs ++ [(10, pure (.evict src))]
+  if let some sv := c.server then
+    let mine := h.sent.filter srv
+    let served := fun (p : Nat × Request) => (h.ready.lookup p.1).isSome
+    let unserved := mine.filter (!served ·)
+    let waiting := mine.filter served
+    -- A cancelled request that reached the server is answered with its reply or lost; one
+    -- that didn't is answered `cancelled` without reaching it (^1009).
+    let cancelled := fun (p : Nat × Request) => h.isCancelled p.1
+    let faultFor := fun (p : Nat × Request) =>
+      if cancelled p then pure (.failed .other "cancelled") else sv.fault p.2
+    unless unserved.isEmpty do
+      gs := gs ++ [(30, do return .serve (← Gen.elem unserved).1 (← Gen.seed)),
+        (sv.failBefore, do
+          let p ← Gen.elem unserved
+          return .fail p.1 (← faultFor p))]
+    unless waiting.isEmpty do
+      gs := gs ++ [(30, do
+          let (id, _) ← Gen.elem waiting
+          return .reply id ((h.ready.lookup id).getD .done)),
+        (sv.loseAfter, do
+          let p ← Gen.elem waiting
+          return .lose p.1 (← faultFor p)),
+        (sv.retransmit, do return .serve (← Gen.elem waiting).1 (← Gen.seed))]
+    gs := gs ++ [(sv.ticks, do return .tick (← Gen.seed))]
   if !h.answered.isEmpty || !h.sent.isEmpty then
     gs := gs ++ [(1, do
       let id ← if !h.answered.isEmpty && (← Gen.bool) then Gen.elem h.answered
@@ -390,5 +448,9 @@ def HostOp.text : HostOp → String
   | .late id e => s!"host: {reprStr e} from stopped subscription {id}"
   | .evict src => s!"host: drops {src.quote}'s pixels (evicted)"
   | .stray id r => s!"host: stray reply to #{id}: {replyText r}"
+  | .serve id _ => s!"host: #{id} reaches the server, which handles it (reply not sent yet)"
+  | .lose id r => s!"host: LOST AFTER: the server handled #{id}, but the reply is lost; the app hears {replyText r}"
+  | .fail id r => s!"host: FAILED BEFORE: #{id} never reached the server; the app hears {replyText r}"
+  | .tick _ => s!"host: the server's world acts on its own"
 
 end Cairn.Fuzz

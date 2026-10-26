@@ -49,6 +49,24 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
 - **Its evidence.** What a claim reads as depends on the build that computed it. See
   [how much to trust a claim](/docs/reference/trust/).
 
+## Unreleased (0.5.0)
+
+- **`cairn fuzz`: a server with a world** (cairn#246). `Custom.server` gives the fuzz host a
+  `Cairn.Fuzz.Server`: a world that persists across a sequence, changed by the requests that
+  reach it and by itself between steps, and checks over the app's state and the world, after
+  every step (`server`) and once everything is answered (`serverDrained`). The host injects two
+  faults the app can't tell apart: **failed before** (the world unchanged) and **lost after**
+  (the world changed), and names each in the report. Replays and shrinking rebuild the world;
+  the world is threaded without being copied. Theorems: each request is answered at most once,
+  and a failed-before answer leaves the world as it was. The fixture's Like buttons (`fixture^21`,
+  `fixture^22`) are checked against a fake server, and a mutant that retries a lost write blind
+  is caught (docs/fuzz.md, "A server").
+- **`cairn fuzz`: per-move weights** (cairn#226). `Custom.weights s ref` weights a control's
+  actions when the fuzzer picks one (default 1; 0 never picks it, and its presence is still
+  checked).
+- `Cairn.Fuzz.Custom` is in `Type 1` now (it can hold a server's world type); `World` and
+  `Performed` take the world's type.
+
 ## v0.4.1
 
 26 October 2026, at commit `a6a35fb`.

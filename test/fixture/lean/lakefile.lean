@@ -32,4 +32,9 @@ lean_lib FixtureConformance where
 /-- `cairn fuzz`: Cairn's claim-driven fuzzer on the app (Cairn's docs/fuzz.md). -/
 lean_exe fuzz where
   root := `FuzzMain
+
+/-- The likes' mutant (Fixture/LikeMutant.lean): `cairn fuzz`'s server catches a write retried
+blind after a lost reply. -/
+lean_exe likeMutant where
+  root := `Fixture.LikeMutant
 -- endregion: fixture-lakefile-checks

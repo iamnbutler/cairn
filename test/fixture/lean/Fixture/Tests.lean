@@ -36,10 +36,10 @@ def toggled : List Event := two ++ clickOn (run two) (toggleRef 1)
 def deleted : List Event := toggled ++ clickOn (run toggled) (deleteRef 2)
 #guard texts (st deleted) == [(1, "milk", true)]
 -- Tab order: field, Add, Passcode, Flash, Add above, Add below, then each item's checkbox and
--- delete button (and then the list's rows, `notRow`).
+-- delete button, the posts' Like buttons (and then the list's rows, `notRow`).
 #guard ((tabOrder (run two).laid).map (·.ref)).filter notRow ==
   [fieldRef, addRef, passRef, flashRef, addTopRef, addEndRef, toggleRef 1, deleteRef 1,
-   toggleRef 2, deleteRef 2]
+   toggleRef 2, deleteRef 2, likeRef 1, likeRef 2, likeRef 3, likeRef 4]
 -- Flash sets its timer; the note shows until it fires.
 def flashed : List Event := clickOn (run []) flashRef
 #guard (st flashed).flash
@@ -47,7 +47,7 @@ def flashed : List Event := clickOn (run []) flashRef
 #guard ((decodeFrame (frameBytes Frame.boundary (run two))).map fun f =>
   (f.ax.toList.filterMap (·.control)).filter notRow) ==
   some [fieldRef, addRef, passRef, flashRef, addTopRef, addEndRef, toggleRef 1, deleteRef 1,
-        toggleRef 2, deleteRef 2]
+        toggleRef 2, deleteRef 2, likeRef 1, likeRef 2, likeRef 3, likeRef 4]
 -- endregion: fixture-tests
 
 -- The Passcode field: bullets on screen, nothing in the accessibility value, a redacted request.
@@ -66,7 +66,7 @@ def secret : List Event := clickOn (run []) passRef ++ [.insertText "hunter2"]
 -- The list: 10,000 rows of 24 to 48 points (row k is 24 + 8·(k mod 4)) and the end line, in a box
 -- 160 high. It opens at the top, and lays only the rows that meet the box widened by 200 points
 -- above and below: rows 1 to 10 (360 points).
-def box : Rect := ((run []).laid.children.getD 7 default).rect
+def box : Rect := ((run []).laid.children.getD 8 default).rect
 def rectIn (rs : Runtime.State State) (k : Nat) : Option Rect := (find rs.laid (rowRef k)).map (·.node.rect)
 def rectOf (es : List Event) (k : Nat) : Option Rect := rectIn (run es) k
 def click (p : Point) : List Event := [.pointerMove p, .pointerDown p .primary 1 {}, .pointerUp p .primary {}]
