@@ -51,6 +51,16 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
 
 ## Unreleased (0.5.0)
 
+- **Optimistic values: `Cairn.Optimistic`** (cairn#245). A `Table K V` holds values a person
+  changes and a server keeps: a set shows in its own step, one write is in flight per key, a
+  refusal rolls back in the step it arrives (said with `rolledBack`), and a lost reply is read
+  back, never written again blind. Answers are matched by `Ticket` (key and request number), so
+  stale ones are ignored, and views (`seen`) never move a key written this session. Counts over
+  a boolean value: `count c v w`. Proved against a model server, for any order of replies, lost
+  before or after the server acted: a settled key shows what the server holds, at most one write
+  in flight per key, never more writes than sets, inputs for different keys commute, and counts
+  are the server's and never below zero (`cairn^1100`–`cairn^1114`, docs/optimistic.md). The
+  fixture's Like buttons now use it, with counts and Refresh (`fixture^23`, `fixture^24`).
 - **`cairn fuzz`: a server with a world** (cairn#246). `Custom.server` gives the fuzz host a
   `Cairn.Fuzz.Server`: a world that persists across a sequence, changed by the requests that
   reach it and by itself between steps, and checks over the app's state and the world, after
@@ -59,8 +69,8 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
   (the world changed), and names each in the report. Replays and shrinking rebuild the world;
   the world is threaded without being copied. Theorems: each request is answered at most once,
   and a failed-before answer leaves the world as it was. The fixture's Like buttons (`fixture^21`,
-  `fixture^22`) are checked against a fake server, and a mutant that retries a lost write blind
-  is caught (docs/fuzz.md, "A server").
+  `fixture^22`) are checked against a fake server, and a mutant that takes a lost write for a
+  refused one is caught (docs/fuzz.md, "A server").
 - **`cairn fuzz`: per-move weights** (cairn#226). `Custom.weights s ref` weights a control's
   actions when the fuzzer picks one (default 1; 0 never picks it, and its presence is still
   checked).

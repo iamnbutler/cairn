@@ -38,7 +38,7 @@ t.shown uri       -- what to show: the person's last set, at once
 t.server uri      -- the last value the server confirmed
 t.inFlight uri    -- a write is out
 t.inDoubt uri     -- a write's answer was lost; reading back
-t.settled uri     -- nothing outstanding: shown is the server's (once replies are in)
+t.settled uri     -- nothing outstanding: shown is the server's (`Table.Calm.settled`)
 ```
 
 `Table.feed t i` returns the table and a list of `Out`s, which the app carries out in order.
@@ -197,6 +197,7 @@ equivalence, `Same`):
 | `Table.feed_comm` | inputs for different keys commute: the same table at every key, and each one's outputs as alone |
 | `Table.refused_rollback` | a refusal of the write in flight shows `server`, keeps it, and leaves the key settled |
 | `Table.seen_written` | a view never changes `shown` or `server` of a written key |
+| `Table.calm_feed`, `Table.Calm.settled` | a key at rest (`idle`, or `checking` a view) shows `server`, the value last heard from the server, after any inputs from an empty table (`calm_empty`) |
 | `Table.writes_le_sets` | from an empty table, for any inputs, the writes sent for a key never outnumber its sets |
 | `count_exact`, `count_ge`, `count_view` | the count's arithmetic |
 | `World.Ok.converges` | in every reachable world, a settled key shows what the server holds (by `same`) |
