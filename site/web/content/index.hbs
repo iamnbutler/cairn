@@ -17,16 +17,9 @@ card: { label: "", title: Cairn, line: "Mac apps where every action is a claim, 
 
   <div class="start">
     <a class="go px" href="/docs/guide/first-app/">Get started</a>
-    <a href="/try/">Try it in the browser</a>
     <a href="/docs/">Read the docs</a>
     <a href="/docs/reference/releases/">v{{ $utils.version() }}</a>
   </div>
-  <pre class="install px"><code><span class="prompt">$</span> git clone https://github.com/iamnbutler/cairn &amp;&amp; cd cairn
-<span class="prompt">$</span> make fixture-build
-<span class="prompt">$</span> cd test/fixture &amp;&amp; swift run Fixture</code></pre>
-  <p class="needs">On a Mac with macOS 27, Xcode and Lean through elan. That builds Cairn, the
-    <code>cairn</code> tool and Cairn's own test app, and opens it. Then
-    <a href="/docs/guide/first-app/">your first app</a> shows what you just ran.</p>
 
   <h2 id="what-a-claim-is">What a claim is</h2>
   <p>A claim is one statement about the app under one id, with a half for people and a half for the
