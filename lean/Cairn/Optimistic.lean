@@ -46,7 +46,7 @@ the same outputs, in the other order), `refused_rollback` (a refusal shows `serv
 `seen_written` (a view never moves a written key), `writes_le_sets` (never more writes than sets,
 per key, for any sequence of inputs), and the count's arithmetic (`count_exact`, `count_ge`).
 Convergence against a server, for any order of replies, is `Cairn.Optimistic.Server`; the claims
-(`cairn^1100`–`cairn^1113`) are `Cairn.Optimistic.Claims`. -/
+(`cairn^1100`–`cairn^1114`) are `Cairn.Optimistic.Claims`. -/
 
 @[expose] public section
 
@@ -339,6 +339,15 @@ def size (t : Table K V) : Nat := t.entries.size
 
 instance [Repr K] [Repr V] : Repr (Table K V) where
   reprPrec t _ := "Table " ++ repr t.entries.toList
+
+/-- Two tables are `==` when they hold the same entries and default; `same` is a function and
+isn't compared. So an app's state that holds a table can derive `BEq` for its tests. -/
+instance [BEq K] [DecidableEq V] : BEq (Table K V) where
+  beq a b := a.entries.toList == b.entries.toList && a.dflt == b.dflt
+
+/-- An empty table of `default`s, with every value the same as every other: for `deriving
+Inhabited`. A real table is `Table.empty`. -/
+instance [Inhabited V] : Inhabited (Table K V) := ⟨.empty default fun _ _ => true⟩
 
 end Table
 
