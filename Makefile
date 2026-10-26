@@ -98,7 +98,7 @@ fixture-ledger: fixture-build
 # The layout bench (bench/layout.md), the virtual-list bench (bench/vlist.md), the fixture's input → frame bench (`cairn bench`), and the
 # renderer's.
 bench: lean cairn-tool
-	cd lean && lake build bench && .lake/build/bin/bench && .lake/build/bin/bench --vlist
+	cd lean && lake build bench && .lake/build/bin/bench && .lake/build/bin/bench --vlist && LEAN_ABORT_ON_NONLINEAR=1 .lake/build/bin/bench --optimistic
 	cd $(FIXTURE) && $(CAIRN) bench
 	cd host && CAIRN_BENCH=1 swift test -c release -Xswiftc -enable-testing --filter RenderBench
 

@@ -1,9 +1,10 @@
 import Cairn.Layout
 import Cairn.Runtime
 import Cairn.Abi
+import Cairn.Optimistic
 
 /-! `lake exe bench`: times `Cairn.Layout.layout` on three shapes of `n`-node trees (see
-`bench/layout.md`), and a runtime step over a virtual list of `n` rows (`bench/vlist.md`). Frame encoding and decoding are `make bench-frame` (`bench/frame.md`). -/
+`bench/layout.md`), and a runtime step over a virtual list of `n` rows (`bench/vlist.md`), and `Cairn.Optimistic`'s table at up to 1,000,000 keys (`--optimistic`, `bench/optimistic.md`). Frame encoding and decoding are `make bench-frame` (`bench/frame.md`). -/
 
 open Cairn
 
@@ -179,7 +180,7 @@ def timedStep {S : Type} (app : App S) (cfg : Runtime.Config) (s : Runtime.State
   let laid := cfg.layout cfg.metrics ui1.size node
   if checksum laid == -1 then IO.println "odd"
   let t3 ← IO.monoNanosNow
-  let ui' := Runtime.fixUI laid s1.pointer ui1
+  let ui' := Runtime.fixUI laid s1.pointer ui1 (app.keepScroll c.app)
   let (ui, laid) :=
     if Runtime.UI.same ui' ui1 then (ui', laid)
     else Runtime.settle app cfg c.app s1.pointer ui1 (Runtime.settleFuel - 1) ui'
@@ -300,10 +301,109 @@ def benchList (n : Nat) (virtual : Bool) : IO Unit := do
     s := { s' with ui, laid }
   IO.println s!"virtual list, {n} rows: insert at the head: {fmt (pcts (ins.extract 5 ins.size))}"
 
+/-! ## `Cairn.Optimistic` (`--optimistic`, bench/optimistic.md) -/
+
+section Optimistic
+open Cairn.Optimistic
+
+/-- Feeds `xs` in order, timing batches of `b` inputs; returns the table, the outputs (so
+nothing is optimised away) and each batch's time per input in ns. -/
+def feedTimed {K : Type} [Ord K] (t : Table K Bool) (xs : Array (Input K Bool)) (b : Nat := 100) :
+    IO (Table K Bool × Array (Out K Bool) × Array Nat) := do
+  let mut t := t
+  let mut outs : Array (Out K Bool) := Array.mkEmpty xs.size
+  let mut ns : Array Nat := #[]
+  let mut i := 0
+  while i < xs.size do
+    let j := min xs.size (i + b)
+    let t0 ← IO.monoNanosNow
+    for x in xs[i:j] do
+      let r := t.feed x
+      t := r.1
+      outs := outs ++ r.2.toArray
+    let t1 ← IO.monoNanosNow
+    ns := ns.push ((t1 - t0) / (j - i))
+    i := j
+  return (t, outs, ns)
+
+/-- Median and 95th percentile of per-input ns, in µs. -/
+def usPcts (ns : Array Nat) : String :=
+  let a := ns.qsort (· < ·)
+  let us (x : Nat) := ms3 (x.toFloat / 1000.0)
+  s!"{us a[a.size / 2]!} / {us a[a.size * 95 / 100]!}"
+
+/-- The ticket and value of every write and read the outputs ask for, in order. -/
+def asks {K : Type} (outs : Array (Out K Bool)) : Array (Ticket K × Option Bool) :=
+  outs.filterMap fun
+    | .write t v => some (t, some v)
+    | .read t => some (t, none)
+    | _ => none
+
+/-- The table at `n` keys, keyed by `key i`: built from views, then each kind of input timed on
+`r` distinct keys in a random order, `cycles` times over. -/
+def benchOptimistic {K : Type} [Ord K] (label : String) (key : Nat → K) (n : Nat) : IO Unit := do
+  let r := min n 20000
+  let cycles := max 1 (20000 / r)
+  -- A random order of r keys: i ↦ (7919·i + 13) mod n is a bijection (7919 is prime, no n here
+  -- is a multiple of it).
+  let ks : Array K := (Array.range r).map fun i => key ((7919 * i + 13) % n)
+  let all : Array K := (Array.range n).map key
+  -- Build: every key from a view (an unwritten key takes the view).
+  let t0 ← IO.monoNanosNow
+  let (t, _, _) ← feedTimed (Table.empty false (· == ·)) (all.map fun k => .seen k false) 1000
+  let t1 ← IO.monoNanosNow
+  if t.size != n then throw (IO.userError s!"{t.size} keys, expected {n}")
+  let mut t := t
+  let mut views := #[]
+  for c in [0:cycles] do
+    let (t', _, ns) ← feedTimed t (ks.map fun k => .seen k (c % 2 == 0))
+    t := t'; views := views ++ ns
+  let mut sets := #[]; let mut acks := #[]; let mut losts := #[]; let mut reads := #[]
+  let mut checks := #[]; let mut merges := #[]
+  for _ in [0:cycles] do
+    -- A press on an idle key: a write.
+    let (t', o, ns) ← feedTimed t (ks.map fun k => .set k (!·)); t := t'; sets := sets ++ ns
+    let w := asks o
+    if w.size != r then throw (IO.userError s!"{w.size} writes for {r} sets")
+    -- Its 2xx: the key settles.
+    let (t', _, ns) ← feedTimed t (w.map fun (tk, _) => .acked tk); t := t'; acks := acks ++ ns
+    -- Another press, its reply lost: a read back.
+    let (t', o, _) ← feedTimed t (ks.map fun k => .set k (!·)); t := t'
+    let w := asks o
+    let (t', o, ns) ← feedTimed t (w.map fun (tk, _) => .lost tk); t := t'; losts := losts ++ ns
+    let rd := asks o
+    if rd.size != r then throw (IO.userError s!"{rd.size} reads for {r} lost writes")
+    -- The read's answer: the server holds the write (settles, acknowledged).
+    let (t', _, ns) ← feedTimed t ((rd.zip w).map fun ((tk, _), (_, v)) => .read tk (v.getD true))
+    t := t'; reads := reads ++ ns
+    -- A view that disagrees with a written key: a read to check it.
+    let (t', o, ns) ← feedTimed t (ks.map fun k => .seen k (!(t.shown k))); t := t'; checks := checks ++ ns
+    let ck := asks o
+    if ck.size != r then throw (IO.userError s!"{ck.size} checks for {r} views")
+    -- The check's answer: the server's value is taken.
+    let (t', _, ns) ← feedTimed t (ck.map fun (tk, _) => .read tk (!(t.shown tk.key))); t := t'
+    merges := merges ++ ns
+  if !t.allSettled then throw (IO.userError "not settled at the end")
+  IO.println s!"optimistic, {n} {label} keys: build {ms3 ((t1 - t0).toFloat / 1e6)} ms ({ms3 ((t1 - t0).toFloat / n.toFloat / 1000.0)} µs a key); µs per input, p50 / p95: view (unwritten) {usPcts views}, set {usPcts sets}, acked {usPcts acks}, lost {usPcts losts}, read back {usPcts reads}, view (written, disagrees) {usPcts checks}, check's read {usPcts merges}"
+
+/-- A post URI as Sky keys its tables. -/
+def postUri (i : Nat) : String :=
+  s!"at://did:plc:{(toString (i * 2654435761 % 1000000007 + 1000000000)).take 10}abcdefghijklmn/app.bsky.feed.post/3l{toString (i + 10000000)}"
+
+end Optimistic
 
 def main (args : List String) : IO Unit := do
   if let ["--task-depth", n] := args then
     taskDepth n.toNat!
+    return
+  if args.head? == some "--optimistic" then
+    let sizes : List Nat := match args.tail.filterMap String.toNat? with
+      | [] => [100, 10000, 1000000]
+      | ns => ns
+    for n in sizes do
+      benchOptimistic "Nat" id n
+    for n in sizes do
+      benchOptimistic "post URI" postUri n
     return
   if args.head? == some "--vlist" then
     for n in [100, 1000, 10000, 100000] do
