@@ -1,5 +1,6 @@
 import Cairn.Layout
 import Cairn.Runtime
+import Cairn.Abi
 
 /-! `lake exe bench`: times `Cairn.Layout.layout` on three shapes of `n`-node trees (see
 `bench/layout.md`), and a runtime step over a virtual list of `n` rows (`bench/vlist.md`). Frame encoding and decoding are `make bench-frame` (`bench/frame.md`). -/
@@ -114,12 +115,131 @@ def listView (s : ListState) (ui : UI) : Node :=
 def listApp (s : ListState) : App ListState :=
   { init := s, surfaces := [.window 1 "Bench" listView], update := fun s _ => (s, []), claims := [] }
 
+/-- A trackpad fling's wheel deltas, one per frame: 120 points, falling by 4% a frame until under
+one point (about 120 frames, 2,900 points: a fast flick's momentum at 120 Hz). -/
+def fling : Array Int := Id.run do
+  let mut v : Nat := 120_000
+  let mut out := #[]
+  while v ≥ 1000 do
+    out := out.push (Int.ofNat (v / 1000))
+    v := v * 96 / 100
+  return out
+
+/-! ### A frame, by phase
+
+What the host's Lean thread does for one batch of input (`Runtime.stepBytes`, then
+`Runtime.frameBytes`): each event through `Runtime.step` (the batch's own events, then the two
+`Runtime.frameEvents`), then the frame encoded. `timedStep` is `Runtime.step` written out with a
+clock between its phases; `timedFrame` checks that it reaches the same state. -/
+
+/-- Nanoseconds per phase of a frame. **update**: route the event, deliver its actions and
+replies to the app, diff subscriptions (and, when the app heard something, what each surface
+shows). **view**: `app.view`. **layout**: the layout of that view. **settle**: the runtime's
+record of the virtual lists and the repair of hover, focus and scroll against the new tree
+(`fixUI`), and any further view and layout `Runtime.settle` runs until it stops changing.
+**encode**: `Runtime.frameBytes`, the frame as the host receives it. -/
+structure Phases where
+  update : Nat := 0
+  view : Nat := 0
+  layout : Nat := 0
+  settle : Nat := 0
+  encode : Nat := 0
+
+def Phases.total (p : Phases) : Nat := p.update + p.view + p.layout + p.settle + p.encode
+
+instance : Add Phases where
+  add a b := { update := a.update + b.update, view := a.view + b.view, layout := a.layout + b.layout,
+               settle := a.settle + b.settle, encode := a.encode + b.encode }
+
+def nodeTag : Node → Nat
+  | .box .. => 1
+  | _ => 2
+
+/-- `Runtime.step` with a clock between its phases. -/
+def timedStep {S : Type} (app : App S) (cfg : Runtime.Config) (s : Runtime.State S) (e : Event) :
+    IO (Runtime.State S × Phases) := do
+  let t0 ← IO.monoNanosNow
+  let (s1, acts) := Runtime.route cfg.metrics s e
+  let c0 := Runtime.admit app s e
+  if acts.isEmpty && !c0.delivered && Runtime.UI.same s1.ui s.ui then
+    let s' := { s1 with world := c0.world }
+    let t1 ← IO.monoNanosNow
+    return (s', { update := t1 - t0 })
+  let c := Runtime.act app c0 acts
+  let (subs, cmds, next) :=
+    if c.delivered then Runtime.diffSubs c.world.subs (app.subscriptions c.app) c.world.nextSub
+    else (c.world.subs, [], c.world.nextSub)
+  let ui1 := Runtime.applyFocus c.effs s1.ui
+  let surfaces := if c.delivered then Runtime.shows app cfg c.app else s1.surfaces
+  if surfaces.length + cmds.length == 1000000 then IO.println "many"
+  let t1 ← IO.monoNanosNow
+  let node := app.view c.app ui1
+  if nodeTag node == 0 then IO.println "no view"
+  let t2 ← IO.monoNanosNow
+  let laid := cfg.layout cfg.metrics ui1.size node
+  if checksum laid == -1 then IO.println "odd"
+  let t3 ← IO.monoNanosNow
+  let ui' := Runtime.fixUI laid s1.pointer ui1
+  let (ui, laid) :=
+    if Runtime.UI.same ui' ui1 then (ui', laid)
+    else Runtime.settle app cfg c.app s1.pointer ui1 (Runtime.settleFuel - 1) ui'
+  if checksum laid == -1 then IO.println "odd"
+  let t4 ← IO.monoNanosNow
+  let s' := { s1 with app := c.app, ui, laid, world := { c.world with subs, nextSub := next },
+                      subCmds := s1.subCmds ++ cmds.toArray, surfaces }
+  return (s', { update := t1 - t0, view := t2 - t1, layout := t3 - t2, settle := t4 - t3 })
+
+/-- One frame of `es`, by phase: the events and `Runtime.frameEvents` through `timedStep`, then
+the frame encoded. With `check`, also `Runtime.steps`' own result, which must lay the same tree
+at the same offsets. -/
+def timedFrame {S : Type} (app : App S) (cfg : Runtime.Config) (s : Runtime.State S)
+    (es : List Event) (check := false) : IO (Runtime.State S × List Effect × Phases) := do
+  let s0 := { s with effects := #[], subCmds := #[] }
+  let mut st := s0
+  let mut ph : Phases := {}
+  for e in es ++ Runtime.frameEvents do
+    let (s', p) ← timedStep app cfg st e
+    st := s'
+    ph := ph + p
+  -- The effects, outside the clock: `timedStep` doesn't collect them.
+  let (r, effs) := Runtime.steps app cfg s0 es
+  st := { st with effects := effs.toArray }
+  let t0 ← IO.monoNanosNow
+  let bytes := Runtime.frameBytes Frame.boundary st
+  if bytes.size == 0 then IO.println "empty frame"
+  let t1 ← IO.monoNanosNow
+  if check && (checksum r.laid != checksum st.laid || !Runtime.UI.same r.ui st.ui) then
+    throw <| IO.userError "timedStep and Runtime.step disagree"
+  return (st, effs, { ph with encode := t1 - t0 })
+
 /-- Median and 95th percentile of `ns`, in ms. -/
 def pcts (ns : Array Nat) : Float × Float :=
   let a := ns.qsort (· < ·)
   ((a[a.size / 2]!).toFloat / 1e6, (a[a.size * 95 / 100]!).toFloat / 1e6)
 
-def fmt (p : Float × Float) : String := s!"p50 {p.1} ms, p95 {p.2} ms"
+/-- `x` ms to three decimals. -/
+def ms3 (x : Float) : String :=
+  let n := (x * 1000.0).round.toUInt64.toNat
+  s!"{n / 1000}.{(toString (n % 1000 + 1000)).drop 1}"
+
+def fmt (p : Float × Float) : String := s!"p50 {ms3 p.1} ms, p95 {ms3 p.2} ms"
+
+/-- The frame's median and 95th percentile, and the median of each phase, in ms. -/
+def fmtPhases (ps : Array Phases) : String :=
+  let med (f : Phases → Nat) := ms3 (pcts (ps.map f)).1
+  s!"frame {fmt (pcts (ps.map Phases.total))}; medians: update {med (·.update)}, view {med (·.view)}, layout {med (·.layout)}, settle {med (·.settle)}, encode {med (·.encode)} ms"
+
+/-- `reps` frames of the events `es i` from `s`, each from the state the last left; the first
+five checked against `Runtime.steps`. -/
+def timeFrames {S : Type} (app : App S) (s : Runtime.State S) (reps : Nat) (es : Nat → List Event) :
+    IO (Array Phases × Runtime.State S) := do
+  let mut s := s
+  let mut ps := #[]
+  for i in [0:reps] do
+    let (s', _, p) ← timedFrame app {} s (es i) (check := i < 5)
+    ps := ps.push p
+    s := s'
+  return (ps, s)
 
 /-- Times `reps` runtime steps of `es i` from `s`, each from the state the last left. -/
 def timeSteps (app : App ListState) (s : Runtime.State ListState) (reps : Nat) (e : Nat → Event) :
@@ -139,8 +259,9 @@ def timeSteps (app : App ListState) (s : Runtime.State ListState) (reps : Nat) (
 
 /-- A virtual list of `n` rows (or, `virtual := false`, a scroll box holding all of them) in an
 800 × 600 window: wheel steps of 300 points, down and back up (up to 100 each way, fewer for a
-short list, so that every step moves it); 300 points up from the end, 200 times (fewer for a short list); and a row
-inserted at the head, settled. -/
+short list, so that every step moves it); 300 points up from the end, 200 times (fewer for a
+short list); and a row inserted at the head, settled. Then whole frames by phase
+(`timedFrame`): flings (`fling`) down from the top and back up. -/
 def benchList (n : Nat) (virtual : Bool) : IO Unit := do
   let keys := (Array.range n).map (· + 1)
   let app := listApp { keys, virtual }
@@ -152,6 +273,13 @@ def benchList (n : Nat) (virtual : Bool) : IO Unit := do
   let (ns, s1) ← timeSteps app s0 reps fun i => .scroll p 0 (if (i / m) % 2 = 0 then 300 else -300)
   let label := if virtual then "virtual list" else "plain scroll box"
   IO.println s!"{label}, {n} rows: scroll 300 pt: {fmt (pcts (ns.extract 10 ns.size))}; offset {s1.ui.scrollOf benchListRef}, {(s1.ui.listOf benchListRef).rows.size} heights kept"
+  -- Flings, whole frames by phase: two down from the top, then two back up (a short list
+  -- reaches its end, and its frames there move nothing).
+  let fl := fling
+  let (_, sTop) ← timeSteps app s1 1 fun _ => .scroll p 0 (-100_000_000)
+  let (pd, sF) ← timeFrames app sTop (2 * fl.size) fun i => [.pointerMove p, .scroll p 0 fl[i % fl.size]!]
+  let (pu, _) ← timeFrames app sF (2 * fl.size) fun i => [.pointerMove p, .scroll p 0 (-fl[i % fl.size]!)]
+  IO.println s!"{label}, {n} rows: fling, {pd.size + pu.size} frames: {fmtPhases (pd ++ pu)}"
   unless virtual do return
   -- Through the whole list and back (a jump to the end, then up): what is kept stays bounded.
   let (_, s2) ← timeSteps app s1 1 fun _ => .scroll p 0 100_000_000
