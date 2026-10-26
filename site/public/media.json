@@ -1,5 +1,16 @@
 [
   {
+    "title": "Cairn 0.5.2",
+    "text": [
+      "Cairn 0.5.2 is out on the public registry with two virtual-list fixes Sky turned up: a list now settles however many layouts it takes when many rows it knows change height at once (Sky's mute hiding many posts), and a clamp within a batch no longer moves the reader's row when a later step of the same batch lengthens the list.",
+      "No claim is new, retired, moved or changed. The registry's ledger check accepted 0.5.1 to 0.5.2 and serves its claims export for the claim pages."
+    ],
+    "date": "2026-10-26",
+    "published": "2026-10-26T14:08:40Z",
+    "commit": "23f0836",
+    "milestone": "m5"
+  },
+  {
     "video": "/m/videos/ed6f79cd26cde170.mp4",
     "poster": "/m/videos/ed6f79cd26cde170.jpg",
     "title": "Sky: muting an author mid-feed",

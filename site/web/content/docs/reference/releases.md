@@ -51,7 +51,7 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
 
 ## v0.5.2
 
-26 October 2026.
+26 October 2026, at commit `23f0836`.
 
 A patch release: two virtual-list fixes Sky turned up.
 
