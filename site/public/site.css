@@ -21,7 +21,7 @@ code {
    where the lede begins; in the margins the meadow runs on down the page. The header's height
    is where the text starts, and scene.js reads it. */
 body { overflow-x: clip; }
-h1, h2, h3, .meta, .note .label, .lede em, .diagram, .kinds, .ladder b, .soon { font-variant-ligatures: none; } /* Pixelify draws "fi" as a broken glyph */
+h1, h2, h3, .headline, .meta, .note .label, .lede em, .diagram, .kinds, .ladder b, .soon { font-variant-ligatures: none; } /* Pixelify draws "fi" as a broken glyph */
 .scene { position: relative; height: 420px; }
 .scene canvas {
   position: absolute; top: 0; left: 50%; transform: translateX(-50%);
@@ -42,6 +42,7 @@ h1 {
 
 main, footer { position: relative; }
 main { max-width: 760px; margin: 0 auto; padding: 8px 16px 64px; }
+.headline { font: 600 30px/1.2 var(--pixel); color: #f3efff; margin: 0 0 16px; max-width: 24em; text-wrap: balance; }
 .lede { font-size: 21px; line-height: 1.5; margin: 0; max-width: 32em; }
 .lede em { font-style: normal; font: 600 0.95em var(--pixel); color: var(--accent); }
 
@@ -87,7 +88,7 @@ p { margin: 0 0 14px; }
 /* The homepage's text sits on a sheet of page colour laid on the meadow, so it never runs over
    the scene; the meadow carries on either side and fades into mist behind it (scene.js). */
 main.sheet { --s: var(--px); max-width: 808px; margin-top: 28px; padding: 40px 40px 64px; background: var(--bg); }
-main.sheet { clip-path: polygon(0 calc(var(--s) * 2), var(--s) calc(var(--s) * 2), var(--s) var(--s), calc(var(--s) * 2) var(--s), calc(var(--s) * 2) 0, calc(100% - var(--s) * 2) 0, calc(100% - var(--s) * 2) var(--s), calc(100% - var(--s)) var(--s), calc(100% - var(--s)) calc(var(--s) * 2), 100% calc(var(--s) * 2), 100% 100%, 0 100%); }
+main.sheet { clip-path: polygon(0 calc(var(--s) * 2), var(--s) calc(var(--s) * 2), var(--s) var(--s), calc(var(--s) * 2) var(--s), calc(var(--s) * 2) 0, calc(100% - var(--s) * 2) 0, calc(100% - var(--s) * 2) var(--s), calc(100% - var(--s)) var(--s), calc(100% - var(--s)) calc(var(--s) * 2), 100% calc(var(--s) * 2), calc(100% + 50vw) calc(var(--s) * 2), calc(100% + 50vw) 100%, -50vw 100%, -50vw calc(var(--s) * 2)); } /* wide sides let the claim figure break out */
 
 /* Figures: one ink (the text colour), a tint for the proved part, the accent for "proved".
    Pixel style: stepped corners, crisp 2px lines, open chevrons. */
@@ -122,6 +123,42 @@ h3.sub { font: 600 18px/1.3 var(--pixel); margin: 36px 0 10px; }
 .callouts { list-style: none; counter-reset: c; margin: 14px 0 0; padding: 0; font-size: 16px; }
 .callouts li { counter-increment: c; position: relative; padding-left: 30px; margin-bottom: 6px; }
 .callouts li::before { content: counter(c); position: absolute; left: 0; top: 4px; margin: 0; }
+
+/* The anatomy of a claim: each line a block with a gutter bar for its half (people: mint, the
+   checker: gold), brackets under the spans the notes name, and a few more token colours. On a wide
+   window the notes go in the margins either side, joined to their spans by leaders (annotate.js);
+   narrower, they are the numbered list under the code. */
+.claim .op { color: var(--muted); }
+.claim .lit { color: #e8a6c8; }
+.claim .tac { color: var(--accent); }
+.anatomy pre code { display: block; }
+.anatomy .ln { display: block; padding-left: 14px; box-shadow: inset 4px 0 0 transparent; }
+.anatomy .ln.people { box-shadow: inset 4px 0 0 #9fd3b4; }
+.anatomy .ln.checker { box-shadow: inset 4px 0 0 var(--gold); }
+.anatomy .ln.people + .ln.checker { margin-top: 6px; }
+.anatomy li b { font: 600 14px/1.3 var(--pixel); color: var(--gold); margin-right: 4px; font-variant-ligatures: none; }
+.anatomy li.people b { color: #9fd3b4; }
+.anatomy li i { color: var(--muted); }
+.anatomy svg.leaders { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.anatomy svg.leaders path { fill: none; stroke: var(--muted); stroke-width: 2; stroke-dasharray: 2 4; shape-rendering: crispEdges; }
+.anatomy svg.leaders rect { fill: var(--muted); }
+@media (min-width: 1100px) {
+  .anatomy { position: relative; margin: 30px calc((100% - min(1240px, 100vw - 32px)) / 2) 24px; padding: 24px 8px;
+    background: var(--bg); display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); column-gap: 56px; align-items: center; }
+  .anatomy pre { grid-column: 2; grid-row: 1; font-size: 14.5px; line-height: 2.3; padding: 18px 26px 18px 14px; }
+  .anatomy .mk { display: none; }
+  .anatomy .br { --c: var(--gold); padding-bottom: 2px;
+    background: linear-gradient(var(--c), var(--c)) left bottom / 100% 2px no-repeat,
+      linear-gradient(var(--c), var(--c)) left bottom / 2px 6px no-repeat,
+      linear-gradient(var(--c), var(--c)) right bottom / 2px 6px no-repeat; }
+  .anatomy .callouts { display: contents; }
+  .anatomy li { list-style: none; padding: 0; margin: 0; font-size: 15px; line-height: 1.45; }
+  .anatomy li::before { display: none; }
+  .anatomy li b { display: block; margin-bottom: 2px; }
+  .anatomy .side { grid-row: 1; display: grid; gap: 22px; align-content: center; }
+  .anatomy .side.l { grid-column: 1; text-align: right; }
+  .anatomy .side.r { grid-column: 3; }
+}
 table.kinds { width: 100%; border-collapse: collapse; font-size: 16px; margin: 8px 0 4px; }
 .kinds th { font: 600 13px var(--pixel); color: var(--muted); text-align: left; letter-spacing: 0.04em; padding: 0 12px 6px 0; }
 .kinds td { padding: 9px 12px 9px 0; border-top: 2px solid var(--rule); vertical-align: top; }
@@ -218,6 +255,7 @@ a.feed:hover { color: var(--accent); }
   .scene .title { padding-top: 44px; }
   h1 { font-size: 48px; }
   .lede { font-size: 19px; }
+  .headline { font-size: 24px; }
   main.sheet { margin-top: 16px; padding: 28px 16px 56px; }
   .intro { margin-top: 110px; font-size: 18px; }
   .scene { height: 290px; }

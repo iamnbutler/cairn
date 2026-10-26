@@ -10,8 +10,10 @@ card: { label: "", title: Cairn, line: "Mac apps where every action is a claim, 
 </header>
 
 <main class="sheet">
-  <p class="lede">Research into user interfaces where everything a person can do is a <em>claim</em>
-    with a durable id, and every claim carries machine-checked evidence.</p>
+  <p class="headline">Compile-time verification for your code, and for what people experience.</p>
+  <p class="lede">Rust made memory bugs compile errors. Cairn is research into doing the same for
+    behaviour: everything a person can do is a <em>claim</em> with a durable id, and if its proof
+    fails, the app doesn't build.</p>
 
   <div class="start">
     <a class="go px" href="/docs/guide/first-app/">Get started</a>
@@ -27,29 +29,25 @@ card: { label: "", title: Cairn, line: "Mac apps where every action is a claim, 
     <a href="/docs/guide/first-app/">your first app</a> shows what you just ran.</p>
 
   <h2 id="what-a-claim-is">What a claim is</h2>
-  <p>A claim is one statement about the app, in two halves, and both live in the app's source under
-    one id. The human half says what a person does and what follows. The formal half is a Lean
-    statement about the code that runs, and the proof that it holds. Here is the whole of Reset in
-    Counter, one of the <a href="/docs/examples/">example apps</a>:</p>
+  <p>A claim is one statement about the app under one id, with a half for people and a half for the
+    checker. Here is the whole of Reset in Counter, one of the <a href="/docs/examples/">example apps</a>:</p>
 
-  <figure class="claim">
-<pre class="px"><code><span class="kw">move</span> <span class="id">^2</span> reset (s : State) <span class="str">"Reset"</span> in <span class="id">^3</span> <span class="kw">where</span><i class="mk">1</i>
-  <span class="kw">does</span> <span class="str">"Press Reset."</span><i class="mk">2</i>
-  <span class="kw">sees</span> <span class="str">"The count is zero, and Reset disappears."</span>
-  <span class="kw">enabled</span> := resetEnabled s<i class="mk">3</i>
-  <span class="kw">on</span> press
-    <span class="kw">apply</span> := { s with count := 0 }<i class="mk">4</i>
-    <span class="kw">post</span> s' := s'.count = 0 ∧ resetEnabled s' = false<i class="mk">5</i>
-    <span class="kw">sound</span> := by intro s _; exact ⟨rfl, rfl⟩<i class="mk">6</i></code></pre>
+  <figure class="claim anatomy">
+<pre class="px"><code><span class="ln"><span class="kw">move</span> <span class="id br" id="c-id">^2</span> reset <span class="op">(</span>s <span class="op">:</span> State<span class="op">)</span> <span class="str">"Reset"</span> <span class="br" id="c-place"><span class="kw">in</span> <span class="id">^3</span></span> <span class="kw">where</span><i class="mk">1</i><i class="mk">2</i></span><span class="ln people" id="c-people">  <span class="kw">does</span> <span class="str">"Press Reset."</span><i class="mk">3</i></span><span class="ln people">  <span class="kw">sees</span> <span class="str">"The count is zero, and Reset disappears."</span></span><span class="ln checker" id="c-checker">  <span class="kw">enabled</span> <span class="op">:=</span> <span class="br" id="c-enabled">resetEnabled s</span><i class="mk">4</i><i class="mk">5</i></span><span class="ln checker">  <span class="kw">on</span> press</span><span class="ln checker">    <span class="kw">apply</span> <span class="op">:=</span> <span class="br" id="c-apply"><span class="op">{</span> s <span class="kw">with</span> count <span class="op">:=</span> <span class="lit">0</span> <span class="op">}</span></span><i class="mk">6</i></span><span class="ln checker">    <span class="kw">post</span> s' <span class="op">:=</span> <span class="br" id="c-post">s'.count <span class="op">=</span> <span class="lit">0</span> <span class="op">∧</span> resetEnabled s' <span class="op">=</span> <span class="lit">false</span></span><i class="mk">7</i></span><span class="ln checker">    <span class="kw">sound</span> <span class="op">:=</span> <span class="br" id="c-sound"><span class="tac">by</span> <span class="tac">intro</span> s _<span class="op">;</span> <span class="tac">exact</span> <span class="op">⟨</span><span class="tac">rfl</span>, <span class="tac">rfl</span><span class="op">⟩</span></span><i class="mk">8</i></span></code></pre>
     <ol class="callouts">
-      <li>The id, <code>^2</code>, then a Lean name, a title and the place the control appears in:
-        <code>^3</code>, the counter's window.</li>
-      <li>The human half: what the person does and what they see. Reviewers read it, and its claim
-        page shows it.</li>
-      <li>When the move is available. Lean proves Reset's button is on screen exactly when this holds.</li>
-      <li>What pressing it does. The app's update is assembled from its moves and nothing else.</li>
-      <li>The claim, formally: afterwards the count is zero and Reset is gone.</li>
-      <li>The evidence. Without a proof that the handler meets the claim, the app doesn't compile.</li>
+      <li class="l" data-for="c-id"><b>The id</b> Permanent: never renumbered or reused, and what reviews,
+        docs and agents cite. <i>Like a data-testid that can't drift.</i></li>
+      <li class="r" data-for="c-place"><b>Where it lives</b> <code>^3</code> is a claim too, a place: Counter's window.</li>
+      <li class="l people" data-for="c-people"><b>For people</b> <code>does</code> and <code>sees</code>, in plain
+        English for reviewers and the claim's page. Lean doesn't check them.</li>
+      <li class="l checker" data-for="c-checker"><b>For the checker</b> Everything below. Lean checks it when the app builds.</li>
+      <li class="l" data-for="c-enabled"><b>When it's offered</b> The button is proved on screen exactly when
+        this holds, in every state. <i>Playwright's toBeVisible() checks one page load.</i></li>
+      <li class="r" data-for="c-apply"><b>What it does</b> A pure copy of <code>s</code> with the count at 0.</li>
+      <li class="r" data-for="c-post"><b>The promise</b> Afterwards the count is zero and Reset is gone.
+        <i>An expect() stated for every state, not asserted on one run.</i></li>
+      <li class="r" data-for="c-sound"><b>The proof</b> <i>Like assert_eq!, except the compiler settles it for
+        every s.</i> No proof, no build.</li>
     </ol>
   </figure>
 
@@ -59,15 +57,12 @@ card: { label: "", title: Cairn, line: "Mac apps where every action is a claim, 
     (<code>update_effect</code>).</p>
 
   <h3 class="sub" id="ids-are-the-contract">Ids are the contract</h3>
-  <p><code>^2</code> means Reset for as long as the counter exists. Ids are never renumbered or
-    reused: a claim that goes away is retired with a reason, and its id stays issued.
-    <code>claims.lock</code> records every id ever issued with a hash of its formal statement. The
-    build fails when an id vanishes without being retired, comes back after it, or changes kind,
-    and it warns when a statement's meaning changes, because a new meaning needs a new id. A control
-    that repeats once per item carries a key: <code>^5#12</code> is <code>^5</code> for item 12.
-    Ids are scoped by package: Cairn's own are <code>cairn^N</code>, and an app in its own
-    repository has its own, like Counter's <code>cairn_examples^2</code> or Yap's
-    <code>yap^311</code>.</p>
+  <p>An id is a data-testid that can't drift, and semver for guarantees. <code>^2</code> means Reset
+    for as long as the counter exists: never renumbered or reused, and a claim that goes away is
+    retired with a reason. <code>claims.lock</code> records every id with a hash of its statement; the
+    build fails when an id vanishes or changes kind, and warns when a statement's meaning changes. A
+    repeated control carries a key (<code>^5#12</code> is <code>^5</code> for item 12), and each
+    package numbers in its own scope (<code>cairn^N</code> for Cairn's own).</p>
 
   <h3 class="sub" id="six-kinds">Six kinds</h3>
   <table class="kinds">
@@ -77,7 +72,7 @@ card: { label: "", title: Cairn, line: "Mac apps where every action is a claim, 
       <tr><td>flow</td><td>A goal and a path of moves that reaches it. Lean checks every step is really answered.</td><td>^4 Count to three, ^5 Start over</td></tr>
       <tr><td>invariant</td><td>A property every move keeps, so it holds in every state the app can reach.</td><td>yap^311 A shortcut never sends (Yap)</td></tr>
       <tr><td>assume</td><td>Something the proofs rely on but can't prove. Recorded, and visible in every theorem that uses it.</td><td>cairn^7 The host reports clicks where they happen</td></tr>
-      <tr><td>place</td><td>A region of the view where moves appear.</td><td>^3 Counter window</td></tr>
+      <tr><td>place</td><td>A region of the view where moves appear.</td><td>^3 Counter window, in the <a href="#what-a-claim-is">figure above</a></td></tr>
       <tr><td>retire</td><td>A tombstone: the claim is gone, the id stays issued.</td><td>^6 No press left in progress: the runtime owns presses now</td></tr>
     </tbody>
   </table>
@@ -87,9 +82,10 @@ card: { label: "", title: Cairn, line: "Mac apps where every action is a claim, 
   <ul class="trail ladder">
     <li><b>Proved.</b> Lean's kernel checked the proof, using only the three standard axioms;
       <code>make check</code> audits every theorem.</li>
-    <li><b>Fuzzed.</b> Random sequences of moves, with the claim checked after every step.</li>
+    <li><b>Fuzzed.</b> Random sequences of moves, with the claim checked after every step:
+      property-based testing, like proptest or QuickCheck, over whole sessions.</li>
     <li><b>Tested.</b> The real app, driven through generated sequences of moves, agrees with the
-      model after every step.</li>
+      model after every step: an end-to-end suite whose expected values come from the proved model.</li>
     <li><b>Seen.</b> The claim's control is on a captured frame, and a flow replays click by
       click.</li>
     <li><b>Assumed.</b> Recorded, never proved. Theorems that rely on it take it as a hypothesis,
@@ -140,6 +136,7 @@ card: { label: "", title: Cairn, line: "Mac apps where every action is a claim, 
   mountFrames(document.querySelector("main"));
   mountSprigs(document.querySelector("main"));
   mountAnchors(document.querySelector("main"));
+  import("/annotate.js").then(m => m.mountLeaders(document.querySelector(".anatomy")));
   mountPeek(document.querySelector("footer"));
   mountScene(document.getElementById("scene"), { feature: document.querySelector("main"), octocat: document.getElementById("octocat") });
 </script>
