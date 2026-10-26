@@ -1,5 +1,30 @@
 [
   {
+    "image": "/m/images/316bbff1e81f0fae.png",
+    "title": "Sky: the notifications list",
+    "caption": "Grouped likes, follows with Follow back, replies and mentions as posts with Like, Repost and ⋯; the unread count on the tab.",
+    "date": "2026-10-26",
+    "published": "2026-10-26T14:35:19Z",
+    "commit": "a85a11f0",
+    "width": 1200,
+    "height": 1640,
+    "milestone": "m5"
+  },
+  {
+    "video": "/m/videos/7640748f220e2658.mp4",
+    "poster": "/m/videos/7640748f220e2658.jpg",
+    "title": "Sky: notifications on screen",
+    "caption": "Others like, repost and follow while the reader is on Home: the count comes onto the Notifications tab (and the Dock badge). The tab opens the list, \"3 new\" takes it to the new rows, which are marked seen; Follow back, a like from a mention, then Home again at the same place. Rendered offscreen against the fake PDS.",
+    "date": "2026-10-26",
+    "published": "2026-10-26T14:35:17Z",
+    "commit": "a85a11f0",
+    "width": 1200,
+    "height": 1640,
+    "seconds": 16,
+    "feature": false,
+    "milestone": "m5"
+  },
+  {
     "title": "Cairn 0.5.2",
     "text": [
       "Cairn 0.5.2 is out on the public registry with two virtual-list fixes Sky turned up: a list now settles however many layouts it takes when many rows it knows change height at once (Sky's mute hiding many posts), and a clamp within a batch no longer moves the reader's row when a later step of the same batch lengthens the list.",
