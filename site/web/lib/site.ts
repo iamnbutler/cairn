@@ -54,7 +54,7 @@ type Still = { image: string; title: string; caption: string; date: string; publ
 type Entry = Video | Still | Note;
 const isNote = (e: Entry): e is Note => !("video" in e) && !("image" in e);
 const isStill = (e: Entry): e is Still => "image" in e;
-type Post = { id: string; title: string; html: string; first: string; date: Date; milestone?: string; ids: string[] };
+type Post = { id: string; title: string; html: string; first: string; summary: string; date: Date; milestone?: string; ids: string[] };
 type Item = { title: string; link: string; guid: string; permalink: boolean; date: Date; html: string };
 
 function sources() {
@@ -76,8 +76,17 @@ function sources() {
 		// The post's body: everything after the heading and its date line.
 		const html = body.slice(body.indexOf(h[0]) + h[0].length).replace(/\s*<p class="meta"><time[\s\S]*?<\/p>/, "").trim();
 		const first = html.match(/<p>([\s\S]*?)<\/p>/)?.[1] ?? html.match(/<li>([\s\S]*?)<\/li>/)?.[1] ?? "";
+		// The homepage card's two or so lines: a post's `<!-- summary: … -->` if it has one, or as
+		// many of its opening sentences as fit in about 240 characters.
+		const given = body.match(/<!--\s*summary:\s*([\s\S]*?)\s*-->/)?.[1];
+		let summary = "";
+		for (const s of first.replace(/\s+/g, " ").trim().match(/[^.?!]+[.?!]+(\s|$)/g) ?? [first]) {
+			if (summary && text(summary + s).length > 240) break;
+			summary += s;
+		}
+		summary = (given ?? summary).replace(/\s+/g, " ").trim();
 		const ids = [id, ...[...body.matchAll(/<h[2-4] id="([^"]+)"/g)].map((m) => m[1]).filter((x) => x !== id)];
-		posts.push({ id, title, html, first, date, milestone, ids });
+		posts.push({ id, title, html, first, summary, date, milestone, ids });
 	}
 	if (!posts.length) fail(MILESTONES, "has no article.post");
 
@@ -172,7 +181,7 @@ export function latest(): string {
 	return `<aside class="note latest"><div class="card px">
     <p class="label"><img src="/icon.svg" alt=""><a href="/milestones/">Latest milestone</a></p>
     <h3 id="latest-milestone"><a href="/milestones/#${latest.id}">${esc(latest.title)}</a></h3>
-    <p>${latest.first.trim()}</p>
+    <p>${latest.summary}</p>
     <p class="more"><a href="/milestones/#${latest.id}">Read on</a><a href="/milestones/">Every milestone</a><a class="feed" href="/feed.xml">RSS feed</a></p>
   </div></aside>`;
 }
