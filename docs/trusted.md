@@ -47,9 +47,11 @@ What a client assumes about Bluesky's servers is not Cairn's trusted base. Those
 cairn_atproto's `assume` claims (#249), checked against its fake PDS (#251) and once against the
 real network with the installed app (#258).
 
-The full run that checked every row (`make fuzz-trusted`, N=20000, seed 0) found one bug,
-fixed in `Engine`: a wake timer that fired as the clock was held handed Lean an empty batch
-(see ^1032 below).
+`make fuzz-trusted` (N=20000, seed 0, release; Apple M4 Max, macOS 27.0.1, 2026-10-26, 32 min
+with other agents' builds running) passes every check, these rows included: `control-menu.*`,
+`ax.show-menu` and `menubar.*` 2,000 cases each, `dock.badge` and `ax.announce` 10,000,
+`world.hold` 500. `world.hold` found one bug in its first quick run, fixed in `Engine`: a wake
+timer that fired as the clock was held handed Lean an empty batch (^1032 below).
 
 ## New in M4
 
