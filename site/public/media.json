@@ -1,5 +1,16 @@
 [
   {
+    "title": "Sky 0.3.1, signed and installed",
+    "text": [
+      "Sky 0.3.1 is on the public registry as iamnbutler/sky, built on Cairn 0.4.1 with cairn_json and cairn_atproto, all from the registry, and so is its CI in iamnbutler/sky. Its claims export, 26 active claims, is on the registry for its claim pages.",
+      "cairn bundle --sign made Sky.app, signed with a Developer ID under the hardened runtime, and it is installed in ~/Applications. Signing in with a real account is the next step, by a person, not by a test: every test signs in to the fake server."
+    ],
+    "date": "2026-10-26",
+    "published": "2026-10-26T07:22:04Z",
+    "commit": "sky@bd64e76",
+    "milestone": "m4"
+  },
+  {
     "title": "Cairn 0.4.1: the trusted base for M4, fuzzed",
     "text": [
       "Cairn 0.4.1 is out on the public registry as iamnbutler/cairn. Every Keychain call now goes through one serial queue for the process, so a forgetSecret racing a read of the same app's items no longer deadlocks inside Security's file-based keychain (#237), and a value that starts with a byte order mark reads back with it.",
