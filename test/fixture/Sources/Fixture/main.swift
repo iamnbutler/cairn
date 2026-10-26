@@ -12,7 +12,8 @@ import QuartzCore
 // with its debug socket on.
 //   Fixture               open the window
 //   Fixture --selftest    drive the host headlessly through its real threads and check it
-//   Fixture --bench       input → frame and frame size with 10 and 1,000 items
+//   Fixture --bench       input → frame and frame size with 10 and 1,000 items, and a Like
+//                         press → frame (bench/optimistic.md)
 //   Fixture --scroll-shots <dir>   offscreen renders of the virtual list: at the top, scrolled,
 //                         with a row selected, and at the end (docs/media.md, "Stills")
 //   Fixture --like-frames <dir>    offscreen frames, 30 a second, of the Like buttons pressed
@@ -263,6 +264,42 @@ enum Bench {
                 guard let r = frame().0.ax.first(where: { $0.control?.label == id })?.rect else { fail("\(id) not in frame") }
                 return r
             }
+            // A Like press (Fixture/Like.lean, Cairn.Optimistic): move, down, up, through the
+            // frame that shows it, which must carry the write; then the write's 200 through its
+            // frame. Every press is on an idle post, so each one sends a write.
+            func likes() {
+                let ref = "^21#1"
+                let like = center(ax(ref))
+                func liked() -> Bool? { frame().0.ax.first(where: { $0.control?.label == ref })?.checked }
+                var press: [Double] = [], ack: [Double] = []
+                for i in 0..<60 {
+                    let before = liked()
+                    let es = click(like)
+                    let t0 = hostNow()
+                    step(es)
+                    let (f, _) = frame()
+                    let t1 = hostNow()
+                    let writes = f.effects.compactMap { e -> UInt32? in
+                        if case let .request(id, .http(method, _, _, _, _, _, _, _)) = e, method == "PUT" { return id }
+                        return nil
+                    }
+                    guard writes.count == 1, let shown = f.ax.first(where: { $0.control?.label == ref })?.checked,
+                          shown != before else { fail("a Like press: \(writes.count) writes, shown \(String(describing: before)) → \(String(describing: liked()))") }
+                    let reply: [Event] = [.reply(id: writes[0], .http(status: 200, headers: [], body: []))]
+                    let press1 = t1 - t0
+                    let a0 = hostNow()
+                    step(reply)
+                    _ = frame()
+                    let a1 = hostNow()
+                    if i >= 10 { press.append(press1 * 1000); ack.append((a1 - a0) * 1000) }
+                }
+                print("  Likes (no items; the virtual list's 10,000 rows below them):")
+                for (label, ms) in [("Like press → frame with its write", press), ("the write's 200 → frame", ack)] {
+                    let s = ms.sorted()
+                    print(String(format: "    %@: p50 %.3f ms, p95 %.3f ms", label, s[s.count / 2], s[s.count * 95 / 100]))
+                }
+            }
+            if n == 10 { likes() }  // with no items, so the Like buttons are in the window
             step(click(center(ax("^2"))))
             var adds: [Event] = []
             for i in 0..<n { adds += [.insertText("Item \(i + 1)"), .key(.enter, Mods())] }

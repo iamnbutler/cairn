@@ -63,6 +63,13 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
   plus both flows on a second Mac. The generator's check that a press delivers exactly that press
   now sets aside an `appear` from the frame after it, as it does a `blur`. See
   docs/conformance.md, "The world".
+- **Benchmarks: optimistic values** ([#256](https://github.com/iamnbutler/cairn/issues/256)).
+  `bench --optimistic` times `Cairn.Optimistic`'s inputs (a set, a write's reply, a lost reply
+  and its read back, views of written and unwritten keys) at 100 to 1,000,000 keys: about 0.1
+  to 0.4 µs an input up to 100,000 keys and 1 µs at 1,000,000, with no copy of the table
+  (`LEAN_ABORT_ON_NONLINEAR=1`). The fixture's bench adds a Like press → frame: 0.2 ms, 2.5% of
+  the 8 ms budget. bench/optimistic.md. `make bench` runs both, and `lake exe bench` builds
+  again (its timed step had missed `fixUI`'s kept scroll boxes).
 
 No claim is new, retired, moved or changed.
 

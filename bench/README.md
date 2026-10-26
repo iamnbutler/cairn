@@ -11,6 +11,7 @@ the date, the commit or release measured and the load the machine was under.
 | [frame.md](frame.md) | frame encoding (Lean) and decoding (Swift) at 1,000 and 10,000 nodes |
 | [fuzz.md](fuzz.md) | the fuzzer's throughput |
 | [layout.md](layout.md) | layout of 100 to 10,000 nodes, and wrapped paragraphs |
+| [optimistic.md](optimistic.md) | `Cairn.Optimistic` at 100 to 1,000,000 keys (set, replies, read-back, views), and press → frame on the fixture's Like |
 | [render.md](render.md) | the Metal renderer |
 | [size.md](size.md) | release binary size, attributed |
 | [surfaces.md](surfaces.md) | the overlay panel at 50 Hz, and the menu |
