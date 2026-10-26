@@ -1,5 +1,17 @@
 [
   {
+    "title": "Cairn 0.5.0 and cairn_atproto 0.3.0, early in M5",
+    "text": [
+      "Cairn 0.5.0 is out on the public registry as iamnbutler/cairn, so Sky's M5 work builds on it from the registry: Cairn.Optimistic (values shown at once, confirmed or rolled back, ^1100–^1114), a fuzz server with a world that fails requests before it acts and loses replies after, menus on controls and in the menu bar, Effect.scrollTo, kept scroll boxes, the Dock badge and announcements. Frames are v13, and every app now links Lean's libStd.",
+      "cairn_atproto 0.3.0 follows on Cairn ^0.5.0, with Fake.server: the fake PDS as a cairn fuzz server whose world is the whole PDS and the host's Keychain. A small app in the package, FakeApp, runs under cairn fuzz with it and checks that the server holds every like it acknowledged while replies are lost and tokens rotate.",
+      "The registry's ledger check accepted 0.4.1 to 0.5.0 (23 new claims, none retired) and cairn_atproto 0.2.0 to 0.3.0, and serves both claims exports for the claim pages."
+    ],
+    "date": "2026-10-26",
+    "published": "2026-10-26T10:06:12Z",
+    "commit": "486e8ce",
+    "milestone": "m5"
+  },
+  {
     "video": "/m/videos/dc420e524d898d55.mp4",
     "poster": "/m/videos/dc420e524d898d55.jpg",
     "title": "Likes that roll back",

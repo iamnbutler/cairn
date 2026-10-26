@@ -68,7 +68,7 @@ No claim is new, retired, moved or changed.
 
 ## v0.5.0
 
-26 October 2026.
+26 October 2026, at commit `486e8ce`.
 
 A minor version, early in M5, for Sky's work on acting on Bluesky: optimistic values
 (`Cairn.Optimistic`), a fuzz server with a world, menus on controls and in the menu bar,
