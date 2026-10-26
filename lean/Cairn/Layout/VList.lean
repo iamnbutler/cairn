@@ -1,9 +1,9 @@
 import Cairn.Layout.Proofs
-import Cairn.UI.VList
+import Cairn.VList
 
 /-! # Virtual lists: what the layout does with them
 
-`Cairn.UI.VList` proves which rows a virtual list builds and that, in the heights it lays out
+`Cairn.VList` proves which rows a virtual list builds and that, in the heights it lays out
 by, each row starts where the one before ends (`Model.top_succ`). This file proves the layout's
 side: a column with no gap, justified to the start, as every `VList.node` box is (`node_eq`),
 lays its children one under the other, each starting where the one before it ends, the first at

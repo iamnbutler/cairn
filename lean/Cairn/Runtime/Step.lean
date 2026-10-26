@@ -2,7 +2,7 @@ module
 
 public import Cairn.App
 public import Cairn.UI.Hit
-public import Cairn.UI.VList
+public import Cairn.VList
 public import Cairn.Layout.Core
 public import Cairn.Runtime.World
 

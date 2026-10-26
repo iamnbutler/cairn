@@ -92,8 +92,8 @@ deriving Repr, BEq, DecidableEq, Inhabited
 
 /-! ### Virtual lists: what the runtime knows of one
 
-The data a virtual list (`Cairn.UI.VList`, docs/layout.md, "Virtual lists") and the runtime pass
-each other. The logic is in `Cairn.UI.VList`. -/
+The data a virtual list (`Cairn.VList`, docs/layout.md, "Virtual lists") and the runtime pass
+each other. The logic is in `Cairn.VList`. -/
 
 namespace VList
 
@@ -185,7 +185,7 @@ structure Style where
   `UI.scrollOf` (`UI.scrolling` sets both fields). Usually a `place` claim's ref. A box with
   `scroll` and no `scrollRef` scrolls only as far as the view says. -/
   scrollRef : Option ControlRef := none
-  /-- A virtual list's box (`Cairn.UI.VList`): which rows it laid and the heights it laid them
+  /-- A virtual list's box (`Cairn.VList`): which rows it laid and the heights it laid them
   by. The runtime records the rows' real heights from it after every layout. Set by `VList.node`
   only. -/
   rows : Option VList.Info := none

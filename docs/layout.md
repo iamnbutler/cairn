@@ -141,7 +141,7 @@ machine, or an `assume` about the host, and a framework theorem has no machine. 
 
 ## Virtual lists
 
-`VList.node` (`Cairn/UI/VList.lean`) is a scroll box over a list the view names in full but
+`VList.node` (`Cairn/VList.lean`) is a scroll box over a list the view names in full but
 builds only in part: the rows that meet the box, widened by `overscan` points (200 by default)
 above and below, between a spacer as tall as the rows above them and one as tall as the rows
 below. The view passes every row's key, in order, and a function that builds the row with a key:
@@ -173,7 +173,7 @@ shows exactly when its row is laid (docs/fuzz.md).
 - **The anchor.** The runtime keeps the first row showing still on screen when rows are inserted
   or heights change above it (docs/runtime.md, "Virtual lists").
 
-Theorems, for every list, every `UI` and every row function (`Cairn/UI/VList.lean`,
+Theorems, for every list, every `UI` and every row function (`Cairn/VList.lean`,
 `Cairn/Layout/VList.lean`):
 
 - `node_rows`: the box builds row `i` if and only if its extent `[top i, top i + height i)`, in

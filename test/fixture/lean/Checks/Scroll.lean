@@ -3,7 +3,7 @@ import Cairn.Layout
 
 /-! # The fixture's list: claims ^12, ^13, ^19 and ^20 (^11 and ^15 retired)
 
-Cairn's scroll-box and virtual-list theorems (`Cairn.Layout.Scroll`, `Cairn.UI.VList`,
+Cairn's scroll-box and virtual-list theorems (`Cairn.Layout.Scroll`, `Cairn.VList`,
 `Cairn.Layout.VList`), stated for the fixture's virtual list at the offset the runtime gives it,
 in every state, for any text metrics, any `UI` and any window. In their own file because the
 layout proofs aren't in a `module`, and `Fixture` is one (the host links it). -/

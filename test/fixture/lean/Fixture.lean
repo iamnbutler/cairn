@@ -34,7 +34,7 @@ height whose offset the runtime owns, ending in a line that hears `appear`, with
 | ^20 | invariant | the rows laid are exactly those that meet the box widened by the overscan, and no more than its height allows |
 
 ^12, ^13, ^19 and ^20 are Cairn's scroll-box and virtual-list theorems (`Cairn.Layout.Scroll`,
-`Cairn.UI.VList`, `Cairn.Layout.VList`) stated for this list; they and their proofs are in
+`Cairn.VList`, `Cairn.Layout.VList`) stated for this list; they and their proofs are in
 `Checks/Scroll.lean`, which can import the layout proofs.
 
 Its claims are `fixture^N`, in test/fixture/claims.lock. None of them is in Cairn's ledger, so
