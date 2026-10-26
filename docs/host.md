@@ -299,10 +299,10 @@ in scalar indices. Chromium's browser process does the same.
   | tab | radio button with subrole `AXTabButton` |
   | link | `.link` |
   | group | `.group` |
-  | scrollArea | `.scrollArea`; children with an empty rect, and all below them, are left out |
+  | scrollArea | `.scrollArea`; children with an empty rect, and all below them, are left out (trusted ^1021, fuzzed as `ax.scroll`) |
 
 - **Attributes.** The identifier is the ControlRef label. A checkbox's value is 1 or 0; a text
-  field's value is its text; a secure field has no value and an empty selected text. The text-field range attributes are in UTF-16, converted through
+  field's value is its text; a secure field (subrole `AXSecureTextField`) has no value, no characters and an empty selected text (trusted ^1022, fuzzed as `ax.secure`). The text-field range attributes are in UTF-16, converted through
   `TextIndex`.
 - **Secure input.** While the applied frame's text input is a secure field, the window is key and
   the view is live, the host holds the system's secure event input on (`SecureInputGate`;
