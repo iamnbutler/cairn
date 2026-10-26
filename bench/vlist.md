@@ -18,8 +18,53 @@ the offset. A checksum over every rect of the laid tree is taken inside the timi
   screen still. 50 inserts, the first 5 dropped.
 - **plain scroll box**: the same rows as children of an ordinary scroll box (`UI.scrolling`), all
   of them laid on every step, for comparison.
+- **flings, by phase**: whole frames, as the host's Lean thread runs them for one batch of input
+  (`Runtime.stepBytes`, then `Runtime.frameBytes`): a pointer move and a wheel delta, the two
+  `Runtime.frameEvents`, then the frame encoded. The deltas are a fast trackpad flick's momentum
+  at 120 Hz, 120 points falling 4% a frame to 1 (117 frames, about 2,900 points); two flings
+  down from the top and two back up, 468 frames. `timedStep` is `Runtime.step` written out with a
+  clock between its phases, and the first five frames are checked against `Runtime.steps`:
+  - **update**: route the events, deliver their actions and replies to `update`, diff the
+    subscriptions;
+  - **view**: `app.view`;
+  - **layout**: the layout of that view;
+  - **settle**: the runtime's record of the list (`VList.record`: heights, offset correction)
+    and the repair of hover, focus and scroll (`fixUI`), and any further view and layout until
+    it stops changing;
+  - **encode**: `Runtime.frameBytes`.
 
 ## Numbers
+
+### Frames by phase, during flings
+
+Apple M4 Max (Mac16,6), macOS 27.0.1, Lean 4.35.0, 2026-10-26, Cairn at `535473d`, release
+build, `LEAN_ABORT_ON_NONLINEAR=1`, load average 5–6 from other agents' builds. Two runs agreed
+within 4%; this is the second. Medians per phase; a frame's p50 and p95. In ms.
+
+| Rows | Frame p50 / p95 | update | view | layout | settle | encode |
+|---:|---:|---:|---:|---:|---:|---:|
+| 100 | 0.073 / 0.094 | 0.006 | 0.007 | 0.011 | 0.035 | 0.014 |
+| 1,000 | 0.190 / 0.210 | 0.009 | 0.037 | 0.013 | 0.115 | 0.016 |
+| 10,000 | 0.190 / 0.197 | 0.009 | 0.038 | 0.013 | 0.116 | 0.016 |
+| 100,000 | 0.189 / 0.199 | 0.009 | 0.038 | 0.013 | 0.115 | 0.015 |
+
+| Rows | Plain scroll box, frame p50 / p95 | update | view | layout | settle | encode |
+|---:|---:|---:|---:|---:|---:|---:|
+| 100 | 0.118 / 0.199 | 0.024 | 0.003 | 0.042 | 0.012 | 0.044 |
+| 1,000 | 1.463 / 2.238 | 0.266 | 0.049 | 0.515 | 0.174 | 0.403 |
+| 10,000 | 15.24 / 22.93 | 2.966 | 0.485 | 5.115 | 1.880 | 4.121 |
+
+Flat in the number of rows from 1,000 to 100,000: a whole frame is 0.19 ms, 2.4% of the 8 ms
+budget at 10,000 rows. Settle is most of it (the record's passes over the kept heights, below);
+view builds only the window of rows; layout lays only them. A list of 100 rows is all on screen
+after a few frames and costs less. The plain scroll box is linear in every phase, and its encode
+is too (every row's draws and accessibility nodes go in the frame): 15 ms a frame at 10,000 rows.
+
+What the host adds (bench/frame.md): Swift decodes a frame at about 20 ns a node, and a window of
+these rows is a few dozen nodes. An app's frames, with its text measured by Core Text, images and
+replies arriving, are in Sky's bench ([iamnbutler/sky bench/README.md](https://github.com/iamnbutler/sky/blob/main/bench/README.md)).
+
+### Single steps
 
 Apple M4 Max (Mac16,6), 2026-10-25, release build (Lake's default `-O3`),
 `LEAN_ABORT_ON_NONLINEAR=1`, load average about 4 from other agents' builds. Two runs agreed
