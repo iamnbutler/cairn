@@ -1,5 +1,17 @@
 [
   {
+    "title": "Cairn 0.4.0: runtime scrolling, Action.appear, virtual lists and package-scoped fuzzing",
+    "text": [
+      "Cairn 0.4.0 is out on the public registry as iamnbutler/cairn. Scroll offsets belong to the runtime: a box names itself with Style.scrollRef, the runtime keeps its offset in UI.scroll, moves it for the wheel, trackpad and scroll keys, and clamps it after every step, and a scroll never reaches update (#225). A control with appear := true is told when it comes on screen, through Action.appear. The host's scroll sign is a new assume claim, ^1012.",
+      "VList.node lays out only the rows of a list that meet its box, so a runtime step costs about the same at 1,000 rows as at 100,000, with proofs that the rows built are exactly those in view and that the first row showing stays still when rows are inserted above it (#231). Fuzz targets are scoped by package: cairn fuzz runs only a package's own machines unless given --deps, and two targets with one name fail to compile (#224).",
+      "The registry's ledger check accepted 0.3.0 to 0.4.0: the only change to the ledger is ^1012. It is a minor release because Event, Action and Trigger gain constructors, so exhaustive matches need new cases; Style and UI gain defaulted fields, and settleFuel is 4. The registry checked the claims export, 54 claims, against the ledger and serves it for the claim pages."
+    ],
+    "date": "2026-10-25",
+    "published": "2026-10-26T00:19:46Z",
+    "commit": "f107007",
+    "milestone": "m4"
+  },
+  {
     "image": "/m/images/990f98ad7fd212e4.png",
     "title": "Sky: a slow sign-in",
     "caption": "After a few seconds Sky says it's still signing in and offers Cancel. Offscreen render, fake PDS.",
