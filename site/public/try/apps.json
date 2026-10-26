@@ -1,0 +1,49 @@
+{
+	"source": {
+		"repo": "iamnbutler/cairn_examples",
+		"commit": "df45306a6bed8230d3d3469e3e815dfcefd0bfb2",
+		"version": "0.2.0",
+		"cairn": "v0.3.0"
+	},
+	"apps": {
+		"basics": {
+			"app": "Basics",
+			"graph": "/m/try/basics/4280f748c07e2fef.json",
+			"img": "/m/try/img/",
+			"first": "9195e8d6d633.webp",
+			"width": 472,
+			"height": 311,
+			"states": 200,
+			"edges": 1720,
+			"images": 169,
+			"bytes": 2834571,
+			"generated": "2026-10-26T14:38:52.317Z"
+		},
+		"counter": {
+			"app": "Counter",
+			"graph": "/m/try/counter/19b6931305aa96d4.json",
+			"img": "/m/try/img/",
+			"first": "30fda2a01a1d.webp",
+			"width": 432,
+			"height": 208,
+			"states": 21,
+			"edges": 41,
+			"images": 21,
+			"bytes": 83514,
+			"generated": "2026-10-26T14:38:13.969Z"
+		},
+		"todo": {
+			"app": "Todo",
+			"graph": "/m/try/todo/457726214ebc383d.json",
+			"img": "/m/try/img/",
+			"first": "875a0974435b.webp",
+			"width": 560,
+			"height": 316,
+			"states": 400,
+			"edges": 5007,
+			"images": 332,
+			"bytes": 3838663,
+			"generated": "2026-10-26T14:39:49.813Z"
+		}
+	}
+}

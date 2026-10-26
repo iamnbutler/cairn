@@ -24,14 +24,14 @@ The example apps are one package, `cairn_examples`. Their claims kept the number
 the apps were in Cairn's repository, before 0.3.0: TodoMVC's new-todo field, once `cairn^202`,
 is `cairn_examples^202`.
 
-| App | What it shows | Claims |
-|---|---|---|
-| Counter | two moves, two flows, presence and pressability proved in every state, a retired claim | [\^1–^6](/packages/cairn_examples/claims/3/) |
-| Basics | a text field, a list with keyed controls, wrapped text, an invariant | [\^101–^109](/packages/cairn_examples/claims/106/) |
-| TodoMVC | the full TodoMVC spec: editing in place, filters, double clicks, focus | [\^201–^225](/packages/cairn_examples/claims/201/) |
-| Clock | effects: time, timers, files, subscriptions | [\^401–^409](/packages/cairn_examples/claims/406/) |
-| Tray | a menu bar item with native menus and an overlay panel | [\^450–^462](/packages/cairn_examples/claims/450/) |
-| Gallery | images, loads in flight, a grid that fits every window size | [\^501–^513](/packages/cairn_examples/claims/503/) |
+| App | What it shows | Claims | In the browser |
+|---|---|---|---|
+| Counter | two moves, two flows, presence and pressability proved in every state, a retired claim | [\^1–^6](/packages/cairn_examples/claims/3/) | [Try Counter](/try/counter/) |
+| Basics | a text field, a list with keyed controls, wrapped text, an invariant | [\^101–^109](/packages/cairn_examples/claims/106/) | [Try Basics](/try/basics/) |
+| TodoMVC | the full TodoMVC spec: editing in place, filters, double clicks, focus | [\^201–^225](/packages/cairn_examples/claims/201/) | [Try TodoMVC](/try/todo/) |
+| Clock | effects: time, timers, files, subscriptions | [\^401–^409](/packages/cairn_examples/claims/406/) | |
+| Tray | a menu bar item with native menus and an overlay panel | [\^450–^462](/packages/cairn_examples/claims/450/) | |
+| Gallery | images, loads in flight, a grid that fits every window size | [\^501–^513](/packages/cairn_examples/claims/503/) | |
 
 Each app is an executable of the package: in a checkout of it, `cairn build --app <App>`, then
 `swift run Cairn<App>`.
