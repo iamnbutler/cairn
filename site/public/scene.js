@@ -495,8 +495,10 @@ function dissolve(L, g, bg) {
   // sitting on it with a hard edge. Its sides stay straight.
   if (g.plateHalf) {
     const R = 14, top = g.plateTop, half = g.plateHalf;
-    for (let y = Math.max(0, top - R); y < top; y++) for (let x = Math.max(0, cx - half); x < Math.min(W, cx + half); x++) {
+    // It runs a couple of pixels under the sheet so rounding never leaves a seam at its edge.
+    for (let y = Math.max(0, top - R); y < top + 2; y++) for (let x = Math.max(0, cx - half); x < Math.min(W, cx + half); x++) {
       const d = top - y;
+      if (d <= 1) { L.set(x, y, bg); continue; }
       const t = 1 - d / R;
       if (streak(x, y, smoothT(t) * 0.92, 3, 9)) L.set(x, y, bg);
       else if (streak(x + 23, y, Math.sin(Math.PI * t) * 0.3, 4, 12)) {
