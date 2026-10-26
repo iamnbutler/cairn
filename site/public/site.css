@@ -87,7 +87,7 @@ p { margin: 0 0 14px; }
 .meta .commit { font: 0.9em var(--mono); align-self: center; } /* a hash mixes letters and digits; all of it in mono */
 /* The homepage's text sits on a sheet of page colour laid on the meadow, so it never runs over
    the scene; the meadow carries on either side and fades into mist behind it (scene.js). */
-main.sheet { --s: var(--px); max-width: 808px; margin-top: 28px; padding: 40px 40px 64px; background: var(--bg); }
+main.sheet { --s: var(--px); max-width: 808px; margin-top: 124px; padding: 40px 40px 64px; background: var(--bg); }
 main.sheet { clip-path: polygon(0 calc(var(--s) * 2), var(--s) calc(var(--s) * 2), var(--s) var(--s), calc(var(--s) * 2) var(--s), calc(var(--s) * 2) 0, calc(100% - var(--s) * 2) 0, calc(100% - var(--s) * 2) var(--s), calc(100% - var(--s)) var(--s), calc(100% - var(--s)) calc(var(--s) * 2), 100% calc(var(--s) * 2), calc(100% + 50vw) calc(var(--s) * 2), calc(100% + 50vw) 100%, -50vw 100%, -50vw calc(var(--s) * 2)); } /* wide sides let the claim figure break out */
 
 /* Figures: one ink (the text colour), a tint for the proved part, the accent for "proved".

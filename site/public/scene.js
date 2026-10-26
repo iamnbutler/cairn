@@ -491,13 +491,12 @@ function dissolve(L, g, bg) {
       }
     }
   }
-  // Around the sheet's top and sides the land thins into mist, so the page rises out of it
-  // instead of sitting on it with a hard edge.
+  // Above the sheet's top the land thins into mist, so the page rises out of it instead of
+  // sitting on it with a hard edge. Its sides stay straight.
   if (g.plateHalf) {
     const R = 14, top = g.plateTop, half = g.plateHalf;
-    for (let y = Math.max(0, top - R); y < H; y++) for (let x = Math.max(0, cx - half - R); x < Math.min(W, cx + half + R); x++) {
-      const d = Math.max(top - y, Math.abs(x - cx) - half);
-      if (d < 0 || d >= R) continue;
+    for (let y = Math.max(0, top - R); y < top; y++) for (let x = Math.max(0, cx - half); x < Math.min(W, cx + half); x++) {
+      const d = top - y;
       const t = 1 - d / R;
       if (streak(x, y, smoothT(t) * 0.92, 3, 9)) L.set(x, y, bg);
       else if (streak(x + 23, y, Math.sin(Math.PI * t) * 0.3, 4, 12)) {
@@ -609,10 +608,10 @@ export function mountScene(canvas, layout = {}) {
     const key = JSON.stringify([innerWidth, k]);
     if (!force && key === lastKey) return;
     lastKey = key;
-    // The mist starts a short way into the sheet (about 140px, a little below the lede), or two
+    // The mist starts a short way into the sheet (about 165px, a little below the lede), or two
     // thirds of the way down a shorter feature, or a little below the header before it loads.
     const fadeBand = 48;
-    const fadeY = k.top + Math.min(Math.round(k.height * 0.62), Math.round(140 / s) + fadeBand) + (k.height ? 0 : 30);
+    const fadeY = k.top + Math.min(Math.round(k.height * 0.62), Math.round(165 / s) + fadeBand) + (k.height ? 0 : 30);
     const W = Math.ceil(canvas.clientWidth / s), cx = W >> 1, H = fadeY + fadeBand + 24;
     canvas.style.height = `${H * s}px`;
     canvas.width = W; canvas.height = H;
