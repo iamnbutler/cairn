@@ -173,3 +173,5 @@
 1011	assume	active	-	The image cache reports every image it drops, after it is gone
 1012	assume	active	-	The host reports scrolls where they happen, toward the end positive
 1020	assume	active	-	Secure event input is on exactly while a secure field has focus
+1021	assume	active	-	Assistive apps reach only what a scroll area shows
+1022	assume	active	-	A secure field shows assistive apps nothing typed

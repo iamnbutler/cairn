@@ -256,4 +256,14 @@ assume ^1020 hostSecureInput "Secure event input is on exactly while a secure fi
   does "The host turns the system's secure event input on (EnableSecureEventInput) when the applied frame's text input is a secure field, its window is key and the view is live, and off (DisableSecureEventInput) when any of those stops, the view is shut down or released; it calls them in pairs, never twice the same way in a row, so it never leaves secure input on. While it is on, no other process can read the keystrokes."
   check "text.secure-input"
 
+/-! The accessibility mirror under scroll areas and on secure fields (docs/host.md, "Accessibility"). -/
+
+assume ^1021 hostAxScroll "Assistive apps reach only what a scroll area shows" where
+  does "The host's accessibility tree holds exactly the frame's AX nodes that are not scrolled out, each under its frame parent in frame order: a node is scrolled out when it or a node above it has an empty rect with a scroll area above that (the frame gives each node its visible rect, Frame.ofLaid). A scroll area is an AXScrollArea; a hit test answers only elements in the tree; the focused element is the focused node's even when it is scrolled out."
+  check "ax.scroll"
+
+assume ^1022 hostAxSecure "A secure field shows assistive apps nothing typed" where
+  does "A frame node marked secure is an AXTextField with subrole AXSecureTextField, no value, no characters, no selected text and an empty string for every range, whatever its node or the text input holds; no other element shows its text. The debug socket's description of an http request shows no header value, body or secret, and no URL when the request is redact."
+  check "ax.secure"
+
 end Cairn.Fuzz.Trusted.Claims

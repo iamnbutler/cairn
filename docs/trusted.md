@@ -6,9 +6,33 @@ entries in the section of the workstream that introduces the assumption.
 
 Items marked **Fuzzed** are also checked by the trusted-base fuzzer (`make fuzz-trusted`,
 docs/fuzz.md "Trusted base"), against Lean's proved side or an independent oracle, and are
-declared as `assume` claims ^7, ^214, ^901–^915, ^940–^944, ^960–^975, ^1000–^1011 and ^1020 in `lean/Cairn/Fuzz/Trusted/Claims.lean`, each naming its
+declared as `assume` claims ^7, ^214, ^901–^915, ^940–^944, ^960–^975, ^1000–^1012 and ^1020–^1022 in `lean/Cairn/Fuzz/Trusted/Claims.lean`, each naming its
 check; `build/fuzz/trusted.json` holds the evidence. Items not marked are checked only by the
 tests and reviews they list.
+
+## New in M4
+
+Every assumption M4 (Sky, docs/goals/m4.md) added to the trusted base, and the trusted fuzzer's
+check for each (`make fuzz-trusted`). Each has its entry below.
+
+| Claim | Assumption | Fuzz check |
+|---|---|---|
+| ^972 `hostKeychain` | The Keychain keeps what it was given for this app, one Security call at a time | `effects.secret.keychain` (with `keychain.concurrent`, live) |
+| ^973 `hostCapture` | Captured reply fields go to the Keychain and never to Lean | `effects.http.capture` |
+| ^974 `hostHttpSecret` | `http` sends a secret header from the Keychain as from the environment, and a request with a secret never follows a redirect | `effects.http` |
+| ^975 `hostEnvSecret` | An environment secret is read from the environment or its file, and never shown (reissues ^971 now that a secret can be a Keychain item) | `effects.secret` |
+| ^1012 `hostScroll` | The host reports scrolls where they happen, toward the end positive | `pointer.scroll` |
+| ^1020 `hostSecureInput` | Secure event input is on exactly while a secure field has focus | `text.secure-input` |
+| ^1021 `hostAxScroll` | Assistive apps reach only what a scroll area shows | `ax.scroll` |
+| ^1022 `hostAxSecure` | A secure field shows assistive apps nothing typed, and the debug socket shows no secret | `ax.secure` |
+
+What M4 added on the Lean side is proved, not assumed: the clamp on every scroll offset, a
+scroll never reaching `update`, the rows a virtual list lays and its anchor, `Action.appear`,
+secure fields' frames and dumps (`SecureField.view_agree`, `Dump.secure_canvas`), and that no
+Lean value holds a token. Secure fields' undo, copy and cut are Lean's (`SecureField`). One
+M4 change in the host is reviewed by hand and not fuzzed: its text-input shadow writes a bullet
+for each scalar typed into a secure field (`FieldState.secure`), as Lean's frame does, so its
+prediction holds no typed text; `text.shadow` fuzzes the shadow on plain fields only.
 
 ## Renderer and text (workstream F)
 
@@ -255,20 +279,16 @@ See [host.md](host.md) for how each piece works.
 - **AX mirror.** The `NSAccessibilityElement` tree is a translation of the frame's AX nodes:
   roles, labels, values, focus and frames. The table in host.md lists the role mapping. It is
   reviewed by hand.
-- **Scrolled-out children.** A scroll box's node has role `scrollArea` (`AXScrollArea`). The
-  frame keeps a node for every control, including those scrolled out of view, whose visible
-  rect is then empty (`controls_ofLaid`); the mirror leaves out every node with an empty rect
-  under a scroll area, and everything under such a node (`AXMirror.hidden`, tested in
-  `AXKeyTests`), so VoiceOver reaches only what is on screen. That a hidden element is never
-  answered is reviewed by hand.
+- **Scrolled-out children.** A scroll box's node is an `AXScrollArea`, and the mirror leaves
+  out what is scrolled out of it: `assume` ^1021, fuzzed. See "Accessibility of scroll areas and
+  secure fields (M4)" below.
 - **ControlRef uniqueness.** The mirror assumes a ControlRef labels at most one node per
   frame. On duplicates, lookups find the first node.
 - **Screen frames.** AX frames come from the view's rect through `convert(to: nil)` and
   `window.convertToScreen`.
-- **Secure fields.** A frame node with `secure` set is an `AXTextField` with subrole
-  `AXSecureTextField`, no value and an empty selected text, so VoiceOver and other assistive
-  apps get its length (the bullets) and nothing typed. Reviewed by hand and checked by the
-  fixture's self test (`^9`); what the frame holds is Lean's (`FieldView.secure`, docs/text.md).
+- **Secure fields.** A frame node with `secure` set is an `AXSecureTextField` that shows
+  nothing typed: `assume` ^1022, fuzzed. See "Accessibility of scroll areas and secure fields
+  (M4)" below.
 
 ### Output
 
@@ -720,6 +740,72 @@ accepts are refused by the scan (`invalid`).
   unescaped core) is in any reply, failure message, the events' bytes (what Lean decodes), the
   event dump or the request's debug description. Mutations checked by hand: not blanking, or
   storing one capture too few, fail the check.
+
+## Accessibility of scroll areas and secure fields (M4)
+
+The frame gives every node its visible rect, so a control scrolled out of its box has an empty
+one, and a secure field's node and text input hold bullets (Lean's, `FieldView.secure`). What
+assistive apps are shown of either is the host's mirror (`AXMirror`, docs/host.md
+"Accessibility"). The fuzz suite is `ax` (`host/Tests/CairnFuzzTrusted/AXSuite.swift`).
+
+### Assistive apps reach only what a scroll area shows (`assume`, ^1021)
+
+**Statement.** The tree an assistive app walks from the view (`accessibilityChildren`) holds
+exactly the frame's nodes that are not scrolled out, each once, under its frame parent and in
+frame order, with that parent as its `accessibilityParent`. A node is scrolled out when it, or
+a node above it, has an empty rect and a scroll area somewhere above that. A scroll area is an
+`AXScrollArea`. `accessibilityHitTest` answers the view or an element in the tree whose frame
+holds the point. The focused element is the focused node's even when it is scrolled out, as
+typing still goes to it; its parent is then the view, which doesn't list it.
+
+**Also assumed.** Frames list a parent before its children (Lean's `Frame.ofLaid` does; a
+later parent is ignored). A scrolled-out element is kept, not destroyed, so VoiceOver's cursor
+on it survives scrolling back; that VoiceOver handles a focused element outside the tree is
+Apple's.
+
+**Trusted code.** `host/Sources/CairnHost/AXMirror.swift` (`update`, `hidden`, `hitTest`),
+`host/Sources/CairnHost/HostView.swift` (`accessibilityChildren`,
+`accessibilityFocusedUIElement`, `accessibilityHitTest`).
+
+**Evidence.**
+- **Fuzzed** (^1021 `ax.scroll`): trees of 1–40 nodes of every role, scroll areas nested
+  anywhere, applied as 1–4 frames (the same tree with new rects: empty with a width, a height or
+  both 0, or visible; one focused node or none) to a real `HostView` in a window never shown,
+  through an `Engine` as the app's frames are. After each frame the suite walks the tree through
+  AppKit's public accessibility API and compares it with an oracle that walks each node's
+  parents itself; 8 hit tests at random points of the view; the focused element. Mutations
+  checked by hand: hiding only nodes with both sides 0 fails it.
+- **Tested**: `AXKeyTests` (`AXMirror.hidden`); the fixture's self test scrolls its rows and
+  presses those it shows.
+
+### A secure field shows assistive apps nothing typed (`assume`, ^1022)
+
+**Statement.** A node marked `secure` is an `AXTextField` with subrole `AXSecureTextField`:
+no value, no characters, no selected text, an empty selected and visible range, and an empty
+string for any range, whatever its node's value or the text input holds, so not even the bullets
+reach an assistive app. No other element shows its text. The debug socket's description of an
+`http` request (`DebugJSON.describe`) shows its method, its URL unless it is `redact`, the
+secret's header name and the number of captures, and never a header value, body or secret.
+
+**Also assumed.** That the system's own secure-field handling (VoiceOver announcing "secure text
+field", not echoing keys) follows the subrole, as it does for `NSSecureTextField`. What the frame
+and the dumps hold is Lean's and proved (docs/text.md, "Secure fields").
+
+**Trusted code.** `host/Sources/CairnHost/AXMirror.swift` (`AXNodeElement`: `accessibilitySubrole`,
+`accessibilityValue`, `text`, `accessibilitySelectedTextRange`),
+`host/Sources/CairnHost/DebugJSON.swift` (`request`).
+
+**Evidence.**
+- **Fuzzed** (^1022 `ax.secure`): the same trees, half their text fields secure, with planted
+  text in each secure node's value and in the focused secure field's text input (where Lean
+  would put bullets); every attribute of every element in the tree and of the focused element is
+  searched for it, and each secure element's role, subrole, value, count and ranges checked. A
+  plain field's value must be its text, so a check that read nothing would fail. Four `http`
+  requests a case, with planted header values and bodies, redacted or not (a planted URL when
+  redacted), with or without a Keychain secret and captures, through `DebugJSON.describe`.
+  Mutations checked by hand: giving a secure field its node's value fails it.
+- **Tested**: the fixture's self test (`^9`) checks the Passcode field's AX element is an
+  `AXSecureTextField` with no value.
 
 ## Surfaces: menus and overlay panels (workstream S)
 

@@ -63,7 +63,14 @@ Not yet released.
   check (`keychain.concurrent`), skipped under `CI` like the rest of the live part. See
   docs/effects.md and docs/trusted.md (^972).
 
-No claim was retired, moved or changed, and none is new, so it is a patch release. Moving from
+- **The accessibility mirror's M4 assumptions are claims, fuzzed**. Two new `assume` claims
+  replace what was reviewed by hand: ^1021 (`hostAxScroll`), assistive apps reach only what a
+  scroll area shows, and ^1022 (`hostAxSecure`), a secure field shows them nothing typed and the
+  debug socket's request log shows no secret. The trusted fuzzer's new `ax` suite checks both
+  (`ax.scroll`, `ax.secure`) on a real `HostView` through AppKit's accessibility API.
+  docs/trusted.md gains a table of every assumption M4 added and its fuzz check.
+
+Two claims are new (^1021, ^1022); none was retired, moved or changed, so it is a patch release. Moving from
 v0.4.0 is a change of tag in the lakefile and `Package.swift`.
 
 ## v0.4.0
