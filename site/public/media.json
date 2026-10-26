@@ -1,5 +1,38 @@
 [
   {
+    "image": "/m/images/86036cc2ce33030e.png",
+    "title": "Sky: refresh keeps the reader",
+    "caption": "Three posts arrived and Refresh put them above: the post at the top of the view didn't move, and Sky offers ↑ 3 new posts to go back to the top. Offscreen render, fake PDS.",
+    "date": "2026-10-25",
+    "published": "2026-10-26T01:39:56Z",
+    "commit": "96355c0",
+    "width": 1200,
+    "height": 1640,
+    "milestone": "m4"
+  },
+  {
+    "image": "/m/images/3b7463082057dda1.png",
+    "title": "Sky: scrolled to the end",
+    "caption": "Scrolling to the end shows the list's end row; its appear loads the next page (30 → 43 posts). Reposts say who reposted; link cards are words for now. Offscreen render, fake PDS.",
+    "date": "2026-10-25",
+    "published": "2026-10-26T01:39:54Z",
+    "commit": "96355c0",
+    "width": 1200,
+    "height": 1640,
+    "milestone": "m4"
+  },
+  {
+    "image": "/m/images/3615ff776ae0a502.png",
+    "title": "Sky: the home feed",
+    "caption": "Posts in Cairn's virtual list: avatars and images load from the fake PDS into fixed-size placeholders, text wraps, counts under each post. Offscreen render, fake PDS.",
+    "date": "2026-10-25",
+    "published": "2026-10-26T01:39:52Z",
+    "commit": "96355c0",
+    "width": 1200,
+    "height": 1640,
+    "milestone": "m4"
+  },
+  {
     "title": "Cairn 0.4.0: runtime scrolling, Action.appear, virtual lists and package-scoped fuzzing",
     "text": [
       "Cairn 0.4.0 is out on the public registry as iamnbutler/cairn. Scroll offsets belong to the runtime: a box names itself with Style.scrollRef, the runtime keeps its offset in UI.scroll, moves it for the wheel, trackpad and scroll keys, and clamps it after every step, and a scroll never reaches update (#225). A control with appear := true is told when it comes on screen, through Action.appear. The host's scroll sign is a new assume claim, ^1012.",
