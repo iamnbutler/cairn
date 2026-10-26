@@ -27,6 +27,7 @@ way. The lint, axiom audit and kernel replay have no `cairn` command yet; see
 <div class="shelf">
 <a href="/docs/guide/"><b>Building an app</b><span>From a first window to effects and shipping, one chapter at a time.</span></a>
 <a href="/docs/examples/"><b>Apps on Cairn</b><span>The example apps: packages of their own, each with its claims.</span></a>
+<a href="/try/"><b>Try an app</b><span>Counter, Basics and TodoMVC in the browser, every control with its claim id and evidence.</span></a>
 </div>
 
 ## Reference

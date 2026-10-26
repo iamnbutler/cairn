@@ -1,5 +1,5 @@
-// "Try it" data (docs/try.md): an app's states, explored ahead of time. The site built pages from
-// it for the examples until 0.3.0.
+// "Try it" data (docs/try.md): an app's states, explored ahead of time, for the site's /try/
+// pages (`make try`, then tools/try/put.ts).
 //
 // Run in an app's package, with the Cairn checkout Lake uses:
 //
@@ -7,7 +7,8 @@
 //       what <App> --try-capture may do to each claim's controls, and the walk's bounds
 //   bun $CAIRN/tools/try/try.ts build --app <App> --dir build/try/<App> --out <out>
 //       <dir>/claims.json and <dir>/capture/ (try.json and a PNG per state) → <out>/graph.json
-//       and <out>/img/*.webp; statuses from ./claims.lock (--root <package> for another)
+//       and <out>/img/*.webp; statuses from ./claims.lock (--root <package> for another), ids as
+//       <scope>^N (--scope: the package's claim scope, default cairn)
 //
 // The actions come from the claims export: a move's triggers, and for a text field the texts its
 // flows' witnesses type. Every frame is the app's own (host/Sources/CairnCapture/Explore.swift);
@@ -35,7 +36,7 @@ type Action = { label: string; steps: { trigger: string; op?: Op }[] };
 const { values: opts, positionals } = parseArgs({
 	allowPositionals: true,
 	options: {
-		app: { type: "string" }, claims: { type: "string" }, dir: { type: "string" }, out: { type: "string" }, root: { type: "string", default: "." },
+		app: { type: "string" }, claims: { type: "string" }, dir: { type: "string" }, out: { type: "string" }, root: { type: "string", default: "." }, scope: { type: "string", default: "cairn" },
 		depth: { type: "string" }, states: { type: "string" }, texts: { type: "string" },
 	},
 });
@@ -83,6 +84,7 @@ else fail("usage: try.ts script --claims <claims.json> [--depth N] [--states N] 
 
 function build() {
 	const app = opts.app || fail("--app <App>");
+	const scope = opts.scope!;
 	const dir = resolve(opts.dir || fail("--dir <dir>"));
 	const out = resolve(opts.out || fail("--out <dir>"));
 	const { claims } = json<{ claims: Claim[] }>(join(dir, "claims.json"));
@@ -125,13 +127,14 @@ function build() {
 		const row = lock.get(c.id);
 		const r = reading({ id: c.id, kind: c.kind, status: row?.status ?? "active", detail: c });
 		info[c.id] = {
-			ref: `cairn^${c.id}`, kind: c.kind, title: c.title, does: c.does, sees: c.sees, place: c.place, reading: r,
-			theorems: c.evidence.map((e) => ({ theorem: e.theorem.replace(/^Examples\./, ""), proved: !!e.proved && !(e.extraAxioms ?? []).length })),
+			ref: `${scope}^${c.id}`, kind: c.kind, title: c.title, does: c.does, sees: c.sees, place: c.place, reading: r,
+			theorems: c.evidence.map((e) => ({ theorem: e.theorem, proved: !!e.proved && !(e.extraAxioms ?? []).length })),
 		};
 	}
 	const scale = cap.scale as number;
 	const graph = {
 		app,
+		scope,
 		generated: new Date().toISOString(),
 		scale,
 		crop: cap.crop,

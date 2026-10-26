@@ -1,23 +1,41 @@
 # Try it
 
-The site no longer builds `/try/` pages (#137). They ran Counter, Basics and Todo in the browser,
-and those apps are in iamnbutler/cairn_examples now. The tools stay, for an app package: they
-walk an app's frames ahead of time and write the data such a page shows. Every frame is one the
+The site's `/try/` pages run Counter, Basics and Todo, from iamnbutler/cairn_examples, in the
+browser. The tools walk an app's frames ahead of time and write the data the page shows. Every frame is one the
 app's own Lean code produced, and every control carries its claim (`<scope>^N`, its title, does
 and sees, its reading on the claim pages). A page built on it decides nothing: a click follows an
 edge the app recorded.
 
 ## How it is generated
 
-In an app package, with `$CAIRN` the Cairn checkout Lake uses (as `make site-try` ran them on
-the examples before 0.3.0):
+In an app package, with `$CAIRN` a Cairn checkout (`make try` runs these on the examples):
 
 | Step | Command | Output in `build/try/<App>/` |
 |---|---|---|
 | Claims | `cairn claims --out build/try/<App>/claims.json` | `claims.json` |
 | Script | `bun $CAIRN/tools/try/try.ts script --claims build/try/<App>/claims.json > build/try/<App>/script.json` | `script.json`: each claim's actions, and the walk's bounds |
 | Walk | `swift run <App> --try-capture build/try/<App>/script.json build/try/<App>/capture` | `capture/`: `try.json` and a PNG per state (deleted after the next step) |
-| Data | `bun $CAIRN/tools/try/try.ts build --app <App> --dir build/try/<App> --out <out>` | `<out>/graph.json` and `img/<hash>.webp` |
+| Data | `bun $CAIRN/tools/try/try.ts build --app <App> --dir build/try/<App> --scope <package> --out <out>` | `<out>/graph.json` and `img/<hash>.webp` |
+
+## How the site gets it
+
+None of it is committed, and `make site` builds none of it: the data is published the way demo
+videos are (docs/media.md).
+
+1. `make try` clones iamnbutler/cairn_examples at `TRY_REV` into `build/try/cairn_examples`
+   (or uses `EXAMPLES=<dir>`), builds Counter, Basics and Todo with the Cairn they require, and
+   runs the four steps on each into `build/try/out/<app>/`. Offscreen, no window; about three
+   minutes from nothing, most of it the examples' build.
+2. `bun tools/try/put.ts --examples build/try/cairn_examples` uploads each `graph.json` to the
+   `cairn-media` R2 bucket as `try/<app>/<hash>.json` and each frame as `try/img/<hash>.webp`
+   (keys the live site already serves are skipped), then writes `site/public/try/apps.json`:
+   per app, its graph's URL, its first frame and its counts, and the examples' commit, version
+   and Cairn. Every key is named by its content, so the Worker's immutable caching of `/m/` is
+   right, and `apps.json` is served `no-cache`.
+3. Commit `apps.json` in a lane, merge, and deploy from main (`make site`).
+
+Redo it when the examples change what they draw or claim (a new `TRY_REV`) or the capture
+changes.
 
 **Actions** come from the claims export: `press` and `doublePress` as they are; a text field
 (`edit`) gets one "Type" action per text its flows' witnesses type (the first few, so "  eggs "
@@ -41,15 +59,15 @@ Each state is rendered offscreen with `Renderer.image` at 2×, unpinned, all cro
 once as lossless WebP (text stays crisp at 1:1; smaller than lossy for flat UI) and writes
 `graph.json`: per state its image, depth, the edge that first reached it, its controls (ref,
 claim, role, label, rect relative to the crop) and its edges; per claim its title, does, sees,
-theorems and reading. The reading is `reading()` from `site/claims.js`, so a chip reads as it
-does on the claim pages and uses the same colours (`packages.css`, `.chip.ev`). The export is
-this build's, the one that drew the frames; the live claim pages read the latest published
-version's, so until a version with an export is published they show `ledger only` where this
-page shows `proved`.
+theorems and reading, with ids as `<scope>^N` (`--scope`, the package's claim scope). The
+reading is `reading()` from `site/claims.js`, so a chip reads as it does on the claim pages and
+uses the same colours (`packages.css`, `.chip.ev`). The export is this build's, the one that
+drew the frames; the live claim pages read the latest published version's. Each chip links to
+its claim page, `/packages/<scope>/claims/<id>/`.
 
 **Bounds**: depth 8, 200 states and 2 texts per field by default (`BOUNDS` in `tools/try/try.ts`),
-or `--depth`, `--states` and `--texts`. Measured 2026-10-25, when the site built these three
-(Counter at depth 20, Todo with 400 states):
+or `--depth`, `--states` and `--texts`; `make try` takes Counter to depth 20 and Todo to 400
+states (`TRY_BOUNDS`). Measured 2026-10-26, cairn_examples 0.2.0 on Cairn 0.3.0:
 
 | App | Depth | States | Steps (edges) | Beyond | Images | Size |
 |---|---|---|---|---|---|---|
@@ -62,8 +80,10 @@ neighbours, preloaded).
 
 ## The page
 
-The page (`site/web/content/try/`, `site/public/try/try.js` and `try.css`, and its `mount` for
-embedding a compact one) went with the `/try/` pages; it is in git history before 0.3.0.
+`site/web/content/try/` (bongo, with `site/web/layouts/try/`), `site/public/try/try.js` and
+`try.css`. `try.js` reads `/try/apps.json`, then the app's graph and only the frames it shows
+(and their neighbours, preloaded). Its `mount(el, app, { compact: true })` embeds a compact one,
+with no steps and no note, in another page.
 
 ## Limits
 

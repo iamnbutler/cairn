@@ -8,3 +8,7 @@
   Content-Type: text/plain; charset=utf-8
 /docs/*.md
   Content-Type: text/markdown; charset=utf-8
+# The try pages' list of where their graphs and frames are (tools/try/put.ts): always fresh, so a
+# new capture shows on the next load. The graphs and frames themselves are /m/ keys, cached forever.
+/try/apps.json
+  Cache-Control: no-cache

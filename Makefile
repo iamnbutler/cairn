@@ -5,7 +5,7 @@ LEAN_PREFIX = $(shell cd lean && lean --print-prefix)
 LIB = build/lib/libcairn_lean.a
 VENDOR = host/Sources/CLean/vendor/lean
 
-.PHONY: lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest fixture clean record site doc doctest fuzz-quick fuzz-scope size fuzz-trusted fuzz-trusted-quick site-build site-dist registry-check new-check cairn-tool cairn-tool-test fixture-build fixture-ledger
+.PHONY: try lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest fixture clean record site doc doctest fuzz-quick fuzz-scope size fuzz-trusted fuzz-trusted-quick site-build site-dist registry-check new-check cairn-tool cairn-tool-test fixture-build fixture-ledger
 
 lean:
 	cd lean && lake build
@@ -179,6 +179,35 @@ site-dist: site-build
 # Deploy the microsite (site/) to Cloudflare.
 site: site-dist
 	cd site && npx -y wrangler@4 deploy
+
+# region: make-try
+# The "Try it" pages' data (docs/try.md): Counter, Basics and Todo from iamnbutler/cairn_examples
+# at TRY_REV, each walked headless with `--try-capture` (offscreen, no window), into
+# build/try/out/<app>/ (graph.json, img/*.webp). `bun tools/try/put.ts --examples $(EXAMPLES)`
+# then publishes them to the media bucket and writes site/public/try/apps.json, which is committed
+# as media.json is; `make site` builds none of it. EXAMPLES=<dir> uses a checkout already there.
+# A few minutes the first time, for the examples' Lean and Swift builds.
+TRY_APPS = Counter Basics Todo
+TRY_REV = df45306
+EXAMPLES ?= build/try/cairn_examples
+# Bounds other than try.ts's default (depth 8, 200 states), as <App>=<option>.
+TRY_BOUNDS = Counter=--depth=20 Todo=--states=400
+XCAIRN = $(abspath $(EXAMPLES))/lean/.lake/packages/cairn/tools/cairn/.build/release/cairn
+try:
+	@command -v cwebp >/dev/null || { echo "try: cwebp is needed (brew install webp)"; exit 1; }
+	@if [ "$(EXAMPLES)" = build/try/cairn_examples ]; then \
+		[ -d $(EXAMPLES) ] || git clone -q https://github.com/iamnbutler/cairn_examples $(EXAMPLES); \
+		git -C $(EXAMPLES) checkout -q $(TRY_REV) 2>/dev/null || { git -C $(EXAMPLES) fetch -q && git -C $(EXAMPLES) checkout -q $(TRY_REV); }; fi
+	$(MAKE) -C $(EXAMPLES) cairn-tool
+	@for a in $(TRY_APPS); do d=$(CURDIR)/build/try/$$a; rm -rf $$d && mkdir -p $$d && \
+		b=; for x in $(TRY_BOUNDS); do [ "$${x%%=*}" = $$a ] && b=$${x#*=}; done; \
+		(cd $(EXAMPLES) && $(XCAIRN) build --app $$a && $(XCAIRN) claims $$a --out $$d/claims.json) && \
+		bun tools/try/try.ts script --claims $$d/claims.json $$b > $$d/script.json && \
+		(cd $(EXAMPLES) && swift run -q Cairn$$a --try-capture $$d/script.json $$d/capture) && \
+		bun tools/try/try.ts build --app $$a --dir $$d --root $(EXAMPLES) --scope cairn_examples \
+			--out build/try/out/$$(echo $$a | tr A-Z a-z) && \
+		rm -rf $$d/capture || exit 1; done
+# endregion: make-try
 
 clean:
 	rm -rf build lean/.lake host/.build .build $(FIXTURE)/lean/.lake $(FIXTURE)/.build $(FIXTURE)/.cairn $(FIXTURE)/build

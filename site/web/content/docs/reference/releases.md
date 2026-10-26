@@ -49,6 +49,14 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
 - **Its evidence.** What a claim reads as depends on the build that computed it. See
   [how much to trust a claim](/docs/reference/trust/).
 
+## Unreleased
+
+- **Try it in the browser, again.** [/try/](/try/) runs Counter, Basics and TodoMVC from
+  `cairn_examples`: every frame one the app's own Lean code drew, every control with its
+  `cairn_examples^N` claim and a link to its claim page. `make try` makes the data and
+  `tools/try/put.ts` publishes it to the media bucket; nothing generated is committed but the
+  list that points at it. `tools/try/try.ts build` takes `--scope` for a package's claim ids.
+
 ## v0.5.2
 
 26 October 2026, at commit `23f0836`.
