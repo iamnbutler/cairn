@@ -462,7 +462,7 @@ invariant ^7 idsBelow "Item ids stay below the next id" for machine where
       (Move.all_cons (hideRows.preserves _ fun _ h => h)
       (Move.all_cons (badgeMove.preserves _ fun _ h => h)
       (Move.all_cons (clearBadge.preserves _ fun _ h => h)
-      (Move.all_cons (announceMove.preserves _ fun _ h => h) Move.all_nil)))))))))))))))))))
+      (Move.all_cons (announceMove.preserves _ fun _ h => h) Move.all_nil))))))))))))))))))
   receive := fun _ _ h => h
 -- endregion: fixture-invariant
 
@@ -493,7 +493,7 @@ invariant ^22 likesShowServer "A post with nothing in flight shows the server's 
       (Move.all_cons (hideRows.preserves _ fun _ h => h)
       (Move.all_cons (badgeMove.preserves _ fun _ h => h)
       (Move.all_cons (clearBadge.preserves _ fun _ h => h)
-      (Move.all_cons (announceMove.preserves _ fun _ h => h) Move.all_nil)))))))))))))))))))
+      (Move.all_cons (announceMove.preserves _ fun _ h => h) Move.all_nil))))))))))))))))))
   receive := fun s m h => Like.receive_ok false s.nextReq m h
 
 invariant ^24 likeCounts "A post's count is never below its own like" for machine where
