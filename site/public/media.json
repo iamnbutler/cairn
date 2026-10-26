@@ -1,5 +1,27 @@
 [
   {
+    "image": "/m/images/8d8c5c0838845866.png",
+    "title": "Sky: notifications, grouped",
+    "caption": "Sky's notifications: likes of one post in one row, marked seen once on screen (cairn#253).",
+    "date": "2026-10-26",
+    "published": "2026-10-26T11:44:43Z",
+    "commit": "7a69f8b",
+    "width": 1200,
+    "height": 1640,
+    "milestone": "m5"
+  },
+  {
+    "image": "/m/images/84ca80ebe0308a20.png",
+    "title": "Sky: unread notifications",
+    "caption": "The unread count, polled from the fake PDS, on Sky's Notifications tab (cairn#253).",
+    "date": "2026-10-26",
+    "published": "2026-10-26T11:44:41Z",
+    "commit": "7a69f8b",
+    "width": 1200,
+    "height": 1640,
+    "milestone": "m5"
+  },
+  {
     "title": "Cairn 0.5.0 and cairn_atproto 0.3.0, early in M5",
     "text": [
       "Cairn 0.5.0 is out on the public registry as iamnbutler/cairn, so Sky's M5 work builds on it from the registry: Cairn.Optimistic (values shown at once, confirmed or rolled back, ^1100–^1114), a fuzz server with a world that fails requests before it acts and loses replies after, menus on controls and in the menu bar, Effect.scrollTo, kept scroll boxes, the Dock badge and announcements. Frames are v13, and every app now links Lean's libStd.",
