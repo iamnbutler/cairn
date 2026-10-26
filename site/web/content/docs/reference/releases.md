@@ -49,7 +49,12 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
 - **Its evidence.** What a claim reads as depends on the build that computed it. See
   [how much to trust a claim](/docs/reference/trust/).
 
-## Unreleased (0.5.1)
+## v0.5.1
+
+26 October 2026.
+
+A patch release: conformance holds the world, optimistic-value benchmarks, and two fixes Sky
+needs (fuzz presence after a list is replaced, and no empty batch while the clock is held).
 
 - **Conformance models the world** ([#264](https://github.com/iamnbutler/cairn/issues/264)).
   `cairn conformance` now decides the time and every reply the running app hears, as
@@ -88,8 +93,11 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
   changes, except that a wake whose timer was replaced as it fired no longer sends a stray
   clock.
 
-New: `cairn^1032` (`assume`, "Under holdWorld the host sends no clock, wake or reply of its
-own", fuzzed by `world.hold`). No claim is retired, moved or changed.
+One claim is new: `cairn^1032` (`assume`, "Under holdWorld the host sends no clock, wake or
+reply of its own", fuzzed by `world.hold`). None is retired, moved or changed, so it is a patch
+release. Moving from v0.5.0 is a change of tag in the lakefile and `Package.swift`; the frame
+format stays v13. An app that runs `cairn conformance` with requests passes its `Custom` to
+`Conformance.run`, or every request is answered `failed`.
 
 ## v0.5.0
 
