@@ -377,6 +377,11 @@ keys, cursors) keeps them in the world. `handle` sees only the request, never th
    its menu's items whether or not the menu is open, a greyed-out item counting as absent. The
    fuzzer presses them as the host does, with `menuOpen` for the button and `menuSelect` for an
    item (Tray's `cairn_examples^453`, cairn#176).
+   A control's menu (docs/surfaces.md, "Menus on controls") is in the frame whenever its control
+   is laid, so its items count as present whether or not the menu is open. The fuzzer presses an
+   item by right-clicking the centre of its control's visible part, then sending `menuSelect` and
+   `menuClose` with the window's place, as the host does when the native menu returns. A menu bar
+   item (`Surface.menuBar`) is pressed with `menuSelect` and its surface's place.
    In a virtual list (docs/layout.md, "Virtual lists") a move whose controls are keyed by their
    row's key is present iff it is enabled **and its row is laid**: the moves with a control in a
    laid row keyed like the row are found in the frame, and for them a key whose row the list
@@ -420,7 +425,11 @@ keys, cursors) keeps them in the world. `handle` sees only the request, never th
 8. **Secure fields** (`secure`), once a secure field (`FieldView.secure`) has been on screen:
    neither the frame's dump (`Dump.canvas` of `Frame.ofLaid`) nor any effect's dump (`Dump.effect`)
    holds the planted text, as text or as hex. See "Secure fields" below.
-9. **Frame-time budget:** wall-clock time of `Runtime.step` (update, view, layout, settle) per
+9. **Greyed menu items** (`menu-greyed`, under the item's claim): up to four greyed-out items of
+   the control menus, status items and menu bar on screen are chosen (opening the menu first
+   where it needs it), and nothing is pressed. Lean's `menu_select_stale` proves this; the check
+   catches a fuzz target whose menus disagree with their moves.
+10. **Frame-time budget:** wall-clock time of `Runtime.step` (update, view, layout, settle) per
    step, against `--budget-ms` (default 8, a 120 Hz frame). Over-budget states are reported with
    their seed and step, but never fail a run: timing is not deterministic.
 

@@ -75,7 +75,7 @@ Swift's model uses `Int32` and `UInt32` for these fields, so every Swift value f
 ```
 offset  size  field
 0       4     magic "CAFR" (43 41 46 52)
-4       2     u16 version = 11
+4       2     u16 version = 12
 6       2     u16 flags = 0
 8       4+4   surfaces: u32 count, u32 byteLength, then the surface records
 .       4+4   effects: u32 count, u32 byteLength, then the effect records
@@ -95,7 +95,8 @@ added the Keychain secret source (`[2, 0, 0, 0]`), `http`'s secret and captures,
 `forgetSecret` request (kind 17). An `upload` with no secret or an environment secret is the
 same bytes in versions 8 and 9. Version 10 added the `secure` flags to accessibility and
 text-input records and `redact` to requests. Version 11 added the `scrollArea` role (10). Version 12 added the `scrollTo`, `badge` and
-`announce` effects (8–10).
+`announce` effects (8–10). Version 13 added the `menuBar` surface kind (3), the window's open
+control menu in its `status`, the ax record's `menu` byte and the `menu` key (14).
 
 ### Surface records
 
@@ -113,7 +114,8 @@ surface   [kind, shown, anchor, screen]                                20 + fiel
           .  status
 ```
 
-- **Kinds**: `0` window, `1` panel, `2` status item.
+- **Kinds**: `0` window, `1` panel, `2` status item, `3` menu bar (the app's own menu items,
+  `Surface.menuBar`: its `status` holds them, with no control, symbol or title; never a canvas).
 - **shown**: `0` for a panel or status item whose view returned `none` this frame (the host
   hides it; its canvas and status are empty). Windows are always shown.
 - **anchor** `0` bottomCenter: the panel is centred horizontally, `offset` points above the
@@ -137,7 +139,9 @@ canvas    i32 width, i32 height                                          8 + fie
 A window's size is the size Lean laid out at (the last `resize`); a panel's is its `width` and
 its laid content's height. Coordinates in a canvas are relative to that surface's top-left.
 
-A **status** is a status item's button and menu:
+A **status** is a status item's button and menu. A window's status is the control menu open now
+(docs/surfaces.md, "Menus on controls"): `control` is its owner and `menu` its records, or an
+empty menu when none is open. A menu bar's has only its `menu`.
 
 ```
 status    control ref: the button's control (opening the menu presses it)
@@ -246,7 +250,7 @@ One per node, parents before children (`parent_lt_ofLaid`).
 
 ```
 ax        [role, focused, selected, checked]                      36 + two strings
-          4  hasControl (bool), 5  hasParent (bool), 6  secure (bool), 7  0
+          4  hasControl (bool), 5  hasParent (bool), 6  secure (bool), 7  menu
           8  control ref         (0,0 and ignored when hasControl = 0)
           16 u32 parent index    (0 and ignored when hasParent = 0)
           20 rect: the visible rect (the node's rect intersected with its clip)
@@ -256,7 +260,9 @@ ax        [role, focused, selected, checked]                      36 + two strin
 
 `checked` is `0` none (not checkable), `1` false, `2` true. `parent` indexes this frame's ax list.
 `secure` marks a secure field (`FieldView.secure`): Lean writes its value as `""`, and the host's
-mirror makes it an `AXSecureTextField` with no value.
+mirror makes it an `AXSecureTextField` with no value. `menu` is coded as `checked` is: `0` the
+control has no menu, `1` a context menu, `2` a menu button (⋯). The mirror gives a node with a
+menu `AXShowMenu`, and a menu button the `AXMenuButton` role.
 
 ### Text input
 
@@ -417,7 +423,8 @@ error. `button` is `0` primary, `1` secondary.
 | 24 | menuSelect | 0 | 0 | u32 place, control ref | 16 |
 
 - **Keys.** Codes `0` enter, `1` escape, `2` tab, `3` backspace, `4` delete, `5` left,
-  `6` right, `7` up, `8` down, `9` home, `10` end, `11` pageUp, `12` pageDown, `13` char.
+  `6` right, `7` up, `8` down, `9` home, `10` end, `11` pageUp, `12` pageDown, `13` char,
+  `14` menu (the context-menu key: the host sends it for Shift-F10 and the PC Menu key).
   For `char` the `u32` is the Unicode scalar and must be a valid scalar (not a surrogate, at most
   U+10FFFF); for every other key it is written as 0 and ignored.
 - **Replacement ranges.** `insertText` and `setMarked` carry `replace : Option (Nat × Nat)`:
@@ -445,7 +452,9 @@ error. `button` is `0` primary, `1` secondary.
   it otherwise (`route_surface_other`).
 - **Menus.** `menuOpen` and `menuClose` come from the status item's `NSMenuDelegate`;
   `menuOpen` is a press on the item's `control`. `menuSelect` names the status item's place and
-  the chosen item's control ref.
+  the chosen item's control ref. With the menu bar surface's place, `menuSelect` chooses one of
+  the app's menu items. With the window's place, `menuSelect` chooses an item of the open control
+  menu and `menuClose` closes it (the host sends it when the popped-up menu returns).
 - **Global events.** `clock`, `reply` and `subEvent` belong to the app, not to a surface.
 - **Scroll.** `dx` and `dy` are whole logical points, positive toward the end of the content
   (right, down), with the host's fractions carried (docs/trusted.md, "Scroll"; ^1012). The
@@ -456,7 +465,9 @@ error. `button` is `0` primary, `1` secondary.
 
 Version 1 had tags 0–20 only. Reply code 7 came with frames v5 and subscription event 8 with v8;
 the batch format is unchanged, so events stay at version 2. Runtime scroll offsets and `appear`
-(#203) changed no record: frames stay at 11 and events at 2.
+(#203) changed no record. Key code 14 (frames v12) is a new code in the same record, and
+`menuSelect`/`menuClose` with the window's place choose from and close a control's menu: events
+stay at version 2.
 
 Lean drops a batch that fails to decode, whole (`Frame.boundary`): the host's encoder is
 checked against Lean's decoder, so a bad batch means a host bug.
@@ -528,7 +539,7 @@ paint X Y W H origin=N shader="NAME" scalars=[A,B,…] arrays=[[A,…],[…]]
 push X Y W H
 pop
 ax N
-node role=CODE control=CLAIM#KEY|none parent=I|none rect=X Y W H focused=B selected=B checked=B|none secure=B label="…" value="…"
+node role=CODE control=CLAIM#KEY|none parent=I|none rect=X Y W H focused=B selected=B checked=B|none secure=B menu=B|none label="…" value="…"
 textInput none
 textInput control=C#K rect=… caret=… selection=A B marked=A B|none origin=X Y secure=B text="…"
 cursor CODE

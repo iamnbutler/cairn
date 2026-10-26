@@ -11,8 +11,8 @@
 9	move	active	cc3607b9d82df888	Type a passcode
 10	move	active	5d6a5b5a913e63d4	Select a row
 11	invariant	retired	2bbc00437e7c3207	Rows are the column, moved up by the offset
-12	invariant	active	9eb438e3d1a22c10	Rows stay apart, and what shows is inside the box
-13	invariant	active	2da26a6f6e0b7492	Controls are pressed where they show
+12	invariant	active	791916a4ee067d63	Rows stay apart, and what shows is inside the box
+13	invariant	active	a3af9e44627320c6	Controls are pressed where they show
 14	place	active	-	The rows
 15	invariant	retired	8f8c17ca61c7dd4d	Rows are the column, moved up by the runtime's offset
 16	move	active	049eea3d8143f42a	Reach the end of the rows
@@ -24,6 +24,15 @@
 22	invariant	active	5438b8d941f84349	A post with nothing in flight shows the server's value
 23	move	active	0b2dd78aaaa83db4	Refresh the counts
 24	invariant	active	911b0533bb9993c9	A post's count is never below its own like
+25	place	active	-	An item's menu
+26	move	active	279a694e97ccb117	Mark done from an item's menu
+27	move	active	af19eefd473e0751	Delete from an item's menu
+28	place	active	-	The Fixture menus
+29	move	active	19d5b358e0b2c64b	Clear Done
+30	place	active	-	The Go menu
+31	move	active	59d1dc1248a2496a	Go to the first row
+32	move	active	e1f11f38d36c90a4	Select no row
+33	flow	active	e32b4405bc2e4b35	Finish items from their menus
 41	move	active	2701fd0bd53788a2	Scroll to the top
 42	move	active	1d5a56391351683e	Scroll to the end
 43	move	active	3331271933f50f92	Go to a row

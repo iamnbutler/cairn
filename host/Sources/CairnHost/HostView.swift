@@ -35,6 +35,8 @@ public final class HostView: NSView {
     private var observers: [NSObjectProtocol] = []
     /// Secure event input, on while a secure field has focus in the key window.
     var secureInput = SecureInputGate()
+    /// The open control menu, popped up at its control (docs/surfaces.md, "Menus on controls").
+    public private(set) lazy var controlMenu = ControlMenuHost(live: true) { [unowned self] in self.send($0) }
     /// Set by `shutDown`: no frame is applied after it.
     public private(set) var isShutDown = false
 
@@ -170,6 +172,7 @@ public final class HostView: NSView {
     }
     public override func rightMouseDown(with e: NSEvent) {
         let p = point(e)
+        controlMenu.clickPoint = p
         sendEditing([.pointerMove(p), .pointerDown(p, .secondary, clicks: UInt32(max(1, e.clickCount)), KeyMapping.mods(e.modifierFlags))], time: time(e))
     }
     public override func rightMouseUp(with e: NSEvent) {
@@ -200,6 +203,19 @@ public final class HostView: NSView {
     func click(at rect: Rect) {
         let c = Point(x: rect.x + rect.w / 2, y: rect.y + rect.h / 2)
         var events: [Event] = [.pointerMove(c), .pointerDown(c, .primary, clicks: 1, Mods()), .pointerUp(c, .primary, Mods())]
+        if let w = window {
+            let p = convert(w.mouseLocationOutsideOfEventStream, from: nil)
+            events.append(bounds.contains(p) ? .pointerMove(point(p)) : .pointerExit)
+        }
+        sendEditing(events)
+    }
+
+    /// A secondary click at a node's centre, for `AXShowMenu`: it opens the control's menu the way
+    /// a right click does, through Lean's hit testing. The pointer is then put back.
+    func secondaryClick(at rect: Rect) {
+        let c = Point(x: rect.x + rect.w / 2, y: rect.y + rect.h / 2)
+        var events: [Event] = [.pointerMove(c), .pointerDown(c, .secondary, clicks: 1, Mods()),
+                               .pointerUp(c, .secondary, Mods())]
         if let w = window {
             let p = convert(w.mouseLocationOutsideOfEventStream, from: nil)
             events.append(bounds.contains(p) ? .pointerMove(point(p)) : .pointerExit)
@@ -241,6 +257,10 @@ public final class HostView: NSView {
         // A shortcut the main menu owns arrives here only when its item didn't take it (say,
         // Paste with nothing to paste); it was the menu's, so it isn't also a key for Lean.
         if Self.menuOwns(e) { return }
+        if let k = KeyMapping.menuKey(keyCode: e.keyCode, mods: KeyMapping.mods(e.modifierFlags)) {
+            sendEditing([k], time: time(e))  // the context-menu key, even in a field
+            return
+        }
         if textActive {
             currentKeyEvent = e  // the original event: rebuilt ones break Korean input
             interpretKeyEvents([e])
@@ -320,6 +340,7 @@ public final class HostView: NSView {
         textInputDidChange(p, previousFrame: previous?.frame.textInput)
         updateSecureInput()
         mirror.update(p.frame, host: self)
+        controlMenu.update(p.frame.windowIndex.map { p.frame.surfaces[$0] }, through: p.throughSeq, view: self)
         onApply?(p.frame)
     }
 

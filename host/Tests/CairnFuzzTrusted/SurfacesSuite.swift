@@ -50,7 +50,7 @@ final class SurfacesSuite: Suite {
     static func shortcut(_ g: inout SplitMix) -> Shortcut? {
         guard g.chance(1, 3) else { return nil }
         let named: [Key] = [.enter, .escape, .tab, .backspace, .delete, .left, .right, .up, .down, .home,
-                            .finish, .pageUp, .pageDown]
+                            .finish, .pageUp, .pageDown, .menu]
         let key: Key = g.chance(2, 3)
             ? .char(Character(Unicode.Scalar(UInt32(g.elem(Array("abcdefghijklmnopqrstuvwxyz0123456789,.;/".unicodeScalars)).value))!))
             : g.elem(named)
@@ -114,7 +114,8 @@ final class SurfacesSuite: Suite {
         case .finish: key = fn(0xF72B)
         case .pageUp: key = fn(0xF72C)
         case .pageDown: key = fn(0xF72D)
-        case let .char(c): key = String(c).lowercased()
+        case let .char(c): key = s.mods.shift && c.isLetter ? String(c).uppercased() : String(c).lowercased()
+        case .menu: key = fn(0xF70D)
         }
         var m: NSEvent.ModifierFlags = []
         if s.mods.command { m.insert(.command) }
@@ -131,10 +132,16 @@ final class SurfacesSuite: Suite {
     static func compare(_ menu: NSMenu, _ records: [MenuRecord], parent: Int?, path: String,
                         within: Bool = true) -> String? {
         let idxs = records.indices.filter { records[$0].parent == parent }
-        guard menu.items.count == idxs.count else {
-            return "\(path): \(menu.items.count) items, \(idxs.count) records"
+        return compare(menu.items, idxs, records, path: path, within: within)
+    }
+
+    /// Compares `items` with the records `idxs`, one for one.
+    static func compare(_ items: [NSMenuItem], _ idxs: [Int], _ records: [MenuRecord], path: String,
+                        within: Bool = true) -> String? {
+        guard items.count == idxs.count else {
+            return "\(path): \(items.count) items, \(idxs.count) records"
         }
-        for (item, i) in zip(menu.items, idxs) {
+        for (item, i) in zip(items, idxs) {
             let r = records[i]
             let at = "\(path)[\(i)]"
             if item.isSeparatorItem != (r.kind == .separator) { return "\(at): separator \(item.isSeparatorItem), record \(r.kind)" }

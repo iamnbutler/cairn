@@ -35,12 +35,15 @@ inductive Shown where
   /-- A shown panel: its view, its size (its width, its content's height) and its layout. -/
   | panel (place : ClaimId) (shown : Option (PanelView × Size × Laid))
   | status (place : ClaimId) (item : Option StatusItem)
+  /-- The app's items in the menu bar (`Surface.menuBar`), which `menuSelect` is checked
+  against. -/
+  | bar (place : ClaimId) (items : List MenuItem)
 deriving Inhabited
 
 namespace Shown
 
 def place : Shown → ClaimId
-  | .window p .. | .panel p _ | .status p _ => p
+  | .window p .. | .panel p _ | .status p _ | .bar p _ => p
 
 /-- The first window's place: where bare local events go. -/
 def windowPlace : List Shown → Option ClaimId
@@ -53,6 +56,14 @@ def statusOf (p : ClaimId) : List Shown → Option StatusItem
   | [] => none
   | .status q it :: xs => if q = p then it else statusOf p xs
   | _ :: xs => statusOf p xs
+
+/-- The menu a selection for place `p` is checked against, other than the window's: a shown
+status item's menu, or the menu bar's items. -/
+def menuOf (p : ClaimId) : List Shown → Option (List MenuItem)
+  | [] => none
+  | .status q it :: xs => if q = p then it.map (·.menu) else menuOf p xs
+  | .bar q items :: xs => if q = p then some items else menuOf p xs
+  | _ :: xs => menuOf p xs
 
 end Shown
 
@@ -288,9 +299,55 @@ def appearRefs (laid : Laid) : List ControlRef :=
 def appearing (laid : Laid) (seen : List ControlRef) : List Action :=
   ((appearRefs laid).filter fun r => !seen.contains r).map .appear
 
+/-! ## Menus on controls (docs/surfaces.md, "Menus on controls") -/
+
+/-- The menu of the first control `r` in the tree, if it has one with items. -/
+def menuOf (laid : Laid) (r : ControlRef) : Option ControlMenu :=
+  (find laid r).bind (·.node.menu?)
+
+/-- Whether `t` is a menu button: a primary press, Space or Return opens its menu. -/
+def _root_.Cairn.Runtime.Target.menuButton (t : Target) : Bool :=
+  t.node.menu?.any (·.button)
+
+mutual
+/-- Hit entries in paint order, each owned by the nearest control at or above it that has a
+menu (`o`, inherited from the ancestors): what a secondary click opens. -/
+def menuHitsOf (o : Option Target) : Laid → List Hit
+  | n@(.box _ _ st c cs) =>
+    let o' := match c with
+      | some k => if n.menu?.isSome then some ⟨n, k⟩ else o
+      | none => o
+    (if paints st c then [⟨n.visible, o'⟩] else []) ++ menuHitsList o' cs
+  | n@(.text ..) => [⟨n.visible, o⟩]
+  | n@(.field _ _ _ _ c ..) => [⟨n.visible, if n.menu?.isSome then some ⟨n, c⟩ else o⟩]
+def menuHitsList (o : Option Target) : List Laid → List Hit
+  | [] => []
+  | l :: ls => menuHitsOf o l ++ menuHitsList o ls
+end
+
+/-- The control whose menu a secondary click at `p` opens: of the topmost hit entry containing
+`p` (as `hitTarget`), the nearest control at or above it with a menu. -/
+def menuTarget (laid : Laid) (p : Point) : Option Target :=
+  ((menuHitsOf none laid).reverse.find? (·.visible.contains p)).bind (·.owner)
+
 /-! ## Routing -/
 
 variable {S : Type}
+
+/-- The control menu open now: `UI.menu`'s control and its menu, in the tree on screen. -/
+def openMenu (s : State S) : Option (ControlRef × ControlMenu) :=
+  s.ui.menu.bind fun r => (menuOf s.laid r).map (r, ·)
+
+/-- The menu a `menuSelect p _` is checked against: with the window's place, the control menu
+open now (`openMenu`); otherwise status item `p`'s menu or the menu bar `p`'s items. -/
+def selectMenu (s : State S) (p : ClaimId) : Option (List MenuItem) :=
+  if Shown.windowPlace s.surfaces = some p then (openMenu s).map (·.2.items)
+  else Shown.menuOf p s.surfaces
+
+/-- Open control `r`'s menu. -/
+def openAt (s : State S) (r : ControlRef) : State S :=
+  { s with ui := { s.ui with menu := some r } }
+
 
 /-- The focused control, looked up in the tree on screen. -/
 def focused (s : State S) : Option Target := s.ui.focus.bind (find s.laid)
@@ -378,6 +435,36 @@ def keyScrollState (s : State S) (k : Key) (mods : Mods) : State S :=
 def withPointer (s : State S) (p : Point) : State S :=
   { s with pointer := some p, ui := { s.ui with hover := hitRef s.laid p } }
 
+/-- The control whose menu a key opens: the focused control, if it has a menu and the key is
+the context-menu key, or it is a menu button and the key is Return or Space. -/
+def keyMenu (s : State S) (k : Key) : Option ControlRef :=
+  match focused s with
+  | some t =>
+    if t.node.menu?.isSome && (k == Key.menu || t.menuButton && (k == Key.enter || k == Key.char ' '))
+    then some t.ref else none
+  | none => none
+
+/-- A secondary click at `p`: hover follows it, and the menu of the control there that has one
+(`menuTarget`) opens; nothing else. -/
+def secondaryDown (s : State S) (p : Point) : State S :=
+  match menuTarget s.laid p with
+  | some t => openAt (withPointer s p) t.ref
+  | none => withPointer s p
+
+/-- A key other than Tab: it opens the focused control's menu (`keyMenu`), or scrolls and acts
+as `keyScrollState` and `keyActions` say. -/
+def keyRoute (s : State S) (k : Key) (mods : Mods) : State S × List Action :=
+  match keyMenu s k with
+  | some r => (openAt s r, [])
+  | none => (keyScrollState s k mods, keyActions s k mods)
+
+/-- Committed text: a space on a focused menu button opens its menu (as the Space key does);
+anything else is `textActions`. -/
+def textRoute (s : State S) (str : String) (rep : Option (Nat × Nat)) : State S × List Action :=
+  match (if str = " " then keyMenu s (.char ' ') else none) with
+  | some r => (openAt s r, [])
+  | none => (s, textActions s str rep)
+
 /-- Read one event against the tree on screen. Returns the new interaction state (`app` and
 `laid` untouched) and the actions to deliver, in order. -/
 def route (m : TextMetrics) (s : State S) : Event → State S × List Action
@@ -393,13 +480,15 @@ def route (m : TextMetrics) (s : State S) : Event → State S × List Action
     let s' := { withPointer s p with clicks }
     match hitTarget s.laid p with
     | some t =>
-      if t.isField then
+      if t.menuButton then
+        ({ s' with ui := { s'.ui with pressed := none, menu := some t.ref } }, [])
+      else if t.isField then
         ({ s' with ui := { s'.ui with pressed := some t.ref, focus := some t.ref } },
          leave s (some t.ref) ++ [.edit t.ref (.setCaret (caretAt m t p) mods.shift)])
       else
         ({ s' with ui := { s'.ui with pressed := some t.ref, focus := none } }, leave s none)
     | none => ({ s' with ui := { s'.ui with pressed := none, focus := none } }, leave s none)
-  | .pointerDown p .secondary _ _ => (withPointer s p, [])
+  | .pointerDown p .secondary _ _ => (secondaryDown s p, [])
   | .pointerUp p .primary _ =>
     let s' := withPointer s p
     let s' := { s' with ui := { s'.ui with pressed := none } }
@@ -413,8 +502,8 @@ def route (m : TextMetrics) (s : State S) : Event → State S × List Action
   | .pointerExit => ({ s with pointer := none, ui := { s.ui with hover := none } }, [])
   | .scroll p dx dy => (wheel s p dx dy, [])
   | .key .tab mods => tab s mods.shift
-  | .key k mods => (keyScrollState s k mods, keyActions s k mods)
-  | .insertText str rep => (s, textActions s str rep)
+  | .key k mods => keyRoute s k mods
+  | .insertText str rep => textRoute s str rep
   | .setMarked str a b rep => (s, onField s fun t => replaceOps t rep ++ [TextOp.setMarked str a b])
   | .unmark => (s, onField s fun _ => [.unmark])
   | .copy => (s, onField s fun _ => [.copy])
@@ -435,10 +524,12 @@ def route (m : TextMetrics) (s : State S) : Event → State S × List Action
     (s, match Shown.statusOf p s.surfaces with
         | some it => [.press it.control]
         | none => [])
-  | .menuClose _ => (s, [])
+  | .menuClose p =>
+    (if Shown.windowPlace s.surfaces = some p then { s with ui := { s.ui with menu := none } }
+     else s, [])
   | .menuSelect p r =>
-    (s, match Shown.statusOf p s.surfaces with
-        | some it => if r ∈ MenuItem.enabledRefs it.menu then [.press r] else []
+    (s, match selectMenu s p with
+        | some ms => if r ∈ MenuItem.enabledRefs ms then [.press r] else []
         | none => [])
   | .frame => ({ s with seen := appearRefs s.laid }, appearing s.laid s.seen)
 
@@ -449,13 +540,13 @@ def UI.same (a b : UI) : Bool :=
   decide (a.size = b.size) && decide (a.hover = b.hover) && decide (a.pressed = b.pressed) &&
     decide (a.focus = b.focus) && decide (a.windowFocused = b.windowFocused) &&
     decide (a.scroll = b.scroll) && decide (a.lists = b.lists) && decide (a.kept = b.kept) &&
-    decide (a.keptLists = b.keptLists)
+    decide (a.keptLists = b.keptLists) && decide (a.menu = b.menu)
 
 theorem UI.same_eq {a b : UI} (h : UI.same a b = true) : a = b := by
   cases a; cases b
   simp only [UI.same, Bool.and_eq_true, decide_eq_true_eq] at h
-  obtain ⟨⟨⟨⟨⟨⟨⟨⟨h1, h2⟩, h3⟩, h4⟩, h5⟩, h6⟩, h7⟩, h8⟩, h9⟩ := h
-  subst h1 h2 h3 h4 h5 h6 h7 h8 h9; rfl
+  obtain ⟨⟨⟨⟨⟨⟨⟨⟨⟨h1, h2⟩, h3⟩, h4⟩, h5⟩, h6⟩, h7⟩, h8⟩, h9⟩, h10⟩ := h
+  subst h1 h2 h3 h4 h5 h6 h7 h8 h9 h10; rfl
 
 /-! ## Virtual lists (docs/runtime.md, "Virtual lists")
 
@@ -537,6 +628,7 @@ def fixUI (laid : Laid) (pointer : Option Point) (ui : UI) (keep : List ControlR
     hover := pointer.bind (hitRef laid)
     focus := ui.focus.filter (focusableIn laid)
     pressed := ui.pressed.filter (present laid)
+    menu := ui.menu.filter fun r => (menuOf laid r).isSome
     scroll := clampScroll scs
       (recs.foldl (fun offs (r, _, o) => setOff offs r o) (ui.scroll ++ revive scs ui))
     lists := recs.map fun (r, k, _) => (r, k)
@@ -630,6 +722,7 @@ def Surface.show (cfg : Config) (st : S) (min : Size) : Surface S → Shown
   | .window p t _ => .window p t min
   | .panel p v => .panel p ((v cfg.metrics st).map fun pv => (pv, layPanel cfg pv))
   | .statusItem p v => .status p (v st)
+  | .menuBar p v => .bar p (v st)
 
 /-- What every surface shows in app state `st`. -/
 def shows (app : App S) (cfg : Config) (st : S) : List Shown :=

@@ -45,7 +45,8 @@ enum Dump {
     static func ax(_ n: AxNode) -> String {
         "node role=\(n.role.rawValue) control=\(opt(n.control, ref)) parent=\(opt(n.parent) { "\($0)" }) "
             + "rect=\(rect(n.rect)) focused=\(bit(n.focused)) selected=\(bit(n.selected)) "
-            + "checked=\(opt(n.checked, bit)) secure=\(bit(n.secure)) label=\(str(n.label)) value=\(str(n.value))"
+            + "checked=\(opt(n.checked, bit)) secure=\(bit(n.secure)) menu=\(opt(n.menu, bit)) "
+            + "label=\(str(n.label)) value=\(str(n.value))"
     }
 
     static func canvas(_ c: Canvas) -> String {
@@ -297,6 +298,7 @@ enum DumpParser {
             if code == 13 {
                 guard let s = Unicode.Scalar(scalar) else { throw Bad(line: line) }
                 k = .char(Character(s))
+            } else if code == 14 { k = .menu
             } else if code < 13 { k = keys[Int(code)] } else { throw Bad(line: line) }
             return .key(k, try mods())
         case "insert":

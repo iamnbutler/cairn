@@ -39,10 +39,12 @@ def deleted : List Event := toggled ++ clickOn (run toggled) (deleteRef 2)
 def moreRefs : List ControlRef :=
   [topRef, endButtonRef, goRowRef, hideRef, badgeRef, clearBadgeRef, announceRef]
 -- Tab order: field, Add, Passcode, Flash, Add above, Add below, the buttons under them, then each
--- item's checkbox and delete button, the posts' Like buttons and Refresh (and then the list's rows, `notRow`).
+-- item's checkbox, delete button and ⋯, the posts' Like buttons and Refresh (and then the list's
+-- rows, `notRow`).
 #guard ((tabOrder (run two).laid).map (·.ref)).filter notRow ==
   [fieldRef, addRef, passRef, flashRef, addTopRef, addEndRef] ++ moreRefs ++
-  [toggleRef 1, deleteRef 1, toggleRef 2, deleteRef 2, likeRef 1, likeRef 2, likeRef 3, likeRef 4, refreshRef]
+  [toggleRef 1, deleteRef 1, moreRef 1, toggleRef 2, deleteRef 2, moreRef 2, likeRef 1, likeRef 2,
+   likeRef 3, likeRef 4, refreshRef]
 -- Flash sets its timer; the note shows until it fires.
 def flashed : List Event := clickOn (run []) flashRef
 #guard (st flashed).flash
@@ -50,8 +52,44 @@ def flashed : List Event := clickOn (run []) flashRef
 #guard ((decodeFrame (frameBytes Frame.boundary (run two))).map fun f =>
   (f.ax.toList.filterMap (·.control)).filter notRow) ==
   some ([fieldRef, addRef, passRef, flashRef, addTopRef, addEndRef] ++ moreRefs ++
-        [toggleRef 1, deleteRef 1, toggleRef 2, deleteRef 2, likeRef 1, likeRef 2, likeRef 3, likeRef 4, refreshRef])
+        [toggleRef 1, deleteRef 1, moreRef 1, toggleRef 2, deleteRef 2, moreRef 2, likeRef 1,
+         likeRef 2, likeRef 3, likeRef 4, refreshRef])
 -- endregion: fixture-tests
+
+-- region: fixture-menu-tests
+-- Menus on controls (docs/surfaces.md): the ⋯ button opens on a click, the checkbox on a
+-- secondary click; the window record carries the open menu; choosing an item presses it, and a
+-- greyed one does nothing. Opening changes no app state.
+def win : ClaimId := 1
+def rightClickOn (rs : Runtime.State State) (r : ControlRef) : List Event :=
+  match at? rs r with
+  | some p => [.pointerMove p, .pointerDown p .secondary 1 {}, .pointerUp p .secondary {}]
+  | none => []
+def opened : List Event := two ++ clickOn (run two) (moreRef 1)
+#guard (run opened).ui.menu == some (moreRef 1)
+#guard st opened == st two
+#guard ((decodeFrame (frameBytes Frame.boundary (run opened))).map fun f =>
+  (f.ax.toList.filter (·.control == some (moreRef 1))).map (·.menu)) == some [some true]
+def chosen : List Event := opened ++ [.menuSelect win (menuToggleRef 1), .menuClose win]
+#guard texts (st chosen) == [(1, "milk", true), (2, "eggs", false)]
+#guard (run chosen).ui.menu == none
+-- Delete is greyed for an item not done: choosing it does nothing.
+#guard st (opened ++ [.menuSelect win (menuDeleteRef 1)]) == st opened
+-- The checkbox's secondary click opens the same menu; Delete is enabled once the item is done.
+def ctx : List Event := chosen ++ rightClickOn (run chosen) (toggleRef 1)
+#guard (run ctx).ui.menu == some (toggleRef 1)
+#guard texts (st (ctx ++ [.menuSelect win (menuDeleteRef 1)])) == [(2, "eggs", false)]
+-- A choice from a menu that isn't open does nothing.
+#guard st (two ++ [.menuSelect win (menuToggleRef 1)]) == st two
+-- The keyboard: Shift-F10 (`Key.menu`) on the focused checkbox, Space on the focused ⋯ button.
+def tabbed (n : Nat) : List Event := two ++ List.replicate n (.key .tab {})
+#guard (run (tabbed 14 ++ [.key .menu {}])).ui.menu == some (toggleRef 1)
+#guard (run (tabbed 16 ++ [.key (.char ' ') {}])).ui.menu == some (moreRef 1)
+-- The menu bar: Clear Done and Go ▸ First Row / No Row, by `menuSelect` with its place.
+#guard (st (toggled ++ [.menuSelect 28 clearDoneRef])).items.map (·.id) == [2]
+#guard (st (two ++ [.menuSelect 28 firstRowRef])).selected == some 1
+#guard (st (two ++ [.menuSelect 28 noRowRef])) == st two
+-- endregion: fixture-menu-tests
 
 -- The Passcode field: bullets on screen, nothing in the accessibility value, a redacted request.
 def secret : List Event := clickOn (run []) passRef ++ [.insertText "hunter2"]

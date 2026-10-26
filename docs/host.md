@@ -164,7 +164,7 @@ Counter moved to v1.)
 
 | AppKit | Event |
 |---|---|
-| mouseDown/rightMouseDown | `pointerMove(p)`, then `pointerDown(p, button, clicks: clickCount, mods)` |
+| mouseDown/rightMouseDown | `pointerMove(p)`, then `pointerDown(p, button, clicks: clickCount, mods)`; a right click's point is kept, for where a control's menu pops up |
 | mouseUp/rightMouseUp | `pointerUp(p, button, mods)` |
 | mouseMoved / dragged | `pointerMove` (coalesced) |
 | mouseExited | `pointerExit` |
@@ -174,6 +174,9 @@ Counter moved to v1.)
 | Edit menu | `copy`, `cut`, `paste(String)` from NSPasteboard, `selectAll`, `undo`, `redo` |
 | resize / backing scale | `resize(size)`, `scale(percent)` |
 | window key / resign | `windowFocus(Bool)` |
+| Shift-F10, the PC Menu key | `key(.menu, mods)` (`KeyMapping.menuKey`, before any text handling) |
+| a control's menu: item chosen, menu returned | `menuSelect(window, ref)`, then `menuClose(window)` (`ControlMenuHost`) |
+| the app's menu bar items, by click or key equivalent | `menuSelect(place, ref)` (`MenuBarHost`) |
 
 - **Pointer.** Positions are logical points, y down, from the view's top-left, rounded down. A
   tracking area (`mouseMoved`, `enteredAndExited`, `activeAlways`, `inVisibleRect`) delivers
@@ -294,7 +297,7 @@ in scalar indices. Chromium's browser process does the same.
   | list | `.list` |
   | listItem | `.group`, role description "list item" |
   | heading | `AXHeading` |
-  | button | `.button` |
+  | button | `.button`; `.menuButton` when its control is a menu button (`menu` = 2) |
   | text | `.staticText` |
   | tab | radio button with subrole `AXTabButton` |
   | link | `.link` |
@@ -304,6 +307,9 @@ in scalar indices. Chromium's browser process does the same.
 - **Attributes.** The identifier is the ControlRef label. A checkbox's value is 1 or 0; a text
   field's value is its text; a secure field (subrole `AXSecureTextField`) has no value, no characters and an empty selected text (trusted ^1022, fuzzed as `ax.secure`). The text-field range attributes are in UTF-16, converted through
   `TextIndex`.
+- **Show Menu.** A node whose control has a menu (`AxNode.menu`) allows `AXShowMenu`, performed
+  as a secondary click at its centre, which opens the menu through Lean (trusted ^948, fuzzed as
+  `ax.show-menu`). No other node allows it.
 - **Secure input.** While the applied frame's text input is a secure field, the window is key and
   the view is live, the host holds the system's secure event input on (`SecureInputGate`;
   trusted ^1020, docs/trusted.md).

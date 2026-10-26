@@ -173,6 +173,30 @@ assume ^944 hostPanelPlace "An overlay panel is where its anchor says" where
   does "A shown panel's frame has its canvas's size, horizontally centred in the chosen screen's visible frame and the anchor's offset above its bottom, on whole points; the screen is chosen when it appears and kept until it is hidden."
   check "panel.place"
 
+assume ^945 hostControlMenuRender "A control's menu shows exactly the frame's menu records" where
+  does "While the window's frame record shows a control's menu (its status: the owner and the menu records), the host's native menu for it holds those records as a status item's does (^940), for that owner, at the window's place; a frame with no menu records shows none."
+  check "control-menu.render"
+
+assume ^946 hostControlMenuSelect "Choosing a control menu's item reports its ref, then the close" where
+  does "When AppKit performs an item's action in a control's menu, the host sends exactly one menuSelect with the window's place and that item's ref, and nothing for a status line, separator or submenu; when the menu closes, chosen from or not, it sends one menuClose with the window's place, after any menuSelect."
+  check "control-menu.select"
+
+assume ^947 hostControlMenuDismiss "The host shows a control menu only while Lean has it open" where
+  does "The host shows a control's menu exactly when the last frame shows one, except that after the host closed it, a frame that does not yet account for that close (its events are numbered below the close) does not open it again; a frame without the menu, or without a window, dismisses one that is open."
+  check "control-menu.dismiss"
+
+assume ^948 hostAxShowMenu "AXShowMenu opens a control's menu as a right click does" where
+  does "An assistive app may perform AXShowMenu on exactly the AX elements of controls with a menu, and doing so sends a secondary click (move, down, up) at the node's centre, then puts the pointer back; a control that is a menu button is an AXMenuButton."
+  check "ax.show-menu"
+
+assume ^949 hostMenuBarRender "The menu bar shows the app's menu items" where
+  does "After each frame with a menuBar surface, each of its top-level submenus is a menu in the main menu before the host's Window menu, with its records as a status item's menu has them (^940), and every other top-level entry is at the top of the app menu, in order, followed by a separator and the host's own Hide and Quit, unchanged; Edit and Window stay where they are."
+  check "menubar.render"
+
+assume ^950 hostMenuBarSelect "A menu bar item, by click or key equivalent, reports that item's ref" where
+  does "When AppKit performs an enabled menu bar item's action, chosen with the pointer or by its key equivalent (NSMenu.performKeyEquivalent with the keys a keyboard gives, a capital for a shifted letter), the host sends exactly one menuSelect with the menuBar surface's place and that item's ref; the key equivalent of a greyed item sends nothing."
+  check "menubar.select"
+
 /-! Yap on Cairn (workstream W): opening files and URLs, other apps, other domains' defaults, ids 1000–. -/
 
 assume ^1000 hostOpenItem "openItem opens exactly the URL or existing file it names" where

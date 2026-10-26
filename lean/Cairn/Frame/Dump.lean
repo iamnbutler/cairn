@@ -60,7 +60,8 @@ def draw : Draw → String
 def ax (n : AxNode) : String :=
   s!"node role={Role.code n.role} control={opt ref n.control} parent={opt toString n.parent} " ++
     s!"rect={rect n.rect} focused={bit n.focused} selected={bit n.selected} " ++
-    s!"checked={opt bit n.checked} secure={bit n.secure} label={str n.label} value={str n.value}"
+    s!"checked={opt bit n.checked} secure={bit n.secure} menu={opt bit n.menu} " ++
+    s!"label={str n.label} value={str n.value}"
 
 def textInput : Option TextInput → String
   | none => "textInput none"

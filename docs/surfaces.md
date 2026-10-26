@@ -630,6 +630,95 @@ Evidence: docs/trusted.md "Surfaces" (^940–^944, fuzzed by `SurfacesSuite`), c
 menus (docs/conformance.md "Tray: menus"), bench/surfaces.md (50 Hz), and the manual checklist
 docs/surfaces-checklist.md.
 
+## Menus on controls
+
+Issue #247. A control can carry a native menu: `Style.menu := some { items, button }`, where
+`items` are the same `MenuItem`s a status item's menu has. It is a context menu, or with
+`button := true` a menu button (⋯).
+
+**What opens it** (`Runtime.route`, `lean/Cairn/Runtime/Step.lean`):
+
+- A secondary click (`pointerDown _ .secondary`) opens the menu of the topmost thing under the
+  pointer, or of the nearest control above it that has a menu (`menuTarget`).
+- A menu button opens on a primary press. It also opens on Space or Return while it has focus,
+  in place of a press.
+- The context-menu key (`Key.menu`) opens the menu of the focused control. The host sends that
+  key for Shift-F10 and the PC Menu key.
+- VoiceOver's Show Menu (`AXShowMenu`) opens it too. The host performs it as a secondary click
+  at the control's centre.
+
+Opening sets `UI.menu` to the control's ref and delivers no action, so no `update` runs and the
+app's state is unchanged (`Runtime.step_open_quiet`). A view may read `UI.menu`, for example to
+draw a ⋯ button pressed while its menu is open.
+
+**The frame.**
+- The window's surface record carries the open menu in its `status`: `control` is the owner and
+  `menu` is the records, in the same shape as a status item's (docs/frame.md, v12).
+- An ax node whose control has a menu sets `menu`, so the mirror gives it `AXShowMenu`. A menu
+  button's node is an `AXMenuButton`.
+
+**Choosing.**
+- Choosing an item is `menuSelect(window, ref)`. The runtime checks it against the open menu
+  (`selectMenu`) and delivers a press only for an enabled item of that menu. A greyed item, a
+  stale choice or a choice with no menu open changes nothing (`menu_select_stale`,
+  `menu_select_absent`).
+- The host sends `menuClose(window)` once the native menu returns, whether or not an item was
+  chosen. That close is what clears `UI.menu`.
+- If the owner leaves the tree, or its menu loses its items, the menu closes in the next layout.
+
+**The host** (`ControlMenuHost`, `host/Sources/CairnHost/Surfaces.swift`):
+
+- It pops up an `NSMenu`, built by `MenuHost` from the window's records:
+  - at the click point, when a secondary click inside the owner opened it;
+  - otherwise below the owner.
+- It dismisses the menu when a frame stops showing it.
+- It ignores frames numbered below its own close, so a frame computed before Lean heard the close
+  doesn't reopen the menu (^947).
+- Under the debug socket the menu is built but not popped up. The socket's `controlMenu`,
+  `controlMenuSelect` and `controlMenuClose` read it, choose from it and close it.
+
+**Evidence.**
+- Proofs: `Runtime.menu_select_presses`, `menu_open_presses`, `menu_select_stale`,
+  `secondary_opens`, `step_open_quiet` (`lean/Cairn/Runtime/Proofs.lean`).
+- Trusted: ^945–^948 (docs/trusted.md), fuzzed by `MenusSuite`.
+- The Lean fuzzer presses control-menu items by opening the menu with a secondary click and
+  choosing the item. Its `menu-greyed` check chooses greyed items and expects nothing to happen
+  (docs/fuzz.md).
+- Conformance opens menus by click, secondary click and the menu key, chooses items through
+  `performActionForItem(at:)` and compares the open menu (docs/conformance.md).
+- The fixture: each item has a ⋯ button (^25) whose menu is also on the item's checkbox, with
+  Mark Done (^26) and Delete (^27; greyed until the item is done).
+
+## The app's menus
+
+Issue #229. `Surface.menuBar place view` gives the app its own entries in the main menu bar,
+with `view : S → List MenuItem`:
+
+- A top-level `submenu` becomes a menu of its own in the menu bar. These come after the app
+  menu and Edit, before Window, in order (Go, View).
+- Every other top-level entry goes at the top of the app menu: after the app's name, followed by
+  a separator, then the host's own Hide and Quit.
+- An item's `shortcut` is its key equivalent, live whenever the app is active (⌘R for Refresh).
+- A shifted letter's key equivalent is written as the capital (⇧⌘A), because that is what
+  AppKit matches.
+
+Choosing an item, by pointer or key equivalent, is `menuSelect(place, ref)`, checked against
+the surface's current items like a status item's menu. The surface is shown only while the app
+has a window: an accessory app has no main menu.
+
+`MenuBarHost`, a `MenuHost`, puts the items into `NSApp.mainMenu`, updating them in place and
+rebuilding where their shape changes. It answers `validateMenuItem` with each record's own
+enabled flag: the main menu auto-enables items, which would otherwise wake a greyed item's key
+equivalent (docs/trusted.md, ^950). The socket's `menuBar`, `menuBarSelect` and `menuBarKey`
+read the items, choose one and offer a key equivalent.
+
+**Evidence.**
+- Trusted: ^949 and ^950, fuzzed by `MenusSuite`, which covers key equivalents across the whole
+  `Key` table.
+- Conformance compares the items after every step and chooses enabled and greyed ones.
+- The fixture: Clear Done (^29) in the app menu, and a Go menu (^30) with First Row (⌘1, ^31) and
+  No Row (⌘2, ^32). No Row is greyed while no row is selected, and checked then.
+
 ## Decisions
 
 The open questions as first written are kept below; each was settled as follows. Every answer is

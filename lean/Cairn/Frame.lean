@@ -42,6 +42,9 @@ structure AxNode where
   /-- A secure field (`FieldView.secure`): the host shows an `AXSecureTextField` and exposes
   no value (`value` is empty). -/
   secure : Bool := false
+  /-- The control has a menu (`Style.menu`): `some true` a menu button (⋯), `some false` a
+  context menu only. The host gives it `AXShowMenu`. -/
+  menu : Option Bool := none
 deriving Repr, BEq, Inhabited
 
 /-- Everything `NSTextInputClient` may ask about the focused field, answered without Lean. -/
@@ -101,7 +104,7 @@ structure StatusFrame where
 deriving Repr, Inhabited
 
 inductive SurfaceKind where
-  | window | panel | statusItem
+  | window | panel | statusItem | menuBar
 deriving Repr, DecidableEq, Inhabited
 
 /-- One surface's record. Fields a kind doesn't use stay at their defaults: a window has no
@@ -120,7 +123,9 @@ structure SurfaceFrame where
   /-- A window's or panel's content. A panel's `size` is Lean's: its width and laid-out
   height. -/
   canvas : Canvas := Canvas.empty
-  /-- A status item's button and menu. -/
+  /-- A status item's button and menu. For the window, the control menu open now (`UI.menu`):
+  `control` its owner and `menu` its records, no records when none is open. For the menu bar
+  (`Surface.menuBar`), its items in `menu`. -/
   status : StatusFrame := {}
 deriving Repr, Inhabited
 

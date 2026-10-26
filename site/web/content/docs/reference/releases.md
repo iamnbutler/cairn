@@ -76,6 +76,57 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
 - **`cairn fuzz`: per-move weights** (cairn#226). `Custom.weights s ref` weights a control's
   actions when the fuzzer picks one (default 1; 0 never picks it, and its presence is still
   checked).
+- **Menus on controls** ([#247](https://github.com/iamnbutler/cairn/issues/247)).
+  `Style.menu := some { items, button }` puts a native menu on a control. The menu is a context
+  menu, or with `button := true` a menu button (⋯).
+  - What opens it: a secondary click, the context-menu key (`Key.menu`: Shift-F10 or the PC Menu
+    key) on the focused control, VoiceOver's Show Menu, and for a menu button a click, Space or
+    Return.
+  - Lean keeps the open menu in `UI.menu`. Opening it reaches no `update`.
+  - Choosing an item is a press of that item's control, checked against the open menu: a greyed
+    or stale choice does nothing.
+  - The host pops up an `NSMenu` built from the window record's `status`, and sends `menuClose`
+    when the menu returns. A menu button is an `AXMenuButton`.
+  - Theorems: `Runtime.secondary_opens`, `menu_open_presses`, `menu_select_presses`,
+    `menu_select_stale`, `menu_select_absent`, `step_open_quiet`.
+  - See docs/surfaces.md, "Menus on controls".
+- **The app's own menus in the menu bar** ([#229](https://github.com/iamnbutler/cairn/issues/229)).
+  `Surface.menuBar place view` adds the app's own items to the main menu:
+  - Top-level submenus become menus before Window (Go, View).
+  - Other entries go at the top of the app menu, above Hide and Quit (Sign Out).
+  - An item's shortcut is its key equivalent whenever the app is active (Refresh ⌘R).
+  - See docs/surfaces.md, "The app's menus".
+- **Six new `assume` claims, fuzzed by the trusted fuzzer's new `menus` suite:** ^945–^948 for
+  control menus (render, select, dismiss, `AXShowMenu`) and ^949–^950 for the menu bar (render,
+  select by click and by key equivalent). Three findings, now fixed in the host:
+  - A shifted letter's key equivalent must be the capital, or ⇧⌘A never matches. This applies
+    to status item menus too.
+  - The main menu auto-enabled greyed items, so their key equivalents pressed them.
+    `MenuHost.validateMenuItem` now answers with the record's own flag.
+  - See docs/trusted.md.
+- **Frames v12.** The format adds:
+  - the `menuBar` surface kind (3);
+  - the window's open control menu, in its `status`;
+  - an ax record's `menu` byte;
+  - key code 14 (`menu`).
+
+  Events stay at v2. An app and its host must use the same Cairn tag, as always.
+- **Breaking for exhaustive matches.** `Surface` has a new `menuBar` case and `Key` a new `menu`
+  case. `Shortcut` and `MenuItem` moved from `Cairn/Surface.lean` to `Cairn/UI/Node.lean`; they
+  keep their names.
+- **Conformance.**
+  - New gestures: secondary clicks, a control's menu (chosen through `performActionForItem(at:)`
+    or dismissed), and the menu bar's items. Each step compares the open menu and the menu bar
+    with the model.
+  - `cairn conformance --gestures FILE` replays extra gesture sequences.
+  - The driver now models secure fields. It had failed every walk since #217.
+- **`cairn fuzz`:**
+  - It presses control-menu and menu bar items as the host does.
+  - Its presence check counts menu items whether or not the menu is open.
+  - A new check, `menu-greyed`, chooses greyed items and expects nothing.
+- **The fixture** gains an item menu (⋯ and the checkbox's secondary click; `fixture^25`–^27),
+  Clear Done and a Go menu in the menu bar (^28–^32), and flow ^33. The statements of `fixture^12`,
+  ^13 and ^19 quantify over the fixture's view, which changed, and were accepted.
 - `Cairn.Fuzz.Custom` is in `Type 1` now (it can hold a server's world type); `World` and
   `Performed` take the world's type.
 - **`Effect.scrollTo`** (cairn#234). An app moves a scroll box or a virtual list: `scrollTo ref

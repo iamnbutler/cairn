@@ -29,6 +29,14 @@ import Darwin
 /// | `{"cmd":"menuOpen","place":450}`, `{"cmd":"menuClose",…}` | `seq`: the menu's delegate was told it opened (closed) |
 /// | `{"cmd":"menuSelect","place":450,"id":"^457#0"}` | `seq`: the item was chosen through `NSMenu.performActionForItem(at:)`; a disabled item's action is sent directly (`"direct":true`), as when the menu changed while open |
 /// | `{"cmd":"menuSelect","place":450,"ref":[456,0]}` | `seq`: a `menuSelect` event with any ref, in or out of the menu |
+/// | `{"cmd":"pointer","type":"rightDown"\|"rightUp","at":[x,y]}` | `seq`: a secondary click, through `rightMouseDown(with:)` |
+/// | `{"cmd":"controlMenu"}` | the open control menu as AppKit holds it (built, not popped up, under the socket): its owner, place and items |
+/// | `{"cmd":"controlMenuSelect","id":"^12#0"}` | `seq`: the item was chosen through `performActionForItem(at:)` (a disabled item's action directly, `"direct":true`), then the menu closed, as when a popped-up menu returns |
+/// | `{"cmd":"controlMenuClose"}` | `seq`: the menu closed without a choice (Escape, a click outside) |
+/// | `{"cmd":"axShowMenu","id":"^12"}` | `seq`: `AXShowMenu` performed on the control's accessibility element |
+/// | `{"cmd":"menuBar"}` | the app's own items as AppKit holds them (`MenuBarHost`; a main menu off screen under the socket): `appItems` at the top of the app menu, `menus` in the bar, and the whole main menu as `items` |
+/// | `{"cmd":"menuBarSelect","id":"^31"}` | `seq`: a menu bar item chosen through `performActionForItem(at:)` |
+/// | `{"cmd":"menuBarKey","char":"r","mods":["command"]}` | `seq` and `handled`: the key event offered to the main menu (`NSMenu.performKeyEquivalent(with:)`) |
 /// | `{"cmd":"surfaces"}` | the activation policy, key window and main menu; each surface's record and its AppKit object (status item, panel: level, key, mouse, Spaces, frame) |
 /// | `{"cmd":"wait","seq":N,"timeout":5}` | the frame's `seq` and `version`, effects run since the last wait, new text-shadow divergences |
 /// | `{"cmd":"frame"}` | the last applied frame, decoded, with its `seq` and `version` |
@@ -87,6 +95,7 @@ public final class DebugServer: @unchecked Sendable {
             if case .announce = e { return true }  // recorded, not spoken
             return false  // setClipboard runs, into the private pasteboard
         }
+        view.controlMenu.live = false          // built, not popped up: a driver chooses and closes
         NSApp.setActivationPolicy(.accessory)  // no Dock icon, no menu bar takeover
         window?.ignoresMouseEvents = true      // the real mouse passes through to what's below
         window?.orderFrontRegardless()         // on screen (so it renders), not key, not active
@@ -287,6 +296,89 @@ public final class DebugServer: @unchecked Sendable {
             }
             return ["seq": Int(engine.lastSeq), "direct": direct]
 
+        case "controlMenu":
+            let data = try onMain { () throws -> Data in
+                let c = try liveView().controlMenu
+                var o: [String: Any] = ["owner": c.owner?.label ?? NSNull(), "tracking": c.tracking, "popUps": c.popUps]
+                if let m = c.menu, c.owner != nil {
+                    o["place"] = Int(m.place)
+                    o["items"] = DebugJSON.menu(m.root)
+                } else {
+                    o["items"] = [Any]()
+                }
+                return try JSONSerialization.data(withJSONObject: o)
+            }
+            return try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
+
+        case "controlMenuSelect", "controlMenuClose":
+            let id = req["id"] as? String
+            let (seq, direct) = try onMain { () throws -> (UInt64, Bool) in
+                let c = try liveView().controlMenu
+                guard let m = c.menu, c.owner != nil else { throw DebugError("no control menu is open") }
+                var direct = false
+                if cmd == "controlMenuSelect" {
+                    guard let id, let (menu, i) = m.find(id), let item = menu.item(at: i), item.action != nil
+                    else { throw DebugError("no actionable item \(id ?? "") in the control menu") }
+                    if item.isEnabled { menu.performActionForItem(at: i) } else { m.choose(item); direct = true }
+                }
+                return (c.close(), direct)
+            }
+            return ["seq": Int(seq), "direct": direct]
+
+        case "axShowMenu":
+            guard let id = req["id"] as? String else { throw DebugError("axShowMenu needs id") }
+            let ok = try onMain { () throws -> Bool in
+                let v = try liveView()
+                guard let e = v.mirror.byKey.values.first(where: { $0.accessibilityIdentifier() == id })
+                else { throw DebugError("no accessibility element \(id)") }
+                return e.isAccessibilitySelectorAllowed(#selector(NSAccessibilityElement.accessibilityPerformShowMenu))
+                    && e.accessibilityPerformShowMenu()
+            }
+            return ["seq": Int(engine.lastSeq), "performed": ok]
+
+        case "menuBar":
+            let data = try onMain { () throws -> Data in
+                guard let bar = surfaces?.bar, let main = bar.main else { throw DebugError("no menu bar items") }
+                let own = bar.own
+                return try JSONSerialization.data(withJSONObject: [
+                    "place": Int(bar.place), "appItems": DebugJSON.items(own.app),
+                    "menus": DebugJSON.items(own.menus), "items": DebugJSON.menu(main)])
+            }
+            return try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
+
+        case "menuBarSelect":
+            guard let id = req["id"] as? String else { throw DebugError("menuBarSelect needs id") }
+            let direct = try onMain { () throws -> Bool in
+                guard let bar = surfaces?.bar, let (menu, i) = bar.find(id), let item = menu.item(at: i),
+                      item.action != nil
+                else { throw DebugError("no actionable menu bar item \(id)") }
+                if item.isEnabled { menu.performActionForItem(at: i); return false }
+                bar.choose(item)
+                return true
+            }
+            return ["seq": Int(engine.lastSeq), "direct": direct]
+
+        case "menuBarKey":
+            let ch = req["char"] as? String ?? ""
+            let mods = req["mods"] as? [String] ?? []
+            let handled = try onMain { () throws -> Bool in
+                guard let main = surfaces?.bar?.main else { throw DebugError("no menu bar items") }
+                let v = try liveView()
+                var flags: NSEvent.ModifierFlags = []
+                if mods.contains("shift") { flags.insert(.shift) }
+                if mods.contains("command") { flags.insert(.command) }
+                if mods.contains("option") { flags.insert(.option) }
+                if mods.contains("control") { flags.insert(.control) }
+                guard let e = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: flags,
+                                               timestamp: ProcessInfo.processInfo.systemUptime,
+                                               windowNumber: v.window?.windowNumber ?? 0, context: nil,
+                                               characters: ch, charactersIgnoringModifiers: ch,
+                                               isARepeat: false, keyCode: 0)
+                else { throw DebugError("could not make a key event") }
+                return main.performKeyEquivalent(with: e)
+            }
+            return ["seq": Int(engine.lastSeq), "handled": handled]
+
         case "surfaces":
             let data = try onMain { () throws -> Data in
                 try JSONSerialization.data(withJSONObject: DebugJSON.surfaces(surfaces, view: try liveView()))
@@ -417,6 +509,10 @@ public final class DebugServer: @unchecked Sendable {
         case "up":
             buttonDown = false
             v.mouseUp(with: try mouse(.leftMouseUp, p, clicks: clicks))
+        case "rightDown":
+            v.rightMouseDown(with: try mouse(.rightMouseDown, p, clicks: clicks))
+        case "rightUp":
+            v.rightMouseUp(with: try mouse(.rightMouseUp, p, clicks: clicks))
         case "exit":
             guard let w = v.window,
                   let e = NSEvent.enterExitEvent(with: .mouseExited, location: .zero, modifierFlags: [],
@@ -437,6 +533,7 @@ public final class DebugServer: @unchecked Sendable {
         "up": (126, "\u{f700}", true), "down": (125, "\u{f701}", true),
         "home": (115, "\u{f729}", true), "end": (119, "\u{f72b}", true),
         "pageUp": (116, "\u{f72c}", true), "pageDown": (121, "\u{f72d}", true),
+        "f10": (109, "\u{f70d}", true), "menu": (110, "\u{f735}", true),
     ]
 
     @MainActor

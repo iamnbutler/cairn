@@ -11,7 +11,8 @@ input client), a secure field (a passcode, sent in a redacted request), a button
 effect comes back as a message (a timer), an invariant with a runnable check, a flow, and a virtual list (`VList`) of 10,000 keyed rows of mixed
 height whose offset the runtime owns, ending in a line that hears `appear`, with buttons that add rows at its top and its end,
 that scroll it (`Effect.scrollTo`) and that hide it while the runtime keeps its place (`App.keepScroll`), and buttons that set the Dock
-badge and post a spoken announcement.
+badge and post a spoken announcement; menus on controls (an item's ⋯ button and its checkbox's secondary click) and the app's own
+menus in the menu bar (docs/surfaces.md).
 
 | Id | Kind | What |
 |---|---|---|
@@ -39,6 +40,15 @@ badge and post a spoken announcement.
 | ^22 | invariant | a post with nothing in flight shows the value last heard from the server; `cairn fuzz` checks it against the server's world |
 | ^23 | move | Refresh: fetches each post's view, its count and the viewer's like |
 | ^24 | invariant | a post's count is never below its own like; `cairn fuzz` checks it is the server's count once the post is at rest |
+| ^25 | place, keyed | an item's menu: its ⋯ button `^25#k`, a menu button; the checkbox's secondary click opens the same menu |
+| ^26 | move, keyed | Mark done (or not done) in an item's menu |
+| ^27 | move, keyed | Delete in an item's menu: greyed until the item is done |
+| ^28 | place | the app's own menus in the menu bar |
+| ^29 | move | Clear Done, in the app menu: removes the done items; greyed when none is done |
+| ^30 | place | the Go menu in the menu bar |
+| ^31 | move | Go ▸ First Row (⌘1): selects row 1 |
+| ^32 | move | Go ▸ No Row (⌘2): clears the selection; greyed when no row is selected, checked when none is |
+| ^33 | flow | finish items from their menus and the app menu |
 | ^41 | move | Top: scrolls the list to its start |
 | ^42 | move | End: scrolls the list to its end |
 | ^43 | move | Go to row: scrolls the list to the selected row, or row 5,000 |
@@ -125,6 +135,12 @@ def hideRef : ControlRef := ⟨44, 0⟩
 def badgeRef : ControlRef := ⟨45, 0⟩
 def clearBadgeRef : ControlRef := ⟨46, 0⟩
 def announceRef : ControlRef := ⟨47, 0⟩
+def moreRef (k : Nat) : ControlRef := ⟨25, k⟩
+def menuToggleRef (k : Nat) : ControlRef := ⟨26, k⟩
+def menuDeleteRef (k : Nat) : ControlRef := ⟨27, k⟩
+def clearDoneRef : ControlRef := ⟨29, 0⟩
+def firstRowRef : ControlRef := ⟨31, 0⟩
+def noRowRef : ControlRef := ⟨32, 0⟩
 -- endregion: fixture-state
 
 -- region: fixture-flash-timer
@@ -167,6 +183,10 @@ def delete (k : Nat) (s : State) : State := { s with items := s.items.filter (·
 
 def left (s : State) : Nat := (s.items.filter (!·.done)).length
 
+def isDone (s : State) (k : Nat) : Bool := s.items.any fun i => i.id == k && i.done
+
+def clearDone (s : State) : State := { s with items := s.items.filter (!·.done) }
+
 -- region: fixture-add-inv
 /-- ^7's statement. -/
 def Inv (s : State) : Prop := 0 < s.nextId ∧ ∀ i ∈ s.items, i.id < s.nextId
@@ -194,6 +214,9 @@ theorem toggle_inv (k : Nat) {s : State} (h : Inv s) : Inv (toggle k s) := by
   rw [flip_id]; exact hb j hj
 
 theorem delete_inv (k : Nat) {s : State} (h : Inv s) : Inv (delete k s) :=
+  ⟨h.1, fun i hi => h.2 i (List.mem_filter.mp hi).1⟩
+
+theorem clearDone_inv {s : State} (h : Inv s) : Inv (clearDone s) :=
   ⟨h.1, fun i hi => h.2 i (List.mem_filter.mp hi).1⟩
 
 /-! ## Claims -/
@@ -421,6 +444,61 @@ move ^47 announceMove (s : State) "Announce" in ^1 where
     sound := by intro s; exact ⟨rfl, rfl⟩
 -- endregion: fixture-badge
 
+-- region: fixture-menus
+place ^25 itemMenu "An item's menu" in ^1 where
+  does "An item's ⋯ button opens its menu (a click, Space or Return); a secondary click on the item's checkbox, or Shift-F10 on it, opens the same menu."
+
+move ^26 menuToggle (s : State) (k : Nat) "Mark done from an item's menu" in ^25 where
+  does "Choose Mark Done (or Mark Not Done) in an item's menu."
+  sees "The item is marked done, or not done again, as its checkbox does."
+  enabled := has s k
+  on press
+    apply := toggle k s
+    post s' := s'.items = s.items.map (flip k)
+    sound := by intro s k _; rfl
+
+move ^27 menuDelete (s : State) (k : Nat) "Delete from an item's menu" in ^25 where
+  does "Choose Delete in a done item's menu."
+  sees "The item is gone. For an item not done yet, Delete is greyed and does nothing."
+  enabled := isDone s k
+  on press
+    apply := delete k s
+    post s' := s'.items = s.items.filter (·.id ≠ k)
+    sound := by intro s k _; rfl
+
+place ^28 menuBarPlace "The Fixture menus" in ^1 where
+  does "The app's own menu items in the menu bar: Clear Done in the app menu, and the Go menu."
+
+move ^29 clearDoneMove (s : State) "Clear Done" in ^28 where
+  does "Choose Clear Done in the app menu."
+  sees "The done items are gone. With none done, it is greyed and does nothing."
+  enabled := s.items.any (·.done)
+  on press
+    apply := clearDone s
+    post s' := s'.items = s.items.filter (!·.done)
+    sound := by intro s _; rfl
+
+place ^30 goMenu "The Go menu" in ^28 where
+  does "The Go menu in the menu bar: First Row (⌘1) and No Row (⌘2)."
+
+move ^31 firstRow (s : State) "Go to the first row" in ^30 where
+  does "Choose Go ▸ First Row, or press ⌘1."
+  sees "Row 1 is selected."
+  on press
+    apply := { s with selected := some 1 }
+    post s' := s'.selected = some 1 ∧ s'.items = s.items
+    sound := by intro s; exact ⟨rfl, rfl⟩
+
+move ^32 noRow (s : State) "Select no row" in ^30 where
+  does "Choose Go ▸ No Row, or press ⌘2."
+  sees "No row is selected; the item is checked while none is, and greyed then."
+  enabled := s.selected.isSome
+  on press
+    apply := { s with selected := none }
+    post s' := s'.selected = none ∧ s'.items = s.items
+    sound := by intro s _; exact ⟨rfl, rfl⟩
+-- endregion: fixture-menus
+
 -- region: fixture-receive
 /-- Whether a message is Flash's timer. -/
 def isFlash : Msg → Bool
@@ -462,7 +540,12 @@ invariant ^7 idsBelow "Item ids stay below the next id" for machine where
       (Move.all_cons (hideRows.preserves _ fun _ h => h)
       (Move.all_cons (badgeMove.preserves _ fun _ h => h)
       (Move.all_cons (clearBadge.preserves _ fun _ h => h)
-      (Move.all_cons (announceMove.preserves _ fun _ h => h) Move.all_nil))))))))))))))))))
+      (Move.all_cons (announceMove.preserves _ fun _ h => h)
+      (Move.all_cons (menuToggle.preserves _ fun _ k _ h => toggle_inv k h)
+      (Move.all_cons (menuDelete.preserves _ fun _ k _ h => delete_inv k h)
+      (Move.all_cons (clearDoneMove.preserves _ fun _ _ h => clearDone_inv h)
+      (Move.all_cons (firstRow.preserves _ fun _ h => h)
+      (Move.all_cons (noRow.preserves _ fun _ _ h => h) Move.all_nil)))))))))))))))))))))))
   receive := fun _ _ h => h
 -- endregion: fixture-invariant
 
@@ -493,7 +576,12 @@ invariant ^22 likesShowServer "A post with nothing in flight shows the server's 
       (Move.all_cons (hideRows.preserves _ fun _ h => h)
       (Move.all_cons (badgeMove.preserves _ fun _ h => h)
       (Move.all_cons (clearBadge.preserves _ fun _ h => h)
-      (Move.all_cons (announceMove.preserves _ fun _ h => h) Move.all_nil))))))))))))))))))
+      (Move.all_cons (announceMove.preserves _ fun _ h => h)
+      (Move.all_cons (menuToggle.preserves _ fun _ _ _ h => h)
+      (Move.all_cons (menuDelete.preserves _ fun _ _ _ h => h)
+      (Move.all_cons (clearDoneMove.preserves _ fun _ _ h => h)
+      (Move.all_cons (firstRow.preserves _ fun _ h => h)
+      (Move.all_cons (noRow.preserves _ fun _ _ h => h) Move.all_nil)))))))))))))))))))))))
   receive := fun s m h => Like.receive_ok false s.nextReq m h
 
 invariant ^24 likeCounts "A post's count is never below its own like" for machine where
@@ -509,6 +597,13 @@ flow ^8 addAndFinish "Add two items and finish one" for machine where
   sees "Two items, milk done."
   goal s := s.items.map (·.text) = ["milk", "eggs"] ∧ s.items.map (·.done) = [true, false]
   witness edit ^2 (.insert "milk"), submit ^2, edit ^2 (.insert " eggs "), press ^3, press ^4#1
+
+flow ^33 finishFromMenus "Finish items from their menus" for machine where
+  does "Add milk and eggs, mark milk done and delete it from its menu, mark eggs done from its menu, then Clear Done in the app menu."
+  sees "No items left."
+  goal s := s.items.length = 0
+  witness edit ^2 (.insert "milk"), submit ^2, edit ^2 (.insert "eggs"), press ^3, press ^26#1,
+    press ^27#1, press ^26#2, press ^29
 -- endregion: fixture-flow
 
 -- region: fixture-claims
@@ -559,13 +654,21 @@ def passcodeRow (s : State) (ui : UI) : Node :=
     (s.passcode.view (ui.focus = some passRef))
 
 -- region: fixture-item-row
+/-- An item's menu: on its ⋯ button and its checkbox (docs/surfaces.md, "Menus on controls"). -/
+def itemMenuItems (it : Item) : List MenuItem :=
+  [ .item { ref := menuToggleRef it.id, label := if it.done then "Mark Not Done" else "Mark Done" },
+    .item { ref := menuDeleteRef it.id, label := "Delete" } (enabled := it.done),
+    .separator,
+    .info s!"Item {it.id}" ]
+
 def itemRow (ui : UI) (it : Item) : Node :=
   .box { axis := .row, width := .fill, height := .fixed 36, gap := 10, align := .center,
          padding := ⟨0, 8, 0, 10⟩, background := some white, radius := 6 } none
     [ .box { width := .fixed 18, height := .fixed 18, radius := 4, align := .center,
              justify := .center,
              background := some (if it.done then accent else white),
-             border := ring ui (toggleRef it.id) (if it.done then none else some ⟨1, line⟩) }
+             border := ring ui (toggleRef it.id) (if it.done then none else some ⟨1, line⟩),
+             menu := some { items := itemMenuItems it } }
         (some { ref := toggleRef it.id, role := .checkbox, label := it.text,
                 checked := some it.done })
         (if it.done then [.text { font := { size := 12, weight := 700 }, color := white } "✓"]
@@ -575,7 +678,12 @@ def itemRow (ui : UI) (it : Item) : Node :=
       .box { padding := ⟨3, 8, 3, 8⟩, radius := 4, border := ring ui (deleteRef it.id),
              background := some ⟨240, 240, 242, 255⟩ }
         (some { ref := deleteRef it.id, label := s!"Delete {it.text}" })
-        [.text { font := { size := 13 }, color := ⟨200, 40, 40, 255⟩ } "Delete"] ]
+        [.text { font := { size := 13 }, color := ⟨200, 40, 40, 255⟩ } "Delete"],
+      .box { padding := ⟨3, 8, 3, 8⟩, radius := 4, border := ring ui (moreRef it.id),
+             background := some (if ui.menu = some (moreRef it.id) then line else ⟨240, 240, 242, 255⟩),
+             menu := some { items := itemMenuItems it, button := true } }
+        (some { ref := moreRef it.id, label := s!"More for {it.text}" })
+        [.text { font := { size := 13, weight := 700 }, color := ink } "⋯"] ]
 -- endregion: fixture-item-row
 
 -- region: fixture-scroll-view
@@ -660,9 +768,21 @@ def view (s : State) (ui : UI) : Node :=
       else rowsBox s ui ]
 -- endregion: fixture-view
 
+-- region: fixture-menubar
+/-- The app's own menus (docs/surfaces.md, "The app's menus"): Clear Done in the app menu, and
+the Go menu. -/
+def menuBar (s : State) : List MenuItem :=
+  [ .item { ref := clearDoneRef, label := "Clear Done" } (enabled := s.items.any (·.done)),
+    .submenu "Go" (some 30)
+      [ .item { ref := firstRowRef, label := "First Row" } (shortcut := some { key := .char '1' }),
+        .item { ref := noRowRef, label := "No Row", checked := some s.selected.isNone }
+          (enabled := s.selected.isSome) (shortcut := some { key := .char '2' }) ] ]
+-- endregion: fixture-menubar
+
 -- region: fixture-app
 def app : App State :=
-  { machine.toApp [.window 1 "Fixture" view] claimInfos with keepScroll := fun _ => [rowsRef] }
+  { machine.toApp [.window 1 "Fixture" view, .menuBar 28 menuBar] claimInfos with
+    keepScroll := fun _ => [rowsRef] }
 
 -- endregion: fixture-app
 

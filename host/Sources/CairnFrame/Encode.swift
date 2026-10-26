@@ -109,6 +109,7 @@ extension Key {
         case .pageUp: 11
         case .pageDown: 12
         case .char: 13
+        case .menu: 14
         }
     }
 

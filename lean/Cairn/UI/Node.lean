@@ -4,6 +4,7 @@ public import Cairn.Geometry
 public import Cairn.Claim
 public import Cairn.Font
 public import Cairn.Effects
+public import Cairn.Input
 
 /-! What `view` returns (`Node`) and what layout produces (`Laid`).
 
@@ -152,6 +153,69 @@ deriving Repr, BEq, Inhabited
 
 end VList
 
+-- region: node-control
+inductive Role where
+  | group | button | checkbox | text | textField | link | list | listItem | heading | tab
+  /-- A scroll box (`Style.scroll`): the frame gives one a node of its own. -/
+  | scrollArea
+deriving Repr, BEq, DecidableEq, Inhabited
+
+/-- A node that performs a move. -/
+structure Control where
+  ref : ControlRef
+  role : Role := .button
+  label : String
+  value : String := ""
+  checked : Option Bool := none
+  selected : Bool := false
+  /-- Tell the app when this control comes on screen: the runtime delivers `Action.appear` when
+  it has a visible part at the end of a batch and didn't at the end of the last one (or wasn't
+  in the tree). How an app hears that the end of a list is in view (docs/runtime.md, "Appear"). -/
+  appear : Bool := false
+deriving Repr, BEq, Inhabited
+-- endregion: node-control
+
+-- region: node-menu
+/-- A keyboard shortcut shown on a menu item (⌘Q). A status item's and a control's menu honour it
+only while open; an item in the app's menu bar (`Surface.menuBar`) has it whenever the app is
+active (a key equivalent). -/
+structure Shortcut where
+  key : Key
+  mods : Mods := { command := true }
+deriving Repr, DecidableEq, Inhabited
+
+/-- One entry of a native menu: a status item's, a control's (`ControlMenu`) or the app's own in
+the menu bar (docs/surfaces.md). The host builds a real `NSMenu` from it. -/
+inductive MenuItem where
+  /-- An item that performs a move. `control.checked = some b` makes it a checkbox item;
+  `enabled = false` greys it out (it stays in the menu, with its control). -/
+  | item (control : Control) (enabled : Bool := true) (shortcut : Option Shortcut := none)
+  /-- A line of text that does nothing: a status line, "None yet". Shown disabled. -/
+  | info (label : String)
+  /-- A submenu. `place` is the place claim it is, if it has one. -/
+  | submenu (label : String) (place : Option ClaimId) (items : List MenuItem)
+  | separator
+deriving Repr, BEq, Inhabited
+
+/-- A control's menu (docs/surfaces.md, "Menus on controls"): a native menu the runtime opens
+over the control, built like a status item's. The secondary click on the control (or on anything
+inside it that has no menu of its own), the context-menu key (Shift-F10) while it has focus and
+VoiceOver's Show Menu open it; with `button`, the control is a menu button (⋯) and a primary
+click, Space or Return open it too, instead of pressing it. Choosing an item is a press of that
+item's control (`Event.menuSelect` with the window's place); opening and closing reach no
+`update`. A menu with no items is no menu. -/
+structure ControlMenu where
+  items : List MenuItem
+  button : Bool := false
+deriving Repr, BEq, Inhabited
+
+/-- What the accessibility mirror says of a menu: `some true` a menu button, `some false` a
+context menu, `none` no menu (or one with no items). -/
+def ControlMenu.mark : Option ControlMenu → Option Bool
+  | some m => if m.items.isEmpty then none else some m.button
+  | none => none
+-- endregion: node-menu
+
 -- region: node-style
 structure Style where
   axis : Axis := .column
@@ -189,30 +253,11 @@ structure Style where
   by. The runtime records the rows' real heights from it after every layout. Set by `VList.node`
   only. -/
   rows : Option VList.Info := none
+  /-- The menu of this box's control (`ControlMenu`); ignored on a box without a control. -/
+  menu : Option ControlMenu := none
 deriving Repr, BEq, Inhabited
 -- endregion: node-style
 
--- region: node-control
-inductive Role where
-  | group | button | checkbox | text | textField | link | list | listItem | heading | tab
-  /-- A scroll box (`Style.scroll`): the frame gives one a node of its own. -/
-  | scrollArea
-deriving Repr, BEq, DecidableEq, Inhabited
-
-/-- A node that performs a move. -/
-structure Control where
-  ref : ControlRef
-  role : Role := .button
-  label : String
-  value : String := ""
-  checked : Option Bool := none
-  selected : Bool := false
-  /-- Tell the app when this control comes on screen: the runtime delivers `Action.appear` when
-  it has a visible part at the end of a batch and didn't at the end of the last one (or wasn't
-  in the tree). How an app hears that the end of a list is in view (docs/runtime.md, "Appear"). -/
-  appear : Bool := false
-deriving Repr, BEq, Inhabited
--- endregion: node-control
 
 structure TextStyle where
   font : Font := {}
@@ -293,6 +338,11 @@ def visible (l : Laid) : Rect := l.rect.inter l.clip
 def control? : Laid → Option Control
   | .box _ _ _ c _ => c
   | .field _ _ _ _ c .. => some c
+  | .text .. => none
+
+/-- The menu of the node's control (`Style.menu`), if it has items. -/
+def menu? : Laid → Option ControlMenu
+  | .box _ _ st _ _ | .field _ _ st .. => st.menu.filter (!·.items.isEmpty)
   | .text .. => none
 
 end Laid

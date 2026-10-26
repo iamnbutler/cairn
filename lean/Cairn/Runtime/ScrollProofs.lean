@@ -376,6 +376,35 @@ theorem textActions_noAppear (s : State S) (str : String) (rep : Option (Nat × 
     (c : ControlRef) : Action.appear c ∉ textActions s str rep := by
   unfold textActions; split <;> (try split) <;> (try split) <;> simp
 
+theorem keyRoute_noAppear (s : State S) (k : Key) (mods : Mods) (c : ControlRef) :
+    Action.appear c ∉ (keyRoute s k mods).2 := by
+  unfold keyRoute; split
+  · simp
+  · exact keyActions_noAppear _ _ _ _
+
+theorem textRoute_noAppear (s : State S) (str : String) (rep : Option (Nat × Nat))
+    (c : ControlRef) : Action.appear c ∉ (textRoute s str rep).2 := by
+  unfold textRoute; split
+  · simp
+  · exact textActions_noAppear _ _ _ _
+
+theorem keyScrollState_seen (s : State S) (k : Key) (mods : Mods) :
+    (keyScrollState s k mods).seen = s.seen := by
+  simp only [keyScrollState]; (try split) <;> (try split) <;> (try split) <;> rfl
+
+theorem secondaryDown_seen (s : State S) (p : Point) : (secondaryDown s p).seen = s.seen := by
+  unfold secondaryDown; split <;> rfl
+
+theorem keyRoute_seen (s : State S) (k : Key) (mods : Mods) :
+    (keyRoute s k mods).1.seen = s.seen := by
+  unfold keyRoute; split
+  · rfl
+  · exact keyScrollState_seen _ _ _
+
+theorem textRoute_seen (s : State S) (str : String) (rep : Option (Nat × Nat)) :
+    (textRoute s str rep).1.seen = s.seen := by
+  unfold textRoute; split <;> rfl
+
 theorem tab_noAppear (s : State S) (back : Bool) (c : ControlRef) :
     Action.appear c ∉ (tab s back).2 := by
   unfold tab; split
@@ -393,10 +422,10 @@ theorem route_appear (m : TextMetrics) (s : State S) (e : Event) (c : ControlRef
   | key k mods =>
     exfalso; revert h
     cases k <;> simp only [route] <;>
-      first | exact tab_noAppear _ _ _ | exact keyActions_noAppear _ _ _ _
+      first | exact tab_noAppear _ _ _ | exact keyRoute_noAppear _ _ _ _
   | pointerDown p b n mods =>
     exfalso; revert h
-    cases b <;> simp only [route] <;> (try split) <;> (try split) <;>
+    cases b <;> simp only [route] <;> (try split) <;> (try split) <;> (try split) <;>
       simp [leave_noAppear]
   | pointerUp p b mods =>
     exfalso; revert h
@@ -404,7 +433,7 @@ theorem route_appear (m : TextMetrics) (s : State S) (e : Event) (c : ControlRef
   | _ =>
     exfalso; revert h
     simp only [route] <;> (try split) <;> (try split) <;> (try split) <;>
-      simp [onField_noAppear, textActions_noAppear]
+      simp [onField_noAppear, textRoute_noAppear]
 
 /-- Only the frame event changes what was seen. -/
 theorem route_seen (m : TextMetrics) (s : State S) (e : Event) (h : e ≠ .frame) :
@@ -421,7 +450,7 @@ theorem route_seen (m : TextMetrics) (s : State S) (e : Event) (h : e ≠ .frame
   | _ =>
     rw [route.eq_def] <;> (try simp only [withPointer]) <;> (try split) <;> (try split) <;>
       (try split) <;> (try split) <;>
-      first | contradiction | simp [tab, wheel, keyScrollState] <;> (try split) <;>
+      first | contradiction | simp [tab, wheel, secondaryDown_seen, keyRoute_seen, textRoute_seen] <;> (try split) <;>
         (try split) <;> (try split) <;> rfl
 
 /-- A step keeps what routing made of `seen`. -/
