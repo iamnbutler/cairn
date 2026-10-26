@@ -21,11 +21,14 @@ What it covers, in one window (lean/Fixture.lean):
   that add rows at the head and the tail (^17, ^18), and an end line that hears `appear` (^16);
   `Fixture --scroll-shots <dir>` renders it offscreen at the top, scrolled and at the end;
 - effects: Flash sets a timer, and the timer's message comes back through `receive`;
-- a server: four Like buttons (`^21#k`), toggles a server keeps, written one at a time per post,
-  rolled back on refusal and read back when a reply is lost (lean/Fixture/Like.lean); `cairn
-  fuzz` checks ^22 against a fake server whose replies fail before it acts and are lost after
-  (lean/Fixture/Fuzz.lean), and `lake exe likeMutant` checks that it catches a Like that retries
-  a lost write blind (lean/Fixture/LikeMutant.lean);
+- a server: four Like buttons (`^21#k`) with their counts, toggles a server keeps, on Cairn's
+  optimistic table (`Cairn.Optimistic`, Cairn's docs/optimistic.md; lean/Fixture/Like.lean):
+  shown at once, written one at a time per post, rolled back in a line on refusal and read back
+  when a reply is lost, with Refresh (^23) fetching each post's count. `cairn fuzz` checks ^22
+  (a post at rest shows what the server holds) and ^24 (its count is the server's) against a
+  fake server whose replies fail before it acts and are lost after, and whose other accounts
+  like and unlike (lean/Fixture/Fuzz.lean); `lake exe likeMutant` checks that it catches a Like
+  that takes a lost write for a refused one (lean/Fixture/LikeMutant.lean);
 - claims: places, moves (press, edit, submit, keyed, emit), an invariant with a runnable check, a
   flow; its own scope `fixture` and its own claims.lock, so nothing here is in Cairn's ledger.
 

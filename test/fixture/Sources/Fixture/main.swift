@@ -15,6 +15,9 @@ import QuartzCore
 //   Fixture --bench       input → frame and frame size with 10 and 1,000 items
 //   Fixture --scroll-shots <dir>   offscreen renders of the virtual list: at the top, scrolled,
 //                         with a row selected, and at the end (docs/media.md, "Stills")
+//   Fixture --like-frames <dir>    offscreen frames, 30 a second, of the Like buttons pressed
+//                         against a scripted server: one write accepted, one refused and rolled
+//                         back, one whose reply is lost and read back (docs/media.md)
 
 // region: fixture-leanapp
 let fixture = LeanApp(
@@ -291,6 +294,103 @@ enum ScrollShots {
         shot("scroll-end")
         engine.stop()
     }
+}
+
+/// The server `--like-frames` talks to, in place of the network: post 3 refuses every write
+/// (403), post 4's first write is applied but its reply lost, the rest are accepted. Every
+/// answer takes 700 ms. Media only; `cairn fuzz`'s server (lean/Fixture/Fuzz.lean) is the one
+/// the claims are checked against.
+final class LikeServer: URLProtocol, @unchecked Sendable {
+    nonisolated(unsafe) static var liked: [Int: Bool] = [:]
+    nonisolated(unsafe) static var others: [Int: Int] = [1: 12, 2: 4, 3: 27, 4: 8]
+    nonisolated(unsafe) static var lostOnce = false
+    static let lock = NSLock()
+
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func stopLoading() {}
+
+    override func startLoading() {
+        let url = request.url!
+        let k = Int(url.lastPathComponent) ?? 0
+        let body = request.httpBody.flatMap { String(data: $0, encoding: .utf8) }
+        let method = request.httpMethod ?? "GET"
+        DispatchQueue.global().asyncAfter(deadline: .now() + 0.7) { [self] in
+            LikeServer.lock.lock()
+            var status = 200
+            var out = ""
+            var lose = false
+            if method == "PUT" {
+                if k == 3 {
+                    status = 403
+                } else {
+                    LikeServer.liked[k] = body == "1"
+                    if k == 4 && !LikeServer.lostOnce { LikeServer.lostOnce = true; lose = true }
+                }
+            } else if url.path.hasPrefix("/view/") {
+                let l = LikeServer.liked[k] ?? false
+                out = "\((LikeServer.others[k] ?? 0) + (l ? 1 : 0)) \(l ? 1 : 0)"
+            } else {
+                out = (LikeServer.liked[k] ?? false) ? "1" : "0"
+            }
+            LikeServer.lock.unlock()
+            if lose {
+                client?.urlProtocol(self, didFailWithError: NSError(domain: NSURLErrorDomain, code: NSURLErrorNetworkConnectionLost))
+                return
+            }
+            let r = HTTPURLResponse(url: url, statusCode: status, httpVersion: "HTTP/1.1", headerFields: [:])!
+            client?.urlProtocol(self, didReceive: r, cacheStoragePolicy: .notAllowed)
+            client?.urlProtocol(self, didLoad: Data(out.utf8))
+            client?.urlProtocolDidFinishLoading(self)
+        }
+    }
+}
+
+/// `--like-frames <dir>`: the fixture against `LikeServer`, offscreen, a PNG every 1/30 s while
+/// a script presses the Like buttons. `ffmpeg -framerate 30 -i <dir>/%04d.png` makes the video.
+@MainActor
+enum LikeFrames {
+    static func run(_ dir: String) {
+        var devices = Devices.inert
+        let c = URLSessionConfiguration.ephemeral
+        c.protocolClasses = [LikeServer.self]
+        devices.session = URLSession(configuration: c)
+        let engine = Engine(size: size, scalePercent: 200, world: World(devices: devices)) { LeanCore(fixture) }
+        engine.start()
+        guard var f = engine.wait(through: 0)?.frame else { fail("no first frame") }
+        let renderer = try! Renderer()
+        try! FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
+        func press(_ label: String) {
+            guard let r = f.ax.first(where: { $0.control?.label == label })?.rect else { fail("no \(label)") }
+            engine.send([.pointerMove(center(r))] + click(center(r)))
+        }
+        // Seconds into the video, and the control pressed then.
+        let script: [(Double, String)] = [
+            (0.6, "^23"),                  // Refresh: the counts arrive
+            (2.0, "^21#1"),               // like post 1: accepted
+            (4.0, "^21#3"),               // like post 3: refused, rolled back with a line
+            (6.6, "^21#4"),               // like post 4: the reply is lost, read back, kept
+            (9.6, "^21#2"), (9.9, "^21#2"),  // post 2 twice: one write, then the second
+            (12.0, "^21#3"),              // post 3 again: refused again
+        ]
+        var next = 0
+        let start = hostNow()
+        for i in 0..<(15 * 30) {
+            let t = Double(i) / 30
+            while hostNow() - start < t { usleep(1000) }
+            while next < script.count && script[next].0 <= t { press(script[next].1); next += 1 }
+            if let p = engine.latest { f = p.frame }
+            let url = URL(fileURLWithPath: dir).appendingPathComponent(String(format: "%04d.png", i))
+            try! renderer.image(f, scale: 2).writePNG(to: url)
+        }
+        engine.stop()
+        print(dir)
+    }
+}
+
+if let i = args.firstIndex(of: "--like-frames"), i + 1 < args.count {
+    MainActor.assumeIsolated { LikeFrames.run(args[i + 1]) }
+    exit(0)
 }
 
 if let i = args.firstIndex(of: "--scroll-shots"), i + 1 < args.count {

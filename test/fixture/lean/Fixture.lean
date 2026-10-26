@@ -33,8 +33,10 @@ height whose offset the runtime owns, ending in a line that hears `appear`, with
 | ^18 | move | Add below: a row at the end of the list, above the end line |
 | ^19 | invariant | the rows laid are one under the other from the box's top less the offset |
 | ^20 | invariant | the rows laid are exactly those that meet the box widened by the overscan, and no more than its height allows |
-| ^21 | move, keyed | a post's Like, `^21#k` for posts 1 to 4: a toggle a server keeps (Fixture/Like.lean) |
+| ^21 | move, keyed | a post's Like, `^21#k` for posts 1 to 4: a toggle a server keeps, on Cairn's optimistic table (Fixture/Like.lean) |
 | ^22 | invariant | a post with nothing in flight shows the value last heard from the server; `cairn fuzz` checks it against the server's world |
+| ^23 | move | Refresh: fetches each post's view, its count and the viewer's like |
+| ^24 | invariant | a post's count is never below its own like; `cairn fuzz` checks it is the server's count once the post is at rest |
 
 ^12, ^13, ^19 and ^20 are Cairn's scroll-box and virtual-list theorems (`Cairn.Layout.Scroll`,
 `Cairn.VList`, `Cairn.Layout.VList`) stated for this list; they and their proofs are in
@@ -83,9 +85,9 @@ structure State where
   keys : Array Nat := initKeys
   /-- The key the next added row gets. -/
   nextKey : Nat := rowCount + 1
-  /-- Posts 1 to 4's likes, a server's values (Fixture/Like.lean). -/
-  likes : List Like.Entry := Like.init
-deriving Repr, DecidableEq, Inhabited
+  /-- Posts 1 to 4's likes and counts, on an optimistic table (Fixture/Like.lean). -/
+  likes : Like.Likes := {}
+deriving Repr, BEq, Inhabited
 
 def fieldRef : ControlRef := ⟨2, 0⟩
 def addRef : ControlRef := ⟨3, 0⟩
@@ -100,6 +102,7 @@ def endRef : ControlRef := ⟨16, 0⟩
 def addTopRef : ControlRef := ⟨17, 0⟩
 def addEndRef : ControlRef := ⟨18, 0⟩
 def likeRef (k : Nat) : ControlRef := ⟨21, k⟩
+def refreshRef : ControlRef := ⟨23, 0⟩
 -- endregion: fixture-state
 
 -- region: fixture-flash-timer
@@ -299,9 +302,15 @@ move ^18 addEnd (s : State) "Add a row below" in ^1 where
     sound := by intro s; exact ⟨rfl, rfl⟩
 -- endregion: fixture-scroll-rows
 
-/-- Post `k`'s like pressed: `Like.press` on its entry, which sends a write if none is in flight. -/
+/-- Post `k`'s like pressed: `Like.press`, which shows it at once and sends a write if none is
+in flight. -/
 def likePress (s : State) (k : Nat) : State × List Effect :=
-  let o := Like.at_ s.likes k (Like.press k) s.nextReq
+  let o := Like.press k s.likes s.nextReq
+  ({ s with likes := o.1, nextReq := o.2.1 }, o.2.2)
+
+/-- Refresh: a view of every post, for the counts. -/
+def likeRefresh (s : State) : State × List Effect :=
+  let o := Like.refresh s.likes s.nextReq
   ({ s with likes := o.1, nextReq := o.2.1 }, o.2.2)
 
 move ^21 like (s : State) (k : Nat) "Like a post" in ^1 where
@@ -312,6 +321,14 @@ move ^21 like (s : State) (k : Nat) "Like a post" in ^1 where
     emit := likePress s k
     post s' := s'.items = s.items ∧ s'.nextId = s.nextId
     sound := by intro s k _; exact ⟨rfl, rfl⟩
+
+move ^23 refresh (s : State) "Refresh the counts" in ^1 where
+  does "Press Refresh."
+  sees "Each post's count and like are fetched again. A post pressed this session keeps what it shows; the others take the server's."
+  on press
+    emit := likeRefresh s
+    post s' := s'.items = s.items ∧ s'.likes.table = s.likes.table
+    sound := by intro s; exact ⟨rfl, rfl⟩
 
 -- region: fixture-receive
 /-- Whether a message is Flash's timer. -/
@@ -346,23 +363,21 @@ invariant ^7 idsBelow "Item ids stay below the next id" for machine where
       (Move.all_cons (reachEnd.preserves _ fun _ h => h)
       (Move.all_cons (addTop.preserves _ fun _ h => h)
       (Move.all_cons (addEnd.preserves _ fun _ h => h)
-      (Move.all_cons (like.preserves _ fun _ _ _ h => h) Move.all_nil))))))))))
+      (Move.all_cons (like.preserves _ fun _ _ _ h => h)
+      (Move.all_cons (refresh.preserves _ fun _ h => h) Move.all_nil)))))))))))
   receive := fun _ _ h => h
 -- endregion: fixture-invariant
 
 invariant ^22 likesShowServer "A post with nothing in flight shows the server's value" for machine where
   does "For every post, when no write or read back is in flight or waiting, what is shown is the value last heard from the server. `cairn fuzz` checks that this is the value the server holds, after every step and once every reply is in, against a fake server whose replies fail before it acts and are lost after."
-  holds s := Like.AllOk s.likes
-  init := by
-    intro e he
-    simp only [machine, Like.init, Like.posts, List.mem_replicate] at he
-    rw [he.2]; intro _; rfl
+  holds s := Like.Ok s.likes
+  init := Like.init_ok
   step := machine.preserves <|
     Move.all_cons (typeItem.preserves _ (fun _ _ h => h) fun s h => by
-          show Like.AllOk (add s).likes
+          show Like.Ok (add s).likes
           unfold add; split <;> exact h)
       (Move.all_cons (addItem.preserves _ fun s h => by
-          show Like.AllOk (add s).likes
+          show Like.Ok (add s).likes
           unfold add; split <;> exact h)
       (Move.all_cons (toggleItem.preserves _ fun _ _ _ h => h)
       (Move.all_cons (deleteItem.preserves _ fun _ _ _ h => h)
@@ -372,8 +387,16 @@ invariant ^22 likesShowServer "A post with nothing in flight shows the server's 
       (Move.all_cons (reachEnd.preserves _ fun _ h => h)
       (Move.all_cons (addTop.preserves _ fun _ h => h)
       (Move.all_cons (addEnd.preserves _ fun _ h => h)
-      (Move.all_cons (like.preserves _ fun _ k _ h => Like.press_all_ok k _ h) Move.all_nil))))))))))
-  receive := fun _ m h => Like.receive_ok false _ m h
+      (Move.all_cons (like.preserves _ fun s k _ h => Like.press_ok k s.nextReq h)
+      (Move.all_cons (refresh.preserves _ fun s h => Like.refresh_ok s.nextReq h) Move.all_nil)))))))))))
+  receive := fun s m h => Like.receive_ok false s.nextReq m h
+
+invariant ^24 likeCounts "A post's count is never below its own like" for machine where
+  does "Each post's count is the last view's, with the viewer's like as shown: the view's count, less the viewer's like in the view, plus the like shown. It is never below the like shown, so never below zero. `cairn fuzz` checks that once a post is at rest it is the server's count, the other accounts' likes when the view was served plus the server's value of the viewer's."
+  holds s := ∀ k, Cairn.Optimistic.ind (s.likes.shown k) ≤ s.likes.countOf k
+  init := fun k => Like.countOf_ge _ k
+  step := fun _ _ _ k => Like.countOf_ge _ k
+  receive := fun _ _ _ k => Like.countOf_ge _ k
 
 -- region: fixture-flow
 flow ^8 addAndFinish "Add two items and finish one" for machine where
@@ -481,16 +504,24 @@ def rowsList : VList := { ref := rowsRef, style := { width := .fill, height := .
 def rowsBox (s : State) (ui : UI) : Node := VList.node rowsList ui s.keys (rowOf s ui)
 -- endregion: fixture-scroll-view
 
-/-- Posts 1 to 4's Like buttons: filled when shown liked, with "…" while unsure. -/
+/-- Posts 1 to 4's Like buttons with their counts, filled when shown liked and dimmed while a
+write is in flight or in doubt, then Refresh, and the last rollback in a line. One child of the
+view, so the list stays its ninth (`Checks/Scroll.lean`'s `rowsOf`). -/
 def likesRow (s : State) (ui : UI) : Node :=
-  .box { axis := .row, width := .fill, gap := 6, align := .center } none
-    ((List.range' 1 Like.posts).map fun k =>
-      let e := s.likes.getD (k - 1) {}
-      let label := s!"{if e.want then "♥" else "♡"} {k}{if e.wait = .idle then "" else "…"}"
-      .box { padding := ⟨3, 8, 3, 8⟩, radius := 4, border := ring ui (likeRef k) (some ⟨1, line⟩),
-             background := some (if e.want then ⟨255, 228, 236, 255⟩ else white) }
-        (some { ref := likeRef k, label := s!"Like post {k}", checked := some e.want })
-        [.text { font := { size := 13 }, color := ink } label])
+  .box { width := .fill, gap := 6 } none
+    ([.box { axis := .row, width := .fill, gap := 6, align := .center } none
+      ((List.range' 1 Like.posts).map (fun k =>
+        let liked := s.likes.shown k
+        let label := s!"{if liked then "♥" else "♡"} {s.likes.countOf k}"
+        .box { padding := ⟨3, 8, 3, 8⟩, radius := 4, border := ring ui (likeRef k) (some ⟨1, line⟩),
+               background := some (if liked then ⟨255, 228, 236, 255⟩ else white) }
+          (some { ref := likeRef k, label := s!"Like post {k}", checked := some liked })
+          [.text { font := { size := 13 },
+                   color := if s.likes.busy k then muted else ink } label]) ++
+       [.box { width := .fill } none [], button ui refreshRef "Refresh"])] ++
+     match s.likes.line with
+     | some l => [.text { font := { size := 13 }, color := ⟨200, 40, 40, 255⟩ } l]
+     | none => [])
 
 -- region: fixture-view
 def view (s : State) (ui : UI) : Node :=

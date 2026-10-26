@@ -311,25 +311,24 @@ does the host's move with a server, `Server.empty` standing for none):
 sequence replays without the stream it came from, and the world is rebuilt as the sequence
 replays: a shrunk sequence keeps the requests reaching the server that its failure needs. A
 `reply` to a request that never reached the server in the replay is skipped, like a reply to a
-request the replay never made. The report names each fault where it was injected:
+request the replay never made. The report names each fault where it was injected (here
+`lake exe likeMutant`'s, which prints the same shrunk operations):
 
 ```
-FAIL seed 22 step 31: server ^22: ^22 is false after this step, against the server's world: liked [true, false, true, false], …
-  shrunk 42 → 8 operations:
-    press ^21#1
+lost taken for refused: server ^22 failed at seed 0: ^22 is false after this step, against the server's world: liked [false, true, true, false], others [18, 30, 8, 25], 2 writes
+  shrunk 27 → 6 operations:
     press ^21#3
-    host: #1 reaches the server, which handles it (reply not sent yet)
     press ^21#4
-    host: FAILED BEFORE: #2 never reached the server; the app hears failed Cairn.Fault.network "fuzz"
-    host: LOST AFTER: the server handled #1, but the reply is lost; the app hears failed Cairn.Fault.timeout "fuzz"
-    host: #4 reaches the server, which handles it (reply not sent yet)
-    host: answers #4 with HTTP 429, 12 bytes
+    press ^21#1
+    press ^21#2
+    host: #3 reaches the server, which handles it (reply not sent yet)
+    host: LOST AFTER: the server handled #3, but the reply is lost; the app hears failed Cairn.Fault.network "fuzz"
 ```
 
 That is the fixture's mutant (test/fixture/lean/Fixture/LikeMutant.lean, `make fuzz-quick`): a
-Like that retries a lost write blind instead of reading it back. Post 1's write was lost after
-the server applied it, the blind retry was refused (429), and the post rolled back to a value
-the server no longer holds.
+Like that takes a lost write for a refused one and rolls back instead of reading it back. Post
+4's write (#3) was lost after the server applied it, and the post rolled back to a value the
+server no longer holds.
 
 **The world is threaded, not copied.** The walk holds the only reference to the world while
 `handle` and `tick` run (`perform` takes the sequence's state apart first; `hostStep` returns

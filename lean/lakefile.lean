@@ -36,7 +36,7 @@ ledger, the audit, the kernel replay and `make doc` read. -/
 each of these. -/
 def linked : Array Lean.Name := #[`Cairn.Geometry, `Cairn.Claim, `Cairn.Effects, `Cairn.Font, `Cairn.Input,
     `Cairn.UI.Node, `Cairn.UI.Images, `Cairn.UI.Grid, `Cairn.UI.Hit, `Cairn.Surface, `Cairn.App,
-    `Cairn.VList,
+    `Cairn.VList, `Cairn.Optimistic,
     `Cairn.Claims.Move, `Cairn.Claims.Machine, `Cairn.Claims.Core,
     `Cairn.Text.Wrap, `Cairn.Text.Field, `Cairn.Text.Host, `Cairn.Layout.Core, `Cairn.Layout.Facts,
     `Cairn.Runtime.World, `Cairn.Runtime.Step, `Cairn.Runtime.Abi,
@@ -54,7 +54,7 @@ def proofs : Array Lean.Name := #[`Cairn.Text.Proofs, `Cairn.Text.WrapProofs, `C
     `Cairn.Layout.Proofs, `Cairn.Layout.Bridge, `Cairn.Layout.Check, `Cairn.Layout.Rigid,
     `Cairn.Layout.Para, `Cairn.Layout.Grid, `Cairn.Layout.Tests, `Cairn.Layout.Scroll, `Cairn.Layout.VList,
     `Cairn.Runtime.Proofs, `Cairn.Runtime.ScrollProofs, `Cairn.Runtime.WorldProofs, `Cairn.Runtime.InFlight,
-    `Cairn.Claims.Deliver,
+    `Cairn.Claims.Deliver, `Cairn.Optimistic.Server, `Cairn.Optimistic.Claims,
     `Cairn.Frame.Layout, `Cairn.Frame.EventsTests, `Cairn.Frame.BuildTests, `Cairn.Abi.Tests]
 
 /-- Proofs and tests about `Cairn`'s code, and the umbrellas that import them (`CairnAll`). Never

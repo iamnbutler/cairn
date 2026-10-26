@@ -175,3 +175,18 @@
 1020	assume	active	-	Secure event input is on exactly while a secure field has focus
 1021	assume	active	-	Assistive apps reach only what a scroll area shows
 1022	assume	active	-	A secure field shows assistive apps nothing typed
+1100	move	active	6b6a1d4e82d37068	Set a value
+1101	move	active	12e8fd77b3e45293	The server handles a request
+1102	move	active	62180a3dfbfe471d	The server refuses a request
+1103	move	active	f6084866acfb40db	An answer arrives
+1104	move	active	893d0e58f3f09c31	A request or answer is lost
+1105	move	active	7aa7a95a4e7eb0a0	A retry comes due
+1106	move	active	4d2a07dc7ed115a1	A view is fetched
+1107	invariant	active	ee8504a9cabd0b40	A set shows in its own step
+1108	invariant	active	4935176273dd8f0f	At most one write in flight per key
+1109	invariant	active	d3665406f5c7ec0b	Never more writes than sets
+1110	invariant	active	9a69b0ce407e4a6c	A refusal rolls back in its step
+1111	invariant	active	488e71959c11f9fd	Settled keys show what the server holds
+1112	invariant	active	5885d4aca69a60fe	Replies for different keys commute
+1113	invariant	active	eb468b28d2b13fc8	A settled count is the server's
+1114	invariant	active	e847fec11b018125	A view never moves a written key
