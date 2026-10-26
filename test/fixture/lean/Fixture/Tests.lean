@@ -35,19 +35,22 @@ def toggled : List Event := two ++ clickOn (run two) (toggleRef 1)
 #guard left (st toggled) == 1
 def deleted : List Event := toggled ++ clickOn (run toggled) (deleteRef 2)
 #guard texts (st deleted) == [(1, "milk", true)]
--- Tab order: field, Add, Passcode, Flash, Add above, Add below, then each item's checkbox and
--- delete button, the posts' Like buttons and Refresh (and then the list's rows, `notRow`).
+/-- The buttons under Flash: Top, End, Go to row, Hide rows, then Badge, Clear badge, Announce. -/
+def moreRefs : List ControlRef :=
+  [topRef, endButtonRef, goRowRef, hideRef, badgeRef, clearBadgeRef, announceRef]
+-- Tab order: field, Add, Passcode, Flash, Add above, Add below, the buttons under them, then each
+-- item's checkbox and delete button, the posts' Like buttons and Refresh (and then the list's rows, `notRow`).
 #guard ((tabOrder (run two).laid).map (·.ref)).filter notRow ==
-  [fieldRef, addRef, passRef, flashRef, addTopRef, addEndRef, toggleRef 1, deleteRef 1,
-   toggleRef 2, deleteRef 2, likeRef 1, likeRef 2, likeRef 3, likeRef 4, refreshRef]
+  [fieldRef, addRef, passRef, flashRef, addTopRef, addEndRef] ++ moreRefs ++
+  [toggleRef 1, deleteRef 1, toggleRef 2, deleteRef 2, likeRef 1, likeRef 2, likeRef 3, likeRef 4, refreshRef]
 -- Flash sets its timer; the note shows until it fires.
 def flashed : List Event := clickOn (run []) flashRef
 #guard (st flashed).flash
 -- The frame through the v1 boundary carries the keyed controls.
 #guard ((decodeFrame (frameBytes Frame.boundary (run two))).map fun f =>
   (f.ax.toList.filterMap (·.control)).filter notRow) ==
-  some [fieldRef, addRef, passRef, flashRef, addTopRef, addEndRef, toggleRef 1, deleteRef 1,
-        toggleRef 2, deleteRef 2, likeRef 1, likeRef 2, likeRef 3, likeRef 4, refreshRef]
+  some ([fieldRef, addRef, passRef, flashRef, addTopRef, addEndRef] ++ moreRefs ++
+        [toggleRef 1, deleteRef 1, toggleRef 2, deleteRef 2, likeRef 1, likeRef 2, likeRef 3, likeRef 4, refreshRef])
 -- endregion: fixture-tests
 
 -- The Passcode field: bullets on screen, nothing in the accessibility value, a redacted request.
@@ -137,6 +140,30 @@ def frame0 : Option Frame := decodeFrame (frameBytes Frame.boundary (run []))
 #guard (frame0.map fun f => (f.draws.toList.filter fun
   | .text _ _ _ t => t.startsWith "Row " | _ => false).length) == some 5
 #guard (frame0.map fun f => (f.ax.toList.filter (·.role == .scrollArea)).length) == some 1
+-- `scrollTo` (#234): End lands where scrolling far past the end does; Go to row puts row 5,000
+-- at the top of the box; Top goes back to 0.
+def toEnd : List Event := clickOn (run []) endButtonRef
+#guard offset toEnd == offset far
+#guard laidKeys toEnd == List.range' 9991 10
+def toRow : List Event := clickOn (run []) goRowRef
+#guard rectOf toRow 5000 == some ⟨box.x, box.y, box.w, 24⟩
+#guard offset (down ++ clickOn (run down) topRef) == 0
+-- Hidden, the list lays nothing but keeps its offset and heights (`keepScroll`); shown again,
+-- it comes back where it was.
+def hid : List Event := down ++ clickOn (run down) hideRef
+#guard laidKeys hid == []
+#guard offset hid == offset down
+def shown : List Event := hid ++ clickOn (run hid) hideRef
+#guard offset shown == offset down
+#guard laidKeys shown == laidKeys down
+#guard (List.range' 40 16).all fun k => rectOf shown k == rectOf down k
+-- Badge, Clear badge and Announce hand the host one effect each.
+def badged : List Event := clickOn (run []) badgeRef
+#guard (steps app tcfg (run []) badged).2.any fun | .badge (some "1") => true | _ => false
+#guard (steps app tcfg (run badged) (clickOn (run badged) clearBadgeRef)).2.any fun
+  | .badge none => true | _ => false
+#guard (steps app tcfg (run []) (clickOn (run []) announceRef)).2.any fun
+  | .announce "Announcement 1" .high => true | _ => false
 -- endregion: fixture-scroll-tests
 
 -- region: fixture-like-tests

@@ -18,9 +18,17 @@
 16	move	active	049eea3d8143f42a	Reach the end of the rows
 17	move	active	407d462a4cb8f9ab	Add a row above
 18	move	active	0226dae0979149e7	Add a row below
-19	invariant	active	d95e7dedf84c0db6	Rows are one under the other from the offset
-20	invariant	active	ad91352c374f9714	Only the rows near the view are built
+19	invariant	retired	d95e7dedf84c0db6	Rows are one under the other from the offset
+20	invariant	active	36d10339f0ff0522	Only the rows near the view are built
 21	move	active	1b548d01e944a74c	Like a post
 22	invariant	active	5438b8d941f84349	A post with nothing in flight shows the server's value
 23	move	active	0b2dd78aaaa83db4	Refresh the counts
 24	invariant	active	911b0533bb9993c9	A post's count is never below its own like
+41	move	active	2701fd0bd53788a2	Scroll to the top
+42	move	active	1d5a56391351683e	Scroll to the end
+43	move	active	3331271933f50f92	Go to a row
+44	move	active	521445c4d3888d38	Hide or show the rows
+45	move	active	27a9d64e36802efc	Badge the Dock tile
+46	move	active	d79a646c6eda849e	Clear the badge
+47	move	active	8c83216dc291c9c1	Announce
+48	invariant	active	c99c72609ed4862a	Rows are one under the other from the offset while shown

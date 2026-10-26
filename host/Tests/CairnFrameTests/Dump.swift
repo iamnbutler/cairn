@@ -99,6 +99,11 @@ enum Dump {
             case let .request(id, r): out += "request \(id) \(request(r))\n"
             case .quit: out += "quit\n"
             case let .cancelRequest(id): out += "cancelRequest \(id)\n"
+            case let .scrollTo(c, t):
+                let to = switch t { case .start: "start"; case .finish: "end"; case let .key(k): "key \(k)" }
+                out += "scrollTo \(ref(c)) \(to)\n"
+            case let .badge(l): out += "badge \(l.map(str) ?? "none")\n"
+            case let .announce(t, p): out += "announce \(p == .high ? "high" : "low") \(str(t))\n"
             }
         }
         out += "subs \(f.subs.count)\n"

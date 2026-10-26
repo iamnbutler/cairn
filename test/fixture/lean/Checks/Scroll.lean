@@ -1,7 +1,7 @@
 import Fixture
 import Cairn.Layout
 
-/-! # The fixture's list: claims ^12, ^13, ^19 and ^20 (^11 and ^15 retired)
+/-! # The fixture's list: claims ^12, ^13, ^20 and ^48 (^11, ^15 and ^19 retired)
 
 Cairn's scroll-box and virtual-list theorems (`Cairn.Layout.Scroll`, `Cairn.VList`,
 `Cairn.Layout.VList`), stated for the fixture's virtual list at the offset the runtime gives it,
@@ -14,11 +14,21 @@ open Cairn Cairn.Claims Cairn.Layout Cairn.Runtime Fixture
 /-- The list in a laid-out fixture view: the root's ninth and last child. -/
 def rowsOf (l : Laid) : Laid := l.children.getD 8 default
 
-/-- The view's scroll box is `rowsBox`, measured and arranged somewhere in the window. -/
-theorem rowsOf_layout (m : TextMetrics) (w : Size) (s : State) (ui : UI) :
+/-- While the rows are shown, the view's scroll box is `rowsBox`, measured and arranged somewhere
+in the window. -/
+theorem rowsOf_layout (m : TextMetrics) (w : Size) (s : State) (ui : UI) (hs : s.hidden = false) :
     ∃ c r aw, rowsOf (layout m w (view s ui)) =
-      arrange m c r (Layout.measure m aw (rowsBox s ui)) :=
-  ⟨_, _, _, rfl⟩
+      arrange m c r (Layout.measure m aw (rowsBox s ui)) := by
+  unfold view
+  rw [hs]
+  exact ⟨_, _, _, rfl⟩
+
+/-- While the rows are hidden, the last child is a line of text: it has no children. -/
+theorem rowsOf_hidden (m : TextMetrics) (w : Size) (s : State) (ui : UI) (hs : s.hidden = true) :
+    (rowsOf (layout m w (view s ui))).children = [] := by
+  unfold view
+  rw [hs]
+  rfl
 
 theorem rowsOf_mem (m : TextMetrics) (w : Size) (s : State) (ui : UI) :
     rowsOf (layout m w (view s ui)) ∈ (layout m w (view s ui)).children := by
@@ -30,18 +40,20 @@ theorem rowsOf_mem (m : TextMetrics) (w : Size) (s : State) (ui : UI) :
   exact List.getElem_mem _
 
 -- region: fixture-scroll-claims
-/-- ^19's statement: the list's children (the spacer for the rows above, the rows laid, the
-spacer below) are one under the other from the top of its content box less the runtime's offset
-(`vlist_stacked`): no gaps, no overlaps, whatever height each row turns out to be. -/
+/-- ^48's statement: while the rows are shown, the list's children (the spacer for the rows above,
+the rows laid, the spacer below) are one under the other from the top of its content box less the
+runtime's offset (`vlist_stacked`): no gaps, no overlaps, whatever height each row turns out to
+be. -/
 def RowsStacked (s : State) : Prop :=
+  s.hidden = false →
   ∀ (m : TextMetrics) (ui : UI) (w : Size), ∃ (c r : Rect) (aw : Int) (st : Style),
     rowsOf (layout m w (view s ui)) = arrange m c r (Layout.measure m aw (rowsBox s ui)) ∧
     Stacked ((rowsOf (layout m w (view s ui))).children.map Laid.rect)
       ((r.inset st.padding).y - ui.scrollOf rowsRef)
 
 theorem rowsStacked (s : State) : RowsStacked s := by
-  intro m ui w
-  obtain ⟨c, r, aw, h⟩ := rowsOf_layout m w s ui
+  intro hh m ui w
+  obtain ⟨c, r, aw, h⟩ := rowsOf_layout m w s ui hh
   obtain ⟨st, -, -, -, hs⟩ := vlist_stacked m c r aw rowsList ui s.keys (rowOf s ui)
   exact ⟨c, r, aw, st, h, h ▸ hs⟩
 
@@ -71,8 +83,11 @@ def RowsApart (s : State) : Prop :=
 
 theorem rowsApart (s : State) : RowsApart s := by
   intro m ui w
+  cases hs : s.hidden
+  case true => simp only [rowsOf_hidden m w s ui hs, List.Pairwise.nil, List.not_mem_nil,
+    false_implies, implies_true, and_self]
   have hE := ((layout_scrollApart m w (view s ui)).child (rowsOf_mem m w s ui)).here
-  obtain ⟨c, r, aw, h⟩ := rowsOf_layout m w s ui
+  obtain ⟨c, r, aw, h⟩ := rowsOf_layout m w s ui hs
   rw [h] at hE ⊢
   obtain ⟨st, hs, hcol, -, -, -, -, hn⟩ := VList.node_eq rowsList ui s.keys (rowOf s ui)
   simp only [rowsBox, hn, Layout.measure, arrange, ScrollApart, Laid.children, Laid.rect] at hE ⊢
@@ -95,8 +110,10 @@ retire ^11 invariant "Rows are the column, moved up by the offset" because "The 
 
 retire ^15 invariant "Rows are the column, moved up by the runtime's offset" because "The rows are a virtual list now (#204): the box builds only the rows near the offset, so its children aren't the whole column. ^19 states where the rows built are, ^20 which are built."
 
-invariant ^19 rowsStackedInvariant "Rows are one under the other from the offset" for machine where
-  does "The rows the list builds, and the spacers for the rows above and below them, are one under the other from the top of the box less the offset the runtime keeps for it (^14): no gaps, no overlaps, whatever height each row turns out to be. Any metrics, any window, any offset, every state."
+retire ^19 invariant "Rows are one under the other from the offset" because "The rows can be hidden now (#234): while they are, the view has no list to stack. ^48 states it while they show."
+
+invariant ^48 rowsStackedInvariant "Rows are one under the other from the offset while shown" for machine where
+  does "While the rows are shown, the rows the list builds, and the spacers for the rows above and below them, are one under the other from the top of the box less the offset the runtime keeps for it (^14): no gaps, no overlaps, whatever height each row turns out to be. Any metrics, any window, any offset, every state."
   holds s := RowsStacked s
   init := rowsStacked _
   step := fun _ _ _ => rowsStacked _

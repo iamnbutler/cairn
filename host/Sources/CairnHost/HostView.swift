@@ -22,6 +22,8 @@ public final class HostView: NSView {
     /// skipped. The debug socket uses it to record effects and keep them off the user's clipboard
     /// and speakers (docs/conformance.md).
     public var effectHook: ((Effect) -> Bool)?
+    /// Where `badge` and `announce` go: AppKit, or a recorder in the trusted-base fuzzer.
+    public var notices: NoticeSystem = .live
     /// The pasteboard `setClipboard` writes and Paste reads: the general one, or a private one
     /// under the debug socket.
     public var pasteboard: NSPasteboard = .general
@@ -345,6 +347,12 @@ public final class HostView: NSView {
             break  // the engine's World already ran it (docs/effects.md)
         case .quit:
             NSApp.terminate(nil)
+        case .scrollTo:
+            break  // Lean's runtime already moved the offset (docs/runtime.md)
+        case .badge(let label):
+            Notices.badge(label, notices)
+        case let .announce(text, priority):
+            Notices.announce(text, priority, element: window ?? NSApp as Any, notices)
         }
     }
 

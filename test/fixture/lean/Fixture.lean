@@ -9,7 +9,9 @@ What the framework's checks need from an app, in one small window (test/fixture/
 heading and a wrapped paragraph (text, `Node.para`), a text field with Enter (editing, the text
 input client), a secure field (a passcode, sent in a redacted request), a button, a list of rows with keyed controls (hit testing, `^N#k`), a button whose
 effect comes back as a message (a timer), an invariant with a runnable check, a flow, and a virtual list (`VList`) of 10,000 keyed rows of mixed
-height whose offset the runtime owns, ending in a line that hears `appear`, with buttons that add rows at its top and its end.
+height whose offset the runtime owns, ending in a line that hears `appear`, with buttons that add rows at its top and its end,
+that scroll it (`Effect.scrollTo`) and that hide it while the runtime keeps its place (`App.keepScroll`), and buttons that set the Dock
+badge and post a spoken announcement.
 
 | Id | Kind | What |
 |---|---|---|
@@ -37,6 +39,13 @@ height whose offset the runtime owns, ending in a line that hears `appear`, with
 | ^22 | invariant | a post with nothing in flight shows the value last heard from the server; `cairn fuzz` checks it against the server's world |
 | ^23 | move | Refresh: fetches each post's view, its count and the viewer's like |
 | ^24 | invariant | a post's count is never below its own like; `cairn fuzz` checks it is the server's count once the post is at rest |
+| ^41 | move | Top: scrolls the list to its start |
+| ^42 | move | End: scrolls the list to its end |
+| ^43 | move | Go to row: scrolls the list to the selected row, or row 5,000 |
+| ^44 | move | Hide rows / Show rows: the list leaves the view and comes back where it was |
+| ^45 | move | Badge: counts one more and shows the count on the Dock tile |
+| ^46 | move | Clear badge: the count goes back to 0 and the badge goes |
+| ^47 | move | Announce: assistive apps say "Announcement N" |
 
 ^12, ^13, ^19 and ^20 are Cairn's scroll-box and virtual-list theorems (`Cairn.Layout.Scroll`,
 `Cairn.VList`, `Cairn.Layout.VList`) stated for this list; they and their proofs are in
@@ -87,6 +96,12 @@ structure State where
   nextKey : Nat := rowCount + 1
   /-- Posts 1 to 4's likes and counts, on an optimistic table (Fixture/Like.lean). -/
   likes : Like.Likes := {}
+  /-- Whether the list is hidden (^44): the runtime keeps its offset meanwhile. -/
+  hidden : Bool := false
+  /-- The count on the Dock badge (^45, ^46); no badge at 0. -/
+  badged : Nat := 0
+  /-- How many announcements have been posted (^47). -/
+  said : Nat := 0
 deriving Repr, BEq, Inhabited
 
 def fieldRef : ControlRef := ⟨2, 0⟩
@@ -103,6 +118,13 @@ def addTopRef : ControlRef := ⟨17, 0⟩
 def addEndRef : ControlRef := ⟨18, 0⟩
 def likeRef (k : Nat) : ControlRef := ⟨21, k⟩
 def refreshRef : ControlRef := ⟨23, 0⟩
+def topRef : ControlRef := ⟨41, 0⟩
+def endButtonRef : ControlRef := ⟨42, 0⟩
+def goRowRef : ControlRef := ⟨43, 0⟩
+def hideRef : ControlRef := ⟨44, 0⟩
+def badgeRef : ControlRef := ⟨45, 0⟩
+def clearBadgeRef : ControlRef := ⟨46, 0⟩
+def announceRef : ControlRef := ⟨47, 0⟩
 -- endregion: fixture-state
 
 -- region: fixture-flash-timer
@@ -330,6 +352,75 @@ move ^23 refresh (s : State) "Refresh the counts" in ^1 where
     post s' := s'.items = s.items ∧ s'.likes.table = s.likes.table
     sound := by intro s; exact ⟨rfl, rfl⟩
 
+-- region: fixture-scroll-to
+/-- The row Go to row scrolls to: the selected one, or row 5,000. -/
+def goKey (s : State) : Nat := s.selected.getD 5000
+
+move ^41 scrollTop (s : State) "Scroll to the top" in ^1 where
+  does "Press Top."
+  sees "The list scrolls to its first row."
+  enabled := !s.hidden
+  on press
+    emit := (s, [.scrollTo rowsRef .start])
+    post s' := s' = s
+    sound := by intro s _; rfl
+
+move ^42 scrollEnd (s : State) "Scroll to the end" in ^1 where
+  does "Press End."
+  sees "The list scrolls to its end line."
+  enabled := !s.hidden
+  on press
+    emit := (s, [.scrollTo rowsRef .finish])
+    post s' := s' = s
+    sound := by intro s _; rfl
+
+move ^43 scrollRow (s : State) "Go to a row" in ^1 where
+  does "Press Go to row."
+  sees "The selected row, or row 5,000 when none is, is at the top of the list (or the list is at its end)."
+  enabled := !s.hidden
+  on press
+    emit := (s, [.scrollTo rowsRef (.key (goKey s))])
+    post s' := s' = s
+    sound := by intro s _; rfl
+
+move ^44 hideRows (s : State) "Hide or show the rows" in ^1 where
+  does "Press Hide rows, then Show rows."
+  sees "The list goes, and comes back scrolled where it was."
+  on press
+    apply := { s with hidden := !s.hidden }
+    post s' := s'.hidden = !s.hidden ∧ s'.items = s.items
+    sound := by intro s; exact ⟨rfl, rfl⟩
+-- endregion: fixture-scroll-to
+
+-- region: fixture-badge
+/-- The Dock badge for a count: none at 0. -/
+def badgeLabel (n : Nat) : Option String := if n = 0 then none else some (toString n)
+
+move ^45 badgeMove (s : State) "Badge the Dock tile" in ^1 where
+  does "Press Badge."
+  sees "The Dock tile's badge counts one more."
+  on press
+    emit := ({ s with badged := s.badged + 1 }, [.badge (badgeLabel (s.badged + 1))])
+    post s' := s'.badged = s.badged + 1 ∧ s'.items = s.items
+    sound := by intro s; exact ⟨rfl, rfl⟩
+
+move ^46 clearBadge (s : State) "Clear the badge" in ^1 where
+  does "Press Clear badge."
+  sees "The Dock tile's badge goes."
+  on press
+    emit := ({ s with badged := 0 }, [.badge none])
+    post s' := s'.badged = 0 ∧ s'.items = s.items
+    sound := by intro s; exact ⟨rfl, rfl⟩
+
+move ^47 announceMove (s : State) "Announce" in ^1 where
+  does "Press Announce."
+  sees "VoiceOver says \"Announcement N\", counting up."
+  on press
+    emit := ({ s with said := s.said + 1 }, [.announce s!"Announcement {s.said + 1}" .high])
+    post s' := s'.said = s.said + 1 ∧ s'.items = s.items
+    sound := by intro s; exact ⟨rfl, rfl⟩
+-- endregion: fixture-badge
+
 -- region: fixture-receive
 /-- Whether a message is Flash's timer. -/
 def isFlash : Msg → Bool
@@ -364,7 +455,14 @@ invariant ^7 idsBelow "Item ids stay below the next id" for machine where
       (Move.all_cons (addTop.preserves _ fun _ h => h)
       (Move.all_cons (addEnd.preserves _ fun _ h => h)
       (Move.all_cons (like.preserves _ fun _ _ _ h => h)
-      (Move.all_cons (refresh.preserves _ fun _ h => h) Move.all_nil)))))))))))
+      (Move.all_cons (refresh.preserves _ fun _ h => h)
+      (Move.all_cons (scrollTop.preserves _ fun _ _ h => h)
+      (Move.all_cons (scrollEnd.preserves _ fun _ _ h => h)
+      (Move.all_cons (scrollRow.preserves _ fun _ _ h => h)
+      (Move.all_cons (hideRows.preserves _ fun _ h => h)
+      (Move.all_cons (badgeMove.preserves _ fun _ h => h)
+      (Move.all_cons (clearBadge.preserves _ fun _ h => h)
+      (Move.all_cons (announceMove.preserves _ fun _ h => h) Move.all_nil)))))))))))))))))))
   receive := fun _ _ h => h
 -- endregion: fixture-invariant
 
@@ -388,7 +486,14 @@ invariant ^22 likesShowServer "A post with nothing in flight shows the server's 
       (Move.all_cons (addTop.preserves _ fun _ h => h)
       (Move.all_cons (addEnd.preserves _ fun _ h => h)
       (Move.all_cons (like.preserves _ fun s k _ h => Like.press_ok k s.nextReq h)
-      (Move.all_cons (refresh.preserves _ fun s h => Like.refresh_ok s.nextReq h) Move.all_nil)))))))))))
+      (Move.all_cons (refresh.preserves _ fun s h => Like.refresh_ok s.nextReq h)
+      (Move.all_cons (scrollTop.preserves _ fun _ _ h => h)
+      (Move.all_cons (scrollEnd.preserves _ fun _ _ h => h)
+      (Move.all_cons (scrollRow.preserves _ fun _ _ h => h)
+      (Move.all_cons (hideRows.preserves _ fun _ h => h)
+      (Move.all_cons (badgeMove.preserves _ fun _ h => h)
+      (Move.all_cons (clearBadge.preserves _ fun _ h => h)
+      (Move.all_cons (announceMove.preserves _ fun _ h => h) Move.all_nil)))))))))))))))))))
   receive := fun s m h => Like.receive_ok false s.nextReq m h
 
 invariant ^24 likeCounts "A post's count is never below its own like" for machine where
@@ -535,18 +640,30 @@ def view (s : State) (ui : UI) : Node :=
       -- endregion: fixture-para
       inputRow s ui,
       passcodeRow s ui,
-      .box { axis := .row, width := .fill, gap := 8, align := .center } none
-        ([button ui flashRef "Flash", button ui addTopRef "Add above",
-          button ui addEndRef "Add below"] ++
-         (if s.flash then [.text { font := body, color := accent } "Flashing"] else [])),
+      .box { width := .fill, gap := 8 } none
+        [ .box { axis := .row, width := .fill, gap := 8, align := .center } none
+            ([button ui flashRef "Flash", button ui addTopRef "Add above",
+              button ui addEndRef "Add below"] ++
+             (if s.flash then [.text { font := body, color := accent } "Flashing"] else [])),
+          .box { axis := .row, width := .fill, gap := 8, align := .center } none
+            ((if s.hidden then [] else
+              [button ui topRef "Top", button ui endButtonRef "End",
+               button ui goRowRef "Go to row"]) ++
+             [button ui hideRef (if s.hidden then "Show rows" else "Hide rows")]),
+          .box { axis := .row, width := .fill, gap := 8, align := .center } none
+            [button ui badgeRef "Badge", button ui clearBadgeRef "Clear badge",
+             button ui announceRef "Announce"] ],
       .box { width := .fill, gap := 4 } none (s.items.map (itemRow ui)),
       .text { font := { size := 13 }, color := muted } (leftLabel (left s)),
       likesRow s ui,
-      rowsBox s ui ]
+      if s.hidden then .text { font := { size := 13 }, color := muted } "Rows hidden"
+      else rowsBox s ui ]
 -- endregion: fixture-view
 
 -- region: fixture-app
-def app : App State := machine.toApp [.window 1 "Fixture" view] claimInfos
+def app : App State :=
+  { machine.toApp [.window 1 "Fixture" view] claimInfos with keepScroll := fun _ => [rowsRef] }
+
 -- endregion: fixture-app
 
 end Fixture

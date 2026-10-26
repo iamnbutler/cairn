@@ -83,6 +83,8 @@ public final class DebugServer: @unchecked Sendable {
             lock.unlock()
             if case .beep = e { return true }  // recorded, not sounded
             if case .quit = e { return true }  // recorded, not run: the driver ends the app with `quit`
+            if case .badge = e { return true }  // recorded, not run: the app has no Dock tile here
+            if case .announce = e { return true }  // recorded, not spoken
             return false  // setClipboard runs, into the private pasteboard
         }
         NSApp.setActivationPolicy(.accessory)  // no Dock icon, no menu bar takeover

@@ -112,5 +112,7 @@ def fuzz : Fuzz.Custom State where
   server := some server
   -- Most presses on post 1, so a press races its own write's reply.
   weights := fun _ r => if r.claim = 21 then (if r.key = 1 then 12 else 2) else 1
+  -- The Dock badge the host shows is the count's (^45, ^46).
+  badge := [(45, fun s b => b == badgeLabel s.badged)]
 
 end Fixture

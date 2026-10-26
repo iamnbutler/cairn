@@ -6,7 +6,7 @@ entries in the section of the workstream that introduces the assumption.
 
 Items marked **Fuzzed** are also checked by the trusted-base fuzzer (`make fuzz-trusted`,
 docs/fuzz.md "Trusted base"), against Lean's proved side or an independent oracle, and are
-declared as `assume` claims ^7, ^214, ^901–^915, ^940–^944, ^960–^975, ^1000–^1012 and ^1020–^1022 in `lean/Cairn/Fuzz/Trusted/Claims.lean`, each naming its
+declared as `assume` claims ^7, ^214, ^901–^915, ^940–^944, ^960–^975, ^1000–^1012, ^1020–^1022 and ^1030–^1031 in `lean/Cairn/Fuzz/Trusted/Claims.lean`, each naming its
 check; `build/fuzz/trusted.json` holds the evidence. Items not marked are checked only by the
 tests and reviews they list.
 
@@ -297,8 +297,9 @@ See [host.md](host.md) for how each piece works.
   render loop holds a frame back during a resize, the screen shows an older frame than the
   latest one.
 - **Effects.** `setClipboard` writes a plain string to the general pasteboard. `beep` calls
-  `NSSound.beep()`. `quit` calls `NSApp.terminate`. `focus`, `setTimer` and `cancelTimer` are
-  the runtime's and ignored. `request` and the subscription commands go to the `World`
+  `NSSound.beep()`. `quit` calls `NSApp.terminate`. `badge` and `announce` set the Dock badge
+  and post an announcement ("The Dock badge and announcements (M5)" below). `focus`,
+  `scrollTo`, `setTimer` and `cancelTimer` are the runtime's and ignored. `request` and the subscription commands go to the `World`
   ("Effects (workstream Q)" below).
 - **Closing the window.** Closing the app's window quits the app (docs/host.md, "Closing the
   window"). AppKit is trusted to post `willClose` before it tears the window down, and
@@ -1055,6 +1056,57 @@ more `scrollWheel`s (the host treats them like any other); and that AppKit deliv
   by 1.25 points.
 - **Tested**: the fixture's self test scrolls its rows 1,616 points through the engine and
   checks rows 51 to 56 show and are pressed where they show.
+
+## The Dock badge and announcements (M5)
+
+Two host effects that are each one AppKit call, with no policy in Swift (docs/effects.md, "The
+Dock badge and announcements"). What the label and the text are is Lean's; that the host shows
+exactly them is assumed.
+
+### The badge the host shows is the label of the last badge effect, or none (`assume`, ^1030)
+
+**What is assumed.** ^1030 `hostBadge`: for each `badge label` the frames hand over, in order,
+the host sets `NSApp.dockTile.badgeLabel` to exactly `label` (nil for `none`), and it sets the
+badge nowhere else. So the badge is the last `badge` effect's label, or none.
+
+**Also assumed, not fuzzed.** That the Dock draws the tile's badge label as set (the check reads
+it back from `NSDockTile`, not from the screen); a still of the fixture's badge is in the M5
+media. An app with no Dock icon (accessory policy) has a tile that is never drawn.
+
+**Trusted code.** `host/Sources/CairnHost/NoticeEffects.swift` (`Notices.badge`,
+`NoticeSystem.live`), `host/Sources/CairnHost/HostView.swift` (`run`).
+
+**Evidence.**
+- **Fuzzed** (^1030 `dock.badge`, `NoticesSuite`): one to three frames a case, each with up to
+  four effects mixing `badge` (none, empty, digits, `99+`, up to 40 characters, any Unicode),
+  `announce` and effects the host ignores, through a real `HostView` and the engine. After each
+  frame `NSApp.dockTile.badgeLabel` must equal the last label sent, or nil; each case ends with
+  `badge none` and reads nil. Mutation checked by hand: setting the label with a space appended
+  fails it.
+- **Tested**: the fixture's self test presses Badge twice, Clear badge and Announce and checks
+  the host is handed `badge "1"`, `badge "2"`, `badge none` and the announcement, in order.
+
+### An announcement is posted once, with exactly its text (`assume`, ^1031)
+
+**What is assumed.** ^1031 `hostAnnounce`: for each `announce text priority`, the host posts one
+`NSAccessibility` `announcementRequested` notification for its window (the app when it has none)
+whose user info holds exactly `text` and the priority's level (`low` 10, `high` 90), in order,
+and posts none otherwise.
+
+**Also assumed, not fuzzed.** That VoiceOver speaks what is posted (the check records the post
+instead of making it, so it never speaks), and that a `high` announcement interrupts speech in
+progress as AppKit documents.
+
+**Trusted code.** `host/Sources/CairnHost/NoticeEffects.swift` (`Notices.announce`,
+`Notices.userInfo`, `NoticeSystem.live`), `host/Sources/CairnHost/HostView.swift` (`run`).
+
+**Evidence.**
+- **Fuzzed** (^1031 `ax.announce`, `NoticesSuite`): the same frames, with announcements of any
+  text at either priority; a recorder in place of `NSAccessibility.post` must have been called
+  once per announcement, in order, for the window, with exactly the text and level, and for
+  nothing else.
+- **Proved and fuzzed in Lean**: the text is the app's. `cairn fuzz` plants text in secure
+  fields and fails when it shows up in any effect's dump, announcements included (`secure`).
 
 ## Conformance (workstream J)
 

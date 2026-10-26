@@ -24,11 +24,11 @@ extension Frame {
         self = try bytes.withUnsafeBytes { try Frame(decoding: $0) }
     }
 
-    /// Header (magic, version 11, flags 0), surfaces, effects, subscription commands, wake.
+    /// Header (magic, version 12, flags 0), surfaces, effects, subscription commands, wake.
     public init(decoding raw: UnsafeRawBufferPointer) throws {
         var r = ByteReader(raw)
         try r.need(8)
-        guard r.u8(0) == 0x43, r.u8(1) == 0x41, r.u8(2) == 0x46, r.u8(3) == 0x52, r.u16(4) == 11,
+        guard r.u8(0) == 0x43, r.u8(1) == 0x41, r.u8(2) == 0x46, r.u8(3) == 0x52, r.u16(4) == 12,
               r.u16(6) == 0  // flags: reserved, zero (found by cairn-fuzz-trusted)
         else { throw FrameDecodeError.badHeader }
         r.i = 8
@@ -316,6 +316,27 @@ extension Frame {
             try er.need(8)
             defer { er.i += 8 }
             return .cancelRequest(id: er.u32(4))
+        case 8:
+            try er.need(16)
+            defer { er.i += 16 }
+            let c = ControlRef(claim: er.u32(4), key: er.u32(8))
+            switch er.u8(1) {
+            case 0: return .scrollTo(c, .start)
+            case 1: return .scrollTo(c, .finish)
+            case 2: return .scrollTo(c, .key(er.u32(12)))
+            case let k: throw FrameDecodeError.badCode(k, at: er.i + 1)
+            }
+        case 9:
+            let has = try er.flag(1)
+            er.i += 4
+            let label = try er.string()
+            return .badge(has ? label : nil)
+        case 10:
+            guard let p = Priority(rawValue: er.u8(1)) else {
+                throw FrameDecodeError.badCode(er.u8(1), at: er.i + 1)
+            }
+            er.i += 4
+            return .announce(try er.string(), priority: p)
         case let c:
             throw FrameDecodeError.badCode(c, at: er.i)
         }

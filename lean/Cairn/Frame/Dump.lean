@@ -125,6 +125,9 @@ def effect : Effect → String
   | .request id r => s!"request {id} {request r}"
   | .quit => "quit"
   | .cancelRequest id => s!"cancelRequest {id}"
+  | .scrollTo c t => s!"scrollTo {ref c} {match t with | .start => "start" | .finish => "end" | .key k => s!"key {k}"}"
+  | .badge l => s!"badge {match l with | some l => str l | none => "none"}"
+  | .announce t p => s!"announce {match p with | .low => "low" | .high => "high"} {str t}"
 
 def subCmd : SubCmd → String
   | .start id (.every ms) => s!"start {id} every {ms}"

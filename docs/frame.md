@@ -1,4 +1,4 @@
-# Frame and event format: frames v11, events v2
+# Frame and event format: frames v12, events v2
 
 Two byte buffers cross the boundary between Lean and the Swift host, and nothing else does:
 
@@ -94,7 +94,8 @@ minimum size to the surface record; version 8 added the `imageCache` subscriptio
 added the Keychain secret source (`[2, 0, 0, 0]`), `http`'s secret and captures, and the
 `forgetSecret` request (kind 17). An `upload` with no secret or an environment secret is the
 same bytes in versions 8 and 9. Version 10 added the `secure` flags to accessibility and
-text-input records and `redact` to requests. Version 11 added the `scrollArea` role (10).
+text-input records and `redact` to requests. Version 11 added the `scrollArea` role (10). Version 12 added the `scrollTo`, `badge` and
+`announce` effects (8–10).
 
 ### Surface records
 
@@ -291,6 +292,9 @@ cancelTimer   [4, 0, 0, 0]     4 string name                           4 + strin
 request       [5, kind, redact, 0]  4 u32 id  8 request fields         8 + fields
 quit          [6, 0, 0, 0]                                                   4 bytes
 cancelRequest [7, 0, 0, 0]     4 u32 id                                     8 bytes
+scrollTo      [8, to, 0, 0]    4 u32 claim  8 u32 key  12 u32 row          16 bytes
+badge         [9, has, 0, 0]   4 string label ("" when has = 0)        4 + string
+announce      [10, prio, 0, 0] 4 string text                           4 + string
 ```
 
 Request kinds and their fields:
@@ -334,7 +338,10 @@ Effects run once, in order, after the frame that carries them. `focus`, `setTime
 frame is built; the host ignores them; they are on the frame for tools and tests). `request`
 is run by the host's handler table and answered by a `reply` event; `cancelRequest` asks the
 host to stop the work of request `id` if it is still running (the request is still answered,
-once; docs/effects.md, "Requests in flight"); `quit` ends the app.
+once; docs/effects.md, "Requests in flight"); `quit` ends the app. `scrollTo` is the runtime's too (the offset
+has moved when the frame is built; `to` is 0 start, 1 end, 2 the row keyed `row`, which is 0
+otherwise). `badge` sets the Dock tile's badge to the label, or clears it when `has` is 0;
+`announce` posts an accessibility announcement of the text at priority `prio` (0 low, 1 high).
 
 ### Subscription commands and wake
 
@@ -533,6 +540,7 @@ clipboard "…"
 beep
 focus CLAIM#KEY
 timer "NAME" MS | cancelTimer "NAME" | quit
+scrollTo CLAIM#KEY start|end|key K | badge "…"|none | announce low|high "…"
 request ID readFile "PATH" | request ID writeFile "PATH" BYTES | request ID sound "NAME"
 request ID http "METHOD" "URL" timeout=MS HEADERS body=BYTES secret=none|SECRET capture=N "FIELD" "ACCOUNT"…
 request ID http "METHOD" timeout=MS <redacted N bytes> secret=none|SECRET capture=N "FIELD" "ACCOUNT"…

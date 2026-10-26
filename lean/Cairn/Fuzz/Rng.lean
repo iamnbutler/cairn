@@ -222,6 +222,9 @@ structure Custom (S : Type) where
   /-- A server with a world of its own, for claims stated against what it holds (docs/fuzz.md,
   "A server"). `none` answers every request with `replies` or the default. -/
   server : Option (Server S) := none
+  /-- Checks of the Dock badge, after every step: the state, and the label the host shows, the
+  last `badge` effect's (none before any; ^1030). Counted under the claim as `badge`. -/
+  badge : List (ClaimId × (S → Option String → Bool)) := []
 
 instance {S : Type} : Inhabited (Custom S) := ⟨{}⟩
 

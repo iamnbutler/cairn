@@ -17,10 +17,14 @@ What it covers, in one window (lean/Fixture.lean):
 - hit testing: buttons, and keyed rows (`^4#k`, `^5#k`) that come and go;
 - scroll boxes: a virtual list (place ^14) of 10,000 keyed rows (`^10#k`) of mixed height,
   whose offset the runtime owns, with Cairn's scroll-box and virtual-list theorems stated for it
-  as claims ^12, ^13, ^19 and ^20 (lean/Checks/Scroll.lean; ^11 and ^15 are retired), buttons
-  that add rows at the head and the tail (^17, ^18), and an end line that hears `appear` (^16);
+  as claims ^12, ^13, ^20 and ^48 (lean/Checks/Scroll.lean; ^11, ^15 and ^19 are retired), buttons
+  that add rows at the head and the tail (^17, ^18), an end line that hears `appear` (^16),
+  buttons that scroll it with `scrollTo` (Top ^41, End ^42, Go to row ^43), and one that hides
+  it and shows it again where it was (^44, `App.keepScroll`);
   `Fixture --scroll-shots <dir>` renders it offscreen at the top, scrolled and at the end;
-- effects: Flash sets a timer, and the timer's message comes back through `receive`;
+- effects: Flash sets a timer, and the timer's message comes back through `receive`; Badge
+  (^45) and Clear badge (^46) set the Dock badge, and Announce (^47) posts an accessibility
+  announcement;
 - a server: four Like buttons (`^21#k`) with their counts, toggles a server keeps, on Cairn's
   optimistic table (`Cairn.Optimistic`, Cairn's docs/optimistic.md; lean/Fixture/Like.lean):
   shown at once, written one at a time per post, rolled back in a line on refusal and read back

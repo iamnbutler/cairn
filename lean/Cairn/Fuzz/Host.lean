@@ -19,6 +19,8 @@ claims state it (docs/trusted.md):
   says so with `evicted` (which can cross a load's reply).
 - **Time** (^908, ^909): every batch starts with a clock; `mono` never goes back; a frame's
   `wake` brings a clock at or up to 40 ms after it, which fires the due timers.
+- **The Dock badge and announcements** (^1030, ^1031): the badge is the label of the last
+  `badge` effect, or none; every `announce` is recorded once, with its text and priority.
 - **Subscriptions** (^915 and the device claims): events for active subscriptions, `every`'s
   ticks at most one a period; and, rarely, an event from a subscription the runtime just
   stopped, which crossed the stop.
@@ -107,6 +109,9 @@ structure HostStats where
   lostAfter : Nat := 0
   failedBefore : Nat := 0
   ticks : Nat := 0
+  /-- `badge` and `announce` effects. -/
+  badges : Nat := 0
+  announcements : Nat := 0
 deriving Repr, Inhabited
 
 def HostStats.add (a b : HostStats) : HostStats where
@@ -130,6 +135,8 @@ def HostStats.add (a b : HostStats) : HostStats where
   lostAfter := a.lostAfter + b.lostAfter
   failedBefore := a.failedBefore + b.failedBefore
   ticks := a.ticks + b.ticks
+  badges := a.badges + b.badges
+  announcements := a.announcements + b.announcements
 
 structure Host where
   now : Time := {}
@@ -151,6 +158,10 @@ the server has handled (`HostOp.serve`). -/
   keysDown : List Nat := []
   /-- Subscriptions the runtime stopped lately. -/
   stopped : List (Nat × Sub) := []
+  /-- The Dock badge: the label of the last `badge` effect, none before any (^1030). -/
+  badge : Option String := none
+  /-- The announcements posted, oldest first, the last 64 (^1031). -/
+  announced : Array (String × Priority) := #[]
   stats : HostStats := {}
 deriving Inhabited
 
@@ -187,6 +198,11 @@ def absorb (h : Host) (es : List Effect) : Host :=
       if h.isSent id && !h.isCancelled id then
         { h with cancelled := h.cancelled ++ [id], stats := { h.stats with cancels := h.stats.cancels + 1 } }
       else h
+    | .badge l => { h with badge := l, stats := { h.stats with badges := h.stats.badges + 1 } }
+    | .announce t p =>
+      let a := h.announced.push (t, p)
+      { h with announced := if a.size > 64 then a.extract (a.size - 64) a.size else a,
+               stats := { h.stats with announcements := h.stats.announcements + 1 } }
     | _ => h) h
 
 /-- `id` is answered: the host forgets it. -/

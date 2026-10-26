@@ -175,6 +175,8 @@
 1020	assume	active	-	Secure event input is on exactly while a secure field has focus
 1021	assume	active	-	Assistive apps reach only what a scroll area shows
 1022	assume	active	-	A secure field shows assistive apps nothing typed
+1030	assume	active	-	The badge the host shows is the label of the last badge effect, or none
+1031	assume	active	-	An announcement is posted once, with exactly its text
 1100	move	active	6b6a1d4e82d37068	Set a value
 1101	move	active	12e8fd77b3e45293	The server handles a request
 1102	move	active	62180a3dfbfe471d	The server refuses a request

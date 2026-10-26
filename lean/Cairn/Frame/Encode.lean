@@ -3,7 +3,7 @@ module
 public import Cairn.Frame
 public import Cairn.Frame.Bytes
 
-/-! Frame byte format (docs/frame.md; version 11): specification encoder `Wire.Enc.frame`, decoder
+/-! Frame byte format (docs/frame.md; version 12): specification encoder `Wire.Enc.frame`, decoder
 `Wire.Dec.frame`, the executable encoder `encodeFrame` (proved equal to the specification and
 installed with `@[csimp]`), and the round trip `decodeFrame_encodeFrame`.
 
@@ -104,6 +104,31 @@ def Permission.ofCode : UInt8 → Option Permission
 @[simp] theorem Permission.ofCode_code (p : Permission) :
     Permission.ofCode (Permission.code p) = some p := by
   cases p <;> rfl
+
+/-- `low` 0, `high` 1. -/
+def _root_.Cairn.Priority.code : Priority → UInt8
+  | .low => 0 | .high => 1
+
+def _root_.Cairn.Priority.ofCode : UInt8 → Option Priority
+  | 0 => some .low | 1 => some .high | _ => none
+
+@[simp] theorem _root_.Cairn.Priority.ofCode_code (p : Priority) : Priority.ofCode (Priority.code p) = some p := by
+  cases p <;> rfl
+
+/-- `start` 0, `finish` 1, `key` 2. -/
+def _root_.Cairn.ScrollTarget.code : ScrollTarget → UInt8
+  | .start => 0 | .finish => 1 | .key _ => 2
+
+/-- The key a scroll target carries on the wire (0 for the ends). -/
+def _root_.Cairn.ScrollTarget.arg : ScrollTarget → Nat
+  | .key k => k | _ => 0
+
+def _root_.Cairn.ScrollTarget.ofCode : UInt8 → Nat → Option ScrollTarget
+  | 0, _ => some .start | 1, _ => some .finish | 2, k => some (.key k) | _, _ => none
+
+@[simp] theorem _root_.Cairn.ScrollTarget.ofCode_code (t : ScrollTarget) :
+    ScrollTarget.ofCode t.code t.arg = some t := by
+  cases t <;> rfl
 
 /-- `every` 0, `watchFile` 1, `record` 2, `globalKey` 3, `imageCache` 4. -/
 def Sub.code : Sub → UInt8
@@ -303,6 +328,9 @@ def fitsEffect : Effect → Bool
   | .request id r => fu id && fitsRequest r
   | .cancelRequest id => fu id
   | .quit => true
+  | .scrollTo c t => fitsRef c && fu t.arg
+  | .badge l => fs (l.getD "")
+  | .announce t _ => fs t
 
 def fitsSub : Sub → Bool
   | .every ms => fu ms
@@ -460,6 +488,9 @@ def effect : Effect → List UInt8
     [5, Request.Kind.code r.kind] ++ bool r.redact ++ pad 1 ++ u32 id ++ requestBody r
   | .quit => [6] ++ pad 3
   | .cancelRequest id => [7] ++ pad 3 ++ u32 id
+  | .scrollTo c t => [8, t.code] ++ pad 2 ++ ref c ++ u32 t.arg
+  | .badge l => [9] ++ bool l.isSome ++ pad 2 ++ str (l.getD "")
+  | .announce t p => [10, p.code] ++ pad 2 ++ str t
 
 /-- A subscription's fields after its record head and id. -/
 def subBody : Sub → List UInt8
@@ -501,8 +532,8 @@ def surface (s : SurfaceFrame) : List UInt8 :=
     u32 s.place ++ u32 s.anchor.offset ++ size s.minSize ++ str s.title ++ canvas s.canvas ++
     status s.status
 
-/-- Magic, version 11, flags 0. -/
-def header : List UInt8 := magic ++ [11, 0, 0, 0]
+/-- Magic, version 12, flags 0. -/
+def header : List UInt8 := magic ++ [12, 0, 0, 0]
 
 def frame (f : Frame) : List UInt8 :=
   header ++ list surface f.surfaces.toList ++ list effect f.effects.toList ++
@@ -767,6 +798,21 @@ def effect : Dec Effect := do
   | 7 =>
     skip 3
     return .cancelRequest (← u32)
+  | 8 =>
+    let code ← byte
+    skip 2
+    let c ← ref
+    let some t := ScrollTarget.ofCode code (← u32) | fail
+    return .scrollTo c t
+  | 9 =>
+    let has ← bool
+    skip 2
+    let l ← str
+    return .badge (if has then some l else none)
+  | 10 =>
+    let some p := Priority.ofCode (← byte) | fail
+    skip 2
+    return .announce (← str) p
   | _ => fail
 
 def subBody : UInt8 → Dec Sub
@@ -1156,6 +1202,20 @@ theorem effect_enc {x : Effect} (h : fitsEffect x = true) (r : List UInt8) :
     simp only [fitsEffect, fu_iff] at h
     simp only [effect, Enc.effect, List.cons_append, List.nil_append, List.append_assoc, bind_apply,
         byte_cons, skip_pad, u32_enc h, pure_apply]
+  | scrollTo c t =>
+    simp only [fitsEffect, Bool.and_eq_true, fu_iff] at h
+    simp only [effect, Enc.effect, List.cons_append, List.nil_append, List.append_assoc, bind_apply,
+        byte_cons, skip_pad, ref_enc h.1, u32_enc h.2, ScrollTarget.ofCode_code, pure_apply]
+  | badge l =>
+    simp only [fitsEffect, fs_iff] at h
+    cases l <;>
+    simp_all only [effect, Enc.effect, List.cons_append, List.nil_append, List.append_assoc,
+        bind_apply, byte_cons, bool_enc, skip_pad, str_enc, pure_apply, Option.isSome,
+        Option.getD, Bool.false_eq_true, ↓reduceIte]
+  | announce t p =>
+    simp only [fitsEffect, fs_iff] at h
+    simp only [effect, Enc.effect, List.cons_append, List.nil_append, List.append_assoc, bind_apply,
+        byte_cons, Priority.ofCode_code, skip_pad, str_enc h, pure_apply]
 
 theorem subCmd_enc {x : SubCmd} (h : fitsSubCmd x = true) (r : List UInt8) :
     subCmd (Enc.subCmd x ++ r) = some (x, r) := by
@@ -1370,6 +1430,9 @@ def effect : Effect → Nat
   | .request _ r => 8 + requestBody r
   | .quit => 4
   | .cancelRequest _ => 8
+  | .scrollTo .. => 16
+  | .badge l => 4 + str (l.getD "")
+  | .announce t _ => 4 + str t
 
 def subBody : Sub → Nat
   | .every _ => 4
@@ -1618,6 +1681,9 @@ def effect (b : ByteArray) : Effect → ByteArray
     requestBody (u32 (pad (bool ((b.push 5).push (Request.Kind.code r.kind)) r.redact) 1) id) r
   | .quit => pad (b.push 6) 3
   | .cancelRequest id => u32 (pad (b.push 7) 3) id
+  | .scrollTo c t => u32 (ref (pad ((b.push 8).push t.code) 2) c) t.arg
+  | .badge l => str (pad (bool (b.push 9) l.isSome) 2) (l.getD "")
+  | .announce t p => str (pad ((b.push 10).push p.code) 2) t
 
 def subBody (b : ByteArray) : Sub → ByteArray
   | .every ms => u32 b ms

@@ -30,19 +30,33 @@ structure UI where
   the rows it has laid, and the anchor (docs/runtime.md, "Virtual lists"). The runtime records
   them after every layout; `VList.node` reads them. -/
   lists : List (ControlRef × VList.Known) := []
+  /-- The offsets of scroll boxes that are not on screen and that the app keeps
+  (`App.keepScroll`), as they were when they left: the view reads them with `scrollOf` when the
+  box comes back (docs/runtime.md, "Scrolling"). -/
+  kept : List (ControlRef × Int) := []
+  /-- What the runtime knew of each virtual list not on screen that the app keeps, likewise. -/
+  keptLists : List (ControlRef × VList.Known) := []
 deriving Repr, DecidableEq, Inhabited
 
-/-- What the runtime knows of the virtual list `r`: nothing until it has been laid. -/
+/-- What the runtime knows of the virtual list `r`: nothing until it has been laid. A list the
+app keeps (`App.keepScroll`) is known while it is not on screen too. -/
 def UI.listOf (ui : UI) (r : ControlRef) : VList.Known :=
   match ui.lists.find? (·.1 == r) with
   | some (_, k) => k
-  | none => {}
+  | none =>
+    match ui.keptLists.find? (·.1 == r) with
+    | some (_, k) => k
+    | none => {}
 
-/-- The runtime's offset for the scroll box `r`: 0 until it has scrolled. -/
+/-- The runtime's offset for the scroll box `r`: 0 until it has scrolled. A box the app keeps
+(`App.keepScroll`) keeps its offset while it is not on screen. -/
 def UI.scrollOf (ui : UI) (r : ControlRef) : Int :=
   match ui.scroll.find? (·.1 == r) with
   | some (_, o) => o
-  | none => 0
+  | none =>
+    match ui.kept.find? (·.1 == r) with
+    | some (_, o) => o
+    | none => 0
 
 /-- `st` as the scroll box `r` whose offset the runtime owns: scrolled by `ui.scrollOf r`.
 
@@ -135,6 +149,11 @@ structure App (S : Type) where
   ^1010), and the view can be proved good at every size from it up (with `Grid.minBox`, for
   instance). `0 × 0`, no minimum, by default. -/
   minSize : S → Size := fun _ => ⟨0, 0⟩
+  /-- The scroll boxes and virtual lists (by `Style.scrollRef`) whose offset, and what the
+  runtime knows of their rows, outlive their leaving the view in this state: a list on a tab not
+  shown comes back where it was. Any other box's offset is forgotten when it leaves the tree
+  (docs/runtime.md, "Scrolling"). None by default. -/
+  keepScroll : S → List ControlRef := fun _ => []
 -- endregion: app-app
 
 namespace App

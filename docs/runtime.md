@@ -163,12 +163,30 @@ A box with no offset yet is at 0. What moves an offset:
 - **Tab.** Focusing a control by Tab moves every box around it, innermost first, by the least
   that puts the control wholly in view (its start, if it is longer than the box): `revealIn`.
   Focus by click or by `Effect.focus` doesn't scroll.
+- **`Effect.scrollTo ref to`**, from the app: `.start` puts the box at 0, `.finish` at its end
+  (`max 0 (content − viewport)`), and `.key k` puts the row keyed `k` of a virtual list at the
+  top of the box (its top in the heights the runtime knows, the estimate for rows not yet laid),
+  clamped like every offset. It is the runtime's, like `focus`: after `settle`, `step` aims each
+  requested box (the last request for a box wins), lays out again, and repeats while the offsets
+  still change, up to `aimFuel` (3) rounds, so a `.key` lands on the row's real top once the rows
+  around it are laid (`aim`, `lay`). The list's anchor then keeps that row still as usual. A box
+  that isn't on screen, or `.key` on a plain box or with a key the list doesn't have, is ignored.
+  The effect still rides on the frame; the host ignores it.
 
 Every offset is clamped to `[0, max 0 (content − viewport)]`, where `viewport` is the box's
 length along its axis and `content` the distance from its unscrolled start to the furthest
 child's end plus the end padding (`Scroller`). The clamp is in `fixUI`, so it holds after every
 step, against the tree just laid: when content shrinks, the offset follows it. An offset whose
-box has left the tree is dropped. A scroll is never an action: `update` never sees it, and the
+box has left the tree is dropped, unless the app keeps it.
+
+**Kept boxes.** `App.keepScroll : S → List ControlRef` names the boxes whose offsets, and for
+virtual lists whose heights and anchor, survive while the box is out of the tree (a tab not
+shown, a list hidden behind a toggle). `fixUI` moves a kept box's offset into `UI.kept` and its
+list record into `UI.keptLists` when the box leaves; `ui.scrollOf` and `ui.listOf` fall back to
+them, so the view lays the box where it was when it comes back, and `fixUI` restores the offset,
+clamped to the box as it is now (`fixUI_keeps_offset`, `fixUI_keeps_list`, `fixUI_revives`).
+`UI.scroll` itself still holds only boxes on screen, so `Clamped` is unchanged. A ref the app
+stops keeping is forgotten at the next step. A scroll is never an action: `update` never sees it, and the
 app's state, the world and the effects are unchanged by it (`step_scroll`).
 
 ## Virtual lists
@@ -248,6 +266,14 @@ All in `Cairn.Runtime`; none assume anything about the layout function.
   ones; `step_frame_delivers`: `update` gets those moves, in order.
 - **Tab reveals.** `revealOff_shows`: from a clamped offset, the new offset puts a rect that
   fits in the box wholly inside it.
+- **`scrollTo` lands.** `aimOff_start`, `aimOff_finish`, `aimOff_key`: the offset aimed at is
+  0, the box's limit, or the keyed row's top clamped to the limit; `aimOff_clamped`: it is within
+  the clamp; `aimScroll_single`: the box gets exactly that offset; `firstF_top`: laid at a row's
+  top, that row is the first showing, so it is the one the anchor keeps. `clamped_lay` and
+  `step_clamped` hold with the aim rounds in (`lay_spec`: `lay` ends in a `fixUI`).
+- **Kept boxes come back.** `fixUI_keeps_offset`, `fixUI_keeps_list`: while a kept box is off
+  screen its offset and list record are unchanged; `fixUI_revives`: back on screen, it is at its
+  kept offset clamped to its limit.
 - **Time, timers, replies, subscriptions.** `step_clock`, `steps_book`, `step_reply`,
   `step_sub_ignored`, `diffSubs_*`: see docs/effects.md, "Theorems".
 

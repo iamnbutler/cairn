@@ -609,6 +609,7 @@ def logged (app : App S) : App (S × List Entry) where
   initEffects := app.initEffects
   claims := app.claims
   initFocus := app.initFocus
+  keepScroll st := app.keepScroll st.1
 
 theorem deliver_acc (u : S → Action → S × List Effect) (acts : List Action) :
     ∀ (st : S) (effs : List Effect),

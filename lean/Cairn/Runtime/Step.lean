@@ -448,13 +448,14 @@ def route (m : TextMetrics) (s : State S) : Event → State S × List Action
 def UI.same (a b : UI) : Bool :=
   decide (a.size = b.size) && decide (a.hover = b.hover) && decide (a.pressed = b.pressed) &&
     decide (a.focus = b.focus) && decide (a.windowFocused = b.windowFocused) &&
-    decide (a.scroll = b.scroll) && decide (a.lists = b.lists)
+    decide (a.scroll = b.scroll) && decide (a.lists = b.lists) && decide (a.kept = b.kept) &&
+    decide (a.keptLists = b.keptLists)
 
 theorem UI.same_eq {a b : UI} (h : UI.same a b = true) : a = b := by
   cases a; cases b
   simp only [UI.same, Bool.and_eq_true, decide_eq_true_eq] at h
-  obtain ⟨⟨⟨⟨⟨⟨h1, h2⟩, h3⟩, h4⟩, h5⟩, h6⟩, h7⟩ := h
-  subst h1 h2 h3 h4 h5 h6 h7; rfl
+  obtain ⟨⟨⟨⟨⟨⟨⟨⟨h1, h2⟩, h3⟩, h4⟩, h5⟩, h6⟩, h7⟩, h8⟩, h9⟩ := h
+  subst h1 h2 h3 h4 h5 h6 h7 h8 h9; rfl
 
 /-! ## Virtual lists (docs/runtime.md, "Virtual lists")
 
@@ -508,19 +509,39 @@ def setOff (offs : List (ControlRef × Int)) (r : ControlRef) (o : Int) : List (
 def relayout (app : App S) (cfg : Config) (st : S) (ui : UI) : Laid :=
   cfg.layout cfg.metrics ui.size (app.view st ui)
 
+/-- Whether `r` is a scroll box of `scs`. -/
+def onScreen (scs : List Scroller) (r : ControlRef) : Bool := scs.any fun sc => decide (sc.ref = r)
+
+/-- The entries of `xs` for boxes kept and not on screen, the ones in `now` first: what a box
+the app keeps (`App.keepScroll`) had when it left (docs/runtime.md, "Scrolling"). -/
+def keepOff {α : Type} (on : ControlRef → Bool) (keep : List ControlRef)
+    (now old : List (ControlRef × α)) : List (ControlRef × α) :=
+  let off (r : ControlRef) : Bool := !on r && keep.contains r
+  now.filter (fun e => off e.1) ++
+    old.filter fun e => off e.1 && !now.any fun x => decide (x.1 = e.1)
+
+/-- The kept offsets of boxes back on screen with no offset of their own: they resume where
+they were. -/
+def revive (scs : List Scroller) (ui : UI) : List (ControlRef × Int) :=
+  ui.kept.filter fun e => onScreen scs e.1 && !ui.scroll.any fun x => decide (x.1 = e.1)
+
 /-- Repair interaction state against a new tree: hover is what the pointer is over, focus
 and press survive only if their control does, and scroll offsets only if their box does, clamped
-to its content. Virtual lists are recorded (`recordLists`) and their offsets corrected before
-the clamp. -/
-def fixUI (laid : Laid) (pointer : Option Point) (ui : UI) : UI :=
+to its content, or the app keeps it (`keep`, from `App.keepScroll`), when it is kept as it was.
+A kept box that is back resumes its kept offset. Virtual lists are recorded (`recordLists`) and
+their offsets corrected before the clamp. -/
+def fixUI (laid : Laid) (pointer : Option Point) (ui : UI) (keep : List ControlRef) : UI :=
   let recs := recordLists laid
+  let scs := scrollersOf laid
   { ui with
     hover := pointer.bind (hitRef laid)
     focus := ui.focus.filter (focusableIn laid)
     pressed := ui.pressed.filter (present laid)
-    scroll := clampScroll (scrollersOf laid)
-      (recs.foldl (fun offs (r, _, o) => setOff offs r o) ui.scroll)
-    lists := recs.map fun (r, k, _) => (r, k) }
+    scroll := clampScroll scs
+      (recs.foldl (fun offs (r, _, o) => setOff offs r o) (ui.scroll ++ revive scs ui))
+    lists := recs.map fun (r, k, _) => (r, k)
+    kept := keepOff (onScreen scs) keep ui.scroll ui.kept
+    keptLists := keepOff (fun r => recs.any fun x => decide (x.1 = r)) keep ui.lists ui.keptLists }
 
 /-- View and lay out, repair `ui0` against the result, and repeat while the repair changes
 what the view saw (hover reveals, focus rings), up to `fuel` more times. The result is always
@@ -529,13 +550,70 @@ def settle (app : App S) (cfg : Config) (st : S) (pointer : Option Point) (ui0 :
     Nat → UI → UI × Laid
   | fuel, ui =>
     let l := relayout app cfg st ui
-    let ui' := fixUI l pointer ui0
+    let ui' := fixUI l pointer ui0 (app.keepScroll st)
     match fuel with
     | 0 => (ui', l)
     | f + 1 => if UI.same ui' ui then (ui', l) else settle app cfg st pointer ui0 f ui'
 
 /-- How many times `settle` may re-run the view after the first layout. -/
 def settleFuel : Nat := 4
+
+/-! ## Scrolling to a place (`Effect.scrollTo`) -/
+
+/-- The scroll requests in `effs`, in order. -/
+def requestedScrolls (effs : List Effect) : List (ControlRef × ScrollTarget) :=
+  effs.filterMap fun | .scrollTo r t => some (r, t) | _ => none
+
+/-- The offset `to` asks of the box `r` in the tree `laid`, clamped as every offset is: `start`
+is 0, `finish` the box's limit, and `key k` the top of the row with key `k` in the heights the
+runtime now knows (`ui.listOf`, which the next layout lays the list by). `none` when `r` is no
+scroll box on screen, or `to` is a key and `r` no virtual list with that key. -/
+def aimOff (laid : Laid) (ui : UI) (r : ControlRef) (to : ScrollTarget) : Option Int :=
+  match (scrollersOf laid).find? (fun sc => decide (sc.ref = r)) with
+  | none => none
+  | some sc =>
+    match to with
+    | .start => some 0
+    | .finish => some sc.limit
+    | .key k =>
+      match (listsOf laid).find? (fun ll => decide (ll.ref = r)) with
+      | none => none
+      | some ll =>
+        match ll.info.keys.findIdx? (· == k) with
+        | none => none
+        | some i =>
+          let M := VList.model ll.info.keys (ui.listOf r) ll.info.estimate
+          some (clampOff (M.topF M.pre i) sc.limit)
+
+/-- Set each requested box's offset, in order (the last request for a box wins). -/
+def aimScroll (goals : List (ControlRef × ScrollTarget)) (laid : Laid) (ui : UI) : UI :=
+  goals.foldl (fun ui (r, t) => match aimOff laid ui r t with
+    | some o => ui.setScroll r o
+    | none => ui) ui
+
+/-- Aim the requested boxes against the tree just laid and settle again, while that moves an
+offset, up to `fuel` times: a virtual list laid at a new offset learns the heights of the rows
+there, which can move its end or a row's top, so the next round aims at the corrected place.
+Each round repairs `ui1` (the routed `UI`) with the aimed offsets and what the last round
+recorded, so focus, press and hover are repaired as `settle` repairs them. -/
+def aim (app : App S) (cfg : Config) (st : S) (pointer : Option Point) (ui1 : UI)
+    (goals : List (ControlRef × ScrollTarget)) : Nat → UI × Laid → UI × Laid
+  | 0, x => x
+  | f + 1, (ui, laid) =>
+    let ui2 := aimScroll goals laid ui
+    if decide (ui2.scroll = ui.scroll) then (ui, laid) else
+    let u0 := { ui1 with scroll := ui2.scroll, lists := ui.lists, kept := ui.kept,
+                         keptLists := ui.keptLists }
+    aim app cfg st pointer ui1 goals f (settle app cfg st pointer u0 settleFuel ui2)
+
+/-- How many rounds `aim` may take. -/
+def aimFuel : Nat := 3
+
+/-- Settle `ui1` against the app's view, then run the scroll requests `goals` (`aim`). -/
+def lay (app : App S) (cfg : Config) (st : S) (pointer : Option Point)
+    (goals : List (ControlRef × ScrollTarget)) (ui1 : UI) : UI × Laid :=
+  let x := settle app cfg st pointer ui1 settleFuel ui1
+  if goals.isEmpty then x else aim app cfg st pointer ui1 goals aimFuel x
 
 /-- A shown panel's size: its width and its content's height at that width. -/
 def panelSize (cfg : Config) (v : PanelView) : Size :=
@@ -664,7 +742,7 @@ def step (app : App S) (cfg : Config) (s : State S) (e : Event) : State S × Lis
     if c.delivered then diffSubs c.world.subs (app.subscriptions c.app) c.world.nextSub
     else (c.world.subs, [], c.world.nextSub)
   let ui1 := applyFocus c.effs s1.ui
-  let (ui, laid) := settle app cfg c.app s1.pointer ui1 settleFuel ui1
+  let (ui, laid) := lay app cfg c.app s1.pointer (requestedScrolls c.effs) ui1
   let surfaces := if c.delivered then shows app cfg c.app else s1.surfaces
   ({ s1 with app := c.app, ui, laid, world := { c.world with subs, nextSub := next },
              subCmds := s1.subCmds ++ cmds.toArray, surfaces }, c.effs)
