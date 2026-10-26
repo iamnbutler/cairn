@@ -608,8 +608,9 @@ export function mountScene(canvas, layout = {}) {
     const s = innerWidth < 600 ? 2 : 3;
     const k = measure(s);
     const key = JSON.stringify([innerWidth, k]);
-    if (!force && key === lastKey) return;
+    if (!force && key === lastKey) return; // the loop keeps running: only a rebuild stops it
     lastKey = key;
+    cancelAnimationFrame(raf);
     // The mist starts a short way into the sheet (about 165px, a little below the lede), or two
     // thirds of the way down a shorter feature, or a little below the header before it loads.
     const fadeBand = 48;
@@ -719,13 +720,13 @@ export function mountScene(canvas, layout = {}) {
     if (innerWidth === lastW) return; // phones fire resize on scroll as the toolbar moves
     lastW = innerWidth;
     clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => { cancelAnimationFrame(raf); build(true); }, 120);
+    resizeTimer = setTimeout(() => build(true), 120);
   });
   // The video arriving, or fonts loading, moves the text; redraw when the layout really changes.
   let layoutTimer = 0;
   if (layout.feature) new ResizeObserver(() => {
     clearTimeout(layoutTimer);
-    layoutTimer = setTimeout(() => { cancelAnimationFrame(raf); build(false); }, 80);
+    layoutTimer = setTimeout(() => build(false), 80);
   }).observe(layout.feature);
   reduce.addEventListener("change", restart);
   document.addEventListener("visibilitychange", restart);
