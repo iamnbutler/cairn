@@ -38,6 +38,10 @@ videos. Record a video whenever something new works on screen.
   milestones page shows it like a video, without a length, and the feed makes it an item. Use
   one when a video can't be recorded (the screen is locked) or a still says it all, for instance
   an app's own offscreen render (`Renderer.image`). A still is never the featured video.
+- **Offscreen videos**: an app can render frames offscreen on a clock while a script presses
+  its controls, and ffmpeg makes them a video, with no window and no screen recording. The
+  fixture's `Fixture --like-frames <dir>` does it for its Like buttons against a scripted server
+  (`ffmpeg -framerate 30 -i <dir>/%04d.png -c:v prores_ks out.mov`, then `put.sh out.mov …`).
 - **Notes** are log entries with no video, for work that has nothing new to show on screen (a
   release, docs, a measurement). Add one by hand at its place in `media.json` (newest first):
   `title`, `text` (a list of plain-text paragraphs), `date`, `published` (when the work landed:
