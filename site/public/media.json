@@ -1,5 +1,16 @@
 [
   {
+    "image": "/m/images/bd72968d90c4fd23.png",
+    "title": "Sky: like, repost, follow and mute",
+    "caption": "Sky's feed with the acts row under each post: Like, Repost, Follow and Mute, built on Cairn.Optimistic and cairn_atproto's writes. An offscreen render against the fake server.",
+    "date": "2026-10-26",
+    "published": "2026-10-26T11:42:38Z",
+    "commit": "7a69f8b",
+    "width": 1200,
+    "height": 1640,
+    "milestone": "m5"
+  },
+  {
     "image": "/m/images/8d8c5c0838845866.png",
     "title": "Sky: notifications, grouped",
     "caption": "Sky's notifications: likes of one post in one row, marked seen once on screen (cairn#253).",
