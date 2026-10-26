@@ -37,7 +37,7 @@ the offset. A checksum over every rect of the laid tree is taken inside the timi
 
 ### Frames by phase, during flings
 
-Apple M4 Max (Mac16,6), macOS 27.0.1, Lean 4.35.0, 2026-10-26, Cairn at `535473d`, release
+Apple M4 Max (Mac16,6), macOS 27.0.1, Lean 4.35.0, 2026-10-26, Cairn at `bcde776` (the bench as committed; the numbers were taken on the same code before a rebase), release
 build, `LEAN_ABORT_ON_NONLINEAR=1`, load average 5–6 from other agents' builds. Two runs agreed
 within 4%; this is the second. Medians per phase; a frame's p50 and p95. In ms.
 
