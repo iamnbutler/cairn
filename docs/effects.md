@@ -524,6 +524,11 @@ attaches and captures (`host/Sources/CairnHost/SecretEffects.swift`).
   reach Lean, which is why capture is for fields a server sends once (Bluesky's `accessJwt`
   and `refreshJwt` in `createSession` and `refreshSession`).
 - **`forgetSecret a`** deletes the item: Sign Out. `done` also when there was none.
+- **One Keychain call at a time.** The host runs every Keychain call (a secret's read for its
+  header, a capture's reads and writes, `forgetSecret`'s delete) on one queue for the whole
+  process; concurrent calls deadlock inside the file-based keychain (#237). Requests in flight
+  at once still reach the Keychain in no promised order: an app that needs a write before a
+  read waits for the first reply before asking the second.
 - **Never shown.** A value is in no reply, failure message, frame, event, dump or debug
   description (`DebugJSON` shows `secret <header name>` and `capture <count>`); the trusted
   fuzzer plants markers and searches every one of them (docs/fuzz.md).

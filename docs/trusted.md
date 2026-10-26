@@ -647,15 +647,27 @@ to the item it made before; a Developer ID signed app (`cairn bundle --sign`) ke
 designated requirement across builds and is not asked. Moving to the data-protection keychain
 later is a change of `KeychainStore.query` and this entry, not of Lean.
 
+**One call at a time.** The host makes every Security call, from every store and effect (a
+request's secret header, a capture's reads and writes, `forgetSecret`), on one serial queue for
+the whole process (`KeychainStore.serialized`), so no two of them overlap. "Last written" is
+then the last write in that queue's order. Two requests in flight at once still reach the
+Keychain in whichever order the host runs them, as before: the queue adds no order between
+effects, only takes away overlap. Security itself is assumed correct only for calls that don't
+overlap: concurrent `SecItemDelete` and `SecItemCopyMatching` on one service deadlock in the
+file-based keychain (#237). Calls from another process, or from code in the app that calls
+Security without `KeychainStore.serialized`, are outside the claim.
+
 **Also assumed.** That the login keychain is unlocked while the person uses the app (macOS
 unlocks it at login); a locked or denied keychain is `failed denied` (or `other`, with
 Security's status) rather than a value. That nothing else writes the app's items. That a value
 written is not readable by other apps without the person's consent (the keychain's access list:
 Apple's, not checked).
 
-**Finding.** The live check found the file-based keychain answering success to `SecItemUpdate`
+**Findings.** The live check found the file-based keychain answering success to `SecItemUpdate`
 with empty data while keeping the old value; `KeychainStore.write` now deletes and re-adds the
-item for an empty value.
+item for an empty value. Sky's selftest found a concurrent `SecItemDelete` (`forgetSecret`) and
+`SecItemCopyMatching` on one service deadlocked inside Security (#237); the host now serializes
+every call.
 
 **Evidence.**
 - **Fuzzed** (`effects.secret.keychain`): random writes (generated text: ASCII, edge Unicode,
@@ -667,8 +679,13 @@ item for an empty value.
   (service, account, not synchronizable, no access group). Through the world with a stub
   server: a Keychain secret's value is sent as `scheme ++ value`, a missing item is `notFound`
   and reaches no server, `forgetSecret` answers `done` twice; the value is in no reply, event
-  bytes, event dump or debug description. The live part is skipped when `CI` is set (a CI
-  runner has no unlocked login keychain, and nothing may prompt there) or with
+  bytes, event dump or debug description. **Concurrency** (`keychain.concurrent`, once per
+  worker): a child process makes 6 × 40 calls at once on one throwaway service (reads, writes,
+  deletes, `forgetSecret`, `http` reading a Keychain secret for its header, `http` capturing into
+  an item) and must finish in 30 s; on a hang the parent kills it and fails the check, and either
+  way deletes its items (a deadlocked process can't, and only the same executable may). Without
+  the queue it hangs every time; with it, about 3 s. The live part is skipped when `CI` is set
+  (a CI runner has no unlocked login keychain, and nothing may prompt there) or with
   `CAIRN_FUZZ_KEYCHAIN=0`; the counter `liveSkipped:<reason>` says so, as ^968's "not checked
   live" does. The fuzzer never reads, prints or deletes an item outside its own service.
 

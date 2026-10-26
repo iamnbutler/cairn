@@ -49,6 +49,23 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
 - **Its evidence.** What a claim reads as depends on the build that computed it. See
   [how much to trust a claim](/docs/reference/trust/).
 
+## v0.4.1
+
+Not yet released.
+
+- **Keychain calls no longer deadlock** ([#237](https://github.com/iamnbutler/cairn/issues/237)).
+  A `forgetSecret` racing a read of the same app's items (a request's Keychain secret, a
+  capture, or Sky's selftest listing its items) could hang both forever inside Security's
+  file-based keychain. `KeychainStore` now makes every Security call on one serial queue for the
+  whole process; code outside it that calls Security on the same keychain can join the queue
+  with `KeychainStore.serialized { … }`. Requests in flight at once still reach the Keychain in
+  no promised order. The trusted fuzzer's `effects.secret.keychain` gains a live concurrency
+  check (`keychain.concurrent`), skipped under `CI` like the rest of the live part. See
+  docs/effects.md and docs/trusted.md (^972).
+
+No claim was retired, moved or changed, and none is new, so it is a patch release. Moving from
+v0.4.0 is a change of tag in the lakefile and `Package.swift`.
+
 ## v0.4.0
 
 25 October 2026, at commit `f107007`.

@@ -47,6 +47,12 @@ if args.contains("--bench-audio") {
     exit(0)
 }
 
+// The concurrent Keychain check's child (SecretsSuite.concurrent): touches only the throwaway
+// service it is given.
+if let service = take("--keychain-hammer") {
+    SecretsSuite.hammer(service: service)
+}
+
 if let w = take("--worker") {
     let s = suite(w)
     Runner.worker(s, seed: seed, from: Int(take("--from")!)!, to: Int(take("--to")!)!,

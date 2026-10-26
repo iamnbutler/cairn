@@ -46,10 +46,32 @@ public final class MemoryStore: SecretStore, @unchecked Sendable {
 /// that needs a provisioning profile and a keychain access group, which development builds and
 /// `swift run` don't have (docs/trusted.md, "The Keychain keeps what it was given"). Never
 /// synchronized to iCloud, no access group.
+///
+/// Every Security call goes through `serialized`, one queue for the whole process: concurrent
+/// `SecItemDelete` and `SecItemCopyMatching` on one service deadlock inside the file-based
+/// keychain (each waits on the other's mutex; #237), and the lock order is Security's, so one
+/// owner for every store and service rather than one per store.
 public struct KeychainStore: SecretStore {
     public let service: String
 
     public init(service: String) { self.service = service }
+
+    /// The one queue every Security call in the process runs on.
+    private static let queue: DispatchQueue = {
+        let q = DispatchQueue(label: "cairn.keychain")
+        q.setSpecific(key: onQueue, value: ())
+        return q
+    }()
+    private static let onQueue = DispatchSpecificKey<Void>()
+
+    /// Runs `body` alone among the process's Keychain calls, on the caller's thread when already
+    /// inside (no self-deadlock). Code outside this file that calls Security on the same
+    /// keychain (a selftest listing the app's items, the fuzzer reading attributes) wraps its
+    /// calls in it too.
+    public static func serialized<T>(_ body: () throws -> T) rethrows -> T {
+        if DispatchQueue.getSpecific(key: onQueue) != nil { return try body() }
+        return try queue.sync(execute: body)
+    }
 
     /// The app's own items: the bundle identifier, or `cairn.<process name>` for an executable
     /// run outside a bundle.
@@ -63,7 +85,8 @@ public struct KeychainStore: SecretStore {
          kSecAttrSynchronizable: kCFBooleanFalse as Any, kSecUseDataProtectionKeychain: kCFBooleanFalse as Any]
     }
 
-    /// A failure, with the status's number and Security's text for it (never the value).
+    /// A failure, with the status's number and Security's text for it (never the value). On the
+    /// queue: `SecCopyErrorMessageString` is a Security call too.
     func failure(_ status: OSStatus, _ what: String) -> ReplyError {
         let text = (SecCopyErrorMessageString(status, nil) as String?) ?? ""
         let f: Fault = switch status {
@@ -74,6 +97,20 @@ public struct KeychainStore: SecretStore {
     }
 
     public func read(_ account: String) -> Result<String?, ReplyError> {
+        Self.serialized { readNow(account) }
+    }
+
+    public func write(_ account: String, _ value: String) -> Result<Void, ReplyError> {
+        Self.serialized { writeNow(account, value) }
+    }
+
+    public func delete(_ account: String) -> Result<Void, ReplyError> {
+        Self.serialized { deleteNow(account) }
+    }
+
+    // The calls themselves, on the queue.
+
+    private func readNow(_ account: String) -> Result<String?, ReplyError> {
         var q = query(account)
         q[kSecReturnData] = kCFBooleanTrue
         q[kSecMatchLimit] = kSecMatchLimitOne
@@ -87,7 +124,7 @@ public struct KeychainStore: SecretStore {
         return .success(s)
     }
 
-    public func write(_ account: String, _ value: String) -> Result<Void, ReplyError> {
+    private func writeNow(_ account: String, _ value: String) -> Result<Void, ReplyError> {
         let data = Data(value.utf8)
         var add = query(account)
         add[kSecValueData] = data
@@ -106,7 +143,7 @@ public struct KeychainStore: SecretStore {
         return st == errSecSuccess ? .success(()) : .failure(failure(st, "write"))
     }
 
-    public func delete(_ account: String) -> Result<Void, ReplyError> {
+    private func deleteNow(_ account: String) -> Result<Void, ReplyError> {
         let st = SecItemDelete(query(account) as CFDictionary)
         return st == errSecSuccess || st == errSecItemNotFound ? .success(()) : .failure(failure(st, "delete"))
     }

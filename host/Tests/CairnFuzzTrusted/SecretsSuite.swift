@@ -14,7 +14,10 @@ import Security
 ///   Through the world: `forgetSecret` answers `done`, also twice; an `http` whose Keychain secret
 ///   is missing answers `failed notFound` and reaches no server (a `URLProtocol` stub); one whose
 ///   item is there sends `scheme ++ value`. The live items are not synchronizable and carry the
-///   service and account asked for.
+///   service and account asked for. Concurrency (#237), once per worker, live only: a child
+///   process hammers one throwaway service from several threads at once (reads, writes, deletes,
+///   `forgetSecret`, `http` building its secret header and capturing into an item) and must finish
+///   within a time limit; on a hang the parent kills it, and either way deletes what it made.
 /// - `effects.http.capture`: random JSON object replies with planted marker values in the
 ///   captured fields, decoys (the same names nested, strings that look alike), escapes and
 ///   whitespace; missing, repeated and non-string fields, bodies that aren't objects, statuses
@@ -42,6 +45,8 @@ final class SecretsSuite: Suite {
     /// The live store, or nil when the live check is skipped (and why).
     var live: KeychainStore?
     var skipReason = ""
+    /// Whether this process has run the concurrency check (once per worker: it takes seconds).
+    var hammered = false
 
     func cases(for n: Int) -> Int { max(4, n / 10) }
 
@@ -140,6 +145,125 @@ final class SecretsSuite: Suite {
         }
         r.expect(c, ForgetSecret.run("", MemoryStore()).isInvalid, "forgetSecret of the empty account is not invalid")
         throughWorld(&g, r)
+        if live != nil, !hammered {
+            hammered = true
+            concurrent(r)
+        }
+    }
+
+    // MARK: concurrent Keychain calls (#237)
+
+    /// Threads, calls per thread, and how long the child may take. Unserialized, 6 × 40 calls
+    /// deadlock every time on macOS 27; serialized they take about 3 s.
+    static let hammerThreads = 6, hammerCalls = 40, hammerLimit: TimeInterval = 30
+    static let hammerAccounts = ["h0", "h1", "h2"]
+
+    /// Runs `--keychain-hammer` in a child process on a throwaway service, kills it (by pid) if it
+    /// hasn't finished in `hammerLimit`, then deletes its items from here: a deadlocked process
+    /// can't clean up, and only this executable may delete the items it made.
+    func concurrent(_ r: Recorder) {
+        let c = "effects.secret.keychain"
+        var rng = SystemRandomNumberGenerator()
+        let service = "dev.cairn.fuzz-trusted.keychain.\(getpid()).\(String(rng.next(), radix: 36))"
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: Bundle.main.executablePath ?? CommandLine.arguments[0])
+        p.arguments = ["--keychain-hammer", service]
+        let err = Pipe()
+        p.standardError = err
+        p.standardOutput = FileHandle.nullDevice
+        let exited = DispatchSemaphore(value: 0)
+        p.terminationHandler = { _ in exited.signal() }
+        let start = Date()
+        do { try p.run() } catch { r.fail(c, "cannot start the Keychain hammer: \(error)"); return }
+        let hung = exited.wait(timeout: .now() + Self.hammerLimit) == .timedOut
+        if hung {
+            kill(p.processIdentifier, SIGKILL)
+            exited.wait()
+        }
+        let seconds = Date().timeIntervalSince(start)
+        let text = String(decoding: err.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+        r.expect(c, !hung, "concurrent Keychain calls on one service did not finish in \(Int(Self.hammerLimit)) s (deadlock, #237)")
+        if !hung {
+            r.expect(c, p.terminationReason == .exit && p.terminationStatus == 0,
+                     "the Keychain hammer ended with \(p.terminationReason == .exit ? "exit" : "signal") \(p.terminationStatus): \(text.prefix(400))")
+        }
+        let store = KeychainStore(service: service)
+        let accounts = Self.hammerAccounts
+        for a in accounts { _ = store.delete(a) }
+        r.expect(c, accounts.allSatisfy { (try? store.read($0).get()) == .some(nil) }, "the Keychain hammer left an item")
+        r.count(c, "keychain.concurrent")
+        if r.verbose { print("keychain hammer: \(hung ? "killed after" : "finished in") \(String(format: "%.1f", seconds)) s") }
+    }
+
+    /// The child's side (`--keychain-hammer SERVICE`): `hammerThreads` threads each make
+    /// `hammerCalls` calls on `SERVICE`'s accounts, through the store and through the effects that
+    /// reach it: `read`, `write`, `delete`, `forgetSecret`, `http` with a Keychain secret (reading
+    /// the item to build its header) and `http` capturing a field into an item, both against the
+    /// stub. Deletes its items at the end. Exit 0, or 1 with the first unexpected answer on stderr.
+    static func hammer(service: String) -> Never {
+        precondition(service.hasPrefix("dev.cairn.fuzz-trusted.keychain."), "the hammer only touches throwaway services")
+        let store = KeychainStore(service: service)
+        let accounts = hammerAccounts
+        let cfg = URLSessionConfiguration.ephemeral
+        cfg.protocolClasses = [StubProtocol.self]
+        let session = URLSession(configuration: cfg)
+        let secrets = SecretSource(environment: { _ in nil }, readFile: { _ in nil }, store: store)
+        let problem = Locked<String?>(nil)
+        func note(_ s: String) { problem.update { if $0 == nil { $0 = s } } }
+        func wait(_ run: (@escaping @Sendable (Reply) -> Void) -> Void) -> Reply? {
+            let got = Locked<Reply?>(nil), sem = DispatchSemaphore(value: 0)
+            run { rep in got.update { $0 = rep }; sem.signal() }
+            return sem.wait(timeout: .now() + hammerLimit) == .timedOut ? nil : got.value
+        }
+        let group = DispatchGroup()
+        for t in 0..<hammerThreads {
+            group.enter()
+            let key = "hammer-\(t)"
+            StubProtocol.answers.update { $0[key] = .respond(status: 200, headers: [:], body: Array("{\"accessJwt\":\"tok-\(t)\"}".utf8)) }
+            Thread.detachNewThread {
+                defer { group.leave() }
+                for i in 0..<hammerCalls {
+                    let a = accounts[(t + i) % accounts.count]
+                    switch (t * 7 + i) % 6 {
+                    case 0:
+                        if case let .failure(e) = store.write(a, "v-\(t)-\(i)") { note("write: \(e.message)") }
+                    case 1:
+                        if case let .failure(e) = store.read(a) { note("read: \(e.message)") }
+                    case 2:
+                        if case let .failure(e) = store.delete(a) { note("delete: \(e.message)") }
+                    case 3:
+                        let rep = ForgetSecret.run(a, store)
+                        if rep != .done { note("forgetSecret: \(rep)") }
+                    case 4:
+                        // The header read: `notFound` when another thread just deleted the item.
+                        let rep = wait { reply in
+                            SecretHTTP.run(method: "GET", url: "https://pds.example.invalid/x", headers: [Header("X-Cairn-Case", key)],
+                                           body: [], timeoutMs: 5000,
+                                           secret: Secret(header: "Authorization", scheme: "Bearer ", source: .keychain(account: a)),
+                                           capture: [], secrets: secrets, session: session, reply)
+                        }
+                        switch rep {
+                        case .http?, .failed(.notFound, _)?: break
+                        default: note("http with a secret: \(rep.map { "\($0)" } ?? "no reply")")
+                        }
+                    default:
+                        let rep = wait { reply in
+                            SecretHTTP.run(method: "POST", url: "https://pds.example.invalid/x", headers: [Header("X-Cairn-Case", key)],
+                                           body: [], timeoutMs: 5000, secret: nil, capture: [Capture("accessJwt", a)],
+                                           secrets: secrets, session: session, reply)
+                        }
+                        if case .http? = rep {} else { note("http capture: \(rep.map { "\($0)" } ?? "no reply")") }
+                    }
+                }
+            }
+        }
+        group.wait()
+        for a in accounts { _ = store.delete(a) }
+        if let p = problem.value {
+            FileHandle.standardError.write("keychain hammer: \(p)\n".data(using: .utf8)!)
+            exit(1)
+        }
+        exit(0)
     }
 
     /// The live item is what we asked for: our service and account, not synchronizable, a generic
@@ -149,7 +273,7 @@ final class SecretsSuite: Suite {
         let q: [CFString: Any] = [kSecClass: kSecClassGenericPassword, kSecAttrService: store.service,
                                   kSecAttrAccount: account, kSecReturnAttributes: true, kSecMatchLimit: kSecMatchLimitOne]
         var out: CFTypeRef?
-        let st = SecItemCopyMatching(q as CFDictionary, &out)
+        let st = KeychainStore.serialized { SecItemCopyMatching(q as CFDictionary, &out) }
         guard r.expect(c, st == errSecSuccess, "the item's attributes: status \(st)"),
               let a = out as? [CFString: Any] else { return }
         r.expect(c, a[kSecAttrService] as? String == store.service && a[kSecAttrAccount] as? String == account,
