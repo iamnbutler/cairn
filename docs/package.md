@@ -97,7 +97,7 @@ swift build
 ```
 <!-- endregion: package-build -->
 
-`bin/cairn-link` merges into one static library: Lean's runtime (`libInit`, `libleanrt`, `libuv`,
+`bin/cairn-link` merges into one static library: Lean's runtime (`libInit`, `libStd`, `libleanrt`, `libuv`,
 `libgmp`), every dependency's `libs`, `claims_meta.o` (weak stand-ins for the claim commands'
 initializers, docs/claims.md "Linking") and the app's own libraries (each `--lib`, or without
 one the `libs` of the app's cairn.toml). Cairn's own Makefile builds `build/lib/libcairn_lean.a`

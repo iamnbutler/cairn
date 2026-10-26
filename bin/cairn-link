@@ -7,7 +7,8 @@
 # with the pinned toolchain on PATH. It builds the static facet of every library it links,
 # then merges them into one archive with libtool:
 #
-#   - Lean's runtime: libInit, libleanrt, libuv and libgmp from `lean --print-prefix`;
+#   - Lean's runtime: libInit, libStd, libleanrt, libuv and libgmp from `lean --print-prefix`
+#     (the linker takes only the members an app reaches: `Cairn.Optimistic`'s `Std.TreeMap`);
 #   - every dependency's `libs`, from the cairn.toml beside the dependency's Lake package
 #     (Cairn's is `Cairn`), for each package in lake-manifest.json, transitive ones included;
 #     a dependency with no cairn.toml (a plain Lake package) is linked not at all;
@@ -133,7 +134,7 @@ tmp="$out.tmp.$$"
 trap 'rm -f "$tmp"' EXIT
 # shellcheck disable=SC2086
 libtool -static -o "$tmp" $archives "$stubs" \
-	"$prefix/lib/lean/libInit.a" "$prefix/lib/lean/libleanrt.a" \
+	"$prefix/lib/lean/libInit.a" "$prefix/lib/lean/libStd.a" "$prefix/lib/lean/libleanrt.a" \
 	"$prefix/lib/libuv.a" "$prefix/lib/libgmp.a" 2>&1 | grep -v "has no symbols" >&2 || true
 [ -f "$tmp" ] || die "libtool wrote nothing"
 

@@ -61,6 +61,8 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
   in flight per key, never more writes than sets, inputs for different keys commute, and counts
   are the server's and never below zero (`cairn^1100`–`cairn^1114`, docs/optimistic.md). The
   fixture's Like buttons now use it, with counts and Refresh (`fixture^23`, `fixture^24`).
+- `bin/cairn-link` links Lean's `libStd` too, for `Cairn.Optimistic`'s `Std.TreeMap`; the
+  linker takes only what an app reaches (the fixture is 3.33 MB stripped).
 - **`cairn fuzz`: a server with a world** (cairn#246). `Custom.server` gives the fuzz host a
   `Cairn.Fuzz.Server`: a world that persists across a sequence, changed by the requests that
   reach it and by itself between steps, and checks over the app's state and the world, after
