@@ -183,6 +183,7 @@
 1022	assume	active	-	A secure field shows assistive apps nothing typed
 1030	assume	active	-	The badge the host shows is the label of the last badge effect, or none
 1031	assume	active	-	An announcement is posted once, with exactly its text
+1032	assume	active	-	Under holdWorld the host sends no clock, wake or reply of its own
 1100	move	active	6b6a1d4e82d37068	Set a value
 1101	move	active	12e8fd77b3e45293	The server handles a request
 1102	move	active	62180a3dfbfe471d	The server refuses a request

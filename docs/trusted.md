@@ -6,9 +6,52 @@ entries in the section of the workstream that introduces the assumption.
 
 Items marked **Fuzzed** are also checked by the trusted-base fuzzer (`make fuzz-trusted`,
 docs/fuzz.md "Trusted base"), against Lean's proved side or an independent oracle, and are
-declared as `assume` claims ^7, ^214, ^901–^915, ^940–^950, ^960–^975, ^1000–^1012, ^1020–^1022 and ^1030–^1031 in `lean/Cairn/Fuzz/Trusted/Claims.lean`, each naming its
+declared as `assume` claims ^7, ^214, ^901–^915, ^940–^950, ^960–^975, ^1000–^1012, ^1020–^1022 and ^1030–^1032 in `lean/Cairn/Fuzz/Trusted/Claims.lean`, each naming its
 check; `build/fuzz/trusted.json` holds the evidence. Items not marked are checked only by the
 tests and reviews they list.
+
+## New in M5
+
+Every assumption M5 (acting on Bluesky, docs/goals/m5.md) added to the trusted base, and the
+trusted fuzzer's check for each (`make fuzz-trusted`). Each has its entry below.
+
+| Claim | Assumption | Fuzz check |
+|---|---|---|
+| ^945 `hostControlMenuRender` | A control's menu shows exactly the frame's menu records (#247) | `control-menu.render` |
+| ^946 `hostControlMenuSelect` | Choosing a control menu's item reports its ref, then the close (#247) | `control-menu.select` |
+| ^947 `hostControlMenuDismiss` | The host shows a control menu only while Lean has it open (#247) | `control-menu.dismiss` |
+| ^948 `hostAxShowMenu` | AXShowMenu opens a control's menu as a right click does (#247) | `ax.show-menu` |
+| ^949 `hostMenuBarRender` | The menu bar shows the app's menu items, with Hide and Quit still the host's (#229) | `menubar.render` |
+| ^950 `hostMenuBarSelect` | A menu bar item, by click or key equivalent, reports that item's ref (#229) | `menubar.select` |
+| ^1030 `hostBadge` | The badge the host shows is the label of the last badge effect, or none (#248) | `dock.badge` |
+| ^1031 `hostAnnounce` | An announcement is posted once, with exactly its text (#248) | `ax.announce` |
+| ^1032 `hostHoldWorld` | Under conformance's `holdWorld` the host sends no clock, wake or reply of its own (#264) | `world.hold` |
+
+An announcement never carries a secret because its text is the app's, and the claim fuzzer's
+`secure` check plants text in secure fields and fails when it reaches any effect's dump,
+announcements included; ^1031 assumes only that the host posts that text unchanged.
+
+What M5 added on the Lean side is proved, not assumed: optimistic values (`Cairn.Optimistic`:
+a set shows in its step, one write in flight per key, never more writes than sets, a refusal
+rolls back in its step, convergence on the server's values for any order of replies, keys
+commuting, counts, views never moving a written key; ^1107–^1114), `scrollTo` landing where it
+aims and a list not shown keeping its offset (`aimOff_start`, `aimOff_finish`, `aimOff_key`,
+`fixUI_keeps_offset`, `fixUI_keeps_list`, `fixUI_revives`), and menu routing (every routed
+`menuSelect` names an enabled item of the menu open now, `menu_select_presses`,
+`control_menu_select_names`; a stale or greyed choice changes nothing, `menu_select_stale`,
+`menu_select_absent`; opening a menu changes no app state, `step_open_quiet`). The stateful
+fuzz server (`cairn fuzz`, #246) is Lean too, a model and not an assumption: the claims it
+checks are evidence about the app against that model.
+
+What a client assumes about Bluesky's servers is not Cairn's trusted base. Those are
+cairn_atproto's `assume` claims (#249), checked against its fake PDS (#251) and once against the
+real network with the installed app (#258).
+
+`make fuzz-trusted` (N=20000, seed 0, release; Apple M4 Max, macOS 27.0.1, 2026-10-26, 32 min
+with other agents' builds running) passes every check, these rows included: `control-menu.*`,
+`ax.show-menu` and `menubar.*` 2,000 cases each, `dock.badge` and `ax.announce` 10,000,
+`world.hold` 500. `world.hold` found one bug in its first quick run, fixed in `Engine`: a wake
+timer that fired as the clock was held handed Lean an empty batch (^1032 below).
 
 ## New in M4
 
@@ -1186,11 +1229,54 @@ progress as AppKit documents.
 - **Proved and fuzzed in Lean**: the text is the app's. `cairn fuzz` plants text in secure
   fields and fails when it shows up in any effect's dump, announcements included (`secure`).
 
+## Conformance's held world (M5)
+
+`cairn conformance` decides the time and every reply the running app hears (docs/conformance.md,
+"The world"). The debug socket's `holdWorld` asks the host to stop making up its own:
+`Engine.holdClock` and `World.holdRequests`. That the host then hears only the driver is assumed.
+
+### Under holdWorld the host sends no clock, wake or reply of its own (`assume`, ^1032)
+
+**What is assumed.** ^1032 `hostHoldWorld`: once both calls have returned, every batch Lean
+hears is exactly the events the caller sent, in order, the driver's `clock` and `reply` events
+among them. The host puts no clock in front of a batch, sends no wake whatever the frame's
+`wake`, and neither runs nor answers a request handed over afterwards. A request from before
+the hold is answered at most once (the driver restarts the app after `holdWorld`, and `reset`
+drops those answers). Lean never hears an empty batch; held, a restart with nothing after it
+steps nothing, and the app boots on the driver's first `clock`, as the model's `start` does.
+
+**Finding.** A wake timer that had already fired, or whose handler was already on its way, when
+the clock was held left `wakeDue` set, and the Lean thread then stepped the app with an empty
+batch: no clock, and `Runtime.steps` still ran its two frame events, which the model never runs
+(2 of 12 cases in the first quick run). Fixed in `Engine`: `holdClock` clears `wakeDue`, a
+timer's handler does nothing once a newer `scheduleWake` has replaced it (`wakeGen`), the
+Lean thread reads the hold with the batch it takes and skips an empty one, and a held restart
+with no events after it steps nothing.
+
+**Also assumed, not fuzzed.** Subscriptions (`every`, `watchFile`, …) still run on the real
+clock under `holdWorld`, unmodelled (docs/conformance.md, "What it does not check").
+
+**Trusted code.** `host/Sources/CairnHost/Engine.swift` (`holdClock`, `timed`, `scheduleWake`,
+`run`), `host/Sources/CairnHost/World.swift` (`holdRequests`, `perform`),
+`host/Sources/CairnHost/DebugServer.swift` (`holdWorld`, `clock`, `reply`).
+
+**Evidence.** **Fuzzed** (^1032 `world.hold`, `HoldSuite`): a real `Engine` and `World` over a
+Swift core that records every batch and can ask for wakes and send requests. Before the hold,
+0–2 requests and a wake 0–5 ms away, then the hold 0–4 ms later, so wake timers race it. Then a
+marker event, and 1–5 rounds in which the case is the driver: clocks of any value, replies to
+held requests and to ids no one asked, input; the app asks for wakes now or a few ms away and
+sends requests whose handlers record that they ran. After the marker, Lean must have heard
+exactly what was sent (answers to requests from before the hold aside, each at most once), no
+held request ran or waits on the host, and no batch in the case is empty. Counters: clocks,
+replies, wakes, requests held.
+
 ## Conformance (workstream J)
 
 See [conformance.md](conformance.md). A passing run means that, for the sequences it ran, the
 app showed exactly what the model says, judged through the pieces below. Each one is trusted.
 
+- **The held world** (`holdWorld`): the host hears only the driver's time and replies. Assumed
+  and fuzzed: "Conformance's held world (M5)" above (^1032).
 - **Injection at the view.** The debug socket builds `NSEvent`s and calls `HostView`'s
   responder methods (`mouseDown(with:)`, `keyDown(with:)`, …), `NSTextInputClient` and
   `NSApp.sendAction` directly. That bypasses the window server's routing and

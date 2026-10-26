@@ -300,4 +300,10 @@ assume ^1031 hostAnnounce "An announcement is posted once, with exactly its text
   does "For each announce effect the host posts one announcementRequested accessibility notification (NSAccessibility.post) for its window, carrying exactly the effect's text and its priority (low or high), in order, and posts none otherwise. Its text is the app's: the fuzzer checks that text typed into a secure field never reaches an effect's dump, announcements included."
   check "ax.announce"
 
+/-! Conformance's held world (docs/conformance.md, "The world"; the debug socket's `holdWorld`). -/
+
+assume ^1032 hostHoldWorld "Under holdWorld the host sends no clock, wake or reply of its own" where
+  does "Once Engine.holdClock and World.holdRequests have returned, every batch Lean hears is exactly the events the caller sent, in order (the driver's clock and reply events among them): the host adds no clock, sends no wake whatever the frame's wake deadline, and runs and answers no request handed over afterwards; a request from before the hold is answered at most once. Lean never hears an empty batch."
+  check "world.hold"
+
 end Cairn.Fuzz.Trusted.Claims
