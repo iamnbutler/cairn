@@ -650,6 +650,37 @@ def settle (app : App S) (cfg : Config) (st : S) (pointer : Option Point) (ui0 :
 /-- How many times `settle` may re-run the view after the first layout. -/
 def settleFuel : Nat := 4
 
+/-- Whether a virtual list in `laid` laid a row at a height other than the one the view laid it
+out by: a row the runtime hadn't recorded yet, or had recorded at another height. A frame like
+that shows heights the list no longer has, and the next layout lays it differently. -/
+def unsettled (laid : Laid) : Bool :=
+  (listsOf laid).any fun ll =>
+    (VList.laidRows ll.info ll.kids).any fun r =>
+      !decide ((r.height : Int) = ll.info.modelOf.heightF r.index)
+
+/-- How many more layouts `resettle` may take after `settle`: the rows of the virtual lists in
+`laid`. A list learns heights one window at a time, so when many rows it knows change at once
+(a filter hiding many rows), each layout brings the next window of them in at their old
+heights; the rows in the list bound how many windows there are, where a fixed fuel doesn't. -/
+def rowFuel (laid : Laid) : Nat := (listsOf laid).foldl (fun n ll => n + ll.info.keys.size) 0
+
+/-- Lay the view out again (one `settle` round) while a virtual list in the tree just laid is
+`unsettled`, up to `fuel` more times. Other changes (hover reveals, focus rings) don't extend it:
+`settle` alone bounds those. -/
+def resettle (app : App S) (cfg : Config) (st : S) (pointer : Option Point) (ui0 : UI) :
+    Nat → UI × Laid → UI × Laid
+  | 0, x => x
+  | f + 1, (ui, l) =>
+    if unsettled l then resettle app cfg st pointer ui0 f (settle app cfg st pointer ui0 0 ui)
+    else (ui, l)
+
+/-- `settle`, then `resettle` while a virtual list is unsettled, bounded by its rows
+(`rowFuel`): what every step lays out by. -/
+def settleAll (app : App S) (cfg : Config) (st : S) (pointer : Option Point) (ui0 ui : UI) :
+    UI × Laid :=
+  let x := settle app cfg st pointer ui0 settleFuel ui
+  resettle app cfg st pointer ui0 (rowFuel x.2) x
+
 /-! ## Scrolling to a place (`Effect.scrollTo`) -/
 
 /-- The scroll requests in `effs`, in order. -/
@@ -696,7 +727,7 @@ def aim (app : App S) (cfg : Config) (st : S) (pointer : Option Point) (ui1 : UI
     if decide (ui2.scroll = ui.scroll) then (ui, laid) else
     let u0 := { ui1 with scroll := ui2.scroll, lists := ui.lists, kept := ui.kept,
                          keptLists := ui.keptLists }
-    aim app cfg st pointer ui1 goals f (settle app cfg st pointer u0 settleFuel ui2)
+    aim app cfg st pointer ui1 goals f (settleAll app cfg st pointer u0 ui2)
 
 /-- How many rounds `aim` may take. -/
 def aimFuel : Nat := 3
@@ -704,7 +735,7 @@ def aimFuel : Nat := 3
 /-- Settle `ui1` against the app's view, then run the scroll requests `goals` (`aim`). -/
 def lay (app : App S) (cfg : Config) (st : S) (pointer : Option Point)
     (goals : List (ControlRef × ScrollTarget)) (ui1 : UI) : UI × Laid :=
-  let x := settle app cfg st pointer ui1 settleFuel ui1
+  let x := settleAll app cfg st pointer ui1 ui1
   if goals.isEmpty then x else aim app cfg st pointer ui1 goals aimFuel x
 
 /-- A shown panel's size: its width and its content's height at that width. -/
@@ -844,16 +875,28 @@ def step (app : App S) (cfg : Config) (s : State S) (e : Event) : State S × Lis
 own delivery brings into view is heard in the same batch (docs/runtime.md, "Appear"). -/
 def frameEvents : List Event := [.frame, .frame]
 
-/-- A batch of events, in order, then `frameEvents`. -/
+/-- What the runtime knows once a frame is shown: every virtual list's held anchor let go
+(`VList.Known.letGo`), so each list keeps its rows where this frame shows them. Within a batch
+the reader sees none of the frames between, so an anchor the clamp moved is held at the place
+the reader last saw it until then (`VList.anchorAt`). -/
+def _root_.Cairn.UI.letGo (ui : UI) : UI :=
+  { ui with lists := ui.lists.map fun (r, k) => (r, k.letGo),
+            keptLists := ui.keptLists.map fun (r, k) => (r, k.letGo) }
+
+/-- A state whose frame has been shown (`UI.letGo`). -/
+def State.shown (s : State S) : State S := { s with ui := s.ui.letGo }
+
+/-- A batch of events, in order, then `frameEvents`; then the frame is shown (`State.shown`). -/
 def steps (app : App S) (cfg : Config) (s : State S) (es : List Event) : State S × List Effect :=
-  (es ++ frameEvents).foldl (fun (s, effs) e => let (s', e') := step app cfg s e; (s', effs ++ e'))
-    (s, [])
+  let (s', effs) := (es ++ frameEvents).foldl
+    (fun (s, effs) e => let (s', e') := step app cfg s e; (s', effs ++ e')) (s, [])
+  (s'.shown, effs)
 
 /-- The first state: the app's `init` at a window size, laid out, with the app's `initFocus`
 if that control is focusable. -/
 def start (app : App S) (cfg : Config) (size : Size) (scale : Nat := 100) : State S :=
   let ui0 : UI := { size, focus := app.initFocus }
-  let (ui, laid) := settle app cfg app.init none ui0 settleFuel ui0
+  let (ui, laid) := settleAll app cfg app.init none ui0 ui0
   { app := app.init, ui, laid, scale, surfaces := shows app cfg app.init,
     world := { cap := max 1 app.maxInFlight } }
 

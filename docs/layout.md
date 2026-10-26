@@ -190,6 +190,9 @@ Theorems, for every list, every `UI` and every row function (`Cairn/VList.lean`,
 - `record_keeps`: the runtime's corrected offset moves by exactly as much as the kept row's top
   moved, so the row stays where it was on screen, unless the clamp moved the offset;
   `top_eq_of_below`: a change wholly below a row doesn't move its top.
+- `record_holds`, `record_returns`: when the clamp did move it, the row is held at the place
+  it had, and the next layout that the clamp allows puts it back there (within a batch;
+  docs/runtime.md, "Virtual lists").
 
 The fixture's list (10,000 rows of 24 to 48 points) states `node_rows` as `fixture^20` and
 `vlist_stacked` as `fixture^19`; `cairn fuzz` checks the window, the stacking and the anchor at

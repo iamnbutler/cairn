@@ -204,6 +204,126 @@ def badged : List Event := clickOn (run []) badgeRef
   | .announce "Announcement 1" .high => true | _ => false
 -- endregion: fixture-scroll-tests
 
+-- region: fixture-vlist-settle-tests
+/-! Two virtual-list regressions, each on a small app of its own (not the fixture's claims).
+`settledFrame`: every row a list laid is at the height the view laid it out by (the fuzzer's
+`vlist` check); `topIn`: a row's top in the list's box. -/
+section VListRegressions
+
+def listRef : ControlRef := ⟨900, 0⟩
+def btnA : ControlRef := ⟨901, 0⟩
+def btnB : ControlRef := ⟨902, 0⟩
+def lineRef (k : Nat) : ControlRef := ⟨903, k⟩
+
+/-- A row: `h` points high; marked `appear` when `ap`. -/
+def line (k h : Nat) (ap : Bool := false) : Node :=
+  .box { width := .fill, height := .fixed h }
+    (some { ref := lineRef k, role := .text, label := s!"Line {k}", appear := ap }) []
+
+/-- Every row each list in `rs` laid is at the height the view laid the list out by. -/
+def settledFrame {S : Type} (rs : Runtime.State S) : Bool :=
+  (listsOf rs.laid).all fun ll =>
+    (VList.laidRows ll.info ll.kids).all fun r => (r.height : Int) == ll.info.modelOf.height r.index
+
+/-- Row `k`'s top less the top of the list's box, if it is laid. -/
+def topIn {S : Type} (rs : Runtime.State S) (k : Nat) : Option Int :=
+  match (listsOf rs.laid).find? (·.ref == listRef), find rs.laid (lineRef k) with
+  | some ll, some t => some (t.node.rect.y - ll.rect.y)
+  | _, _ => none
+
+def offOf {S : Type} (rs : Runtime.State S) : Int := rs.ui.scrollOf listRef
+
+def clickAt {S : Type} (rs : Runtime.State S) (r : ControlRef) : List Event :=
+  match find rs.laid r with
+  | some t => click t.visible.center
+  | none => []
+
+/-! ### Many rows shrink at once (#276)
+
+400 rows of 100 points in a 300-point box. Shrink makes every row 1 point (a filter hiding
+them, as a mute does in Sky): each layout lays the next window of rows the runtime still knows
+at 100 points, so the list takes far more layouts than `settleFuel` to settle. -/
+
+structure Shrink where
+  small : Bool := false
+deriving Inhabited
+
+def shrinkKeys : Array Nat := Array.range' 1 400
+
+def shrinkView (s : Shrink) (ui : UI) : Node :=
+  .box { width := .fill, height := .fill } none
+    [ button ui btnA "Shrink",
+      VList.node { ref := listRef, style := { width := .fill, height := .fixed 300 } } ui
+        shrinkKeys fun k => line k (if s.small then 1 else 100) ]
+
+def shrinkApp : App Shrink :=
+  { init := {}, surfaces := [.window 1 "Shrink" shrinkView], claims := [],
+    update := fun s a => (if a == .press btnA then { s with small := !s.small } else s, []) }
+
+def s0 : Runtime.State Shrink := start shrinkApp tcfg ⟨480, 600⟩
+def s1 : Runtime.State Shrink := (steps shrinkApp tcfg s0 (clickAt s0 btnA)).1
+#guard settledFrame s0 && topIn s0 2 == some 100
+-- Every row laid at its height, 1 point: the frame isn't laid by heights the list no longer has.
+#guard s1.app.small && settledFrame s1 && topIn s1 2 == some 1
+
+/-! ### A clamp within a batch (#271)
+
+Three rows of 30 points in a 100-point box: the list fits, at offset 0, with row 1 at the top.
+Add puts a row above them, which the reader would scroll past (offset 30) but the clamp holds
+at 20 (the limit), so the new row shows 10 points of itself and hears `appear`. Hearing it
+loads three more rows at the end, in the same batch: now the offset can go to 30, and row 1 is
+back at the top of the box where the reader last saw it. -/
+
+structure Clamp where
+  keys : Array Nat := #[1, 2, 3]
+  loaded : Bool := false
+  /-- The box is 200 high instead of 100. -/
+  tall : Bool := false
+deriving Inhabited
+
+def clampView (s : Clamp) (ui : UI) : Node :=
+  .box { width := .fill, height := .fill } none
+    [ .box { axis := .row, gap := 8 } none [button ui btnA "Add", button ui btnB "Tall"],
+      VList.node { ref := listRef, overscan := 0,
+                   style := { width := .fill, height := .fixed (if s.tall then 200 else 100) } } ui
+        s.keys fun k => line k 30 (ap := k == 100) ]
+
+def clampUpdate (s : Clamp) : Action → Clamp
+  | .press r =>
+    if r == btnA then { s with keys := #[100] ++ s.keys }
+    else if r == btnB then { s with tall := !s.tall } else s
+  | .appear r =>
+    if r == lineRef 100 && !s.loaded then { s with keys := s.keys ++ #[4, 5, 6], loaded := true }
+    else s
+  | _ => s
+
+def clampApp : App Clamp :=
+  { init := {}, surfaces := [.window 1 "Clamp" clampView], claims := [],
+    update := fun s a => (clampUpdate s a, []) }
+
+/-- A batch on `rs`: a click on `r`, then the frame shown. -/
+def clampClick (rs : Runtime.State Clamp) (r : ControlRef) : Runtime.State Clamp :=
+  (steps clampApp tcfg rs (clickAt rs r)).1
+def c0 : Runtime.State Clamp := start clampApp tcfg ⟨480, 600⟩
+def c1 : Runtime.State Clamp := clampClick c0 btnA
+#guard offOf c0 == 0 && topIn c0 1 == some 0
+-- The new row came into view and loaded more: the list is long enough again, so row 1 is back
+-- at the top of the box, and the new row just above it.
+#guard c1.app.loaded && c1.app.keys.size == 7
+#guard offOf c1 == 30 && topIn c1 1 == some 0
+
+-- A clamp the reader saw stays. From there (offset 30, of a limit of 110), the box grows to 200
+-- in one batch: the offset clamps to 10, and row 1 shows 20 points down. When the box shrinks
+-- again, in the next batch, row 1 stays 20 points down, where the reader last saw it: the
+-- offset doesn't go back to 30.
+def c2 : Runtime.State Clamp := clampClick c1 btnB
+#guard c2.app.tall && offOf c2 == 10 && topIn c2 1 == some 20
+def c3 : Runtime.State Clamp := clampClick c2 btnB
+#guard !c3.app.tall && offOf c3 == 10 && topIn c3 1 == some 20
+
+end VListRegressions
+-- endregion: fixture-vlist-settle-tests
+
 -- region: fixture-like-tests
 /-! The likes on their own (Fixture/Like.lean), replies fed by hand: request ids from 0. -/
 section Likes

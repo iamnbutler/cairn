@@ -49,6 +49,35 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
 - **Its evidence.** What a claim reads as depends on the build that computed it. See
   [how much to trust a claim](/docs/reference/trust/).
 
+## Unreleased (0.5.2)
+
+Not published yet. Two virtual-list fixes Sky turned up.
+
+- **A list settles however many layouts it takes**
+  ([#276](https://github.com/iamnbutler/cairn/issues/276)). A list learns heights one window at
+  a time, so when many rows it knows change at once (Sky's mute hiding many posts), each layout
+  brought the next window in at the heights it no longer had, and after `settleFuel` (4) the frame
+  was drawn with them, and the offset moved by the difference. After `settle`, the runtime now
+  lays out again while a list laid a row at a height it hadn't recorded (`Runtime.unsettled`),
+  up to the number of rows in its lists (`resettle`, `settleAll`); other changes still stop at
+  `settleFuel`. `resettle_stops`: the frame is settled, or every one of those layouts was taken.
+  An app that hands `VList.node` heights it knows ahead (Sky's `feedUI`) doesn't need to.
+- **A clamp within a batch no longer moves the reader's row**
+  ([#271](https://github.com/iamnbutler/cairn/issues/271)). When the clamp kept the offset from
+  following the row to keep still (rows inserted above the first row of a list that nearly fits),
+  the runtime anchored on whatever row showed at the clamped offset, so when a later step of the
+  same batch lengthened the list (an `appear` on the new rows), the reader's row ended up away
+  from where it was. Now the row is held (`VList.Anchor.hold`, `VList.anchorAt`) and put back
+  once the clamp allows (`record_holds`, `record_returns`), and `steps` lets every hold go when
+  the batch's frame is shown (`State.shown`), so a clamp the reader has seen stays.
+- **Fixture cases.** test/fixture's Tests.lean has a small app for each: 400 rows that all
+  shrink to 1 point at once, and a short list that rows are added above and that loads more when
+  they appear, with a box that grows and shrinks in separate batches. Both failed before.
+
+No claim is new, retired, moved or changed. `Runtime.steps` now ends with `State.shown`, and
+`VList.Anchor` has a new field, `hold`, 0 by default; code that folds `Runtime.step` over a batch
+itself (as the fuzzer and conformance do) applies `State.shown` after the frame events.
+
 ## v0.5.1
 
 26 October 2026, at commit `3616efd`.

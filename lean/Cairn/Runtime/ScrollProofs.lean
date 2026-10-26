@@ -43,6 +43,15 @@ theorem clamped_settle (app : App S) (cfg : Config) (st : S) (pointer : Option P
   obtain ⟨h1, h2⟩ := h
   rw [h1, h2]; exact fixUI_clamped l pointer ui0 _
 
+theorem clamped_settleAll (app : App S) (cfg : Config) (st : S) (pointer : Option Point)
+    (ui0 ui : UI) (s : State S)
+    (h : (s.ui, s.laid) = settleAll app cfg st pointer ui0 ui) : Clamped s.laid s.ui := by
+  obtain ⟨l, hl⟩ := settleAll_spec app cfg st pointer ui0 ui
+  rw [hl] at h
+  simp only [Prod.mk.injEq] at h
+  obtain ⟨h1, h2⟩ := h
+  rw [h1, h2]; exact fixUI_clamped l pointer ui0 _
+
 theorem clamped_lay (app : App S) (cfg : Config) (st : S) (pointer : Option Point)
     (goals : List (ControlRef × ScrollTarget)) (ui1 : UI) (s : State S)
     (h : (s.ui, s.laid) = lay app cfg st pointer goals ui1) : Clamped s.laid s.ui := by
@@ -55,7 +64,7 @@ theorem clamped_lay (app : App S) (cfg : Config) (st : S) (pointer : Option Poin
 /-- **Offsets are clamped** at start. -/
 theorem start_clamped (app : App S) (cfg : Config) (size : Size) (scale : Nat) :
     Clamped (start app cfg size scale).laid (start app cfg size scale).ui :=
-  clamped_settle app cfg app.init none _ settleFuel _ _ rfl
+  clamped_settleAll app cfg app.init none _ _ _ rfl
 
 /-- **Offsets are clamped** after every step: each offset the runtime keeps belongs to a scroll
 box on screen and lies within `[0, max 0 (content − viewport)]` of it. -/

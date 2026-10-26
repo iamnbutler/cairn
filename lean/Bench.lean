@@ -137,7 +137,7 @@ clock between its phases; `timedFrame` checks that it reaches the same state. -/
 replies to the app, diff subscriptions (and, when the app heard something, what each surface
 shows). **view**: `app.view`. **layout**: the layout of that view. **settle**: the runtime's
 record of the virtual lists and the repair of hover, focus and scroll against the new tree
-(`fixUI`), and any further view and layout `Runtime.settle` runs until it stops changing.
+(`fixUI`), and any further view and layout `Runtime.settleAll` runs until it stops changing.
 **encode**: `Runtime.frameBytes`, the frame as the host receives it. -/
 structure Phases where
   update : Nat := 0
@@ -181,9 +181,10 @@ def timedStep {S : Type} (app : App S) (cfg : Runtime.Config) (s : Runtime.State
   if checksum laid == -1 then IO.println "odd"
   let t3 ← IO.monoNanosNow
   let ui' := Runtime.fixUI laid s1.pointer ui1 (app.keepScroll c.app)
-  let (ui, laid) :=
+  let x :=
     if Runtime.UI.same ui' ui1 then (ui', laid)
     else Runtime.settle app cfg c.app s1.pointer ui1 (Runtime.settleFuel - 1) ui'
+  let (ui, laid) := Runtime.resettle app cfg c.app s1.pointer ui1 (Runtime.rowFuel x.2) x
   if checksum laid == -1 then IO.println "odd"
   let t4 ← IO.monoNanosNow
   let s' := { s1 with app := c.app, ui, laid, world := { c.world with subs, nextSub := next },
@@ -204,7 +205,7 @@ def timedFrame {S : Type} (app : App S) (cfg : Runtime.Config) (s : Runtime.Stat
     ph := ph + p
   -- The effects, outside the clock: `timedStep` doesn't collect them.
   let (r, effs) := Runtime.steps app cfg s0 es
-  st := { st with effects := effs.toArray }
+  st := { st.shown with effects := effs.toArray }
   let t0 ← IO.monoNanosNow
   let bytes := Runtime.frameBytes Frame.boundary st
   if bytes.size == 0 then IO.println "empty frame"
@@ -293,7 +294,7 @@ def benchList (n : Nat) (virtual : Bool) : IO Unit := do
     let keys' := #[n + 1 + i] ++ s.app.keys
     let s' := { s with app := { s.app with keys := keys' } }
     let t0 ← IO.monoNanosNow
-    let (ui, laid) := Runtime.settle app {} s'.app s'.pointer s'.ui Runtime.settleFuel s'.ui
+    let (ui, laid) := Runtime.settleAll app {} s'.app s'.pointer s'.ui s'.ui
     let c := checksum laid
     let t1 ← IO.monoNanosNow
     if c == 0 then IO.println "empty"

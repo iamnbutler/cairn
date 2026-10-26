@@ -762,13 +762,15 @@ def choices (M : Machine S) (s : Runtime.State S) (f : Frame) (r : Rng) : Array 
 /-! ## Running the model -/
 
 /-- Runs events one at a time, then the frame events, as `Runtime.steps` does, and collects
-the actions `route` delivers for each (`Runtime.step_delivers`: exactly what `update` sees). -/
+the actions `route` delivers for each (`Runtime.step_delivers`: exactly what `update` sees).
+Then the frame is shown (`Runtime.State.shown`), as `steps` ends. -/
 def runEvents (app : App S) (cfg : Config) (s : Runtime.State S) (es : List Event) :
     Runtime.State S × List Action × List Effect :=
-  (es ++ frameEvents).foldl (fun (s, acts, effs) e =>
+  let (s, acts, effs) := (es ++ frameEvents).foldl (fun (s, acts, effs) e =>
     let (_, a) := route cfg.metrics s e
     let (s', ef) := step app cfg s e
     (s', acts ++ a, effs ++ ef)) (s, [], [])
+  (s.shown, acts, effs)
 
 /-- Whether a press or double press of `c` is dropped by design (TodoMVC decision T33,
 docs/plan.md): the first pointerDown delivers a `blur`, and after its step `c` is no longer at

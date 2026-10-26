@@ -685,7 +685,8 @@ def perform (t : Target) (setup : Setup) (w : World t.S t.W) (op : Op) :
         host := host.after rt.world.subs rt' effs
         effects := effects ++ effs.toArray
         rt := { rt' with subCmds := #[] }
-      return { world := { rt, seen, host, secure, server := sw, parked, lastLists }, acts := acts.toList, ran := true,
+      -- The batch's frame is shown, as at the end of `Runtime.steps`.
+      return { world := { rt := rt.shown, seen, host, secure, server := sw, parked, lastLists }, acts := acts.toList, ran := true,
                maxNs, dropped, msg, effects := effects.toList, msgDropped }
 
 /-! ## Checks -/
@@ -790,7 +791,7 @@ def vlistFault (ll : LaidList) : Option String := Id.run do
   return none
 
 /-- A laid row whose height isn't the one the view laid the list out by: the runtime hadn't
-recorded it yet when `settle` ran out (`Runtime.settleFuel`). -/
+recorded it yet when it stopped laying out (`Runtime.settleAll`, `Runtime.unsettled`). -/
 def unsettledRow (ll : LaidList) : Option (Nat × Int × Int) :=
   (ll.rows.find? fun (i, k) => decide (max 1 k.rect.h ≠ ll.info.modelOf.height i)).map
     fun (i, k) => (i, k.rect.h, ll.info.modelOf.height i)
@@ -880,7 +881,8 @@ def keptChecks (keep : List ControlRef) (ui0 ui : UI) (before after : List LaidL
 /-- **The anchor stays still.** Over an operation that doesn't scroll or resize, the first row
 showing in each virtual list keeps its place in the box, wherever rows were inserted or heights
 changed above it (`VList.record_keeps`), unless the clamp moved the offset (to 0 or the
-limit) or the row is gone. -/
+limit) or the row is gone. A clamp within the operation's batch that a later step lifts doesn't
+excuse it: the row is held, and put back (`VList.record_holds`, `record_returns`). -/
 def anchorChecks (before after : List LaidList) (op : Op) (stepIx : Nat)
     (effects : List Effect := []) : List Ran × List Failure := Id.run do
   if op.moves then return ([], [])
