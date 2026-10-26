@@ -3,6 +3,7 @@
 //
 //   bun tools/conformance/driver.ts --app Basics --bin <host app> --gen <generator> \
 //       --claims <lake exe claims JSON> [--n 1000] [--length 12] [--seed 1] [--out build/conformance]
+//       [--gestures FILE]   (also replays FILE's gesture sequences, in the generator's --gestures format)
 //
 // Launches the app with its debug socket on, asks the generator (the Lean model, walking the
 // app's own `step` and `frame`) for sequences, and replays each one on the running app as real
@@ -11,7 +12,8 @@
 //
 //   frame    the decoded frame the app applied, value for value (draws, AX nodes, text input, cursor)
 //   menus    each status item's native menu as AppKit holds it (titles, enabled, checkmarks, ids,
-//            key equivalents, submenus), and each surface's kind, place and shown flag
+//            key equivalents, submenus), and each surface's kind, place and shown flag; the open
+//            control menu (its owner and items) and the app's menu bar items, the same way
 //   ax       the accessibility tree as NSAccessibility answers it, against the model's AX nodes
 //            through the host's role and value table (docs/host.md)
 //   effects  the effects the host ran (clipboard writes, beeps)
@@ -54,7 +56,7 @@ const OUT = resolve(args.out ?? "build/conformance");
 const TOLERANCE = Number(args.tolerance ?? 3);
 const SHRINK_MAX = Number(args.shrink ?? 6); // distinct failures to shrink
 if (!BIN || !GEN) {
-	console.error("usage: driver.ts --app A --bin APP_BINARY --gen GENERATOR [--claims FILE] [--n N] [--length L] [--seed S]");
+	console.error("usage: driver.ts --app A --bin APP_BINARY --gen GENERATOR [--claims FILE] [--n N] [--length L] [--seed S] [--gestures FILE]");
 	process.exit(2);
 }
 
@@ -64,12 +66,16 @@ type Rect = [number, number, number, number];
 type Color = [number, number, number, number];
 type AxNode = {
 	role: string; control: string | null; parent: number | null; rect: Rect; label: string; value: string;
-	focused: boolean; selected: boolean; checked: boolean | null;
+	focused: boolean; selected: boolean; checked: boolean | null; secure: boolean; menu: boolean | null;
 };
 type TextInput = { control: string; rect: Rect; caret: Rect; text: string; selection: [number, number]; marked: [number, number] | null; origin: [number, number] };
 type Frame = {
 	size: [number, number]; draws: unknown[]; ax: AxNode[]; textInput: TextInput | null; cursor: string;
 	menus: { place: number; items: unknown[] }[]; surfaces: { kind: string; place: number; shown: boolean }[];
+	/** The app's menu bar items (`menuBar`), or null without a menuBar surface. */
+	menuBar: { place: number; appItems: unknown[]; menus: unknown[] } | null;
+	/** The open control menu (`controlMenu`): its owner and items. */
+	controlMenu: { owner: string | null; items: unknown[] };
 };
 type Probe = { ref: string; at: [number, number]; expect: Color; own: boolean };
 type Gesture = { g: string; at?: [number, number]; clicks?: number; key?: string; mods?: string[]; char?: string; text?: string; sel?: [number, number]; name?: string; place?: number; id?: string; ref?: [number, number] };
@@ -178,6 +184,14 @@ async function perform(c: Client, g: Gesture): Promise<number> {
 			return (await c.req({ cmd: g.g, place: g.place })).seq;
 		case "menuSelect":
 			return (await c.req({ cmd: "menuSelect", place: g.place, id: g.id })).seq;
+		case "rightDown": case "rightUp":
+			return (await c.req({ cmd: "pointer", type: g.g, at: g.at ?? [0, 0], clicks: 1 })).seq;
+		case "controlMenuSelect":
+			return (await c.req({ cmd: "controlMenuSelect", id: g.id })).seq;
+		case "controlMenuClose":
+			return (await c.req({ cmd: "controlMenuClose" })).seq;
+		case "menuBarSelect":
+			return (await c.req({ cmd: "menuBarSelect", id: g.id })).seq;
 	}
 	throw new Error(`unknown gesture ${g.g}`);
 }
@@ -192,7 +206,10 @@ function gestureLine(g: Gesture): string {
 		case "marked": return `marked ${g.sel![0]} ${g.sel![1]} ${g.text}`;
 		case "menu": return `menu ${g.name}`;
 		case "menuOpen": case "menuClose": return `${g.g} ${g.place}`;
-		case "menuSelect": return `menuSelect ${g.place} ${g.ref![0]} ${g.ref![1]}`;
+		case "menuSelect": case "controlMenuSelect": case "menuBarSelect":
+			return `${g.g} ${g.place} ${g.ref![0]} ${g.ref![1]}`;
+		case "rightDown": case "rightUp": return `${g.g} ${g.at![0]} ${g.at![1]}`;
+		case "controlMenuClose": return `controlMenuClose ${g.place}`;
 		default: return g.g;
 	}
 }
@@ -245,23 +262,26 @@ function expectedAx(f: Frame): Record<string, unknown>[] {
 	return f.ax.flatMap((n, i) => hidden[i] ? [] : [{ ...n, parent: n.parent === null || n.parent === undefined ? n.parent : index[n.parent] }]).map((n) => {
 		const field = f.textInput && f.textInput.control === n.control ? f.textInput : null;
 		let value: unknown;
-		switch (n.role) {
+		if (n.secure) value = null;
+		else switch (n.role) {
 			case "checkbox": case "tab": value = (n.checked ?? n.selected) ? 1 : 0; break;
 			case "textField": value = field ? field.text : n.value; break;
 			case "text": value = n.value === "" ? n.label : n.value; break;
 			default: value = n.value === "" ? null : n.value;
 		}
 		const e: Record<string, unknown> = {
-			id: n.control ?? "", role: role[n.role], subrole: n.role === "tab" ? "AXTabButton" : null,
+			// A menu button (⋯) is an AXMenuButton (AXMirror).
+			id: n.control ?? "", role: n.role === "button" && n.menu === true ? "AXMenuButton" : role[n.role], subrole: n.role === "tab" ? "AXTabButton" : n.secure ? "AXSecureTextField" : null,
 			label: n.label === "" ? null : n.label, title: n.role === "button" || n.role === "heading" ? n.label : null,
 			value, focused: n.focused, selected: n.selected, enabled: true, frame: n.rect, parent: n.parent,
 		};
 		if (n.role === "listItem") e.roleDescription = "list item";
 		if (n.role === "heading") e.roleDescription = "heading";
 		if (n.role === "textField") {
-			const text = field ? field.text : n.value;
+			// A secure field exposes no text and no selection (AXMirror).
+			const text = n.secure ? "" : field ? field.text : n.value;
 			const len = text.length;
-			if (field) {
+			if (field && !n.secure) {
 				const a = utf16(text, field.selection[0]), b = utf16(text, field.selection[1]);
 				e.selection = [a, b - a];
 			} else e.selection = [len, 0];
@@ -288,7 +308,7 @@ function compareAx(model: Frame, actual: Record<string, unknown>[]): string | nu
 const near = (a: Color, b: Color) => a.every((v, i) => Math.abs(v - b[i]) <= TOLERANCE);
 
 async function checkFrame(c: Client, f: Frame, probes: Probe[], clear: Color, problems: Problem[], stats: Stats) {
-	const { menus, surfaces, ...window } = f;
+	const { menus, surfaces, menuBar, controlMenu, ...window } = f;
 	const fr = await c.req({ cmd: "frame" });
 	const d = diff(window, fr.frame, "frame");
 	if (d) problems.push({ kind: "frame", detail: d });
@@ -301,6 +321,17 @@ async function checkFrame(c: Client, f: Frame, probes: Probe[], clear: Color, pr
 		const got = (await c.req({ cmd: "surfaces" })).surfaces.map((s: any) => ({ kind: s.kind, place: s.place, shown: s.shown }));
 		const ds = diff(surfaces, got, "surfaces");
 		if (ds) problems.push({ kind: "menus", detail: ds });
+	}
+	if (menuBar) {
+		const got = await c.req({ cmd: "menuBar" });
+		const db = diff({ place: menuBar.place, appItems: menuBar.appItems, menus: menuBar.menus },
+			{ place: got.place, appItems: got.appItems, menus: got.menus }, "menuBar");
+		if (db) problems.push({ kind: "menus", detail: db });
+	}
+	if (controlMenu) {
+		const got = await c.req({ cmd: "controlMenu" });
+		const dc = diff(controlMenu, { owner: got.owner, items: got.items }, "controlMenu");
+		if (dc) problems.push({ kind: "menus", detail: dc });
 	}
 	const ax = await c.req({ cmd: "ax" });
 	const a = compareAx(f, ax.nodes);
@@ -336,11 +367,33 @@ async function runSequence(c: Client, seq: Sequence, clear: Color, stats: Stats,
 		const problems: Problem[] = [];
 		for (const f of st.findings) problems.push({ kind: "model", detail: f });
 		let last = 0;
-		for (const g of st.gestures) last = await perform(c, g);
+		const ran: unknown[] = [], divergences: string[] = [];
+		for (const g of st.gestures) {
+			// The host builds a control's menu from the frame that opens it: wait for that frame.
+			if (last && g.g.startsWith("controlMenu")) {
+				const w = await c.req({ cmd: "wait", seq: last });
+				ran.push(...w.effects);
+				divergences.push(...w.divergences);
+			}
+			try {
+				last = await perform(c, g);
+			} catch (e) {
+				// The app could not take the gesture (a control menu that isn't open, after
+				// shrinking dropped the step that opened it).
+				problems.push({ kind: "perform", detail: `${gestureLine(g)}: ${(e as Error).message}` });
+				break;
+			}
+		}
+		if (problems.some((p) => p.kind === "perform")) {
+			results.push({ problems, ms: performance.now() - t0 });
+			return { failedAt: i, problems, results };
+		}
 		const wt = await c.req({ cmd: "wait", seq: last });
-		const effects = diff(st.effects, wt.effects, "effects");
+		ran.push(...wt.effects);
+		divergences.push(...wt.divergences);
+		const effects = diff(st.effects, ran, "effects");
 		if (effects) problems.push({ kind: "effects", detail: effects });
-		if (wt.divergences.length) problems.push({ kind: "shadow", detail: wt.divergences.join("; ") });
+		if (divergences.length) problems.push({ kind: "shadow", detail: divergences.join("; ") });
 		await checkFrame(c, st.frame, st.probes, clear, problems, stats);
 		const ms = performance.now() - t0;
 		stats.steps++;
@@ -378,7 +431,8 @@ async function shrink(c: Client, seq: Sequence, failedAt: number, hello: any, cl
 		const [s] = await genOne(["--gestures", file], hello);
 		if (s.stopped) return null;
 		const r = await runSequence(c, s, clear, stats);
-		return r.failedAt === null ? null : { s, r };
+		// A candidate the app could not perform reproduces nothing.
+		return r.failedAt === null || r.problems.some((p) => p.kind === "perform") ? null : { s, r };
 	};
 	let best = await tryLine(steps);
 	if (!best) return { steps, verified: false, seq: null as Sequence | null, result: null as any };
@@ -460,6 +514,14 @@ async function main() {
 		if (performance.now() - lastReport > 5000) {
 			lastReport = performance.now();
 			console.log(`  ${sequences}/${N} sequences, ${stats.steps} steps, ${failures.length} failing`);
+		}
+	}
+	// Gesture sequences given with --gestures (the generator's --gestures format), checked like walks.
+	if (args.gestures) {
+		for await (const seq of generate(["--gestures", resolve(args.gestures)], hello)) {
+			const res = await runSequence(c, seq, clear, stats);
+			if (seq.stopped) console.log(`  --gestures: ${seq.stopped}`);
+			record(seq, res);
 		}
 	}
 	const walkMs = performance.now() - t0;

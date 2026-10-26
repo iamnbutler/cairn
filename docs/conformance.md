@@ -68,6 +68,14 @@ are one JSON object per line, and every reply carries `ok`, plus `error` when `o
 | `{"cmd":"menuOpen","place":P}`, `{"cmd":"menuClose",…}` | the menu delegate's `menuWillOpen` / `menuDidClose` on the root menu | `seq` |
 | `{"cmd":"menuSelect","place":P,"id":"^N#K"}` | an enabled item through `NSMenu.performActionForItem(at:)`; a greyed-out item's action sent directly (`"direct":true`), as when the menu changed while open | `seq` |
 | `{"cmd":"menuSelect","place":P,"ref":[N,K]}` | a `menuSelect` event with any ref | `seq` |
+| `{"cmd":"pointer","type":"rightDown"\|"rightUp","at":[x,y]}` | `rightMouseDown`, `rightMouseUp` on the view: a secondary click | `seq` |
+| `{"cmd":"controlMenu"}` | | the open control menu as AppKit holds it (built, not popped up, under the socket): `owner`, `place`, `items` |
+| `{"cmd":"controlMenuSelect","id":"^N#K"}` | an item of the open control menu through `performActionForItem(at:)` (a greyed one's action directly, `"direct":true`), then the close the host sends when a popped-up menu returns | `seq` |
+| `{"cmd":"controlMenuClose"}` | the open control menu closes without a choice | `seq` |
+| `{"cmd":"axShowMenu","id":"^N#K"}` | `AXShowMenu` on the control's accessibility element | `seq`, `performed` |
+| `{"cmd":"menuBar"}` | | the app's own menu bar items as AppKit holds them: `appItems` at the top of the app menu, `menus` in the bar, and the whole main menu (`items`) |
+| `{"cmd":"menuBarSelect","id":"^N#K"}` | a menu bar item through `performActionForItem(at:)` | `seq` |
+| `{"cmd":"menuBarKey","char":"r","mods":["command"]}` | the key event offered to the main menu (`performKeyEquivalent(with:)`) | `seq`, `handled` |
 | `{"cmd":"surfaces"}` | | activation policy, key window, main menu, and each surface: kind, place, shown, and its AppKit object (status item, panel properties and frame) |
 | `{"cmd":"wait","seq":n}` | waits until a frame through input `n` is applied on the main thread | the frame's `seq`, `version`, effects run since the last wait, new text-shadow divergences |
 | `{"cmd":"frame"}` | | the applied frame, decoded, in the generator's JSON shape |
@@ -136,10 +144,17 @@ now, from the model's current frame:
   - a drag-select;
   - Enter for `submit` and Escape for `cancel`;
 - Enter and Space on a focused button;
+- each control with a menu (docs/surfaces.md, "Menus on controls"): a secondary click, a click
+  on a menu button, and the menu key (`Key.menu`) when it has focus;
+- with a control's menu open, only what a person can do while AppKit tracks it: choose each item
+  (an enabled one as a press of its move, a greyed one as plain UI, expecting nothing), or dismiss
+  the menu;
+- each item of the app's menu bar items (`Surface.menuBar`), enabled or greyed;
 - plain UI: Tab, Shift-Tab, the pointer leaving the window, a hover anywhere, a click on empty
   space.
 
-The walk picks a group uniformly, where a group is one control's trigger, or plain UI. Editing the
+The walk picks a group uniformly, where a group is one control's trigger, one control's menu,
+or plain UI. Editing the
 focused field gets three times the weight. Then the walk picks a choice within the group.
 
 For each step the generator records:
@@ -158,8 +173,13 @@ antialiasing reaches, with the colour the frame's draws blend there.
 The generator has two more modes:
 
 - `--witness FILE` replays flows' witnesses from `lake exe claims`. A press is a click at the
-  control's centre. An edit focuses the field, then types, pastes or deletes. Submit is Enter.
-- `--gestures FILE` re-models raw gesture lists. The driver uses it to shrink failures.
+  control's centre. A press on an item of a control's menu right-clicks the control and chooses
+  the item; on a menu bar item, it chooses it. An edit focuses the field, then types, pastes or
+  deletes. Submit is Enter.
+- `--gestures FILE` re-models raw gesture lists. The driver uses it to shrink failures, and
+  replays a file of them as extra sequences with `cairn conformance --gestures FILE`. The
+  fixture's `conformance/menus.gestures` opens an item's menu with the menu key, Space, Return
+  and a right click and chooses from it.
 
 ## What is checked after every step
 
@@ -173,7 +193,8 @@ is applied on the main thread. Then it checks:
 | effects | the effects the host ran equal the model's |
 | shadow | no new text-input shadow divergences: the host's prediction between an IME call and its frame agreed with Lean |
 | pixels | each probe's colour in the presented drawable is within 3 per channel of the model's |
-| model | the generator's findings are empty: every control on screen belongs to an enabled move, and a press delivered exactly that press (except a T33 dropped click, below) |
+| menus | each status item's menu, the open control menu (`controlMenu`: owner and items) and the app's menu bar items (`menuBar`) equal the model's records, in `DebugJSON.menu`'s shape |
+| model | the generator's findings are empty: every control on screen belongs to an enabled move (a menu button may belong to none: its ref names its menu), and a press delivered exactly that press (except a T33 dropped click, below) |
 
 The initial frame, AX tree and pixels are checked after each restart. A sequence stops at its
 first failing step. The states after that step have diverged, so later steps would only repeat
@@ -317,6 +338,40 @@ Not covered: the real menu bar (clicking the status item, keyboard navigation in
 VoiceOver), and the panel's pixels (it has no AX nodes or probes; its canvas is checked through
 the frame codec and Tray's self test). See [surfaces-checklist.md](surfaces-checklist.md).
 
+## The fixture: menus on controls and the menu bar
+
+The fixture (test/fixture) has an item menu on each item's ⋯ button and checkbox, and the app's
+own Clear Done and Go menu. Opening a control's menu goes through the socket's `rightDown` and
+`rightUp`, a click on the ⋯ button, or the `menu` key. The driver waits for the frame that opens
+the menu before choosing from it, since the host builds the native menu from that frame.
+
+Runs on a second Mac (macOS 26.5, Apple silicon, debug build):
+
+- Before the Like buttons (#260, #261), `cairn conformance --n 1000 --length 20 --seed 3` passed
+  1000/1000 walks and both flows, ^8 and ^33. ^33 finishes items from their menus and the app
+  menu. The run covered 20,013 steps and 210,567 pixel probes. Runs per move, with the ids the
+  moves have now:
+
+  | Move | Runs |
+  |---|---|
+  | Mark Done from the menu (^26) | 3 in walks |
+  | Delete (^27) | 5 in walks |
+  | First Row (^31) | 1,507 |
+  | No Row (^32) | 1,125 |
+
+  A walk reaches an item's menu rarely, because it must add an item first. The flow and the
+  gesture file cover the menu every run.
+- With the Like buttons, `cairn conformance --n 0 --gestures conformance/menus.gestures` passes
+  both gesture sequences and both flows (55 steps).
+- Random walks fail since the Like buttons, at the first step after a Like or Refresh press. The
+  fixture's requests go to `127.0.0.1:9`, and their failures come back as replies, with retries,
+  that the model's walk never sees. That needs a fake server in the conformance model, as
+  `cairn fuzz` has; it is not done yet.
+
+Before this run the driver had not been run since secure fields (#217): it modelled neither the
+`secure` flags nor `AXSecureTextField`, and failed every walk at its initial frame. Both are
+modelled now.
+
 ## What it does not check
 
 - **The window server.** Events are handed to the view, not routed by the window server or
@@ -326,6 +381,9 @@ the frame codec and Tray's self test). See [surfaces-checklist.md](surfaces-chec
   method's, not by a real Japanese or Chinese IME.
 - **The user's key bindings.** Key equivalents go through `interpretKeyEvents` with the current
   user's key bindings. A custom `DefaultKeyBinding.dict` could change the results.
+- **Popped-up menus.** A control's menu is built but never popped up under the socket, so where
+  it appears, keyboard navigation inside it, and dismissal by a click outside are not exercised
+  (docs/trusted.md, "Also trusted, not fuzzed").
 - **Timing.** Every step waits for its frame, so coalescing and input racing ahead of frames are
   not exercised.
 - **Things Basics and Counter lack.** Scrolling, live resize and window focus (`UI.windowFocused`) aren't

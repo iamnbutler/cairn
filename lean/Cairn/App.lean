@@ -36,6 +36,11 @@ structure UI where
   kept : List (ControlRef × Int) := []
   /-- What the runtime knew of each virtual list not on screen that the app keeps, likewise. -/
   keptLists : List (ControlRef × VList.Known) := []
+  /-- The control whose menu (`Style.menu`) is open now, if one is: the runtime opens it (a
+  secondary click, a menu button, the context-menu key) and closes it when the host says the
+  native menu closed, an item was chosen, or the control or its menu is gone. A view may read it
+  (a ⋯ button drawn pressed while its menu is open). -/
+  menu : Option ControlRef := none
 deriving Repr, DecidableEq, Inhabited
 
 /-- What the runtime knows of the virtual list `r`: nothing until it has been laid. A list the
@@ -80,6 +85,12 @@ inductive Surface (S : Type) where
   | panel (place : ClaimId) (view : TextMetrics → S → Option PanelView)
   /-- A menu bar status item and its native menu; `none` removes it from the menu bar. -/
   | statusItem (place : ClaimId) (view : S → Option StatusItem)
+  /-- The app's own items in the main menu bar (docs/surfaces.md, "The app's menus"). A top-level
+  `submenu` is a menu of its own in the menu bar, after the app menu, in order (Go, View); every
+  other top-level entry goes in the app menu, after the app's name and before Hide and Quit,
+  which stay the host's. An item's shortcut is its key equivalent, honoured whenever the app is
+  active. Shown only while the app has a window: an accessory app has no main menu. -/
+  | menuBar (place : ClaimId) (view : S → List MenuItem)
 -- endregion: app-surface
 
 namespace Surface
@@ -87,13 +98,14 @@ namespace Surface
 variable {S T : Type}
 
 def place : Surface S → ClaimId
-  | .window p .. | .panel p _ | .statusItem p _ => p
+  | .window p .. | .panel p _ | .statusItem p _ | .menuBar p _ => p
 
 /-- The same surface over a bigger state (`Cairn.Runtime.logged` wraps an app's state). -/
 def comap (f : T → S) : Surface S → Surface T
   | .window p t v => .window p t (fun s ui => v (f s) ui)
   | .panel p v => .panel p (fun m s => v m (f s))
   | .statusItem p v => .statusItem p (fun s => v (f s))
+  | .menuBar p v => .menuBar p (fun s => v (f s))
 
 @[simp] theorem place_comap (f : T → S) (x : Surface S) : (x.comap f).place = x.place := by
   cases x <;> rfl
@@ -116,6 +128,7 @@ theorem firstWindow_comap {S T : Type} (f : T → S) (xs : List (Surface S)) :
     | window p t v => rfl
     | panel p v => simp only [List.map_cons, Surface.comap, firstWindow]; exact ih
     | statusItem p v => simp only [List.map_cons, Surface.comap, firstWindow]; exact ih
+    | menuBar p v => simp only [List.map_cons, Surface.comap, firstWindow]; exact ih
 
 /-- What an app with no window lays out as its window: nothing. -/
 def emptyView : Node := .box {} none []

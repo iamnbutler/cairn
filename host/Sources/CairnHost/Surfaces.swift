@@ -27,6 +27,11 @@ public final class SurfaceHost {
     private let engine: Engine?
     public private(set) var statuses: [UInt32: StatusHost] = [:]
     public private(set) var panels: [UInt32: PanelHost] = [:]
+    /// The app's own menus in the menu bar, if it has any (`Surface.menuBar`).
+    public private(set) var bar: MenuBarHost?
+    /// The main menu the bar's menus go in: `NSApp.mainMenu` when live (none for an accessory
+    /// app), else a copy of the host's main menu that never reaches the screen.
+    public var mainMenu: NSMenu?
     /// The surfaces of the last applied frame, in the app's order.
     public private(set) var surfaces: [Surface] = []
 
@@ -37,6 +42,7 @@ public final class SurfaceHost {
         self.engine = engine
         self.send = send
         self.makeRenderer = makeRenderer
+        if mode == .detached { mainMenu = CairnApp.menu(title: "App", install: false) }
     }
 
     public convenience init(engine: Engine, mode: Mode, makeRenderer: @escaping () -> FrameRenderer) {
@@ -63,6 +69,14 @@ public final class SurfaceHost {
                     return h
                 }()
                 h.update(s)
+            case .menuBar:
+                let main = mode == .live ? NSApp.mainMenu : mainMenu
+                guard let main else { continue }  // an accessory app has no main menu
+                if bar == nil || bar!.place != s.place || bar!.main !== main {
+                    bar?.remove()
+                    bar = MenuBarHost(place: s.place, main: main, send: send)
+                }
+                bar!.update(s.status.menu)
             }
         }
     }
@@ -79,6 +93,8 @@ public final class SurfaceHost {
 /// A chosen item's ref, carried by its `NSMenuItem`.
 final class RefBox: NSObject {
     let ref: ControlRef
+    /// The record's enabled flag, for menus that validate their items (`validateMenuItem`).
+    var enabled = true
     init(_ ref: ControlRef) { self.ref = ref }
 }
 
@@ -86,7 +102,7 @@ final class RefBox: NSObject {
 /// parents first) and updated in place: a menu whose items keep their kinds keeps its
 /// `NSMenuItem`s (so an open menu updates under the pointer); one whose shape changed is rebuilt.
 @MainActor
-public final class MenuHost: NSObject, NSMenuDelegate {
+public class MenuHost: NSObject, NSMenuDelegate, NSMenuItemValidation {
     public let place: UInt32
     public let root = NSMenu()
     private let send: ([Event]) -> UInt64
@@ -95,10 +111,15 @@ public final class MenuHost: NSObject, NSMenuDelegate {
     public private(set) var rebuilds = 0
     /// The sequence number of the last event this menu sent.
     public private(set) var lastSeq: UInt64 = 0
+    /// Whether opening and closing the root is reported (`menuOpen`, `menuClose`): a status
+    /// item's menu does; a control's menu reports its close itself (`ControlMenuHost`), and the
+    /// menu bar's menus report neither.
+    let reportsOpenClose: Bool
 
-    public init(place: UInt32, send: @escaping ([Event]) -> UInt64) {
+    public init(place: UInt32, reportsOpenClose: Bool = true, send: @escaping ([Event]) -> UInt64) {
         self.place = place
         self.send = send
+        self.reportsOpenClose = reportsOpenClose
         super.init()
         root.autoenablesItems = false
         root.delegate = self
@@ -106,9 +127,16 @@ public final class MenuHost: NSObject, NSMenuDelegate {
 
     public func update(_ records: [MenuRecord]) {
         self.records = records
+        let kids = Self.children(records)
+        sync(root, kids[nil] ?? [], kids)
+    }
+
+    func setRecords(_ records: [MenuRecord]) { self.records = records }
+
+    static func children(_ records: [MenuRecord]) -> [Int?: [Int]] {
         var kids: [Int?: [Int]] = [:]
         for (i, r) in records.enumerated() { kids[r.parent, default: []].append(i) }
-        sync(root, kids[nil] ?? [], kids)
+        return kids
     }
 
     private enum Shape { case separator, submenu, item }
@@ -124,17 +152,26 @@ public final class MenuHost: NSObject, NSMenuDelegate {
     }
 
     private func sync(_ menu: NSMenu, _ idxs: [Int], _ kids: [Int?: [Int]]) {
-        let same = menu.items.count == idxs.count
-            && zip(menu.items, idxs).allSatisfy { Self.shape($0) == Self.shape(records[$1]) }
-        if !same {
-            menu.removeAllItems()
-            for i in idxs { menu.addItem(records[i].kind == .separator ? .separator() : NSMenuItem()) }
-            rebuilds += 1
-        }
-        for (item, i) in zip(menu.items, idxs) { configure(item, i, kids) }
+        sync(menu, at: 0, replacing: menu.items.count, idxs, kids)
     }
 
-    private func configure(_ item: NSMenuItem, _ i: Int, _ kids: [Int?: [Int]]) {
+    /// Syncs the `count` items of `menu` from `start` with the records `idxs` (the rest of the
+    /// menu is someone else's: the host's own items in the app menu and the menu bar).
+    func sync(_ menu: NSMenu, at start: Int, replacing count: Int, _ idxs: [Int], _ kids: [Int?: [Int]]) {
+        let old = Array(menu.items[start..<start + count])
+        let same = old.count == idxs.count
+            && zip(old, idxs).allSatisfy { Self.shape($0) == Self.shape(records[$1]) }
+        if !same {
+            for _ in 0..<count { menu.removeItem(at: start) }
+            for (k, i) in idxs.enumerated() {
+                menu.insertItem(records[i].kind == .separator ? .separator() : NSMenuItem(), at: start + k)
+            }
+            rebuilds += 1
+        }
+        for (k, i) in idxs.enumerated() { configure(menu.items[start + k], i, kids) }
+    }
+
+    func configure(_ item: NSMenuItem, _ i: Int, _ kids: [Int?: [Int]]) {
         let r = records[i]
         if r.kind == .separator { return }
         if item.title != r.label { item.title = r.label }
@@ -144,6 +181,7 @@ public final class MenuHost: NSObject, NSMenuDelegate {
             item.target = self
             item.action = #selector(choose(_:))
             if (item.representedObject as? RefBox)?.ref != ref { item.representedObject = RefBox(ref) }
+            (item.representedObject as? RefBox)?.enabled = r.enabled
             item.identifier = NSUserInterfaceItemIdentifier(ref.label)
             item.isEnabled = r.enabled
             item.state = r.checked == true ? .on : .off
@@ -174,6 +212,14 @@ public final class MenuHost: NSObject, NSMenuDelegate {
         }
     }
 
+    /// An item in a menu that validates its items (the host's app menu, where the app's own
+    /// items go, has `autoenablesItems` on) is enabled as its record says, not because this host
+    /// answers its action (found by cairn-fuzz-trusted, `menubar.select`: a greyed item's key
+    /// equivalent was performed).
+    public func validateMenuItem(_ item: NSMenuItem) -> Bool {
+        (item.representedObject as? RefBox)?.enabled ?? false
+    }
+
     /// An item was chosen: report its ref. Lean checks it against the menu it is showing.
     @objc public func choose(_ sender: NSMenuItem) {
         guard let box = sender.representedObject as? RefBox else { return }
@@ -181,28 +227,30 @@ public final class MenuHost: NSObject, NSMenuDelegate {
     }
 
     public func menuWillOpen(_ menu: NSMenu) {
-        guard menu === root else { return }
+        guard reportsOpenClose, menu === root else { return }
         lastSeq = send([.menuOpen(place: place)])
     }
 
     public func menuDidClose(_ menu: NSMenu) {
-        guard menu === root else { return }
+        guard reportsOpenClose, menu === root else { return }
         lastSeq = send([.menuClose(place: place)])
     }
 
     /// The menu item `id` (a ref's label, `^N` or `^N#K`, or a submenu's `^P`) and its menu.
-    public func find(_ id: String) -> (NSMenu, Int)? {
-        func go(_ m: NSMenu) -> (NSMenu, Int)? {
-            for (i, item) in m.items.enumerated() {
-                if item.identifier?.rawValue == id { return (m, i) }
-                if let sub = item.submenu, let hit = go(sub) { return hit }
-            }
-            return nil
+    public func find(_ id: String) -> (NSMenu, Int)? { Self.find(id, in: root) }
+
+    public static func find(_ id: String, in m: NSMenu) -> (NSMenu, Int)? {
+        for (i, item) in m.items.enumerated() {
+            if item.identifier?.rawValue == id { return (m, i) }
+            if let sub = item.submenu, let hit = find(id, in: sub) { return hit }
         }
-        return go(root)
+        return nil
     }
 
-    /// A shortcut as a key equivalent: the character AppKit matches and the modifier mask.
+    /// A shortcut as a key equivalent: the character AppKit matches and the modifier mask. A
+    /// letter with shift is the capital: AppKit matches a key equivalent against the event's
+    /// `charactersIgnoringModifiers`, which keeps shift (⇧⌘A gives "A"), so a lower-case "a" with
+    /// the shift mask never matches (found by cairn-fuzz-trusted, `menubar.select`).
     public static func keyEquivalent(_ s: Shortcut) -> (String, NSEvent.ModifierFlags) {
         func fn(_ k: Int) -> String { String(Character(Unicode.Scalar(UInt32(k))!)) }
         let key: String = switch s.key {
@@ -219,7 +267,8 @@ public final class MenuHost: NSObject, NSMenuDelegate {
         case .finish: fn(NSEndFunctionKey)
         case .pageUp: fn(NSPageUpFunctionKey)
         case .pageDown: fn(NSPageDownFunctionKey)
-        case let .char(c): String(c).lowercased()
+        case let .char(c): s.mods.shift && c.isLetter ? String(c).uppercased() : String(c).lowercased()
+        case .menu: fn(NSF10FunctionKey)
         }
         var mask: NSEvent.ModifierFlags = []
         if s.mods.command { mask.insert(.command) }
@@ -227,6 +276,159 @@ public final class MenuHost: NSObject, NSMenuDelegate {
         if s.mods.option { mask.insert(.option) }
         if s.mods.control { mask.insert(.control) }
         return (key, mask)
+    }
+}
+
+/// The app's own menus (docs/surfaces.md, "The app's menus"), from a `menuBar` surface's items:
+/// each top-level submenu is a menu in the menu bar, before the host's Window menu; every other
+/// top-level entry goes in the app menu, above the host's Hide and Quit, with a separator after
+/// them. The host's own items stay the host's. Chosen items, by click or key equivalent, are
+/// reported as `menuSelect(place, ref)`, as a status item's are.
+@MainActor
+public final class MenuBarHost: MenuHost {
+    /// The main menu the items go in.
+    public private(set) weak var main: NSMenu?
+    /// How many items this host put at the top of the app menu (and whether a separator follows).
+    public private(set) var appCount = 0
+    private var appSeparator = false
+    /// How many menus this host put in the menu bar.
+    public private(set) var barCount = 0
+
+    init(place: UInt32, main: NSMenu, send: @escaping ([Event]) -> UInt64) {
+        self.main = main
+        super.init(place: place, reportsOpenClose: false, send: send)
+    }
+
+    /// The app menu: the main menu's first item's submenu.
+    var appMenu: NSMenu? { main?.items.first?.submenu }
+
+    /// Where the bar's menus start: before the Window menu, else at the end.
+    private func barStart(_ main: NSMenu) -> Int {
+        let window = main.items.firstIndex { $0.submenu != nil && $0.submenu?.title == "Window" }
+        return (window ?? main.items.count) - barCount
+    }
+
+    public override func update(_ records: [MenuRecord]) {
+        guard let main, let app = appMenu else { return }
+        let kids = Self.children(records)
+        setRecords(records)
+        let top = kids[nil] ?? []
+        let menus = top.filter { records[$0].kind == .submenu }
+        let items = top.filter { records[$0].kind != .submenu }
+        if appSeparator { app.removeItem(at: appCount); appSeparator = false }
+        sync(app, at: 0, replacing: appCount, items, kids)
+        appCount = items.count
+        if appCount > 0 { app.insertItem(.separator(), at: appCount); appSeparator = true }
+        sync(main, at: barStart(main), replacing: barCount, menus, kids)
+        barCount = menus.count
+    }
+
+    /// This host's items in the main menu: those at the top of the app menu, and its menus in the
+    /// menu bar, in order.
+    public var own: (app: [NSMenuItem], menus: [NSMenuItem]) {
+        guard let main, let app = appMenu else { return ([], []) }
+        let start = barStart(main)
+        return (Array(app.items.prefix(appCount)), Array(main.items[start..<(start + barCount)]))
+    }
+
+    /// Takes this host's items out of the main menu.
+    func remove() {
+        guard let main, let app = appMenu else { return }
+        for _ in 0..<(appCount + (appSeparator ? 1 : 0)) { app.removeItem(at: 0) }
+        let start = barStart(main)
+        for _ in 0..<barCount { main.removeItem(at: start) }
+        appCount = 0; barCount = 0; appSeparator = false
+    }
+
+    /// The bar's item `id` (a ref's label or a submenu's `^P`) and its menu, in the main menu.
+    public override func find(_ id: String) -> (NSMenu, Int)? {
+        guard let main else { return nil }
+        return Self.find(id, in: main)
+    }
+}
+
+/// A control's menu (docs/surfaces.md, "Menus on controls"): when the window's frame says a
+/// control's menu is open (the window surface's `status`: the owner and its items), the host
+/// pops up a native menu at the control; a chosen item is reported as `menuSelect(window, ref)`
+/// and the menu closing, after it, as `menuClose(window)`. When the frame stops showing it (the
+/// control or its menu went away) an open menu is dismissed. Lean decides what is open; the
+/// host only shows it, and ignores frames from before its own close reached Lean.
+@MainActor
+public final class ControlMenuHost {
+    private let send: ([Event]) -> UInt64
+    /// False under the debug socket and in tests: the menu is built but never popped up (it
+    /// would block the main thread); a driver chooses items and closes it.
+    public var live: Bool
+    /// The open menu (its place is the window's), if the last frame shows one.
+    public private(set) var menu: MenuHost?
+    /// The control whose menu is open.
+    public private(set) var owner: ControlRef?
+    /// Whether AppKit is tracking the popped-up menu now.
+    public private(set) var tracking = false
+    /// The point a secondary click opened the menu at, if it did: the menu pops up there.
+    var clickPoint: Point?
+    /// How many times a menu was popped up (tests).
+    public private(set) var popUps = 0
+    private var closedThrough: UInt64 = 0
+    private var pending = false
+
+    public init(live: Bool, send: @escaping ([Event]) -> UInt64) {
+        self.live = live
+        self.send = send
+    }
+
+    /// The window's surface record from a frame that accounts for events through `seq`.
+    public func update(_ window: Surface?, through seq: UInt64, view: HostView?) {
+        guard let window, !window.status.menu.isEmpty else {
+            if tracking { menu?.root.cancelTracking() }
+            owner = nil
+            return
+        }
+        guard seq >= closedThrough else { return }  // still open only because Lean hasn't heard
+        if menu == nil || menu!.place != window.place {
+            menu = MenuHost(place: window.place, reportsOpenClose: false, send: send)
+        }
+        if tracking, owner != window.status.control { menu!.root.cancelTracking() }
+        menu!.update(window.status.menu)
+        owner = window.status.control
+        guard live, let view, !tracking, !pending else { return }
+        pending = true
+        // Not inside the frame's apply: tracking a menu runs a nested event loop.
+        DispatchQueue.main.async { [weak self, weak view] in
+            guard let self, let view else { return }
+            self.pending = false
+            self.popUp(in: view)
+        }
+    }
+
+    private func popUp(in view: HostView) {
+        guard let owner, let menu, !tracking, view.window != nil,
+              let node = view.shown?.frame.ax.first(where: { $0.control == owner }) else { return }
+        let r = node.rect
+        let at: NSPoint
+        if let p = clickPoint, r.x <= p.x, p.x < r.x + r.w, r.y <= p.y, p.y < r.y + r.h {
+            at = NSPoint(x: CGFloat(p.x), y: CGFloat(p.y))
+        } else {
+            at = NSPoint(x: CGFloat(r.x), y: CGFloat(r.y + r.h) + 4)  // below the control (flipped view)
+        }
+        clickPoint = nil
+        tracking = true
+        popUps += 1
+        // A chosen item's action is sent before this returns, so the selection reaches Lean
+        // before the close.
+        menu.root.popUp(positioning: nil, at: at, in: view)
+        tracking = false
+        close()
+    }
+
+    /// The menu closed: tell Lean, and show no open menu from frames before it heard.
+    @discardableResult
+    public func close() -> UInt64 {
+        guard let menu else { return 0 }
+        let seq = send([.menuClose(place: menu.place)])
+        closedThrough = seq
+        owner = nil
+        return seq
     }
 }
 

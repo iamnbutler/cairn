@@ -19,24 +19,6 @@ item, `fs` on a list), per AGENTS.md. -/
 
 namespace Cairn
 
-/-- A keyboard shortcut shown on a menu item (⌘Q). Honoured by AppKit only while the menu is
-open: an accessory app has no main menu. -/
-structure Shortcut where
-  key : Key
-  mods : Mods := { command := true }
-deriving Repr, DecidableEq, Inhabited
-
-inductive MenuItem where
-  /-- An item that performs a move. `control.checked = some b` makes it a checkbox item;
-  `enabled = false` greys it out (it stays in the menu, with its control). -/
-  | item (control : Control) (enabled : Bool := true) (shortcut : Option Shortcut := none)
-  /-- A line of text that does nothing: a status line, "None yet". Shown disabled. -/
-  | info (label : String)
-  /-- A submenu. `place` is the place claim it is, if it has one. -/
-  | submenu (label : String) (place : Option ClaimId) (items : List MenuItem)
-  | separator
-deriving Repr, Inhabited
-
 namespace MenuItem
 
 /-- A plain item for `r`. -/

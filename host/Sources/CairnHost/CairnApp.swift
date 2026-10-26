@@ -44,7 +44,9 @@ public enum CairnApp {
         exit(0)
     }
 
-    static func menu(title: String) -> NSMenu {
+    /// The host's main menu: the app menu (Hide, Quit), Edit and Window. The app's own menus go
+    /// in it (`MenuBarHost`). `install`: make its Window menu the app's windows menu.
+    static func menu(title: String, install: Bool = true) -> NSMenu {
         let main = NSMenu()
         let appItem = NSMenuItem()
         let appMenu = NSMenu(title: title)
@@ -73,7 +75,7 @@ public enum CairnApp {
         window.addItem(withTitle: "Close", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
         windowItem.submenu = window
         main.addItem(windowItem)
-        NSApplication.shared.windowsMenu = window
+        if install { NSApplication.shared.windowsMenu = window }
         return main
     }
 

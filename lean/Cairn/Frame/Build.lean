@@ -164,18 +164,20 @@ mutual
 nearest enclosing control's or scroll box's node. -/
 def axOf (focus : Option ControlRef) (parent : Option Nat) (acc : Array AxNode) :
     Laid → Array AxNode
-  | .box r clip _ (some c) kids =>
-    axAll focus (some acc.size) (acc.push (controlNode focus parent (r.inter clip) c)) kids
+  | .box r clip s (some c) kids =>
+    axAll focus (some acc.size)
+      (acc.push { controlNode focus parent (r.inter clip) c with menu := ControlMenu.mark s.menu })
+      kids
   | .box r clip s none kids =>
     if s.scroll.isSome then
       axAll focus (some acc.size) (acc.push (scrollNode parent (r.inter clip))) kids
     else axAll focus parent acc kids
   | .text r clip _ _ content =>
     acc.push { control := none, role := .text, rect := r.inter clip, label := content, parent }
-  | .field r clip _ _ c v .. =>
+  | .field r clip s _ c v .. =>
     let value := if v.secure then "" else v.text
     acc.push { controlNode focus parent (r.inter clip) c with
-               role := .textField, value, secure := v.secure }
+               role := .textField, value, secure := v.secure, menu := ControlMenu.mark s.menu }
 
 def axAll (focus : Option ControlRef) (parent : Option Nat) (acc : Array AxNode) :
     List Laid → Array AxNode

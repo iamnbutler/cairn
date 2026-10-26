@@ -3,7 +3,7 @@ module
 public import Cairn.Frame
 public import Cairn.Frame.Bytes
 
-/-! Frame byte format (docs/frame.md; version 12): specification encoder `Wire.Enc.frame`, decoder
+/-! Frame byte format (docs/frame.md; version 13): specification encoder `Wire.Enc.frame`, decoder
 `Wire.Dec.frame`, the executable encoder `encodeFrame` (proved equal to the specification and
 installed with `@[csimp]`), and the round trip `decodeFrame_encodeFrame`.
 
@@ -138,7 +138,7 @@ def Sub.code : Sub → UInt8
 def Key.code : Key → UInt8
   | .enter => 0 | .escape => 1 | .tab => 2 | .backspace => 3 | .delete => 4
   | .left => 5 | .right => 6 | .up => 7 | .down => 8 | .home => 9 | .finish => 10
-  | .pageUp => 11 | .pageDown => 12 | .char _ => 13
+  | .pageUp => 11 | .pageDown => 12 | .char _ => 13 | .menu => 14
 
 def Key.scalar : Key → Nat
   | .char c => c.toNat
@@ -150,6 +150,7 @@ def Key.ofCode (code : UInt8) (scalar : Nat) : Option Key :=
   | 4 => some .delete | 5 => some .left | 6 => some .right | 7 => some .up | 8 => some .down
   | 9 => some .home | 10 => some .finish | 11 => some .pageUp | 12 => some .pageDown
   | 13 => if scalar.isValidChar then some (.char (Char.ofNat scalar)) else none
+  | 14 => some .menu
   | _ => none
 
 @[simp] theorem Key.ofCode_code (k : Key) : Key.ofCode (Key.code k) (Key.scalar k) = some k := by
@@ -182,10 +183,11 @@ def Mods.ofCode (b : UInt8) : Option Mods :=
   cases s <;> cases c <;> cases o <;> cases t <;> rfl
 
 def SurfaceKind.code : SurfaceKind → UInt8
-  | .window => 0 | .panel => 1 | .statusItem => 2
+  | .window => 0 | .panel => 1 | .statusItem => 2 | .menuBar => 3
 
 def SurfaceKind.ofCode : UInt8 → Option SurfaceKind
-  | 0 => some .window | 1 => some .panel | 2 => some .statusItem | _ => none
+  | 0 => some .window | 1 => some .panel | 2 => some .statusItem | 3 => some .menuBar
+  | _ => none
 
 @[simp] theorem SurfaceKind.ofCode_code (k : SurfaceKind) :
     SurfaceKind.ofCode (SurfaceKind.code k) = some k := by
@@ -413,7 +415,7 @@ def draw : Draw → List UInt8
 
 def ax (n : AxNode) : List UInt8 :=
   [Role.code n.role] ++ bool n.focused ++ bool n.selected ++ [checkedCode n.checked] ++
-    bool n.control.isSome ++ bool n.parent.isSome ++ bool n.secure ++ pad 1 ++
+    bool n.control.isSome ++ bool n.parent.isSome ++ bool n.secure ++ [checkedCode n.menu] ++
     ref (n.control.getD ⟨0, 0⟩) ++ u32 (n.parent.getD 0) ++ rect n.rect ++
     str n.label ++ str n.value
 
@@ -532,8 +534,8 @@ def surface (s : SurfaceFrame) : List UInt8 :=
     u32 s.place ++ u32 s.anchor.offset ++ size s.minSize ++ str s.title ++ canvas s.canvas ++
     status s.status
 
-/-- Magic, version 12, flags 0. -/
-def header : List UInt8 := magic ++ [12, 0, 0, 0]
+/-- Magic, version 13, flags 0. -/
+def header : List UInt8 := magic ++ [13, 0, 0, 0]
 
 def frame (f : Frame) : List UInt8 :=
   header ++ list surface f.surfaces.toList ++ list effect f.effects.toList ++
@@ -639,7 +641,7 @@ def ax : Dec AxNode := do
   let hasControl ← bool
   let hasParent ← bool
   let secure ← bool
-  skip 1
+  let some menu := checkedOfCode (← byte) | fail
   let c ← ref
   let parent ← u32
   let r ← rect
@@ -647,7 +649,7 @@ def ax : Dec AxNode := do
   let value ← str
   return { control := if hasControl then some c else none, role, rect := r, label, value,
            parent := if hasParent then some parent else none, focused, selected, checked,
-           secure }
+           secure, menu }
 
 def textInput : Dec (Option TextInput) := do
   match (← byte) with
@@ -1023,7 +1025,7 @@ theorem draw_enc {x : Draw} (h : fitsDraw x = true) (r : List UInt8) :
 
 theorem ax_enc {x : AxNode} (h : fitsAx x = true) (r : List UInt8) :
     ax (Enc.ax x ++ r) = some (x, r) := by
-  obtain ⟨control, role, rc, label, value, parent, focused, selected, checked, secure⟩ := x
+  obtain ⟨control, role, rc, label, value, parent, focused, selected, checked, secure, menu⟩ := x
   simp only [fitsAx, Bool.and_eq_true, fs_iff] at h
   obtain ⟨⟨⟨⟨hc, hp⟩, hr⟩, hl⟩, hv⟩ := h
   cases control <;> cases parent <;>
@@ -1618,8 +1620,8 @@ def draw (b : ByteArray) : Draw → ByteArray
 
 def ax (b : ByteArray) (n : AxNode) : ByteArray :=
   let b := bool (bool (b.push (Role.code n.role)) n.focused) n.selected
-  let b := pad (bool (bool (bool (b.push (checkedCode n.checked)) n.control.isSome) n.parent.isSome)
-    n.secure) 1
+  let b := (bool (bool (bool (b.push (checkedCode n.checked)) n.control.isSome) n.parent.isSome)
+    n.secure).push (checkedCode n.menu)
   let b := rect (u32 (ref b (n.control.getD ⟨0, 0⟩)) (n.parent.getD 0)) n.rect
   str (str b n.label) n.value
 

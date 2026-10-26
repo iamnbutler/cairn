@@ -55,7 +55,8 @@ public enum DebugJSON {
     static func ax(_ n: AxNode) -> [String: Any] {
         ["role": roleName(n.role), "control": opt(n.control) { $0.label }, "parent": opt(n.parent) { $0 },
          "rect": rect(n.rect), "label": n.label, "value": n.value, "focused": n.focused,
-         "selected": n.selected, "checked": opt(n.checked) { $0 }, "secure": n.secure]
+         "selected": n.selected, "checked": opt(n.checked) { $0 }, "secure": n.secure,
+         "menu": opt(n.menu) { $0 }]
     }
 
     static func textInput(_ t: TextInput) -> [String: Any] {
@@ -186,8 +187,11 @@ public enum DebugJSON {
 
     /// A native menu as AppKit holds it.
     @MainActor
-    static func menu(_ m: NSMenu) -> [[String: Any]] {
-        m.items.map { item in
+    static func menu(_ m: NSMenu) -> [[String: Any]] { items(m.items) }
+
+    @MainActor
+    static func items(_ items: [NSMenuItem]) -> [[String: Any]] {
+        items.map { item in
             if item.isSeparatorItem { return ["kind": "separator"] }
             var o: [String: Any] = [
                 "kind": item.submenu != nil ? "submenu" : item.action != nil ? "item" : "info",
@@ -217,6 +221,7 @@ public enum DebugJSON {
         case .window: "window"
         case .panel: "panel"
         case .statusItem: "statusItem"
+        case .menuBar: "menuBar"
         }
     }
 
@@ -237,6 +242,7 @@ public enum DebugJSON {
             var o: [String: Any] = ["kind": kindName(s.kind), "place": Int(s.place), "shown": s.shown, "title": s.title]
             switch s.kind {
             case .window:
+                if !s.status.menu.isEmpty { o["controlMenu"] = s.status.control.label }
                 o["size"] = [Int(s.canvas.size.w), Int(s.canvas.size.h)]
                 o["minSize"] = [Int(s.minSize.w), Int(s.minSize.h)]
                 if let w = view.window {
@@ -258,6 +264,12 @@ public enum DebugJSON {
                 o["draws"] = s.canvas.draws.count
                 o["texts"] = s.canvas.draws.compactMap { if case let .text(_, _, _, t) = $0 { t } else { nil } }
                 if let h = host?.panels[s.place] { o["panel"] = panel(h) }
+            case .menuBar:
+                if let h = host?.bar, h.place == s.place {
+                    o["appItems"] = h.appCount
+                    o["menus"] = h.barCount
+                    o["rebuilds"] = h.rebuilds
+                }
             }
             list.append(o)
         }

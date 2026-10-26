@@ -42,6 +42,27 @@ theorem keyScrollState_fst (s : State S) (k : Key) (mods : Mods) :
   obtain ⟨ui, h⟩ := keyScrollState_eq s k mods
   rw [h]; exact ⟨rfl, rfl, rfl⟩
 
+theorem openAt_fst (s : State S) (r : ControlRef) :
+    (openAt s r).laid = s.laid ∧ (openAt s r).app = s.app ∧ (openAt s r).surfaces = s.surfaces :=
+  ⟨rfl, rfl, rfl⟩
+
+theorem secondaryDown_fst (s : State S) (p : Point) :
+    (secondaryDown s p).laid = s.laid ∧ (secondaryDown s p).app = s.app ∧
+      (secondaryDown s p).surfaces = s.surfaces := by
+  unfold secondaryDown; split <;> exact ⟨rfl, rfl, rfl⟩
+
+theorem keyRoute_fst (s : State S) (k : Key) (mods : Mods) :
+    (keyRoute s k mods).1.laid = s.laid ∧ (keyRoute s k mods).1.app = s.app ∧
+      (keyRoute s k mods).1.surfaces = s.surfaces := by
+  unfold keyRoute; split
+  · exact ⟨rfl, rfl, rfl⟩
+  · exact keyScrollState_fst s k mods
+
+theorem textRoute_fst (s : State S) (str : String) (rep : Option (Nat × Nat)) :
+    (textRoute s str rep).1.laid = s.laid ∧ (textRoute s str rep).1.app = s.app ∧
+      (textRoute s str rep).1.surfaces = s.surfaces := by
+  unfold textRoute; split <;> exact ⟨rfl, rfl, rfl⟩
+
 theorem route_laid (m : TextMetrics) (s : State S) (e : Event) :
     (route m s e).1.laid = s.laid ∧ (route m s e).1.app = s.app := by
   induction e with
@@ -49,7 +70,7 @@ theorem route_laid (m : TextMetrics) (s : State S) (e : Event) :
   | _ =>
     rw [route.eq_def] <;> (try simp only [withPointer]) <;> (try split) <;> (try split) <;>
       (try split) <;> (try split) <;>
-      first | contradiction | simp [tab_fst, wheel_fst, keyScrollState_fst]
+      first | contradiction | simp [tab_fst, wheel_fst, keyScrollState_fst, secondaryDown_fst, keyRoute_fst, textRoute_fst]
 
 /-! ## Interaction state is sound -/
 
@@ -239,6 +260,18 @@ theorem textActions_names (s : State S) (str : String) (rep : Option (Nat × Nat
     · intro a ha; obtain ⟨o, -, rfl⟩ := List.mem_map.mp ha; rfl
     · split <;> simp [Action.control]
 
+theorem keyRoute_names (s : State S) (k : Key) (mods : Mods) :
+    Names s.laid (keyRoute s k mods).2 := by
+  unfold keyRoute; split
+  · exact names_nil _
+  · exact keyActions_names s k mods
+
+theorem textRoute_names (s : State S) (str : String) (rep : Option (Nat × Nat)) :
+    Names s.laid (textRoute s str rep).2 := by
+  unfold textRoute; split
+  · exact names_nil _
+  · exact textActions_names s str rep
+
 theorem tabTarget_mem (s : State S) (back : Bool) {t : Target} (h : tabTarget s back = some t) :
     t ∈ targets s.laid := by
   unfold tabTarget at h
@@ -326,9 +359,11 @@ theorem route_names (m : TextMetrics) (s : State S) (e : Event) (hm : e.isMenu =
       simp only [route]; split
       · rename_i t ht
         split
-        · exact names_append (leave_names s _)
-            (names_of (hitTarget_mem ht) (by simp [Action.control]))
-        · exact leave_names s _
+        · exact names_nil _
+        · split
+          · exact names_append (leave_names s _)
+              (names_of (hitTarget_mem ht) (by simp [Action.control]))
+          · exact leave_names s _
       · exact leave_names s _
     | secondary => exact names_nil _
   | pointerUp p b mods =>
@@ -343,8 +378,8 @@ theorem route_names (m : TextMetrics) (s : State S) (e : Event) (hm : e.isMenu =
     | secondary => exact names_nil _
   | key k mods =>
     cases k <;> simp only [route] <;>
-      first | exact tab_names s _ | exact keyActions_names s _ _
-  | insertText str rep => exact textActions_names s str rep
+      first | exact tab_names s _ | exact keyRoute_names s _ _
+  | insertText str rep => exact textRoute_names s str rep
   | frame => exact appearing_names s.laid s.seen
   | _ => first | exact names_nil _ | exact onField_names s _
 
@@ -608,12 +643,13 @@ down's click count, whatever the update and relayout did, provided `t`'s ref is 
 new tree. -/
 theorem step_down_pressed (app : App S) (cfg : Config) (s : State S) (t : Target) (p : Point)
     (clicks : Nat) (mods : Mods) (hhit : hitTarget s.laid p = some t) (hf : t.isField = false)
+    (hb : t.menuButton = false)
     (hpres : t.ref ∈ refs (step app cfg s (.pointerDown p .primary clicks mods)).1.laid) :
     (step app cfg s (.pointerDown p .primary clicks mods)).1.ui.pressed = some t.ref ∧
     (step app cfg s (.pointerDown p .primary clicks mods)).1.clicks = clicks := by
   have hr : (route cfg.metrics s (.pointerDown p .primary clicks mods)).1.ui.pressed = some t.ref ∧
       (route cfg.metrics s (.pointerDown p .primary clicks mods)).1.clicks = clicks := by
-    simp [route, hhit, hf, withPointer]
+    simp [route, hhit, hf, hb, withPointer]
   revert hpres
   unfold step
   split
@@ -631,58 +667,63 @@ theorem step_down_pressed (app : App S) (cfg : Config) (s : State S) (t : Target
     simp only [fixUI, Option.filter_eq_some_iff, hp, applyFocus_pressed]
     exact ⟨hr.1, by simpa [present] using hpres⟩
 
-/-- The actions of a pointerDown on a non-field control: at most a blur of the field that
-loses focus. No press happens on the way down. -/
+/-- The actions of a pointerDown on a non-field control that isn't a menu button: at most a
+blur of the field that loses focus. No press happens on the way down. -/
 theorem down_actions (m : TextMetrics) (s : State S) (t : Target) (p : Point) (clicks : Nat)
-    (mods : Mods) (hhit : hitTarget s.laid p = some t) (hf : t.isField = false) :
+    (mods : Mods) (hhit : hitTarget s.laid p = some t) (hf : t.isField = false)
+    (hb : t.menuButton = false) :
     (route m s (.pointerDown p .primary clicks mods)).2 = leave s none := by
-  simp [route, hhit, hf]
+  simp [route, hhit, hf, hb]
 
-/-- **Pressable, step level.** If a pointer at `p` reaches non-field control `t`, and after
+/-- **Pressable, step level.** If a pointer at `p` reaches non-field control `t` that isn't a
+menu button (a menu button's click opens its menu instead), and after
 the pointerDown (and whatever update and relayout it caused) `p` still reaches a non-field
 control with the same ref, then the pointerUp at `p` delivers exactly `press t.ref`, and the
 pointerDown delivered nothing but blurs. -/
 theorem click_presses (app : App S) (cfg : Config) (s : State S) (t : Target) (p : Point)
     (mods mods' : Mods) (h0 : Reaches s.laid t p) (hf : t.isField = false)
+    (hb : t.menuButton = false)
     (h1 : ∃ t1, Reaches (step app cfg s (.pointerDown p .primary 1 mods)).1.laid t1 p ∧
       t1.ref = t.ref ∧ t1.isField = false) :
     (∀ a ∈ (route cfg.metrics s (.pointerDown p .primary 1 mods)).2, ∃ c, a = .blur c) ∧
     (route cfg.metrics (step app cfg s (.pointerDown p .primary 1 mods)).1
       (.pointerUp p .primary mods')).2 = [.press t.ref] := by
   have hhit := hitTarget_of_reaches h0
-  refine ⟨by rw [down_actions _ s t p 1 mods hhit hf]; exact leave_blurs s none, ?_⟩
+  refine ⟨by rw [down_actions _ s t p 1 mods hhit hf hb]; exact leave_blurs s none, ?_⟩
   obtain ⟨t1, hr1, he, hf1⟩ := h1
   have hm := mem_refs (reaches_mem hr1)
   rw [he] at hm
-  obtain ⟨hp, hc⟩ := step_down_pressed app cfg s t p 1 mods hhit hf hm
+  obtain ⟨hp, hc⟩ := step_down_pressed app cfg s t p 1 mods hhit hf hb hm
   simp [route, hp, hc, hitTarget_of_reaches hr1, he, hf1]
 
 /-- **Pressable** at the centre: under `LayoutFacts`, a click at the centre of the control's
 visible rect presses it. -/
 theorem click_center_presses (app : App S) (cfg : Config) (s : State S) (t : Target)
     (mods mods' : Mods) (h0 : LayoutFacts s.laid t) (hf : t.isField = false)
+    (hb : t.menuButton = false)
     (h1 : ∃ t1, Reaches (step app cfg s (.pointerDown t.visible.center .primary 1 mods)).1.laid
       t1 t.visible.center ∧ t1.ref = t.ref ∧ t1.isField = false) :
     (∀ a ∈ (route cfg.metrics s (.pointerDown t.visible.center .primary 1 mods)).2,
       ∃ c, a = .blur c) ∧
     (route cfg.metrics (step app cfg s (.pointerDown t.visible.center .primary 1 mods)).1
       (.pointerUp t.visible.center .primary mods')).2 = [.press t.ref] :=
-  click_presses app cfg s t _ mods mods' h0.reaches hf h1
+  click_presses app cfg s t _ mods mods' h0.reaches hf hb h1
 
-/-! ## Menus (docs/surfaces.md, section 1)
+/-! ## Menus (docs/surfaces.md, section 1, "Menus on controls" and "The app's menus")
 
-The menu is a description, not a laid tree, so these are about `Shown.statusOf`: the status
-item the runtime holds for a place, which `step` refreshes whenever something is delivered. -/
+A menu is a description, not a laid tree. A selection is checked against `selectMenu`: for the
+window's place, the control menu open now (`openMenu`: `UI.menu`'s control's menu in the tree
+on screen); for another place, a status item's menu or the menu bar's items, which `step`
+refreshes whenever something is delivered (`step_surfaces`). -/
 
 /-- **Menu actions name menu items.** Opening a status item's menu presses only its control;
-a selection presses only an enabled item of the menu the runtime holds for it now; closing
+a selection presses only an enabled item of the menu it is checked against now; closing
 presses nothing. -/
 theorem menu_route_names (m : TextMetrics) (s : State S) :
     (∀ p, ∀ a ∈ (route m s (.menuOpen p)).2,
       ∃ it, Shown.statusOf p s.surfaces = some it ∧ a = .press it.control) ∧
     (∀ p r, ∀ a ∈ (route m s (.menuSelect p r)).2,
-      ∃ it, Shown.statusOf p s.surfaces = some it ∧ r ∈ MenuItem.enabledRefs it.menu ∧
-        a = .press r) ∧
+      ∃ ms, selectMenu s p = some ms ∧ r ∈ MenuItem.enabledRefs ms ∧ a = .press r) ∧
     (∀ p, (route m s (.menuClose p)).2 = []) := by
   refine ⟨fun p a ha => ?_, fun p r a ha => ?_, fun p => rfl⟩
   · simp only [route] at ha
@@ -693,20 +734,38 @@ theorem menu_route_names (m : TextMetrics) (s : State S) :
     · simp only [List.not_mem_nil] at ha
   · simp only [route] at ha
     split at ha
-    · rename_i it hit
+    · rename_i ms hms
       split at ha
       · rename_i hr
         simp only [List.mem_singleton] at ha
-        exact ⟨it, hit, hr, ha⟩
+        exact ⟨ms, hms, hr, ha⟩
       · simp only [List.not_mem_nil] at ha
     · simp only [List.not_mem_nil] at ha
 
-/-- **A menu selection presses its item.** If `r` is an enabled item of the status item's
-current menu, choosing it delivers exactly `press r` (the menu's `click_presses`, with no
-layout in between). -/
-theorem menu_select_presses (m : TextMetrics) (s : State S) {p : ClaimId} {it : StatusItem}
-    {r : ControlRef} (h : Shown.statusOf p s.surfaces = some it)
-    (hr : r ∈ MenuItem.enabledRefs it.menu) :
+/-- For the window's place, a selection is checked against the control menu open now. -/
+theorem selectMenu_window {s : State S} {p : ClaimId} (h : Shown.windowPlace s.surfaces = some p) :
+    selectMenu s p = (openMenu s).map (·.2.items) := by
+  simp only [selectMenu, h, ite_true]
+
+/-- **A control menu's choice is an item of the menu open now.** Every action a selection
+addressed to the window delivers is a press of an enabled item of the control menu open now
+(`openMenu`: `UI.menu`'s control, its menu in the tree on screen); with no menu open, or an item
+that isn't an enabled item of it, nothing. -/
+theorem control_menu_select_names (m : TextMetrics) (s : State S) {p : ClaimId} {r : ControlRef}
+    (hw : Shown.windowPlace s.surfaces = some p) :
+    ∀ a ∈ (route m s (.menuSelect p r)).2,
+      ∃ o cm, openMenu s = some (o, cm) ∧ r ∈ MenuItem.enabledRefs cm.items ∧ a = .press r := by
+  intro a ha
+  obtain ⟨ms, hms, hr, rfl⟩ := (menu_route_names m s).2.1 p r a ha
+  rw [selectMenu_window hw] at hms
+  obtain ⟨⟨o, cm⟩, ho, rfl⟩ := Option.map_eq_some_iff.mp hms
+  exact ⟨o, cm, ho, hr, rfl⟩
+
+/-- **A menu selection presses its item.** If `r` is an enabled item of the menu a selection
+for `p` is checked against, choosing it delivers exactly `press r` (the menu's `click_presses`,
+with no layout in between). -/
+theorem menu_select_presses (m : TextMetrics) (s : State S) {p : ClaimId} {ms : List MenuItem}
+    {r : ControlRef} (h : selectMenu s p = some ms) (hr : r ∈ MenuItem.enabledRefs ms) :
     route m s (.menuSelect p r) = (s, [.press r]) := by
   simp only [route, h, hr, ite_true]
 
@@ -720,18 +779,18 @@ theorem UI.same_self (a : UI) : UI.same a a = true := by
   simp only [UI.same, decide_true, Bool.and_self]
 
 /-- **A stale menu selection is ignored.** If the chosen ref is not an enabled item of the
-menu the runtime holds now (the menu changed while it was open, the item was disabled, or the
-status item is gone), the step changes nothing at all: same app state, same runtime state, no
-effects. -/
+menu the selection is checked against now (the menu changed while it was open, the item was
+disabled, the status item or the control is gone, or no control menu is open), the step changes
+nothing at all: same app state, same runtime state, no effects. -/
 theorem menu_select_stale (app : App S) (cfg : Config) (s : State S) {p : ClaimId}
     {r : ControlRef}
-    (h : ∀ it, Shown.statusOf p s.surfaces = some it → r ∉ MenuItem.enabledRefs it.menu) :
+    (h : ∀ ms, selectMenu s p = some ms → r ∉ MenuItem.enabledRefs ms) :
     step app cfg s (.menuSelect p r) = (s, []) := by
   have hroute : route cfg.metrics s (.menuSelect p r) = (s, []) := by
     simp only [route]
     split
-    · rename_i it hit
-      simp only [h it hit, ite_false]
+    · rename_i ms hms
+      simp only [h ms hms, ite_false]
     · rfl
   simp only [step, hroute, admit, List.isEmpty_nil, Bool.not_false, UI.same_self,
     Bool.and_self, ite_true]
@@ -740,9 +799,210 @@ theorem menu_select_stale (app : App S) (cfg : Config) (s : State S) {p : ClaimI
 `menu_select_stale`): nothing outside the description can be pressed through the menu. -/
 theorem menu_select_absent (app : App S) (cfg : Config) (s : State S) {p : ClaimId}
     {r : ControlRef}
-    (h : ∀ it, Shown.statusOf p s.surfaces = some it → r ∉ MenuItem.refs it.menu) :
+    (h : ∀ ms, selectMenu s p = some ms → r ∉ MenuItem.refs ms) :
     step app cfg s (.menuSelect p r) = (s, []) :=
-  menu_select_stale app cfg s fun it hit hr => h it hit (MenuItem.mem_refs_of_enabled hr)
+  menu_select_stale app cfg s fun ms hms hr => h ms hms (MenuItem.mem_refs_of_enabled hr)
+
+/-! ### Opening a control menu -/
+
+mutual
+theorem menuHitsOf_owner (o : Option Target) : ∀ (l : Laid) (h : Hit), h ∈ menuHitsOf o l →
+    h.owner = o ∨ ∃ t ∈ targetsOf l, h.owner = some t ∧ t.node.menu?.isSome = true
+  | n@(.box r cl st c cs), h, hm => by
+    cases c with
+    | none =>
+      simp only [menuHitsOf, targetsOf, List.mem_append, List.nil_append] at hm ⊢
+      rcases hm with hm | hm
+      · split at hm <;> simp_all
+      · exact menuHitsList_owner o cs h hm
+    | some k =>
+      simp only [menuHitsOf, targetsOf, List.mem_append, List.singleton_append] at hm ⊢
+      by_cases hk : (Laid.box r cl st (some k) cs).menu?.isSome = true
+      · simp only [hk, ite_true] at hm
+        right
+        rcases hm with hm | hm
+        · split at hm
+          · simp only [List.mem_singleton] at hm; subst hm
+            exact ⟨_, List.mem_cons_self, rfl, hk⟩
+          · simp at hm
+        · rcases menuHitsList_owner _ cs h hm with e | ⟨t, ht, e, he⟩
+          · exact ⟨_, List.mem_cons_self, e, hk⟩
+          · exact ⟨t, List.mem_cons_of_mem _ ht, e, he⟩
+      · simp only [hk, Bool.false_eq_true, ite_false] at hm
+        rcases hm with hm | hm
+        · split at hm
+          · simp only [List.mem_singleton] at hm; subst hm; exact .inl rfl
+          · simp at hm
+        · rcases menuHitsList_owner _ cs h hm with e | ⟨t, ht, e, he⟩
+          · exact .inl e
+          · exact .inr ⟨t, List.mem_cons_of_mem _ ht, e, he⟩
+  | .text .., h, hm => by simp_all [menuHitsOf]
+  | n@(.field r cl st ts c v o ca sel), h, hm => by
+    simp only [menuHitsOf, List.mem_singleton] at hm
+    subst hm
+    by_cases hk : (Laid.field r cl st ts c v o ca sel).menu?.isSome = true
+    · simp only [hk, ite_true, targetsOf, List.mem_singleton]
+      exact .inr ⟨_, rfl, rfl, hk⟩
+    · simp only [hk, Bool.false_eq_true, ite_false]; simp
+theorem menuHitsList_owner (o : Option Target) : ∀ (ls : List Laid) (h : Hit),
+    h ∈ menuHitsList o ls →
+    h.owner = o ∨ ∃ t ∈ targetsList ls, h.owner = some t ∧ t.node.menu?.isSome = true
+  | [], h, hm => by simp [menuHitsList] at hm
+  | l :: ls, h, hm => by
+    simp only [menuHitsList, targetsList, List.mem_append] at hm ⊢
+    rcases hm with hm | hm
+    · rcases menuHitsOf_owner o l h hm with e | ⟨t, ht, e, he⟩
+      · exact .inl e
+      · exact .inr ⟨t, .inl ht, e, he⟩
+    · rcases menuHitsList_owner o ls h hm with e | ⟨t, ht, e, he⟩
+      · exact .inl e
+      · exact .inr ⟨t, .inr ht, e, he⟩
+end
+
+/-- The control a secondary click opens is a control of the tree that has a menu. -/
+theorem menuTarget_mem {laid : Laid} {p : Point} {t : Target} (h : menuTarget laid p = some t) :
+    t ∈ targets laid ∧ t.node.menu?.isSome = true := by
+  unfold menuTarget at h
+  cases hf : (menuHitsOf none laid).reverse.find? (·.visible.contains p) with
+  | none => simp [hf] at h
+  | some e =>
+    simp only [hf, Option.bind_some] at h
+    rcases menuHitsOf_owner none laid e (List.mem_reverse.mp (List.mem_of_find?_eq_some hf))
+      with he | ⟨t', ht', he, hm⟩
+    · rw [h] at he; cases he
+    · rw [h] at he; cases he; exact ⟨ht', hm⟩
+
+/-- **A secondary click on a control without a menu changes nothing but hover**: with no
+control with a menu at or above the point, the runtime moves the pointer (and so hover) and
+delivers nothing, as before menus on controls. -/
+theorem secondary_no_menu (m : TextMetrics) (s : State S) {p : Point} (clicks : Nat) (mods : Mods)
+    (h : menuTarget s.laid p = none) :
+    route m s (.pointerDown p .secondary clicks mods) = (withPointer s p, []) := by
+  simp only [route, secondaryDown, h]
+
+/-- A secondary click on a control with a menu (or inside one) opens that menu and delivers
+nothing. -/
+theorem secondary_opens (m : TextMetrics) (s : State S) {p : Point} {t : Target} (clicks : Nat)
+    (mods : Mods) (h : menuTarget s.laid p = some t) :
+    route m s (.pointerDown p .secondary clicks mods) = (openAt (withPointer s p) t.ref, []) := by
+  simp only [route, secondaryDown, h]
+
+theorem setScroll_menu (ui : UI) (r : ControlRef) (o : Int) : (ui.setScroll r o).menu = ui.menu := by
+  unfold UI.setScroll; split <;> rfl
+
+theorem revealIn_menu (chain : List Scroller) (ui : UI) (q : Rect) :
+    (revealIn chain ui q).menu = ui.menu := by
+  unfold revealIn
+  suffices ∀ (chain : List Scroller), (chain.foldr (fun sc (acc : UI × Rect) =>
+      let (ui, q) := acc
+      let cur := ui.scrollOf sc.ref
+      let o := revealOff sc cur q
+      let d := o - cur
+      (ui.setScroll sc.ref o,
+       if sc.horiz then { q with x := q.x - d } else { q with y := q.y - d })) (ui, q)).1.menu =
+        ui.menu from this chain
+  intro chain
+  induction chain with
+  | nil => rfl
+  | cons sc cs ih => simp only [List.foldr_cons, setScroll_menu]; exact ih
+
+theorem tab_menu (s : State S) (back : Bool) : (tab s back).1.ui.menu = s.ui.menu := by
+  unfold tab; split
+  · rfl
+  · simp only [revealIn_menu]
+
+theorem wheel_menu (s : State S) (p : Point) (dx dy : Int) :
+    (wheel s p dx dy).ui.menu = s.ui.menu := by
+  unfold wheel; split
+  · simp only [UI.scrollTo, setScroll_menu]
+  · rfl
+
+theorem keyScrollState_menu (s : State S) (k : Key) (mods : Mods) :
+    (keyScrollState s k mods).ui.menu = s.ui.menu := by
+  unfold keyScrollState
+  split
+  · split
+    · split
+      · simp only [UI.scrollTo, setScroll_menu]
+      · rfl
+    · rfl
+  · rfl
+
+/-- **Opening a menu reaches no update.** Whenever routing an event opens a control menu (the
+menu open after it is one that wasn't open before: a secondary click, a menu button's primary
+click, Space or Return on a focused menu button, the context-menu key), it delivers no action. -/
+theorem route_open_quiet (m : TextMetrics) (s : State S) (e : Event) {r : ControlRef}
+    (h : (route m s e).1.ui.menu = some r) (hne : s.ui.menu ≠ some r) : (route m s e).2 = [] := by
+  induction e with
+  | surface p e ih =>
+    simp only [route] at h ⊢; split
+    · rename_i hc; simp only [hc, ite_true] at h; exact ih h
+    · rfl
+  | pointerDown p b clicks mods =>
+    cases b with
+    | primary =>
+      simp only [route] at h ⊢
+      split
+      · rename_i t ht
+        simp only [ht] at h
+        split
+        · rfl
+        · rename_i hb
+          simp only [hb, Bool.false_eq_true, ite_false] at h
+          split at h <;> simp_all [withPointer]
+      · rename_i ht; simp only [ht] at h; simp_all [withPointer]
+    | secondary => rfl
+  | key k mods =>
+    cases k <;> simp only [route] at h ⊢ <;>
+      first
+        | (rw [tab_menu] at h; exact absurd h hne)
+        | (unfold keyRoute at h ⊢; split
+           · rfl
+           · rename_i hk; simp only [hk] at h; rw [keyScrollState_menu] at h; exact absurd h hne)
+  | insertText str rep =>
+    simp only [route] at h ⊢
+    unfold textRoute at h ⊢; split
+    · rfl
+    · rename_i hk; simp only [hk] at h; exact absurd h hne
+  | menuClose p => rfl
+  | pointerUp p b mods =>
+    cases b
+    · simp only [route] at h ⊢
+      split at h <;> (try split at h) <;> simp_all [withPointer]
+    · simp only [route] at h ⊢
+  | _ =>
+    first
+      | rfl
+      | (simp only [route] at h ⊢
+         first
+           | rfl
+           | exact absurd h hne
+           | (rw [wheel_menu] at h; exact absurd h hne)
+           | (simp_all [withPointer]; done)
+           | (split at h <;> simp_all [withPointer]))
+
+/-- **Opening a menu changes no app state.** A step whose routing opens a control menu (for
+instance a secondary click on a control with a menu, `secondary_opens`) leaves the app state as
+it was and asks the host for nothing; only choosing an item (`menuSelect`) reaches `update`. -/
+theorem step_open_quiet (app : App S) (cfg : Config) (s : State S) (e : Event) {r : ControlRef}
+    (h : (route cfg.metrics s e).1.ui.menu = some r) (hne : s.ui.menu ≠ some r)
+    (hw : e.isWorld = false) :
+    (step app cfg s e).1.app = s.app ∧ (step app cfg s e).2 = [] := by
+  have hq := route_open_quiet cfg.metrics s e h hne
+  have ha : admit app s e = { app := s.app, world := s.world } := by
+    cases e <;> simp_all [Event.isWorld, admit]
+  have hl := (route_laid cfg.metrics s e).2
+  unfold step
+  rcases hrt : route cfg.metrics s e with ⟨s1, acts⟩
+  rw [hrt] at hq hl
+  simp only at hq hl
+  subst hq
+  rw [ha]
+  dsimp only
+  split
+  · exact ⟨hl, rfl⟩
+  · simp only [act, List.isEmpty_nil, ite_true]
+    simp
 
 /-- Events addressed to a surface other than the window (a panel, a status item) do nothing. -/
 theorem route_surface_other (m : TextMetrics) (s : State S) {p : ClaimId} (e : Event)
@@ -761,7 +1021,7 @@ theorem route_surfaces (m : TextMetrics) (s : State S) (e : Event) :
   | _ =>
     rw [route.eq_def] <;> (try simp only [withPointer]) <;> (try split) <;> (try split) <;>
       (try split) <;> (try split) <;>
-      first | contradiction | simp [tab_surfaces, wheel_fst, keyScrollState_fst]
+      first | contradiction | simp [tab_surfaces, wheel_fst, secondaryDown_fst, keyRoute_fst, textRoute_fst]
 
 /-- A context that delivered nothing still holds the app state `a`. -/
 def Kept (a : S) (c : Ctx S) : Prop := c.delivered = false → c.app = a

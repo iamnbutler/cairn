@@ -206,7 +206,10 @@ final class AXNodeElement: NSAccessibilityElement, @unchecked Sendable {
         return onMain(.zero) { host.screenRect(r) }
     }
 
-    override func accessibilityRole() -> NSAccessibility.Role? { Self.role(node.role) }
+    /// A menu button (a ⋯ button) is an `AXMenuButton`, as `NSPopUpButton` in pull-down mode is.
+    override func accessibilityRole() -> NSAccessibility.Role? {
+        node.menu == true && node.role == .button ? .menuButton : Self.role(node.role)
+    }
 
     /// A secure field is an `AXSecureTextField`, as `NSSecureTextField` is.
     override func accessibilitySubrole() -> NSAccessibility.Subrole? {
@@ -297,8 +300,17 @@ final class AXNodeElement: NSAccessibilityElement, @unchecked Sendable {
         onMain(()) { host.click(at: rect) }
     }
 
+    /// `AXShowMenu` on a control with a menu is a secondary click at its centre, so it opens the
+    /// menu through Lean as a right click does.
+    override func accessibilityPerformShowMenu() -> Bool {
+        guard !dead, node.control != nil, node.menu != nil, let host else { return false }
+        let rect = node.rect
+        return onMain(false) { host.secondaryClick(at: rect); return true }
+    }
+
     override func isAccessibilitySelectorAllowed(_ selector: Selector) -> Bool {
         if selector == #selector(accessibilityPerformPress) { return node.control != nil }
+        if selector == #selector(accessibilityPerformShowMenu) { return node.control != nil && node.menu != nil }
         if selector == #selector(setAccessibilityFocused(_:)) { return node.role == .textField && node.control != nil }
         return super.isAccessibilitySelectorAllowed(selector)
     }

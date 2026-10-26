@@ -23,7 +23,8 @@ structure Config where
 
 structure State (S : Type) where
   app : S              -- the app's state
-  ui : UI              -- size, hover, pressed, focus, window focus, scroll offsets; `view` reads it
+  ui : UI              -- size, hover, pressed, focus, window focus, scroll offsets, the open
+                       -- control menu; `view` reads it
   clicks : Nat         -- click count of the pointerDown that started the press
   pointer : Option Point
   scale : Nat          -- backing scale × 100
@@ -79,7 +80,7 @@ If anything was delivered, `step` then diffs `app.subscriptions` against the act
 records the commands for the frame (`diffSubs`). If an event delivers nothing and leaves the
 `UI` unchanged, `step` skips view and layout; only the world changes.
 
-### Pointer (primary button; the secondary button only moves hover)
+### Pointer (primary button; the secondary button moves hover and opens menus)
 
 | Event | Effect |
 |---|---|
@@ -89,6 +90,8 @@ records the commands for the frame (`diffSubs`). If an event delivers nothing an
 | `pointerDown p` on nothing | blur the focused field, if any; focus := none; pressed := none |
 | `pointerUp p` on the pressed control, not a field | `press c`, or `doublePress c` when the down had clicks = 2 |
 | `pointerUp p` anywhere else | nothing (slide-off cancels); pressed := none either way |
+| `pointerDown p` on a menu button `c` (`Style.menu` with `button`) | as on another control, but no press follows: `UI.menu` := `c` (its menu opens) |
+| `pointerDown p .secondary` | hover := control at `p`; `UI.menu` := the control with a menu at or above the topmost thing at `p` (`menuTarget`), if any; no action |
 | `pointerExit` | hover := none; the pointer is forgotten |
 | `scroll p dx dy` | moves the innermost scroll box under `p` by `dy` (a row: `dx`), clamped; no action (see "Scrolling") |
 
@@ -122,7 +125,20 @@ controls are unless their role is `group`, `text`, `heading` or `list`.
 - **Replacement ranges.** `insertText s (some (a, b))` and `setMarked … (some (a, b))` first
   select `[a, b)`: `edit c (setCaret a' false)`, `edit c (setCaret b' true)` with `a'`, `b'`
   clamped to the field's text length, then the insert or composition.
-- **Focused button-like control `c`:** Enter or space (`insertText " "`) → `press c`.
+- **Focused button-like control `c`:** Enter or space (`insertText " "`) → `press c`; on a
+  menu button, its menu opens instead.
+- **The menu key** (`Key.menu`, Shift-F10 or the PC Menu key): opens the focused control's menu,
+  if it has one.
+
+### Menus on controls
+
+`UI.menu` is the control whose menu is open (docs/surfaces.md, "Menus on controls"). Opening it
+delivers nothing (`step_open_quiet`). `menuSelect p r` with the window's place delivers
+`press r` only if `r` is an enabled item of that open menu (`selectMenu`); otherwise nothing
+(`menu_select_stale`, `menu_select_absent`). `menuClose` with the window's place closes it. The
+layout after any step closes it too when its control, or the control's menu, is gone.
+`menuSelect` with the menu bar surface's place is checked against the app's menu items
+(`Surface.menuBar`), as a status item's is against its menu.
 - Nothing focused: keys and text do nothing, except the scroll keys (see "Scrolling").
 
 Blur is delivered only for fields (it's how an edit is committed); focus moving between buttons

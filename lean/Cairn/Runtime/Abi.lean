@@ -56,13 +56,17 @@ def panelUI (size : Size) : UI := { size, windowFocused := false }
 def surfaceFrame (b : Boundary) (s : State S) : Shown → SurfaceFrame
   | .window p t m =>
     { kind := .window, place := p, title := t, minSize := m,
-      canvas := { b.render s.laid s.ui with cursor := cursor s } }
+      canvas := { b.render s.laid s.ui with cursor := cursor s },
+      status := match openMenu s with
+        | some (r, cm) => { control := r, menu := Frame.ofMenu cm.items }
+        | none => {} }
   | .panel p none => { kind := .panel, place := p, shown := false }
   | .panel p (some (v, sz, l)) =>
     { kind := .panel, place := p, anchor := v.anchor, screen := v.screen,
       canvas := b.render l (panelUI sz) }
   | .status p none => { kind := .statusItem, place := p, shown := false }
   | .status p (some it) => { kind := .statusItem, place := p, status := Frame.ofStatus it }
+  | .bar p items => { kind := .menuBar, place := p, status := { menu := Frame.ofMenu items } }
 
 def frame (b : Boundary) (s : State S) : Frame :=
   { surfaces := (s.surfaces.map (surfaceFrame b s)).toArray, effects := s.effects,

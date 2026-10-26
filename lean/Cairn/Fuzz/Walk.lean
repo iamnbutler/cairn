@@ -83,7 +83,7 @@ def keyText (k : Key) (m : Mods) : String :=
     | .enter => "Enter" | .escape => "Escape" | .tab => "Tab" | .backspace => "Backspace"
     | .delete => "Delete" | .left => "Left" | .right => "Right" | .up => "Up" | .down => "Down"
     | .home => "Home" | .finish => "End" | .pageUp => "PageUp" | .pageDown => "PageDown"
-    | .char c => c.toString
+    | .char c => c.toString | .menu => "Menu"
   (if m.command then "cmd-" else "") ++ (if m.option then "opt-" else "") ++
     (if m.shift then "shift-" else "") ++ name
 
@@ -276,11 +276,42 @@ def statusControls (rt : Runtime.State S) : List (ClaimId × ControlRef × Bool)
     | .status p (some it) =>
       (p, it.control, true) :: (MenuItem.refs it.menu).map fun r =>
         (p, r, (MenuItem.enabledRefs it.menu).any fun x => decide (x = r))
+    | .bar p items =>
+      -- The app's own menus in the menu bar (docs/surfaces.md, "The app's menus").
+      (MenuItem.refs items).map fun r => (p, r, (MenuItem.enabledRefs items).any fun x => decide (x = r))
     | _ => []
+
+/-- The items of the menus of controls on screen (docs/surfaces.md, "Menus on controls"), each
+with its owner and whether it is enabled. They are in the frame whenever their control is (as
+`present` counts a control scrolled out of view): the host builds the native menu from the frame
+when it opens. `visible`: only those whose control shows, which a person can open. -/
+def controlMenuItems (rt : Runtime.State S) (visible : Bool := false) :
+    List (Cairn.Runtime.Target × ControlRef × Bool) :=
+  (targets rt.laid).flatMap fun tg =>
+    if visible && !decide tg.visible.nonempty then [] else
+    match tg.node.menu? with
+    | some cm => (MenuItem.refs cm.items).map fun r =>
+        (tg, r, (MenuItem.enabledRefs cm.items).any fun x => decide (x = r))
+    | none => []
+
+/-- A secondary click at a control's visible centre: opens its menu (`Runtime.secondary_opens`). -/
+def menuOpenEvents (tg : Cairn.Runtime.Target) : List Event :=
+  let p := tg.visible.center
+  [.pointerMove p, .pointerDown p .secondary 1 {}, .pointerUp p .secondary {}]
+
+/-- The events that choose `c` in a control's menu: open it, choose the item, and the close the
+host sends when the menu returns. -/
+def controlMenuPress (rt : Runtime.State S) (c : ControlRef) (enabled : Bool := true) :
+    Option (List Event) := do
+  let wp ← Shown.windowPlace rt.surfaces
+  (controlMenuItems rt true).findSome? fun (tg, x, e) =>
+    if e == enabled && decide (x = c) then some (menuOpenEvents tg ++ [.menuSelect wp c, .menuClose wp])
+    else none
 
 /-- Whether `r` is an enabled control on a status item: one a person can press now. -/
 def onStatus (rt : Runtime.State S) (r : ControlRef) : Bool :=
-  (statusControls rt).any fun (_, x, e) => e && decide (x = r)
+  (statusControls rt).any (fun (_, x, e) => e && decide (x = r)) ||
+    (controlMenuItems rt).any fun (_, x, e) => e && decide (x = r)
 
 /-- The events that press `c` on a status item: opening the menu for its button, choosing the
 item for a menu item (`Runtime.step`'s `menuOpen` and `menuSelect`). -/
@@ -289,7 +320,7 @@ def statusPress (rt : Runtime.State S) (c : ControlRef) : Option (List Event) :=
     if !(e && decide (x = c)) then none
     else match Shown.statusOf p rt.surfaces with
       | some it => if decide (it.control = c) then some [.menuOpen p] else some [.menuSelect p c]
-      | none => none
+      | none => some [.menuSelect p c]  -- the menu bar
 
 /-- The events that perform an operation in the current state; `none` when an action's control
 isn't on screen (or can't take that action), so the operation is skipped. -/
@@ -299,7 +330,7 @@ def opToEvents (rt : Runtime.State S) : Op → Option (List Event)
     match find rt.laid c with
     | none =>
       match a with
-      | .press _ => statusPress rt c
+      | .press _ => (statusPress rt c).orElse fun _ => controlMenuPress rt c
       | _ => none
     | some tg =>
       -- A control scrolled out of view can't be clicked: skip the operation.
@@ -662,7 +693,7 @@ def perform (t : Target) (setup : Setup) (w : World t.S t.W) (op : Op) :
 /-- Keys to probe for a move: those on screen, the largest seen so far, and one past it. -/
 def probeKeys (t : Target) (w : World t.S W) (id : ClaimId) : List Nat :=
   if !t.isKeyed id then [0] else
-  let shown := refs w.rt.laid ++ (statusControls w.rt).map (·.2.1)
+  let shown := refs w.rt.laid ++ (statusControls w.rt).map (·.2.1) ++ (controlMenuItems w.rt).map (·.2.1)
   let onScreen := shown.filterMap fun r => if r.claim = id then some r.key else none
   let top := (w.seen.get? id).getD 0
   let top := onScreen.foldl max top
@@ -674,7 +705,7 @@ def probeKeys (t : Target) (w : World t.S W) (id : ClaimId) : List Nat :=
   (onScreen ++ [top, top + 1, 0] ++ rowKeys).eraseDups
 
 def World.noteSeen (w : World S W) (laid : Laid) : World S W :=
-  { w with seen := (refs laid ++ (statusControls w.rt).map (·.2.1)).foldl (fun m r => m.insert r.claim (max r.key ((m.get? r.claim).getD 0))) w.seen,
+  { w with seen := (refs laid ++ (statusControls w.rt).map (·.2.1) ++ (controlMenuItems w.rt).map (·.2.1)).foldl (fun m r => m.insert r.claim (max r.key ((m.get? r.claim).getD 0))) w.seen,
            secure := (w.secure ++ secureRefs laid).eraseDups }
 
 def isPointer (m : Move S) : Bool := m.triggers.any fun tr => tr == .press || tr == .doublePress
@@ -942,6 +973,21 @@ def checks (t : Target) (setup : Setup) (w : World t.S W) (act? : Option Action)
           (if !on then s!"{r.label} is enabled{if inRows.contains mv.id then " and its row is laid" else ""} but has no control in the frame"
            else if !en then s!"{r.label} is in the frame but its move is disabled"
            else s!"{r.label} is in the frame, but its row is not laid")
+  -- Greyed menu items: choosing one (a control's menu opened first) delivers nothing for it
+  -- (`Runtime.menu_select_stale`): the menus a person can open, items they can see but not use.
+  let routeAll (evs : List Event) : List Action :=
+    (evs.foldl (fun (acc : Runtime.State t.S × List Action) e =>
+      let (st, as) := Runtime.route m acc.1 e
+      (st, acc.2 ++ as)) (w.rt, [])).2
+  let greyed : List (ControlRef × List Event) :=
+    ((controlMenuItems w.rt true).filterMap fun (tg, r, e) =>
+      if e then none else (Shown.windowPlace w.rt.surfaces).map fun wp => (r, menuOpenEvents tg ++ [.menuSelect wp r])) ++
+    ((statusControls w.rt).filterMap fun (p, r, e) => if e then none else some (r, [.menuSelect p r]))
+  for (r, evs) in greyed.take 4 do
+    ran := ran.push (r.claim, "menu-greyed")
+    if (routeAll evs).contains (.press r) then
+      fails := fails.push <| mkFail "menu-greyed" r stepIx
+        s!"choosing the greyed menu item {r.label} pressed it"
   -- Virtual lists: the rows laid, how many, one under the other, at their real heights.
   for ll in lists do
     ran := ran.push (ll.ref.claim, "vlist")
@@ -1043,7 +1089,11 @@ def candidates (t : Target) (w : World t.S W) : List (ControlRef × Trigger × B
       match t.move? r.claim with
       | some mv => if e && mv.enabled s r.key && mv.triggers.contains .press then [(r, Trigger.press, false)] else []
       | none => []
-    onStatusItems ++ (targets w.rt.laid).flatMap fun tg =>
+    let inControlMenus := (controlMenuItems w.rt true).flatMap fun (_, r, e) =>
+      match t.move? r.claim with
+      | some mv => if e && mv.enabled s r.key && mv.triggers.contains .press then [(r, Trigger.press, false)] else []
+      | none => []
+    onStatusItems ++ inControlMenus ++ (targets w.rt.laid).flatMap fun tg =>
       match t.move? tg.ref.claim with
       | none => []
       | some mv =>

@@ -122,6 +122,17 @@ public enum KeyMapping {
         }
     }
 
+    /// The context-menu key: Shift-F10 (`.menu`, the shift is the key's own), or the Menu key of
+    /// a PC keyboard (kVK_ContextualMenu) with its modifiers.
+    public static func menuKey(keyCode: UInt16, mods: Mods) -> Event? {
+        switch keyCode {
+        case 109 where mods.shift && !mods.command && !mods.option && !mods.control:  // F10
+            .key(.menu, Mods())
+        case 110: .key(.menu, mods)
+        default: nil
+        }
+    }
+
     public static func mods(_ flags: NSEvent.ModifierFlags) -> Mods {
         Mods(shift: flags.contains(.shift), command: flags.contains(.command),
              option: flags.contains(.option), control: flags.contains(.control))

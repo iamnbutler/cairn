@@ -60,7 +60,7 @@ def keyName : Key → String
   | .enter => "enter" | .escape => "escape" | .tab => "tab" | .backspace => "backspace"
   | .delete => "delete" | .left => "left" | .right => "right" | .up => "up" | .down => "down"
   | .home => "home" | .finish => "end" | .pageUp => "pageUp" | .pageDown => "pageDown"
-  | .char c => c.toString
+  | .char c => c.toString | .menu => "menu"
 
 def faultName (f : Fault) : String := match f with
   | .notFound => "notFound" | .denied => "denied" | .timeout => "timeout" | .network => "network"

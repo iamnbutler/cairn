@@ -6,7 +6,7 @@ entries in the section of the workstream that introduces the assumption.
 
 Items marked **Fuzzed** are also checked by the trusted-base fuzzer (`make fuzz-trusted`,
 docs/fuzz.md "Trusted base"), against Lean's proved side or an independent oracle, and are
-declared as `assume` claims ^7, ^214, ^901–^915, ^940–^944, ^960–^975, ^1000–^1012, ^1020–^1022 and ^1030–^1031 in `lean/Cairn/Fuzz/Trusted/Claims.lean`, each naming its
+declared as `assume` claims ^7, ^214, ^901–^915, ^940–^950, ^960–^975, ^1000–^1012, ^1020–^1022 and ^1030–^1031 in `lean/Cairn/Fuzz/Trusted/Claims.lean`, each naming its
 check; `build/fuzz/trusted.json` holds the evidence. Items not marked are checked only by the
 tests and reviews they list.
 
@@ -893,6 +893,79 @@ and the socket's `surfaces` read the same properties.
 arithmetic on random visible frames, sizes and offsets; the screen is chosen at show and kept
 through size changes until hidden.
 
+### Menus on controls and the app's menu bar (#247, #229)
+
+See [surfaces.md](surfaces.md), "Menus on controls" and "The app's menus". Lean decides when a
+control's menu is open (`UI.menu`), which item a choice presses and that a greyed or stale choice
+changes nothing (`Runtime.menu_select_stale`, `Runtime.menu_select_absent`); opening touches no
+app state (`Runtime.step_open_quiet`). What AppKit does with the records is assumed. The host
+code is `ControlMenuHost` and `MenuBarHost` in `host/Sources/CairnHost/Surfaces.swift`, with
+`HostView.rightMouseDown`, `KeyMapping.menuKey` and `AXMirror`'s `AXShowMenu`. The fuzz suite is
+`MenusSuite` (`host/Tests/CairnFuzzTrusted/MenusSuite.swift`): random menu records on random
+owners, frames that open, change and close the menu, stale frames, and random menu bar records
+with shortcuts over the whole `Key` table, against a detached host whose main menu is its own
+copy (`CairnApp.menu(install: false)`).
+
+#### A control's menu shows exactly the frame's records (`assume`, ^945)
+
+**Evidence.** **Fuzzed** (`control-menu.render`): after every frame, the open menu's owner and
+place are the window record's, and its tree is compared with the records as `menu.render` (^940)
+does; a frame without records leaves no menu. Conformance: the socket's `controlMenu` against the
+model's open menu after every step (docs/conformance.md).
+
+#### Choosing an item reports its ref, then the close (`assume`, ^946)
+
+**Statement.** Selecting does not close the menu in Lean; the host sends `menuClose(window)`
+after `popUp(positioning:at:in:)` returns. That relies on AppKit sending the item's action before
+`popUp` returns, which it does for a popped-up menu.
+
+**Evidence.** **Fuzzed** (`control-menu.select`): a random item is chosen through
+`performActionForItem(at:)` and the menu closed: exactly `[menuSelect(window, ref), menuClose]`
+for an enabled item and `[menuClose]` for a status line, separator or submenu; a greyed item
+sends the close, and at most its own ref before it, which Lean ignores (`menu_select_stale`). Conformance chooses enabled and greyed items through the socket's
+`controlMenuSelect`.
+
+#### The host shows a control menu only while Lean has it open (`assume`, ^947)
+
+**Statement.** The host ignores frames numbered below its own close: a frame computed before the
+`menuClose` reached Lean still shows the menu, and reopening it would flash it back.
+
+**Evidence.** **Fuzzed** (`control-menu.dismiss`): random sequences of frames with and without
+the menu, with and without a window, and stale ones after a close; the host's owner must be the
+last fresh frame's. Counters: open, stale, none.
+
+#### AXShowMenu opens a control's menu as a right click does (`assume`, ^948)
+
+**Evidence.** **Fuzzed** (`ax.show-menu`): for random AX trees, `AXShowMenu` is allowed exactly on
+the elements of controls with a menu (`AxNode.menu`), a menu button is an `AXMenuButton`, and
+performing it sends `[pointerMove, pointerDown secondary, pointerUp secondary]` at the node's
+centre, then the pointer back. Conformance compares the role (`AXMenuButton`) on every step.
+
+#### The menu bar shows the app's menu items (`assume`, ^949)
+
+**Evidence.** **Fuzzed** (`menubar.render`): after every update, the app menu's first entries and
+the menus before Window are the records (as ^940), followed by a separator, and Hide, Quit, Edit
+and Window are untouched; updates in place and rebuilds both. Conformance: the socket's `menuBar`
+against the model's records after every step.
+
+#### A menu bar item, by click or key equivalent, reports its ref (`assume`, ^950)
+
+**Findings.**
+- A shifted letter's key equivalent must be the capital (`⇧⌘A` is `"A"` with ⌘⇧):
+  `NSMenu.performKeyEquivalent` compares `charactersIgnoringModifiers`, which keeps the shift, so
+  `"a"` with the shift mask never matches. The host, the ^940 oracle and the conformance model all
+  write the capital (`MenuHost.keyEquivalent`, `shiftedEquivalent`); this applies to status item
+  and control menus too.
+- The main menu has `autoenablesItems` on, which re-enabled a greyed item, so its key equivalent
+  pressed it. `MenuHost` answers `validateMenuItem` with the record's own flag.
+- An enabled item inside a greyed submenu still answers its key equivalent. Lean's menus never
+  grey a submenu, so this never shows in an app; the oracle accepts it.
+
+**Evidence.** **Fuzzed** (`menubar.select`): an item chosen through `performActionForItem(at:)`,
+and every item whose letter shortcut is unambiguous through `performKeyEquivalent` with the key
+event a keyboard sends (key code, characters, modifiers): one `menuSelect(place, ref)` for an
+enabled item, nothing for a greyed one. Conformance chooses items through the socket's `menuBarSelect`.
+
 ### Also trusted, not fuzzed
 
 - **Status item image.** The SF Symbol name exists on the running macOS; a missing one is logged
@@ -902,7 +975,12 @@ through size changes until hidden.
 - **Run-loop modes.** Frames are applied, and the menu updated, while the menu is tracking.
   Manual checklist (the detached checks don't track).
 - **Under the debug socket** the `quit` effect is recorded and not run, as a beep is; the
-  driver ends the app with the socket's `quit`.
+  driver ends the app with the socket's `quit`. A control's menu is built but not popped up
+  (`ControlMenuHost.live` is false): `popUp` would block the socket's main-thread calls.
+- **Where a control's menu pops up.** At the click point when a secondary click opened it inside
+  the owner, else below the owner's visible rect. Look only; manual checklist.
+- **The context-menu keys.** Shift-F10 and the PC Menu key (`KeyMapping.menuKey`) arrive as
+  `Key.menu`; macOS has no standard binding for either.
 
 ## The window's minimum size (M3)
 

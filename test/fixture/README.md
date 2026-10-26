@@ -33,6 +33,12 @@ What it covers, in one window (lean/Fixture.lean):
   fake server whose replies fail before it acts and are lost after, and whose other accounts
   like and unlike (lean/Fixture/Fuzz.lean); `lake exe likeMutant` checks that it catches a Like
   that takes a lost write for a refused one (lean/Fixture/LikeMutant.lean);
+- menus (docs/surfaces.md): each item's ⋯ button (`^25#k`, a menu button) and its checkbox's
+  secondary click open the item's menu, Mark Done (`^26#k`) and Delete (`^27#k`, greyed until the
+  item is done); the app's own menus in the menu bar (^28): Clear Done (^29) in the app menu and a
+  Go menu (^30) with First Row (⌘1, ^31) and No Row (⌘2, ^32, greyed and checked while no row is
+  selected); flow ^33 finishes items from their menus; `conformance/menus.gestures` opens an item's
+  menu every way for `cairn conformance --gestures`;
 - claims: places, moves (press, edit, submit, keyed, emit), an invariant with a runnable check, a
   flow; its own scope `fixture` and its own claims.lock, so nothing here is in Cairn's ledger.
 

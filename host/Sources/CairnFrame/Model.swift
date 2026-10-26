@@ -119,12 +119,14 @@ public struct AxNode: Equatable, Sendable {
     public var checked: Bool?
     /// A secure field: an `AXSecureTextField` with no value.
     public var secure: Bool
+    /// The control has a menu (`AXShowMenu`); `true` when it is a menu button (`AXMenuButton`).
+    public var menu: Bool?
     public init(control: ControlRef?, role: Role, rect: Rect, label: String, value: String = "",
                 parent: Int? = nil, focused: Bool = false, selected: Bool = false, checked: Bool? = nil,
-                secure: Bool = false) {
+                secure: Bool = false, menu: Bool? = nil) {
         self.control = control; self.role = role; self.rect = rect; self.label = label; self.value = value
         self.parent = parent; self.focused = focused; self.selected = selected; self.checked = checked
-        self.secure = secure
+        self.secure = secure; self.menu = menu
     }
 }
 
@@ -432,7 +434,7 @@ public struct Canvas: Equatable, Sendable {
     public static let empty = Canvas(size: Size(w: 0, h: 0), draws: [])
 }
 
-public enum SurfaceKind: UInt8, Sendable { case window, panel, statusItem }
+public enum SurfaceKind: UInt8, Sendable { case window, panel, statusItem, menuBar }
 public enum MenuKind: UInt8, Sendable { case item, info, submenu, separator }
 /// Which screen a panel is shown on.
 public enum ScreenChoice: UInt8, Sendable { case pointer, main }
@@ -577,6 +579,8 @@ public enum Key: Equatable, Sendable {
     case enter, escape, tab, backspace, delete
     case left, right, up, down, home, finish, pageUp, pageDown
     case char(Character)
+    /// The context-menu key: Shift-F10, or the Menu key of a PC keyboard.
+    case menu
 }
 
 public enum Event: Equatable, Sendable {

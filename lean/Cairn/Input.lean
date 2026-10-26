@@ -29,6 +29,9 @@ inductive Key where
   | enter | escape | tab | backspace | delete
   | left | right | up | down | home | finish | pageUp | pageDown
   | char (c : Char)
+  /-- The context-menu key: Shift-F10, or a PC keyboard's Menu key. It opens the focused
+  control's menu (`ControlMenu`). -/
+  | menu
 deriving Repr, BEq, DecidableEq, Inhabited
 
 /-- Host → Lean. Points are logical, in the window's content area. -/
@@ -65,9 +68,12 @@ inductive Event where
   | surface (place : ClaimId) (e : Event)
   /-- The status item `place`'s menu is opening (`menuWillOpen`). -/
   | menuOpen (place : ClaimId)
-  /-- The status item `place`'s menu closed (`menuDidClose`). -/
+  /-- The status item `place`'s menu closed (`menuDidClose`); with the window's place, the
+  control menu open in the window closed. -/
   | menuClose (place : ClaimId)
-  /-- The person chose the item `ref` in the status item `place`'s menu. -/
+  /-- The person chose the item `ref` in the menu of surface `place`: a status item's menu, the
+  app's items in the menu bar (`Surface.menuBar`), or, with the window's place, the control menu
+  open in the window (`UI.menu`). -/
   | menuSelect (place : ClaimId) (ref : ControlRef)
   /-- The runtime's own, never the host's (it has no encoding): the end of a batch, before the
   frame is drawn. `Runtime.steps` runs it after every batch; it compares what is on screen with

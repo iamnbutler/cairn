@@ -103,14 +103,14 @@ def jax (n : AxNode) : String :=
   jobj [("role", jstr (roleName n.role)), ("control", jopt (jstr ∘ refLabel) n.control),
         ("parent", jopt jnat n.parent), ("rect", jrect n.rect), ("label", jstr n.label),
         ("value", jstr n.value), ("focused", jbool n.focused), ("selected", jbool n.selected),
-        ("checked", jopt jbool n.checked)]
+        ("checked", jopt jbool n.checked), ("secure", jbool n.secure), ("menu", jopt jbool n.menu)]
 
 def jrange (p : Nat × Nat) : String := jarr [jnat p.1, jnat p.2]
 
 def jtextInput (t : TextInput) : String :=
   jobj [("control", jstr (refLabel t.control)), ("rect", jrect t.rect), ("caret", jrect t.caret),
         ("text", jstr t.text), ("selection", jrange t.selection), ("marked", jopt jrange t.marked),
-        ("origin", jpoint t.textOrigin)]
+        ("origin", jpoint t.textOrigin), ("secure", jbool t.secure)]
 
 /-! A status item's menu, in the shape the debug socket's `menu` command reads it back from
 AppKit (`DebugJSON.menu`): the host's own key-equivalent table, and an item inside a disabled
@@ -118,8 +118,10 @@ submenu reported disabled, as AppKit reports it (docs/trusted.md, ^940). -/
 
 def kindName : SurfaceKind → String
   | .window => "window" | .panel => "panel" | .statusItem => "statusItem"
+  | .menuBar => "menuBar"
 
-/-- `MenuHost.keyEquivalent`: AppKit's key equivalent for a shortcut. -/
+/-- `MenuHost.keyEquivalent`: AppKit's key equivalent for a shortcut's key (a letter is
+upper case when the shortcut has shift: `shiftedEquivalent`). -/
 def keyEquivalent : Key → String
   | .enter => "\r" | .escape => "\x1b" | .tab => "\t" | .backspace => "\x08"
   | .delete => String.singleton (Char.ofNat 0xF728) | .left => String.singleton (Char.ofNat 0xF702)
@@ -127,6 +129,15 @@ def keyEquivalent : Key → String
   | .down => String.singleton (Char.ofNat 0xF701) | .home => String.singleton (Char.ofNat 0xF729)
   | .finish => String.singleton (Char.ofNat 0xF72B) | .pageUp => String.singleton (Char.ofNat 0xF72C)
   | .pageDown => String.singleton (Char.ofNat 0xF72D) | .char c => String.singleton c.toLower
+  | .menu => String.singleton (Char.ofNat 0xF70D)
+
+/-- A shifted letter's key equivalent is the capital (what `charactersIgnoringModifiers` gives
+for ⇧ and a letter; AppKit matches a lower-case one only to unshifted characters, docs/trusted.md
+^940). -/
+def shiftedEquivalent (s : Shortcut) : String :=
+  match s.key with
+  | .char c => if s.mods.shift && c.isAlpha then String.singleton c.toUpper else keyEquivalent s.key
+  | k => keyEquivalent k
 
 /-- Modifier names in `DebugJSON.modNames` order. -/
 def menuMods (m : Mods) : List String :=
@@ -145,12 +156,15 @@ def effectiveEnabled (recs : Array MenuRecord) (i : Nat) : Bool := Id.run do
       j := r.parent
   return true
 
-/-- The items whose parent is `parent`, nested. `fuel` bounds the depth. -/
-def jmenuItems (recs : Array MenuRecord) (parent : Option Nat) : Nat → String
+/-- The items whose parent is `parent`, nested; at this level only those `keep` keeps. `fuel`
+bounds the depth. -/
+def jmenuItems (recs : Array MenuRecord) (parent : Option Nat) (fuel : Nat)
+    (keep : MenuRecord → Bool := fun _ => true) : String :=
+  match fuel with
   | 0 => "[]"
   | fuel + 1 => jarr <| (List.range recs.size).filterMap fun i => do
     let r ← recs[i]?
-    guard (r.parent == parent)
+    guard (r.parent == parent && keep r)
     let en := effectiveEnabled recs i
     let plain (kind : String) (enabled : Bool) (id : String) : List (String × String) :=
       [("kind", jstr kind), ("title", jstr r.label), ("enabled", jbool enabled), ("state", jstr "off"),
@@ -162,7 +176,7 @@ def jmenuItems (recs : Array MenuRecord) (parent : Option Nat) : Nat → String
         [("items", jmenuItems recs (some i) fuel)]))
     | .item, some c =>
       let (key, mods) := match r.shortcut with
-        | some sc => (keyEquivalent sc.key, menuMods sc.mods)
+        | some sc => (shiftedEquivalent sc, menuMods sc.mods)
         | none => ("", [])
       some (jobj [("kind", jstr "item"), ("title", jstr r.label), ("enabled", jbool en),
         ("state", jstr (if r.checked == some true then "on" else "off")), ("id", jstr (refLabel c)),
@@ -174,6 +188,29 @@ def jmenus (f : Frame) : String :=
     if s.kind == .statusItem then
       some (jobj [("place", jnat s.place), ("items", jmenuItems s.status.menu none (s.status.menu.size + 1))])
     else none
+
+/-- The app's menu bar items (docs/surfaces.md, "The app's menus"), as the debug socket's
+`menuBar` command must answer them: entries at the top level go at the top of the app menu,
+submenus become menus in the bar. -/
+def jmenuBar (f : Frame) : String :=
+  match f.surfaces.toList.find? (·.kind == .menuBar) with
+  | none => "null"
+  | some s =>
+    let recs := s.status.menu
+    let fuel := recs.size + 1
+    jobj [("place", jnat s.place),
+          ("appItems", jmenuItems recs none fuel (·.kind != .submenu)),
+          ("menus", jmenuItems recs none fuel (·.kind == .submenu))]
+
+/-- The open control menu (the window surface's `status`), as the `controlMenu` command must
+answer it: its owner and items, or no owner and no items. -/
+def jcontrolMenu (f : Frame) : String :=
+  match f.surfaces.toList.find? (·.kind == .window) with
+  | some w =>
+    if w.status.menu.isEmpty then jobj [("owner", "null"), ("items", "[]")]
+    else jobj [("owner", jstr (refLabel w.status.control)),
+               ("items", jmenuItems w.status.menu none (w.status.menu.size + 1))]
+  | none => jobj [("owner", "null"), ("items", "[]")]
 
 def jsurfaces (f : Frame) : String :=
   jarr <| f.surfaces.toList.map fun s =>
@@ -187,7 +224,8 @@ def jframe (f : Frame) : String :=
         ("ax", jarr (f.ax.toList.map jax)),
         ("textInput", jopt jtextInput f.textInput),
         ("cursor", jstr (cursorName f.cursor)),
-        ("menus", jmenus f), ("surfaces", jsurfaces f)]
+        ("menus", jmenus f), ("surfaces", jsurfaces f), ("menuBar", jmenuBar f),
+        ("controlMenu", jcontrolMenu f)]
 
 /-- A request as the debug socket describes it (`DebugJSON.request` in the host): what it asks
 for, never a secret, a body or typed text. -/
@@ -250,7 +288,7 @@ def keyName : Key → String
   | .enter => "enter" | .escape => "escape" | .tab => "tab" | .backspace => "backspace"
   | .delete => "delete" | .left => "left" | .right => "right" | .up => "up" | .down => "down"
   | .home => "home" | .finish => "end" | .pageUp => "pageUp" | .pageDown => "pageDown"
-  | .char _ => "char"
+  | .char _ => "char" | .menu => "menu"
 
 def modNames (m : Mods) : List String :=
   (if m.shift then ["shift"] else []) ++ (if m.command then ["command"] else []) ++
@@ -309,6 +347,17 @@ inductive Gesture where
   /-- An item of a status item's menu is chosen: `performActionForItem(at:)` when it is
   enabled, its action sent directly when it isn't (the menu changed while it was open). -/
   | menuSelect (place : ClaimId) (r : ControlRef)
+  /-- rightMouseDown, rightMouseUp: a secondary click. -/
+  | rightDown (p : Point)
+  | rightUp (p : Point)
+  /-- An item of the open control menu is chosen (`performActionForItem(at:)`, or its action
+  directly when greyed), then the menu closes, as when a popped-up menu returns
+  (docs/surfaces.md, "Menus on controls"). `place` is the window's. -/
+  | controlMenuSelect (place : ClaimId) (r : ControlRef)
+  /-- The open control menu closes without a choice. -/
+  | controlMenuClose (place : ClaimId)
+  /-- An item of the app's menu bar items is chosen (`performActionForItem(at:)`). -/
+  | menuBarSelect (place : ClaimId) (r : ControlRef)
 deriving Inhabited
 
 def Gesture.events (clipboard : String) : Gesture → List Event
@@ -330,6 +379,11 @@ def Gesture.events (clipboard : String) : Gesture → List Event
   | .menuOpen p => [.menuOpen p]
   | .menuClose p => [.menuClose p]
   | .menuSelect p r => [.menuSelect p r]
+  | .rightDown p => [.pointerMove p, .pointerDown p .secondary 1 {}]
+  | .rightUp p => [.pointerUp p .secondary {}]
+  | .controlMenuSelect p r => [.menuSelect p r, .menuClose p]
+  | .controlMenuClose p => [.menuClose p]
+  | .menuBarSelect p r => [.menuSelect p r]
 
 def Gesture.json : Gesture → String
   | .move p => jobj [("g", jstr "move"), ("at", jpoint p)]
@@ -349,9 +403,17 @@ def Gesture.json : Gesture → String
   | .menuClose p => jobj [("g", jstr "menuClose"), ("place", jnat p)]
   | .menuSelect p r => jobj [("g", jstr "menuSelect"), ("place", jnat p), ("id", jstr (refLabel r)),
                               ("ref", jarr [jnat r.claim, jnat r.key])]
+  | .rightDown p => jobj [("g", jstr "rightDown"), ("at", jpoint p)]
+  | .rightUp p => jobj [("g", jstr "rightUp"), ("at", jpoint p)]
+  | .controlMenuSelect p r => jobj [("g", jstr "controlMenuSelect"), ("place", jnat p), ("id", jstr (refLabel r)),
+                                     ("ref", jarr [jnat r.claim, jnat r.key])]
+  | .controlMenuClose p => jobj [("g", jstr "controlMenuClose"), ("place", jnat p)]
+  | .menuBarSelect p r => jobj [("g", jstr "menuBarSelect"), ("place", jnat p), ("id", jstr (refLabel r)),
+                                 ("ref", jarr [jnat r.claim, jnat r.key])]
 
 def click (p : Point) : List Gesture := [.move p, .down p 1, .up p]
 def doubleClick (p : Point) : List Gesture := [.move p, .down p 1, .up p, .down p 2, .up p]
+def rightClick (p : Point) : List Gesture := [.rightDown p, .rightUp p]
 
 /-! ## Choosing what to do -/
 
@@ -390,6 +452,8 @@ structure Choice where
   label : String
   move : Option (ControlRef × String) := none
   gestures : List Gesture
+  /-- The group `pickGrouped` puts it in, when not its move's: a control's menu. -/
+  group? : Option String := none
 deriving Inhabited
 
 def visible (r : Rect) : Bool := decide (0 < r.w) && decide (0 < r.h)
@@ -407,6 +471,39 @@ def choices (M : Machine S) (s : Runtime.State S) (f : Frame) (r : Rng) : Array 
   let field := f.textInput.map (·.control)
   let focusedButton := f.ax.toList.findSome? fun n =>
     if n.focused && n.role != .textField then n.control else none
+  -- A control's menu is open: AppKit tracks it, so the only things a person can do are choose
+  -- an item (a greyed one too, as when the menu changed while open) or dismiss it.
+  if let some w := f.surfaces.find? (fun sf => sf.kind == .window && !sf.status.menu.isEmpty) then
+    let wp := w.place
+    let recs := w.status.menu
+    for i in [0:recs.size] do
+      let some rec := recs[i]? | continue
+      let some c := rec.control | continue
+      unless rec.kind == .item do continue
+      let live := effectiveEnabled recs i &&
+        (find? M.moves c.claim).any (fun m => m.enabled s.app c.key)
+      if live then
+        for _ in [0:2] do
+          out := out.push { label := s!"choose {refLabel c} in the menu of {refLabel w.status.control}",
+                            move := some (c, "press"), gestures := [.controlMenuSelect wp c] }
+      else
+        out := out.push { label := s!"choose greyed-out {refLabel c} in the menu of {refLabel w.status.control}",
+                          gestures := [.controlMenuSelect wp c] }
+    out := out.push { label := s!"dismiss the menu of {refLabel w.status.control}",
+                      gestures := [.controlMenuClose wp] }
+    return (out, r)
+  -- Controls with a menu: open it by a secondary click, a menu button by a click too, and the
+  -- focused one by the menu key (the host's Shift-F10 and PC Menu key: `KeyMapping.menuKey`).
+  for n in f.ax do
+    let some c := n.control | continue
+    let some isButton := n.menu | continue
+    unless visible n.rect do continue
+    let group? := some s!"{refLabel c} menu"
+    out := out.push { label := s!"right-click {refLabel c}", gestures := rightClick n.rect.center, group? }
+    if isButton then
+      out := out.push { label := s!"open the menu of {refLabel c}", gestures := click n.rect.center, group? }
+    if n.focused then
+      out := out.push { label := s!"menu key on {refLabel c}", gestures := [.key .menu {}], group? }
   for n in f.ax do
     let some c := n.control | continue
     let some m := find? M.moves c.claim | continue
@@ -503,6 +600,24 @@ def choices (M : Machine S) (s : Runtime.State S) (f : Frame) (r : Rng) : Array 
       else
         out := out.push { label := s!"choose greyed-out {refLabel c} in ^{p}",
                           gestures := [.menuSelect p c] }
+  -- The app's own menu bar items: choose one, a greyed-out one too.
+  for sf in f.surfaces do
+    unless sf.kind == .menuBar && sf.shown do continue
+    let p := sf.place
+    let recs := sf.status.menu
+    for i in [0:recs.size] do
+      let some rec := recs[i]? | continue
+      let some c := rec.control | continue
+      unless rec.kind == .item do continue
+      let live := effectiveEnabled recs i &&
+        (find? M.moves c.claim).any (fun m => m.enabled s.app c.key)
+      if live then
+        for _ in [0:2] do
+          out := out.push { label := s!"choose {refLabel c} in the menu bar", move := some (c, "press"),
+                            gestures := [.menuBarSelect p c] }
+      else
+        out := out.push { label := s!"choose greyed-out {refLabel c} in the menu bar",
+                          gestures := [.menuBarSelect p c] }
   -- Plain UI: focus traversal, hover, leaving the window, clicking nothing. Only with a window.
   if f.surfaces.any (·.kind == .window) then
     out := out.push { label := "Tab", gestures := [.key .tab {}] }
@@ -648,7 +763,7 @@ known, not as failures: the app did what the model does. -/
 def t33Label : String := "T33"
 
 /-- Model checks that need no app: every control on screen belongs to an enabled move
-(presence), and a chosen press delivers exactly that press, after any blurs (pressable),
+(presence; a menu button may belong to none), and a chosen press delivers exactly that press, after any blurs (pressable),
 unless the click was dropped by design (`dropped`, T33): then it is in `known`, not here. -/
 def findings (M : Machine S) (s : Runtime.State S) (f : Frame) (ch : Choice)
     (acts : List Action) (dropped : Bool := false) : List String := Id.run do
@@ -656,7 +771,10 @@ def findings (M : Machine S) (s : Runtime.State S) (f : Frame) (ch : Choice)
   for n in f.ax do
     if let some c := n.control then
       match find? M.moves c.claim with
-      | none => out := out ++ [s!"{refLabel c} is on screen but no move owns ^{c.claim}"]
+      | none =>
+        -- A menu button (⋯) that only opens its menu is no move's: its ref names the menu.
+        unless n.menu == some true do
+          out := out ++ [s!"{refLabel c} is on screen but no move owns ^{c.claim}"]
       | some m =>
         unless m.enabled s.app c.key do
           out := out ++ [s!"{refLabel c} is on screen but its move is not enabled"]
@@ -723,6 +841,7 @@ def start (app : App S) (cfg : Config) (o : Options) : Runtime.State S :=
 
 /-- The group a choice belongs to: its control and trigger, or plain UI. -/
 def Choice.group (ch : Choice) : String :=
+  if let some g := ch.group? then g else
   match ch.move with
   | some (c, t) => s!"{refLabel c} {t}"
   | none => "ui"
@@ -771,11 +890,31 @@ it isn't focused, then types; a submit is Enter, a cancel Escape, a blur Tab. -/
 
 def parseNat (s : String) : Nat := s.toNat?.getD 0
 
-def witnessChoice (f : Frame) (step : String) : Option Choice := do
+/-- Where a person right-clicks to open the menu that has item `c`: the centre of the visible
+part of the control that owns it. -/
+def menuOwnerPoint (laid : Laid) (c : ControlRef) : Option Point :=
+  (targets laid).findSome? fun tg =>
+    if !decide tg.visible.nonempty then none else
+    match tg.node.menu? with
+    | some cm => if (MenuItem.refs cm.items).any (· == c) then some tg.visible.center else none
+    | none => none
+
+def witnessChoice (f : Frame) (step : String) (laid : Laid) : Option Choice := do
   let parts := step.splitOn " "
   let trigger ← parts[0]?
   let c : ControlRef := ⟨parseNat (parts[1]?.getD "0"), parseNat (parts[2]?.getD "0")⟩
   let label := s!"{trigger} {refLabel c}"
+  -- A press on an item of the app's menu bar items chooses it; on an item of a control's menu,
+  -- opens the menu with a right click (unless it is open) and chooses it.
+  if trigger == "press" then
+    if let some sf := f.surfaces.toList.find? fun sf =>
+        sf.kind == .menuBar && sf.status.menu.any (·.control == some c) then
+      return { label, move := some (c, "press"), gestures := [.menuBarSelect sf.place c] }
+    if let some w := f.surfaces.toList.find? (·.kind == .window) then
+      if w.status.menu.any (·.control == some c) then
+        return { label, move := some (c, "press"), gestures := [.controlMenuSelect w.place c] }
+      if let some p := menuOwnerPoint laid c then
+        return { label, move := some (c, "press"), gestures := rightClick p ++ [.controlMenuSelect w.place c] }
   -- A press on a status item's control opens its menu; on one of its items, chooses it.
   let statuses := f.surfaces.toList.filter (·.kind == .statusItem)
   let inMenu := statuses.find? fun sf => sf.status.menu.any (·.control == some c)
@@ -817,7 +956,7 @@ def replay (M : Machine S) (app : App S) (cfg : Config) (o : Options) (line : St
   let mut stopped : Option String := none
   for st in parts.drop 1 do
     let f := modelFrame s []
-    match witnessChoice f st with
+    match witnessChoice f st s.laid with
     | none =>
       stopped := some s!"cannot perform {repr st} from the model's frame"
       break
@@ -835,8 +974,9 @@ def replay (M : Machine S) (app : App S) (cfg : Config) (o : Options) (line : St
 `--gestures FILE` replays raw gesture lists, which the driver uses to shrink a failing sequence:
 one sequence per line, gestures separated by tabs, each one of `move X Y`, `down X Y CLICKS`,
 `up X Y`, `exit`, `key NAME MODS [CHAR]` (MODS comma-separated, or `-`), `text TEXT`,
-`marked START LEN TEXT`, `unmark`, `menu NAME`, `menuOpen PLACE`, `menuClose PLACE` or
-`menuSelect PLACE CLAIM KEY`. Text runs to the end of the gesture. -/
+`marked START LEN TEXT`, `unmark`, `menu NAME`, `menuOpen PLACE`, `menuClose PLACE`,
+`menuSelect PLACE CLAIM KEY`, `rightDown X Y`, `rightUp X Y`, `controlMenuSelect PLACE CLAIM KEY`,
+`controlMenuClose PLACE` or `menuBarSelect PLACE CLAIM KEY`. Text runs to the end of the gesture. -/
 
 def parseInt (s : String) : Int := s.toInt?.getD 0
 
@@ -846,6 +986,7 @@ def parseKey (name : String) (ch : String) : Option Key :=
   | "backspace" => some .backspace | "delete" => some .delete | "left" => some .left
   | "right" => some .right | "up" => some .up | "down" => some .down | "home" => some .home
   | "end" => some .finish | "pageUp" => some .pageUp | "pageDown" => some .pageDown
+  | "menu" => some .menu
   | "char" => ch.toList.head?.map Key.char
   | _ => none
 
@@ -871,6 +1012,13 @@ def parseGesture (g : String) : Option Gesture :=
   | "menuOpen" => some (.menuOpen (parseNat (ps[1]?.getD "0")))
   | "menuClose" => some (.menuClose (parseNat (ps[1]?.getD "0")))
   | "menuSelect" => some (.menuSelect (parseNat (ps[1]?.getD "0"))
+      ⟨parseNat (ps[2]?.getD "0"), parseNat (ps[3]?.getD "0")⟩)
+  | "rightDown" => some (.rightDown (pt 1))
+  | "rightUp" => some (.rightUp (pt 1))
+  | "controlMenuSelect" => some (.controlMenuSelect (parseNat (ps[1]?.getD "0"))
+      ⟨parseNat (ps[2]?.getD "0"), parseNat (ps[3]?.getD "0")⟩)
+  | "controlMenuClose" => some (.controlMenuClose (parseNat (ps[1]?.getD "0")))
+  | "menuBarSelect" => some (.menuBarSelect (parseNat (ps[1]?.getD "0"))
       ⟨parseNat (ps[2]?.getD "0"), parseNat (ps[3]?.getD "0")⟩)
   | _ => none
 

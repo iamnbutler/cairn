@@ -278,8 +278,8 @@ extension Commands {
     /// build/conformance/<App>.json and build/conformance/<App>/report.md. The app's window opens
     /// while it runs; it is never activated.
     public func conformance(_ args: [String]) throws(CairnError) {
-        let usage = "usage: cairn conformance [--app A] [--module M] [--product P] [--n N] [--length L] [--seed S]"
-        let a = try Arguments(args, options: ["--app", "--module", "--product", "--n", "--length", "--seed"], usage: usage)
+        let usage = "usage: cairn conformance [--app A] [--module M] [--product P] [--n N] [--length L] [--seed S] [--gestures FILE]"
+        let a = try Arguments(args, options: ["--app", "--module", "--product", "--n", "--length", "--seed", "--gestures"], usage: usage)
         let project = try project()
         guard shell.has("bun"), shell.has("clang") else { throw CairnError("cairn conformance needs bun and clang") }
         guard let linked = try buildLean(project, app: a.value("--app")) else {
@@ -318,6 +318,8 @@ extension Commands {
         try shell.run(["bun", project.cairn.appending(path: "tools/conformance/driver.ts").path,
                        "--app", app, "--n", a.value("--n") ?? "1000", "--length", a.value("--length") ?? "12",
                        "--seed", a.value("--seed") ?? "1", "--bin", bin.appending(path: products[0]).path, "--gen", gen,
-                       "--claims", out.appending(path: "claims.json").path, "--out", dir.path], in: project.root)
+                       "--claims", out.appending(path: "claims.json").path, "--out", dir.path]
+                      + (a.value("--gestures").map { ["--gestures", project.root.appending(path: $0).path] } ?? []),
+                      in: project.root)
     }
 }
