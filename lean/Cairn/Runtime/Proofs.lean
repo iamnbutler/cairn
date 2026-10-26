@@ -1021,7 +1021,7 @@ theorem route_surfaces (m : TextMetrics) (s : State S) (e : Event) :
   | _ =>
     rw [route.eq_def] <;> (try simp only [withPointer]) <;> (try split) <;> (try split) <;>
       (try split) <;> (try split) <;>
-      first | contradiction | simp [tab_surfaces, wheel_fst, keyScrollState_fst, secondaryDown_fst, keyRoute_fst, textRoute_fst]
+      first | contradiction | simp [tab_surfaces, wheel_fst, secondaryDown_fst, keyRoute_fst, textRoute_fst]
 
 /-- A context that delivered nothing still holds the app state `a`. -/
 def Kept (a : S) (c : Ctx S) : Prop := c.delivered = false → c.app = a

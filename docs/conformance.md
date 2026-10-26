@@ -178,7 +178,7 @@ The generator has two more modes:
   deletes. Submit is Enter.
 - `--gestures FILE` re-models raw gesture lists. The driver uses it to shrink failures, and
   replays a file of them as extra sequences with `cairn conformance --gestures FILE`. The
-  fixture's `conformance/menus.gestures` opens an item's menu with Shift-F10's key, Space, Return
+  fixture's `conformance/menus.gestures` opens an item's menu with the menu key, Space, Return
   and a right click and chooses from it.
 
 ## What is checked after every step
@@ -345,13 +345,28 @@ own Clear Done and Go menu. Opening a control's menu goes through the socket's `
 `rightUp`, a click on the ⋯ button, or the `menu` key. The driver waits for the frame that opens
 the menu before choosing from it, since the host builds the native menu from that frame.
 
-`cd test/fixture && cairn conformance --n 1000 --length 20 --seed 3 --gestures
-conformance/menus.gestures` ran on a second Mac (macOS 26.5, Apple silicon, debug build) and
-passed 1000/1000 walks, both gesture sequences and both flows (^8, and ^33, which finishes items
-from their menus and the app menu): 20,013 steps, 210,567 pixel probes. Runs per move: ^26 (Mark
-Done from the menu) 3 and ^27 (Delete) 5 in walks, besides the flow; ^31 (First Row) 1,507;
-^32 (No Row) 1,125. The model reaches an item's menu rarely, because a walk must add an item
-first. The flow and the gesture file cover it every run.
+Runs on a second Mac (macOS 26.5, Apple silicon, debug build):
+
+- Before the Like buttons (#260, #261), `cairn conformance --n 1000 --length 20 --seed 3` passed
+  1000/1000 walks and both flows, ^8 and ^33. ^33 finishes items from their menus and the app
+  menu. The run covered 20,013 steps and 210,567 pixel probes. Runs per move, with the ids the
+  moves have now:
+
+  | Move | Runs |
+  |---|---|
+  | Mark Done from the menu (^26) | 3 in walks |
+  | Delete (^27) | 5 in walks |
+  | First Row (^31) | 1,507 |
+  | No Row (^32) | 1,125 |
+
+  A walk reaches an item's menu rarely, because it must add an item first. The flow and the
+  gesture file cover the menu every run.
+- With the Like buttons, `cairn conformance --n 0 --gestures conformance/menus.gestures` passes
+  both gesture sequences and both flows (41 steps).
+- Random walks fail since the Like buttons, at the first step after a Like or Refresh press. The
+  fixture's requests go to `127.0.0.1:9`, and their failures come back as replies, with retries,
+  that the model's walk never sees. That needs a fake server in the conformance model, as
+  `cairn fuzz` has; it is not done yet.
 
 Before this run the driver had not been run since secure fields (#217): it modelled neither the
 `secure` flags nor `AXSecureTextField`, and failed every walk at its initial frame. Both are
