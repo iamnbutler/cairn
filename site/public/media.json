@@ -1,5 +1,33 @@
 [
   {
+    "video": "/m/videos/ed6f79cd26cde170.mp4",
+    "poster": "/m/videos/ed6f79cd26cde170.jpg",
+    "title": "Sky: muting an author mid-feed",
+    "caption": "⋯ on a post, Mute: the author's posts leave the feed and the post being read stays where it is; the status line offers Undo, which brings them back (cairn#254). The ⋯ menu is AppKit's and isn't in the offscreen render: the button shows pressed while it is open.",
+    "date": "2026-10-26",
+    "published": "2026-10-26T12:56:55Z",
+    "commit": "f9a66b65",
+    "width": 1200,
+    "height": 1640,
+    "seconds": 8,
+    "feature": false,
+    "milestone": "m5"
+  },
+  {
+    "video": "/m/videos/ccbf74382a6fcbcc.mp4",
+    "poster": "/m/videos/ccbf74382a6fcbcc.jpg",
+    "title": "Sky: Like and Repost, one refused",
+    "caption": "Sky against the fake PDS with its replies slowed by 1.4 s: Like shows at once and greys until the server confirms it, then Repost; the next Like is refused and rolls back, with the reason in the status line (cairn#254). Rendered offscreen from the engine's frames.",
+    "date": "2026-10-26",
+    "published": "2026-10-26T12:56:50Z",
+    "commit": "f9a66b65",
+    "width": 1200,
+    "height": 1640,
+    "seconds": 11,
+    "feature": false,
+    "milestone": "m5"
+  },
+  {
     "title": "Cairn 0.5.1",
     "text": [
       "Cairn 0.5.1 is out on the public registry: cairn conformance now holds the world (the debug socket's holdWorld stops the host's own clock, wake and requests, and the driver decides the time and every reply), benchmarks for Cairn.Optimistic up to 1,000,000 keys, and two fixes Sky needs: cairn fuzz no longer treats controls as hidden after a virtual list is replaced, and a held clock never steps an app with an empty batch.",
