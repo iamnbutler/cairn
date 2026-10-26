@@ -49,19 +49,16 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
 - **Its evidence.** What a claim reads as depends on the build that computed it. See
   [how much to trust a claim](/docs/reference/trust/).
 
-## v0.4.0 (unreleased)
+## v0.4.0
 
-A minor version: `Event`, `Action` and `Trigger` gain constructors, so exhaustive matches on
-them need new cases. The frame format is unchanged (frames 11, events 2).
+25 October 2026.
 
-- **Fuzz targets are scoped by package** ([#221](https://github.com/iamnbutler/cairn/issues/221)).
-  `fuzz_targets%` marks a machine from a dependency (cairn_atproto's session, in an app that
-  requires it) and names it with its package first, `cairn_atproto/Claims`, so it no longer
-  shares the app's `Claims` and shadows it. `lake exe fuzz --list` and `cairn fuzz` run only the
-  package's own machines; `--deps` adds the dependencies', and any target can be named. Two
-  targets with one name fail to compile, naming both, and `Cairn.Fuzz.main` refuses a list with
-  a name twice. `Target` gains `package` and `dependency`, and the report gains `package`. An app
-  that filtered `fuzz_targets%` to its own modules can drop the filter.
+A minor version: the runtime takes over scroll offsets, reports controls coming on screen and
+lays out virtual lists, and fuzz targets are scoped by package. Only one claim is added, but
+`Event`, `Action` and `Trigger` gain constructors and `Style` and `UI` gain fields, so apps may
+need the changes under "Upgrading to v0.4.0" below. The frame format is unchanged (frames 11,
+events 2).
+
 - **Scroll offsets belong to the runtime** ([#203](https://github.com/iamnbutler/cairn/issues/203)).
   A scroll box names itself with `Style.scrollRef`, and the runtime keeps its offset in
   `UI.scroll`, keyed by that ref; the view reads it with `ui.scrollOf ref`, or `ui.scrolling ref
@@ -69,49 +66,62 @@ them need new cases. The frame format is unchanged (frames 11, events 2).
   space/shift-space, Home/End and the arrows move the focused control's box or the one under the
   pointer; Tab scrolls the control it focuses into view. Every offset is clamped to `[0, max 0
   (content − viewport)]` after every step (`Runtime.step_clamped`), and a scroll never reaches
-  `update` (`Runtime.step_scroll`). See docs/runtime.md, "Scrolling".
+  `update` (`Runtime.step_scroll`). The host's scroll sign is a claim (^1012, below). See
+  docs/runtime.md, "Scrolling".
 - **`Action.appear`.** A control with `Control.appear := true` is reported to its move when it
-  comes on screen: after each batch, `steps` runs two `Event.frame`s, which deliver `appear c`
-  for each such control that has a visible part and didn't at the last frame
-  (`Runtime.appear_iff`). Moves answer it with `on appear`. `Event.frame` is the runtime's own
-  and has no wire encoding.
-- **The host's scroll sign is a claim.** New `assume` ^1012 (`hostScroll`): positive `dy` toward
-  the end of the content, 16 points a wheel line, fractions carried. Fuzzed as `pointer.scroll`.
-- **`cairn fuzz` scrolls**: wheel ticks and flicks at random points, far past either end, and
-  the scroll keys; it checks every box's offset against the clamp after every step and counts
-  `appear` moves under their claims.
-
+  comes on screen: after each batch, `Runtime.steps` runs `Runtime.frameEvents` (two
+  `Event.frame`s), which deliver `appear c` for each such control that has a visible part and
+  didn't at the last frame (`Runtime.appear_iff`). Moves answer it with `on appear`.
+  `Event.frame` is the runtime's own and has no wire encoding.
 - **Virtual lists** ([#204](https://github.com/iamnbutler/cairn/issues/204)). `VList.node`
   lays out only the rows of a list that meet its box, widened by an overscan, between two
   spacers, whatever the list's length: a runtime step costs about 0.17 ms at 1,000 rows and at
   100,000 (bench/vlist.md). Rows are estimated until laid; the runtime records the heights it
   lays them at in `UI.lists` and keeps the first row showing still when rows are inserted or
-  heights change above it. Theorems: the rows built are exactly those meeting the widened box
-  and no more than it can hold (`VList.node_rows`), one under the other with no gaps
-  (`Layout.vlist_stacked`), and the offset correction keeps the anchor still unless clamped
-  (`VList.record_keeps`). `Style` gains `rows`, `UI` gains `lists`, and `settleFuel` is 4. See
-  docs/layout.md and docs/runtime.md, "Virtual lists".
-- **`cairn fuzz` checks virtual lists**: presence is "enabled and its row is laid" for controls
-  keyed by their row, and every step checks each list's window against the specification, its
-  stacking, that its rows were laid at their recorded heights, and that the first row showing
-  stays still over operations that don't scroll.
+  heights change above it. `Style` gains `rows`, and `Runtime.settleFuel` goes from 2 to 4, so
+  the frame shown is laid at the heights just recorded. Theorems: the rows built are exactly those
+  meeting the widened box and no more than it can hold (`VList.node_rows`), one under the other
+  with no gaps (`Layout.vlist_stacked`), and the offset correction keeps the anchor still unless
+  clamped (`VList.record_keeps`). See docs/layout.md and docs/runtime.md, "Virtual lists".
+- **Fuzz targets are scoped by package** ([#221](https://github.com/iamnbutler/cairn/issues/221)).
+  `fuzz_targets%` marks a machine from a dependency (cairn_atproto's session, in an app that
+  requires it) and names it with its package first, `cairn_atproto/Claims`, so it no longer
+  shares the app's `Claims` and shadows it. `lake exe fuzz --list` and `cairn fuzz` run only the
+  package's own machines; `--deps` adds the dependencies', and any target can be named. Two
+  targets with one name fail to compile, naming both, and `Cairn.Fuzz.main` refuses a list with
+  a name twice. `Target` gains `package` and `dependency`, and the report gains `package`.
+- **`cairn fuzz` scrolls and checks virtual lists.** It sends wheel ticks and flicks at random
+  points, far past either end, and the scroll keys; after every step it checks every box's
+  offset against the clamp and each list's window against the specification, its stacking, that
+  its rows were laid at their recorded heights, and that the first row showing stays still over
+  operations that don't scroll. It counts `appear` moves under their claims, and for controls
+  keyed by their row, presence is "enabled and its row is laid".
 
-**Claims.** New `assume` ^1012. The fixture (scope `fixture`, unpublished) retires ^11 for ^15
-and adds ^14 and ^16; its scroll box becomes a virtual list of 10,000 rows of mixed height, ^15
-is retired for ^19 and ^20 (the rows stacked, and which rows are built), and ^17 and ^18 add rows
-at the head and the tail.
+**Claims.** New `assume` ^1012 (`hostScroll`): the host reports a positive `dy` toward the end
+of the content, 16 points a wheel line, fractions carried; fuzzed as `pointer.scroll`. Nothing is
+retired or moved. The test fixture (scope `fixture`, unpublished) retires ^11 for ^15 and adds
+^14 and ^16; its scroll box becomes a virtual list of 10,000 rows of mixed height, ^15 is retired
+for ^19 and ^20 (the rows stacked, and which rows are built), and ^17 and ^18 add rows at the
+head and the tail.
 
 ### Upgrading to v0.4.0
 
-- Exhaustive matches on `Event` need a `frame` case, on `Action` an `appear` case, and on
-  `Trigger` an `appear` case.
-- A view that scrolled a box by its own offset should name the box (`ui.scrolling ref style`)
-  and drop the offset from its state; an offset of its own still works, unclamped and unmoved by
-  the runtime.
-- Code that folds `Runtime.step` over a batch by hand to mirror `Runtime.steps` should append
-  `Runtime.frameEvents`.
-- Code that builds a `Style` or a `UI` with every field positionally needs `rows` and `lists`;
-  with named fields and defaults, nothing changes.
+Change the tag in the lakefile and `Package.swift`, then:
+
+- **New constructors.** Exhaustive matches on `Event` need a `frame` case, on `Action` an
+  `appear` case, and on `Trigger` an `appear` case.
+- **New fields.** `Style` gains `scrollRef` and `rows`, and `UI` gains `scroll` and `lists`, all
+  defaulted. Code that builds a `Style` or a `UI` with named fields needs nothing; code that
+  lists every field positionally needs the new ones.
+- **Scroll boxes.** A view that scrolled a box by an offset in its own state should name the box
+  (`ui.scrolling ref style`) and drop the offset; an offset of its own still works, unclamped and
+  unmoved by the runtime.
+- **Hand-rolled batches.** Code that folds `Runtime.step` over a batch to mirror `Runtime.steps`
+  should append `Runtime.frameEvents`. Code that calls `Runtime.settle` itself should pass
+  `Runtime.settleFuel` (now 4) rather than a literal.
+- **Fuzzing.** `cairn fuzz` and `lake exe fuzz --list` no longer run a dependency's machines;
+  add `--deps` to include them, or name a target (`cairn_atproto/Claims`). An app that filtered
+  `fuzz_targets%` to its own modules can drop the filter.
 
 ## v0.3.0
 
