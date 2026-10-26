@@ -49,6 +49,23 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
 - **Its evidence.** What a claim reads as depends on the build that computed it. See
   [how much to trust a claim](/docs/reference/trust/).
 
+## Unreleased (0.5.1)
+
+- **Conformance models the world** ([#264](https://github.com/iamnbutler/cairn/issues/264)).
+  `cairn conformance` now decides the time and every reply the running app hears, as
+  `cairn fuzz`'s host does: the debug socket's new `holdWorld` stops the host's own clock, wake
+  and requests, and the driver sends `clock` and `reply` events the generator chose. Requests
+  are answered from the app's `cairn fuzz` server (`Custom.server`), with replies in any order,
+  failed before or lost after it acted; a timer fires when a world step moves the clock to it.
+  An app passes its `Custom` to `Conformance.run` (`custom := …`); without one, every request is
+  answered `failed`. Under `holdWorld` the app runs no request at all. The
+  fixture's random walks pass again with its Like and Refresh buttons: 1,000 walks of 20 steps
+  plus both flows on a second Mac. The generator's check that a press delivers exactly that press
+  now sets aside an `appear` from the frame after it, as it does a `blur`. See
+  docs/conformance.md, "The world".
+
+No claim is new, retired, moved or changed.
+
 ## v0.5.0
 
 26 October 2026.

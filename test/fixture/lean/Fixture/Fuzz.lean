@@ -1,5 +1,7 @@
-import Fixture
-import Cairn.Fuzz.Rng
+module
+
+public import Fixture
+public import Cairn.Fuzz.Rng
 
 /-! # The fixture's fuzz setup: a server for the likes
 
@@ -16,7 +18,11 @@ flight shows what the server holds. So is ^24: such a post's count is the server
 accounts' likes when its view was served (`served`) plus the viewer's like the server holds. Fixture/LikeMutant.lean runs the same fuzz on the
 mutant that takes a lost write for a refused one, and checks that it fails.
 
-Not linked into the app: `Checks` imports it, and the fuzz executable imports `Checks`. -/
+Not linked into the app: `Checks` imports it, and the fuzz executable imports `Checks`. A module,
+so the conformance generator (Fixture/Conformance.lean) answers the app's requests from the same
+server. -/
+
+@[expose] public section
 
 namespace Fixture
 open Cairn Cairn.Fuzz

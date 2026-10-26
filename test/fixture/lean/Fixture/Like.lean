@@ -27,7 +27,8 @@ for a refused one and rolls back, which is wrong whenever the server applied the
 the reply was lost.
 
 Requests go to `127.0.0.1:9`, where nothing listens, so in the real app every write is lost and
-read back on a backoff; the server is the fuzzer's. -/
+read back on a backoff; the server is the fuzzer's, and conformance's: `cairn conformance` holds
+the app's requests and answers them from it (Cairn's docs/conformance.md, "The world"). -/
 
 @[expose] public section
 

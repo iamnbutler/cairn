@@ -26,8 +26,12 @@
 // build/conformance/<App>.json in the shape tools/map/evidence.ts reads and <App>/report.md, with a
 // shrunk, re-verified repro for each distinct failure.
 //
+// The app's world is the model's: the driver sends `holdWorld` first, then every clock and every
+// reply to the app's requests, as the generator decided them (docs/conformance.md, "The world").
+//
 // Privacy: input goes only into the app's own view through its socket (no CGEvent, no window
-// server); the app is never activated; only the pid this script started is ever signalled.
+// server); the app is never activated; it runs no request; only the pid this script started is
+// ever signalled.
 
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { createConnection, type Socket } from "node:net";
@@ -78,16 +82,26 @@ type Frame = {
 	controlMenu: { owner: string | null; items: unknown[] };
 };
 type Probe = { ref: string; at: [number, number]; expect: Color; own: boolean };
-type Gesture = { g: string; at?: [number, number]; clicks?: number; key?: string; mods?: string[]; char?: string; text?: string; sel?: [number, number]; name?: string; place?: number; id?: string; ref?: [number, number] };
+type Gesture = {
+	g: string; at?: [number, number]; clicks?: number; key?: string; mods?: string[]; char?: string; text?: string; sel?: [number, number]; name?: string; place?: number; id?: string; ref?: [number, number];
+	/** The world's gestures: a clock (`mono`, `wall`, `zone`) and a reply to request `request`. */
+	mono?: number; wall?: number; zone?: number; request?: number; reply?: Record<string, unknown>;
+	/** The gesture in the `--gestures` line format, when the generator writes it (the world's). */
+	line?: string;
+};
+type Time = { mono: number; wall: number; zone: number };
 type Step = {
-	label: string; move: { ref: string; claim: number; key: number; trigger: string } | null; gestures: Gesture[];
+	label: string;
+	/** A step of the world's, not a person's: `wake`, `answer`, `failedBefore` or `lostAfter`. */
+	host?: string | null;
+	move: { ref: string; claim: number; key: number; trigger: string } | null; gestures: Gesture[];
 	events: string[]; actions: { action: string; claim: number; ref: string; accepted: boolean }[];
 	effects: Record<string, unknown>[]; clipboard: string; frame: Frame; probes: Probe[]; findings: string[];
 	/** Known outcomes of open decisions, labelled (`T33: …`): not failures (the app did what the
 	 * model does), but reported so the map can say so. */
 	known?: string[];
 };
-type Sequence = { name: string; witness?: boolean; init: Frame; initProbes: Probe[]; stopped?: string | null; steps: Step[] };
+type Sequence = { name: string; witness?: boolean; clock?: Time; init: Frame; initProbes: Probe[]; stopped?: string | null; steps: Step[] };
 
 type Problem = { kind: string; detail: string };
 type StepResult = { problems: Problem[]; ms: number };
@@ -192,12 +206,17 @@ async function perform(c: Client, g: Gesture): Promise<number> {
 			return (await c.req({ cmd: "controlMenuClose" })).seq;
 		case "menuBarSelect":
 			return (await c.req({ cmd: "menuBarSelect", id: g.id })).seq;
+		case "clock":
+			return (await c.req({ cmd: "clock", mono: g.mono, wall: g.wall, zone: g.zone })).seq;
+		case "reply":
+			return (await c.req({ cmd: "reply", id: g.request, reply: g.reply })).seq;
 	}
 	throw new Error(`unknown gesture ${g.g}`);
 }
 
 /** The gesture in the generator's `--gestures` line format. */
 function gestureLine(g: Gesture): string {
+	if (g.line) return g.line;
 	switch (g.g) {
 		case "move": case "up": return `${g.g} ${g.at![0]} ${g.at![1]}`;
 		case "down": return `down ${g.at![0]} ${g.at![1]} ${g.clicks ?? 1}`;
@@ -354,7 +373,9 @@ type Stats = { steps: number; probes: number; pixelSource: Record<string, number
 
 async function runSequence(c: Client, seq: Sequence, clear: Color, stats: Stats, stopAtFirst = true):
 	Promise<{ failedAt: number | null; problems: Problem[]; results: StepResult[] }> {
-	const r = await c.req({ cmd: "restart" });
+	let r = await c.req({ cmd: "restart" });
+	// The app boots on the sequence's first clock, as the model does (docs/conformance.md, "The world").
+	if (seq.clock) r = await c.req({ cmd: "clock", ...seq.clock });
 	const w = await c.req({ cmd: "wait", seq: r.seq });
 	const init: Problem[] = [];
 	if (w.divergences.length) init.push({ kind: "shadow", detail: w.divergences.join("; ") });
@@ -459,6 +480,8 @@ async function main() {
 	const t0 = performance.now();
 	const c = await launch();
 	const hello = await c.req({ cmd: "hello" });
+	// The model decides the time and every reply: the host sends neither of its own from now on.
+	await c.req({ cmd: "holdWorld" });
 	const clear: Color = hello.clear;
 	console.log(`conformance: ${APP} pid ${hello.pid}, ${hello.size.join("x")} @${hello.scale / 100}x, socket ${sockPath}`);
 
@@ -475,6 +498,8 @@ async function main() {
 	let sequences = 0, passed = 0, actions = 0;
 	const triggers = new Map<string, number>();
 	const known = new Map<string, Known>();
+	/** The world's steps by kind (`answer`, `failedBefore`, `lostAfter`, `wake`). */
+	const world = new Map<string, number>();
 
 	const record = (seq: Sequence, res: Awaited<ReturnType<typeof runSequence>>) => {
 		sequences++;
@@ -492,7 +517,10 @@ async function main() {
 				e.claims[ref] = (e.claims[ref] ?? 0) + 1;
 				known.set(label, e);
 			}
-			if (st.move) {
+			if (st.host) {
+				world.set(st.host, (world.get(st.host) ?? 0) + 1);
+				bump("(world)", note);
+			} else if (st.move) {
 				bump(`^${st.move.claim}`, note);
 				const k = `^${st.move.claim} ${st.move.trigger}`;
 				triggers.set(k, (triggers.get(k) ?? 0) + 1);
@@ -501,7 +529,8 @@ async function main() {
 		if (res.failedAt === null) passed++;
 		else {
 			const st = seq.steps[res.failedAt];
-			const signature = `${res.problems.map((p) => p.kind).join("+")} ${st?.move ? `^${st.move.claim} ${st.move.trigger}` : st?.label ?? "init"}`;
+			const what = st?.host ? `world ${st.host}` : st?.move ? `^${st.move.claim} ${st.move.trigger}` : st?.label ?? "init";
+			const signature = `${res.problems.map((p) => p.kind).join("+")} ${what}`;
 			failures.push({ seq, at: res.failedAt, problems: res.problems, signature });
 		}
 	};
@@ -588,6 +617,7 @@ async function main() {
 		sequences: { walks: sequences, passed, failed: sequences - passed, flows: flows.length, flowsPassed: flows.filter((f) => f.pass).length },
 		steps: stats.steps, actions, probes: stats.probes, pixelSource: stats.pixelSource,
 		plainUi: tally.get("(plain UI)") ?? { runs: 0, fails: 0 },
+		world: Object.fromEntries([...world].sort()),
 		known: Object.fromEntries([...known].sort()),
 		triggers: Object.fromEntries([...triggers].sort()),
 		timing: { totalSeconds: Math.round(totalMs / 100) / 10, walkSeconds: Math.round(walkMs / 100) / 10, stepMs: { p50: pct(0.5), p90: pct(0.9), p99: pct(0.99), max: pct(1) } },
@@ -599,6 +629,7 @@ async function main() {
 	const md: string[] = [`# Conformance: ${APP}`, "",
 		`Commit ${commit}, seed ${SEED}, ${N} walks of ${LENGTH} steps, ${flows.length} flow witnesses.`, "",
 		`- Walks: ${passed}/${sequences} passed; ${stats.steps} steps, ${actions} actions, ${stats.probes} pixel probes (${Object.entries(stats.pixelSource).map(([k, v]) => `${k} ${v}`).join(", ")}).`,
+		`- World: ${[...world].sort().map(([k, n]) => `${k} ${n}`).join(", ") || "none"}.`,
 		`- Flows: ${flows.map((f) => `${f.ref} ${f.pass ? "pass" : "FAIL"}`).join(", ") || "none"}.`,
 		`- Time: ${summary.timing.totalSeconds} s in all; per step p50 ${pct(0.5)} ms, p90 ${pct(0.9)} ms, max ${pct(1)} ms.`, "",
 		"| Claim | Result | Runs | Note |", "|---|---|---|---|",

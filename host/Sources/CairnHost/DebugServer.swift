@@ -225,6 +225,25 @@ public final class DebugServer: @unchecked Sendable {
             return ["title": title, "pid": Int(getpid()), "window": number, "size": [w, h], "scale": scale,
                     "clear": [Int(c.r), Int(c.g), Int(c.b), Int(c.a)], "seq": Int(engine.lastSeq), "protocol": 1]
 
+        case "holdWorld":
+            // The driver's world from now on: no clock of the host's own and no request run.
+            // It sends the time (`clock`) and every reply (`reply`), as the model decides.
+            engine.holdClock()
+            engine.world.holdRequests()
+            return ["seq": Int(engine.lastSeq)]
+
+        case "clock":
+            let t = Time(mono: (req["mono"] as? NSNumber)?.uint64Value ?? 0,
+                         wall: (req["wall"] as? NSNumber)?.int64Value ?? 0,
+                         zone: (req["zone"] as? NSNumber)?.int32Value ?? 0)
+            return ["seq": Int(engine.send([.clock(t)]))]
+
+        case "reply":
+            guard let id = (req["id"] as? NSNumber)?.uint32Value, let r = req["reply"] as? [String: Any]
+            else { throw DebugError("reply needs id and reply") }
+            guard let rep = DebugJSON.reply(r) else { throw DebugError("not a reply: \(r)") }
+            return ["seq": Int(engine.send([.reply(id: id, rep)]))]
+
         case "pointer":
             let type = req["type"] as? String ?? ""
             let p = type == "exit" ? Point(x: 0, y: 0) : try Self.point(req["at"])

@@ -35,10 +35,16 @@ test/fixture/lean/Fixture/Conformance.lean:
 module
 public import Conformance.Gen
 public import Fixture.Abi
+public import Fixture.Fuzz
 @[export cairn_conformance_run]
 public def Fixture.Conformance.run (args : List String) : IO UInt32 :=
-  _root_.Conformance.run Fixture.machine Fixture.app Fixture.cfg args
+  _root_.Conformance.run Fixture.machine Fixture.app Fixture.cfg args (custom := Fixture.fuzz)
 ```
+
+`custom` is optional. It is the app's `cairn fuzz` hook (`Cairn.Fuzz.Custom`, docs/fuzz.md), and
+its `server` and `replies` answer the app's requests ("The world", below). The module that
+defines it must be a `module` too. `cairn conformance` links the package's own modules that the
+generator imports and the app's library doesn't hold, such as the fixture's `Fixture.Fuzz`.
 
 The app package runs `cairn conformance` (docs/cli.md, "Checks"). Its module is
 `<App>.Conformance` by default, in a `lean_lib` of its own declared after the app's (whose root
@@ -76,6 +82,9 @@ are one JSON object per line, and every reply carries `ok`, plus `error` when `o
 | `{"cmd":"menuBar"}` | | the app's own menu bar items as AppKit holds them: `appItems` at the top of the app menu, `menus` in the bar, and the whole main menu (`items`) |
 | `{"cmd":"menuBarSelect","id":"^N#K"}` | a menu bar item through `performActionForItem(at:)` | `seq` |
 | `{"cmd":"menuBarKey","char":"r","mods":["command"]}` | the key event offered to the main menu (`performKeyEquivalent(with:)`) | `seq`, `handled` |
+| `{"cmd":"holdWorld"}` | from now on the host sends no clock of its own, arms no wake and runs no request: the driver sends both ("The world", below) | `seq` |
+| `{"cmd":"clock","mono":m,"wall":w,"zone":z}` | `.clock` with that time | `seq` |
+| `{"cmd":"reply","id":n,"reply":R}` | `.reply` to request `n` with `R`: `{"done":true}`, `{"bytes":HEX}`, `{"http":status,"headers":[[n,v]],"body":HEX}`, `{"failed":"timeout","message":…}`, `{"names":[…]}`, `{"app":pid,"name":…}`, `{"flag":b}` or `{"image":[w,h]}` | `seq` |
 | `{"cmd":"surfaces"}` | | activation policy, key window, main menu, and each surface: kind, place, shown, and its AppKit object (status item, panel properties and frame) |
 | `{"cmd":"wait","seq":n}` | waits until a frame through input `n` is applied on the main thread | the frame's `seq`, `version`, effects run since the last wait, new text-shadow divergences |
 | `{"cmd":"frame"}` | | the applied frame, decoded, in the generator's JSON shape |
@@ -107,7 +116,7 @@ screen capture.
 
 ### Hooks
 
-The socket changes four things about the app:
+The socket changes four things about the app, and a fifth when the driver asks:
 
 - **Effects.** An effect hook records every effect. A clipboard write goes to a private
   pasteboard (`cairn.debug.<pid>`) instead of the general one, and paste reads from it, so the
@@ -120,6 +129,11 @@ The socket changes four things about the app:
 - **Renderer.** `DebugRenderer` replaces `MetalRenderer`. It uses the same `Renderer`, clear
   colour and layer setup, and blits each drawable into a shared texture before presenting it.
   The render thread waits for the GPU on each frame, which only happens under the socket.
+- **The world** (`holdWorld`, which the driver sends first). `Engine.holdClock`: no batch starts
+  with the host's time and no wake is armed, so time moves only with the driver's `clock`
+  events. `World.holdRequests`: no request is run, so no request reaches the network, the disk
+  or another app, and every reply is the driver's `reply`. Each is an event with a seq, so `wait`
+  covers it like input. Subscriptions still run.
 
 ## The generator
 
@@ -157,6 +171,9 @@ The walk picks a group uniformly, where a group is one control's trigger, one co
 or plain UI. Editing the
 focused field gets three times the weight. Then the walk picks a choice within the group.
 
+The world's moves ("The world", below) are one more group, weighted by what is outstanding (one
+per request and one for a timer, up to six), so replies come about as fast as requests.
+
 For each step the generator records:
 
 - the gestures;
@@ -180,6 +197,37 @@ The generator has two more modes:
   replays a file of them as extra sequences with `cairn conformance --gestures FILE`. The
   fixture's `conformance/menus.gestures` opens an item's menu with the menu key, Space, Return
   and a right click and chooses from it.
+
+## The world
+
+A running app hears more than a person: the time, and replies to its requests. Without a model
+of them, the app's replies (and timers firing on the real clock) arrive between steps where the
+model has none, and the walk fails at the next step. So the driver holds the world
+(`holdWorld`), and the generator decides it, as `cairn fuzz`'s host does (docs/fuzz.md, "The
+host" and "A server"):
+
+- **Time.** Each sequence starts at `startTime` (mono 1000 ms): the driver sends it after the
+  restart and the app boots on it, as the model does. When the model's frame has a `wake` (a
+  timer is set), a world step moves the clock to it and the due timers fire in both.
+- **Replies.** The generator keeps the requests the app sent and not yet answered, from the
+  model's effects. A world step answers one, in any order: from the app's `Custom.server` if it
+  takes the request, else from `Custom.replies`, else `failed other "conformance"`. With a
+  server, its world is kept through the sequence (`Server.init` from the walk's seed), and a
+  step can also fail a request before it reaches the server (the world unchanged) or lose its
+  reply after (the world changed); both are the server's `fault`. A cancelled request is
+  answered `failed other "cancelled"`, or with the server's reply if it had already handled it.
+- **On the way.** `serve` (another request reaching the server, its reply held back) and `tick`
+  (the server's world acting on its own) change only the server's world, so they happen on the
+  way to a world step, at the server's `ticks` weight and one time in four.
+
+Each world step is one gesture, `clock` or `reply`, which the driver sends and `--gestures`
+lines carry (`clock MONO WALL ZONE`, `reply ID http STATUS BODY`, `reply ID failed FAULT
+MESSAGE`, …; bytes in hex). A shrunk repro replays without the server: its replies are in the
+lines. The results file counts world steps by kind (`world`: `answer`, `failedBefore`,
+`lostAfter`, `wake`), and `report.md` lists them.
+
+What the generator doesn't check: the server's claims (`Server.checks`); `cairn fuzz` checks
+those against the same server, and conformance checks that the app does what the model does.
 
 ## What is checked after every step
 
@@ -363,10 +411,22 @@ Runs on a second Mac (macOS 26.5, Apple silicon, debug build):
   gesture file cover the menu every run.
 - With the Like buttons, `cairn conformance --n 0 --gestures conformance/menus.gestures` passes
   both gesture sequences and both flows (55 steps).
-- Random walks fail since the Like buttons, at the first step after a Like or Refresh press. The
-  fixture's requests go to `127.0.0.1:9`, and their failures come back as replies, with retries,
-  that the model's walk never sees. That needs a fake server in the conformance model, as
-  `cairn fuzz` has; it is not done yet.
+- With the Like buttons and the world modelled (#264), `cairn conformance --n 1000 --length 20
+  --seed 3 --gestures conformance/menus.gestures` passed 1002/1002 sequences (the walks and the
+  two gesture sequences) and both flows: 20,055 steps, 437,061 pixel probes, 171.6 s, per step
+  p50 8.3 ms. Its world steps: 1,186 answers, 232 failed before, 216 lost after, and 112 clocks
+  reaching a timer (the read-back backoff and Flash). Like (^21) ran 3,171 times and Refresh
+  (^23) 783. The requests are answered by `cairn fuzz`'s fake server (Fixture/Fuzz.lean), so a
+  lost reply is read back on the app as in the model.
+
+  Before the world was modelled, walks failed at the first step after a Like or Refresh press:
+  the requests went to `127.0.0.1:9`, and their failures came back as replies, with retries, that
+  the model never saw. A run of that driver with every `HTTP 200` sent to the app as a 429 fails
+  17 of 30 walks on `frame` and `ax`, shrunk to repros of four or five lines.
+
+  The same run also fixed the generator's own check that a press delivers exactly that press: a
+  press of End (^42) that scrolls the list's end line into view delivers `appear ^16` in the
+  frame events after it, which the check now sets aside, as it does a `blur`.
 
 Before this run the driver had not been run since secure fields (#217): it modelled neither the
 `secure` flags nor `AXSecureTextField`, and failed every walk at its initial frame. Both are
@@ -386,6 +446,10 @@ modelled now.
   (docs/trusted.md, "Also trusted, not fuzzed").
 - **Timing.** Every step waits for its frame, so coalescing and input racing ahead of frames are
   not exercised.
+- **The real world.** Under `holdWorld` the host's request handlers, its clock and its wake
+  timer don't run; the selftest, the trusted fuzz (`make fuzz-trusted`) and the host's tests cover
+  them. Subscriptions (`every`, `watchFile`, …) still run on the real clock, unmodelled: an app
+  with one would see events the model doesn't.
 - **Things Basics and Counter lack.** Scrolling, live resize and window focus (`UI.windowFocused`) aren't
   exercised.
 - **The compositor.** Pixels come from the presented drawable, not the screen.
