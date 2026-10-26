@@ -8,6 +8,28 @@
 			"readme": null,
 			"versions": [
 				{
+					"version": "0.5.1",
+					"kind": "lib",
+					"swift": true,
+					"revision": "3616efdef02abe244dbe13c0a650a6f2898d35e2",
+					"tag": "v0.5.1",
+					"date": "2026-10-26T12:06:14.000Z",
+					"toolchain": "leanprover/lean4:v4.35.0",
+					"yanked": false,
+					"publisher": "iamnbutler",
+					"description": "Native macOS apps whose behaviour is proved in Lean.",
+					"license": "MIT",
+					"dependencies": {},
+					"libs": [
+						"Cairn"
+					],
+					"claims": {
+						"active": 78,
+						"retired": 6,
+						"moved": 115
+					}
+				},
+				{
 					"version": "0.5.0",
 					"kind": "lib",
 					"swift": true,
@@ -309,6 +331,1401 @@
 				}
 			],
 			"claims": {
+				"0.5.1": [
+					{
+						"id": 1,
+						"kind": "move",
+						"status": "moved:cairn_examples",
+						"statement": "1c77a9411d162684",
+						"title": "Increment"
+					},
+					{
+						"id": 2,
+						"kind": "move",
+						"status": "moved:cairn_examples",
+						"statement": "5ace86b109a74bf5",
+						"title": "Reset"
+					},
+					{
+						"id": 3,
+						"kind": "place",
+						"status": "moved:cairn_examples",
+						"statement": "-",
+						"title": "Counter window"
+					},
+					{
+						"id": 4,
+						"kind": "flow",
+						"status": "moved:cairn_examples",
+						"statement": "8e8ea87eb87cc917",
+						"title": "Count to three"
+					},
+					{
+						"id": 5,
+						"kind": "flow",
+						"status": "moved:cairn_examples",
+						"statement": "a3b193af912012c1",
+						"title": "Start over"
+					},
+					{
+						"id": 6,
+						"kind": "invariant",
+						"status": "retired",
+						"statement": "5de1d6cd863262b8",
+						"title": "Moves never leave a press in progress"
+					},
+					{
+						"id": 7,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "The host reports clicks where they happen"
+					},
+					{
+						"id": 101,
+						"kind": "move",
+						"status": "moved:cairn_examples",
+						"statement": "5f27d0063f678333",
+						"title": "Type a new item"
+					},
+					{
+						"id": 102,
+						"kind": "move",
+						"status": "moved:cairn_examples",
+						"statement": "e2ed8588311ec433",
+						"title": "Add"
+					},
+					{
+						"id": 103,
+						"kind": "move",
+						"status": "moved:cairn_examples",
+						"statement": "c4c2223fb9657a1e",
+						"title": "Toggle an item"
+					},
+					{
+						"id": 104,
+						"kind": "move",
+						"status": "moved:cairn_examples",
+						"statement": "754e2e0767b91a5b",
+						"title": "Delete an item"
+					},
+					{
+						"id": 105,
+						"kind": "invariant",
+						"status": "moved:cairn_examples",
+						"statement": "50c2cabcfdfc64a9",
+						"title": "Items left"
+					},
+					{
+						"id": 106,
+						"kind": "place",
+						"status": "moved:cairn_examples",
+						"statement": "-",
+						"title": "Basics window"
+					},
+					{
+						"id": 107,
+						"kind": "flow",
+						"status": "moved:cairn_examples",
+						"statement": "ed3fc7beee378157",
+						"title": "Add two items and finish one"
+					},
+					{
+						"id": 108,
+						"kind": "flow",
+						"status": "moved:cairn_examples",
+						"statement": "6e9cfd8339810b4c",
+						"title": "Blank text adds nothing"
+					},
+					{
+						"id": 109,
+						"kind": "flow",
+						"status": "moved:cairn_examples",
+						"statement": "1ee050c6a434a9a5",
+						"title": "Add an item, then delete it"
+					},
+					{
+						"id": 201,
+						"kind": "place",
+						"status": "moved:cairn_examples",
+						"statement": "-",
+						"title": "Todos window"
+					},
+					{
+						"id": 202,
+						"kind": "move",
+						"status": "moved:cairn_examples",
+						"statement": "20a9247beb8fd04e",
+						"title": "New todo"
+					},
+					{
+						"id": 203,
+						"kind": "move",
+						"status": "moved:cairn_examples",
+						"statement": "aa45340689c8dfd6",
+						"title": "Mark all as complete"
+					},
+					{
+						"id": 204,
+						"kind": "move",
+						"status": "moved:cairn_examples",
+						"statement": "bfb82886ecadd91c",
+						"title": "Complete a todo"
+					},
+					{
+						"id": 205,
+						"kind": "move",
+						"status": "moved:cairn_examples",
+						"statement": "2943b794f7d59288",
+						"title": "Edit a todo"
+					},
+					{
+						"id": 206,
+						"kind": "move",
+						"status": "moved:cairn_examples",
+						"statement": "6f4391a930943988",
+						"title": "Delete a todo"
+					},
+					{
+						"id": 207,
+						"kind": "move",
+						"status": "moved:cairn_examples",
+						"statement": "7896f5dd84b27f5a",
+						"title": "Edit field"
+					},
+					{
+						"id": 208,
+						"kind": "move",
+						"status": "moved:cairn_examples",
+						"statement": "10ba46099a3da7d8",
+						"title": "All"
+					},
+					{
+						"id": 209,
+						"kind": "move",
+						"status": "moved:cairn_examples",
+						"statement": "612f901d09bb6768",
+						"title": "Active"
+					},
+					{
+						"id": 210,
+						"kind": "move",
+						"status": "moved:cairn_examples",
+						"statement": "853d563eb0439f09",
+						"title": "Completed"
+					},
+					{
+						"id": 211,
+						"kind": "move",
+						"status": "moved:cairn_examples",
+						"statement": "d9ddae254bdeffa6",
+						"title": "Clear completed"
+					},
+					{
+						"id": 212,
+						"kind": "invariant",
+						"status": "moved:cairn_examples",
+						"statement": "8b1d23f718f063ec",
+						"title": "Counter and ids"
+					},
+					{
+						"id": 213,
+						"kind": "invariant",
+						"status": "retired",
+						"statement": "cdded3b5839c217c",
+						"title": "The list is the filter applied to the todos"
+					},
+					{
+						"id": 214,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "The host reports a double click as a second click"
+					},
+					{
+						"id": 215,
+						"kind": "move",
+						"status": "retired",
+						"statement": "-",
+						"title": "Back through filters"
+					},
+					{
+						"id": 216,
+						"kind": "flow",
+						"status": "moved:cairn_examples",
+						"statement": "059a40708193b6f5",
+						"title": "Add two todos and complete one"
+					},
+					{
+						"id": 217,
+						"kind": "flow",
+						"status": "moved:cairn_examples",
+						"statement": "db76efd1c499092d",
+						"title": "Blank text adds nothing"
+					},
+					{
+						"id": 218,
+						"kind": "flow",
+						"status": "moved:cairn_examples",
+						"statement": "0adb86bf72541928",
+						"title": "Edit a todo and save with Enter"
+					},
+					{
+						"id": 219,
+						"kind": "flow",
+						"status": "moved:cairn_examples",
+						"statement": "49af08f7a1c67a0b",
+						"title": "Saving a blank edit deletes the todo"
+					},
+					{
+						"id": 220,
+						"kind": "flow",
+						"status": "moved:cairn_examples",
+						"statement": "b646e7f81edd3bef",
+						"title": "Escape cancels an edit"
+					},
+					{
+						"id": 221,
+						"kind": "flow",
+						"status": "moved:cairn_examples",
+						"statement": "251baf03d4d2fb06",
+						"title": "The Active filter hides completed todos"
+					},
+					{
+						"id": 222,
+						"kind": "flow",
+						"status": "moved:cairn_examples",
+						"statement": "b0d8d8a6a65e2c5f",
+						"title": "Clear completed"
+					},
+					{
+						"id": 223,
+						"kind": "flow",
+						"status": "moved:cairn_examples",
+						"statement": "36d2b8e708c4eceb",
+						"title": "Mark all as complete, then undo it"
+					},
+					{
+						"id": 224,
+						"kind": "flow",
+						"status": "moved:cairn_examples",
+						"statement": "06954be5c9e714a8",
+						"title": "A new todo under the Completed filter"
+					},
+					{
+						"id": 225,
+						"kind": "invariant",
+						"status": "retired",
+						"statement": "7ae77f5f10c146de",
+						"title": "The list is the filter applied to the todos"
+					},
+					{
+						"id": 226,
+						"kind": "invariant",
+						"status": "moved:cairn_examples",
+						"statement": "7ae77f5f10c146de",
+						"title": "The list is the filter applied to the todos"
+					},
+					{
+						"id": 301,
+						"kind": "place",
+						"status": "moved:yap",
+						"statement": "-",
+						"title": "Menu bar menu"
+					},
+					{
+						"id": 302,
+						"kind": "move",
+						"status": "moved:yap",
+						"statement": "64ec1c59a4b05b88",
+						"title": "Copy Last Transcript"
+					},
+					{
+						"id": 303,
+						"kind": "move",
+						"status": "moved:yap",
+						"statement": "b2465772ee2b99fb",
+						"title": "Recent transcript"
+					},
+					{
+						"id": 304,
+						"kind": "move",
+						"status": "moved:yap",
+						"statement": "c142e008893d9784",
+						"title": "Keep Transcripts"
+					},
+					{
+						"id": 305,
+						"kind": "move",
+						"status": "moved:yap",
+						"statement": "c6c077ae05ccd979",
+						"title": "Press Return After Dictating"
+					},
+					{
+						"id": 306,
+						"kind": "move",
+						"status": "moved:yap",
+						"statement": "0778accdbfbdc224",
+						"title": "Dictate with Key"
+					},
+					{
+						"id": 307,
+						"kind": "move",
+						"status": "moved:yap",
+						"statement": "38eb518eebb34d2e",
+						"title": "Open Transcripts Folder"
+					},
+					{
+						"id": 308,
+						"kind": "move",
+						"status": "moved:yap",
+						"statement": "3ae37860f0471301",
+						"title": "Edit Dictionary"
+					},
+					{
+						"id": 309,
+						"kind": "move",
+						"status": "moved:yap",
+						"statement": "bd78e8985f7ae69c",
+						"title": "Edit Settings"
+					},
+					{
+						"id": 310,
+						"kind": "move",
+						"status": "moved:yap",
+						"statement": "affcac8293e81fcf",
+						"title": "Grant Accessibility Access"
+					},
+					{
+						"id": 311,
+						"kind": "invariant",
+						"status": "moved:yap",
+						"statement": "84588bbf55ad1fbb",
+						"title": "A shortcut never sends"
+					},
+					{
+						"id": 312,
+						"kind": "invariant",
+						"status": "moved:yap",
+						"statement": "18e8457492069889",
+						"title": "Hold to talk, tap to latch: 300 ms"
+					},
+					{
+						"id": 313,
+						"kind": "invariant",
+						"status": "moved:yap",
+						"statement": "9c42834e776e30d9",
+						"title": "One recording at a time"
+					},
+					{
+						"id": 314,
+						"kind": "invariant",
+						"status": "moved:yap",
+						"statement": "233b3e899a2c6986",
+						"title": "Every recording ends"
+					},
+					{
+						"id": 315,
+						"kind": "invariant",
+						"status": "moved:yap",
+						"statement": "9fe828ced9a46264",
+						"title": "Kept before it is typed"
+					},
+					{
+						"id": 316,
+						"kind": "invariant",
+						"status": "moved:yap",
+						"statement": "4a3b47a7175b2e76",
+						"title": "A failed type is kept and flagged"
+					},
+					{
+						"id": 317,
+						"kind": "invariant",
+						"status": "moved:yap",
+						"statement": "6e0b8c52e2765477",
+						"title": "Late and cancelled replies never type"
+					},
+					{
+						"id": 318,
+						"kind": "invariant",
+						"status": "moved:yap",
+						"statement": "cb4553cb7d385772",
+						"title": "Each clip is typed at most once"
+					},
+					{
+						"id": 319,
+						"kind": "invariant",
+						"status": "moved:yap",
+						"statement": "03fd6d67afab2dfd",
+						"title": "Fixes replace whole words"
+					},
+					{
+						"id": 320,
+						"kind": "invariant",
+						"status": "moved:yap",
+						"statement": "37f2bf6dc88c9211",
+						"title": "Retention never deletes today"
+					},
+					{
+						"id": 321,
+						"kind": "invariant",
+						"status": "moved:yap",
+						"statement": "f7324b1b0da1fb16",
+						"title": "Only the first 25 terms are sent"
+					},
+					{
+						"id": 322,
+						"kind": "invariant",
+						"status": "moved:yap",
+						"statement": "e8ab42042293136c",
+						"title": "Recent Transcripts holds five"
+					},
+					{
+						"id": 323,
+						"kind": "invariant",
+						"status": "moved:yap",
+						"statement": "40f5c919d3a62ac0",
+						"title": "Too short, silent or nowhere to type: never sent"
+					},
+					{
+						"id": 330,
+						"kind": "assume",
+						"status": "moved:yap",
+						"statement": "-",
+						"title": "The host reports the dictation key and every other key"
+					},
+					{
+						"id": 331,
+						"kind": "assume",
+						"status": "moved:yap",
+						"statement": "-",
+						"title": "The host delivers the ticks it is asked for"
+					},
+					{
+						"id": 332,
+						"kind": "assume",
+						"status": "moved:yap",
+						"statement": "-",
+						"title": "The host answers requests by id, in order of commands"
+					},
+					{
+						"id": 333,
+						"kind": "assume",
+						"status": "moved:yap",
+						"statement": "-",
+						"title": "The host reports the microphone faithfully"
+					},
+					{
+						"id": 334,
+						"kind": "assume",
+						"status": "moved:yap",
+						"statement": "-",
+						"title": "The host transcribes the samples it was asked for"
+					},
+					{
+						"id": 335,
+						"kind": "assume",
+						"status": "moved:yap",
+						"statement": "-",
+						"title": "The host types into the app it was given"
+					},
+					{
+						"id": 336,
+						"kind": "assume",
+						"status": "moved:yap",
+						"statement": "-",
+						"title": "The host reports config.json and dictionary.txt when they change"
+					},
+					{
+						"id": 337,
+						"kind": "assume",
+						"status": "moved:yap",
+						"statement": "-",
+						"title": "The host lists day files and today by the local calendar"
+					},
+					{
+						"id": 340,
+						"kind": "flow",
+						"status": "moved:yap",
+						"statement": "b4b80b3cb0e6c044",
+						"title": "Turn Dictate with Key off"
+					},
+					{
+						"id": 341,
+						"kind": "flow",
+						"status": "moved:yap",
+						"statement": "62efef256b7e50b2",
+						"title": "Keep Transcripts off and on again"
+					},
+					{
+						"id": 342,
+						"kind": "move",
+						"status": "moved:yap",
+						"statement": "d442b5898c12ab24",
+						"title": "Quit Yap (Cairn)"
+					},
+					{
+						"id": 343,
+						"kind": "move",
+						"status": "moved:yap",
+						"statement": "a64749d31c1646a5",
+						"title": "Grant Microphone Access"
+					},
+					{
+						"id": 344,
+						"kind": "move",
+						"status": "moved:yap",
+						"statement": "9f7ae1916a6c4e2f",
+						"title": "Open the menu"
+					},
+					{
+						"id": 345,
+						"kind": "place",
+						"status": "moved:yap",
+						"statement": "-",
+						"title": "Overlay panel"
+					},
+					{
+						"id": 346,
+						"kind": "invariant",
+						"status": "moved:yap",
+						"statement": "a3674441bc4af0a8",
+						"title": "The original Yap keeps its key"
+					},
+					{
+						"id": 347,
+						"kind": "invariant",
+						"status": "moved:yap",
+						"statement": "3dd97bf89059d643",
+						"title": "A mark waits for the appends"
+					},
+					{
+						"id": 348,
+						"kind": "assume",
+						"status": "moved:yap",
+						"statement": "-",
+						"title": "The host reports the microphone's start or its failure"
+					},
+					{
+						"id": 349,
+						"kind": "invariant",
+						"status": "moved:yap",
+						"statement": "dcbeb79447854fea",
+						"title": "The overlay waits for the microphone"
+					},
+					{
+						"id": 350,
+						"kind": "invariant",
+						"status": "moved:yap",
+						"statement": "63efc19eb6d9a3eb",
+						"title": "Keys wait for the microphone"
+					},
+					{
+						"id": 351,
+						"kind": "invariant",
+						"status": "moved:yap",
+						"statement": "7460add6dfa50672",
+						"title": "Hold to talk, tap to latch: 300 ms, timed as the original"
+					},
+					{
+						"id": 399,
+						"kind": "place",
+						"status": "moved:yap",
+						"statement": "-",
+						"title": "Overlay panel"
+					},
+					{
+						"id": 401,
+						"kind": "move",
+						"status": "moved:cairn_examples",
+						"statement": "1b77afe95aa65f24",
+						"title": "Start / Stop"
+					},
+					{
+						"id": 402,
+						"kind": "move",
+						"status": "moved:cairn_examples",
+						"statement": "6750765048a4300d",
+						"title": "Lap"
+					},
+					{
+						"id": 403,
+						"kind": "move",
+						"status": "moved:cairn_examples",
+						"statement": "b3e0b25d90f70b6f",
+						"title": "Reset"
+					},
+					{
+						"id": 404,
+						"kind": "move",
+						"status": "moved:cairn_examples",
+						"statement": "36cac6322fba109e",
+						"title": "Save laps"
+					},
+					{
+						"id": 405,
+						"kind": "move",
+						"status": "moved:cairn_examples",
+						"statement": "2585bb4173dd9b28",
+						"title": "Load laps"
+					},
+					{
+						"id": 406,
+						"kind": "place",
+						"status": "moved:cairn_examples",
+						"statement": "-",
+						"title": "Clock window"
+					},
+					{
+						"id": 407,
+						"kind": "flow",
+						"status": "moved:cairn_examples",
+						"statement": "befa900cd07c80b7",
+						"title": "Two laps"
+					},
+					{
+						"id": 408,
+						"kind": "flow",
+						"status": "moved:cairn_examples",
+						"statement": "81892d4491fba6ac",
+						"title": "Start over"
+					},
+					{
+						"id": 409,
+						"kind": "invariant",
+						"status": "moved:cairn_examples",
+						"statement": "631e025c1afbf429",
+						"title": "Pending requests have fresh ids"
+					},
+					{
+						"id": 450,
+						"kind": "place",
+						"status": "moved:cairn_examples",
+						"statement": "-",
+						"title": "Tray menu"
+					},
+					{
+						"id": 451,
+						"kind": "place",
+						"status": "moved:cairn_examples",
+						"statement": "-",
+						"title": "Recent Items submenu"
+					},
+					{
+						"id": 452,
+						"kind": "place",
+						"status": "moved:cairn_examples",
+						"statement": "-",
+						"title": "Overlay panel"
+					},
+					{
+						"id": 453,
+						"kind": "move",
+						"status": "moved:cairn_examples",
+						"statement": "a29a942e4112db2f",
+						"title": "Open the menu"
+					},
+					{
+						"id": 454,
+						"kind": "move",
+						"status": "moved:cairn_examples",
+						"statement": "f1adc3f3e5064483",
+						"title": "Show Overlay"
+					},
+					{
+						"id": 455,
+						"kind": "move",
+						"status": "moved:cairn_examples",
+						"statement": "0f22ec1ce535f0de",
+						"title": "Keep Recent Items"
+					},
+					{
+						"id": 456,
+						"kind": "move",
+						"status": "moved:cairn_examples",
+						"statement": "1d5a792fc323eec7",
+						"title": "Add Item"
+					},
+					{
+						"id": 457,
+						"kind": "move",
+						"status": "moved:cairn_examples",
+						"statement": "54b9516c0a6ee336",
+						"title": "Recent item"
+					},
+					{
+						"id": 458,
+						"kind": "move",
+						"status": "moved:cairn_examples",
+						"statement": "31930b1b27c86b45",
+						"title": "Clear Recent Items"
+					},
+					{
+						"id": 459,
+						"kind": "move",
+						"status": "moved:cairn_examples",
+						"statement": "7b44b1740999c6d7",
+						"title": "Quit Tray"
+					},
+					{
+						"id": 460,
+						"kind": "invariant",
+						"status": "moved:cairn_examples",
+						"statement": "766546c5055d42df",
+						"title": "At most five recent items"
+					},
+					{
+						"id": 461,
+						"kind": "flow",
+						"status": "moved:cairn_examples",
+						"statement": "3191456f2212ab29",
+						"title": "Show the overlay"
+					},
+					{
+						"id": 462,
+						"kind": "flow",
+						"status": "moved:cairn_examples",
+						"statement": "fbb1f497f8493322",
+						"title": "Add an item and pick it"
+					},
+					{
+						"id": 501,
+						"kind": "move",
+						"status": "moved:cairn_examples",
+						"statement": "215b357a8b531aea",
+						"title": "Reload"
+					},
+					{
+						"id": 502,
+						"kind": "move",
+						"status": "moved:cairn_examples",
+						"statement": "084ddf664b68d5a1",
+						"title": "Fit"
+					},
+					{
+						"id": 503,
+						"kind": "place",
+						"status": "moved:cairn_examples",
+						"statement": "-",
+						"title": "Gallery window"
+					},
+					{
+						"id": 504,
+						"kind": "invariant",
+						"status": "moved:cairn_examples",
+						"statement": "d34d5b06e8bc82cb",
+						"title": "Pending loads have fresh ids"
+					},
+					{
+						"id": 505,
+						"kind": "flow",
+						"status": "moved:cairn_examples",
+						"statement": "27a79d12fd5c56e8",
+						"title": "Reload, then fit inside"
+					},
+					{
+						"id": 506,
+						"kind": "move",
+						"status": "moved:cairn_examples",
+						"statement": "632e20fa13162375",
+						"title": "Load 24"
+					},
+					{
+						"id": 507,
+						"kind": "move",
+						"status": "moved:cairn_examples",
+						"statement": "46f6f5495ca3efd8",
+						"title": "Cancel"
+					},
+					{
+						"id": 508,
+						"kind": "flow",
+						"status": "moved:cairn_examples",
+						"statement": "d73d0400c55b9277",
+						"title": "Load many, then cancel"
+					},
+					{
+						"id": 509,
+						"kind": "move",
+						"status": "moved:cairn_examples",
+						"statement": "80ec73812fd26594",
+						"title": "Reload a tile"
+					},
+					{
+						"id": 510,
+						"kind": "invariant",
+						"status": "moved:cairn_examples",
+						"statement": "4b77d8ad02a81eb4",
+						"title": "Tiles fit the window at every size"
+					},
+					{
+						"id": 511,
+						"kind": "invariant",
+						"status": "moved:cairn_examples",
+						"statement": "759d8febcfec109a",
+						"title": "Tiles are at least 180 points wide"
+					},
+					{
+						"id": 512,
+						"kind": "move",
+						"status": "moved:cairn_examples",
+						"statement": "4c3cef4f3a7d5f3c",
+						"title": "Next page"
+					},
+					{
+						"id": 513,
+						"kind": "invariant",
+						"status": "moved:cairn_examples",
+						"statement": "84126e733a7b341d",
+						"title": "A dropped thumbnail waits to be loaded again"
+					},
+					{
+						"id": 901,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "The Swift frame decoder agrees with Lean's"
+					},
+					{
+						"id": 902,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "Lean decodes what the Swift event encoder writes"
+					},
+					{
+						"id": 903,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "UTF-16 offsets and scalar indices convert exactly"
+					},
+					{
+						"id": 904,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "The text-input shadow predicts Lean's field"
+					},
+					{
+						"id": 905,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "Input-method geometry agrees with Lean's caret"
+					},
+					{
+						"id": 906,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "The host's text metrics are what layout assumes"
+					},
+					{
+						"id": 907,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "Carets follow the painted glyphs"
+					},
+					{
+						"id": 908,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "The host's clock is monotonic milliseconds"
+					},
+					{
+						"id": 909,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "The host wakes Lean by wake"
+					},
+					{
+						"id": 910,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "readFile replies with the file's bytes, or failed"
+					},
+					{
+						"id": 911,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "writeFile is atomic, and replies done only when the bytes are there"
+					},
+					{
+						"id": 912,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "playSound starts a known sound and refuses an unknown one"
+					},
+					{
+						"id": 913,
+						"kind": "assume",
+						"status": "retired",
+						"statement": "-",
+						"title": "http sends the request as given and returns the response as received"
+					},
+					{
+						"id": 914,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "The host answers every request exactly once, with its id"
+					},
+					{
+						"id": 915,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "every ms ticks while started and never after it is stopped"
+					},
+					{
+						"id": 940,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "The native menu shows exactly the frame's menu records"
+					},
+					{
+						"id": 941,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "Choosing a menu item reports that item's ref"
+					},
+					{
+						"id": 942,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "Opening and closing the menu are reported once each"
+					},
+					{
+						"id": 943,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "An overlay panel never takes focus or clicks"
+					},
+					{
+						"id": 944,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "An overlay panel is where its anchor says"
+					},
+					{
+						"id": 945,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "A control's menu shows exactly the frame's menu records"
+					},
+					{
+						"id": 946,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "Choosing a control menu's item reports its ref, then the close"
+					},
+					{
+						"id": 947,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "The host shows a control menu only while Lean has it open"
+					},
+					{
+						"id": 948,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "AXShowMenu opens a control's menu as a right click does"
+					},
+					{
+						"id": 949,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "The menu bar shows the app's menu items"
+					},
+					{
+						"id": 950,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "A menu bar item, by click or key equivalent, reports that item's ref"
+					},
+					{
+						"id": 960,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "appendFile adds exactly the bytes at the end, or fails and adds nothing"
+					},
+					{
+						"id": 961,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "listDir lists exactly the directory's names, sorted"
+					},
+					{
+						"id": 962,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "deleteFile removes a file or a link, never a directory"
+					},
+					{
+						"id": 963,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "watchFile reports every change to its file, and nothing after its stop"
+					},
+					{
+						"id": 964,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "frontmostApp answers the app in front"
+					},
+					{
+						"id": 965,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "permission answers whether the app holds it, and prompts only when asked"
+					},
+					{
+						"id": 966,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "record streams the levels of exactly the samples it keeps, and nothing after its stop"
+					},
+					{
+						"id": 967,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "A clip's WAV for a range of windows holds exactly those samples"
+					},
+					{
+						"id": 968,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "globalKey reports the hotkey's press and release, and other keys while it is held"
+					},
+					{
+						"id": 969,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "typeText types exactly the text into that app, or nothing"
+					},
+					{
+						"id": 970,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "upload sends the body assembled from its parts, with the secret in its header"
+					},
+					{
+						"id": 971,
+						"kind": "assume",
+						"status": "retired",
+						"statement": "-",
+						"title": "A secret is read from the environment or its file, and never shown"
+					},
+					{
+						"id": 972,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "The Keychain keeps what it was given for this app"
+					},
+					{
+						"id": 973,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "Captured reply fields go to the Keychain and never to Lean"
+					},
+					{
+						"id": 974,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "http sends the request as given, with its secret header, and returns the response as received"
+					},
+					{
+						"id": 975,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "An environment secret is read from the environment or its file, and never shown"
+					},
+					{
+						"id": 990,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "Wrapped lines paint as wide as Lean measured them"
+					},
+					{
+						"id": 991,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "Lean breaks lines where Core Text would"
+					},
+					{
+						"id": 1000,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "openItem opens exactly the URL or existing file it names"
+					},
+					{
+						"id": 1001,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "appRunning answers whether an app with that bundle id runs"
+					},
+					{
+						"id": 1002,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "readDefault answers the default's value as text"
+					},
+					{
+						"id": 1003,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "makeDir makes a private directory and its parents"
+					},
+					{
+						"id": 1004,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "A painter's pixels stay inside its box"
+					},
+					{
+						"id": 1005,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "record reports started once its microphone is running, before any audio, or fails without it"
+					},
+					{
+						"id": 1006,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "loadImage answers the image's pixel size, or the fault"
+					},
+					{
+						"id": 1007,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "An image's pixels stay inside its box"
+					},
+					{
+						"id": 1008,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "An image is drawn where its oriented pixels are"
+					},
+					{
+						"id": 1009,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "cancelRequest stops a running request's work; it is still answered once"
+					},
+					{
+						"id": 1010,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "The window is never smaller than the app's minimum size"
+					},
+					{
+						"id": 1011,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "The image cache reports every image it drops, after it is gone"
+					},
+					{
+						"id": 1012,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "The host reports scrolls where they happen, toward the end positive"
+					},
+					{
+						"id": 1020,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "Secure event input is on exactly while a secure field has focus"
+					},
+					{
+						"id": 1021,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "Assistive apps reach only what a scroll area shows"
+					},
+					{
+						"id": 1022,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "A secure field shows assistive apps nothing typed"
+					},
+					{
+						"id": 1030,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "The badge the host shows is the label of the last badge effect, or none"
+					},
+					{
+						"id": 1031,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "An announcement is posted once, with exactly its text"
+					},
+					{
+						"id": 1032,
+						"kind": "assume",
+						"status": "active",
+						"statement": "-",
+						"title": "Under holdWorld the host sends no clock, wake or reply of its own"
+					},
+					{
+						"id": 1100,
+						"kind": "move",
+						"status": "active",
+						"statement": "6b6a1d4e82d37068",
+						"title": "Set a value"
+					},
+					{
+						"id": 1101,
+						"kind": "move",
+						"status": "active",
+						"statement": "12e8fd77b3e45293",
+						"title": "The server handles a request"
+					},
+					{
+						"id": 1102,
+						"kind": "move",
+						"status": "active",
+						"statement": "62180a3dfbfe471d",
+						"title": "The server refuses a request"
+					},
+					{
+						"id": 1103,
+						"kind": "move",
+						"status": "active",
+						"statement": "f6084866acfb40db",
+						"title": "An answer arrives"
+					},
+					{
+						"id": 1104,
+						"kind": "move",
+						"status": "active",
+						"statement": "893d0e58f3f09c31",
+						"title": "A request or answer is lost"
+					},
+					{
+						"id": 1105,
+						"kind": "move",
+						"status": "active",
+						"statement": "7aa7a95a4e7eb0a0",
+						"title": "A retry comes due"
+					},
+					{
+						"id": 1106,
+						"kind": "move",
+						"status": "active",
+						"statement": "4d2a07dc7ed115a1",
+						"title": "A view is fetched"
+					},
+					{
+						"id": 1107,
+						"kind": "invariant",
+						"status": "active",
+						"statement": "ee8504a9cabd0b40",
+						"title": "A set shows in its own step"
+					},
+					{
+						"id": 1108,
+						"kind": "invariant",
+						"status": "active",
+						"statement": "4935176273dd8f0f",
+						"title": "At most one write in flight per key"
+					},
+					{
+						"id": 1109,
+						"kind": "invariant",
+						"status": "active",
+						"statement": "d3665406f5c7ec0b",
+						"title": "Never more writes than sets"
+					},
+					{
+						"id": 1110,
+						"kind": "invariant",
+						"status": "active",
+						"statement": "9a69b0ce407e4a6c",
+						"title": "A refusal rolls back in its step"
+					},
+					{
+						"id": 1111,
+						"kind": "invariant",
+						"status": "active",
+						"statement": "488e71959c11f9fd",
+						"title": "Settled keys show what the server holds"
+					},
+					{
+						"id": 1112,
+						"kind": "invariant",
+						"status": "active",
+						"statement": "5885d4aca69a60fe",
+						"title": "Replies for different keys commute"
+					},
+					{
+						"id": 1113,
+						"kind": "invariant",
+						"status": "active",
+						"statement": "eb468b28d2b13fc8",
+						"title": "A settled count is the server's"
+					},
+					{
+						"id": 1114,
+						"kind": "invariant",
+						"status": "active",
+						"statement": "e847fec11b018125",
+						"title": "A view never moves a written key"
+					}
+				],
 				"0.5.0": [
 					{
 						"id": 1,

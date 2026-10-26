@@ -1,5 +1,16 @@
 [
   {
+    "title": "Cairn 0.5.1",
+    "text": [
+      "Cairn 0.5.1 is out on the public registry: cairn conformance now holds the world (the debug socket's holdWorld stops the host's own clock, wake and requests, and the driver decides the time and every reply), benchmarks for Cairn.Optimistic up to 1,000,000 keys, and two fixes Sky needs: cairn fuzz no longer treats controls as hidden after a virtual list is replaced, and a held clock never steps an app with an empty batch.",
+      "One claim is new, ^1032 (under holdWorld the host sends no clock, wake or reply of its own), fuzzed by world.hold. The registry's ledger check accepted 0.5.0 to 0.5.1 and serves its claims export for the claim pages."
+    ],
+    "date": "2026-10-26",
+    "published": "2026-10-26T12:06:37Z",
+    "commit": "3616efd",
+    "milestone": "m5"
+  },
+  {
     "image": "/m/images/bd72968d90c4fd23.png",
     "title": "Sky: like, repost, follow and mute",
     "caption": "Sky's feed with the acts row under each post: Like, Repost, Follow and Mute, built on Cairn.Optimistic and cairn_atproto's writes. An offscreen render against the fake server.",
