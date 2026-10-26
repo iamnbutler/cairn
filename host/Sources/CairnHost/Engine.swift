@@ -54,6 +54,10 @@ public final class Engine: @unchecked Sendable {
     public let world: World
     /// Whether batches start with the time. Swift-only test cores turn it off.
     private let sendsClock: Bool
+    /// Whether the debug socket's driver holds the clock (`holdClock`): the host then sends no
+    /// time of its own and arms no wake, and time moves only with the `.clock` events the
+    /// driver sends (docs/conformance.md, "Hooks").
+    private var clockHeld = false
 
     private let makeCore: () -> AppCore
     private let initialSize: Size
@@ -197,9 +201,21 @@ public final class Engine: @unchecked Sendable {
         for t in done { stats.record(.inputToPresent, ms: (time - t) * 1000) }
     }
 
-    /// A batch with the time in front.
+    /// From now on the host sends no clock and arms no wake: the caller (the debug socket's
+    /// driver) sends every `.clock` event, so a conformance run's time is the model's.
+    public func holdClock() {
+        cond.lock()
+        defer { cond.unlock() }
+        clockHeld = true
+        scheduleWake(nil)
+    }
+
+    /// A batch with the time in front, unless the clock is held.
     private func timed(_ events: [Event]) -> [Event] {
-        sendsClock ? [.clock(HostClock.now())] + events : events
+        cond.lock()
+        let held = clockHeld
+        cond.unlock()
+        return sendsClock && !held ? [.clock(HostClock.now())] + events : events
     }
 
     /// Waits for input, a restart or a stop, or the wake deadline (then returns with nothing
@@ -297,7 +313,7 @@ public final class Engine: @unchecked Sendable {
         cond.lock()
         latestPublished = p
         through = throughSeq
-        scheduleWake(frame.wake)
+        scheduleWake(clockHeld ? nil : frame.wake)
         effects += frame.effects
         if let inputTime { unpresented.append((version, inputTime)) }
         if unpresented.count > 256 { unpresented.removeFirst(unpresented.count - 256) }

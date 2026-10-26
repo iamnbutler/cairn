@@ -290,6 +290,10 @@ tell from its reply, so turn it on only for a server that answers a repeated req
 the first time. Requests the server doesn't take are answered as without one, by `replies` or
 the default.
 
+**In conformance.** `cairn conformance` answers the running app's requests from the same server
+when the app's generator module passes its `Custom` (docs/conformance.md, "The world"), so the
+model and the app hear the same replies, faults included.
+
 **Checks.** `checks` run after every step (the first frame included) on the app's state and the
 world, counted under the claim as `server`; `drained` once the sequence is over and the host has
 answered everything outstanding, every request reaching the server first and no faults, counted

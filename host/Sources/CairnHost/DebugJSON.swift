@@ -103,6 +103,39 @@ public enum DebugJSON {
         }
     }
 
+    /// A reply the driver sends (`{"cmd":"reply"}`), in the generator's shape
+    /// (tools/conformance/lean/Conformance/Gen.lean, `jreply`): bytes and bodies in hex.
+    static func reply(_ o: [String: Any]) -> Reply? {
+        func hex(_ v: Any?) -> [UInt8]? {
+            guard let s = v as? String, s.utf8.count % 2 == 0 else { return nil }
+            var out: [UInt8] = []
+            out.reserveCapacity(s.utf8.count / 2)
+            var it = s.utf8.makeIterator()
+            while let a = it.next(), let b = it.next() {
+                guard let x = UInt8(String(decoding: [a, b], as: UTF8.self), radix: 16) else { return nil }
+                out.append(x)
+            }
+            return out
+        }
+        if o["done"] != nil { return .done }
+        if let b = hex(o["bytes"]) { return .bytes(b) }
+        if let st = o["http"] as? NSNumber {
+            let hs = (o["headers"] as? [[String]] ?? []).compactMap { $0.count == 2 ? Header($0[0], $0[1]) : nil }
+            return .http(status: st.uint32Value, headers: hs, body: hex(o["body"]) ?? [])
+        }
+        if let f = o["failed"] as? String {
+            let faults: [String: Fault] = ["notFound": .notFound, "denied": .denied, "timeout": .timeout,
+                                           "network": .network, "invalid": .invalid, "other": .other]
+            guard let fault = faults[f] else { return nil }
+            return .failed(fault, o["message"] as? String ?? "")
+        }
+        if let ns = o["names"] as? [String] { return .names(ns) }
+        if let pid = o["app"] as? NSNumber { return .app(pid: pid.uint32Value, name: o["name"] as? String ?? "") }
+        if let b = o["flag"] as? Bool { return .flag(b) }
+        if let wh = o["image"] as? [NSNumber], wh.count == 2 { return .image(width: wh[0].uint32Value, height: wh[1].uint32Value) }
+        return nil
+    }
+
     /// How the debug socket describes a request (public for the trusted fuzzer, which checks
     /// that no secret or typed text shows up in it).
     public static func describe(_ r: Request) -> String { request(r) }

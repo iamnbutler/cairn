@@ -364,6 +364,8 @@ public final class World: @unchecked Sendable {
     private var generation = 0
     /// The cancellation of each request not yet answered, by id (under `lock`).
     private var tokens: [UInt32: Cancellation] = [:]
+    /// Requests are held for the debug socket's driver (`holdRequests`; under `lock`).
+    private var holding = false
     /// Where replies and ticks go (the engine's `send`).
     public var send: (@Sendable ([Event]) -> Void)?
 
@@ -406,10 +408,20 @@ public final class World: @unchecked Sendable {
         if !subs.isEmpty { queue.sync { for c in subs { apply(c, gen) } } }
     }
 
+    /// From now on requests are held, never run: the debug socket's driver answers each one
+    /// with a `.reply` event, as the conformance model decides (docs/conformance.md, "Hooks").
+    /// Subscriptions still run.
+    public func holdRequests() {
+        lock.lock()
+        holding = true
+        lock.unlock()
+    }
+
     private func perform(_ id: UInt32, _ r: Request, _ gen: Int) {
         let once = Once()
         let token = Cancellation()
         lock.lock()
+        if holding { lock.unlock(); return }
         tokens[id] = token
         lock.unlock()
         let reply: @Sendable (Reply) -> Void = { [weak self] rep in

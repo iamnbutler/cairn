@@ -3,6 +3,7 @@ module
 public import Cairn.Claims.Core
 public import Cairn.Runtime.Abi
 public import Cairn.Abi
+public import Cairn.Fuzz.Rng
 
 /-! # The conformance generator (docs/conformance.md)
 
@@ -18,6 +19,10 @@ enabled move, sometimes a plain UI gesture such as Tab or a hover), and records:
 - the **effects** the step emits, and the **frame** the app must then show: draws, accessibility
   nodes, text input and cursor, from the same `Runtime.step` and `Frame.ofLaid` the app runs;
 - **probes**: a point inside each control's box with the colour the frame paints there.
+
+Besides a person's moves, a step can be the world's: the clock reaching a timer, or a reply to a
+request the app sent, which the driver sends through the socket after `holdWorld` ("The world",
+below). The replies come from the app's `cairn fuzz` server when it has one (`Custom.server`).
 
 The model is evaluated with the app's own `Runtime.Config`, so its text metrics are Core Text's
 when the generator is linked with the host's metrics (`make conformance` does that).
@@ -317,6 +322,97 @@ def eventName : Event → String
   | .menuSelect p r => s!"menuSelect {p} {refLabel r}"
   | .frame => "frame"
 
+/-! ## Time and replies
+
+The driver holds the app's world (`holdWorld`, docs/conformance.md, "The world"): the app hears
+no time but the clocks the driver sends and no reply but the ones it sends, and the generator
+decides both. A reply goes to the socket in this JSON (`DebugJSON.reply` reads it), bytes in
+hex, and into a `--gestures` line in the text form `replyLine` writes and `parseReply` reads. -/
+
+/-- The time every sequence starts at, sent after each restart: the app boots on it. -/
+def startTime : Time := { mono := 1000, wall := 1_798_761_600_000, zone := 0 }
+
+def hexOf (b : ByteArray) : String :=
+  b.foldl (fun s x => (s.push (hexDigit (x.toNat / 16))).push (hexDigit (x.toNat % 16))) ""
+
+/-- Hex for a `--gestures` line: `-` when empty, so the line keeps its fields. -/
+def hexWord (b : ByteArray) : String := if b.isEmpty then "-" else hexOf b
+
+def unhex (s : String) : ByteArray := Id.run do
+  let digit (c : Char) : Nat :=
+    if '0' ≤ c && c ≤ '9' then c.toNat - 48 else if 'a' ≤ c && c ≤ 'f' then c.toNat - 87 else 0
+  let cs := (if s == "-" then "" else s).toList.toArray
+  let mut out := ByteArray.emptyWithCapacity (cs.size / 2)
+  for i in [0:cs.size / 2] do
+    out := out.push (digit cs[2 * i]! * 16 + digit cs[2 * i + 1]!).toUInt8
+  return out
+
+def faultName : Fault → String
+  | .notFound => "notFound" | .denied => "denied" | .timeout => "timeout"
+  | .network => "network" | .invalid => "invalid" | .other => "other"
+
+def parseFault : String → Fault
+  | "notFound" => .notFound | "denied" => .denied | "timeout" => .timeout
+  | "network" => .network | "invalid" => .invalid | _ => .other
+
+/-- A reply as a person reading the report would say it. -/
+def replyWords : Reply → String
+  | .done => "done"
+  | .bytes b => s!"{b.size} bytes"
+  | .http st _ b => s!"HTTP {st}, {b.size} bytes"
+  | .failed f m => s!"failed {faultName f} {m.quote}"
+  | .names ns => s!"{ns.length} names"
+  | .app pid n => s!"app {pid} {n.quote}"
+  | .flag b => s!"flag {b}"
+  | .image w h => s!"image {w}×{h}"
+
+def jtime (t : Time) : String := jobj [("mono", jnat t.mono), ("wall", jint t.wall), ("zone", jint t.zone)]
+
+def jreply : Reply → String
+  | .done => jobj [("done", "true")]
+  | .bytes b => jobj [("bytes", jstr (hexOf b))]
+  | .http st hs b => jobj [("http", jnat st), ("headers", jarr (hs.map fun (n, v) => jarr [jstr n, jstr v])),
+                           ("body", jstr (hexOf b))]
+  | .failed f m => jobj [("failed", jstr (faultName f)), ("message", jstr m)]
+  | .names ns => jobj [("names", jarr (ns.map jstr))]
+  | .app pid n => jobj [("app", jnat pid), ("name", jstr n)]
+  | .flag b => jobj [("flag", jbool b)]
+  | .image w h => jobj [("image", jarr [jnat w, jnat h])]
+
+/-- A reply in a `--gestures` line, after `reply ID`. Text that may hold spaces comes last;
+bytes, header and names are hex. -/
+def replyLine : Reply → String
+  | .done => "done"
+  | .bytes b => s!"bytes {hexWord b}"
+  | .http st hs b =>
+    " ".intercalate ([s!"http {st} {hexWord b}"] ++
+      hs.map fun (n, v) => s!"{hexWord n.toUTF8}:{hexWord v.toUTF8}")
+  | .failed f m => s!"failed {faultName f} {m}"
+  | .names ns => " ".intercalate ("names" :: ns.map (hexWord ·.toUTF8))
+  | .app pid n => s!"app {pid} {n}"
+  | .flag b => s!"flag {if b then 1 else 0}"
+  | .image w h => s!"image {w} {h}"
+
+def utf8Of (s : String) : String := (String.fromUTF8? (unhex s)).getD ""
+
+/-- `replyLine`'s words read back. -/
+def parseReply (ws : List String) : Option Reply :=
+  let nat (i : Nat) : Nat := (ws[i]?.bind String.toNat?).getD 0
+  let rest (n : Nat) := " ".intercalate (ws.drop n)
+  match ws.headD "" with
+  | "done" => some .done
+  | "bytes" => some (.bytes (unhex (ws[1]?.getD "-")))
+  | "http" => some (.http (nat 1) ((ws.drop 3).map fun h =>
+      match h.splitOn ":" with
+      | [n, v] => (utf8Of n, utf8Of v)
+      | _ => ("", "")) (unhex (ws[2]?.getD "-")))
+  | "failed" => some (.failed (parseFault (ws[1]?.getD "")) (rest 2))
+  | "names" => some (.names ((ws.drop 1).map utf8Of))
+  | "app" => some (.app (nat 1) (rest 2))
+  | "flag" => some (.flag (ws[1]? == some "1"))
+  | "image" => some (.image (nat 1) (nat 2))
+  | _ => none
+
 /-! ## Gestures
 
 What the driver does to the running app, through the debug socket. Each becomes the events the
@@ -358,6 +454,10 @@ inductive Gesture where
   | controlMenuClose (place : ClaimId)
   /-- An item of the app's menu bar items is chosen (`performActionForItem(at:)`). -/
   | menuBarSelect (place : ClaimId) (r : ControlRef)
+  /-- The world, not a person: the time is now `t` (`{"cmd":"clock"}`). -/
+  | clock (t : Time)
+  /-- The world: request `id` is answered with `r` (`{"cmd":"reply"}`). -/
+  | reply (id : Nat) (r : Reply)
 deriving Inhabited
 
 def Gesture.events (clipboard : String) : Gesture → List Event
@@ -384,6 +484,14 @@ def Gesture.events (clipboard : String) : Gesture → List Event
   | .controlMenuSelect p r => [.menuSelect p r, .menuClose p]
   | .controlMenuClose p => [.menuClose p]
   | .menuBarSelect p r => [.menuSelect p r]
+  | .clock t => [.clock t]
+  | .reply id r => [.reply id r]
+
+/-- The world's gestures in the `--gestures` line format (the driver writes the others). -/
+def Gesture.line? : Gesture → Option String
+  | .clock t => some s!"clock {t.mono} {t.wall} {t.zone}"
+  | .reply id r => some s!"reply {id} {replyLine r}"
+  | _ => none
 
 def Gesture.json : Gesture → String
   | .move p => jobj [("g", jstr "move"), ("at", jpoint p)]
@@ -410,6 +518,10 @@ def Gesture.json : Gesture → String
   | .controlMenuClose p => jobj [("g", jstr "controlMenuClose"), ("place", jnat p)]
   | .menuBarSelect p r => jobj [("g", jstr "menuBarSelect"), ("place", jnat p), ("id", jstr (refLabel r)),
                                  ("ref", jarr [jnat r.claim, jnat r.key])]
+  | g@(.clock t) => jobj [("g", jstr "clock"), ("mono", jnat t.mono), ("wall", jint t.wall), ("zone", jint t.zone),
+                          ("line", jopt jstr g.line?)]
+  | g@(.reply id r) => jobj [("g", jstr "reply"), ("request", jnat id), ("reply", jreply r),
+                             ("line", jopt jstr g.line?)]
 
 def click (p : Point) : List Gesture := [.move p, .down p 1, .up p]
 def doubleClick (p : Point) : List Gesture := [.move p, .down p 1, .up p, .down p 2, .up p]
@@ -446,6 +558,20 @@ def vocabulary : Array String :=
   #["milk", " eggs ", "   ", "a", "Bread and butter", "Ünïcödé", "日本語", "👍🏽", "x",
     "  spaced  out  ", "A much longer item that goes on and on past the edge of the field"]
 
+/-- What the world can do in a step (docs/conformance.md, "The world"). -/
+inductive HostAct where
+  /-- The clock reaches the frame's `wake`: due timers fire. -/
+  | wake (t : Time)
+  /-- Request `id` is answered: by the server (reaching it now if it hasn't), by the app's
+  `Custom.replies`, or failed. A cancelled request is answered `failed other "cancelled"` unless
+  the server had already handled it. -/
+  | answer (id : Nat)
+  /-- Failed before: request `id` never reaches the server; the app hears a fault. -/
+  | fail (id : Nat)
+  /-- Lost after: request `id` reaches the server (if it hadn't), but the app hears a fault. -/
+  | lose (id : Nat)
+deriving Inhabited
+
 /-- Something to do: a label for reports, the move it means to exercise (its control and
 trigger), and the gestures. -/
 structure Choice where
@@ -454,6 +580,9 @@ structure Choice where
   gestures : List Gesture
   /-- The group `pickGrouped` puts it in, when not its move's: a control's menu. -/
   group? : Option String := none
+  /-- The world's move, decided when it is picked (`World.resolve`): its gestures are filled in
+  then. -/
+  host : Option HostAct := none
 deriving Inhabited
 
 def visible (r : Rect) : Bool := decide (0 < r.w) && decide (0 < r.h)
@@ -758,6 +887,12 @@ structure Options where
   /-- Raw gesture sequences to replay (`--gestures FILE`). -/
   gestures : Option String := none
 
+/-- An action a gesture's press delivers beside the press: a `blur` (the click ended an edit) or
+an `appear` (the frame after it scrolled a control into view, `Runtime.route` on `.frame`). -/
+def asideAction : Action → Bool
+  | .blur _ | .appear _ => true
+  | _ => false
+
 /-- The label of a press dropped by design (`droppedClick`). The driver counts these as
 known, not as failures: the app did what the model does. -/
 def t33Label : String := "T33"
@@ -787,7 +922,7 @@ def findings (M : Machine S) (s : Runtime.State S) (f : Frame) (ch : Choice)
           if rec.enabled && !m.enabled s.app c.key then
             out := out ++ [s!"{refLabel c} is enabled in the menu of ^{sf.place} but its move is not"]
   if let some (c, t) := ch.move then
-    let main := acts.filter fun a => match a with | .blur _ => false | _ => true
+    let main := acts.filter (!asideAction ·)
     if dropped && main.isEmpty then return out
     match t with
     | "press" =>
@@ -803,6 +938,8 @@ def jstep (M : Machine S) (s : Runtime.State S) (ch : Choice) (clipboard : Strin
     (acts : List Action) (effs : List Effect) (f : Frame) (probes : List String)
     (finds : List String) (known : List String := []) : String :=
   jobj [("label", jstr ch.label),
+        ("host", jopt (fun a => jstr (match a with
+            | .wake _ => "wake" | .answer _ => "answer" | .fail _ => "failedBefore" | .lose _ => "lostAfter")) ch.host),
         ("move", jopt (fun (r, t) =>
             jobj [("ref", jstr (refLabel r)), ("claim", jnat r.claim), ("key", jnat r.key),
                   ("trigger", jstr t)]) ch.move),
@@ -816,11 +953,12 @@ def jstep (M : Machine S) (s : Runtime.State S) (ch : Choice) (clipboard : Strin
         ("frame", jframe f), ("probes", jarr probes), ("findings", jarr (finds.map jstr)),
         ("known", jarr (known.map jstr))]
 
-/-- One step: perform `ch` on the model; returns the new state and clipboard and the step's JSON.
-The actions are accepted against the state before the step's first event, which is exact for a
-single action and a good summary otherwise. -/
+/-- One step: perform `ch` on the model; returns the new state and clipboard, the step's JSON,
+and its effects. The actions are accepted against the state before the step's first event, which
+is exact for a single action and a good summary otherwise. -/
 def stepModel (M : Machine S) (app : App S) (cfg : Config) (o : Options)
-    (s : Runtime.State S) (clipboard : String) (ch : Choice) : Runtime.State S × String × String :=
+    (s : Runtime.State S) (clipboard : String) (ch : Choice) :
+    Runtime.State S × String × String × List Effect :=
   let es := ch.gestures.flatMap (·.events clipboard)
   let (s', acts, effs) := runEvents app cfg s es
   let clip := effs.foldl (fun c e => match e with | .setClipboard t => t | _ => c) clipboard
@@ -829,15 +967,169 @@ def stepModel (M : Machine S) (app : App S) (cfg : Config) (o : Options)
   let dropped := match ch.move with
     | some (c, "press") | some (c, "doublePress") => droppedClick app cfg s c es
     | _ => false
-  let main := acts.filter fun a => match a with | .blur _ => false | _ => true
+  let main := acts.filter (!asideAction ·)
   let known := if dropped && main.isEmpty then
       [s!"{t33Label}: {ch.label} dropped: the blur saved the edit, which moved or removed the control before the release"]
     else []
   let finds := findings M s (modelFrame s []) ch acts dropped
-  (s', clip, jstep M s ch clipboard es acts effs f probes finds known)
+  (s', clip, jstep M s ch clipboard es acts effs f probes finds known, effs)
 
-def start (app : App S) (cfg : Config) (o : Options) : Runtime.State S :=
-  initState app cfg o.width.toUInt32 o.height.toUInt32 o.scale.toUInt32
+/-- The app's state when a sequence starts: its initial state, booted by the first clock
+(`startTime`), as the driver sends it after each restart; and that clock's effects. -/
+def start (app : App S) (cfg : Config) (o : Options) : Runtime.State S × List Effect :=
+  let s := initState app cfg o.width.toUInt32 o.height.toUInt32 o.scale.toUInt32
+  let (s, _, effs) := runEvents app cfg s [.clock startTime]
+  (s, effs)
+
+/-! ## The world
+
+What the app hears besides a person: the time and the replies to its requests. `cairn fuzz`'s
+host decides the same things (Cairn's docs/fuzz.md, "The host" and "A server"), and with the app's
+`Custom.server` the replies come from the same fake server, whose world the generator keeps
+through the sequence. Each world move is one step with one gesture the driver sends: a `clock`
+or a `reply`. A request reaching the server (`serve`) and the world acting on its own (`tick`)
+change only the server's world, so they ride on the step that follows them. -/
+
+/-- The world's side of a sequence: the time, the requests the app sent that no one has answered,
+those of them it cancelled, and the answers the server has given that the app hasn't heard. -/
+structure World where
+  now : Time := startTime
+  sent : List (Nat × Request) := []
+  cancelled : List Nat := []
+  ready : List (Nat × Reply) := []
+deriving Inhabited
+
+namespace World
+
+/-- Take in a step's effects: its requests and cancels. -/
+def absorb (h : World) (es : List Effect) : World :=
+  es.foldl (fun h e => match e with
+    | .request id r => { h with sent := h.sent.filter (·.1 != id) ++ [(id, r)],
+                                cancelled := h.cancelled.erase id, ready := h.ready.filter (·.1 != id) }
+    | .cancelRequest id =>
+      if h.sent.any (·.1 == id) && !h.cancelled.contains id then { h with cancelled := h.cancelled ++ [id] } else h
+    | _ => h) h
+
+def answered (h : World) (id : Nat) : World :=
+  { h with sent := h.sent.filter (·.1 != id), cancelled := h.cancelled.erase id,
+           ready := h.ready.filter (·.1 != id) }
+
+/-- A seed for a fuzz generator, from the walk's own stream. -/
+def seedOf (r : Rng) : Cairn.Fuzz.Rng × Rng :=
+  let (x, r) := r.next
+  (Cairn.Fuzz.Rng.ofSeed x.toNat, r)
+
+variable (sv : Cairn.Fuzz.Server S)
+
+/-- Whether request `r` goes to the server: one it `handles`, never a `loadImage` (as
+`Cairn.Fuzz.Server.takes`). -/
+def takes (r : Request) : Bool := !(r matches .loadImage ..) && sv.handles r
+
+/-- What the world can do now, all in one group (`"world"`): reach the next timer, and answer,
+fail or lose each request outstanding. -/
+def choices (h : World) (s : Runtime.State S) : Array Choice := Id.run do
+  let mut out : Array Choice := #[]
+  let g := some "world"
+  if let some w := s.world.wake then
+    let t : Time := { h.now with mono := max w h.now.mono,
+                                 wall := h.now.wall + ((max w h.now.mono - h.now.mono : Nat) : Int) }
+    for _ in [0:3] do
+      out := out.push { label := s!"world: the clock reaches {t.mono}", gestures := [], group? := g, host := some (.wake t) }
+  for (id, r) in h.sent do
+    for _ in [0:5] do
+      out := out.push { label := s!"world: #{id} answered", gestures := [], group? := g, host := some (.answer id) }
+    if takes sv r && !h.cancelled.contains id then
+      if (h.ready.lookup id).isNone && sv.failBefore > 0 then
+        out := out.push { label := s!"world: #{id} failed before", gestures := [], group? := g, host := some (.fail id) }
+      if sv.loseAfter > 0 then
+        out := out.push { label := s!"world: #{id} lost after", gestures := [], group? := g, host := some (.lose id) }
+  return out
+
+/-- How much the world's group weighs against a person's: more as requests pile up, so they are
+answered about as fast as they are made. -/
+def weight (h : World) (s : Runtime.State S) : Nat :=
+  min 6 (h.sent.length + (if s.world.wake.isSome then 1 else 0))
+
+/-- Request `id` reaches the server: the world after, and its answer kept until it is sent. -/
+def serve (h : World) (w : sv.W) (r : Rng) (id : Nat) (req : Request) : World × sv.W × Rng :=
+  let (g, r) := seedOf r
+  let ((w, rep), _) := (sv.handle w id req).run g
+  let rep := if rep.answers req.kind then rep else .failed .other "conformance: the server answered the wrong kind"
+  ({ h with ready := (id, rep) :: h.ready.filter (·.1 != id) }, w, r)
+
+/-- Decide a world move: what the server does on the way (a tick, another request reaching it),
+then the one gesture the app gets. Returns the label and gestures, or `none` when the move can't
+happen. -/
+def resolve (c : Cairn.Fuzz.Custom S) (st : S) (h : World) (w : sv.W) (r : Rng) :
+    HostAct → World × sv.W × Rng × Option (String × List Gesture)
+  | .wake t => ({ h with now := t }, w, r, some (s!"world: the clock reaches {t.mono}", [.clock t]))
+  | a =>
+    let id := match a with | .answer id | .fail id | .lose id => id | .wake _ => 0
+    match h.sent.lookup id with
+    | none => (h, w, r, none)
+    | some req => Id.run do
+      let mut h := h
+      let mut w := w
+      let mut r := r
+      let mut notes : Array String := #[]
+      -- On the way: the world acts on its own, and another request may reach the server, its
+      -- answer held back (so replies come in another order than the server acted).
+      let (k, r1) := r.below 30
+      r := r1
+      if k < sv.ticks then
+        let (g, r2) := seedOf r
+        r := r2
+        w := ((sv.tick w).run g).1
+        notes := notes.push "the server's world acts"
+      let others := h.sent.filter fun p => p.1 != id && takes sv p.2 && (h.ready.lookup p.1).isNone
+      let (k, r1) := r.below 4
+      r := r1
+      if k == 0 && !others.isEmpty then
+        let ((oid, oreq), r2) := r.pick others.toArray
+        let (h2, w2, r3) := serve sv h w r2 oid oreq
+        h := h2; w := w2; r := r3
+        notes := notes.push s!"#{oid} reaches the server"
+      let cancelled := h.cancelled.contains id
+      let ready := h.ready.lookup id
+      let mut rep : Reply := .failed .other "conformance"
+      let mut what := "answered"
+      match a with
+      | .fail _ =>
+        let (g, r2) := seedOf r
+        r := r2
+        rep := if cancelled then .failed .other "cancelled" else ((sv.fault req).run g).1
+        what := "failed before"
+      | .lose _ =>
+        if ready.isNone then
+          let (h2, w2, r2) := serve sv h w r id req
+          h := h2; w := w2; r := r2
+        let (g, r2) := seedOf r
+        r := r2
+        rep := if cancelled then .failed .other "cancelled" else ((sv.fault req).run g).1
+        what := "lost after"
+      | _ =>
+        if let some x := ready then
+          rep := x
+        else if cancelled then
+          rep := .failed .other "cancelled"
+          what := "answered (cancelled)"
+        else if takes sv req then
+          let (h2, w2, r2) := serve sv h w r id req
+          h := h2; w := w2; r := r2
+          rep := (h.ready.lookup id).getD rep
+          what := "answered by the server"
+        else
+          match c.replies st id req with
+          | some gen =>
+            let (g, r2) := seedOf r
+            r := r2
+            let x := (gen.run g).1
+            rep := if x.answers req.kind then x else .failed .other "conformance: the app's generator answered the wrong kind"
+          | none => what := "failed (no generator)"
+      let pre := if notes.isEmpty then "" else ", ".intercalate notes.toList ++ "; "
+      return (h.answered id, w, r, some (s!"world: {pre}#{id} {what}: {replyWords rep}", [.reply id rep]))
+
+end World
 
 /-- The group a choice belongs to: its control and trigger, or plain UI. -/
 def Choice.group (ch : Choice) : String :=
@@ -847,38 +1139,59 @@ def Choice.group (ch : Choice) : String :=
   | none => "ui"
 
 /-- Picks a group (a control and trigger, or plain UI) uniformly, with editing the focused field
-weighted three times, then a choice within it. Picking among choices directly would let the
-field's many gestures crowd out the other moves. -/
-def pickGrouped (cs : Array Choice) (r : Rng) : Choice × Rng := Id.run do
+weighted three times and the world `world` times, then a choice within it. Picking among choices
+directly would let the field's many gestures crowd out the other moves. -/
+def pickGrouped (cs : Array Choice) (r : Rng) (world : Nat := 1) : Choice × Rng := Id.run do
   let mut groups : Array String := #[]
   for ch in cs do
     unless groups.contains ch.group do groups := groups.push ch.group
   let weighted := groups.flatMap fun g =>
-    if (cs.find? (·.group == g)).any (fun ch => ch.move.any (·.2 == "edit") && ch.gestures.length == 1)
+    if g == "world" then Array.replicate world g
+    else if (cs.find? (·.group == g)).any (fun ch => ch.move.any (·.2 == "edit") && ch.gestures.length == 1)
     then #[g, g, g] else #[g]
   let (g, r) := r.pick weighted
   r.pick (cs.filter (·.group == g))
 
-/-- A random walk of `o.length` steps from the initial state. -/
-def walk (M : Machine S) (app : App S) (cfg : Config) (o : Options) (i : Nat) : String := Id.run do
+/-- A random walk of `o.length` steps from the initial state, with the world `sv`'s. -/
+def walkWith (M : Machine S) (app : App S) (cfg : Config) (o : Options) (c : Cairn.Fuzz.Custom S)
+    (sv : Cairn.Fuzz.Server S) (i : Nat) : String := Id.run do
   let mut r := Rng.ofSeed (o.seed * 1000003 + i)
-  let mut s := start app cfg o
+  let (s0, effs0) := start app cfg o
+  let mut s := s0
+  let mut h : World := ({} : World).absorb effs0
+  let mut w : sv.W := (sv.init.run (Cairn.Fuzz.Rng.ofSeed (o.seed * 1000003 + i))).1
   let mut clip := ""
   let mut steps : Array String := #[]
   let initFrame := modelFrame s []
   for _ in [0:o.length] do
     let f := modelFrame s []
     let (cs, r') := choices M s f r
-    let (ch, r'') := pickGrouped cs r'
+    let (ch, r'') := pickGrouped (cs ++ World.choices sv h s) r' (World.weight h s)
     r := r''
-    let (s', clip', js) := stepModel M app cfg o s clip ch
+    let mut ch := ch
+    if let some a := ch.host then
+      let (h', w', r3, done) := World.resolve sv c s.app h w r a
+      h := h'
+      w := w'
+      r := r3
+      match done with
+      | some (label, gs) => ch := { ch with label, gestures := gs }
+      | none => continue
+    let (s', clip', js, effs) := stepModel M app cfg o s clip ch
     s := s'
     clip := clip'
+    h := h.absorb effs
     steps := steps.push js
   return jobj [("name", jstr s!"walk-{o.seed}-{i}"), ("seed", jnat o.seed), ("index", jnat i),
-               ("init", jframe initFrame),
+               ("clock", jtime startTime), ("init", jframe initFrame),
                ("initProbes", jarr (initFrame.ax.toList.filterMap (probeFor cfg.metrics initFrame o.clear))),
                ("steps", jarr steps.toList)]
+
+/-- A random walk of `o.length` steps from the initial state, with the app's server if it has
+one (`Custom.server`). -/
+def walk (M : Machine S) (app : App S) (cfg : Config) (o : Options) (c : Cairn.Fuzz.Custom S)
+    (i : Nat) : String :=
+  walkWith M app cfg o c (c.server.getD .empty) i
 
 /-! ## Witnesses
 
@@ -949,7 +1262,7 @@ def witnessChoice (f : Frame) (step : String) (laid : Laid) : Option Choice := d
 def replay (M : Machine S) (app : App S) (cfg : Config) (o : Options) (line : String) : String := Id.run do
   let parts := line.splitOn "\t"
   let name := parts.headD "flow"
-  let mut s := start app cfg o
+  let mut s := (start app cfg o).1
   let mut clip := ""
   let mut steps : Array String := #[]
   let initFrame := modelFrame s []
@@ -961,11 +1274,11 @@ def replay (M : Machine S) (app : App S) (cfg : Config) (o : Options) (line : St
       stopped := some s!"cannot perform {repr st} from the model's frame"
       break
     | some ch =>
-      let (s', clip', js) := stepModel M app cfg o s clip ch
+      let (s', clip', js, _) := stepModel M app cfg o s clip ch
       s := s'
       clip := clip'
       steps := steps.push js
-  return jobj [("name", jstr name), ("witness", "true"), ("init", jframe initFrame),
+  return jobj [("name", jstr name), ("witness", "true"), ("clock", jtime startTime), ("init", jframe initFrame),
                ("initProbes", jarr (initFrame.ax.toList.filterMap (probeFor cfg.metrics initFrame o.clear))),
                ("stopped", jopt jstr stopped), ("steps", jarr steps.toList)]
 
@@ -1020,12 +1333,15 @@ def parseGesture (g : String) : Option Gesture :=
   | "controlMenuClose" => some (.controlMenuClose (parseNat (ps[1]?.getD "0")))
   | "menuBarSelect" => some (.menuBarSelect (parseNat (ps[1]?.getD "0"))
       ⟨parseNat (ps[2]?.getD "0"), parseNat (ps[3]?.getD "0")⟩)
+  | "clock" => some (.clock { mono := parseNat (ps[1]?.getD "0"), wall := parseInt (ps[2]?.getD "0"),
+                               zone := parseInt (ps[3]?.getD "0") })
+  | "reply" => (parseReply (ps.drop 2)).map (.reply (parseNat (ps[1]?.getD "0")))
   | _ => none
 
 /-- One sequence of steps, each step its gestures separated by `\x1f` (unit separator). -/
 def replayGestures (M : Machine S) (app : App S) (cfg : Config) (o : Options) (line : String) :
     String := Id.run do
-  let mut s := start app cfg o
+  let mut s := (start app cfg o).1
   let mut clip := ""
   let mut steps : Array String := #[]
   let initFrame := modelFrame s []
@@ -1036,11 +1352,11 @@ def replayGestures (M : Machine S) (app : App S) (cfg : Config) (o : Options) (l
       stopped := some s!"cannot parse step {i}: {repr st}"
       break
     let ch : Choice := { label := s!"replay {i}", move := none, gestures := gs }
-    let (s', clip', js) := stepModel M app cfg o s clip ch
+    let (s', clip', js, _) := stepModel M app cfg o s clip ch
     s := s'
     clip := clip'
     steps := steps.push js
-  return jobj [("name", jstr "replay"), ("init", jframe initFrame),
+  return jobj [("name", jstr "replay"), ("clock", jtime startTime), ("init", jframe initFrame),
                ("initProbes", jarr (initFrame.ax.toList.filterMap (probeFor cfg.metrics initFrame o.clear))),
                ("stopped", jopt jstr stopped), ("steps", jarr steps.toList)]
 
@@ -1066,7 +1382,8 @@ def parseArgs : List String → Options → Options
 
 /-- `gen [--seed N] [--count N] [--length N] [--size W H] [--scale P] [--clear R,G,B]
 [--witness FILE] [--gestures FILE]`: one JSON sequence per line on stdout. -/
-def run (M : Machine S) (app : App S) (cfg : Config) (args : List String) : IO UInt32 := do
+def run (M : Machine S) (app : App S) (cfg : Config) (args : List String)
+    (custom : Cairn.Fuzz.Custom S := {}) : IO UInt32 := do
   let o := parseArgs args {}
   let out ← IO.getStdout
   if let some file := o.gestures then
@@ -1082,7 +1399,7 @@ def run (M : Machine S) (app : App S) (cfg : Config) (args : List String) : IO U
         out.putStrLn (replay M app cfg o line)
   | none =>
     for i in [0:o.count] do
-      out.putStrLn (walk M app cfg o i)
+      out.putStrLn (walk M app cfg o custom i)
   out.flush
   return 0
 

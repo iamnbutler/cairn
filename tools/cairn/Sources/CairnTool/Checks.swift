@@ -307,8 +307,19 @@ extension Commands {
         try claims(["--out", out.appending(path: "claims.json").path])
 
         let prefix = try shell.capture(["lake", "env", "lean", "--print-prefix"], in: project.lean, env: env).text
-        let objects = try shell.capture(["lake", "query", "+Conformance.Gen:c.o", "+\(module):c.o"], in: project.lean, env: env).text
-            .split(separator: "\n").suffix(2).map(String.init)
+        // The package's own modules the generator imports that the app's library doesn't hold
+        // (the fixture's fake server, `Fixture.Fuzz`, which the app never links): their objects too.
+        let imports = try shell.capture(["lake", "query", "+\(module):transImports"], in: project.lean, env: env).text
+            .split(separator: "\n").map(String.init).filter { !$0.isEmpty && !$0.contains(" ") }
+        let held = Set(try shell.capture(["nm", "-gU", linked.archive.path], in: project.lean, check: false).text
+            .split(separator: "\n").compactMap { $0.split(separator: " ").last.map(String.init) })
+        let extra = imports.filter { m in
+            m != module && !held.contains("_" + project.initializer(of: m))
+                && FileManager.default.fileExists(atPath: project.lean.appending(path: m.replacingOccurrences(of: ".", with: "/") + ".lean").path)
+        }
+        let objects = try shell.capture(["lake", "query", "+Conformance.Gen:c.o", "+\(module):c.o"] + extra.map { "+\($0):c.o" },
+                                        in: project.lean, env: env).text
+            .split(separator: "\n").suffix(2 + extra.count).map(String.init)
         let sdk = try shell.capture(["xcrun", "--show-sdk-path"], in: project.root).text
         let gen = out.appending(path: "gen").path
         try shell.run(["clang", "-O2", "-I\(prefix)/include", "-DCAIRN_APP_INIT=\(project.initializer(of: module))",
