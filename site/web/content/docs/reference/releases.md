@@ -49,7 +49,15 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
 - **Its evidence.** What a claim reads as depends on the build that computed it. See
   [how much to trust a claim](/docs/reference/trust/).
 
-## Unreleased (0.5.0)
+## v0.5.0
+
+26 October 2026.
+
+A minor version, early in M5, for Sky's work on acting on Bluesky: optimistic values
+(`Cairn.Optimistic`), a fuzz server with a world, menus on controls and in the menu bar,
+`Effect.scrollTo`, kept scroll boxes, the Dock badge and announcements. No claim is retired or
+moved, but `Surface`, `Key` and `Effect` gain constructors, the frame format goes to v13 and every
+app links Lean's `libStd`, so apps need the changes under "Upgrading to v0.5.0" below.
 
 - **Optimistic values: `Cairn.Optimistic`** (cairn#245). A `Table K V` holds values a person
   changes and a server keeps: a set shows in its own step, one write is in flight per key, a
@@ -149,6 +157,30 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
 - **The fixture** gains Top, End, Go to row and Hide rows (`fixture^41`–`^44`), Badge, Clear
   badge and Announce (`fixture^45`–`^47`). `fixture^19` is retired for `fixture^48`, which states
   the rows' stacking while they are shown.
+
+**Claims.** 23 are new and none is retired, moved or changed: `assume` ^945–^950 (control menus
+and the menu bar), ^1030 and ^1031 (the badge and announcements), and `Cairn.Optimistic`'s seven
+moves and eight invariants, ^1100–^1114. The test fixture (scope `fixture`, unpublished) adds
+^21–^33 and ^41–^48, retires ^19, and accepted new statements for ^2, ^3, ^12, ^13 and ^20.
+
+### Upgrading to v0.5.0
+
+Change the tag in the lakefile and `Package.swift` (an app and its host must use the same tag:
+frames are v13), then:
+
+- **Linking.** Every app links Lean's `libStd` as well as `libCairn` (cairn#261). `bin/cairn-link`
+  and `cairn build` do it; an app with its own link step adds `-lStd` from the toolchain's
+  `lib/lean`.
+- **New constructors.** Exhaustive matches on `Surface` need a `menuBar` case, on `Key` a `menu`
+  case, and on `Effect` `scrollTo`, `badge` and `announce` cases.
+- **Moved types.** `Shortcut` and `MenuItem` are in `Cairn/UI/Node.lean` (still `Cairn.Shortcut`
+  and `Cairn.MenuItem`); code that imported `Cairn.Surface` only for them imports `Cairn.UI.Node`.
+- **New fields**, all defaulted: `Style.menu`, `UI.menu`, `UI.kept`, `UI.keptLists`,
+  `App.keepScroll`, and `Custom`'s `weights`, `server` and `badge`. Named-field construction
+  needs nothing; positional construction needs the new ones.
+- **Fuzzing.** `Cairn.Fuzz.Custom` is in `Type 1`, and `World` and `Performed` take the server
+  world's type as a second argument (`World S W`). Code that only builds a `Custom` with named
+  fields is unaffected.
 
 ## v0.4.1
 
