@@ -72,7 +72,7 @@ the current time before any delivery (docs/effects.md, "Order within a step"). T
    control is still there, and each scroll offset only if its box is still there, clamped to
    it (see "Scrolling");
 4. if the repair changed what `view` saw (a hover reveal, a focus ring), views and lays out
-   again, up to `settleFuel` (2) more times (`settle`). The stored `UI` is always the routed one
+   again, up to `settleFuel` (4) more times (`settle`). The stored `UI` is always the routed one
    repaired against the stored tree, so the soundness theorem holds whether or not it converged.
 
 If anything was delivered, `step` then diffs `app.subscriptions` against the active set and

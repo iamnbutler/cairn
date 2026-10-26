@@ -16,7 +16,7 @@ it will cover and what has to land first. Every code sample is included from a s
 
 <bongo:note label="What works today">
 Cairn is research, and its API has no stability promise before 1.0. It is a package, though: an
-app lives in its own repository and depends on a tagged release (the latest is `v0.3.0`), and
+app lives in its own repository and depends on a tagged release (the latest is `v0.4.0`), and
 the `cairn` tool starts, builds, checks, bundles and documents it. The example apps are built that
 way. The lint, axiom audit and kernel replay have no `cairn` command yet; see
 [the cairn tool](/docs/reference/cairn-tool/).
