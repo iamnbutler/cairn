@@ -942,6 +942,128 @@ export function mountSprigs(root) {
   });
 }
 
+// --- The Octocat at the foot of the page ---------------------------------------------------------
+
+// The lake's Octocat again, in a tuft of grass beside the footer. When the reader reaches the
+// bottom it peeks up to its eyes, looks left and right, rises, waves and sends up a heart; when
+// they scroll away it ducks back down. Hovering makes it wave, and it links to the repository.
+const PEEK = { W: 36, H: 30, x: 6, eyes: 10, full: 12 }; // eyes: rows up to the eyes; full: the whole head
+const HEART = ["oo.oo", "onono", "onnno", ".ono.", "..o.."];
+
+function drawPeek(ctx, p, t, waving) {
+  const { W, H, x } = PEEK, wl = H - 2;
+  ctx.clearRect(0, 0, W, H);
+  // Eyes: centred, or looking left or right, and now and then a blink.
+  const look = p.look, blink = !p.still && t % 3.7 > 3.58;
+  const up = Math.round(p.up), top = wl - up;
+  CAT_ART.forEach((row, r) => {
+    const y = top + r;
+    if (y >= wl) return;
+    for (let c = 0; c < row.length; c++) {
+      let k = row[c];
+      if (k === ".") continue;
+      if (r === 6 || r === 7) {
+        const eye = c === 4 || c === 5 || c === 10 || c === 11;
+        if (eye && blink) k = r === 6 ? "F" : "e";
+        else if (eye && look) k = (look < 0) === (c === 4 || c === 10) ? "e" : "F";
+      }
+      ctx.fillStyle = CAT[k];
+      ctx.fillRect(x + c, y, 1, 1);
+    }
+  });
+  // The tentacle, once the head is all the way up: raised to wave, curled at the tip.
+  if (up >= PEEK.full - 1) {
+    const lift = waving ? 1 : Math.max(0, Math.sin(t * 0.7) * 3 - 2);
+    const n = Math.round(2 + lift * 6), bend = 1 + Math.sin(t * (waving ? 6 : 2.5)) * (waving ? 2.5 : 1.2);
+    let px = x + 19;
+    for (let k = 0; k < n; k++) {
+      px = x + 19 + Math.round(bend * (k / 7) ** 2);
+      const py = wl - 1 - k;
+      ctx.fillStyle = CAT.o; ctx.fillRect(px - 1, py, 1, 1); ctx.fillRect(px + 2, py, 1, 1);
+      ctx.fillStyle = CAT.M; ctx.fillRect(px, py, 1, 1);
+      ctx.fillStyle = CAT.L; ctx.fillRect(px + 1, py, 1, 1);
+    }
+    if (n > 4) {
+      const py = wl - 1 - n;
+      ctx.fillStyle = CAT.o; ctx.fillRect(px, py, 4, 1); ctx.fillRect(px + 4, py + 1, 1, 2);
+      ctx.fillStyle = CAT.L; ctx.fillRect(px + 2, py + 1, 2, 1);
+      ctx.fillStyle = CAT.M; ctx.fillRect(px + 3, py + 2, 1, 1);
+    }
+  }
+  // A heart drifting up from beside its head, gone after a couple of seconds.
+  if (p.heart >= 0 && p.heart < 2.2) {
+    const hy = Math.round(wl - PEEK.full - 3 - p.heart * 4), hx = x + 15 + Math.round(Math.sin(p.heart * 3));
+    if (p.heart < 1.7 || Math.floor(p.heart * 10) % 2) HEART.forEach((row, r) => {
+      for (let c = 0; c < row.length; c++) if (row[c] !== ".") {
+        ctx.fillStyle = row[c] === "o" ? CAT.o : T.flowers[0][0];
+        ctx.fillRect(hx + c, hy + r, 1, 1);
+      }
+    });
+  }
+  // Grass in front, so it peeks out from behind the blades.
+  for (const [gx, len, lit] of [[2, 3, 0], [3, 5, 1], [4, 2, 0], [8, 3, 1], [9, 4, 0], [13, 2, 1], [18, 3, 0], [19, 5, 1], [21, 3, 1], [26, 4, 0], [27, 2, 1], [31, 3, 1], [32, 2, 0]])
+    for (let j = 0; j < len; j++) { ctx.fillStyle = j === len - 1 ? T.tips[lit] : j ? T.meadow[1] : T.meadow[3]; ctx.fillRect(gx, H - 1 - j, 1, 1); }
+  ctx.fillStyle = T.meadow[3]; ctx.fillRect(0, H - 1, W, 1);
+  ctx.fillStyle = T.flowers[1][0]; ctx.fillRect(29, H - 5, 1, 1); ctx.fillRect(28, H - 4, 1, 1); ctx.fillRect(30, H - 4, 1, 1);
+  ctx.fillStyle = T.meadow[2]; ctx.fillRect(29, H - 3, 1, 2);
+}
+
+export function mountPeek(footer, href = "https://github.com/iamnbutler/cairn") {
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)");
+  const a = document.createElement("a");
+  a.className = "peek";
+  a.href = href;
+  a.setAttribute("aria-label", "Cairn on GitHub");
+  a.title = "Cairn on GitHub";
+  const canvas = document.createElement("canvas");
+  canvas.width = PEEK.W; canvas.height = PEEK.H;
+  canvas.setAttribute("aria-hidden", "true");
+  a.append(canvas);
+  footer.append(a);
+  const ctx = canvas.getContext("2d");
+
+  // here: the reader is at the bottom. The script runs on `since`, the time it last changed.
+  const p = { up: 0, look: 0, heart: -1, still: false };
+  let here = false, since = 0, hover = false, raf = 0, last = 0;
+  const RISE = 14; // rows a second
+
+  function step(now) {
+    const t = now / 1000, dt = Math.min(0.1, last ? t - last : 0), s = t - since;
+    last = t;
+    if (here) {
+      // Peek to the eyes, look left, then right, then rise, wave and send a heart.
+      const goal = s < 2.3 ? PEEK.eyes : PEEK.full;
+      p.up = p.up < goal ? Math.min(goal, p.up + RISE * dt) : goal;
+      p.look = s < 0.9 ? 0 : s < 1.5 ? -1 : s < 2.1 ? 1 : 0;
+      p.heart = s > 2.9 ? s - 2.9 : -1;
+    } else {
+      p.up = Math.max(0, p.up - RISE * 1.5 * dt);
+      p.heart = -1;
+    }
+    const waving = hover || (here && s > 2.6 && s < 4.4);
+    drawPeek(ctx, p, t, waving);
+    const busy = here || p.up > 0;
+    if (busy && !document.hidden) raf = requestAnimationFrame(step);
+    else raf = 0;
+  }
+  function go() { if (!raf) { last = 0; raf = requestAnimationFrame(step); } }
+
+  // Without motion it's just there, all the way up and still.
+  function still() { Object.assign(p, { up: PEEK.full, look: 0, heart: -1, still: true }); drawPeek(ctx, p, 0, hover); }
+
+  new IntersectionObserver(([e]) => {
+    const now = e.intersectionRatio > 0.6;
+    if (now === here) return;
+    here = now;
+    since = performance.now() / 1000;
+    if (reduce.matches) still(); else go();
+  }, { threshold: [0, 0.6] }).observe(a);
+  for (const [type, on] of [["pointerenter", true], ["pointerleave", false], ["focus", true], ["blur", false]])
+    a.addEventListener(type, () => { hover = on; if (reduce.matches) still(); else go(); });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && (here || p.up > 0) && !reduce.matches) go(); });
+  if (reduce.matches) still(); else drawPeek(ctx, p, 0, false);
+}
+
 // --- Links on the headings ---------------------------------------------------------------------
 
 // Every heading gets an id, and a "#" to its left on hover that copies a link to it. A heading
