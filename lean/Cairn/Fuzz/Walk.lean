@@ -953,10 +953,13 @@ def checks (t : Target) (setup : Setup) (w : World t.S W) (act? : Option Action)
   -- Presence: a control is in the frame iff its move is enabled, and, for a move whose controls
   -- live in a virtual list's rows, its row is laid. A control keyed like a row the list didn't
   -- lay may be missing, and so may one keyed like a row of a list off screen (hidden while the
-  -- app keeps it, `App.keepScroll`): none of its rows is laid.
+  -- app keeps it, `App.keepScroll`): none of its rows is laid. A list that left and isn't kept
+  -- is gone (an app that replaces its list by one with a new ref, such as a refreshed feed),
+  -- so its rows say nothing about the controls on screen.
   let lists := listsOf laid
   let inRows := rowClaims lists
-  let away := w.lastLists.filter fun ll => !lists.any (·.ref == ll.ref)
+  let away := w.lastLists.filter fun ll =>
+    !lists.any (·.ref == ll.ref) && w.rt.ui.keptLists.any (·.1 == ll.ref)
   let awayRows := rowClaims away
   for mv in t.machine.moves do
     if t.custom.noControl.contains mv.id then continue
