@@ -70,6 +70,11 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
   (`LEAN_ABORT_ON_NONLINEAR=1`). The fixture's bench adds a Like press → frame: 0.2 ms, 2.5% of
   the 8 ms budget. bench/optimistic.md. `make bench` runs both, and `lake exe bench` builds
   again (its timed step had missed `fixUI`'s kept scroll boxes).
+- **`cairn fuzz`: presence after a list is replaced.** A virtual list that left the screen counted
+  as hidden for good, so once an app replaced its list by one with a new ref (Sky's refreshed
+  feed), every control keyed like one of the old list's rows failed presence ("in the frame, but
+  its row is not laid") though its own row was laid. Only lists the app keeps
+  (`App.keepScroll`) count as hidden now.
 
 No claim is new, retired, moved or changed.
 

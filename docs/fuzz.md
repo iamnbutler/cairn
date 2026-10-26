@@ -393,6 +393,7 @@ keys, cursors) keeps them in the world. `handle` sees only the request, never th
    probed keys include each list's first and last keys and the keys either side of the rows it
    laid. While a list seen before is off screen (hidden while the app keeps it), none of its rows
    is laid: the moves found in its rows, and any move keyed like one of its rows, may be absent.
+   A list that left and isn't kept (replaced by one with a new ref) is gone and says nothing.
 4. **Pressable** when the window is at or above the minimum: `hitTest` at the centre of the
    visible part of each enabled pointer move's control returns it, and
    `checkPressable && controlRectsNonempty` holds. A control scrolled out of view in a scroll
