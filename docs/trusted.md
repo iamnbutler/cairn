@@ -687,7 +687,9 @@ Apple's, not checked).
 with empty data while keeping the old value; `KeychainStore.write` now deletes and re-adds the
 item for an empty value. Sky's selftest found a concurrent `SecItemDelete` (`forgetSecret`) and
 `SecItemCopyMatching` on one service deadlocked inside Security (#237); the host now serializes
-every call.
+every call. The full run (`make fuzz-trusted`, 20,000 cases) found `KeychainStore.read` dropping
+a value's leading byte order mark (`String(data:encoding:)` strips one); it now decodes with
+`String(validating:as:)`.
 
 **Evidence.**
 - **Fuzzed** (`effects.secret.keychain`): random writes (generated text: ASCII, edge Unicode,
@@ -1047,7 +1049,10 @@ more `scrollWheel`s (the host treats them like any other); and that AppKit deliv
   axis or both, made with `CGEvent(scrollWheelEvent2Source:)` and read back as `NSEvent`s so
   the deltas, precision and phase are AppKit's. What the app's core receives is only `scroll`
   events at the oracle point, summing to within one point of the negated (and scaled) deltas,
-  with the sign of a total of a point or more.
+  with the sign of a total of a point or more. Each case starts from no carried fraction (a
+  trackpad `began` with no movement): a wheel has no phases, so the host rightly carries a
+  fraction from one wheel gesture into the next, which the full run once saw as a gesture off
+  by 1.25 points.
 - **Tested**: the fixture's self test scrolls its rows 1,616 points through the engine and
   checks rows 51 to 56 show and are pressed where they show.
 

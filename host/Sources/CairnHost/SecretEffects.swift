@@ -118,7 +118,9 @@ public struct KeychainStore: SecretStore {
         let st = SecItemCopyMatching(q as CFDictionary, &out)
         if st == errSecItemNotFound { return .success(nil) }
         guard st == errSecSuccess else { return .failure(failure(st, "read")) }
-        guard let d = out as? Data, let s = String(data: d, encoding: .utf8) else {
+        // Not `String(data:encoding:)`, which drops a leading byte order mark: the value read must
+        // be the value written, every scalar of it.
+        guard let d = out as? Data, let s = String(validating: d, as: UTF8.self) else {
             return .failure(ReplyError(.invalid, "the Keychain item \(account) is not UTF-8 text"))
         }
         return .success(s)

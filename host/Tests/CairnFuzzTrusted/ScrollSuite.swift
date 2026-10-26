@@ -115,6 +115,12 @@ final class ScrollSuite: Suite {
         _ = engine.wait(through: engine.lastSeq)
         let height = view.bounds.height
         let before = core.events.count
+        // A wheel has no phases, so the host carries a fraction from one gesture into the next;
+        // start every case from none, with a trackpad gesture's `began` and no movement, as the
+        // host drops it then.
+        var start = gs
+        start.precise = true
+        view.scrollWheel(with: event(start, (0, 0), phase: 1))
         var sumX = 0.0, sumY = 0.0
         var at: NSPoint? = nil
         for (i, d) in gs.deltas.enumerated() {
