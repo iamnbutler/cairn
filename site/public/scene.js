@@ -491,6 +491,21 @@ function dissolve(L, g, bg) {
       }
     }
   }
+  // Around the sheet's top and sides the land thins into mist, so the page rises out of it
+  // instead of sitting on it with a hard edge.
+  if (g.plateHalf) {
+    const R = 14, top = g.plateTop, half = g.plateHalf;
+    for (let y = Math.max(0, top - R); y < H; y++) for (let x = Math.max(0, cx - half - R); x < Math.min(W, cx + half + R); x++) {
+      const d = Math.max(top - y, Math.abs(x - cx) - half);
+      if (d < 0 || d >= R) continue;
+      const t = 1 - d / R;
+      if (streak(x, y, smoothT(t) * 0.92, 3, 9)) L.set(x, y, bg);
+      else if (streak(x + 23, y, Math.sin(Math.PI * t) * 0.3, 4, 12)) {
+        const c = L.get(x, y), m = mist[Math.floor(h2(x >> 3, y) * 3)];
+        L.set(x, y, [(c[0] + m[0]) >> 1, (c[1] + m[1]) >> 1, (c[2] + m[2]) >> 1]);
+      }
+    }
+  }
   // Past the width cap, the canvas's own edges dissolve too.
   if (!g.capped) return;
   for (let y = 0; y < H; y++) for (let x = 0; x < 24; x++) {
@@ -594,22 +609,22 @@ export function mountScene(canvas, layout = {}) {
     const key = JSON.stringify([innerWidth, k]);
     if (!force && key === lastKey) return;
     lastKey = key;
-    // The mist is centred about two thirds of the way down the video (or a little below the
-    // header before it loads), and never so low that the scene runs on for a whole screen.
+    // The mist starts a short way into the sheet (about 140px, a little below the lede), or two
+    // thirds of the way down a shorter feature, or a little below the header before it loads.
     const fadeBand = 48;
-    const fadeY = k.top + Math.min(Math.round(k.height * 0.62), Math.round(420 / s)) + (k.height ? 0 : 30);
+    const fadeY = k.top + Math.min(Math.round(k.height * 0.62), Math.round(140 / s) + fadeBand) + (k.height ? 0 : 30);
     const W = Math.ceil(canvas.clientWidth / s), cx = W >> 1, H = fadeY + fadeBand + 24;
     canvas.style.height = `${H * s}px`;
     canvas.width = W; canvas.height = H;
     const bg = getComputedStyle(document.body).backgroundColor.match(/\d+/g).slice(0, 3).map(Number);
     const unit = 200, horizon = 84;
     const g = {
-      W, H, cx, unit, horizon, fadeY, fadeBand, plateHalf: k.half,
+      W, H, cx, unit, horizon, fadeY, fadeBand, plateHalf: k.half, plateTop: k.top,
       lakeTop: horizon + 24,
       moonX: cx + Math.round(Math.min(W * 0.32, 200)), moonY: Math.round(horizon * 0.22),
       glowX: cx - Math.round(Math.min(W * 0.2, 110)),
       cairnX: cx + Math.round(Math.min(W * 0.22, 120)),
-      capped: canvas.clientWidth < innerWidth - 2,
+      capped: canvas.clientWidth < document.documentElement.clientWidth - 2, // innerWidth counts the scrollbar
     };
     g.meadowAt = x => g.lakeTop + 24 + (fbm((x - cx) / 34 + 9, 41) - 0.5) * 8;
 
