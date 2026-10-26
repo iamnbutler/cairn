@@ -1,6 +1,6 @@
 // The progress log: media.json, newest first. Videos and stills (an "image" instead of a video,
 // for a screenshot) are written by tools/media/put.sh; a note is an entry with "text"
-// (plain-text paragraphs) and neither, for work with nothing to show on screen. The homepage shows the featured video; /milestones/ puts each entry in its milestone's
+// (plain-text paragraphs) and neither, for work with nothing to show on screen. /milestones/ puts each entry in its milestone's
 // progress log. site/web/lib/site.ts reads the same list for the feed, and links each entry to the
 // id that videoId gives it here.
 
