@@ -31,8 +31,9 @@ def target (recv : State → Msg → State × List Effect) : Target :=
     invariants := [], claims := claimInfos, custom := fuzz }
 
 /-- The first failure over `n` sequences of `steps` steps, with its setup and operations. -/
-def firstFailure (t : Target) (n steps : Nat) : IO (Option (Failure × Setup × Array Op)) := do
-  for seed in [0:n] do
+def firstFailure (t : Target) (n steps : Nat) (from_ : Nat := 0) :
+    IO (Option (Failure × Setup × Array Op)) := do
+  for seed in [from_:n] do
     let (setup, rng) := genSetup t seed
     let o ← runSeq t setup (.gen rng steps)
     if let some f := o.failure then return some (f, setup, o.ops)
@@ -61,11 +62,17 @@ def main : IO UInt32 := do
   unless f.claim == 22 && (f.check == "server" || f.check == "serverDrained") do
     IO.eprintln s!"the mutant failed {f.check} ^{f.claim}, not ^22 against the server: {f.message}"
     return 1
-  let (shrunk, _) ← shrink t setup f ops
-  IO.println s!"lost taken for refused: {f.check} ^22 failed at seed {setup.seed}: {f.message}"
-  IO.println s!"  shrunk {ops.size} → {shrunk.size} operations:"
-  for op in shrunk do IO.println s!"    {opText op}"
-  unless shrunk.any isLose do
-    IO.eprintln "the shrunk failure has no reply lost after the server acted"
-    return 1
-  return 0
+  -- A failure can also shrink to one whose lost reply comes from the drain at the end, which
+  -- the operations don't show; look on to the first that shrinks to an explicit one.
+  let mut next := some (f, setup, ops)
+  while true do
+    let some (f, setup, ops) := next
+      | IO.eprintln "no shrunk failure has a reply lost after the server acted"; return 1
+    let (shrunk, _) ← shrink t setup f ops
+    if shrunk.any isLose then
+      IO.println s!"lost taken for refused: {f.check} ^22 failed at seed {setup.seed}: {f.message}"
+      IO.println s!"  shrunk {ops.size} → {shrunk.size} operations:"
+      for op in shrunk do IO.println s!"    {opText op}"
+      return 0
+    next ← firstFailure t 100 80 (setup.seed + 1)
+  return 1
