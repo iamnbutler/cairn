@@ -51,7 +51,7 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
 
 ## v0.5.1
 
-26 October 2026.
+26 October 2026, at commit `3616efd`.
 
 A patch release: conformance holds the world, optimistic-value benchmarks, and two fixes Sky
 needs (fuzz presence after a list is replaced, and no empty batch while the clock is held).
