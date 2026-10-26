@@ -9,7 +9,7 @@ current one is in [GOAL.md](../GOAL.md); finished ones are in [goals/](goals/).
 | M2 (done) | [Yap](goals/m2.md), dictation | time, requests, subscriptions, menu bar and panel surfaces |
 | M3 (done) | [Pairs](goals/m3.md), a memory game | images, JSON (`cairn_json`), requests in flight with cancellation, a grid that follows the window, apps built only from packages |
 | M4 (done) | [Sky](goals/m4.md), Bluesky: read | login and a session in the Keychain, the home feed, scrolling that lays out only what's on screen, paging, refresh racing "load more" |
-| M5 (next) | Bluesky: act | like, repost, follow and mute shown at once and rolled back on failure, with the count proved to match the server's after any order of replies; notifications |
+| M5 (now) | [Bluesky: act](goals/m5.md) | like, repost, follow and mute shown at once and rolled back on failure, with the count proved to match the server's after any order of replies; notifications |
 | M6 | Bluesky: write | the post editor: mentions, links and tags as facets over UTF-8 byte ranges, counting by grapheme cluster, replies and quotes |
 | M7 | Bluesky: everywhere | one or several columns by window width, several windows, live updates over a websocket |
 
