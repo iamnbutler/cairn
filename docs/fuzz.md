@@ -410,7 +410,7 @@ keys, cursors) keeps them in the world. `handle` sees only the request, never th
    used), meets the box widened by the overscan, and no more than `(viewport + 2·overscan) /
    minHeight + 2`; the spacers and rows are one under the other from the content's top less the
    offset; and every row laid was laid at the height the list laid it out by (the runtime had
-   recorded it: `settle` didn't run out). **Anchor** (`anchor`): over an operation that doesn't
+   recorded it: `settleAll` didn't run out). **Anchor** (`anchor`): over an operation that doesn't
    scroll or resize (not a wheel, key, Tab or resize) or ask to (`scrollTo`), the first row
    showing in each list keeps its place in the box, unless the offset ends at 0 or the limit or
    the row is gone. **`scrollTo`** (under the box's ref's claim, `scrollTo`): after a step whose

@@ -14,7 +14,9 @@ for the rest above and one for the rest below (docs/layout.md, "Virtual lists").
   forgotten when the list's width changes, and `settle` runs the view again when they change.
 * **The anchor.** The runtime also records the first row showing and where its top was. When the
   heights above it change, or rows are inserted above it, the offset moves by as much as its top
-  did, so it stays where it was on screen (unless the clamp moves it).
+  did, so it stays where it was on screen. When the clamp keeps the offset from moving that far,
+  the row is held, and put back once the clamp allows, until the batch's frame is shown
+  (`anchorAt`).
 
 The heights a view lays out by are a `Model`: the known rows, sorted by index, and the estimate
 for the rest. `Model.top` and `Model.height` are the specification (sums over the rows); the view
@@ -30,7 +32,9 @@ Theorems, for every model:
 * `top_succ`: each row starts where the one before it ends (the layout's side,
   `Cairn.Layout.VList`, shows the laid rows do too);
 * `record_keeps`: a correction keeps the anchor's on-screen position, unless the clamp moves it;
-  `top_eq_of_below`: a change wholly below a row doesn't move its top, so it moves no offset. -/
+  `top_eq_of_below`: a change wholly below a row doesn't move its top, so it moves no offset;
+* `record_holds`, `record_returns`: when the clamp moves it, the row is held at its place, and
+  the next record the clamp allows puts it back there. -/
 
 @[expose] public section
 
@@ -769,7 +773,7 @@ def keepRow (info : Info) (rows : Array Row) (o : Int) : Option (Nat × Int) :=
   | some a =>
     if a.offset = o then
       match rows.find? (·.key == a.key) with
-      | some r => some (r.index, a.top)
+      | some r => some (r.index, a.top + a.hold)
       | none => reanchor
     else reanchor
   | none => reanchor
@@ -780,6 +784,27 @@ def corrected (M' : Model) (keepAt : Option (Nat × Int)) (o lim : Int) : Int :=
   | some (i, t) => clampTo (o + (M'.topF M'.pre i - t)) lim
   | none => clampTo o lim
 
+/-- The anchor recorded after a correction to `o'`: the first row showing at `o'`, if it was
+laid, else the kept row. But when the clamp moved the offset (the kept row isn't where it was on
+screen), the kept row, held: `top + hold` is where its top would be had the offset moved freely
+(`o' + (t − o)`), so a later layout in the same batch that can (a longer list, a larger limit)
+moves the offset to put it back (`record_holds`, `record_returns`). The hold lasts until the
+batch's frame is shown (`Runtime.steps`, `Known.letGo`): then the row is kept where it shows. -/
+def anchorAt (info : Info) (M' : Model) (keepAt : Option (Nat × Int)) (o o' : Int) :
+    Option Anchor :=
+  let pre' := M'.pre
+  let i1 := M'.firstF pre' o'
+  let first : Option Anchor :=
+    if info.first ≤ i1 ∧ i1 < info.last then
+      some { key := info.keys[i1]?.getD 0, top := M'.topF pre' i1, offset := o' }
+    else keepAt.map fun (i, _) => { key := info.keys[i]?.getD 0, top := M'.topF pre' i, offset := o' }
+  match keepAt with
+  | some (i, t) =>
+    if o' = o + (M'.topF pre' i - t) then first
+    else some { key := info.keys[i]?.getD 0, top := M'.topF pre' i, offset := o',
+                hold := o' + (t - o) - M'.topF pre' i }
+  | none => first
+
 /-- **The runtime's record of a laid list** (`Runtime.fixUI`): the box at `r` with padding `pad`,
 laid at offset `o` with children `kids`, whose offset may go up to `lim`. Returns what is now
 known (the heights laid, the box's length, the anchor) and the corrected offset. -/
@@ -787,16 +812,10 @@ def record (info : Info) (r : Rect) (pad : Insets) (o lim : Int) (kids : List La
     Known × Int :=
   let width := r.w - pad.left - pad.right
   let M' := after info width kids
-  let pre' := M'.pre
   let keepAt := keepRow info M'.rows o
   let o' := corrected M' keepAt o lim
-  let i1 := M'.firstF pre' o'
-  let anchor : Option Anchor :=
-    if info.first ≤ i1 ∧ i1 < info.last then
-      some { key := info.keys[i1]?.getD 0, top := M'.topF pre' i1, offset := o' }
-    else keepAt.map fun (i, _) => { key := info.keys[i]?.getD 0, top := M'.topF pre' i, offset := o' }
-  ({ width, count := info.keys.size, rows := M'.rows, viewport := r.h, anchor,
-     est := keptEst info width M'.rows }, o')
+  ({ width, count := info.keys.size, rows := M'.rows, viewport := r.h,
+     anchor := anchorAt info M' keepAt o o', est := keptEst info width M'.rows }, o')
 
 /-- **The anchor stays still.** When the runtime keeps a row still (the anchor, or the row
 showing at the laid offset), the corrected offset moves by exactly as much as that row's top
@@ -822,8 +841,44 @@ at, wherever its key has moved. -/
 theorem keepRow_anchor (info : Info) (rows : Array Row) (o : Int) {a : Anchor}
     (ha : info.known.anchor = some a) (ho : a.offset = o) {r : Row}
     (hr : rows.find? (·.key == a.key) = some r) :
-    keepRow info rows o = some (r.index, a.top) := by
+    keepRow info rows o = some (r.index, a.top + a.hold) := by
   simp only [keepRow, ha, ho, ↓reduceIte, hr]
+
+/-- **A clamped row is held, not dropped.** When the clamp keeps the offset from moving as far
+as the kept row's top moved (rows inserted above it at the end of a short list, say), the anchor
+recorded is that row, held at its top had the offset moved freely: its place on screen before,
+`t − o`, from the corrected offset. -/
+theorem record_holds (info : Info) (r : Rect) (pad : Insets) (o lim : Int) (kids : List Laid)
+    {i : Nat} {t : Int}
+    (hk : keepRow info (after info (r.w - pad.left - pad.right) kids).rows o = some (i, t))
+    (hc : (record info r pad o lim kids).2 ≠ o + ((after info (r.w - pad.left - pad.right) kids).topF
+        (after info (r.w - pad.left - pad.right) kids).pre i - t)) :
+    ∃ a, (record info r pad o lim kids).1.anchor = some a ∧ a.key = info.keys[i]?.getD 0 ∧
+      a.offset = (record info r pad o lim kids).2 ∧
+      a.top + a.hold = (record info r pad o lim kids).2 + (t - o) := by
+  simp only [record, anchorAt, hk] at hc ⊢
+  simp only [hc, ↓reduceIte, Option.some.injEq, exists_eq_left']
+  exact ⟨trivial, trivial, by omega⟩
+
+/-- **And put back once the clamp allows.** The next record of the list, laid at the offset a
+held anchor was recorded at, with the row's key still known, keeps the row where it was before
+the clamp held it, `t − o` into the box, unless the clamp moves the offset again. With
+`record_holds`: a row inserted or grown above the first row showing moves nothing on screen once
+the list is long enough to let it, within the batch. -/
+theorem record_returns (info : Info) (r : Rect) (pad : Insets) (o' lim : Int) (kids : List Laid)
+    {a : Anchor} {o t : Int} (ha : info.known.anchor = some a) (hao : a.offset = o')
+    (hat : a.top + a.hold = o' + (t - o)) {row : Row}
+    (hr : (after info (r.w - pad.left - pad.right) kids).rows.find? (·.key == a.key) = some row)
+    (hc : 0 ≤ o' + ((after info (r.w - pad.left - pad.right) kids).topF
+        (after info (r.w - pad.left - pad.right) kids).pre row.index - (a.top + a.hold)) ∧
+      o' + ((after info (r.w - pad.left - pad.right) kids).topF
+        (after info (r.w - pad.left - pad.right) kids).pre row.index - (a.top + a.hold)) ≤ lim) :
+    (after info (r.w - pad.left - pad.right) kids).topF
+        (after info (r.w - pad.left - pad.right) kids).pre row.index -
+      (record info r pad o' lim kids).2 = t - o := by
+  have hk := keepRow_anchor info _ o' ha hao hr
+  have := record_keeps info r pad o' lim kids hk hc
+  omega
 
 end VList
 

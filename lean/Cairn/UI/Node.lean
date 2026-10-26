@@ -108,11 +108,14 @@ structure Row where
 deriving Repr, BEq, DecidableEq, Inhabited
 
 /-- The row the reader is at: the first row showing at the offset `offset`, whose top in the
-list's content was `top` in the heights it was recorded with. -/
+list's content was `top` in the heights it was recorded with. A row the clamp kept from its
+place within a batch is held: the place to keep it at is `hold` points below where it is
+(`VList.anchorAt`), until the batch's frame is shown (`Known.letGo`). -/
 structure Anchor where
   key : Nat
   top : Int
   offset : Int
+  hold : Int := 0
 deriving Repr, BEq, DecidableEq, Inhabited
 
 /-- What the runtime knows of one list (`UI.lists`), recorded after every layout: the heights of
@@ -132,6 +135,10 @@ structure Known where
   below them; 0 before any. -/
   est : Nat := 0
 deriving Repr, BEq, DecidableEq, Inhabited
+
+/-- What is known once a frame is shown: a held anchor is let go, so the row is kept where it
+now shows. -/
+def Known.letGo (k : Known) : Known := { k with anchor := k.anchor.map fun a => { a with hold := 0 } }
 
 /-- What a laid virtual list says of itself (`Style.rows`), for the runtime to record and the
 fuzzer to check: what the view read, the heights it laid out by, and the window it laid. -/

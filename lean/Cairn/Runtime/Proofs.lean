@@ -110,6 +110,48 @@ theorem settle_spec (app : App S) (cfg : Config) (st : S) (pointer : Option Poin
     · exact ⟨_, rfl⟩
     · exact settle_spec app cfg st pointer ui0 f _
 
+/-- So does `resettle`, from a `UI` and tree of that form. -/
+theorem resettle_spec (app : App S) (cfg : Config) (st : S) (pointer : Option Point) (ui0 : UI) :
+    ∀ fuel x, (∃ l, x = (fixUI l pointer ui0 (app.keepScroll st), l)) →
+      ∃ l, resettle app cfg st pointer ui0 fuel x = (fixUI l pointer ui0 (app.keepScroll st), l)
+  | 0, _, h => h
+  | f + 1, (ui, l), h => by
+    simp only [resettle]
+    split
+    · exact resettle_spec app cfg st pointer ui0 f _ (settle_spec app cfg st pointer ui0 0 ui)
+    · exact h
+
+/-- `settleAll` always returns `ui0` repaired against the tree it returns. -/
+theorem settleAll_spec (app : App S) (cfg : Config) (st : S) (pointer : Option Point)
+    (ui0 ui : UI) :
+    ∃ l, settleAll app cfg st pointer ui0 ui = (fixUI l pointer ui0 (app.keepScroll st), l) :=
+  resettle_spec app cfg st pointer ui0 _ _ (settle_spec app cfg st pointer ui0 settleFuel ui)
+
+theorem repeat_comm {α : Type} (f : α → α) : ∀ (n : Nat) (a : α),
+    Nat.repeat f n (f a) = f (Nat.repeat f n a)
+  | 0, _ => rfl
+  | n + 1, a => by simp only [Nat.repeat, repeat_comm f n a]
+
+/-- **A list settles, or the fuel ran out.** `resettle` returns a tree in which no virtual list
+laid a row at a height other than the one it was laid out by (`unsettled`), unless it took
+every one of its `fuel` layouts. -/
+theorem resettle_stops (app : App S) (cfg : Config) (st : S) (pointer : Option Point) (ui0 : UI) :
+    ∀ fuel x, unsettled (resettle app cfg st pointer ui0 fuel x).2 = false ∨
+      resettle app cfg st pointer ui0 fuel x =
+        Nat.repeat (fun (y : UI × Laid) => settle app cfg st pointer ui0 0 y.1) fuel x
+  | 0, x => .inr rfl
+  | f + 1, (ui, l) => by
+    simp only [resettle]
+    split
+    · rename_i h
+      rcases resettle_stops app cfg st pointer ui0 f (settle app cfg st pointer ui0 0 ui) with h' | h'
+      · exact .inl h'
+      · refine .inr ?_
+        rw [h']
+        exact repeat_comm (fun (y : UI × Laid) => settle app cfg st pointer ui0 0 y.1) f (ui, l)
+    · rename_i h
+      exact .inl (by simpa using h)
+
 /-- What `aim` returns is still a `UI` repaired against the tree returned with it, from one with
 `ui1`'s focus and press. -/
 theorem aim_spec (app : App S) (cfg : Config) (st : S) (pointer : Option Point) (ui1 : UI)
@@ -124,7 +166,7 @@ theorem aim_spec (app : App S) (cfg : Config) (st : S) (pointer : Option Point) 
     split
     · exact h
     · apply aim_spec
-      obtain ⟨l, hl⟩ := settle_spec app cfg st pointer _ settleFuel (aimScroll goals laid ui)
+      obtain ⟨l, hl⟩ := settleAll_spec app cfg st pointer _ (aimScroll goals laid ui)
       exact ⟨l, _, hl, rfl, rfl⟩
 
 /-- `lay` returns a `UI` repaired against the tree returned with it, from one with `ui1`'s focus
@@ -133,8 +175,8 @@ theorem lay_spec (app : App S) (cfg : Config) (st : S) (pointer : Option Point)
     (goals : List (ControlRef × ScrollTarget)) (ui1 : UI) :
     ∃ l u, lay app cfg st pointer goals ui1 = (fixUI l pointer u (app.keepScroll st), l) ∧
       u.focus = ui1.focus ∧ u.pressed = ui1.pressed := by
-  obtain ⟨l, hl⟩ := settle_spec app cfg st pointer ui1 settleFuel ui1
-  have h0 : ∃ l u, settle app cfg st pointer ui1 settleFuel ui1 =
+  obtain ⟨l, hl⟩ := settleAll_spec app cfg st pointer ui1 ui1
+  have h0 : ∃ l u, settleAll app cfg st pointer ui1 ui1 =
       (fixUI l pointer u (app.keepScroll st), l) ∧ u.focus = ui1.focus ∧ u.pressed = ui1.pressed :=
     ⟨l, ui1, hl, rfl, rfl⟩
   unfold lay
@@ -160,10 +202,19 @@ theorem sound_lay (app : App S) (cfg : Config) (st : S) (pointer : Option Point)
   obtain ⟨h1, h2⟩ := h
   unfold Sound; rw [h1, h2]; exact fixUI_sound l pointer u _
 
+theorem sound_settleAll (app : App S) (cfg : Config) (st : S) (pointer : Option Point)
+    (ui0 ui : UI) (s : State S)
+    (h : (s.ui, s.laid) = settleAll app cfg st pointer ui0 ui) : Sound s := by
+  obtain ⟨l, hl⟩ := settleAll_spec app cfg st pointer ui0 ui
+  rw [hl] at h
+  simp only [Prod.mk.injEq] at h
+  obtain ⟨h1, h2⟩ := h
+  unfold Sound; rw [h1, h2]; exact fixUI_sound l pointer ui0 _
+
 /-- **Focus is sound** at start. -/
 theorem start_sound (app : App S) (cfg : Config) (size : Size) (scale : Nat) :
     Sound (start app cfg size scale) :=
-  sound_settle app cfg app.init none _ settleFuel _ _ rfl
+  sound_settleAll app cfg app.init none _ _ _ rfl
 
 /-- **Focus is sound** after every step: focus is none or a focusable control of the tree on
 screen, and hover and press are none or controls of it. -/

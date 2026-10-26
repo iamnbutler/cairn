@@ -73,8 +73,10 @@ the current time before any delivery (docs/effects.md, "Order within a step"). T
    control is still there, and each scroll offset only if its box is still there, clamped to
    it (see "Scrolling");
 4. if the repair changed what `view` saw (a hover reveal, a focus ring), views and lays out
-   again, up to `settleFuel` (4) more times (`settle`). The stored `UI` is always the routed one
-   repaired against the stored tree, so the soundness theorem holds whether or not it converged.
+   again, up to `settleFuel` (4) more times (`settle`), and then again while a virtual list laid
+   a row at a height it hadn't recorded, up to the number of rows in its lists (`resettle`; see
+   "Virtual lists"). The stored `UI` is always the routed one repaired against the stored tree,
+   so the soundness theorem holds whether or not it converged.
 
 If anything was delivered, `step` then diffs `app.subscriptions` against the active set and
 records the commands for the frame (`diffSubs`). If an event delivers nothing and leaves the
@@ -224,11 +226,26 @@ in the tree (`recordLists`, `VList.record`), before the clamp:
   above them, move nothing on screen (`VList.record_keeps`) unless the offset is clamped (at the
   top, a row inserted above the first row showing is above the box: the offset moves down by
   its height). The anchor recorded is the first row showing at the corrected offset.
+- **A clamp within a batch.** When the clamp does move the offset, the kept row is held, not
+  dropped: the anchor recorded is that row, with the place it should be at (`Anchor.hold`, the
+  distance from where it is). A later layout in the same batch that the clamp allows puts it back
+  there (`VList.record_holds`, `record_returns`): rows inserted above the first row showing of a
+  short list clamp the offset at its end, and an `appear` they bring into view that loads more
+  rows lets it go on, so the row is where the reader last saw it in the frame shown. Holds last
+  until the batch's frame is shown: `steps` ends by letting them go (`State.shown`,
+  `Known.letGo`), so a clamp the reader has seen stays (a box that grows, then shrinks again in
+  a later batch, doesn't scroll back).
 
 `settle` lays the view out again while the record changes, so the frame shown is laid at the
 heights just recorded: a first layout lays rows at the estimate, the second at their heights.
-Rows that only the second layout brings into the window take a third; `settleFuel` is 4, and
-the fuzzer checks that every row on screen was laid at its recorded height.
+Rows that only the second layout brings into the window take a third. A list learns heights one
+window at a time, though, so when many rows it knows change at once (a filter hiding many rows)
+each layout brings the next window of them in at the heights they no longer have. So after
+`settle` (`settleFuel`, 4, bounds the rounds any change takes), `resettle` lays out again while a
+list in the tree laid a row at a height other than the one it laid it out by (`unsettled`), up to
+the number of rows in the lists on screen (`rowFuel`); `settleAll` is the two. `resettle_stops`:
+the frame is settled, or every one of those layouts was taken. The fuzzer checks that every row
+on screen was laid at its recorded height.
 
 Focus moves only among the rows laid: Tab into a list reaches its first row laid, and each Tab
 scrolls the next row into view, so the next one after it is laid; shift-Tab from outside reaches
