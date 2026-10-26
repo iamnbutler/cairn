@@ -51,7 +51,7 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
 
 ## v0.4.0
 
-25 October 2026.
+25 October 2026, at commit `f107007`.
 
 A minor version: the runtime takes over scroll offsets, reports controls coming on screen and
 lays out virtual lists, and fuzz targets are scoped by package. Only one claim is added, but
