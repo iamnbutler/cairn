@@ -362,7 +362,7 @@ Runs on a second Mac (macOS 26.5, Apple silicon, debug build):
   A walk reaches an item's menu rarely, because it must add an item first. The flow and the
   gesture file cover the menu every run.
 - With the Like buttons, `cairn conformance --n 0 --gestures conformance/menus.gestures` passes
-  both gesture sequences and both flows (41 steps).
+  both gesture sequences and both flows (55 steps).
 - Random walks fail since the Like buttons, at the first step after a Like or Refresh press. The
   fixture's requests go to `127.0.0.1:9`, and their failures come back as replies, with retries,
   that the model's walk never sees. That needs a fake server in the conformance model, as
