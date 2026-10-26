@@ -11,8 +11,12 @@ export const head = (stylesheet) =>
     `<link rel="stylesheet" href="${stylesheet}">`,
   ].join("\n");
 
-/** The self-hosted Pixelify Sans (fonts.css), its most used weight preloaded. */
-export const FONT_LINKS = `<link rel="preload" href="/fonts/pixelify-sans-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>\n<link rel="stylesheet" href="/fonts.css">`;
+/** The self-hosted Pixelify Sans (fonts.css), every weight preloaded (about 8 KB each) so no text
+ * swaps face after the first paint. */
+export const FONT_LINKS = [400, 600, 700]
+  .map((w) => `<link rel="preload" href="/fonts/pixelify-sans-latin-${w}-normal.woff2" as="font" type="font/woff2" crossorigin>`)
+  .concat(`<link rel="stylesheet" href="/fonts.css">`)
+  .join("\n");
 
 // The site's own links, in the order every page shows them: the homepage's and /milestones/'s
 // title nav (site/web), the docs' bar (site/web/layouts/docs/html.hbs) and the package pages'

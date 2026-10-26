@@ -12,3 +12,7 @@
 # new capture shows on the next load. The graphs and frames themselves are /m/ keys, cached forever.
 /try/apps.json
   Cache-Control: no-cache
+# The fonts never change under the same name, so a visit after the first has them before the
+# page paints and the pixel text doesn't swap in late.
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
