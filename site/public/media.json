@@ -1,5 +1,28 @@
 [
   {
+    "title": "Sky 0.3.1, signed and installed",
+    "text": [
+      "Sky 0.3.1 is on the public registry as iamnbutler/sky, built on Cairn 0.4.1 with cairn_json and cairn_atproto, all from the registry, and so is its CI in iamnbutler/sky. Its claims export, 26 active claims, is on the registry for its claim pages.",
+      "cairn bundle --sign made Sky.app, signed with a Developer ID under the hardened runtime, and it is installed in ~/Applications. Signing in with a real account is the next step, by a person, not by a test: every test signs in to the fake server."
+    ],
+    "date": "2026-10-26",
+    "published": "2026-10-26T07:22:04Z",
+    "commit": "sky@bd64e76",
+    "milestone": "m4"
+  },
+  {
+    "title": "Cairn 0.4.1: the trusted base for M4, fuzzed",
+    "text": [
+      "Cairn 0.4.1 is out on the public registry as iamnbutler/cairn. Every Keychain call now goes through one serial queue for the process, so a forgetSecret racing a read of the same app's items no longer deadlocks inside Security's file-based keychain (#237), and a value that starts with a byte order mark reads back with it.",
+      "What VoiceOver and other assistive apps see of a scrolled list or a secure field was reviewed by hand; it is now two assume claims with a fuzz check each. ^1021: the accessibility tree holds exactly what a scroll area shows, walked through AppKit's own accessibility API on a real view. ^1022: a secure field shows nothing typed, and the debug socket's request log shows no secret. docs/trusted.md lists every assumption M4 added with its check; the full trusted fuzz run passes all 54 checks.",
+      "The registry's ledger check accepted 0.4.0 to 0.4.1, a patch release: two new claims and nothing retired. It serves the claims export, 54 active claims, for the claim pages."
+    ],
+    "date": "2026-10-26",
+    "published": "2026-10-26T07:05:04Z",
+    "commit": "a6a35fb",
+    "milestone": "m4"
+  },
+  {
     "image": "/m/images/86036cc2ce33030e.png",
     "title": "Sky: refresh keeps the reader",
     "caption": "Three posts arrived and Refresh put them above: the post at the top of the view didn't move, and Sky offers ↑ 3 new posts to go back to the top. Offscreen render, fake PDS.",

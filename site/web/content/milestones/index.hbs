@@ -18,24 +18,32 @@ card: { label: Cairn, title: Milestones, line: "What each one sets out to show, 
   <p class="meta"><a class="feed" href="/feed.xml">Follow along with the RSS feed</a></p>
 
   <article class="post">
-  <h2 id="fourth-milestone-sky-reads-bluesky">Fourth milestone: Sky reads Bluesky<span class="soon">now</span></h2>
+  <h2 id="fourth-milestone-sky-reads-bluesky">Fourth milestone: Sky reads Bluesky<span class="soon">done</span></h2>
   <p class="meta"><time class="date" datetime="2026-10-25T16:57:29-04:00">2026-10-25</time></p>
   <p>Can Cairn hold a feed that never ends? Sky is the reading half of a Bluesky client: sign in
-    with an app password, keep the session, and read the home feed however long it gets. It is the
+    with an app password, keep the session, and read the home feed however long it gets. It was the
     first of four milestones on Bluesky, which needs nearly everything left after Pairs: long
-    lists, authentication, paging and requests that race.</p>
+    lists, authentication, paging and requests that race. It is done: Sky is a signed app, built
+    only from registry packages, and every path through it runs against a fake server with no
+    account and no network.</p>
   <ol class="trail">
-    <li>Scrolling in Cairn: a scroll box whose offset the runtime owns, and a virtual list that
-      lays out only the rows on screen.</li>
-    <li>Secrets: the session's tokens kept in the Keychain by the host, never in Lean, and secure
-      text fields for the password.</li>
-    <li><code>cairn_atproto</code>, a package: XRPC, the session calls and the timeline, with one
-      refresh at a time when a token expires.</li>
+    <li>Scrolling in Cairn: the runtime owns every scroll offset and clamps it after every step,
+      and a virtual list lays out only the rows on screen. A step costs about 0.17 ms at 1,000
+      rows and at 100,000.</li>
+    <li>Secrets: the session's tokens are captured from the server's replies into the Keychain by
+      the host and never reach Lean, and the password is typed into a secure field that shows
+      bullets, keeps no undo and copies nothing.</li>
+    <li><code>cairn_atproto</code>, a package: XRPC, the session calls and the timeline, with
+      proofs of one refresh at a time when a token expires and each call sent at most twice.</li>
     <li>Proofs about the feed: no duplicates and no gaps, a late page for an old cursor never
       changes it, and a refresh racing a load-more ends as one of the two would in order.</li>
-    <li>All of it testable against a fake server, with no account and no network.</li>
+    <li>Everything the host is trusted with, from the Keychain to what VoiceOver sees of a
+      scrolled list or a secure field, is an assumption with a fuzz check of its own.</li>
   </ol>
-  <p>Sky lives in its own repository and, like Pairs, is built only through the package path.</p>
+  <p>Sky lives in its own repository, <a href="https://github.com/iamnbutler/sky">iamnbutler/sky</a>,
+    as the package <code>sky</code>, with its <a href="/packages/sky/claims/">claims on the
+    registry</a>. Flinging through 1,102 posts with images, its Lean thread takes a median of 1.5
+    to 1.7 ms a frame. Next is the acting half: likes, reposts and follows.</p>
   <ul id="log-m4" class="trail log"><li class="meta">Loading…</li></ul>
   </article>
 
