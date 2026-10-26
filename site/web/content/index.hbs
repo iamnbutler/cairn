@@ -9,9 +9,7 @@ card: { label: "", title: Cairn, line: "Mac apps where every action is a claim, 
   <div class="title"><h1>Cairn</h1>{{{ $utils.titleNav('home') }}}</div>
 </header>
 
-<main>
-  <div id="feature" class="feature"></div>
-
+<main class="sheet">
   <p class="lede">Research into user interfaces where everything a person can do is a <em>claim</em>
     with a durable id, and every claim carries machine-checked evidence.</p>
 
@@ -139,16 +137,9 @@ card: { label: "", title: Cairn, line: "Mac apps where every action is a claim, 
 
 <script type="module">
   import { mountScene, mountFrames, mountSprigs, mountAnchors, mountPeek } from "/scene.js";
-  import { list, figure } from "/media.js";
-  // The featured video tops the page; every video is in its milestone's log on /milestones/.
-  list().then(all => {
-    const videos = all.filter(m => m.video);
-    const feature = videos.find(m => m.feature) || videos[0];
-    if (feature) document.getElementById("feature").append(figure(feature, true));
-  }).catch(() => {});
   mountFrames(document.querySelector("main"));
   mountSprigs(document.querySelector("main"));
   mountAnchors(document.querySelector("main"));
   mountPeek(document.querySelector("footer"));
-  mountScene(document.getElementById("scene"), { feature: document.getElementById("feature"), octocat: document.getElementById("octocat") });
+  mountScene(document.getElementById("scene"), { feature: document.querySelector("main"), octocat: document.getElementById("octocat") });
 </script>

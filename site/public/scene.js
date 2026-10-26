@@ -1,5 +1,5 @@
 // The header scene: a pixel landscape at night with a cairn on the meadow. It runs the full
-// width of the window, the featured video sits on its meadow, and behind the video's lower part
+// width of the window, the homepage's sheet of text sits on its meadow, and behind the sheet
 // it fades into the page as mist. Everything is drawn once at a few CSS pixels per pixel; only
 // the sparkles and fireflies move. Positions are measured from the centre, so a resize reveals
 // more land instead of reshuffling it.
@@ -466,8 +466,8 @@ function drawCairn(L, g) {
 
 // --- Where the scene gives way to the page ---------------------------------------------------
 
-// The scene runs the full width of the window and ends behind the lower part of the featured
-// video in a long, slow mist: a gently arched line, a little lower on the left, with the land
+// The scene runs the full width of the window and ends behind the homepage's sheet (or the
+// featured video it is given) in a long, slow mist: a gently arched line, a little lower on the left, with the land
 // thinning into the page colour over a tall band and pale streaks of mist drifting through it.
 const smoothT = t => t * t * (3 - 2 * t);
 
@@ -581,7 +581,8 @@ export function mountScene(canvas, layout = {}) {
   // Where the featured video sits, in canvas pixels from the canvas's top.
   function measure(s) {
     const top = canvas.getBoundingClientRect().top;
-    const box = layout.feature?.querySelector(".box")?.getBoundingClientRect();
+    const el = layout.feature && (layout.feature.querySelector(".box") || layout.feature);
+    const box = el?.getBoundingClientRect();
     return box
       ? { top: Math.round((box.top - top) / s), height: Math.round(box.height / s), half: Math.round(box.width / 2 / s) }
       : { top: Math.round(header.clientHeight / s), height: 0, half: 0 };
