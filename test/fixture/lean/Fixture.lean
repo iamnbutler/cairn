@@ -640,7 +640,7 @@ def view (s : State) (ui : UI) : Node :=
       -- endregion: fixture-para
       inputRow s ui,
       passcodeRow s ui,
-      .box { width := .fill, gap := 8 } none
+      .box { width := .fill, gap := 4 } none
         [ .box { axis := .row, width := .fill, gap := 8, align := .center } none
             ([button ui flashRef "Flash", button ui addTopRef "Add above",
               button ui addEndRef "Add below"] ++
