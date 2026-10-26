@@ -51,7 +51,7 @@ check`, part of `make check`) enforces it on every change. Ids are scoped by pac
 
 ## v0.4.1
 
-26 October 2026.
+26 October 2026, at commit `a6a35fb`.
 
 - **Keychain calls no longer deadlock** ([#237](https://github.com/iamnbutler/cairn/issues/237)).
   A `forgetSecret` racing a read of the same app's items (a request's Keychain secret, a
