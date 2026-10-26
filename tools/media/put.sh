@@ -1,18 +1,18 @@
 #!/bin/sh
 # Encode a demo recording, upload it to R2 and add it to the site's media list.
 #
-#   tools/media/put.sh <recording.mov> <title> <caption> [--feature] [--milestone m4]
-#   tools/media/put.sh <screenshot.png> <title> <caption> [--milestone m4]
+#   tools/media/put.sh <recording.mov> <title> <caption> [--feature] [--milestone m5]
+#   tools/media/put.sh <screenshot.png> <title> <caption> [--milestone m5]
 #
 # A .png or .jpg is a still: uploaded as it is (images/<hash>.<ext>), listed with "image" in
 # place of a video; it is never the featured video.
 # --feature makes it the video at the top of the site. --milestone puts it in that
-# milestone's progress log (default m4, the current one; see GOAL.md). Run from the repo root,
+# milestone's progress log (default m5, the current one; see GOAL.md). Run from the repo root,
 # then commit site/public/media.json and deploy the site (make site), which builds the RSS feed
 # with the video as an item.
 set -eu
 in=$1; title=$2; caption=$3; shift 3
-feature=; milestone=m4
+feature=; milestone=m5
 while [ $# -gt 0 ]; do
   case $1 in
     --feature) feature=--feature ;;
