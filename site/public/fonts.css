@@ -1,5 +1,10 @@
-/* Pixelify Sans, served by the site: make site-dist copies the files from @fontsource/pixelify-sans
-   (site/web/package.json) into /fonts/. */
-@font-face { font-family: "Pixelify Sans"; font-style: normal; font-weight: 400; font-display: swap; src: url(/fonts/pixelify-sans-latin-400-normal.woff2) format("woff2"); }
-@font-face { font-family: "Pixelify Sans"; font-style: normal; font-weight: 600; font-display: swap; src: url(/fonts/pixelify-sans-latin-600-normal.woff2) format("woff2"); }
-@font-face { font-family: "Pixelify Sans"; font-style: normal; font-weight: 700; font-display: swap; src: url(/fonts/pixelify-sans-latin-700-normal.woff2) format("woff2"); }
+/* Pixelify Sans, subset from @fontsource/pixelify-sans by tools/site/fonts.sh (make site-fonts).
+   Each weight has a core file (ASCII and the prose's punctuation, preloaded by site/chrome.js) and
+   an -ext file with the rest of its Latin, which a browser fetches only for a page that needs it.
+   The ranges here match the script's. */
+@font-face { font-family: "Pixelify Sans"; font-style: normal; font-weight: 400; font-display: swap; src: url(/fonts/pixelify-400.woff2) format("woff2"); unicode-range: U+20-7E, U+A0, U+AB, U+B7, U+BB, U+2013-2014, U+2018-201D, U+2022, U+2026, U+2039-203A, U+2212; }
+@font-face { font-family: "Pixelify Sans"; font-style: normal; font-weight: 400; font-display: swap; src: url(/fonts/pixelify-400-ext.woff2) format("woff2"); unicode-range: U+A1-AA, U+AC-B6, U+B8-BA, U+BC-FF, U+102, U+131, U+152-153, U+2C6, U+2DA, U+2DC, U+300-308, U+201A, U+201E, U+20AC, U+2122, U+2215; }
+@font-face { font-family: "Pixelify Sans"; font-style: normal; font-weight: 600; font-display: swap; src: url(/fonts/pixelify-600.woff2) format("woff2"); unicode-range: U+20-7E, U+A0, U+AB, U+B7, U+BB, U+2013-2014, U+2018-201D, U+2022, U+2026, U+2039-203A, U+2212; }
+@font-face { font-family: "Pixelify Sans"; font-style: normal; font-weight: 600; font-display: swap; src: url(/fonts/pixelify-600-ext.woff2) format("woff2"); unicode-range: U+A1-AA, U+AC-B6, U+B8-BA, U+BC-FF, U+102, U+131, U+152-153, U+2C6, U+2DA, U+2DC, U+300-308, U+201A, U+201E, U+20AC, U+2122, U+2215; }
+@font-face { font-family: "Pixelify Sans"; font-style: normal; font-weight: 700; font-display: swap; src: url(/fonts/pixelify-700.woff2) format("woff2"); unicode-range: U+20-7E, U+A0, U+AB, U+B7, U+BB, U+2013-2014, U+2018-201D, U+2022, U+2026, U+2039-203A, U+2212; }
+@font-face { font-family: "Pixelify Sans"; font-style: normal; font-weight: 700; font-display: swap; src: url(/fonts/pixelify-700-ext.woff2) format("woff2"); unicode-range: U+A1-AA, U+AC-B6, U+B8-BA, U+BC-FF, U+102, U+131, U+152-153, U+2C6, U+2DA, U+2DC, U+300-308, U+201A, U+201E, U+20AC, U+2122, U+2215; }
