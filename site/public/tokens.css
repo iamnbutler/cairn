@@ -1,4 +1,4 @@
-/* The palette, type and stepped corners every page shares: the homepage and /milestones/
+/* The palette, type and stepped corners every page shares: the homepage and the blog
    (site.css), the docs and package pages (docs/docs.css), and the API reference, whose
    tool puts this file at the top of the style.css it writes (tools/doc/cairn-doc.ts). */
 /* Digits in the pixel font come from the system monospace: Pixelify's are hard to read at label

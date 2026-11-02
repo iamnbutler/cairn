@@ -18,7 +18,7 @@ export const FONT_LINKS = [400, 600, 700]
   .concat(`<link rel="stylesheet" href="/fonts.css">`)
   .join("\n");
 
-// The site's own links, in the order every page shows them: the homepage's and /milestones/'s
+// The site's own links, in the order every page shows them: the homepage's and the blog's
 // title nav (site/web), the docs' bar (site/web/layouts/docs/html.hbs) and the package pages'
 // (site/registry.js, in the Worker). `current` is the page or section the reader is in; it gets
 // aria-current, which the stylesheets mark.
@@ -27,7 +27,7 @@ const LINKS = [
   ["home", "/", "Home"],
   ["docs", "/docs/", "Docs"],
   ["claims", "/docs/evidence/", "Claims"],
-  ["milestones", "/milestones/", "Milestones"],
+  ["blog", "/blog/", "Blog"],
   ["packages", "/packages/", "Packages", "end"],
 ];
 const GITHUB = `<a class="gh" href="https://github.com/iamnbutler/cairn" aria-label="GitHub" title="Cairn on GitHub"><img src="/github.svg" alt=""></a>`;
@@ -35,7 +35,7 @@ const GITHUB = `<a class="gh" href="https://github.com/iamnbutler/cairn" aria-la
 const link = ([key, href, label, cls], current) =>
   `<a href="${href}"${cls ? ` class="${cls}"` : ""}${key === current ? ' aria-current="page"' : ""}>${label}</a>`;
 
-/** The title nav over the homepage's scene and /milestones/'s. */
+/** The title nav over the homepage's scene and the blog's. */
 export const titleNav = (current) =>
   `<nav class="links" aria-label="Site">${LINKS.map((l) => link(l, current)).join("")}${GITHUB}</nav>`;
 

@@ -117,7 +117,7 @@ ${sections.join("\n\n")}
 
 ## Optional
 
-- [Milestones](${ORIGIN}/milestones/): what each milestone set out to show, with videos
+- [Blog](${ORIGIN}/blog/): a post for each milestone, what it set out to show and what it can't yet, with videos
 - [Packages](${ORIGIN}/packages/): the package registry, with each version's claim ledger
 - [Source](https://github.com/iamnbutler/cairn): the repository
 `;

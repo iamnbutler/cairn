@@ -13,10 +13,10 @@
 <link rel="alternate" type="application/rss+xml" title="Cairn" href="/feed.xml">
 {{#if home}}
 <script>
-  // The milestones moved to /milestones/. A link from before the move to one of their sections
-  // here goes on to the same section there; the server never sees the hash, so this runs before
-  // the page draws. lib/site.ts lists the ids.
-  if ({{{ JSON.stringify($utils.movedIds($page.content)) }}}.includes(decodeURIComponent(location.hash.slice(1)))) location.replace(`/milestones/${location.hash}`);
+  // The milestones were here once, then on /milestones/, and are blog posts now. A link from
+  // before to one of their sections goes on to the same post; the server never sees the hash, so
+  // this runs before the page draws. lib/site.ts lists the ids.
+  { const to = {{{ JSON.stringify($utils.oldLinks($page.content)) }}}[decodeURIComponent(location.hash.slice(1))]; if (to) location.replace(to); }
 </script>
 {{/if}}
 <meta property="og:type" content="website">

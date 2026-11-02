@@ -1,0 +1,85 @@
+{{! The blog: /blog/ lists the posts (content/blog/index.hbs, then lib/site.ts's postList), and
+    /blog/<slug>/ is one post (content/blog/<slug>.md) with its milestone's progress log under
+    it, filled from media.json by media.js. }}
+{{#var p = $page.params}}
+{{#var index = $page.path === '/blog/'}}
+{{#var title = $page.title + ' · Cairn'}}
+{{#var desc = String(index ? p.description : p.summary)}}
+{{#var card = await $assets.render('og/card', undefined, { args: index ? { label: 'Cairn', title: 'Blog', line: 'A post for each milestone, with videos of the work.' } : { label: 'Cairn blog', title: $page.title, line: '' } })}}
+<!doctype html>
+<html lang="{{ $site.lang }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ title }}</title>
+<meta name="description" content="{{ desc }}">
+{{{ $utils.head('/site.css') }}}
+<link rel="alternate" type="application/rss+xml" title="Cairn" href="/feed.xml">
+{{#if index}}
+<script>
+  // /milestones/ redirects here with its hash. An id from that page (a milestone's heading, a
+  // video's) goes on to the post it is in now, before the page draws. lib/site.ts lists them.
+  { const to = {{{ JSON.stringify($utils.oldLinks()) }}}[decodeURIComponent(location.hash.slice(1))]; if (to) location.replace(to); }
+</script>
+{{/if}}
+<meta property="og:type" content="{{ index ? 'website' : 'article' }}">
+<meta property="og:site_name" content="Cairn">
+<meta property="og:title" content="{{ title }}">
+<meta property="og:description" content="{{ desc }}">
+<meta property="og:url" content="{{ $page.url }}">
+<meta property="og:image" content="{{ $utils.url.abs(card) }}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="{{ $page.title }}, over a pixel cairn on a meadow by a lake at night">
+<meta name="twitter:card" content="summary_large_image">
+</head>
+<body>
+<header class="scene">
+  <canvas id="scene" aria-hidden="true"></canvas>
+  <div class="title">{{#if index}}<h1>Blog</h1>{{/if}}{{#if !index}}<p class="blog-name"><a href="/blog/">Blog</a></p>{{/if}}{{{ $utils.titleNav('blog') }}}</div>
+</header>
+
+<main class="blog">
+{{#if index}}
+{{{ $page.content }}}
+{{{ $utils.postList() }}}
+{{/if}}
+{{#if !index}}
+<article class="post">
+  <h1 class="post-title">{{ $page.title }}</h1>
+  <p class="meta">{{{ $utils.postMeta($page.path) }}}</p>
+  <div class="body">
+{{{ $page.content }}}
+  </div>
+</article>
+{{#if p.milestone}}
+<section class="progress">
+  <h2 id="progress-log">Progress log</h2>
+  <p>The videos and notes from this milestone as the work landed, newest first.</p>
+  <ul id="log-{{ p.milestone }}" class="trail log"><li class="meta">Loading…</li></ul>
+</section>
+{{/if}}
+{{{ $utils.postPager($page.path) }}}
+{{/if}}
+</main>
+
+<footer><img src="/icon.svg" alt=""><span>MIT licensed. Built in the open, slowly. <a href="/docs/">Read the docs</a>.</span><a class="feed" href="/feed.xml">RSS feed</a></footer>
+
+<script type="module">
+  import { mountScene, mountFrames, mountSprigs, mountAnchors, mountPeek } from "/scene.js";
+  import { list, fillLogs } from "/media.js";
+  const main = document.querySelector("main");
+  mountFrames(main);
+  if (!main.querySelector("ol.posts")) mountSprigs(main); // not on every title in the index
+  mountAnchors(main);
+  mountScene(document.getElementById("scene"));
+  mountPeek(document.querySelector("footer"));
+  // The log arrives after the page has drawn, so a link to a video's heading scrolls once it does.
+  if (main.querySelector("[id^=log-]")) list().then(all => {
+    fillLogs(main, all);
+    const target = location.hash && document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    if (target) target.scrollIntoView();
+  }).catch(() => { for (const log of main.querySelectorAll("[id^=log-]")) log.innerHTML = '<li class="meta">Could not load the video list.</li>'; });
+</script>
+</body>
+</html>
