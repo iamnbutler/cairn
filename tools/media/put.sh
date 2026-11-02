@@ -1,22 +1,26 @@
 #!/bin/sh
 # Encode a demo recording, upload it to R2 and add it to the site's media list.
 #
-#   tools/media/put.sh <recording.mov> <title> <caption> [--feature] [--milestone m5]
+#   tools/media/put.sh <recording.mov> <title> <caption> [--feature] [--milestone m5] [--poster S]
 #   tools/media/put.sh <screenshot.png> <title> <caption> [--milestone m5]
 #
 # A .png or .jpg is a still: uploaded as it is (images/<hash>.<ext>), listed with "image" in
 # place of a video; it is never the featured video.
+# --poster S takes the poster (the frame most readers see, since log videos don't autoplay) at
+# S seconds in; by default it's the last frame, where the result is on screen. Pick the moment
+# that tells the story on its own, never one caught mid-change.
 # --feature makes it the video at the top of the site. --milestone puts it in that
 # milestone's progress log (default m5, the current one; see GOAL.md). Run from the repo root,
 # then commit site/public/media.json and deploy the site (make site), which builds the RSS feed
 # with the video as an item.
 set -eu
 in=$1; title=$2; caption=$3; shift 3
-feature=; milestone=m5
+feature=; milestone=m5; poster_at=
 while [ $# -gt 0 ]; do
   case $1 in
     --feature) feature=--feature ;;
     --milestone) milestone=$2; shift ;;
+    --poster) poster_at=$2; shift ;;
     *) echo "put.sh: unknown option $1" >&2; exit 2 ;;
   esac
   shift
@@ -47,7 +51,12 @@ esac
 
 ffmpeg -v error -y -i "$in" -c:v libx264 -preset slow -crf 24 -pix_fmt yuv420p \
   -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -movflags +faststart -an "$work/v.mp4"
-ffmpeg -v error -y -i "$work/v.mp4" -frames:v 1 -q:v 3 "$work/p.jpg"
+if [ -n "$poster_at" ]; then
+  ffmpeg -v error -y -ss "$poster_at" -i "$work/v.mp4" -frames:v 1 -q:v 3 "$work/p.jpg"
+else # the last frame: decode the final second, keeping only the last image written
+  ffmpeg -v error -y -sseof -1 -i "$work/v.mp4" -update 1 -q:v 3 "$work/p.jpg"
+fi
+[ -s "$work/p.jpg" ] || { echo "put.sh: no poster frame${poster_at:+ at ${poster_at}s}" >&2; exit 1; }
 
 hash=$(shasum -a 256 "$work/v.mp4" | cut -c1-16)
 video="videos/$hash.mp4"; poster="videos/$hash.jpg"
