@@ -48,7 +48,16 @@ for (const p of files.filter((p) => p.endsWith(".html"))) {
 		if (!have.has(path.slice(1)) && !have.has(`${path.slice(1)}/index.html`) && !path.startsWith("/m/")) missing.add(href);
 	}
 }
-const redirects = [...missing].sort().map((from) => ({ from, to: ORIGIN + from, status: 302 }));
+// _redirects' exact paths (a renamed page: /milestones/ is /blog/ now) carry over as they are; its
+// splats can't, and those paths go to the Cloudflare site with the rest.
+const exact = readFileSync(join(ROOT, "_redirects"), "utf8").split("\n")
+	.map((l) => l.trim().split(/\s+/))
+	.filter(([from, to, status]) => from?.startsWith("/") && to && !from.includes("*") && !to.includes(":"))
+	.map(([from, to, status]) => ({ from, to, status: Number(status ?? 301) }));
+const redirects = [
+	...exact,
+	...[...missing].sort().filter((from) => !exact.some((r) => r.from === from)).map((from) => ({ from, to: ORIGIN + from, status: 302 })),
+];
 
 const sha = (b: Buffer) => createHash("sha256").update(b).digest("hex");
 const assets = files.map((path) => {
