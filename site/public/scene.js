@@ -585,6 +585,27 @@ function drawOctocat(ctx, cat, t, waving) {
   }
 }
 
+// Fireflies, drawn from time alone (animation/loops.md in the prompt library): each has a fixed
+// slot with seeded numbers, is born once per 20s cycle at its own phase, and rises from a new
+// meadow spot each time round. No Math.random and no state carried between frames, so the
+// meadow is the same on every visit and any moment can be drawn on its own.
+const FLY_CYCLE = 20;
+const firefly = k => {
+  const r = j => hash(k * 7919 + j * 104729 + 17);
+  return { k, born: r(1) * FLY_CYCLE, life: 7 + r(2) * 9, vy: 0.8 + r(3) * 1.8, sway: 0.6 + r(4) * 1.2, phase: r(5) * 6.28, tw: 1.2 + r(6) * 2 };
+};
+// Where firefly m is at t seconds, and how brightly it twinkles, or null while it's unborn.
+function flyAt(m, spots, t) {
+  const since = t + FLY_CYCLE - m.born; // t starts at 0; this keeps it positive
+  const age = since % FLY_CYCLE;
+  if (age >= m.life || !spots.length) return null;
+  const pass = Math.floor(since / FLY_CYCLE);
+  const [x0, y0] = spots[Math.floor(h2(m.k, pass + 31) * spots.length)];
+  const x = x0 + m.sway * 1.4 * (Math.sin(age * 0.7 + m.phase) - Math.sin(m.phase)), y = y0 - m.vy * age;
+  const fade = Math.min(1, age / 1.5, (m.life - age) / 1.5);
+  return [Math.round(x), Math.round(y), (Math.sin(age * m.tw + m.phase) + 1) / 2 * fade];
+}
+
 export function mountScene(canvas, layout = {}) {
   const reduce = matchMedia("(prefers-reduced-motion: reduce)");
   const header = canvas.parentElement;
@@ -615,7 +636,11 @@ export function mountScene(canvas, layout = {}) {
     // thirds of the way down a shorter feature, or a little below the header before it loads.
     const fadeBand = 48;
     const fadeY = k.top + Math.min(Math.round(k.height * 0.62), Math.round(165 / s) + fadeBand) + (k.height ? 0 : 30);
-    const W = Math.ceil(canvas.clientWidth / s), cx = W >> 1, H = fadeY + fadeBand + 24;
+    // A whole number of CSS pixels per scene pixel: the canvas is W * s wide, a pixel or two past
+    // its box (centred, and the body clips the overhang), never squashed into it.
+    const boxW = Math.min(header.clientWidth, 2400);
+    const W = Math.ceil(boxW / s), cx = W >> 1, H = fadeY + fadeBand + 24;
+    canvas.style.width = `${W * s}px`;
     canvas.style.height = `${H * s}px`;
     canvas.width = W; canvas.height = H;
     const bg = getComputedStyle(document.body).backgroundColor.match(/\d+/g).slice(0, 3).map(Number);
@@ -626,7 +651,7 @@ export function mountScene(canvas, layout = {}) {
       moonX: cx + Math.round(Math.min(W * 0.32, 200)), moonY: Math.round(horizon * 0.22),
       glowX: cx - Math.round(Math.min(W * 0.2, 110)),
       cairnX: cx + Math.round(Math.min(W * 0.22, 120)),
-      capped: canvas.clientWidth < document.documentElement.clientWidth - 2, // innerWidth counts the scrollbar
+      capped: boxW < document.documentElement.clientWidth - 2, // innerWidth counts the scrollbar
     };
     g.meadowAt = x => g.lakeTop + 24 + (fbm((x - cx) / 34 + 9, 41) - 0.5) * 8;
 
@@ -650,7 +675,7 @@ export function mountScene(canvas, layout = {}) {
     // Fireflies start on kept meadow pixels, so they never rise out of the mist.
     const spots = [];
     for (let k = 0; spots.length < 800 && k < 30000; k++) {
-      const x = Math.floor(Math.random() * W), y = Math.floor(g.lakeTop + 20 + Math.random() * (H - g.lakeTop - 20));
+      const x = Math.floor(h2(k, 601) * W), y = Math.floor(g.lakeTop + 20 + h2(k, 602) * (H - g.lakeTop - 20));
       const c = L.get(x, y);
       if (Math.abs(c[0] - bg[0]) + Math.abs(c[1] - bg[1]) + Math.abs(c[2] - bg[2]) > 6) spots.push([x, y]);
     }
@@ -666,24 +691,15 @@ export function mountScene(canvas, layout = {}) {
       });
       layout.octocat.hidden = false;
     }
-    state = { W, H, L, spots, sparkles, motes: [], cat, t0: performance.now() };
-    for (let k = 0; k < count; k++) state.motes.push(spawn(true));
-    last = 0;
+    // Enough slots that about `count` are alive at once (a life averages 11.5s of the 20s cycle).
+    const motes = Array.from({ length: Math.round(count * FLY_CYCLE / 11.5) }, (_, k) => firefly(k));
+    state = { W, H, L, spots, sparkles, motes, cat, t0: performance.now() };
     frame(performance.now());
   }
 
-  function spawn(fresh) {
-    const [x, y] = state.spots[Math.floor(Math.random() * state.spots.length)] || [0, 0];
-    return { x, y, vy: 0.8 + Math.random() * 1.8, sway: 0.6 + Math.random() * 1.2, phase: Math.random() * 6.28,
-      life: fresh ? Math.random() * 6 : 0, max: 7 + Math.random() * 9, tw: 1.2 + Math.random() * 2 };
-  }
-
-  let last = 0;
   function frame(now) {
     if (!state) return;
-    const { W, H, L, sparkles, motes } = state;
-    const dt = Math.min(0.1, last ? (now - last) / 1000 : 0);
-    last = now;
+    const { W, H, L, sparkles, motes, spots } = state;
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, W, H);
     ctx.drawImage(L.canvas, 0, 0);
@@ -696,13 +712,10 @@ export function mountScene(canvas, layout = {}) {
     }
     drawOctocat(ctx, state.cat, t, waving);
     // Fireflies rise slowly and twinkle.
-    for (let k = 0; k < motes.length; k++) {
-      const m = motes[k];
-      m.life += dt; m.y -= m.vy * dt; m.x += Math.sin(t * 0.7 + m.phase) * m.sway * dt;
-      if (m.life > m.max) { motes[k] = spawn(false); continue; }
-      const fade = Math.min(1, m.life / 1.5, (m.max - m.life) / 1.5);
-      const tw = (Math.sin(t * m.tw + m.phase) + 1) / 2 * fade;
-      const x = Math.round(m.x), y = Math.round(m.y);
+    for (const m of motes) {
+      const at = flyAt(m, spots, t);
+      if (!at) continue;
+      const [x, y, tw] = at;
       if (tw > 0.55) {
         ctx.fillStyle = T.fly.halo;
         ctx.fillRect(x - 1, y, 1, 1); ctx.fillRect(x + 1, y, 1, 1); ctx.fillRect(x, y - 1, 1, 1); ctx.fillRect(x, y + 1, 1, 1);
@@ -714,7 +727,7 @@ export function mountScene(canvas, layout = {}) {
     if (!reduce.matches && visible && !document.hidden) raf = requestAnimationFrame(frame);
   }
 
-  function restart() { cancelAnimationFrame(raf); last = 0; if (state) raf = requestAnimationFrame(frame); }
+  function restart() { cancelAnimationFrame(raf); if (state) raf = requestAnimationFrame(frame); }
   let resizeTimer = 0, lastW = innerWidth;
   addEventListener("resize", () => {
     if (innerWidth === lastW) return; // phones fire resize on scroll as the toolbar moves
@@ -847,10 +860,12 @@ export function mountFrames(root) {
     Object.assign(f.canvas.style, { left: `${f.box.offsetLeft - m * s}px`, top: `${f.box.offsetTop - m * s}px`, width: `${W * s}px`, height: `${H * s}px` });
     f.canvas.width = W; f.canvas.height = H;
     f.L = new Layer(W, H);
-    drawFrame(f.L, m, (bw * 7 + bh) % 97 + 1);
+    const seed = (bw * 7 + bh) % 97 + 1;
+    drawFrame(f.L, m, seed);
     f.L.done();
     f.ring = around(W, H, m, m - 2);
-    f.flies = Array.from({ length: 2 }, (_, k) => ({ u: Math.random(), v: 0.6 + Math.random() * 0.8, off: 3 + Math.random() * 6, ph: Math.random() * 6.28, tw: 1 + Math.random() * 2 }));
+    const r = (k, j) => hash(seed * 7919 + k * 131 + j);
+    f.flies = Array.from({ length: 2 }, (_, k) => ({ u: r(k, 1), v: 0.6 + r(k, 2) * 0.8, ph: r(k, 3) * 6.28, tw: 1 + r(k, 4) * 2 }));
     f.m = m;
     draw(f, performance.now());
   }
@@ -1042,32 +1057,49 @@ export function mountPeek(footer, href = "https://github.com/iamnbutler/cairn") 
 
   // here: the reader is at the bottom. The script runs on `since`, the time it last changed.
   const p = { up: 0, look: 0, heart: -1, still: false };
-  let here = false, since = 0, hover = false, raf = 0, last = 0;
-  const RISE = 14; // rows a second
+  let here = false, since = 0, hover = false, raf = 0;
+  const RISE = 14; // rows a second, on average
+
+  // Height moves by tween: easing out as it comes up and in as it ducks away. A new goal starts
+  // from wherever the head is, so scrolling away mid-rise turns it straight round.
+  const tw = { from: 0, to: 0, at: 0, dur: 0, out: true };
+  function aim(to, t) {
+    if (to === tw.to) return;
+    const out = to > p.up;
+    Object.assign(tw, { from: p.up, to, at: t, out, dur: Math.abs(to - p.up) / (out ? RISE : RISE * 1.5) });
+  }
+  function height(t) {
+    const k = tw.dur ? clamp((t - tw.at) / tw.dur) : 1;
+    const e = tw.out ? 1 - (1 - k) ** 3 : k * k;
+    return tw.from + (tw.to - tw.from) * e;
+  }
 
   function step(now) {
-    const t = now / 1000, dt = Math.min(0.1, last ? t - last : 0), s = t - since;
-    last = t;
+    const t = now / 1000, s = t - since;
     if (here) {
       // Peek to the eyes, look left, then right, then rise, wave and send a heart.
-      const goal = s < 2.3 ? PEEK.eyes : PEEK.full;
-      p.up = p.up < goal ? Math.min(goal, p.up + RISE * dt) : goal;
+      aim(s < 2.3 ? PEEK.eyes : PEEK.full, t);
       p.look = s < 0.9 ? 0 : s < 1.5 ? -1 : s < 2.1 ? 1 : 0;
       p.heart = s > 2.9 ? s - 2.9 : -1;
     } else {
-      p.up = Math.max(0, p.up - RISE * 1.5 * dt);
+      aim(0, t);
       p.heart = -1;
     }
+    p.up = height(t);
     const waving = hover || (here && s > 2.6 && s < 4.4);
     drawPeek(ctx, p, t, waving);
     const busy = here || p.up > 0;
     if (busy && !document.hidden) raf = requestAnimationFrame(step);
     else raf = 0;
   }
-  function go() { if (!raf) { last = 0; raf = requestAnimationFrame(step); } }
+  function go() { if (!raf) raf = requestAnimationFrame(step); }
 
   // Without motion it's just there, all the way up and still.
-  function still() { Object.assign(p, { up: PEEK.full, look: 0, heart: -1, still: true }); drawPeek(ctx, p, 0, hover); }
+  function still() {
+    Object.assign(p, { up: PEEK.full, look: 0, heart: -1, still: true });
+    Object.assign(tw, { from: PEEK.full, to: PEEK.full, dur: 0 });
+    drawPeek(ctx, p, 0, hover);
+  }
 
   new IntersectionObserver(([e]) => {
     const now = e.intersectionRatio > 0.6;

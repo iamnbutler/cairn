@@ -111,7 +111,7 @@ assumptions each name a fuzz check (`check "name"`) and are listed with their re
 Cairn's checks are built to catch an honest author's mistakes, and they do that well. They are
 not a defence against an author who means to mislead you, and it is worth being exact about why.
 
-An honest author is kept honest by the build:
+Here is what the build does for an honest author:
 
 - An assumption's formal statement is a definition, never an axiom: a theorem that relies on it
   takes it as a hypothesis, so the reliance is written in the theorem's own statement.
