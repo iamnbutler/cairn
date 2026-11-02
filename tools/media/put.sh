@@ -5,7 +5,9 @@
 #   tools/media/put.sh <screenshot.png> <title> <caption> [--milestone m5]
 #
 # A .png or .jpg is a still: uploaded as it is (images/<hash>.<ext>), listed with "image" in
-# place of a video; it is never the featured video.
+# place of a video; it is never the featured video. A .png also goes up as a lossless WebP
+# (images/<hash>.webp, listed as "webp"; cwebp, from Homebrew's webp), the same pixels in about a
+# third of the bytes, which the page shows; the feed keeps the PNG.
 # --poster S takes the poster (the frame most readers see, since log videos don't autoplay) at
 # S seconds in; by default it's the last frame, where the result is on screen. Pick the moment
 # that tells the story on its own, never one caught mid-change.
@@ -37,13 +39,19 @@ case $in in
     hash=$(shasum -a 256 "$in" | cut -c1-16)
     key="images/$hash.$ext"
     npx -y wrangler@4 r2 object put "cairn-media/$key" --file "$in" --content-type "$type" --remote >/dev/null
+    webp=
+    if [ "$ext" = png ]; then
+      cwebp -quiet -lossless -z 9 -metadata none "$in" -o "$work/i.webp"
+      webp="/m/images/$hash.webp"
+      npx -y wrangler@4 r2 object put "cairn-media/images/$hash.webp" --file "$work/i.webp" --content-type image/webp --remote >/dev/null
+    fi
     w=$(sips -g pixelWidth "$in" | awk '/pixelWidth/ {print $2}')
     h=$(sips -g pixelHeight "$in" | awk '/pixelHeight/ {print $2}')
     jq --arg image "/m/$key" --arg title "$title" --arg caption "$caption" --arg milestone "$milestone" \
        --arg date "$(date +%Y-%m-%d)" --arg published "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg commit "$(git rev-parse --short HEAD)" \
-       --argjson w "$w" --argjson h "$h" \
+       --argjson w "$w" --argjson h "$h" --arg webp "$webp" \
        '[{image: $image, title: $title, caption: $caption, date: $date, published: $published, commit: $commit,
-          width: $w, height: $h, milestone: $milestone}] + .' "$list" > "$work/m.json"
+          width: $w, height: $h, milestone: $milestone} + (if $webp == "" then {} else {webp: $webp} end)] + .' "$list" > "$work/m.json"
     mv "$work/m.json" "$list"
     echo "uploaded /m/$key"
     exit 0 ;;

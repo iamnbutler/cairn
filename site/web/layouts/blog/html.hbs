@@ -1,6 +1,6 @@
 {{! The blog: /blog/ lists the posts (content/blog/index.hbs, then lib/site.ts's postList), and
     /blog/<slug>/ is one post (content/blog/<slug>.md) with its milestone's progress log under
-    it, filled from media.json by media.js. }}
+    it (lib/site.ts's progressLog, from media.json). }}
 {{#var p = $page.params}}
 {{#var index = $page.path === '/blog/'}}
 {{#var title = $page.title + ' · Cairn'}}
@@ -14,6 +14,8 @@
 <title>{{ title }}</title>
 <meta name="description" content="{{ desc }}">
 {{{ $utils.head('/site.css') }}}
+<link rel="modulepreload" href="/scene.js">
+<link rel="modulepreload" href="/anchors.js">
 <link rel="alternate" type="application/rss+xml" title="Cairn" href="/feed.xml">
 {{#if index}}
 <script>
@@ -56,7 +58,9 @@
 <section class="progress">
   <h2 id="progress-log">Progress log</h2>
   <p>The videos and notes from this milestone as the work landed, newest first.</p>
-  <ul id="log-{{ p.milestone }}" class="trail log"><li class="meta">Loading…</li></ul>
+  <ul id="log-{{ p.milestone }}" class="trail log">
+{{{ $utils.progressLog(p.milestone) }}}
+</ul>
 </section>
 {{/if}}
 {{{ $utils.postPager($page.path) }}}
@@ -67,19 +71,14 @@
 
 <script type="module">
   import { mountScene, mountFrames, mountSprigs, mountAnchors, mountPeek } from "/scene.js";
-  import { list, fillLogs } from "/media.js";
+  import { posters } from "/media.js";
   const main = document.querySelector("main");
   mountFrames(main);
   if (!main.querySelector("ol.posts")) mountSprigs(main); // not on every title in the index
   mountAnchors(main);
   mountScene(document.getElementById("scene"));
   mountPeek(document.querySelector("footer"));
-  // The log arrives after the page has drawn, so a link to a video's heading scrolls once it does.
-  if (main.querySelector("[id^=log-]")) list().then(all => {
-    fillLogs(main, all);
-    const target = location.hash && document.getElementById(decodeURIComponent(location.hash.slice(1)));
-    if (target) target.scrollIntoView();
-  }).catch(() => { for (const log of main.querySelectorAll("[id^=log-]")) log.innerHTML = '<li class="meta">Could not load the video list.</li>'; });
+  posters(main);
 </script>
 </body>
 </html>

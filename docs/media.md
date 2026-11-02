@@ -7,7 +7,9 @@ videos. Record a video whenever something new works on screen.
   (the homepage, the blog at `/blog/`, the docs and the feed); `/m/<key>` is served from the
   `cairn-media` R2 bucket with range requests (video seeking, Safari) and immutable caching.
   `public/media.json` lists the videos and notes, newest first; the homepage shows the featured one and
-  each milestone's blog post renders its progress log from it.
+  each milestone's blog post renders its progress log from it when the site builds (`progressLog`
+  in `site/web/lib/site.ts`), so the page needs no script to show it. A still is shown as its
+  lossless WebP (`webp`), the feed keeps the PNG; a log video loads nothing until it's played.
 - **The blog** is a post per milestone, `web/content/blog/<slug>.md`: Markdown with a title, a
   date and time, a one- or two-sentence summary, the milestone (`m5`), its number and status.
   Write it as the project-piece prompt says: first person, what the milestone made possible and

@@ -8,7 +8,8 @@
     "commit": "dccde9a0",
     "width": 2296,
     "height": 1392,
-    "milestone": "m5"
+    "milestone": "m5",
+    "webp": "/m/images/7a91994661a0e8c8.webp"
   },
   {
     "image": "/m/images/316bbff1e81f0fae.png",
@@ -19,7 +20,8 @@
     "commit": "a85a11f0",
     "width": 1200,
     "height": 1640,
-    "milestone": "m5"
+    "milestone": "m5",
+    "webp": "/m/images/316bbff1e81f0fae.webp"
   },
   {
     "video": "/m/videos/7640748f220e2658.mp4",
@@ -94,7 +96,8 @@
     "commit": "7a69f8b",
     "width": 1200,
     "height": 1640,
-    "milestone": "m5"
+    "milestone": "m5",
+    "webp": "/m/images/bd72968d90c4fd23.webp"
   },
   {
     "image": "/m/images/8d8c5c0838845866.png",
@@ -105,7 +108,8 @@
     "commit": "7a69f8b",
     "width": 1200,
     "height": 1640,
-    "milestone": "m5"
+    "milestone": "m5",
+    "webp": "/m/images/8d8c5c0838845866.webp"
   },
   {
     "image": "/m/images/84ca80ebe0308a20.png",
@@ -116,7 +120,8 @@
     "commit": "7a69f8b",
     "width": 1200,
     "height": 1640,
-    "milestone": "m5"
+    "milestone": "m5",
+    "webp": "/m/images/84ca80ebe0308a20.webp"
   },
   {
     "title": "Cairn 0.5.0 and cairn_atproto 0.3.0, early in M5",
@@ -176,7 +181,8 @@
     "commit": "96355c0",
     "width": 1200,
     "height": 1640,
-    "milestone": "m4"
+    "milestone": "m4",
+    "webp": "/m/images/86036cc2ce33030e.webp"
   },
   {
     "image": "/m/images/3b7463082057dda1.png",
@@ -187,7 +193,8 @@
     "commit": "96355c0",
     "width": 1200,
     "height": 1640,
-    "milestone": "m4"
+    "milestone": "m4",
+    "webp": "/m/images/3b7463082057dda1.webp"
   },
   {
     "image": "/m/images/3615ff776ae0a502.png",
@@ -198,7 +205,8 @@
     "commit": "96355c0",
     "width": 1200,
     "height": 1640,
-    "milestone": "m4"
+    "milestone": "m4",
+    "webp": "/m/images/3615ff776ae0a502.webp"
   },
   {
     "title": "Cairn 0.4.0: runtime scrolling, Action.appear, virtual lists and package-scoped fuzzing",
@@ -221,7 +229,8 @@
     "commit": "6f0aa14",
     "width": 920,
     "height": 1120,
-    "milestone": "m4"
+    "milestone": "m4",
+    "webp": "/m/images/990f98ad7fd212e4.webp"
   },
   {
     "image": "/m/images/e6c13baba13e7bfe.png",
@@ -232,7 +241,8 @@
     "commit": "6f0aa14",
     "width": 920,
     "height": 1120,
-    "milestone": "m4"
+    "milestone": "m4",
+    "webp": "/m/images/e6c13baba13e7bfe.webp"
   },
   {
     "image": "/m/images/e20419d09bd36cef.png",
@@ -243,7 +253,8 @@
     "commit": "6f0aa14",
     "width": 920,
     "height": 1120,
-    "milestone": "m4"
+    "milestone": "m4",
+    "webp": "/m/images/e20419d09bd36cef.webp"
   },
   {
     "image": "/m/images/e2f41e19d6b35be9.png",
@@ -254,7 +265,8 @@
     "commit": "6f0aa14",
     "width": 920,
     "height": 1120,
-    "milestone": "m4"
+    "milestone": "m4",
+    "webp": "/m/images/e2f41e19d6b35be9.webp"
   },
   {
     "image": "/m/images/a2ff42128e730c36.png",
@@ -265,7 +277,8 @@
     "commit": "bed3b86",
     "width": 960,
     "height": 1200,
-    "milestone": "m4"
+    "milestone": "m4",
+    "webp": "/m/images/a2ff42128e730c36.webp"
   },
   {
     "title": "Cairn 0.3.0: the example apps leave, Keychain secrets, secure fields and scroll boxes",
@@ -288,7 +301,8 @@
     "commit": "1968755",
     "width": 960,
     "height": 1200,
-    "milestone": "m4"
+    "milestone": "m4",
+    "webp": "/m/images/8e152cdadfa259a1.webp"
   },
   {
     "image": "/m/images/bc48859669cf1995.png",
@@ -299,7 +313,8 @@
     "commit": "bdf391d",
     "width": 1112,
     "height": 428,
-    "milestone": "m3"
+    "milestone": "m3",
+    "webp": "/m/images/bc48859669cf1995.webp"
   },
   {
     "title": "Cairn 0.2.5: closing the window quits cleanly",
@@ -346,7 +361,8 @@
     "commit": "e3d4416",
     "width": 1120,
     "height": 1280,
-    "milestone": "m3"
+    "milestone": "m3",
+    "webp": "/m/images/ce23b28c3df48597.webp"
   },
   {
     "image": "/m/images/9b697b4fa1908202.png",
@@ -357,7 +373,8 @@
     "commit": "e3d4416",
     "width": 1120,
     "height": 1280,
-    "milestone": "m3"
+    "milestone": "m3",
+    "webp": "/m/images/9b697b4fa1908202.webp"
   },
   {
     "image": "/m/images/3a1f184c6101e886.png",
@@ -368,7 +385,8 @@
     "commit": "e3d4416",
     "width": 1120,
     "height": 1280,
-    "milestone": "m3"
+    "milestone": "m3",
+    "webp": "/m/images/3a1f184c6101e886.webp"
   },
   {
     "image": "/m/images/32893dece0647bb6.png",
@@ -379,7 +397,8 @@
     "commit": "e3d4416",
     "width": 1840,
     "height": 1280,
-    "milestone": "m3"
+    "milestone": "m3",
+    "webp": "/m/images/32893dece0647bb6.webp"
   },
   {
     "image": "/m/images/f4be29e0a16b0cc3.png",
@@ -390,7 +409,8 @@
     "commit": "e3d4416",
     "width": 1120,
     "height": 1280,
-    "milestone": "m3"
+    "milestone": "m3",
+    "webp": "/m/images/f4be29e0a16b0cc3.webp"
   },
   {
     "title": "Cairn 0.2.2, with a window minimum and an image budget",
