@@ -173,7 +173,7 @@ ${body}
 </main>
 <footer>Each version on a Cairn package registry carries its source, its build and its claim ledger.</footer>
 <script type="module">
-  import { mountAnchors } from "/scene.js";
+  import { mountAnchors } from "/anchors.js";
   mountAnchors(document.querySelector("main"));
 </script>
 </body>

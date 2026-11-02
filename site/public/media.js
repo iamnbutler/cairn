@@ -6,8 +6,19 @@
 
 export const list = () => fetch("/media.json").then(r => r.json());
 
-// A video's heading id: its title as a slug, as scene.js's mountAnchors would make it.
+// A video's heading id: its title as a slug, as anchors.js's mountAnchors would make it.
 export const videoId = m => m.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "video";
+
+// A video that doesn't play on its own fetches nothing until it's within a screen or so of the
+// window: then it takes its poster, and its metadata only when it's played (preload "none").
+let near;
+const whenNear = (v, poster) => {
+  near ??= new IntersectionObserver(es => {
+    for (const e of es) if (e.isIntersecting) { e.target.poster = e.target.dataset.poster; near.unobserve(e.target); }
+  }, { rootMargin: "100% 0px" });
+  v.dataset.poster = poster;
+  near.observe(v);
+};
 
 export function figure(m, autoplay) {
   const f = document.createElement("figure");
@@ -20,8 +31,9 @@ export function figure(m, autoplay) {
     Object.assign(v, { src: m.image, alt: m.title, loading: "lazy" });
   } else {
     v = document.createElement("video");
-    Object.assign(v, { src: m.video, poster: m.poster, controls: true, muted: true, loop: true, playsInline: true, preload: "metadata" });
+    Object.assign(v, { src: m.video, controls: true, muted: true, loop: true, playsInline: true, preload: autoplay ? "metadata" : "none" });
     v.autoplay = autoplay;
+    if (autoplay) v.poster = m.poster; else whenNear(v, m.poster);
   }
   v.width = m.width; v.height = m.height;
   f.style.setProperty("--ar", m.width / m.height);

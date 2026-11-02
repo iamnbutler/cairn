@@ -11,10 +11,10 @@ export const head = (stylesheet) =>
     `<link rel="stylesheet" href="${stylesheet}">`,
   ].join("\n");
 
-/** The self-hosted Pixelify Sans (fonts.css), every weight preloaded (about 8 KB each) so no text
+/** The self-hosted Pixelify Sans (fonts.css), every weight's core subset preloaded (about 4 KB each) so no text
  * swaps face after the first paint. */
 export const FONT_LINKS = [400, 600, 700]
-  .map((w) => `<link rel="preload" href="/fonts/pixelify-sans-latin-${w}-normal.woff2" as="font" type="font/woff2" crossorigin>`)
+  .map((w) => `<link rel="preload" href="/fonts/pixelify-${w}.woff2" as="font" type="font/woff2" crossorigin>`)
   .concat(`<link rel="stylesheet" href="/fonts.css">`)
   .join("\n");
 

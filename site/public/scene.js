@@ -62,6 +62,23 @@ function streak(x, y, t, min = 3, spread = 7) {
   return h2(Math.floor((x + h2(y, 17) * 64) / len), y * 7 + 3) < t;
 }
 
+// Pixels go into an ImageData through a 32-bit view, one write each, with every colour packed
+// once (as RGBA bytes in memory order; ImageData is little-endian on every browser we run on).
+const PACKED = new Map();
+// A channel as Uint8ClampedArray stores it: clamped, then rounded half to even.
+const byte = v => {
+  v = v < 0 ? 0 : v > 255 ? 255 : v;
+  const f = Math.floor(v), d = v - f;
+  return d > 0.5 || (d === 0.5 && f & 1) ? f + 1 : f;
+};
+const packRGB = v => (255 << 24 | byte(v[2]) << 16 | byte(v[1]) << 8 | byte(v[0])) >>> 0;
+const pack = c => {
+  if (typeof c !== "string") return packRGB(c);
+  let v = PACKED.get(c);
+  if (v === undefined) PACKED.set(c, v = packRGB(rgb(c)));
+  return v;
+};
+
 class Layer {
   constructor(w, h) {
     this.w = w; this.h = h;
@@ -70,15 +87,12 @@ class Layer {
     this.ctx = this.canvas.getContext("2d");
     this.img = this.ctx.createImageData(w, h);
     this.d = this.img.data;
-    this.cache = new Map();
+    this.u = new Uint32Array(this.d.buffer);
   }
   set(x, y, c) {
     x |= 0; y |= 0;
     if (x < 0 || y < 0 || x >= this.w || y >= this.h) return;
-    let v = typeof c === "string" ? this.cache.get(c) : c;
-    if (!v) { v = rgb(c); this.cache.set(c, v); }
-    const i = (y * this.w + x) * 4;
-    this.d[i] = v[0]; this.d[i + 1] = v[1]; this.d[i + 2] = v[2]; this.d[i + 3] = 255;
+    this.u[y * this.w + x] = pack(c);
   }
   get(x, y) { const i = (y * this.w + x) * 4; return [this.d[i], this.d[i + 1], this.d[i + 2]]; }
   done() { this.ctx.putImageData(this.img, 0, 0); return this; }
@@ -541,21 +555,35 @@ const CAT_WATER = 9; // rows from here down are under the surface
 const LAKE_TINT = rgb("#2f3172");
 const tint = (c, a) => { const v = rgb(c); return `rgb(${v.map((x, i) => Math.round(x * (1 - a) + LAKE_TINT[i] * a)).join(",")})`; };
 
+// The body as a sprite for each bob and blink (a handful in all), drawn once and then copied in
+// one drawImage a frame: rows from `under` down are below the surface and take the lake's tint.
+const CAT_SPRITES = new Map();
+function catSprite(under, blink) {
+  const key = under * 2 + (blink ? 1 : 0);
+  let c = CAT_SPRITES.get(key);
+  if (c) return c;
+  c = document.createElement("canvas");
+  c.width = CAT_ART[0].length; c.height = CAT_ART.length;
+  const ctx = c.getContext("2d");
+  CAT_ART.forEach((row, r) => {
+    for (let col = 0; col < row.length; col++) {
+      let k = row[col];
+      if (k === ".") continue;
+      if (blink && r === 6 && (k === "e" || k === "h")) k = "F";
+      ctx.fillStyle = r >= under ? tint(CAT[k], 0.6) : CAT[k];
+      ctx.fillRect(col, r, 1, 1);
+    }
+  });
+  CAT_SPRITES.set(key, c);
+  return c;
+}
+
 function drawOctocat(ctx, cat, t, waving) {
   const { x, wl } = cat;
   const bob = Math.round(Math.sin(t * 1.6) * 0.6) - (waving ? 1 : 0);
   const blink = t % 4.3 > 4.16;
   const top = wl - CAT_WATER + bob;
-  CAT_ART.forEach((row, r) => {
-    for (let c = 0; c < row.length; c++) {
-      let k = row[c];
-      if (k === ".") continue;
-      if (blink && r === 6 && (k === "e" || k === "h")) k = "F";
-      const y = top + r;
-      ctx.fillStyle = y >= wl ? tint(CAT[k], 0.6) : CAT[k];
-      ctx.fillRect(x + c, y, 1, 1);
-    }
-  });
+  ctx.drawImage(catSprite(wl - top, blink), x, top);
   // A tentacle out of the water a little to its right: it bends more towards the tip, which curls
   // outwards, and sways while it waves.
   const lift = waving ? 1 : Math.max(0, Math.sin(t * 0.7) * 3 - 2); // idle: now and then
@@ -590,6 +618,7 @@ function drawOctocat(ctx, cat, t, waving) {
 // meadow spot each time round. No Math.random and no state carried between frames, so the
 // meadow is the same on every visit and any moment can be drawn on its own.
 const FLY_CYCLE = 20;
+const FRAME_MS = 1000 / 30 - 4; // the ambient loops' frame interval, with slack for jitter
 const firefly = k => {
   const r = j => hash(k * 7919 + j * 104729 + 17);
   return { k, born: r(1) * FLY_CYCLE, life: 7 + r(2) * 9, vy: 0.8 + r(3) * 1.8, sway: 0.6 + r(4) * 1.2, phase: r(5) * 6.28, tw: 1.2 + r(6) * 2 };
@@ -694,11 +723,17 @@ export function mountScene(canvas, layout = {}) {
     // Enough slots that about `count` are alive at once (a life averages 11.5s of the 20s cycle).
     const motes = Array.from({ length: Math.round(count * FLY_CYCLE / 11.5) }, (_, k) => firefly(k));
     state = { W, H, L, spots, sparkles, motes, cat, t0: performance.now() };
+    drawn = -1e9;
     frame(performance.now());
   }
 
+  // Everything here moves a whole pixel at a time and slowly, so 30 frames a second looks the
+  // same as 60 or 120 for half the work or less.
+  let drawn = -1e9;
   function frame(now) {
     if (!state) return;
+    if (now - drawn < FRAME_MS && !reduce.matches) { if (visible && !document.hidden) raf = requestAnimationFrame(frame); return; }
+    drawn = now;
     const { W, H, L, sparkles, motes, spots } = state;
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, W, H);
@@ -757,6 +792,17 @@ const WOOD = { line: "#1d1a36", dark: "#352a4a", mid: "#4a3956", grain: "#40324f
 const LEAF = { dark: "#3f7a68", mid: "#5a9a80", lit: "#82b896", tip: "#a8d8b0" };
 const FRAME = { gap: 4, wood: 3, m: 10 };
 
+// Every pixel outside the box (the m-wide band round the canvas), row by row: the inside never
+// takes a frame pixel, so it isn't visited.
+function band(W, H, m, fn) {
+  for (let y = 0; y < H; y++) {
+    if (y >= m && y < H - m) {
+      for (let x = 0; x < m; x++) fn(x, y);
+      for (let x = W - m; x < W; x++) fn(x, y);
+    } else for (let x = 0; x < W; x++) fn(x, y);
+  }
+}
+
 // Where a canvas pixel sits relative to the box: its distance out (1 = touching) and the side.
 function rim(x, y, W, H, m) {
   const dl = m - x, dr = x - (W - m - 1), dt = m - y, db = y - (H - m - 1);
@@ -775,16 +821,16 @@ const PLANK = {
 };
 function drawWood(L, m, seed) {
   const { w: W, h: H } = L, g = FRAME.gap, n = FRAME.wood;
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+  band(W, H, m, (x, y) => {
     const { d, side, corner } = rim(x, y, W, H, m), r = d - g - 1;
-    if (r < 0 || r >= n) continue;
-    if (corner) { L.set(x, y, r === n - 1 && (side === "t" || side === "r") && x > W / 2 && y < H / 2 ? WOOD.light : WOOD.line); continue; }
+    if (r < 0 || r >= n) return;
+    if (corner) { L.set(x, y, r === n - 1 && (side === "t" || side === "r") && x > W / 2 && y < H / 2 ? WOOD.light : WOOD.line); return; }
     const row = n - 1 - r, along = side === "t" || side === "b" ? x : y;
     let c = PLANK[side][row];
     // Grain: short darker runs along the face.
     if (row === 1 && h2(Math.floor(along / (3 + h2(r, seed) * 4)), seed + side.charCodeAt(0)) < 0.3) c = side === "t" ? WOOD.mid : WOOD.grain === c ? WOOD.dark : WOOD.grain;
     L.set(x, y, c);
-  }
+  });
 }
 
 // The perimeter at distance d, clockwise from the top left, with each point's outward normal.
@@ -817,10 +863,10 @@ function drawMoss(L, m, seed) {
 // featured video stops at the frame instead of running up to the picture.
 function drawMat(L, m, upto) {
   const { w: W, h: H } = L;
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+  band(W, H, m, (x, y) => {
     const { d } = rim(x, y, W, H, m);
     if (d >= 1 && d <= upto) L.set(x, y, "#161937");
-  }
+  });
 }
 
 function drawFrame(L, m, seed) {
@@ -839,19 +885,29 @@ export function mountFrames(root) {
     if (!box || fig.querySelector("canvas.stones")) return;
     const canvas = document.createElement("canvas");
     canvas.className = "stones";
+    canvas.width = canvas.height = 0; // until it's built, near the window
     canvas.setAttribute("aria-hidden", "true");
     fig.append(canvas);
-    const f = { fig, box, canvas, key: "", visible: false, flies: [] };
+    const f = { fig, box, canvas, key: "", visible: false, near: false, flies: [], sig: "" };
     new ResizeObserver(() => build(f)).observe(box);
-    new IntersectionObserver(([e]) => { f.visible = e.isIntersecting; tick(); }).observe(canvas);
+    // A frame is drawn when it comes within a screen or so of the window, not all at load.
+    new IntersectionObserver(([e]) => { f.near = e.isIntersecting; build(f); }, { rootMargin: "100% 0px" }).observe(fig);
+    new IntersectionObserver(([e]) => { f.visible = e.isIntersecting; tick(); }).observe(fig);
     live.add(f);
-    build(f);
+    margin(f);
   }
 
-  function build(f) {
+  // The room the frame takes round the box, given at once so the page doesn't move later.
+  function margin(f) {
     const s = innerWidth < 600 ? 2 : 3, m = FRAME.m;
     // A little extra room on top, so the moss doesn't brush the title above.
     f.box.style.margin = `${(m + 4) * s}px ${m * s}px ${m * s}px`;
+    return s;
+  }
+
+  function build(f) {
+    const s = margin(f), m = FRAME.m;
+    if (!f.near) return;
     const bw = Math.round(f.box.offsetWidth / s), bh = Math.round(f.box.offsetHeight / s);
     const key = `${s}:${bw}x${bh}`;
     if (!bw || !bh || key === f.key) return;
@@ -867,6 +923,7 @@ export function mountFrames(root) {
     const r = (k, j) => hash(seed * 7919 + k * 131 + j);
     f.flies = Array.from({ length: 2 }, (_, k) => ({ u: r(k, 1), v: 0.6 + r(k, 2) * 0.8, ph: r(k, 3) * 6.28, tw: 1 + r(k, 4) * 2 }));
     f.m = m;
+    f.sig = "";
     draw(f, performance.now());
   }
 
@@ -877,15 +934,22 @@ export function mountFrames(root) {
     return [x - nx * o, y - ny * o];
   }
 
+  // The fireflies crawl a pixel now and then, so a frame is redrawn only when one has moved or
+  // changed brightness.
+  const level = tw => tw < 0.15 ? 0 : tw > 0.55 ? 2 : 1;
   function draw(f, now) {
     if (!f.L) return;
-    const ctx = f.canvas.getContext("2d"), t = now / 1000;
+    const t = now / 1000;
+    const flies = f.flies.map(fl => [...at(f, fl, t).map(Math.round), level((Math.sin(t * fl.tw + fl.ph) + 1) / 2)]);
+    const sig = flies.join(";");
+    if (sig === f.sig) return;
+    f.sig = sig;
+    const ctx = f.canvas.getContext("2d");
     ctx.clearRect(0, 0, f.canvas.width, f.canvas.height);
     ctx.drawImage(f.L.canvas, 0, 0);
-    for (const fl of f.flies) {
-      const [x, y] = at(f, fl, t).map(Math.round), tw = (Math.sin(t * fl.tw + fl.ph) + 1) / 2;
-      if (tw < 0.15) continue;
-      if (tw > 0.55) {
+    for (const [x, y, lv] of flies) {
+      if (!lv) continue;
+      if (lv === 2) {
         ctx.fillStyle = T.fly.halo;
         ctx.fillRect(x - 1, y, 1, 1); ctx.fillRect(x + 1, y, 1, 1); ctx.fillRect(x, y - 1, 1, 1); ctx.fillRect(x, y + 1, 1, 1);
         ctx.fillStyle = T.fly.core;
@@ -896,9 +960,12 @@ export function mountFrames(root) {
 
   function tick() {
     cancelAnimationFrame(raf);
+    let drawn = -1e9;
     const loop = now => {
       let any = false;
-      for (const f of live) if (f.visible) { draw(f, now); any = true; }
+      const due = now - drawn >= FRAME_MS;
+      if (due) drawn = now;
+      for (const f of live) if (f.visible) { if (due) draw(f, now); any = true; }
       if (any && !reduce.matches && !document.hidden) raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
@@ -1114,63 +1181,4 @@ export function mountPeek(footer, href = "https://github.com/iamnbutler/cairn") 
   if (reduce.matches) still(); else drawPeek(ctx, p, 0, false);
 }
 
-// --- Links on the headings ---------------------------------------------------------------------
-
-// Every heading gets an id, and a "#" to its left on hover that copies a link to it. A heading
-// keeps the id it has; a claim's heading links to its section's id (^N, so page.html#N stays the
-// citation, and the "#" goes left of the claim's row, not between ^N and the title); any other
-// heading takes its text as a slug. Headings added later (the video log)
-// get theirs as they arrive.
-const slugOf = h => {
-  const c = h.cloneNode(true);
-  c.querySelectorAll(".n, .soon, .anchor, canvas").forEach(e => e.remove());
-  return c.textContent.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "section";
-};
-
-export function mountAnchors(root) {
-  if (!document.getElementById("anchor-style")) {
-    const style = document.createElement("style");
-    style.id = "anchor-style";
-    style.textContent = `
-:is(h1, h2, h3, h4, .head):has(> a.anchor) { position: relative; scroll-margin-top: 24px; }
-a.anchor { position: absolute; right: 100%; padding-right: 0.3em; top: 0; color: inherit; opacity: 0; text-decoration: none; font-weight: 400; }
-:is(h1, h2, h3, h4, .head):hover > a.anchor, a.anchor:focus-visible { opacity: 0.45; }
-a.anchor:hover { opacity: 0.9; }
-a.anchor.copied { opacity: 0.9; }
-a.anchor.copied::after { content: "copied"; position: absolute; left: 100%; top: -1.4em; font-size: 12px; white-space: nowrap; }`;
-    document.head.append(style);
-  }
-  const mount = h => {
-    const host = h.parentElement.classList.contains("head") ? h.parentElement : h;
-    if (host.querySelector(":scope > a.anchor")) return;
-    const section = h.closest("section[id]");
-    let id = h.id || (section && section.querySelector("h1, h2, h3, h4") === h ? section.id : "");
-    if (!id) {
-      const base = slugOf(h);
-      id = base;
-      for (let k = 2; document.getElementById(id); k++) id = `${base}-${k}`;
-      h.id = id;
-    }
-    const a = document.createElement("a");
-    a.className = "anchor";
-    a.href = `#${id}`;
-    a.textContent = "#";
-    a.setAttribute("aria-label", "Copy a link to this section");
-    a.addEventListener("click", e => {
-      e.preventDefault();
-      const url = `${location.origin}${location.pathname}#${id}`;
-      history.replaceState(null, "", `#${id}`);
-      navigator.clipboard?.writeText(url).then(() => {
-        a.classList.add("copied");
-        setTimeout(() => a.classList.remove("copied"), 1200);
-      }).catch(() => {});
-    });
-    host.prepend(a);
-  };
-  const all = () => root.querySelectorAll("h1, h2, h3, h4").forEach(mount);
-  all();
-  new MutationObserver(all).observe(root, { childList: true, subtree: true });
-  // An id given here didn't exist when the page loaded, so the browser couldn't scroll to it.
-  const target = location.hash && document.getElementById(decodeURIComponent(location.hash.slice(1)));
-  if (target) target.scrollIntoView();
-}
+export { mountAnchors } from "./anchors.js";

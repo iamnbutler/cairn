@@ -5,7 +5,7 @@ LEAN_PREFIX = $(shell cd lean && lean --print-prefix)
 LIB = build/lib/libcairn_lean.a
 VENDOR = host/Sources/CLean/vendor/lean
 
-.PHONY: try lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest fixture clean record site doc doctest fuzz-quick fuzz-scope size fuzz-trusted fuzz-trusted-quick site-build site-dist site-nexthub registry-check new-check cairn-tool cairn-tool-test fixture-build fixture-ledger
+.PHONY: try lean host build check audit ledger kernel lint test corpus bench bench-audio bench-frame selftest fixture clean record site doc doctest fuzz-quick fuzz-scope size fuzz-trusted fuzz-trusted-quick site-build site-dist site-nexthub site-fonts registry-check new-check cairn-tool cairn-tool-test fixture-build fixture-ledger
 
 lean:
 	cd lean && lake build
@@ -173,8 +173,11 @@ site-dist: site-build
 	bun tools/site/pages.ts build/site
 	bun site/icons.ts build/site
 	bun tools/site/llms.ts build/site
-	mkdir -p build/site/fonts && for w in 400 600 700; do cp site/web/node_modules/@fontsource/pixelify-sans/files/pixelify-sans-latin-$$w-normal.woff2 build/site/fonts/; done
 	bun tools/site/links.ts build/site
+
+# The subset Pixelify Sans in site/public/fonts/ (tools/site/fonts.sh); run after updating the package.
+site-fonts:
+	./tools/site/fonts.sh
 
 # Deploy the microsite (site/) to Cloudflare.
 site: site-dist

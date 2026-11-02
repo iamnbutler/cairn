@@ -33,7 +33,7 @@ const text = (html: string) =>
 		.replace(/&(amp|lt|gt|quot|#39|apos);/g, (_, e) => ({ amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'", apos: "'" })[e as string]!)
 		.replace(/\s+/g, " ")
 		.trim();
-// media.js's videoId, and scene.js's slugOf on plain text.
+// media.js's videoId, and anchors.js's slugOf on plain text.
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "video";
 // RFC 822 dates, as RSS 2.0 requires: "Sat, 24 Oct 2026 07:16:39 GMT".
 const rfc822 = (d: Date) => d.toUTCString();
