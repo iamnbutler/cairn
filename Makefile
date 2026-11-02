@@ -135,10 +135,10 @@ build/bin/record: tools/record/main.swift
 	swiftc -O $< -o $@
 
 # The site's pages, built by bongo (site/web/bongo.config.ts) into site/web/public/: the developer
-# docs (content/docs/*.md), the homepage, /milestones/ and /feed.xml, each page with a link
+# docs (content/docs/*.md), the homepage, the blog and /feed.xml, each page with a link
 # preview card. Docs code is included from source by region; a missing file or region, a fenced
 # code block or a broken link fails the build. The feed and the homepage's latest milestone come
-# from content/milestones/index.hbs and site/public/media.json (lib/site.ts). The output isn't
+# from content/blog/*.md and site/public/media.json (lib/site.ts). The output isn't
 # committed: site-dist merges it with site/public. site/public/docs/docs.css is shared with the
 # package pages. --fresh: bongo
 # rebuilds a page when its Markdown changes, not when a file it includes does.

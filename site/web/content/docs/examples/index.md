@@ -13,8 +13,8 @@ which [the guide](/docs/guide/) walks through.
 | Package | What it is | Claims |
 |---|---|---|
 | [`cairn_examples`](/packages/cairn_examples/) | six small apps, below, each showing one part of Cairn | [cairn_examples^N](/packages/cairn_examples/claims/) |
-| [`pairs`](/packages/pairs/) | a memory game whose decks are packs of images loaded from a folder or a URL ([M3](/milestones/#third-milestone-pairs)) | [pairs^N](/packages/pairs/claims/) |
-| [`sky`](/packages/sky/) | a Bluesky reader: sign in with an app password, the session in the Keychain, the home feed in a virtual list with paging and refresh ([M4](/milestones/#fourth-milestone-sky-reads-bluesky)) | [sky^N](/packages/sky/claims/) |
+| [`pairs`](/packages/pairs/) | a memory game whose decks are packs of images loaded from a folder or a URL ([M3](/blog/an-app-from-packages-alone/)) | [pairs^N](/packages/pairs/claims/) |
+| [`sky`](/packages/sky/) | a Bluesky reader: sign in with an app password, the session in the Keychain, the home feed in a virtual list with paging and refresh ([M4](/blog/a-feed-that-never-ends/)) | [sky^N](/packages/sky/claims/) |
 | [`cairn_atproto`](/packages/cairn_atproto/) | a library, not an app: XRPC, Bluesky's session calls and timeline, and the session machine Sky signs in with | [cairn_atproto^N](/packages/cairn_atproto/claims/) |
 | [`yap`](/packages/yap/) | a dictation app used every day, ported one to one ([below](/docs/examples/yap/)) | [yap^N](/packages/yap/claims/) |
 

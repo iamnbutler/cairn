@@ -1,27 +1,31 @@
-// The milestones' posts and the progress log, for the feed and the homepage.
+// The blog's posts and the progress log, for the feed, the blog's index and the homepage.
 //
-// Nothing is written twice by hand. The posts are the `article.post`s in
-// content/milestones/index.hbs, each an h2 with a permanent id and a <time datetime>; the
-// progress log is site/public/media.json: videos, written by tools/media/put.sh, and notes, entries
-// with a "text" (a list of plain-text paragraphs) and no video, written by hand for work that
-// has nothing to show on screen. From them come
+// Nothing is written twice by hand. The posts are content/blog/<slug>.md, Markdown with a title,
+// a date and time, a summary and, for a milestone's post, its milestone ("m5"); the progress log
+// is site/public/media.json: videos and stills, written by tools/media/put.sh, and notes,
+// entries with a "text" (a list of plain-text paragraphs) and neither, written by hand for work
+// that has nothing to show on screen. Each entry belongs to a milestone, and its post's page
+// shows it. From them come
 //
-//   - feed(): /feed.xml, an RSS 2.0 item per milestone and per log entry, newest first, with full
-//     HTML and every URL absolute;
-//   - latest(): the homepage's "latest milestone" panel;
-//   - movedIds(): the ids that moved from the homepage to /milestones/, so a link from before the
-//     move (/#second-milestone-yap-on-cairn) still lands on its section.
+//   - feed(): /feed.xml, an RSS 2.0 item per post and per log entry, newest first, with full HTML
+//     and every URL absolute;
+//   - postList(), postPager(): the blog's index and the newer and older links under a post;
+//   - latest(): the homepage's "latest post" panel;
+//   - oldLinks(): where each section of the old /milestones/ page went (a post's `was` id, and
+//     every log entry's), so a link from before the blog still lands on it.
 //
 // Output depends only on those files, never on the clock or git. A problem throws, which fails
 // the build and names the file.
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const ROOT = resolve(import.meta.dirname, "../../..");
 const ORIGIN = "https://cairn.iamnbutler.workers.dev";
-const MILESTONES = "site/web/content/milestones/index.hbs";
+const BLOG = "site/web/content/blog";
 const MEDIA = "site/public/media.json";
-
+// The page the milestones and their logs were on before the blog. Its ids are links people have,
+// and the feed's guids for posts and notes from then are built on it, so they never change.
+const OLD = "/milestones/";
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const text = (html: string) =>
 	html
@@ -54,59 +58,55 @@ type Still = { image: string; title: string; caption: string; date: string; publ
 type Entry = Video | Still | Note;
 const isNote = (e: Entry): e is Note => !("video" in e) && !("image" in e);
 const isStill = (e: Entry): e is Still => "image" in e;
-type Post = { id: string; title: string; html: string; first: string; summary: string; date: Date; milestone?: string; ids: string[] };
+type Post = { slug: string; url: string; title: string; html: string; summary: string; date: Date; day: string; milestone?: string; number?: number; status?: string; was?: string };
 type Item = { title: string; link: string; guid: string; permalink: boolean; date: Date; html: string };
 
 function sources() {
 	const errors: string[] = [];
 	const fail = (where: string, message: string) => errors.push(`${where}: ${message}`);
-	const milestonesHtml = readFileSync(join(ROOT, MILESTONES), "utf8");
 	const videos: Entry[] = JSON.parse(readFileSync(join(ROOT, MEDIA), "utf8"));
 
 	const posts: Post[] = [];
-	for (const [, body] of milestonesHtml.matchAll(/<article class="post">([\s\S]*?)<\/article>/g)) {
-		const h = body.match(/<h2 id="([^"]+)">([\s\S]*?)<\/h2>/);
-		if (!h) { fail(MILESTONES, "an article.post has no <h2 id=...>"); continue; }
-		const [, id, inner] = h;
-		const title = text(inner.replace(/<span class="soon">[\s\S]*?<\/span>/, ""));
-		const t = body.match(/<time[^>]*datetime="([^"]+)"/);
-		const date = t ? new Date(t[1]) : new Date(NaN);
-		if (!t || !/T\d\d:\d\d/.test(t[1]) || isNaN(+date)) { fail(MILESTONES, `#${id} needs a <time datetime="…"> with a date and time`); continue; }
-		const milestone = body.match(/<ul id="log-([^"]+)"/)?.[1];
-		// The post's body: everything after the heading and its date line.
-		const html = body.slice(body.indexOf(h[0]) + h[0].length).replace(/\s*<p class="meta"><time[\s\S]*?<\/p>/, "").trim();
-		const first = html.match(/<p>([\s\S]*?)<\/p>/)?.[1] ?? html.match(/<li>([\s\S]*?)<\/li>/)?.[1] ?? "";
-		// The homepage card's two or so lines: a post's `<!-- summary: … -->` if it has one, or as
-		// many of its opening sentences as fit in about 240 characters.
-		const given = body.match(/<!--\s*summary:\s*([\s\S]*?)\s*-->/)?.[1];
-		let summary = "";
-		for (const s of first.replace(/\s+/g, " ").trim().match(/[^.?!]+[.?!]+(\s|$)/g) ?? [first]) {
-			if (summary && text(summary + s).length > 240) break;
-			summary += s;
-		}
-		summary = (given ?? summary).replace(/\s+/g, " ").trim();
-		const ids = [id, ...[...body.matchAll(/<h[2-4] id="([^"]+)"/g)].map((m) => m[1]).filter((x) => x !== id)];
-		posts.push({ id, title, html, first, summary, date, milestone, ids });
+	for (const file of readdirSync(join(ROOT, BLOG)).filter((f) => f.endsWith(".md")).sort()) {
+		const where = `${BLOG}/${file}`;
+		const src = readFileSync(join(ROOT, BLOG, file), "utf8");
+		const m = src.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+		if (!m) { fail(where, "needs front matter between --- lines"); continue; }
+		const fm = Bun.YAML.parse(m[1]) as Record<string, unknown>;
+		const raw = fm.date instanceof Date ? fm.date.toISOString() : String(fm.date ?? "");
+		const date = new Date(raw);
+		if (!/T\d\d:\d\d/.test(raw) || isNaN(+date)) { fail(where, `needs a date with a time ("2026-10-26T04:18:05-04:00")`); continue; }
+		for (const k of ["title", "summary"]) if (typeof fm[k] !== "string" || !(fm[k] as string).trim()) fail(where, `needs a ${k}`);
+		const slug = file.replace(/\.md$/, "");
+		posts.push({
+			slug, url: `/blog/${slug}/`, title: String(fm.title), summary: String(fm.summary ?? ""), date, day: raw.slice(0, 10),
+			html: (Bun.markdown.html(m[2], {}) as string).trim(),
+			milestone: fm.milestone ? String(fm.milestone) : undefined, number: typeof fm.number === "number" ? fm.number : undefined,
+			status: fm.status ? String(fm.status) : undefined, was: fm.was ? String(fm.was) : undefined,
+		});
 	}
-	if (!posts.length) fail(MILESTONES, "has no article.post");
-
-	const PAGE = "/milestones/";
-	const permalink = (id: string) => `${ORIGIN}${PAGE}#${id}`;
+	if (!posts.length) fail(BLOG, "has no posts");
+	posts.sort((a, b) => +b.date - +a.date);
+	const postOf = (v: Entry) => posts.find((p) => p.milestone === (v.milestone || "m1"));
+	// Where a log entry is shown: under its post, at its heading (media.js's videoId).
+	const entryUrl = (v: Entry) => { const p = postOf(v); return `${p ? p.url : "/blog/"}#${slug(v.title)}`; };
 
 	const items: Item[] = [];
 	for (const v of videos) {
 		const where = `${MEDIA} (${v.title})`;
 		const date = new Date(v.published ?? NaN);
 		if (!v.published || isNaN(+date)) { fail(where, `needs "published", the time it went up (tools/media/put.sh writes it)`); continue; }
-		const post = posts.find((p) => p.milestone === (v.milestone || "m1"));
-		const inLog = post ? ` in the progress log of <a href="${PAGE}#${post.id}">${esc(post.title)}</a>` : "";
+		const post = postOf(v);
+		const page = post?.url ?? "/blog/";
+		const link = ORIGIN + entryUrl(v);
+		const inLog = post ? ` in the progress log of <a href="${post.url}">${esc(post.title)}</a>` : "";
 		if (isNote(v)) {
 			if (!Array.isArray(v.text) || !v.text.length || v.text.some((t) => typeof t !== "string" || !t.trim())) {
 				fail(where, `a note needs "text", a list of paragraphs`);
 				continue;
 			}
 			const html = v.text.map((t) => `<p>${esc(t)}</p>`).join("") + `<p>As of commit ${esc(v.commit)}${post ? "," : ""}${inLog}.</p>`;
-			items.push({ title: v.title, link: permalink(slug(v.title)), guid: permalink(slug(v.title)), permalink: true, date, html: absolute(html, PAGE) });
+			items.push({ title: v.title, link, guid: `${ORIGIN}${OLD}#${slug(v.title)}`, permalink: false, date, html: absolute(html, page) });
 			continue;
 		}
 		if (isStill(v)) {
@@ -115,7 +115,7 @@ function sources() {
 				`<figcaption>${esc(v.caption)}</figcaption></figure>` +
 				`<p>A screenshot at commit ${esc(v.commit)}` + (post ? `,${inLog}.` : ".") + "</p>";
 			// The guid is the image's content-hashed key, which never changes.
-			items.push({ title: v.title, link: permalink(slug(v.title)), guid: `${ORIGIN}${v.image}`, permalink: false, date, html: absolute(html, PAGE) });
+			items.push({ title: v.title, link, guid: `${ORIGIN}${v.image}`, permalink: false, date, html: absolute(html, page) });
 			continue;
 		}
 		const html =
@@ -124,28 +124,26 @@ function sources() {
 			`<p><a href="${esc(v.video)}">Watch the video</a> (${v.seconds} s), recorded at commit ${esc(v.commit)}` +
 			(post ? `,${inLog}.` : ".") + "</p>";
 		// The guid is the video's content-hashed key, which never changes; the link is its heading.
-		items.push({ title: v.title, link: permalink(slug(v.title)), guid: `${ORIGIN}${v.video}`, permalink: false, date, html: absolute(html, PAGE) });
+		items.push({ title: v.title, link, guid: `${ORIGIN}${v.video}`, permalink: false, date, html: absolute(html, page) });
 	}
 	for (const p of posts) {
 		// The progress log is filled in by the page's script; in the feed it lists the videos and
 		// notes, which are items of their own.
-		const log = videos.filter((v) => (v.milestone || "m1") === p.milestone);
-		const html = p.html.replace(/<ul id="log-[^"]+"[^>]*>[\s\S]*?<\/ul>/, () =>
-			log.length
-				? `<p>Progress so far:</p><ul>${log.map((v) => `<li><a href="${PAGE}#${slug(v.title)}">${esc(v.title)}</a> (${v.date})</li>`).join("")}</ul>`
-				: "",
-		);
-		items.push({ title: p.title, link: permalink(p.id), guid: permalink(p.id), permalink: true, date: p.date, html: absolute(html, PAGE) });
+		const log = videos.filter((v) => p.milestone && (v.milestone || "m1") === p.milestone);
+		const html = p.html + (log.length ? `<p>Progress so far:</p><ul>${log.map((v) => `<li><a href="${entryUrl(v)}">${esc(v.title)}</a> (${v.date})</li>`).join("")}</ul>` : "");
+		// A post from before the blog keeps the guid it had then, so readers don't show it again.
+		const guid = p.was ? `${ORIGIN}${OLD}#${p.was}` : ORIGIN + p.url;
+		items.push({ title: p.title, link: ORIGIN + p.url, guid, permalink: !p.was, date: p.date, html: absolute(html, p.url) });
 	}
 	items.sort((a, b) => +b.date - +a.date);
 
 	if (errors.length) throw new Error(errors.join("\n"));
-	return { posts, videos, items };
+	return { posts, videos, items, entryUrl };
 }
 
 // --- The feed -----------------------------------------------------------------------------------
 
-const DESCRIPTION = "Research into user interfaces where every action a person can take is a claim with a durable id and machine-checked evidence. Milestones and progress videos.";
+const DESCRIPTION = "Research into user interfaces where every action a person can take is a claim with a durable id and machine-checked evidence. The blog and progress videos.";
 
 export function feed(): string {
 	const { items } = sources();
@@ -174,26 +172,62 @@ ${items.length ? `<lastBuildDate>${rfc822(items[0].date)}</lastBuildDate>\n` : "
 `;
 }
 
+// --- The blog -----------------------------------------------------------------------------------
+
+// A post's line of metadata: its date, and its milestone and how far along it is.
+export function postMeta(path: string): string {
+	const p = sources().posts.find((x) => x.url === path);
+	if (!p) throw new Error(`${path}: not a post in ${BLOG}`);
+	const parts = [`<time class="date" datetime="${p.date.toISOString()}">${p.day}</time>`];
+	if (p.number) parts.push(`<span>Milestone ${p.number}${p.status ? `, ${esc(p.status)}` : ""}</span>`);
+	return parts.join("");
+}
+
+// The blog's index: every post, newest first, as a dated title and its summary.
+export function postList(): string {
+	return `<ol class="posts">${sources()
+		.posts.map(
+			(p) => `
+  <li><p class="meta"><time class="date" datetime="${p.date.toISOString()}">${p.day}</time>${p.number ? `<span>Milestone ${p.number}${p.status ? `, ${esc(p.status)}` : ""}</span>` : ""}</p>
+    <h2 id="${p.slug}"><a href="${p.url}">${esc(p.title)}</a></h2>
+    <p>${esc(p.summary)}</p></li>`,
+		)
+		.join("")}
+</ol>`;
+}
+
+// Under a post: the newer and the older one.
+export function postPager(path: string): string {
+	const { posts } = sources();
+	const k = posts.findIndex((p) => p.url === path);
+	const newer = posts[k - 1], older = posts[k + 1];
+	const a = (p: Post | undefined, label: string, cls: string) => (p ? `<a class="${cls}" href="${p.url}"><span>${label}</span>${esc(p.title)}</a>` : "");
+	return `<nav class="pager" aria-label="Posts">${a(older, "Older", "older")}${a(newer, "Newer", "newer")}</nav>`;
+}
+
 // --- The homepage -------------------------------------------------------------------------------
 
 export function latest(): string {
-	const latest = [...sources().posts].sort((a, b) => +b.date - +a.date)[0];
+	const p = sources().posts[0];
 	return `<aside class="note latest"><div class="card px">
-    <p class="label"><img src="/icon.svg" alt=""><a href="/milestones/">Latest milestone</a></p>
-    <h3 id="latest-milestone"><a href="/milestones/#${latest.id}">${esc(latest.title)}</a></h3>
-    <p>${latest.summary}</p>
-    <p class="more"><a href="/milestones/#${latest.id}">Read on</a><a href="/milestones/">Every milestone</a><a class="feed" href="/feed.xml">RSS feed</a></p>
+    <p class="label"><img src="/icon.svg" alt=""><a href="/blog/">Latest post</a></p>
+    <h3 id="latest-post"><a href="${p.url}">${esc(p.title)}</a></h3>
+    <p>${esc(p.summary)}</p>
+    <p class="more"><a href="${p.url}">Read on</a><a href="/blog/">Every post</a><a class="feed" href="/feed.xml">RSS feed</a></p>
   </div></aside>`;
 }
 
-// Every id that lives on /milestones/: the posts' headings and the log entries' (media.js's
-// videoId). `home` is the homepage's HTML: an id in both would be hidden by the redirect.
-export function movedIds(home: string): string[] {
-	const { posts, videos } = sources();
-	const moved = [...posts.flatMap((p) => p.ids), ...videos.map((v) => slug(v.title))];
-	const both = moved.filter((id) => home.includes(`id="${id}"`));
-	if (both.length) throw new Error(`content/index.hbs: ${both.map((id) => `#${id}`).join(", ")} also on /milestones/; the redirect would hide it`);
-	return moved;
+// Where every section of the old /milestones/ page went, by its id: a post's heading (its `was`)
+// and each log entry's. The milestones lived on the homepage before that, so the homepage sends
+// these ids on too; `home` is its HTML, and an id it has itself would be hidden.
+export function oldLinks(home = ""): Record<string, string> {
+	const { posts, videos, entryUrl } = sources();
+	const map: Record<string, string> = {};
+	for (const p of posts) if (p.was) map[p.was] = p.url;
+	for (const v of videos) map[slug(v.title)] ??= entryUrl(v);
+	const both = Object.keys(map).filter((id) => home.includes(`id="${id}"`));
+	if (both.length) throw new Error(`content/index.hbs: ${both.map((id) => `#${id}`).join(", ")} also an old /milestones/ id; the redirect would hide it`);
+	return map;
 }
 
 // Cairn's version, for the homepage's Get started: cairn.toml's, so it changes with the release

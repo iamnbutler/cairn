@@ -4,15 +4,19 @@ The microsite at https://cairn.iamnbutler.workers.dev shows what Cairn is and a 
 videos. Record a video whenever something new works on screen.
 
 - `site/`: a Cloudflare Worker. `public/` holds the static files and `web/` the pages bongo builds
-  (the homepage, `/milestones/`, the docs and the feed); `/m/<key>` is served from the
+  (the homepage, the blog at `/blog/`, the docs and the feed); `/m/<key>` is served from the
   `cairn-media` R2 bucket with range requests (video seeking, Safari) and immutable caching.
   `public/media.json` lists the videos and notes, newest first; the homepage shows the featured one and
-  `/milestones/` renders each milestone's progress log from it.
-- `/feed.xml` is the RSS feed: one item per milestone (from the `article.post`s in
-  `web/content/milestones/index.hbs`) and one per video or note (from `media.json`).
+  each milestone's blog post renders its progress log from it.
+- **The blog** is a post per milestone, `web/content/blog/<slug>.md`: Markdown with a title, a
+  date and time, a one- or two-sentence summary, the milestone (`m5`), its number and status.
+  Write it as the project-piece prompt says: first person, what the milestone made possible and
+  what's still missing, not the story of building it. A post's URL is a link people have; never
+  change its file name.
+- `/feed.xml` is the RSS feed: one item per post and one per video or note (from `media.json`).
   `site/web/lib/site.ts` builds it when bongo builds the site (`make site-build`, run by `make
-  site`), along with the homepage's pointer to the latest milestone and its list of ids that
-  moved to `/milestones/`. None of them is committed.
+  site`), along with the blog's index, the homepage's pointer to the latest post, and where each
+  id of the old `/milestones/` page went. None of them is committed.
 - `make record` builds `build/bin/record`, which records **one window only** through
   ScreenCaptureKit's desktop-independent window filter. Never record the screen or a region:
   other apps' windows hold private content.
@@ -35,7 +39,7 @@ videos. Record a video whenever something new works on screen.
   uses, and the commit). The poster is the last frame unless `--poster S` picks the frame S seconds in: log videos don't autoplay, so it's what most readers see, and it should be the moment that tells the story on its own. `--feature` makes it the video at the top of the page, and `--milestone` (default `m5`, the current goal) picks which milestone's progress log it appears in. The featured video is whichever best represents the project as it is now (not simply the newest); each time a video lands, decide whether it beats the current one.
 - **Stills**: `tools/media/put.sh <shot.png> <title> <caption> [--milestone m5]` uploads a
   screenshot as it is (`images/<hash>.png`) and lists it with `image` in place of `video`; the
-  milestones page shows it like a video, without a length, and the feed makes it an item. Use
+  milestone's post shows it like a video, without a length, and the feed makes it an item. Use
   one when a video can't be recorded (the screen is locked) or a still says it all, for instance
   an app's own offscreen render (`Renderer.image`). A still is never the featured video.
 - **Offscreen videos**: an app can render frames offscreen on a clock while a script presses
@@ -45,7 +49,7 @@ videos. Record a video whenever something new works on screen.
 - **Notes** are log entries with no video, for work that has nothing new to show on screen (a
   release, docs, a measurement). Add one by hand at its place in `media.json` (newest first):
   `title`, `text` (a list of plain-text paragraphs), `date`, `published` (when the work landed:
-  the merge time from git, as UTC), `commit` and `milestone`. The milestones page shows it with
+  the merge time from git, as UTC), `commit` and `milestone`. Its milestone's post shows it with
   its date and commit, and the feed makes it an item. Write it like the captions: plain,
   concrete and short, with every number taken from the PR or the repository. Never dress a note
   up as a video.

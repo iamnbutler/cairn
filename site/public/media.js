@@ -1,7 +1,7 @@
 // The progress log: media.json, newest first. Videos and stills (an "image" instead of a video,
 // for a screenshot) are written by tools/media/put.sh; a note is an entry with "text"
-// (plain-text paragraphs) and neither, for work with nothing to show on screen. /milestones/ puts each entry in its milestone's
-// progress log. site/web/lib/site.ts reads the same list for the feed, and links each entry to the
+// (plain-text paragraphs) and neither, for work with nothing to show on screen. Each milestone's blog post shows its
+// entries as its progress log. site/web/lib/site.ts reads the same list for the feed, and links each entry to the
 // id that videoId gives it here.
 
 export const list = () => fetch("/media.json").then(r => r.json());
@@ -62,12 +62,12 @@ export function note(m) {
 }
 
 // Fill each `ul[id^=log-]` in root with its milestone's videos and notes (`log-m2` takes milestone "m2";
-// an entry without one goes to m1, the first log).
+// an entry without one is m1's).
 export function fillLogs(root, list) {
   const logs = [...root.querySelectorAll("[id^=log-]")];
   for (const log of logs) log.textContent = "";
   for (const m of list) {
-    const log = root.querySelector(`#log-${m.milestone || "m1"}`) || logs[0];
+    const log = root.querySelector(`#log-${m.milestone || "m1"}`); // a post shows its own milestone's
     if (!log) continue;
     const li = document.createElement("li");
     const h = document.createElement("h3");
