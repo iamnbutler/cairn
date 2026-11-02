@@ -199,6 +199,11 @@ ol.trail > li { counter-increment: step; }
 ol.trail > li::before { content: counter(step); }
 .log > li { margin-bottom: 56px; }
 .log .frame { width: min(100%, 640px * var(--ar, 1.6)); } /* a portrait shot or video stays at most about 640px tall */
+/* The log is in the page's HTML, and laying out every figure before the first paint costs more
+   than the rest of the page; a figure off screen is skipped until the reader nears it. Those
+   above a linked entry are laid out in full, so a link to one lands on its heading. */
+.log .frame { content-visibility: auto; contain-intrinsic-size: auto 600px; }
+.log > li:has(~ li > :target) .frame { content-visibility: visible; }
 .log > li::before { content: ""; background: var(--gold); width: 18px; height: 18px; left: 6px; top: 6px; }
 .log h3 { font: 600 var(--fs-m)/1.3 var(--pixel); margin: 0 0 14px; color: var(--ink); }
 .log h3 { color: var(--fg); }

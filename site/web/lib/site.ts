@@ -10,6 +10,7 @@
 //   - feed(): /feed.xml, an RSS 2.0 item per post and per log entry, newest first, with full HTML
 //     and every URL absolute;
 //   - postList(), postPager(): the blog's index and the newer and older links under a post;
+//   - progressLog(): a post's progress log, its milestone's entries, newest first;
 //   - latest(): the homepage's "latest post" panel;
 //   - oldLinks(): where each section of the old /milestones/ page went (a post's `was` id, and
 //     every log entry's), so a link from before the blog still lands on it.
@@ -33,7 +34,7 @@ const text = (html: string) =>
 		.replace(/&(amp|lt|gt|quot|#39|apos);/g, (_, e) => ({ amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'", apos: "'" })[e as string]!)
 		.replace(/\s+/g, " ")
 		.trim();
-// media.js's videoId, and anchors.js's slugOf on plain text.
+// A log entry's heading id (progressLog), and anchors.js's slugOf on plain text.
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "video";
 // RFC 822 dates, as RSS 2.0 requires: "Sat, 24 Oct 2026 07:16:39 GMT".
 const rfc822 = (d: Date) => d.toUTCString();
@@ -54,7 +55,7 @@ function absolute(html: string, page: string): string {
 // "text" (plain-text paragraphs) instead of either.
 type Video = { video: string; poster: string; title: string; caption: string; date: string; published?: string; commit: string; width: number; height: number; seconds: number; milestone?: string };
 type Note = { text: string[]; title: string; date: string; published?: string; commit: string; milestone?: string };
-type Still = { image: string; title: string; caption: string; date: string; published?: string; commit: string; width: number; height: number; milestone?: string };
+type Still = { image: string; webp?: string; title: string; caption: string; date: string; published?: string; commit: string; width: number; height: number; milestone?: string };
 type Entry = Video | Still | Note;
 const isNote = (e: Entry): e is Note => !("video" in e) && !("image" in e);
 const isStill = (e: Entry): e is Still => "image" in e;
@@ -88,7 +89,7 @@ function sources() {
 	if (!posts.length) fail(BLOG, "has no posts");
 	posts.sort((a, b) => +b.date - +a.date);
 	const postOf = (v: Entry) => posts.find((p) => p.milestone === (v.milestone || "m1"));
-	// Where a log entry is shown: under its post, at its heading (media.js's videoId).
+	// Where a log entry is shown: under its post, at its heading (progressLog).
 	const entryUrl = (v: Entry) => { const p = postOf(v); return `${p ? p.url : "/blog/"}#${slug(v.title)}`; };
 
 	const items: Item[] = [];
@@ -127,8 +128,7 @@ function sources() {
 		items.push({ title: v.title, link, guid: `${ORIGIN}${v.video}`, permalink: false, date, html: absolute(html, page) });
 	}
 	for (const p of posts) {
-		// The progress log is filled in by the page's script; in the feed it lists the videos and
-		// notes, which are items of their own.
+		// In the feed a post's progress log lists the videos and notes, which are items of their own.
 		const log = videos.filter((v) => p.milestone && (v.milestone || "m1") === p.milestone);
 		const html = p.html + (log.length ? `<p>Progress so far:</p><ul>${log.map((v) => `<li><a href="${entryUrl(v)}">${esc(v.title)}</a> (${v.date})</li>`).join("")}</ul>` : "");
 		// A post from before the blog keeps the guid it had then, so readers don't show it again.
@@ -203,6 +203,29 @@ export function postPager(path: string): string {
 	const newer = posts[k - 1], older = posts[k + 1];
 	const a = (p: Post | undefined, label: string, cls: string) => (p ? `<a class="${cls}" href="${p.url}"><span>${label}</span>${esc(p.title)}</a>` : "");
 	return `<nav class="pager" aria-label="Posts">${a(older, "Older", "older")}${a(newer, "Newer", "newer")}</nav>`;
+}
+
+// A post's progress log: its milestone's videos, stills and notes, newest first, each under a
+// heading with its id. A video fetches nothing until it's played (preload none), and media.js
+// gives it its poster when it comes near the window; a still shows its WebP when it has one.
+export function progressLog(milestone: string): string {
+	const log = sources().videos.filter((v) => (v.milestone || "m1") === milestone);
+	if (!log.length) return `<li class="meta">Nothing yet.</li>`;
+	const meta = (parts: [string, string][]) =>
+		`<div class="meta">${parts.map(([cls, t]) => `<span${cls ? ` class="${cls}"` : ""}>${esc(t)}</span>`).join("")}</div>`;
+	return log
+		.map((v) => {
+			const h = `<h3 id="${slug(v.title)}">${esc(v.title)}</h3>`;
+			if (isNote(v)) return `<li>${h}<div class="text">${v.text.map((t) => `<p>${esc(t)}</p>`).join("")}${meta([["date", v.date], ["commit", v.commit]])}</div></li>`;
+			const size = `width="${v.width}" height="${v.height}"`;
+			const media = isStill(v)
+				? `<img src="${esc(v.webp ?? v.image)}" alt="${esc(v.title)}" loading="lazy" ${size}>`
+				: `<video src="${esc(v.video)}" data-poster="${esc(v.poster)}" controls muted loop playsinline preload="none" ${size}></video>`;
+			const parts: [string, string][] = [["date", v.date], ["commit", v.commit]];
+			if (!isStill(v)) parts.push(["", `${v.seconds}s`]);
+			return `<li>${h}<figure class="frame" style="--ar: ${v.width / v.height}"><div class="box px">${media}</div><figcaption>${esc(v.caption)}</figcaption>${meta(parts)}</figure></li>`;
+		})
+		.join("\n");
 }
 
 // --- The homepage -------------------------------------------------------------------------------
