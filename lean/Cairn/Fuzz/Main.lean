@@ -1,5 +1,6 @@
 import Lean.Data.Json
 import Cairn.Fuzz.Shrink
+import Cairn.Fuzz.Graph
 
 /-! # `lake exe fuzz`
 
@@ -148,6 +149,10 @@ structure Opts where
   verbose : Bool := false
   list : Bool := false
   deps : Bool := false
+  /-- `--graph D`: write the move graph to depth `D` instead of fuzzing (Cairn.Fuzz.Graph). -/
+  graph : Option Nat := none
+  perNode : Nat := 4
+  maxStates : Nat := 400
 
 def parseArgs (o : Opts) : List String → Except String Opts
   | [] => .ok o
@@ -161,6 +166,9 @@ def parseArgs (o : Opts) : List String → Except String Opts
   | "-v" :: rest => parseArgs { o with verbose := true } rest
   | "--list" :: rest => parseArgs { o with list := true } rest
   | "--deps" :: rest => parseArgs { o with deps := true } rest
+  | "--graph" :: v :: rest => num v fun n => parseArgs { o with graph := some n } rest
+  | "--per-node" :: v :: rest => num v fun n => parseArgs { o with perNode := n } rest
+  | "--max-states" :: v :: rest => num v fun n => parseArgs { o with maxStates := n } rest
   | a :: rest =>
     if a.startsWith "-" then .error s!"unknown option {a}"
     else parseArgs { o with app := a } rest
@@ -171,7 +179,7 @@ where
     | none => .error s!"expected a number, got {v}"
 
 def usage : String :=
-  "usage: lake exe fuzz <App> [--seed S|random] [--iterations N] [--steps K] [--budget-ms M] [--out DIR] [--shrink N] [-v]\n       lake exe fuzz --list [--deps]"
+  "usage: lake exe fuzz <App> [--seed S|random] [--iterations N] [--steps K] [--budget-ms M] [--out DIR] [--shrink N] [-v]\n       lake exe fuzz --list [--deps]\n       lake exe fuzz <App> --graph D [--per-node R] [--max-states N] [--out DIR]"
 
 /-! ## The run -/
 
@@ -339,7 +347,12 @@ def main (targets : List Target) (args : List String) : IO UInt32 := do
         if o.deps || !t.dependency then IO.println s!"{t.name}\t{t.module}"
       return 0
     match targets.find? (·.name == o.app) with
-    | some t => runTarget t o
+    | some t =>
+      match o.graph with
+      | some d =>
+        let dir : System.FilePath := o.out.getD (if ← System.FilePath.pathExists "../claims.lock" then "../build/graph" else "build/graph")
+        Graph.run t d o.perNode o.maxStates dir
+      | none => runTarget t o
     | none =>
       IO.eprintln s!"unknown app {o.app.quote}; fuzzable: {targets.map (·.name)}"
       IO.eprintln usage
