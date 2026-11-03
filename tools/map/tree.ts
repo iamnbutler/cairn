@@ -466,12 +466,29 @@ summary h2{font-size:15px;margin:0}summary .sub{color:var(--muted)}
 .pill.gain{background:var(--gainbg);color:var(--gain)}.pill.lose{background:var(--losebg);color:var(--lose)}.pill.plain{background:#eaeef2}
 .pill.flow{background:var(--flowbg);color:var(--flow)}
 .pill.new{border-color:currentColor;font-weight:600}.pill.gone{text-decoration:line-through;opacity:.55;background:transparent;border:1px dashed currentColor}
-[data-tip]{position:relative;cursor:help}
-[data-tip]:hover::after{content:attr(data-tip);position:absolute;left:0;top:calc(100% + 6px);background:#1f2328;color:#fff;font:12px/1.45 -apple-system,sans-serif;font-weight:400;text-decoration:none;padding:6px 9px;border-radius:6px;white-space:pre;z-index:30;pointer-events:none;box-shadow:0 4px 14px #0004}
+[data-tip]{cursor:help}
+#tip{position:fixed;display:none;max-width:420px;background:#1f2328;color:#fff;font:12px/1.45 -apple-system,sans-serif;padding:6px 9px;border-radius:6px;white-space:pre-wrap;z-index:100;pointer-events:none;box-shadow:0 4px 14px #0004}
 .note{color:var(--muted);padding:12px 16px;margin:0}
 table.bymove{border-collapse:collapse;margin:14px}table.bymove td,table.bymove th{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
 table.bymove th{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
 .delta{display:flex;gap:4px;margin:3px 0;align-items:center;flex-wrap:wrap}
+`;
+
+/** One tooltip for the page, fixed to the window, so the scrolling boxes the trees sit in can't
+ *  clip it. Below the badge, or above it when there's no room; kept inside the window. */
+const tipScript = `
+const tip = document.getElementById("tip");
+document.addEventListener("mouseover", (e) => {
+	const el = e.target.closest("[data-tip]");
+	if (!el) { tip.style.display = "none"; return; }
+	tip.textContent = el.dataset.tip;
+	tip.style.display = "block";
+	const r = el.getBoundingClientRect(), t = tip.getBoundingClientRect(), m = 8;
+	const below = r.bottom + 6 + t.height + m <= innerHeight;
+	tip.style.top = (below ? r.bottom + 6 : Math.max(m, r.top - 6 - t.height)) + "px";
+	tip.style.left = Math.max(m, Math.min(r.left, innerWidth - t.width - m)) + "px";
+});
+document.addEventListener("scroll", () => (tip.style.display = "none"), true);
 `;
 
 export function html(sections: Section[], heading: string, meta: string, titles: Titles, diffing: boolean): string {
@@ -498,7 +515,8 @@ ${diffing ? `<span class="badge st-changed">changed</span><span class="badge st-
 <span class="pill gain new" data-tip="Outlined: new in this version">outlined: new</span><span class="pill gain gone" data-tip="Struck out: only in the old version">struck: gone</span>` : ""}
 <span class="meta">hover anything for details</span></div>`;
 	return `<!doctype html><meta charset="utf-8"><title>${esc(heading)}</title><style>${css}</style>
-<h1>${esc(heading)}</h1><p class="meta">${esc(meta)}</p>${legend}${body}`;
+<h1>${esc(heading)}</h1><p class="meta">${esc(meta)}</p>${legend}${body}
+<div id="tip"></div><script>${tipScript}</script>`;
 }
 
 // ---- The command -------------------------------------------------------------------------------
