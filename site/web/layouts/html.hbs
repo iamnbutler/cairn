@@ -10,6 +10,7 @@
 <title>{{ title }}</title>
 <meta name="description" content="{{ p.description }}">
 {{{ $utils.head('/site.css') }}}
+{{#if home}}<link rel="stylesheet" href="/claims/claims.css">{{/if}}
 <link rel="modulepreload" href="/scene.js">
 <link rel="modulepreload" href="/anchors.js">
 <link rel="alternate" type="application/rss+xml" title="Cairn" href="/feed.xml">

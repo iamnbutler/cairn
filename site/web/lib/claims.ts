@@ -1,6 +1,7 @@
-// The figures on /claims/ (content/claims/index.hbs). Each is HTML or inline SVG laid out by CSS
-// alone (site.css, "The claims page"), so nothing moves when claims.js arrives: the script only
-// animates what is already there, and without it every figure is a still that reads on its own.
+// The figures on the Claims page (content/docs/evidence/index.md, placed by lib/figures.ts). Each
+// is HTML or inline SVG laid out by CSS alone (claims/claims.css), so nothing moves when
+// claims/page.js arrives: the script only animates what is already there, and without it every
+// figure is a still that reads on its own.
 //
 // The data is real. The replay is Todo's flow ^216 (iamnbutler/cairn_examples, lean/Todo.lean),
 // stepped through the frames `make try` explored and drew with the app's own Lean code (the same
@@ -83,12 +84,12 @@ export function replay(): string {
 	const cards = Object.entries(MOVES)
 		.map(([k, m]) => `<div class="card" data-claim="${k}"${k === "204" ? "" : " hidden"}><p class="ch"><span class="id">^${k}</span> <span class="kd">move</span> ${m.title}</p><p class="sees">${m.sees}</p><p class="ev"><span>proved</span> in every state where it's offered</p></div>`)
 		.join("\n");
-	return `<figure class="replay" aria-labelledby="rp-cap">
+	return `<figure class="cf replay" aria-labelledby="rp-cap">
 <div class="rp">
 <div class="win px"><div class="frames">
 ${layers}
 </div></div>
-<div class="side">
+<div class="rp-side">
 <div class="flowcard px">
 <p class="fh"><span class="id">^216</span> <span class="kd">flow</span> Add two todos and complete one</p>
 <ol class="steps">
@@ -138,7 +139,7 @@ export function stateField(): string {
 	});
 	const line = path.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`).join(" ");
 	const past = [7, 8, 9].map((d, i) => `<circle class="past" data-d="${d}" r="${rad(d)}" style="opacity:${(0.8 - i * 0.25).toFixed(2)}"/>`).join("");
-	return `<figure class="field" aria-labelledby="sf-cap">
+	return `<figure class="cf field" aria-labelledby="sf-cap">
 <div class="plot">
 <svg viewBox="-244 -244 488 488" role="img" aria-label="Todo's 400 explored states as rings by distance from launch. A test's path visits six of them; the proof covers every ring and the unexplored ones past them.">
 <g class="rings">${past}</g>
@@ -173,7 +174,7 @@ export function ledger(): string {
 	const rows = ROWS.map(([id, kind, status, hash, title, note]) =>
 		`<li class="${status}"${note ? ` data-note="${esc(note)}"` : ""}><span class="i">${id}</span><span class="k">${kind}</span><span class="st">${status}</span><span class="h">${hash}</span><span class="t">${esc(title)}</span>${note ? `<span class="nt">${esc(note)}</span>` : ""}</li>`,
 	).join("\n");
-	return `<figure class="ledger" aria-labelledby="lg-cap">
+	return `<figure class="cf ledger" aria-labelledby="lg-cap">
 <p class="file">claims.lock <span>cairn_examples, an excerpt</span></p>
 <ol class="rows px">
 ${rows}
@@ -214,7 +215,39 @@ const KINDS: { kind: string; says: string; ex: string }[] = [
 
 export function kinds(): string {
 	const cards = KINDS.map((k) => `<li class="kc px"><svg viewBox="0 0 200 96" aria-hidden="true">${KIND_ART[k.kind]}</svg><p class="kn">${k.kind}</p><p>${k.says}</p><p class="ex">${esc(k.ex)}</p></li>`).join("\n");
-	return `<ul class="kindgrid">\n${cards}\n</ul>`;
+	return `<ul class="cf kindgrid">\n${cards}\n</ul>`;
 }
 
 if (import.meta.main) console.log(replay(), stateField(), ledger(), kinds());
+
+// ---- Smaller figures: nothing without a claim, one name, the evidence rungs ---------------------
+
+export const gate = () => `<div class="cf gate">
+<div class="g-in px"><p class="gh">An event arrives</p><p>a click, a key, a timer</p></div>
+<div class="g-split">
+<div class="g-yes px"><p class="gh"><span class="id">^N</span> owns it</p><p>Its move runs, and its promise holds afterwards.</p></div>
+<div class="g-no px"><p class="gh">No claim owns it</p><p>The state is unchanged and nothing is asked of the host. <code>update_unclaimed</code></p></div>
+</div>
+</div>`;
+
+const NAMES: [string, string, string?][] = [
+	["The code", `move ^204 toggleTodo (s : State) (k : Nat) "Complete a todo"`],
+	["Accessibility", `identifier "^204#1"`, "the checkbox on milk, for VoiceOver and UI tests"],
+	["A flow", "witness … submit ^202, press ^204#1"],
+	["Its page", "/packages/cairn_examples/claims/204/"],
+	["Review", "^204 “Complete a todo”: meaning changed"],
+];
+
+export const names = () =>
+	`<ul class="cf names">\n${NAMES.map(([w, c, i]) => `<li><span class="where">${w}</span><code>${esc(c)}</code>${i ? `<i>${i}</i>` : ""}</li>`).join("\n")}\n</ul>`;
+
+const RUNGS: [string, string][] = [
+	["Proved", "A counterexample anywhere: every state, every key, every input."],
+	["Fuzzed", "A counterexample in the random sessions it ran, the claim checked after every step."],
+	["Tested", "The running app disagreeing with the proved model, on the sequences it drove."],
+	["Seen", "A control that's never drawn, a flow that can't be clicked through."],
+	["Assumed", "Nothing by itself. Written down, so every proof that relies on it says so."],
+];
+
+export const rungs = () =>
+	`<ol class="cf rungs">\n${RUNGS.map(([b, s], i) => `<li class="r${i + 1}"><b>${b}</b><span>${s}</span></li>`).join("\n")}\n</ol>`;

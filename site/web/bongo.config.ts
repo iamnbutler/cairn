@@ -11,7 +11,7 @@ import { ogCards } from "./lib/og";
 import { bar, head, titleNav } from "../chrome.js";
 import { anatomy } from "./lib/anatomy";
 import { architecture } from "./lib/architecture";
-import { kinds, ledger, replay, stateField } from "./lib/claims";
+import { figures } from "./lib/figures";
 
 export default {
 	$site: {
@@ -20,7 +20,7 @@ export default {
 		url: "https://cairn.iamnbutler.workers.dev/",
 		description: "Research into user interfaces where every action a person can take is a claim with a durable id and machine-checked evidence.",
 	},
-	$utils: { inline, checkLinks, sidebar, pager, feed, latest, oldLinks, postList, postMeta, postPager, progressLog, version, ogCards, bar, head, titleNav, architecture, anatomy, replay, stateField, ledger, kinds },
+	$utils: { inline, checkLinks, sidebar, pager, feed, latest, oldLinks, postList, postMeta, postPager, progressLog, version, ogCards, bar, head, titleNav, architecture, anatomy, figures },
 	$partials: {
 		// <bongo:include src="test/fixture/lean/Fixture.lean#fixture-delete" />
 		include(args: { src: string }) {
