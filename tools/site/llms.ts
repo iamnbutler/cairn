@@ -79,6 +79,8 @@ export function page(id: string): Page {
 		.replace(/<bongo:note label="([^"]*)">\n?([\s\S]*?)\n?<\/bongo:note>/g, (_, label: string, inner: string) =>
 			`> **${label}.** ${inner.trim()}`.replace(/\n/g, "\n> "),
 		);
+	// A figure (site/web/lib/figures.ts) is drawn for the page; the prose around it stands without it.
+	body = body.replace(/<!-- figure: \w+ -->\n*/g, "");
 	if (/<bongo:/.test(body.replace(/`[^`\n]*`/g, ""))) throw new Error(`llms: content/docs/${id}.md uses a bongo tag llms.ts doesn't know`);
 	body = links(body).trim();
 	return { id, url: urlOf(id), md: mdOf(id), title: fm.title ?? id, lede: fm.lede ?? "", eyebrow: fm.eyebrow ?? "", body, todo: fm.status === "todo" };

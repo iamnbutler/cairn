@@ -49,6 +49,9 @@ h1 { font: 700 44px/1.08 var(--pixel); margin: 0 0 14px; color: #f3efff; letter-
 .lede { font-size: 20px; line-height: 1.5; margin: 0; }
 
 .prose { max-width: 760px; }
+/* A page with wide figures (`wide: true`): its text keeps the measure, its figures take the column. */
+.prose.wide { max-width: none; }
+.prose.wide > :not(figure, .cf) { max-width: 760px; }
 .prose h2 { font: 600 22px/1.25 var(--pixel); margin: 52px 0 14px; display: flex; align-items: center; gap: 12px; }
 .prose h2::before { content: ""; width: 20px; height: 20px; flex: none; background: url("/icon.svg") center / contain no-repeat; image-rendering: pixelated; }
 .prose h3 { font: 600 18px/1.3 var(--pixel); margin: 34px 0 10px; }

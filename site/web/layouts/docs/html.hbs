@@ -26,6 +26,7 @@
 <meta name="twitter:card" content="summary_large_image">
 {{#if !isTodo}}<link rel="alternate" type="text/markdown" href="{{ md }}">{{/if}}
 {{{ $utils.head('/docs/docs.css') }}}
+{{#if p.css}}<link rel="stylesheet" href="{{ p.css }}">{{/if}}
 </head>
 <body>
 {{{ $utils.bar(index ? 'docs' : $page.path === '/docs/evidence/' ? 'claims' : '') }}}
@@ -41,8 +42,8 @@
 <h1>{{ $page.title }}</h1>
 {{#if lede}}<p class="lede">{{{ $utils.inline(lede) }}}</p>{{/if}}
 </header>
-<article class="prose">
-{{{ $page.content }}}
+<article class="prose{{#if p.wide}} wide{{/if}}">
+{{{ $utils.figures($page.content) }}}
 </article>
 {{{ $utils.pager($page.path, $pages, $data.nav) }}}
 </main>
@@ -52,5 +53,6 @@
   import { mountAnchors } from "/anchors.js";
   mountAnchors(document.querySelector("main"));
 </script>
+{{#if p.module}}<script type="module" src="{{ p.module }}"></script>{{/if}}
 </body>
 </html>

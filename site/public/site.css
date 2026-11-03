@@ -168,51 +168,6 @@ figure.threads figcaption { font-size: var(--fs-s); color: var(--muted); margin:
 
 /* Claims: an annotated claim, the kinds, and the evidence ladder. */
 h3.sub { font: 600 var(--fs-m)/1.3 var(--pixel); margin: 36px 0 10px; }
-.claim { margin: 22px 0 18px; }
-.claim pre { --s: var(--px); margin: 0; background: var(--panel); padding: 16px 18px; overflow-x: auto;
-  font: var(--fs-s)/1.7 var(--mono); box-shadow: inset 0 0 0 var(--px) var(--chip); }
-.claim pre code { background: none; padding: 0; font: inherit; }
-.claim .kw { color: #c9a8f0; }
-.claim .id { color: var(--gold); }
-.claim .str { color: #9fd3b4; }
-.claim .mk, .callouts li::before {
-  display: inline-grid; place-items: center; width: 18px; height: 18px; margin-left: 10px;
-  font: 600 var(--fs-s)/1 var(--pixel); background: var(--gold); color: var(--ink); vertical-align: 1px;
-}
-.callouts { list-style: none; counter-reset: c; margin: 14px 0 0; padding: 0; }
-.callouts li { counter-increment: c; position: relative; padding-left: 30px; margin-bottom: 6px; }
-.callouts li::before { content: counter(c); position: absolute; left: 0; top: 4px; margin: 0; }
-
-/* The anatomy of a claim: each line a block with a gutter bar for its half (people: mint, the
-   checker: gold), brackets under the spans the notes name, and a few more token colours. On a wide
-   window the notes go in the margins either side, joined to their spans by leaders (annotate.js);
-   narrower, they are the numbered list under the code. */
-.claim .op { color: var(--muted); }
-.claim .lit { color: #e8a6c8; }
-.claim .tac { color: var(--accent); }
-.anatomy pre code { display: block; }
-.anatomy .ln { display: block; padding-left: 14px; box-shadow: inset 4px 0 0 transparent; }
-.anatomy .ln.people { box-shadow: inset 4px 0 0 #9fd3b4; }
-.anatomy .ln.checker { box-shadow: inset 4px 0 0 var(--gold); }
-.anatomy .ln.people + .ln.checker { margin-top: 6px; }
-.anatomy li b { font: 600 var(--fs-s)/1.3 var(--pixel); color: var(--gold); margin-right: 4px; font-variant-ligatures: none; }
-.anatomy li.people b { color: #9fd3b4; }
-.anatomy li i { color: var(--muted); }
-.anatomy svg.leaders { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; opacity: 0; transition: opacity 0.15s; }
-.anatomy svg.leaders.on { opacity: 1; }
-.anatomy svg.leaders path { fill: none; stroke: var(--muted); stroke-width: 2; stroke-dasharray: 2 4; shape-rendering: crispEdges; }
-.anatomy svg.leaders rect { fill: var(--muted); }
-.anatomy svg.leaders g { transition: opacity 0.15s; }
-.anatomy.pointing svg.leaders g:not(.hot) { opacity: 0.35; }
-.anatomy svg.leaders g.hot path { stroke: var(--gold); }
-.anatomy svg.leaders g.hot rect { fill: var(--gold); }
-/* Narrow, the code wraps instead of scrolling, so every marker stays in view: a wrapped line hangs
-   6ch in from where its line starts. */
-@media (max-width: 1099px) {
-  .anatomy pre { white-space: pre-wrap; overflow-wrap: anywhere; }
-  .anatomy .ln { padding-left: calc(14px + 6ch); text-indent: -6ch; }
-  .anatomy .mk { text-indent: 0; }
-}
 @media (min-width: 1100px) {
   .anatomy { position: relative; margin: 30px calc((100% - min(1240px, 100vw - 32px)) / 2) 24px; padding: 24px 8px;
     background: var(--bg); display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); grid-template-rows: repeat(4, auto);
