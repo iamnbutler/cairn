@@ -2,8 +2,9 @@
 //
 //   bun tools/map/tree.ts flows claims.json                   A: the flows' witnesses as one tree
 //   bun tools/map/tree.ts graph build/graph/Fixture.json      B: the explored move graph as a tree
-//   bun tools/map/tree.ts flows old.json new.json             the diff of two versions
-//   … --html out.html                                         an SVG page instead of text
+//   bun tools/map/tree.ts graph old.json new.json             the diff of two versions
+//   … --by-place                                              B: one tree per place
+//   … --html out.html                                         a page of cards instead of text
 //
 // A merges every flow's witness (`lake exe claims`) into one prefix tree from the first state.
 // Every edge is a step some flow's `live` theorem covers, and a leaf is where its `reaches`
@@ -11,8 +12,8 @@
 //
 // B unrolls the graph `lake exe fuzz <App> --graph D` writes (lean/Cairn/Fuzz/Graph.lean): a node
 // is the set of moves a person can take, an edge a move. The tree is the breadth-first spanning
-// tree; an edge to a node already placed is a leaf `↩ S<n>`. Exact for the states explored,
-// silent about the rest.
+// tree; an edge to a node already placed is a leaf. Exact for the states explored, silent about
+// the rest.
 //
 // The diff matches by claim ids, which never change meaning (docs/claims.md): an edge is the
 // same edge in both versions when it is the same trigger on the same claim from the same place
@@ -24,55 +25,67 @@ import { parseArgs } from "node:util";
 
 type Status = "same" | "added" | "removed" | "changed";
 
-/** One node of the tree, reached from its parent by `edge`. */
+/** What a move did to what a person can do: the moves it made available, and those it took away. */
+export type Delta = { gain: number[]; lose: number[] };
+
+/** The move an edge performs. */
+export type Step = { claim: number; trigger: string; key: number; text?: string; via?: number | null; effects?: number };
+
+/** One node of the tree, reached from its parent by `step`. */
 export type Tree = {
 	/** Identity among siblings: the step, `press ^3`. */
 	key: string;
-	/** The edge from the parent, as a person reads it. */
-	edge: string;
-	/** What holds at the node: flows that end here (A), moves gained and lost (B). */
-	note: string;
-	/** The node's identity for the diff: a version's node labels may differ while it is the same. */
-	ident: string;
-	/** A leaf pointing at a node placed elsewhere in the tree (B's back and cross edges). */
-	back?: string;
-	/** An edge that delivered nothing to `update` (B). */
-	inert?: boolean;
+	step?: Step;
+	/** B: what the step changed. The root has `moves` instead. */
+	delta?: Delta;
+	/** The root: every move available at the start. */
+	moves?: number[];
+	/** B: moves that change nothing here, folded into a badge (a child with key `↺` while diffing). */
+	stay?: string[];
+	/** A: flows whose witness ends here. */
+	flows?: number[];
+	/** A leaf for an edge to a node placed elsewhere in the tree. */
+	back?: boolean;
+	/** Not explored past this node (the depth or state limit). */
+	open?: boolean;
 	children: Tree[];
+	/** Set by `diff`. */
 	status?: Status;
-	/** The other version's note, when the node changed. */
-	was?: string;
+	was?: Tree;
 };
 
 type Titles = Record<string, string>;
 const title = (titles: Titles, id: number) => titles[String(id)] ?? "";
 const ref = (id: number) => `^${id}`;
+const deltaKey = (d?: Delta) => (d ? [...d.gain.map((c) => `+${c}`), ...d.lose.map((c) => `-${c}`)].join(" ") : "");
+const deltaText = (d?: Delta) =>
+	d ? [...d.gain.map((c) => `+${ref(c)}`), ...d.lose.map((c) => `−${ref(c)}`)].join(" ") || "no change" : "";
+
+/** What the diff compares: two nodes with the same key are the same node unless this differs. */
+const ident = (t: Tree) =>
+	[deltaKey(t.delta), (t.moves ?? []).join(","), (t.stay ?? []).join(","), (t.flows ?? []).join(","), t.back ? "back" : ""].join("|");
 
 // ---- A: flows ----------------------------------------------------------------------------------
 
-type Step = { trigger: string; ref: string; claim: number; key: number; op?: { kind: string; text?: string } };
-type Claim = { id: number; kind: string; title: string; retired: string | null; witness: Step[] | null | { error: string } };
-
-const stepKey = (s: Step) => `${s.trigger} ${s.ref}${s.op ? ` ${s.op.kind}${s.op.text !== undefined ? ` ${JSON.stringify(s.op.text)}` : ""}` : ""}`;
+type WStep = { trigger: string; ref: string; claim: number; key: number; op?: { kind: string; text?: string } };
+type Claim = { id: number; kind: string; title: string; place: number | null; retired: string | null; witness: WStep[] | null | { error: string } };
 
 export function flowTree(claims: Claim[]): Tree {
-	const titles: Titles = Object.fromEntries(claims.map((c) => [String(c.id), c.title]));
-	const root: Tree = { key: "", edge: "start", note: "", ident: "", children: [] };
+	const root: Tree = { key: "", children: [] };
 	for (const c of claims) {
 		if (c.kind !== "flow" || c.retired || !Array.isArray(c.witness)) continue;
 		let at = root;
 		for (const s of c.witness) {
-			const key = stepKey(s);
+			const text = s.op ? (s.op.text !== undefined ? JSON.stringify(s.op.text) : s.op.kind) : undefined;
+			const key = `${s.trigger} ${s.ref}${text ? ` ${text}` : ""}`;
 			let next = at.children.find((t) => t.key === key);
 			if (!next) {
-				const op = s.op ? ` ${s.op.text !== undefined ? JSON.stringify(s.op.text) : s.op.kind}` : "";
-				next = { key, edge: `${s.trigger} ${s.ref}${op} · ${title(titles, s.claim)}`, note: "", ident: "", children: [] };
+				next = { key, step: { claim: s.claim, trigger: s.trigger, key: s.key, text }, children: [] };
 				at.children.push(next);
 			}
 			at = next;
 		}
-		at.note = [at.note, `⚑ ^${c.id} ${c.title}`].filter(Boolean).join("; ");
-		at.ident = at.note;
+		at.flows = [...(at.flows ?? []), c.id];
 	}
 	return root;
 }
@@ -80,7 +93,7 @@ export function flowTree(claims: Claim[]): Tree {
 // ---- B: the explored graph ---------------------------------------------------------------------
 
 type GNode = { id: number; sig: number[]; depth: number; explored: boolean };
-type GEdge = { from: number; to: number; claim: number; key: number; trigger: string; action: string; delivered: number; effects: number; via?: string };
+type GEdge = { from: number; to: number; claim: number; key: number; trigger: string; action: string; delivered: number; effects: number; via?: number | null };
 type Graph = {
 	app: string; depth: number; claims: Titles; nodes: GNode[]; edges: GEdge[];
 	/** Each claim's place (`in ^P`), and the place claims. */
@@ -90,12 +103,7 @@ type Graph = {
 };
 
 const sigKey = (sig: number[]) => sig.join(",");
-
-function delta(from: number[], to: number[]): string {
-	const gained = to.filter((x) => !from.includes(x)).map(ref);
-	const lost = from.filter((x) => !to.includes(x)).map(ref);
-	return [...gained.map((r) => `+${r}`), ...lost.map((r) => `−${r}`)].join(" ") || "no change";
-}
+const delta = (from: number[], to: number[]): Delta => ({ gain: to.filter((x) => !from.includes(x)), lose: from.filter((x) => !to.includes(x)) });
 
 /** The places, outermost first, each with its own moves. */
 export function placesOf(g: Graph): { id: number; title: string; within: number | null; moves: number[] }[] {
@@ -109,7 +117,7 @@ export function placesOf(g: Graph): { id: number; title: string; within: number 
 
 /** The graph as one place sees it: a node is the moves of that place a person can take, so
  *  nodes that differ only elsewhere are one; an edge is kept when it changes that, or is one of
- *  the place's own moves. An edge of another place's move says where it came from. */
+ *  the place's own moves. An edge of another place's move says which place it came from. */
 export function projectGraph(g: Graph, place: number): Graph {
 	const own = (c: number) => (g.places?.[String(c)] ?? null) === place;
 	const nodes: GNode[] = [];
@@ -133,8 +141,7 @@ export function projectGraph(g: Graph, place: number): Graph {
 		const k = `${from} ${e.trigger} ${e.claim} ${to}`;
 		if (seen.has(k)) continue;
 		seen.add(k);
-		const p = g.places?.[String(e.claim)];
-		edges.push({ ...e, from, to, via: own(e.claim) ? undefined : p != null ? `from ^${p} ${title(g.claims, p)}` : "from no place" });
+		edges.push({ ...e, from, to, via: own(e.claim) ? undefined : (g.places?.[String(e.claim)] ?? null) });
 	}
 	return { ...g, nodes, edges, place };
 }
@@ -158,34 +165,24 @@ export function graphTree(g: Graph): Tree {
 				}
 		frontier = next;
 	}
-	const s0 = nodes.get(0)!;
-	const build = (id: number, edge: string, key: string, from: number[]): Tree => {
+	const stepOf = (e: GEdge): Step => ({ claim: e.claim, trigger: e.trigger, key: e.key, text: e.trigger === "edit" ? '"milk"' : undefined, via: e.via, effects: e.effects });
+	const build = (id: number, key: string, step: Step | undefined, from: number[] | undefined): Tree => {
 		const n = nodes.get(id)!;
-		const t: Tree = {
-			key, edge, ident: id === 0 ? sigKey(n.sig) : delta(from, n.sig),
-			note: id === 0 ? (n.sig.length ? `${n.sig.length} moves: ${n.sig.map(ref).join(" ")}` : "none of its moves yet") : delta(from, n.sig) + (n.explored ? "" : " ⋯"),
-			children: [],
-		};
+		const t: Tree = { key, step, children: [], open: !n.explored };
+		if (from) t.delta = delta(from, n.sig);
+		else t.moves = n.sig;
 		const loops = (out.get(id) ?? []).filter((e) => e.to === id);
-		const stay = [...new Set(loops.map((e) => `${e.trigger === "press" ? "" : e.trigger + " "}^${e.claim}`))];
-		if (stay.length) t.children.push({ key: "↺", edge: `↺ ${stay.length} moves stay here`, note: stay.join(" "), ident: stay.join(" "), children: [] });
+		const stay = [...new Set(loops.map((e) => `${e.trigger} ^${e.claim}`))];
+		if (stay.length) t.stay = stay;
 		for (const e of out.get(id) ?? []) {
 			if (e.to === id) continue;
 			const k = `${e.trigger} ^${e.claim}`;
-			const label = `${e.action} · ${title(g.claims, e.claim)}${e.via ? ` (${e.via})` : ""}${e.effects ? ` ⇢${e.effects}` : ""}`;
-			if (parent.get(e.to) === e) t.children.push(build(e.to, label, k, n.sig));
-			else {
-				const to = nodes.get(e.to)!;
-				t.children.push({
-					key: k, edge: label, ident: delta(n.sig, to.sig), back: sigKey(to.sig), inert: e.delivered === 0,
-					note: e.to === id ? "↺ same moves" : `↩ ${delta(n.sig, to.sig)}`, children: [],
-				});
-			}
+			if (parent.get(e.to) === e) t.children.push(build(e.to, k, stepOf(e), n.sig));
+			else t.children.push({ key: k, step: stepOf(e), delta: delta(n.sig, nodes.get(e.to)!.sig), back: true, children: [] });
 		}
 		return t;
 	};
-	const head = g.place !== undefined ? `^${g.place} ${title(g.claims, g.place)}` : `${g.app}, explored to depth ${g.depth}`;
-	return build(0, head, "", s0.sig);
+	return build(0, "", undefined, undefined);
 }
 
 // ---- The diff ----------------------------------------------------------------------------------
@@ -196,8 +193,8 @@ export function diff(a: Tree | undefined, b: Tree | undefined): Tree {
 	if (!b) return mark(a, "removed");
 	const keys = [...a.children.map((t) => t.key), ...b.children.map((t) => t.key).filter((k) => !a.children.some((t) => t.key === k))];
 	const children = keys.map((k) => diff(a.children.find((t) => t.key === k), b.children.find((t) => t.key === k)));
-	const changed = a.ident !== b.ident;
-	return { ...b, children, status: changed ? "changed" : "same", was: changed ? a.note : undefined };
+	const changed = ident(a) !== ident(b);
+	return { ...b, children, status: changed ? "changed" : "same", was: changed ? { ...a, children: [] } : undefined };
 }
 
 function mark(t: Tree, status: Status): Tree {
@@ -211,52 +208,71 @@ function prune(t: Tree, keep: boolean): Tree {
 	return { ...t, children: t.children.filter((c) => keep || touched(c)).map((c) => prune(c, keep)) };
 }
 
+function count(t: Tree, acc: Record<Status, number> = { same: 0, added: 0, removed: 0, changed: 0 }) {
+	if (t.status) acc[t.status]++;
+	for (const c of t.children) count(c, acc);
+	return acc;
+}
+
 /** B's diff by move, independent of where in the tree a move is: for each move, the changes it
- *  makes to what a person can do, anywhere in the explored graph ("gains ^5", "loses ^4 ^5 ^26").
- *  One changed `enabled` renames every node holding that claim, so nodes don't diff well; what a
- *  move does stays put unless the move's meaning changed. */
-export function moveDiff(a: Graph, b: Graph): string[] {
+ *  makes to what a person can do, anywhere in the explored graph. One changed `enabled` renames
+ *  every node holding that claim, so nodes don't diff well; what a move does stays put unless the
+ *  move's meaning changed. */
+export type MoveChange = { claim: number; trigger: string; before: Delta[]; after: Delta[]; kept: Delta[] };
+export function moveDiff(a: Graph, b: Graph): { moves: MoveChange[]; reachable: number[]; unreachable: number[] } {
 	const effects = (g: Graph) => {
 		const sig = new Map(g.nodes.map((n) => [n.id, n.sig]));
-		const m = new Map<string, Set<string>>();
+		const m = new Map<string, Map<string, Delta>>();
 		for (const e of g.edges) {
 			if (e.from === e.to) continue;
-			const k = `${e.trigger} ^${e.claim} ${g.claims[String(e.claim)] ?? ""}`.trim();
-			m.set(k, (m.get(k) ?? new Set()).add(delta(sig.get(e.from)!, sig.get(e.to)!)));
+			const d = delta(sig.get(e.from)!, sig.get(e.to)!);
+			const k = `${e.claim} ${e.trigger}`;
+			m.set(k, (m.get(k) ?? new Map()).set(deltaKey(d), d));
 		}
 		return m;
 	};
 	const ea = effects(a), eb = effects(b);
-	const out: string[] = [];
-	for (const k of [...new Set([...ea.keys(), ...eb.keys()])].sort()) {
-		const was = ea.get(k) ?? new Set<string>(), now = eb.get(k) ?? new Set<string>();
-		const gone = [...was].filter((x) => !now.has(x)), added = [...now].filter((x) => !was.has(x));
-		if (!gone.length && !added.length) continue;
-		out.push(`${k}`);
-		for (const x of gone) out.push(`  - ${x}`);
-		for (const x of added) out.push(`  + ${x}`);
-		if (!now.size) out.push("  (now never changes what a person can do)");
+	const moves: MoveChange[] = [];
+	const keys = [...new Set([...ea.keys(), ...eb.keys()])].sort((x, y) => parseInt(x) - parseInt(y));
+	for (const k of keys) {
+		const was = ea.get(k) ?? new Map<string, Delta>(), now = eb.get(k) ?? new Map<string, Delta>();
+		const before = [...was].filter(([x]) => !now.has(x)).map(([, d]) => d);
+		const after = [...now].filter(([x]) => !was.has(x)).map(([, d]) => d);
+		if (!before.length && !after.length) continue;
+		const [claim, trigger] = k.split(" ");
+		moves.push({ claim: +claim, trigger, before, after, kept: [...now].filter(([x]) => was.has(x)).map(([, d]) => d) });
 	}
-	// Which claims a person can ever reach.
 	const reach = (g: Graph) => new Set(g.nodes.flatMap((n) => n.sig));
 	const ra = reach(a), rb = reach(b);
-	for (const c of rb) if (!ra.has(c)) out.push(`+ ^${c} is reachable now`);
-	for (const c of ra) if (!rb.has(c)) out.push(`- ^${c} is no longer reachable`);
-	return out;
+	return { moves, reachable: [...rb].filter((c) => !ra.has(c)), unreachable: [...ra].filter((c) => !rb.has(c)) };
 }
 
 // ---- Text --------------------------------------------------------------------------------------
 
 const sign: Record<Status, string> = { same: " ", added: "+", removed: "-", changed: "~" };
 
-export function text(t: Tree): string {
+function stepText(s: Step | undefined, titles: Titles): string {
+	if (!s) return "start";
+	const via = s.via !== undefined ? ` (from ${s.via === null ? "no place" : ref(s.via)})` : "";
+	return `${s.trigger} ${ref(s.claim)}${s.key ? `#${s.key}` : ""}${s.text ? ` ${s.text}` : ""} · ${title(titles, s.claim)}${via}`;
+}
+
+function noteText(t: Tree): string {
+	if (t.moves) return `${t.moves.length} moves: ${t.moves.map(ref).join(" ")}`;
+	const parts = [t.back ? `↩ ${deltaText(t.delta)}` : deltaText(t.delta)];
+	if (t.flows) parts.push(t.flows.map((f) => `⚑ ${ref(f)}`).join(" "));
+	if (t.stay) parts.push(`↺ ${t.stay.length}`);
+	if (t.open) parts.push("⋯");
+	return parts.filter(Boolean).join("  ");
+}
+
+export function text(t: Tree, titles: Titles): string {
 	const lines: string[] = [];
 	const go = (t: Tree, pre: string, last: boolean, top: boolean) => {
 		const s = t.status ? sign[t.status] + " " : "";
-		const was = t.was !== undefined ? `   (was: ${t.was})` : "";
-		const inert = t.inert ? " [inert]" : "";
-		if (top) lines.push(`${s}${t.edge}${t.note ? `  ⟶  ${t.note}` : ""}${was}`);
-		else lines.push(`${s}${pre}${last ? "└─ " : "├─ "}${t.edge}${inert}${t.note ? `  ⟶  ${t.note}` : ""}${was}`);
+		const was = t.was ? `   (was: ${noteText(t.was)})` : "";
+		const line = `${stepText(t.step, titles)}  ⟶  ${noteText(t)}${was}`;
+		lines.push(top ? `${s}${line}` : `${s}${pre}${last ? "└─ " : "├─ "}${line}`);
 		const next = top ? "" : pre + (last ? "   " : "│  ");
 		t.children.forEach((c, i) => go(c, next, i === t.children.length - 1, false));
 	};
@@ -264,60 +280,225 @@ export function text(t: Tree): string {
 	return lines.join("\n");
 }
 
-// ---- HTML: an SVG, left to right ---------------------------------------------------------------
+// ---- HTML: cards of badges, left to right ------------------------------------------------------
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-const colour: Record<Status, string> = { same: "#555", added: "#1a7f37", removed: "#cf222e", changed: "#9a6700" };
+const short = (s: string, n = 24) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
-export type Section = { heading: string; tree?: Tree; text?: string };
+export type Section = {
+	id: number | null;
+	title: string;
+	sub?: string;
+	/** The place's own moves, shown as badges in the header. */
+	moves?: number[];
+	tree?: Tree;
+	note?: string;
+	byMove?: ReturnType<typeof moveDiff>;
+};
 
-export function html(sections: Section[], heading: string): string {
-	const body = sections.map((s) => `<h2>${esc(s.heading)}</h2>${s.tree ? svg(s.tree) : ""}${s.text ? `<pre>${esc(s.text)}</pre>` : ""}`).join("\n");
-	return `<!doctype html><meta charset="utf-8"><title>${esc(heading)}</title>
-<style>body{font:13px ui-monospace,Menlo,monospace;margin:16px;color:#222}h1{font-size:15px}h2{font-size:13px;margin:28px 0 0;border-top:1px solid #ddd;padding-top:12px}
-pre{color:#555}.e{font-size:11px}.n{font-size:12px}.was{fill:#999}.key span{margin-right:14px}</style>
-<h1>${esc(heading)}</h1>
-<p class="key"><span style="color:${colour.added}">● added</span><span style="color:${colour.removed}">● removed</span><span style="color:${colour.changed}">● changed</span><span>□ edge to a node shown elsewhere</span></p>
-${body}`;
+/** A claim as a badge: its id, its title, and the title in full on hover. */
+function pill(titles: Titles, c: number, kind: "gain" | "lose" | "plain", mark: "" | "new" | "gone" = "") {
+	const sym = kind === "gain" ? "+" : kind === "lose" ? "−" : "";
+	const what = kind === "gain" ? "becomes available" : kind === "lose" ? "goes away" : "";
+	const tip = `${ref(c)} ${title(titles, c)}${what ? `\n${what}` : ""}${mark === "new" ? "\n(new in this version)" : mark === "gone" ? "\n(only in the old version)" : ""}`;
+	return `<span class="pill ${kind} ${mark}" data-tip="${esc(tip)}">${sym}<b>${ref(c)}</b> ${esc(short(title(titles, c), 20))}</span>`;
 }
 
-function svg(t: Tree): string {
-	const colW = 330, rowH = 58, padX = 20, padY = 34;
-	type Placed = { t: Tree; x: number; y: number; depth: number };
+/** A delta's badges; with the old version's delta, what's new is marked and what's gone struck out. */
+function pills(titles: Titles, d: Delta | undefined, was?: Delta, limit = 4): string {
+	if (!d) return "";
+	const items: string[] = [];
+	const has = (xs: number[] | undefined, c: number) => !!xs?.includes(c);
+	for (const c of d.gain) items.push(pill(titles, c, "gain", was && !has(was.gain, c) ? "new" : ""));
+	for (const c of d.lose) items.push(pill(titles, c, "lose", was && !has(was.lose, c) ? "new" : ""));
+	if (was) {
+		for (const c of was.gain) if (!d.gain.includes(c)) items.push(pill(titles, c, "gain", "gone"));
+		for (const c of was.lose) if (!d.lose.includes(c)) items.push(pill(titles, c, "lose", "gone"));
+	}
+	if (!items.length) return `<span class="badge quiet" data-tip="This move changes nothing a person can do here">no change</span>`;
+	const shown = items.slice(0, limit), rest = items.length - shown.length;
+	return shown.join("") + (rest > 0 ? `<span class="badge quiet" data-tip="${esc(`${rest} more:\n${[...d.gain.map((c) => `+${ref(c)} ${title(titles, c)}`), ...d.lose.map((c) => `−${ref(c)} ${title(titles, c)}`)].slice(limit).join("\n")}`)}">+${rest}</span>` : "");
+}
+
+const statusTip: Record<Status, string> = {
+	same: "",
+	added: "Only in the new version",
+	removed: "Only in the old version",
+	changed: "In both versions, but it does something different now",
+};
+const statusWord: Record<Status, string> = { same: "", added: "new", removed: "gone", changed: "changed" };
+
+function card(t: Tree, titles: Titles, root?: Section): string {
+	const st = t.status ?? "same";
+	const badges: string[] = [];
+	if (st !== "same") badges.push(`<span class="badge st-${st}" data-tip="${statusTip[st]}">${statusWord[st]}</span>`);
+	let head: string, body: string;
+	if (!t.step) {
+		head = `<span class="title">${esc(root?.title ?? "Start")}</span>`;
+		const ms = t.moves ?? [];
+		body = t.moves
+			? ms.length
+				? `<span class="badge" data-tip="${esc(`Available at the start:\n${ms.map((c) => `${ref(c)} ${title(titles, c)}`).join("\n")}`)}">starts with ${ms.length} move${ms.length === 1 ? "" : "s"}</span>`
+				: `<span class="badge quiet" data-tip="None of this place's moves is available in the first frame">none available at the start</span>`
+			: `<span class="badge quiet">the first frame</span>`;
+	} else {
+		const s = t.step;
+		const trig = `<span class="trig" data-tip="${esc(`${s.trigger} ${ref(s.claim)}${s.key ? `#${s.key}` : ""}${s.text ? ` ${s.text}` : ""}`)}">${esc(s.trigger)}${s.text ? ` ${esc(short(s.text, 10))}` : ""}</span>`;
+		const via = s.via !== undefined
+			? `<span class="badge via" data-tip="${esc(`A move of ${s.via === null ? "no place" : `${ref(s.via)} ${title(titles, s.via)}`}\nthat changes what this place offers`)}">↗ ${s.via === null ? "elsewhere" : esc(short(title(titles, s.via), 14))}</span>`
+			: "";
+		head = `${trig}<span class="title" data-tip="${esc(`${ref(s.claim)} ${title(titles, s.claim)}`)}">${esc(short(title(titles, s.claim), 30))}</span>`;
+		// Where the move came from goes first on the second line, so the title keeps the room.
+		body = via + pills(titles, t.delta, t.was?.delta, via ? 3 : 4);
+		if (s.effects) badges.push(`<span class="badge quiet" data-tip="The step put ${s.effects} effect${s.effects === 1 ? "" : "s"} on the frame (a request, a timer, the clipboard…) and the host answered them">⇢ ${s.effects}</span>`);
+	}
+	if (t.flows) body += t.flows.map((f) => `<span class="pill flow" data-tip="${esc(`Flow ${ref(f)} ${title(titles, f)}\nits witness ends here, and its goal is proved to hold`)}">⚑ <b>${ref(f)}</b> ${esc(short(title(titles, f), 22))}</span>`).join("");
+	if (t.back) badges.push(`<span class="badge quiet" data-tip="Leads to a state that is drawn elsewhere in this tree">↩</span>`);
+	if (t.stay) {
+		const was = t.was?.stay;
+		const changed = was && was.join() !== t.stay.join();
+		const added = changed ? t.stay.filter((x) => !was!.includes(x)) : [], gone = changed ? was!.filter((x) => !t.stay!.includes(x)) : [];
+		const name = (x: string) => { const [tr, c] = x.split(" "); return `${tr} ${c} ${title(titles, +c.slice(1))}`; };
+		const tip = `${t.stay.length} moves do something here but change nothing a person can do:\n${t.stay.map(name).join("\n")}` +
+			(added.length ? `\n\nnow also: ${added.map(name).join(", ")}` : "") + (gone.length ? `\n\nno longer: ${gone.map(name).join(", ")}` : "");
+		badges.push(`<span class="badge ${changed ? "st-changed" : "quiet"}" data-tip="${esc(tip)}">↺ ${t.stay.length}</span>`);
+	}
+	if (t.open) badges.push(`<span class="badge quiet" data-tip="Not explored past here (the depth limit)">⋯</span>`);
+	return `<div class="card s-${st}${t.back ? " back" : ""}${t.step ? "" : " root"}"><div class="head">${head}<span class="badges">${badges.join("")}</span></div><div class="body">${body}</div></div>`;
+}
+
+type Dims = { cardW: number; gapX: number; rowH: number; cardH: number };
+const full: Dims = { cardW: 300, gapX: 56, rowH: 86, cardH: 62 };
+/** A flow's steps carry no badges below the title, so its cards are one line. */
+const compact: Dims = { cardW: 240, gapX: 40, rowH: 50, cardH: 36 };
+const hasBody = (t: Tree): boolean => !!t.delta || t.children.some(hasBody);
+
+function tree(t: Tree, titles: Titles, s: Section): string {
+	const d = hasBody(t) ? full : compact;
+	const { cardW, gapX, rowH, cardH } = d;
+	type Placed = { t: Tree; x: number; y: number };
 	const placed: Placed[] = [];
 	const links: [Placed, Placed][] = [];
-	let row = 0;
-	let maxDepth = 0;
+	let row = 0, maxDepth = 0;
 	const place = (t: Tree, depth: number): Placed => {
 		maxDepth = Math.max(maxDepth, depth);
 		const kids = t.children.map((c) => place(c, depth + 1));
-		const y = kids.length ? (kids[0].y + kids[kids.length - 1].y) / 2 : padY + rowH * row++;
-		const p = { t, x: padX + depth * colW, y, depth };
+		const y = kids.length ? (kids[0].y + kids[kids.length - 1].y) / 2 : rowH * row++;
+		const p = { t, x: depth * (cardW + gapX), y };
 		placed.push(p);
 		for (const k of kids) links.push([p, k]);
 		return p;
 	};
 	place(t, 0);
-	const W = padX * 2 + (maxDepth + 1) * colW + 80, H = padY * 2 + rowH * row;
-	const col = (t: Tree) => colour[t.status ?? "same"];
-	const parts: string[] = [];
-	for (const [a, b] of links) {
-		const mx = (a.x + b.x) / 2;
-		const dash = b.t.back || b.t.status === "removed" ? ` stroke-dasharray="4 3"` : "";
-		parts.push(`<path d="M${a.x + 8},${a.y} C${mx},${a.y} ${mx},${b.y} ${b.x - 8},${b.y}" fill="none" stroke="${col(b.t)}" stroke-width="${b.t.status && b.t.status !== "same" ? 2 : 1.2}"${dash}/>`);
-	}
-	for (const p of placed) {
-		const c = col(p.t);
-		const shape = p.t.back ? `<rect x="${p.x - 6}" y="${p.y - 6}" width="12" height="12" fill="#fff" stroke="${c}" stroke-width="1.5"/>`
-			: `<circle cx="${p.x}" cy="${p.y}" r="7" fill="${p.t.status && p.t.status !== "same" ? c : "#fff"}" stroke="${c}" stroke-width="1.5"/>`;
-		const edge = p.depth === 0 ? "" : `<text x="${p.x - 12}" y="${p.y - 10}" text-anchor="end" class="e" fill="${c}">${esc(p.t.edge)}${p.t.inert ? " [inert]" : ""}</text>`;
-		const was = p.t.was !== undefined ? `<tspan class="was"> was ${esc(p.t.was)}</tspan>` : "";
-		// The edge's label sits above the node, what holds there below it, clear of the lines out.
-		const head = p.depth === 0 ? `<text x="${p.x - 4}" y="${p.y - 12}" class="e" fill="${c}">${esc(p.t.edge)}</text>` : "";
-		const note = `${head}<text x="${p.x - 4}" y="${p.y + 20}" class="n" fill="${c}">${esc(p.t.note)}${was}</text>`;
-		parts.push(`<g>${shape}${edge}${note}<title>${esc(`${p.t.edge}\n${p.t.note}${p.t.was ? `\nwas: ${p.t.was}` : ""}`)}</title></g>`);
-	}
-	return `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">${parts.join("")}</svg>`;
+	const W = (maxDepth + 1) * (cardW + gapX), H = rowH * Math.max(row, 1);
+	const paths = links.map(([a, b]) => {
+		const x1 = a.x + cardW, y1 = a.y + cardH / 2, x2 = b.x, y2 = b.y + cardH / 2, mx = (x1 + x2) / 2;
+		const st = b.t.status ?? "same";
+		return `<path class="l l-${st}${b.t.back ? " dash" : ""}" d="M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}"/>`;
+	});
+	const cards = placed.map((p) => `<div class="at" style="left:${p.x}px;top:${p.y}px;width:${cardW}px">${card(p.t, titles, s)}</div>`);
+	return `<div class="tree${d === compact ? " compact" : ""}" style="width:${W}px;height:${H}px"><svg width="${W}" height="${H}">${paths.join("")}</svg>${cards.join("")}</div>`;
+}
+
+/** Each new outcome next to the old one it overlaps most, so a reader sees one line per outcome
+ *  with what's new outlined and what's gone struck out. */
+function pair(before: Delta[], after: Delta[]): [Delta | undefined, Delta | undefined][] {
+	const left = [...before];
+	const ids = (d: Delta) => [...d.gain.map((c) => `+${c}`), ...d.lose.map((c) => `-${c}`)];
+	const out: [Delta | undefined, Delta | undefined][] = after.map((a) => {
+		let best = -1, score = 0;
+		left.forEach((b, i) => {
+			const n = ids(a).filter((x) => ids(b).includes(x)).length;
+			if (n > score) [best, score] = [i, n];
+		});
+		return [best >= 0 ? left.splice(best, 1)[0] : undefined, a];
+	});
+	return [...out, ...left.map((b): [Delta | undefined, Delta | undefined] => [b, undefined])];
+}
+
+function byMove(m: ReturnType<typeof moveDiff>, titles: Titles): string {
+	const empty: Delta = { gain: [], lose: [] };
+	const rows = m.moves.map((c) => {
+		const lines = pair(c.before, c.after).map(([b, a]) => {
+			const what = !b ? "a new outcome" : !a ? "no longer happens" : "changed";
+			const cls = !b ? "st-added" : !a ? "st-removed" : "st-changed";
+			return `<div class="delta"><span class="badge ${cls}" data-tip="${esc(`${!b ? "New: this move now does this somewhere" : !a ? "Gone: this move no longer does this anywhere" : "Changed: outlined is new, struck out is gone"}`)}">${what}</span>${pills(titles, a ?? empty, b ?? empty, 8)}</div>`;
+		});
+		const kept = c.kept.length ? `<span class="badge quiet" data-tip="${esc(`Unchanged outcomes:\n${c.kept.map(deltaText).join("\n")}`)}">${c.kept.length} unchanged</span>` : "";
+		return `<tr><td><span class="trig">${esc(c.trigger)}</span> <span class="title" data-tip="${esc(`${ref(c.claim)} ${title(titles, c.claim)}`)}"><b>${ref(c.claim)}</b> ${esc(title(titles, c.claim))}</span></td><td>${lines.join("")}</td><td>${kept}</td></tr>`;
+	});
+	const reach = [...m.reachable.map((c) => pill(titles, c, "gain")), ...m.unreachable.map((c) => pill(titles, c, "lose"))].join("");
+	return `<table class="bymove"><tr><th>Move</th><th data-tip="What the move does to what a person can do, anywhere in the graph">What it does now</th><th></th></tr>${rows.join("")}</table>` +
+		(reach ? `<p class="note">Reachable at all: ${reach}</p>` : "");
+}
+
+const css = `
+:root{--ink:#1f2328;--muted:#656d76;--line:#d0d7de;--bg:#f6f8fa;--gain:#1a7f37;--gainbg:#dafbe1;--lose:#cf222e;--losebg:#ffebe9;--chg:#9a6700;--chgbg:#fff8c5;--flow:#8250df;--flowbg:#fbefff}
+body{font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:20px 24px;color:var(--ink);background:#fff}
+h1{font-size:18px;margin:0 0 4px}.meta{color:var(--muted);margin:0 0 12px}
+.legend{position:sticky;top:0;background:#fffe;backdrop-filter:blur(4px);padding:8px 0;border-bottom:1px solid var(--line);z-index:20;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+details{margin:18px 0;border:1px solid var(--line);border-radius:10px;background:#fff}
+summary{cursor:pointer;padding:10px 14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;list-style:none;background:var(--bg);border-radius:10px}
+details[open]>summary{border-bottom:1px solid var(--line);border-radius:10px 10px 0 0}
+summary h2{font-size:15px;margin:0}summary .sub{color:var(--muted)}
+.scroll{overflow:auto;padding:18px 14px 30px}
+.tree{position:relative}.tree svg{position:absolute;inset:0;overflow:visible}
+.l{fill:none;stroke:#8c959f;stroke-width:1.4}.l.dash{stroke-dasharray:5 4}
+.l-added{stroke:var(--gain);stroke-width:2.2}.l-removed{stroke:var(--lose);stroke-width:2.2;stroke-dasharray:5 4}.l-changed{stroke:var(--chg);stroke-width:2.2}
+.at{position:absolute}
+.compact .card{min-height:${compact.cardH}px;padding:7px 8px}.compact .body:empty{display:none}
+.card{box-sizing:border-box;min-height:${full.cardH}px;border:1px solid var(--line);border-left:4px solid #8c959f;border-radius:8px;background:#fff;padding:6px 8px;box-shadow:0 1px 2px #1f232810}
+.card:hover{z-index:10;position:relative;box-shadow:0 3px 10px #1f232825}
+.card.root{border-left-color:var(--ink);background:var(--bg)}
+.card.back{border-style:dashed;border-left-style:solid;background:#fcfcfd}
+.card.s-added{border-left-color:var(--gain);background:#f6fff8}.card.s-removed{border-left-color:var(--lose);background:#fff8f7;opacity:.85}.card.s-changed{border-left-color:var(--chg);background:#fffdf0}
+.head{display:flex;align-items:center;gap:6px;min-width:0}
+.title{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.badges{margin-left:auto;display:flex;gap:4px;flex-shrink:0}
+.body{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
+.trig{font:11px ui-monospace,Menlo,monospace;background:#eaeef2;color:var(--muted);border-radius:4px;padding:1px 5px;flex-shrink:0}
+.badge{font-size:11px;border-radius:10px;padding:1px 7px;background:#eaeef2;color:var(--ink);white-space:nowrap}
+.badge.quiet{background:transparent;border:1px solid var(--line);color:var(--muted)}
+.badge.via{background:#ddf4ff;color:#0969da}
+.st-added{background:var(--gainbg);color:var(--gain)}.st-removed{background:var(--losebg);color:var(--lose)}.st-changed{background:var(--chgbg);color:var(--chg)}
+.pill{font-size:11px;border-radius:10px;padding:1px 7px;white-space:nowrap;border:1px solid transparent}
+.pill b{font:600 10px ui-monospace,Menlo,monospace;margin-right:2px}
+.pill.gain{background:var(--gainbg);color:var(--gain)}.pill.lose{background:var(--losebg);color:var(--lose)}.pill.plain{background:#eaeef2}
+.pill.flow{background:var(--flowbg);color:var(--flow)}
+.pill.new{border-color:currentColor;font-weight:600}.pill.gone{text-decoration:line-through;opacity:.55;background:transparent;border:1px dashed currentColor}
+[data-tip]{position:relative;cursor:help}
+[data-tip]:hover::after{content:attr(data-tip);position:absolute;left:0;top:calc(100% + 6px);background:#1f2328;color:#fff;font:12px/1.45 -apple-system,sans-serif;font-weight:400;text-decoration:none;padding:6px 9px;border-radius:6px;white-space:pre;z-index:30;pointer-events:none;box-shadow:0 4px 14px #0004}
+.note{color:var(--muted);padding:12px 16px;margin:0}
+table.bymove{border-collapse:collapse;margin:14px}table.bymove td,table.bymove th{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+table.bymove th{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.delta{display:flex;gap:4px;margin:3px 0;align-items:center;flex-wrap:wrap}
+`;
+
+export function html(sections: Section[], heading: string, meta: string, titles: Titles, diffing: boolean): string {
+	const body = sections.map((s, i) => {
+		const n = s.tree ? count(s.tree) : undefined;
+		const tally = diffing && n
+			? (["changed", "added", "removed"] as Status[]).filter((k) => n[k]).map((k) => `<span class="badge st-${k}" data-tip="${n[k]} ${statusWord[k]} in this ${s.id === null ? "view" : "place"}">${n[k]} ${statusWord[k]}</span>`).join("")
+			: "";
+		const quiet = s.note && !s.tree && !s.byMove;
+		const idBadge = s.id !== null ? `<span class="badge" data-tip="The place's claim id">${ref(s.id)}</span>` : "";
+		const moves = s.moves?.length ? `<span class="badge quiet" data-tip="${esc(`Its own moves:\n${s.moves.map((c) => `${ref(c)} ${title(titles, c)}`).join("\n")}`)}">${s.moves.length} move${s.moves.length === 1 ? "" : "s"}</span>` : "";
+		const flag = diffing && quiet && s.note === "No change." ? `<span class="badge quiet">no change</span>` : "";
+		return `<details${quiet || (diffing && i > 0 && !tally && !s.byMove) ? "" : " open"}><summary>${idBadge}<h2>${esc(s.title)}</h2>${s.sub ? `<span class="sub">${esc(s.sub)}</span>` : ""}${moves}${tally}${flag}</summary>
+${s.tree ? `<div class="scroll">${tree(s.tree, titles, s)}</div>` : ""}${s.byMove ? byMove(s.byMove, titles) : ""}${s.note && !flag ? `<p class="note">${esc(s.note)}</p>` : ""}</details>`;
+	}).join("\n");
+	const legend = `<div class="legend">
+<span class="pill gain" data-tip="After this move, a person can also do this">+ becomes available</span>
+<span class="pill lose" data-tip="After this move, a person can no longer do this">− goes away</span>
+<span class="pill flow" data-tip="A flow's witness ends here: its goal is proved to hold">⚑ flow ends</span>
+<span class="badge via" data-tip="A move of another place that changes this one">↗ from another place</span>
+<span class="badge quiet" data-tip="Moves that do something but change nothing a person can do; hover one for the list">↺ stay here</span>
+<span class="badge quiet" data-tip="Leads to a state drawn elsewhere in the tree">↩ seen elsewhere</span>
+${diffing ? `<span class="badge st-changed">changed</span><span class="badge st-added">new</span><span class="badge st-removed">gone</span>
+<span class="pill gain new" data-tip="Outlined: new in this version">outlined: new</span><span class="pill gain gone" data-tip="Struck out: only in the old version">struck: gone</span>` : ""}
+<span class="meta">hover anything for details</span></div>`;
+	return `<!doctype html><meta charset="utf-8"><title>${esc(heading)}</title><style>${css}</style>
+<h1>${esc(heading)}</h1><p class="meta">${esc(meta)}</p>${legend}${body}`;
 }
 
 // ---- The command -------------------------------------------------------------------------------
@@ -334,31 +515,43 @@ if (import.meta.main) {
 	}
 	const read = (p: string) => JSON.parse(readFileSync(p, "utf8"));
 	const [a, b] = [read(oldPath), newPath ? read(newPath) : undefined];
+	const titlesOf = (j: any): Titles => (mode === "flows" ? Object.fromEntries(j.claims.map((c: Claim) => [String(c.id), c.title])) : j.claims);
+	const titles: Titles = { ...titlesOf(a), ...(b ? titlesOf(b) : {}) };
 	// A diff shows only the branches that changed, unless --all.
 	const show = (ta: Tree, tb?: Tree) => (tb ? prune(diff(ta, tb), !!opts.all) : ta);
 	const sections: Section[] = [];
-	if (mode === "flows") sections.push({ heading: "Flows", tree: show(flowTree(a.claims), b && flowTree(b.claims)) });
-	else if (!opts["by-place"]) sections.push({ heading: "Every place", tree: show(graphTree(a), b && graphTree(b)) });
+	if (mode === "flows") sections.push({ id: null, title: "Flows", sub: "every flow's steps from the first frame", tree: show(flowTree(a.claims), b && flowTree(b.claims)) });
+	else if (!opts["by-place"]) sections.push({ id: null, title: a.app, sub: "every place", tree: show(graphTree(a), b && graphTree(b)) });
 	else {
 		// One section per place, outermost first; a place either version has.
 		const ps = new Map([...placesOf(a), ...(b ? placesOf(b) : [])].map((p) => [p.id, p]));
 		for (const p of ps.values()) {
-			const heading = `^${p.id} ${p.title}${p.within !== null ? `, in ^${p.within}` : ""}: ${p.moves.length ? p.moves.map(ref).join(" ") : "no moves"}`;
+			const sub = p.within !== null ? `in ${ref(p.within)} ${title(titles, p.within)}` : undefined;
 			if (!p.moves.length) {
-				sections.push({ heading, text: "No move of this place was taken (the explorer doesn't drive appear, and keyed places' moves count here only if on screen)." });
+				sections.push({ id: p.id, title: p.title, sub, note: "No move of this place was taken: the explorer doesn't drive appear moves." });
 				continue;
 			}
 			const t = show(graphTree(projectGraph(a, p.id)), b && graphTree(projectGraph(b, p.id)));
-			sections.push(b && !t.children.length && t.status === "same" ? { heading, text: "No change." } : { heading, tree: t });
+			const same = b && !t.children.length && t.status === "same";
+			sections.push({ id: p.id, title: p.title, sub, moves: p.moves, ...(same ? { note: "No change." } : { tree: t }) });
 		}
 	}
-	if (mode === "graph" && b) {
-		const lines = moveDiff(a, b);
-		sections.push({ heading: "By move: what each does to what a person can do", text: lines.join("\n") || "No change." });
-	}
-	const heading = `${mode === "flows" ? "A · flows" : "B · move graph"}${opts["by-place"] ? " by place" : ""}: ${newPath ? `${oldPath} → ${newPath}` : oldPath}`;
+	const moves = mode === "graph" && b ? moveDiff(a, b) : undefined;
+	if (moves) sections.push({ id: null, title: "By move", sub: "what each move does to what a person can do, before and after", byMove: moves, note: moves.moves.length ? undefined : "No change." });
+	const kind = mode === "flows" ? "Flows" : `Move graph${opts["by-place"] ? " by place" : ""}`;
+	const heading = `${kind}${newPath ? " · diff" : ""}`;
+	const meta = newPath ? `${oldPath} → ${newPath}` : `${oldPath}${mode === "graph" ? `, explored to depth ${a.depth}` : ""}`;
 	if (opts.html) {
-		writeFileSync(opts.html, html(sections, heading));
+		writeFileSync(opts.html, html(sections, heading, meta, titles, !!newPath));
 		console.log(`wrote ${opts.html}`);
-	} else console.log(sections.map((s) => `== ${s.heading}\n${s.tree ? text(s.tree) : ""}${s.text ?? ""}`).join("\n\n"));
+	} else {
+		const out = sections.map((s) => {
+			const head = `== ${s.id !== null ? `${ref(s.id)} ` : ""}${s.title}${s.sub ? `, ${s.sub}` : ""}`;
+			const by = s.byMove
+				? s.byMove.moves.map((c) => `${c.trigger} ${ref(c.claim)} ${title(titles, c.claim)}\n${c.before.map((d) => `  - ${deltaText(d)}`).join("\n")}${c.before.length && c.after.length ? "\n" : ""}${c.after.map((d) => `  + ${deltaText(d)}`).join("\n")}`).join("\n")
+				: "";
+			return [head, s.tree ? text(s.tree, titles) : "", by, s.note ?? ""].filter(Boolean).join("\n");
+		});
+		console.log(out.join("\n\n"));
+	}
 }
