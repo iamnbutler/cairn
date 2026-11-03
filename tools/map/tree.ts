@@ -80,8 +80,14 @@ export function flowTree(claims: Claim[]): Tree {
 // ---- B: the explored graph ---------------------------------------------------------------------
 
 type GNode = { id: number; sig: number[]; depth: number; explored: boolean };
-type GEdge = { from: number; to: number; claim: number; key: number; trigger: string; action: string; delivered: number; effects: number };
-type Graph = { app: string; depth: number; claims: Titles; nodes: GNode[]; edges: GEdge[] };
+type GEdge = { from: number; to: number; claim: number; key: number; trigger: string; action: string; delivered: number; effects: number; via?: string };
+type Graph = {
+	app: string; depth: number; claims: Titles; nodes: GNode[]; edges: GEdge[];
+	/** Each claim's place (`in ^P`), and the place claims. */
+	places?: Record<string, number | null>; placeIds?: number[];
+	/** Set on a graph projected onto one place. */
+	place?: number;
+};
 
 const sigKey = (sig: number[]) => sig.join(",");
 
@@ -89,6 +95,48 @@ function delta(from: number[], to: number[]): string {
 	const gained = to.filter((x) => !from.includes(x)).map(ref);
 	const lost = from.filter((x) => !to.includes(x)).map(ref);
 	return [...gained.map((r) => `+${r}`), ...lost.map((r) => `−${r}`)].join(" ") || "no change";
+}
+
+/** The places, outermost first, each with its own moves. */
+export function placesOf(g: Graph): { id: number; title: string; within: number | null; moves: number[] }[] {
+	const of = (c: number) => g.places?.[String(c)] ?? null;
+	const moves = [...new Set(g.nodes.flatMap((n) => n.sig))];
+	const depth = (p: number): number => (of(p) === null ? 0 : 1 + depth(of(p)!));
+	return (g.placeIds ?? [])
+		.map((id) => ({ id, title: title(g.claims, id), within: of(id), moves: moves.filter((c) => of(c) === id).sort((a, b) => a - b) }))
+		.sort((a, b) => depth(a.id) - depth(b.id) || a.id - b.id);
+}
+
+/** The graph as one place sees it: a node is the moves of that place a person can take, so
+ *  nodes that differ only elsewhere are one; an edge is kept when it changes that, or is one of
+ *  the place's own moves. An edge of another place's move says where it came from. */
+export function projectGraph(g: Graph, place: number): Graph {
+	const own = (c: number) => (g.places?.[String(c)] ?? null) === place;
+	const nodes: GNode[] = [];
+	const index = new Map<string, number>();
+	const map = new Map<number, number>();
+	// Node 0 first, so the projection's root is the first state's.
+	for (const n of [...g.nodes].sort((a, b) => (a.id === 0 ? -1 : b.id === 0 ? 1 : a.depth - b.depth))) {
+		const sig = n.sig.filter(own);
+		const k = sigKey(sig);
+		if (!index.has(k)) {
+			index.set(k, nodes.length);
+			nodes.push({ id: nodes.length, sig, depth: n.depth, explored: n.explored });
+		} else if (n.explored) nodes[index.get(k)!].explored = true;
+		map.set(n.id, index.get(k)!);
+	}
+	const edges: GEdge[] = [];
+	const seen = new Set<string>();
+	for (const e of g.edges) {
+		const from = map.get(e.from)!, to = map.get(e.to)!;
+		if (from === to && !own(e.claim)) continue;
+		const k = `${from} ${e.trigger} ${e.claim} ${to}`;
+		if (seen.has(k)) continue;
+		seen.add(k);
+		const p = g.places?.[String(e.claim)];
+		edges.push({ ...e, from, to, via: own(e.claim) ? undefined : p != null ? `from ^${p} ${title(g.claims, p)}` : "from no place" });
+	}
+	return { ...g, nodes, edges, place };
 }
 
 export function graphTree(g: Graph): Tree {
@@ -115,7 +163,7 @@ export function graphTree(g: Graph): Tree {
 		const n = nodes.get(id)!;
 		const t: Tree = {
 			key, edge, ident: id === 0 ? sigKey(n.sig) : delta(from, n.sig),
-			note: id === 0 ? `${n.sig.length} moves: ${n.sig.map(ref).join(" ")}` : delta(from, n.sig) + (n.explored ? "" : " ⋯"),
+			note: id === 0 ? (n.sig.length ? `${n.sig.length} moves: ${n.sig.map(ref).join(" ")}` : "none of its moves yet") : delta(from, n.sig) + (n.explored ? "" : " ⋯"),
 			children: [],
 		};
 		const loops = (out.get(id) ?? []).filter((e) => e.to === id);
@@ -124,7 +172,7 @@ export function graphTree(g: Graph): Tree {
 		for (const e of out.get(id) ?? []) {
 			if (e.to === id) continue;
 			const k = `${e.trigger} ^${e.claim}`;
-			const label = `${e.action} · ${title(g.claims, e.claim)}${e.effects ? ` ⇢${e.effects}` : ""}`;
+			const label = `${e.action} · ${title(g.claims, e.claim)}${e.via ? ` (${e.via})` : ""}${e.effects ? ` ⇢${e.effects}` : ""}`;
 			if (parent.get(e.to) === e) t.children.push(build(e.to, label, k, n.sig));
 			else {
 				const to = nodes.get(e.to)!;
@@ -136,7 +184,8 @@ export function graphTree(g: Graph): Tree {
 		}
 		return t;
 	};
-	return build(0, `${g.app}, explored to depth ${g.depth}`, "", s0.sig);
+	const head = g.place !== undefined ? `^${g.place} ${title(g.claims, g.place)}` : `${g.app}, explored to depth ${g.depth}`;
+	return build(0, head, "", s0.sig);
 }
 
 // ---- The diff ----------------------------------------------------------------------------------
@@ -220,7 +269,19 @@ export function text(t: Tree): string {
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const colour: Record<Status, string> = { same: "#555", added: "#1a7f37", removed: "#cf222e", changed: "#9a6700" };
 
-export function html(t: Tree, heading: string): string {
+export type Section = { heading: string; tree?: Tree; text?: string };
+
+export function html(sections: Section[], heading: string): string {
+	const body = sections.map((s) => `<h2>${esc(s.heading)}</h2>${s.tree ? svg(s.tree) : ""}${s.text ? `<pre>${esc(s.text)}</pre>` : ""}`).join("\n");
+	return `<!doctype html><meta charset="utf-8"><title>${esc(heading)}</title>
+<style>body{font:13px ui-monospace,Menlo,monospace;margin:16px;color:#222}h1{font-size:15px}h2{font-size:13px;margin:28px 0 0;border-top:1px solid #ddd;padding-top:12px}
+pre{color:#555}.e{font-size:11px}.n{font-size:12px}.was{fill:#999}.key span{margin-right:14px}</style>
+<h1>${esc(heading)}</h1>
+<p class="key"><span style="color:${colour.added}">● added</span><span style="color:${colour.removed}">● removed</span><span style="color:${colour.changed}">● changed</span><span>□ edge to a node shown elsewhere</span></p>
+${body}`;
+}
+
+function svg(t: Tree): string {
 	const colW = 330, rowH = 58, padX = 20, padY = 34;
 	type Placed = { t: Tree; x: number; y: number; depth: number };
 	const placed: Placed[] = [];
@@ -256,37 +317,48 @@ export function html(t: Tree, heading: string): string {
 		const note = `${head}<text x="${p.x - 4}" y="${p.y + 20}" class="n" fill="${c}">${esc(p.t.note)}${was}</text>`;
 		parts.push(`<g>${shape}${edge}${note}<title>${esc(`${p.t.edge}\n${p.t.note}${p.t.was ? `\nwas: ${p.t.was}` : ""}`)}</title></g>`);
 	}
-	return `<!doctype html><meta charset="utf-8"><title>${esc(heading)}</title>
-<style>body{font:13px ui-monospace,Menlo,monospace;margin:16px;color:#222}h1{font-size:15px}
-.e{font-size:11px}.n{font-size:12px}.was{fill:#999}.key span{margin-right:14px}</style>
-<h1>${esc(heading)}</h1>
-<p class="key"><span style="color:${colour.added}">● added</span><span style="color:${colour.removed}">● removed</span><span style="color:${colour.changed}">● changed</span><span>□ edge to a node shown elsewhere</span></p>
-<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">${parts.join("")}</svg>`;
+	return `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">${parts.join("")}</svg>`;
 }
 
 // ---- The command -------------------------------------------------------------------------------
 
 if (import.meta.main) {
-	const { values: opts, positionals } = parseArgs({ allowPositionals: true, options: { html: { type: "string" }, all: { type: "boolean" } } });
+	const { values: opts, positionals } = parseArgs({
+		allowPositionals: true,
+		options: { html: { type: "string" }, all: { type: "boolean" }, "by-place": { type: "boolean" } },
+	});
 	const [mode, oldPath, newPath] = positionals;
 	if ((mode !== "flows" && mode !== "graph") || !oldPath) {
-		console.error("usage: tree.ts flows|graph <old.json> [<new.json>] [--html out.html] [--all]");
+		console.error("usage: tree.ts flows|graph <old.json> [<new.json>] [--by-place] [--html out.html] [--all]");
 		process.exit(2);
 	}
-	const load = (p: string): Tree => {
-		const j = JSON.parse(readFileSync(p, "utf8"));
-		return mode === "flows" ? flowTree(j.claims) : graphTree(j);
-	};
+	const read = (p: string) => JSON.parse(readFileSync(p, "utf8"));
+	const [a, b] = [read(oldPath), newPath ? read(newPath) : undefined];
 	// A diff shows only the branches that changed, unless --all.
-	const t = newPath ? prune(diff(load(oldPath), load(newPath)), !!opts.all) : load(oldPath);
-	const heading = `${mode === "flows" ? "A · flows" : "B · move graph"}${newPath ? `: ${oldPath} → ${newPath}` : `: ${oldPath}`}`;
-	if (opts.html) {
-		writeFileSync(opts.html, html(t, heading));
-		console.log(`wrote ${opts.html}`);
-	} else console.log(text(t));
-	if (mode === "graph" && newPath) {
-		const g = (p: string) => JSON.parse(readFileSync(p, "utf8")) as Graph;
-		const lines = moveDiff(g(oldPath), g(newPath));
-		console.log(`\nBy move (what each does to what a person can do):\n${lines.join("\n") || "  no change"}`);
+	const show = (ta: Tree, tb?: Tree) => (tb ? prune(diff(ta, tb), !!opts.all) : ta);
+	const sections: Section[] = [];
+	if (mode === "flows") sections.push({ heading: "Flows", tree: show(flowTree(a.claims), b && flowTree(b.claims)) });
+	else if (!opts["by-place"]) sections.push({ heading: "Every place", tree: show(graphTree(a), b && graphTree(b)) });
+	else {
+		// One section per place, outermost first; a place either version has.
+		const ps = new Map([...placesOf(a), ...(b ? placesOf(b) : [])].map((p) => [p.id, p]));
+		for (const p of ps.values()) {
+			const heading = `^${p.id} ${p.title}${p.within !== null ? `, in ^${p.within}` : ""}: ${p.moves.length ? p.moves.map(ref).join(" ") : "no moves"}`;
+			if (!p.moves.length) {
+				sections.push({ heading, text: "No move of this place was taken (the explorer doesn't drive appear, and keyed places' moves count here only if on screen)." });
+				continue;
+			}
+			const t = show(graphTree(projectGraph(a, p.id)), b && graphTree(projectGraph(b, p.id)));
+			sections.push(b && !t.children.length && t.status === "same" ? { heading, text: "No change." } : { heading, tree: t });
+		}
 	}
+	if (mode === "graph" && b) {
+		const lines = moveDiff(a, b);
+		sections.push({ heading: "By move: what each does to what a person can do", text: lines.join("\n") || "No change." });
+	}
+	const heading = `${mode === "flows" ? "A · flows" : "B · move graph"}${opts["by-place"] ? " by place" : ""}: ${newPath ? `${oldPath} → ${newPath}` : oldPath}`;
+	if (opts.html) {
+		writeFileSync(opts.html, html(sections, heading));
+		console.log(`wrote ${opts.html}`);
+	} else console.log(sections.map((s) => `== ${s.heading}\n${s.tree ? text(s.tree) : ""}${s.text ?? ""}`).join("\n\n"));
 }

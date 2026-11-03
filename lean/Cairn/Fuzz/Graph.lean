@@ -147,6 +147,10 @@ def run (t : Target) (depth perNode maxStates : Nat) (out : System.FilePath) : I
     ("states", toJson explored),
     ("window", Json.mkObj [("w", toJson size.w), ("h", toJson size.h)]), ("typed", Json.str typed),
     ("claims", Json.mkObj (t.claims.map fun c => (s!"{c.id}", Json.str c.title))),
+    -- Each claim's place (`in ^P`), and each place's, so a diagram can be drawn per place.
+    ("places", Json.mkObj (t.claims.map fun c =>
+      (s!"{c.id}", match c.place with | some p => toJson p | none => Json.null))),
+    ("placeIds", toJson ((t.claims.filter (·.kind == .place)).map (·.id))),
     ("nodes", Json.arr (nodes.mapIdx fun i n => nodeJson i n)),
     ("edges", Json.arr (edges.map edgeJson))]
   let file := out / s!"{t.name}.json"
