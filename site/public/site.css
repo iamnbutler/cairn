@@ -25,8 +25,10 @@ code {
    where the lede begins; in the margins the meadow runs on down the page. The header's height
    is where the text starts, and scene.js reads it. */
 body { overflow-x: clip; }
-h1, h2, h3, .headline, .meta, .note .label, .lede em, .diagram, .kinds, .ladder b, .soon { font-variant-ligatures: none; } /* Pixelify draws "fi" as a broken glyph */
-.scene { position: relative; height: 420px; }
+h1, h2, h3, .headline, .meta, .note .label, .lede em, .threads, .kinds, .ladder b, .soon { font-variant-ligatures: none; } /* Pixelify draws "fi" as a broken glyph */
+/* overflow-x: the canvas is a whole number of scene pixels wide, so it can be half a pixel wider
+   than the window; clipped here it can't scroll the page sideways, and still runs on down. */
+.scene { position: relative; height: 420px; overflow-x: clip; }
 .scene canvas {
   position: absolute; top: 0; left: 50%; transform: translateX(-50%);
   width: min(100%, 2400px); height: 900px;
@@ -93,21 +95,76 @@ p { margin: 0 0 14px; }
    the scene; the meadow carries on either side and fades into mist behind it (scene.js). */
 main.sheet { max-width: 808px; margin-top: 124px; padding: 40px 40px 64px; background: var(--bg); }
 
-/* Figures: one ink (the text colour), a tint for the proved part, the accent for "proved".
-   Pixel style: stepped corners, crisp 2px lines, open chevrons. */
-figure.diagram { margin: 32px 0 8px; }
-figure.diagram svg { display: block; width: 100%; max-width: 640px; height: auto; margin: 0 auto; color: var(--fg); }
-.diagram svg * { fill: none; stroke: currentColor; stroke-width: 2; shape-rendering: crispEdges; stroke-linejoin: miter; }
-.diagram svg text { fill: currentColor; stroke: none; font: var(--fs-s) ui-serif, "New York", Georgia, serif; }
-.diagram svg .hd { font: 600 var(--fs-s) var(--pixel); letter-spacing: 0.06em; }
-.diagram svg .it { font-style: italic; fill: var(--muted); }
-.diagram svg .lb { font: 600 var(--fs-s) var(--pixel); }
-.diagram svg .tint { fill: color-mix(in srgb, currentColor 9%, transparent); }
-.diagram svg .chip { fill: var(--bg); }
-.diagram svg .dash { stroke-dasharray: 4 4; }
-.diagram svg .accent { stroke: var(--accent); }
-.diagram svg text.accent { fill: var(--accent); stroke: none; }
-figure.diagram figcaption { font-size: var(--fs-s); color: var(--muted); margin-top: 12px; text-align: center; }
+/* The architecture figure (web/lib/architecture.ts): three threads as swimlanes, laid out by CSS
+   alone so nothing moves when threads.js adds its overlay. A narrow figure has the lanes as columns
+   with time running down; a wide one (it steps out of the column, like the claim above) has them as
+   rows with time running right. Each lane is a subgrid, so a moment (--t, or --r as a row) lines up
+   across all three. One ink; the accent marks what is proved, gold the frame being made. */
+figure.threads { container-type: inline-size; margin: 32px auto 8px; max-width: 640px; }
+.threads .lanes { position: relative; display: grid; gap: 22px 8px;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1.2fr) minmax(0, 0.65fr); grid-template-rows: auto repeat(4, auto); }
+.threads .lane { --s: var(--px); display: grid; grid-row: 1 / -1; grid-template-rows: subgrid; align-items: start;
+  padding: 10px 6px 12px; background: var(--panel); }
+.threads .lane.main { grid-column: 1; }
+.threads .lane.lean { grid-column: 2; background: color-mix(in srgb, var(--accent) 9%, var(--panel)); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent); }
+.threads .lane.render { grid-column: 3; }
+.threads .head { grid-row: 1; margin: 0; padding: 0 2px; font-size: var(--fs-s); line-height: 1.35; }
+.threads .head > span { display: block; }
+.threads .nm { font: 600 var(--fs-s)/1.25 var(--pixel); letter-spacing: 0.06em; text-transform: uppercase; }
+.threads .sub, .threads .step i, .threads .tag i { font-style: italic; color: var(--muted); }
+.threads .tag { margin-top: 6px; font: 600 var(--fs-s)/1.25 var(--pixel); color: var(--muted); }
+.threads .tag i { display: block; font: italic var(--fs-s)/1.35 ui-serif, "New York", Georgia, serif; }
+.threads .lean .tag { color: var(--accent); }
+/* Steps and chips are outlined in 2px that follows the stepped corners: the box is the line's
+   colour, and a copy of its shape 2px in is the fill. */
+.threads .step, .threads .chip { --s: 3px; --line: var(--fg); --fill: var(--bg); position: relative; isolation: isolate;
+  background: var(--line); transition: background-color 0.6s; }
+.threads .step::before, .threads .chip::before { content: ""; position: absolute; inset: 2px; z-index: -1; clip-path: inherit;
+  background: var(--fill); transition: background-color 0.6s; }
+.threads .step { grid-row: var(--r); display: flex; flex-direction: column; padding: 7px 9px 8px; line-height: 1.3; font-size: var(--fs-s); }
+.threads .step b { font-weight: normal; }
+.threads .n { display: inline-block; min-width: 2ch; font: var(--fs-s) var(--mono); font-style: normal; color: var(--fg); }
+.threads .ask { --line: var(--muted); }
+.threads .work { gap: 8px; }
+.threads .chips { display: flex; flex-direction: column; align-items: stretch; gap: 2px; }
+.threads .chip { --line: var(--muted); --fill: var(--panel); padding: 3px 8px 4px; text-align: center; }
+.threads .chev { display: block; width: 8px; height: 12px; margin: 0 auto; transform: rotate(90deg); fill: none; stroke: var(--muted); stroke-width: 2; shape-rendering: crispEdges; }
+.threads .ticks { grid-row: 2 / -1; align-self: stretch; display: flex; flex-direction: column; justify-content: space-between; padding: 0 2px; }
+.threads .tk { display: flex; align-items: center; gap: 6px; font: var(--fs-s)/1 var(--mono); color: var(--muted); transition: color 0.6s, opacity 0.6s; }
+.threads .tk.ahead { opacity: 0.4; }
+.threads .tk::before { content: ""; flex: none; width: 10px; height: 2px; background: currentColor; }
+.threads .tk .n { color: inherit; }
+/* Lit by the playhead, then fading back as it moves on. */
+.threads .lit { transition-duration: 0.12s; }
+.threads .step.lit, .threads .chip.lit { --line: var(--gold); --fill: color-mix(in srgb, var(--gold) 14%, var(--bg)); }
+.threads .lit::before { transition-duration: 0.12s; }
+.threads .tk.lit { color: var(--gold); }
+.threads svg.wires { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; opacity: 0; transition: opacity 0.2s; }
+.threads svg.wires.on { opacity: 1; }
+.threads .wires * { fill: none; stroke-width: 2; shape-rendering: crispEdges; stroke-linejoin: miter; }
+.threads .wires .w { stroke: var(--fg); }
+.threads .wires .dash { stroke-dasharray: 4 4; }
+.threads .wires .hot { stroke: var(--gold); }
+.threads .wires .ph { stroke: var(--gold); stroke-opacity: 0.55; stroke-dasharray: 2 4; }
+figure.threads figcaption { font-size: var(--fs-s); color: var(--muted); margin: 14px auto 0; max-width: 34em; text-align: center; text-wrap: balance; }
+@media (min-width: 1100px) {
+  figure.threads { max-width: none; margin: 36px calc((100% - min(1240px, 100vw - 32px)) / 2) 8px; }
+}
+@container (min-width: 960px) {
+  /* Lanes as rows: each lane's name in a column of its own, so no wire crosses it. */
+  .threads .lanes { gap: 14px 28px; grid-template-columns: auto auto auto minmax(0, 1fr) minmax(0, auto); grid-template-rows: repeat(3, auto); }
+  .threads .lane, .threads .lane.main, .threads .lane.lean, .threads .lane.render { grid-column: 1 / -1; grid-row: auto;
+    grid-template-columns: subgrid; grid-template-rows: auto; align-items: center; padding: 14px 20px; }
+  .threads .head { grid-column: 1; grid-row: 1; white-space: nowrap; }
+  .threads .step { grid-row: 1; grid-column: var(--r); }
+  .threads .ask, .threads .frame { max-width: 15em; }
+  .threads .chips { flex-direction: row; align-items: center; gap: 6px; }
+  .threads .chip { flex: 1; padding-inline: 6px; white-space: nowrap; }
+  .threads .chev { transform: none; flex: none; }
+  .threads .ticks { grid-row: 1; grid-column: 2 / -1; flex-direction: row; padding: 2px 0 0; }
+  .threads .tk { flex-direction: column; gap: 6px; }
+  .threads .tk::before { width: 2px; height: 10px; }
+}
 
 /* Claims: an annotated claim, the kinds, and the evidence ladder. */
 h3.sub { font: 600 var(--fs-m)/1.3 var(--pixel); margin: 36px 0 10px; }
@@ -145,16 +202,28 @@ h3.sub { font: 600 var(--fs-m)/1.3 var(--pixel); margin: 36px 0 10px; }
 .anatomy svg.leaders.on { opacity: 1; }
 .anatomy svg.leaders path { fill: none; stroke: var(--muted); stroke-width: 2; stroke-dasharray: 2 4; shape-rendering: crispEdges; }
 .anatomy svg.leaders rect { fill: var(--muted); }
+.anatomy svg.leaders g { transition: opacity 0.15s; }
+.anatomy.pointing svg.leaders g:not(.hot) { opacity: 0.35; }
+.anatomy svg.leaders g.hot path { stroke: var(--gold); }
+.anatomy svg.leaders g.hot rect { fill: var(--gold); }
+/* Narrow, the code wraps instead of scrolling, so every marker stays in view: a wrapped line hangs
+   6ch in from where its line starts. */
+@media (max-width: 1099px) {
+  .anatomy pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .anatomy .ln { padding-left: calc(14px + 6ch); text-indent: -6ch; }
+  .anatomy .mk { text-indent: 0; }
+}
 @media (min-width: 1100px) {
   .anatomy { position: relative; margin: 30px calc((100% - min(1240px, 100vw - 32px)) / 2) 24px; padding: 24px 8px;
     background: var(--bg); display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); grid-template-rows: repeat(4, auto);
     grid-auto-flow: dense; gap: 22px 56px; align-content: center; }
   .anatomy pre { grid-column: 2; grid-row: 1 / -1; align-self: center; line-height: 2.3; padding: 18px 26px 18px 14px; }
   .anatomy .mk { display: none; }
-  .anatomy .br { --c: var(--gold); padding-bottom: 2px;
+  .anatomy .br { --c: var(--gold); padding-bottom: 4px;
     background: linear-gradient(var(--c), var(--c)) left bottom / 100% 2px no-repeat,
       linear-gradient(var(--c), var(--c)) left bottom / 2px 6px no-repeat,
       linear-gradient(var(--c), var(--c)) right bottom / 2px 6px no-repeat; }
+  .anatomy.pointing .br:not(.hot) { --c: color-mix(in srgb, var(--gold) 35%, transparent); }
   .anatomy .callouts { display: contents; }
   .anatomy li { list-style: none; padding: 0; margin: 0; line-height: 1.5; }
   .anatomy li::before { display: none; }
