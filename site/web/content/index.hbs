@@ -35,9 +35,9 @@ card: { label: "", title: Cairn, line: "Mac apps where every action is a claim, 
       <li class="r" data-for="c-place"><b>Where it lives</b> <code>^3</code> is a claim too, a place: Counter's window.</li>
       <li class="l people" data-for="c-people"><b>For people</b> <code>does</code> and <code>sees</code>, in plain
         English for reviewers and the claim's page. Lean doesn't check them.</li>
-      <li class="l checker" data-for="c-checker"><b>For the checker</b> Everything below. Lean checks it when the app builds.</li>
       <li class="l" data-for="c-enabled"><b>When it's offered</b> The button is proved on screen exactly when
         this holds, in every state. <i>Playwright's toBeVisible() checks one page load.</i></li>
+      <li class="l checker" data-for="c-checker"><b>For the checker</b> Everything below. Lean checks it when the app builds.</li>
       <li class="r" data-for="c-apply"><b>What it does</b> A pure copy of <code>s</code> with the count at 0.</li>
       <li class="r" data-for="c-post"><b>The promise</b> Afterwards the count is zero and Reset is gone.
         <i>An expect() stated for every state, not asserted on one run.</i></li>
@@ -105,10 +105,7 @@ card: { label: "", title: Cairn, line: "Mac apps where every action is a claim, 
   <p>To make those claims mean something, the code they talk about has to be the code that runs.
     So the app's state, view, layout, hit testing, focus and text editing are all pure Lean, and
     the theorems are about exactly those functions.</p>
-  <figure class="diagram">
-{{{ $utils.architecture() }}}
-    <figcaption>One frame, from a key press to the screen.</figcaption>
-  </figure>
+  {{{ $utils.architecture() }}}
 
   <aside class="note"><div class="card px">
     <p class="label"><img src="/icon.svg" alt="">Not a layer on top</p>
@@ -130,6 +127,7 @@ card: { label: "", title: Cairn, line: "Mac apps where every action is a claim, 
   mountSprigs(document.querySelector("main"));
   mountAnchors(document.querySelector("main"));
   import("/annotate.js").then(m => m.mountLeaders(document.querySelector(".anatomy")));
+  import("/threads.js").then(m => m.mountThreads(document.querySelector(".threads")));
   mountPeek(document.querySelector("footer"));
   mountScene(document.getElementById("scene"), { feature: document.querySelector("main"), octocat: document.getElementById("octocat") });
 </script>
