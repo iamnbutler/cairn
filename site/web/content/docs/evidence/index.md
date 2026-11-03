@@ -84,7 +84,7 @@ and promises nothing. [How much to trust a claim](/docs/reference/trust/) says w
 evidence still takes on faith, with a bug the tests miss and the proof catches, and
 [the evidence ladder](/docs/reference/evidence/) says how the build computes them.
 
-## Every claim, on its own page
+## The registry's claim pages
 
 Every package on the registry has claim pages: each version's claims, grouped by the place
 (window) they belong to, and a page for each claim with what you do and see, a flow's steps, its
