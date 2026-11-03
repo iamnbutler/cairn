@@ -26,7 +26,7 @@ export const FONT_LINKS = [400, 600, 700]
 const LINKS = [
   ["home", "/", "Home"],
   ["docs", "/docs/", "Docs"],
-  ["claims", "/docs/evidence/", "Claims"],
+  ["claims", "/claims/", "Claims"],
   ["blog", "/blog/", "Blog"],
   ["packages", "/packages/", "Packages", "end"],
 ];

@@ -1,0 +1,112 @@
+---
+title: Claims
+description: Every action a person can take in a Cairn app is a claim, with an id that never changes and a proof that holds in every state. What a claim is, the six kinds, and what they buy you.
+card: { label: "Cairn", title: Claims, line: "Every action is a claim: an id, a promise and a proof." }
+---
+<header class="scene">
+  <canvas id="scene" aria-hidden="true"></canvas>
+  <div class="title"><h1>Claims</h1>{{{ $utils.titleNav('claims') }}}</div>
+</header>
+
+<main class="sheet claims-page">
+  <p class="headline">Everything a person can do in a Cairn app is a claim: an id, a promise, and a proof that the promise holds.</p>
+  <p class="lede">Not a test that passed once, a statement Lean checks for every state the app can be
+    in. Here is one running.</p>
+
+  {{{ $utils.replay() }}}
+
+  <p>Each step of that run is a move with its own id, and each move promises what follows, in
+    words for people and in a statement for Lean. The flow above, <code>^216</code>, is itself a
+    claim: Lean checks that every step is offered when it's taken and that the goal holds at the
+    end. Change the app so that any of it stops being true, and it doesn't build.</p>
+
+  <h2 id="anatomy">What's in one</h2>
+  <p>Here is the whole of Reset, in Counter. The top half is for people; everything under it is
+    for the checker.</p>
+  {{{ $utils.anatomy() }}}
+
+  <h2 id="what-they-buy">What they buy you</h2>
+
+  <h3 class="sub" id="every-state">Every state, not one run</h3>
+  <p>A test drives the app down one path and checks where it lands. A claim's proof is about
+    every state at once, including the ones nobody thought to try.</p>
+  {{{ $utils.stateField() }}}
+
+  <h3 class="sub" id="nothing-unclaimed">Nothing happens without one</h3>
+  <div class="gate">
+    <div class="g-in px"><p class="gh">An event arrives</p><p>a click, a key, a timer</p></div>
+    <div class="g-split">
+      <div class="g-yes px"><p class="gh"><span class="id">^N</span> owns it</p><p>Its move runs, and its promise holds afterwards.</p></div>
+      <div class="g-no px"><p class="gh">No claim owns it</p><p>The state is unchanged and nothing is asked of the host. <code>update_unclaimed</code></p></div>
+    </div>
+  </div>
+  <p>An app's update is built only from its moves, so this holds for every Cairn app, proved
+    once in the framework. Every effect an app asks for (a file write, a sound, a timer) comes
+    from some move (<code>update_effect</code>). The list of claims is the list of what the app
+    can do, with nothing hiding outside it.</p>
+
+  <h3 class="sub" id="one-name">One name, everywhere</h3>
+  <p>The id is how everything else refers to the behaviour, and it means the same thing in all
+    of them:</p>
+  <ul class="names">
+    <li><span class="where">The code</span><code>move ^204 toggleTodo (s : State) (k : Nat) "Complete a todo"</code></li>
+    <li><span class="where">Accessibility</span><code>identifier "^204#1"</code><i>the checkbox on milk, for VoiceOver and UI tests</i></li>
+    <li><span class="where">A flow</span><code>witness … submit ^202, press ^204#1</code></li>
+    <li><span class="where">Its page</span><code>/packages/cairn_examples/claims/204/</code></li>
+    <li><span class="where">Review</span><code>^204 “Complete a todo”: meaning changed</code></li>
+  </ul>
+  <p>A <code>data-testid</code> names an element and drifts when someone renames it. <code>^204</code>
+    names a behaviour, and can't be renamed: tests, docs, agents and bug reports that cite it stay
+    right for as long as the app exists.</p>
+
+  <h3 class="sub" id="ledger">Meaning changes show up in review</h3>
+  <p>Each package keeps a ledger of every id it has issued. A refactor that changes no promise
+    passes quietly; one that changes what a claim says is flagged, and has to take a new id or be
+    accepted in a commit someone reviews.</p>
+  {{{ $utils.ledger() }}}
+  <p>A released claim is a promise to whoever relies on it, so retiring one needs a major
+    version: semver for guarantees, checked by the build.</p>
+
+  <h2 id="kinds">Six kinds</h2>
+  <p>Moves are what people do. The other five say how moves fit together, what always holds, and
+    what is taken on trust.</p>
+  {{{ $utils.kinds() }}}
+
+  <h2 id="how-sure">How sure we are</h2>
+  <p>Each claim carries the evidence it has, not only the strongest. They rule out different
+    things:</p>
+  <ol class="rungs">
+    <li class="r1"><b>Proved</b><span>A counterexample anywhere: every state, every key, every input.</span></li>
+    <li class="r2"><b>Fuzzed</b><span>A counterexample in the random sessions it ran, the claim checked after every step.</span></li>
+    <li class="r3"><b>Tested</b><span>The running app disagreeing with the proved model, on the sequences it drove.</span></li>
+    <li class="r4"><b>Seen</b><span>A control that's never drawn, a flow that can't be clicked through.</span></li>
+    <li class="r5"><b>Assumed</b><span>Nothing by itself. Written down, so every proof that relies on it says so.</span></li>
+  </ol>
+  <p>A proof still trusts that its statement says what you mean: <code>post s' := True</code> is
+    easy to prove and promises nothing. <a href="/docs/reference/trust/">How much to trust a
+    claim</a> says what each kind of evidence still takes on faith, with a bug the tests miss and
+    the proof catches.</p>
+
+  <aside class="note"><div class="card px">
+    <p class="label"><img src="/icon.svg" alt="">Read the claims yourself</p>
+    <p>Every package gets claim pages, generated from what it published: each claim by place, with
+      its proofs and evidence. Start with <a href="/packages/cairn_examples/claims/201/">Todo's</a>,
+      or <a href="/try/todo/">click through its states</a>. <a href="/docs/evidence/">Every
+      package's claim pages</a> and <a href="/docs/reference/claims/">the claims reference</a> have
+      the rest.</p>
+  </div></aside>
+</main>
+
+<footer><img src="/icon.svg" alt=""><span>MIT licensed. Built in the open, slowly. <a href="/docs/">Read the docs</a>.</span><a class="feed" href="/feed.xml">RSS feed</a></footer>
+
+<script type="module">
+  import { mountScene, mountFrames, mountSprigs, mountAnchors, mountPeek } from "/scene.js";
+  const main = document.querySelector("main");
+  mountFrames(main);
+  mountSprigs(main);
+  mountAnchors(main);
+  import("/annotate.js").then(m => m.mountLeaders(document.querySelector(".anatomy")));
+  import("/claims/figures.js").then(m => { m.mountReplay(document.querySelector(".replay")); m.mountField(document.querySelector(".field")); });
+  mountPeek(document.querySelector("footer"));
+  mountScene(document.getElementById("scene"), { feature: main });
+</script>

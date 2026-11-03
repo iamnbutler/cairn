@@ -374,5 +374,171 @@ footer { padding-bottom: 100px; }
 @media (min-width: 1100px) { footer { padding-bottom: 56px; } .peek { right: auto; left: calc(100% + 60px); } }
 @media (max-width: 600px) { footer { padding-bottom: 72px; } .peek { width: 72px; height: 60px; } }
 
+/* The claims page (site/web/content/claims, figures from lib/claims.ts, animated by
+   claims/figures.js). Every figure lays out in CSS alone; the script only changes classes. */
+.claims-page .id { font: 600 var(--fs-s) var(--mono); color: var(--gold); }
+.claims-page .kd { font: 600 var(--fs-s)/1 var(--pixel); color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; margin: 0 4px; }
+.claims-page .ev { font: var(--fs-s)/1.3 var(--pixel); color: var(--muted); white-space: nowrap; }
+.claims-page .ev span { display: inline-block; color: var(--ink); background: var(--accent); padding: 1px 6px 2px; margin-right: 4px; }
+.claims-page figure figcaption { font-size: var(--fs-s); color: var(--muted); margin: 14px auto 0; max-width: 36em; text-align: center; text-wrap: balance; }
+.claims-page h2 + p, .claims-page h3 + p { max-width: 38em; }
+
+/* The replay: the frame, then the flow and the claim in use. */
+figure.replay { container-type: inline-size; margin: 32px 0 28px; }
+.replay .win { --s: var(--px); background: var(--ink); padding: var(--px); max-width: 568px; margin: 0 auto; }
+.replay .frames { position: relative; aspect-ratio: 560 / 316; background: #f4f4f4; }
+.replay .layer { position: absolute; inset: 0; visibility: hidden; }
+.replay .layer.on { visibility: visible; }
+.replay .layer img { display: block; width: 100%; height: 100%; }
+.replay .spots { position: absolute; inset: 0; }
+.replay .spot { position: absolute; outline: 1px dashed rgba(70, 60, 140, 0.35); outline-offset: -1px; transition: outline-color 0.15s, background 0.15s; cursor: help; }
+.replay .spot b { position: absolute; left: 0; bottom: 100%; margin-bottom: 1px; font: 600 10px/14px var(--mono); padding: 0 4px; color: var(--ink); background: var(--gold); white-space: nowrap; opacity: 0; transition: opacity 0.15s; pointer-events: none; }
+.replay .spot.hot, .replay .spot.point { outline: 2px solid #d99a1e; outline-offset: 1px; background: rgba(242, 196, 106, 0.16); }
+.replay .spot.hot b, .replay .spot.point b { opacity: 1; z-index: 2; }
+.replay.all .spot b, .replay:not(.live) .layer.on .spot b { opacity: 1; background: #3d3f86; color: #fff; }
+.replay.all .spot.point b { background: var(--gold); color: var(--ink); }
+.replay .side { display: grid; gap: 12px; margin: 16px auto 0; max-width: 568px; }
+.replay .flowcard { --s: var(--px); background: var(--panel); padding: 12px 16px 14px; font-size: var(--fs-s); line-height: 1.45; }
+.replay .fh, .replay .ch { margin: 0 0 8px; font: 600 var(--fs-s)/1.35 var(--pixel); }
+.replay .steps { list-style: none; counter-reset: st; margin: 0 0 10px; padding: 0; display: grid; gap: 2px; }
+.replay .steps li { counter-increment: st; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; padding: 3px 6px 3px 28px; position: relative; color: var(--muted); transition: color 0.2s, background 0.2s; }
+.replay .steps li::before { content: counter(st); position: absolute; left: 6px; font: 600 12px/1.6 var(--mono); color: var(--muted); }
+.replay .steps li.done { color: var(--fg); }
+.replay .steps li.done::before { content: "✓"; color: var(--accent); }
+.replay .steps li.lit { color: var(--fg); background: color-mix(in srgb, var(--gold) 16%, transparent); }
+.replay .steps li.lit::before { color: var(--gold); }
+.replay .steps code { font-size: 12px; background: none; padding: 0; color: inherit; opacity: 0.85; }
+.replay .goal { margin: 0; padding-top: 8px; border-top: 2px solid var(--rule); color: var(--muted); transition: color 0.2s; }
+.replay .goal b { font: 600 var(--fs-s) var(--pixel); color: var(--fg); margin-right: 6px; }
+.replay .goal.lit, .replay:not(.live) .goal { color: var(--fg); }
+.replay .cards { display: grid; }
+.replay .card { --s: var(--px); grid-area: 1 / 1; background: color-mix(in srgb, var(--accent) 9%, var(--panel)); padding: 12px 16px 14px; font-size: var(--fs-s); line-height: 1.45; }
+.replay .card[hidden] { display: block; visibility: hidden; }
+.replay .card p { margin: 0; }
+.replay .card .sees { margin: 0 0 8px; }
+@container (min-width: 900px) {
+  .replay .rp { display: grid; grid-template-columns: 568px minmax(0, 1fr); gap: 0 28px; align-items: start; }
+  .replay .win { margin: 0; }
+  .replay .side { margin: 0; max-width: none; }
+}
+@container (max-width: 520px) { .replay.all .spot:not(.point) b { opacity: 0; } }
+@media (min-width: 1100px) {
+  figure.replay { margin: 36px calc((100% - min(1240px, 100vw - 32px)) / 2) 28px; }
+}
+
+/* The state field: rings of states, a test's path, and the proof covering every ring. */
+figure.field { margin: 24px 0; display: grid; gap: 8px 32px; align-items: center; }
+.field .plot { max-width: 480px; width: 100%; margin: 0 auto; }
+.field svg { display: block; width: 100%; height: auto; }
+.field .s { fill: var(--accent); transition: fill 0.25s; }
+.field .s.t { fill: var(--gold); }
+.field.live .s:not(.lit) { fill: var(--chip); }
+.field.live .s.t.walk { fill: var(--gold); }
+.field .past { fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 2 6; transition: stroke 0.25s; }
+.field.live .past:not(.lit) { stroke: var(--chip); }
+.field .tpath { fill: none; stroke: var(--gold); stroke-width: 2.5; stroke-linejoin: round; }
+.field .start { fill: var(--fg); }
+.field .legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; font-size: var(--fs-s); line-height: 1.5; }
+.field .legend li { padding-left: 26px; position: relative; color: var(--fg); transition: opacity 0.25s; }
+.field.live .legend li:not(.lit) { opacity: 0.6; }
+.field .legend li::before { content: ""; position: absolute; left: 0; top: 4px; width: 14px; height: 14px; }
+.field .lt::before { background: var(--gold); }
+.field .lp::before { background: var(--accent); }
+.field .legend b { display: block; font: 600 var(--fs-s) var(--pixel); }
+.field figcaption { grid-column: 1 / -1; }
+@media (min-width: 720px) { figure.field { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); } }
+
+/* Nothing without a claim: an event, then its two possible fates. */
+.gate { display: grid; gap: 10px; margin: 18px 0 18px; font-size: var(--fs-s); line-height: 1.45; }
+.gate > div > p, .g-split p { margin: 0; }
+.gate .gh { font: 600 var(--fs-s)/1.35 var(--pixel); margin-bottom: 4px; }
+.g-in, .g-yes, .g-no { --s: var(--px); padding: 10px 14px 12px; background: var(--panel); }
+.gate { gap: 0; max-width: 620px; }
+.g-in { justify-self: center; text-align: center; min-width: 14em; }
+/* The fork from the event to its two fates: a stem, then a bar with a leg down to each. */
+.g-split { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding-top: 30px; }
+.g-split::before { content: ""; position: absolute; top: 14px; left: calc(25% - 3.5px); right: calc(25% - 3.5px); height: 16px;
+  border: 2px solid var(--muted); border-left-color: var(--accent); border-bottom: 0; }
+.g-split::after { content: ""; position: absolute; top: 0; left: calc(50% - 1px); width: 2px; height: 14px; background: var(--muted); }
+.g-yes { background: color-mix(in srgb, var(--accent) 16%, var(--panel)); }
+.g-no { color: var(--muted); }
+.g-no .gh { color: var(--fg); }
+
+
+/* One name, everywhere. */
+ul.names { list-style: none; margin: 14px 0 18px; padding: 0; display: grid; gap: 8px; }
+.names li { display: grid; grid-template-columns: 8.5em minmax(0, 1fr); gap: 0 14px; align-items: baseline; font-size: var(--fs-s); }
+.names .where { font: 600 var(--fs-s) var(--pixel); color: var(--muted); text-align: right; }
+.names code { justify-self: start; overflow-wrap: anywhere; }
+.names i { grid-column: 2; color: var(--muted); }
+@media (max-width: 520px) { .names li { grid-template-columns: 1fr; } .names .where { text-align: left; } .names i { grid-column: 1; } }
+
+/* The ledger excerpt and what the build says. */
+figure.ledger { margin: 22px 0; }
+.ledger .file { margin: 0 0 6px; font: 600 var(--fs-s) var(--pixel); }
+.ledger .file span { color: var(--muted); font-weight: normal; margin-left: 8px; }
+.ledger .rows { --s: var(--px); list-style: none; margin: 0; padding: 10px 0; background: var(--panel); font: 13px/1.5 var(--mono); }
+.ledger .rows li { display: grid; grid-template-columns: 3ch 9ch 7ch 16ch minmax(0, 1fr); gap: 0 1.5ch; padding: 2px 16px; }
+.ledger .rows .k, .ledger .rows .h { color: var(--muted); }
+.ledger .rows .active .st { color: var(--accent); }
+.ledger .rows .retired { color: var(--muted); }
+.ledger .rows .retired .t { text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--muted) 60%, transparent); }
+.ledger .rows .retired .i { color: var(--fg); }
+.ledger .rows .nt { grid-column: 2 / -1; color: var(--gold); font: italic var(--fs-s)/1.45 ui-serif, "New York", Georgia, serif; }
+.ledger .rows .nt::before { content: "↳ "; font-style: normal; }
+.ledger .says { margin: 14px 0 0; display: grid; gap: 6px; }
+.ledger .sh { margin: 0; font: 600 var(--fs-s) var(--pixel); }
+.ledger .msg { margin: 0; font: 12.5px/1.55 var(--mono); padding: 8px 12px; background: var(--ink); color: var(--fg); overflow-wrap: anywhere; }
+.ledger .msg b { margin-right: 6px; }
+.ledger .warn b { color: var(--gold); }
+.ledger .err b { color: #f08a8a; }
+.ledger .msg code { background: none; padding: 0; font-size: inherit; color: var(--accent); }
+@media (max-width: 720px) {
+  .ledger .rows { font-size: 12px; }
+  .ledger .rows li { grid-template-columns: 3ch 9ch minmax(0, 1fr); gap: 0 1ch; padding: 2px 12px; }
+  .ledger .rows .k { grid-column: 2; }
+  .ledger .rows .h { display: none; }
+  .ledger .rows .st { display: none; }
+  .ledger .rows .t { grid-column: 3; }
+  .ledger .rows .nt { grid-column: 2 / -1; }
+}
+
+/* The six kinds, a figure each. */
+ul.kindgrid { list-style: none; margin: 18px 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); gap: 12px; }
+.kc { --s: var(--px); background: var(--panel); padding: 12px 14px 14px; font-size: var(--fs-s); line-height: 1.45; display: flex; flex-direction: column; }
+.kc svg { display: block; width: 100%; max-width: 220px; height: auto; margin: 0 auto 6px; }
+.kc p { margin: 0 0 8px; }
+.kc .kn { font: 600 var(--fs-m) var(--pixel); color: var(--accent); margin: 0 0 4px; }
+.kc .ex { margin: auto 0 0; font: var(--fs-s) var(--mono); color: var(--gold); }
+.kc svg * { shape-rendering: crispEdges; }
+.kc .bx { fill: var(--bg); stroke: var(--muted); stroke-width: 2; }
+.kc .bx.on { fill: color-mix(in srgb, var(--accent) 22%, var(--bg)); stroke: var(--accent); }
+.kc .ar { fill: none; stroke: var(--muted); stroke-width: 2; }
+.kc .ar.hot { stroke: var(--gold); }
+.kc .ar.dim { stroke-dasharray: 3 3; }
+.kc text { font: 600 13px var(--mono); text-anchor: middle; fill: var(--fg); }
+.kc text.id { fill: var(--gold); font-size: 12px; }
+.kc text.ok { fill: var(--accent); font: 600 12px var(--pixel); }
+.kc text.sm { fill: var(--muted); font: 600 11px var(--pixel); }
+.kc .flag { fill: var(--gold); stroke: none; }
+.kc .cut { stroke: var(--gold); stroke-width: 2; stroke-dasharray: 4 4; }
+.kc .ln2 { stroke: var(--muted); stroke-width: 2; }
+.kc .tomb { fill: var(--chip); stroke: var(--muted); stroke-width: 2; }
+.kc .gr { stroke: var(--muted); stroke-width: 2; }
+
+/* How sure: rungs, strongest first, each shorter. */
+ol.rungs { list-style: none; margin: 16px 0 18px; padding: 0; display: grid; gap: 6px; }
+.rungs li { --s: 3px; display: grid; grid-template-columns: 6.5em minmax(0, 1fr); gap: 0 14px; align-items: baseline; padding: 8px 14px; font-size: var(--fs-s); line-height: 1.45;
+  background: linear-gradient(90deg, var(--c) 0 var(--w), var(--panel) var(--w)); }
+.rungs b { font: 600 var(--fs-m) var(--pixel); }
+.rungs .r1 { --c: color-mix(in srgb, var(--accent) 30%, var(--panel)); --w: 100%; }
+.rungs .r2 { --c: color-mix(in srgb, var(--accent) 22%, var(--panel)); --w: 82%; }
+.rungs .r3 { --c: color-mix(in srgb, var(--accent) 15%, var(--panel)); --w: 64%; }
+.rungs .r4 { --c: color-mix(in srgb, var(--accent) 9%, var(--panel)); --w: 46%; }
+.rungs .r5 { --c: var(--panel); --w: 0%; box-shadow: inset 0 0 0 2px var(--chip); }
+.rungs .r1 b { color: var(--accent); }
+@media (max-width: 520px) { .rungs li { grid-template-columns: 1fr; } }
+.claims-page .kd, .claims-page .ev, .gate .gh, .names .where, .ledger .file, .ledger .sh, .kc .kn, .kc text, .rungs b, .field .legend b, .replay .fh, .replay .ch, .replay .goal b { font-variant-ligatures: none; }
+
 /* Pixelify draws "fi" as a broken glyph. Last, because a later font shorthand resets it. */
 .blog-name, .post-title, .post .meta, ol.posts h2, ol.posts .meta, nav.pager a, nav.pager a span { font-variant-ligatures: none; }
