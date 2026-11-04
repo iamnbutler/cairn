@@ -35,15 +35,16 @@ def sigOf (t : Target) (w : World t.S W) : Sig :=
 /-- The text an edge's edit types. -/
 def typed : String := "milk"
 
-/-- One action per claim and trigger: the candidate with the smallest key. -/
+/-- One action per claim and trigger, in that order: the candidate with the smallest key. -/
 def reps (t : Target) (w : World t.S W) : List Action :=
-  let cs := (candidates t w).foldl (fun (acc : List (ControlRef × Trigger)) (c, tr, _) =>
-    match acc.find? (fun (r, tr') => r.claim == c.claim && tr' == tr) with
-    | some (r, _) => if c.key < r.key then
-        acc.map fun x => if x.1.claim == c.claim && x.2 == tr then (c, tr) else x else acc
-    | none => acc ++ [(c, tr)]) []
-  let cs := cs.mergeSort fun a b => a.1.claim < b.1.claim ||
-    (a.1.claim == b.1.claim && a.2.name ≤ b.2.name)
+  let cs := ((candidates t w).map fun (c, tr, _) => (c, tr)).mergeSort fun (a, ta) (b, tb) =>
+    a.claim < b.claim || (a.claim == b.claim &&
+      (ta.name < tb.name || (ta.name == tb.name && a.key ≤ b.key)))
+  -- Sorted, so the first of each claim and trigger has the smallest key.
+  let cs := cs.foldl (fun acc (c, tr) =>
+    match acc.head? with
+    | some (r, tr') => if r.claim == c.claim && tr' == tr then acc else (c, tr) :: acc
+    | none => [(c, tr)]) [] |>.reverse
   cs.filterMap fun (c, tr) => match tr with
     | .press => some (.press c)
     | .doublePress => some (.doublePress c)
@@ -63,19 +64,8 @@ structure Edge where
   src : Nat
   dst : Nat
   action : Action
-  /-- How many actions `update` received: 0 when the move did nothing a person could see. -/
-  delivered : Nat
   /-- Effects the step put on the frame (requests, timers, …). -/
   effects : Nat
-  /-- How many explored states took this edge. -/
-  count : Nat := 1
-
-def triggerOf : Action → Trigger
-  | .press _ => .press | .doublePress _ => .doublePress | .edit .. => .edit
-  | .submit _ => .submit | .cancel _ => .cancel | .blur _ => .blur | .appear _ => .appear
-
-def refOf : Action → ControlRef
-  | .press c | .doublePress c | .edit c _ | .submit c | .cancel c | .blur c | .appear c => c
 
 /-- What a person sees of a state, hashed: two states with the same frame are explored once. -/
 def seen (w : World S W) : UInt64 :=
@@ -84,7 +74,7 @@ def seen (w : World S W) : UInt64 :=
 /-- Breadth first over states that look different (`seen`), to `depth` moves, exploring at most
 `perNode` states of each node and `maxStates` in all. -/
 def explore (t : Target) (depth perNode maxStates : Nat) :
-    IO (Array Node × Array Edge × Size × Nat) := do
+    IO (Array Node × Array Edge × Nat) := do
   let m := MetricsChoice.mono
   let min := t.minSize m.metrics t.machine.init {}
   let size : Size := ⟨max min.w 800, max min.h 600⟩
@@ -97,7 +87,9 @@ def explore (t : Target) (depth perNode maxStates : Nat) :
   let mut queued : Array Nat := #[1]
   let mut queue : Array (World t.S t.W × Nat × Nat) := #[(w0, 0, 0)]
   let mut edges : Array Edge := #[]
-  let mut edgeIx : Std.HashMap String Nat := {}
+  -- An edge is a node, a claim and a trigger, and where they lead; the first state to take it
+  -- stands for the rest.
+  let mut edgeKeys : Std.HashSet String := {}
   let mut i := 0
   while h : i < queue.size do
     let (w, n, d) := queue[i]
@@ -118,34 +110,26 @@ def explore (t : Target) (depth perNode maxStates : Nat) :
           queued := queued.push 0
           pure x
       let look := seen w'
-      if !states.contains look && queued[dst]!  < perNode && queue.size < maxStates then
+      if !states.contains look && queued[dst]! < perNode && queue.size < maxStates then
         states := states.insert look
         queued := queued.modify dst (· + 1)
         queue := queue.push (w', dst, d + 1)
-      let r := refOf a
-      let k := s!"{n} {r.claim} {(triggerOf a).name} {dst}"
-      match edgeIx.get? k with
-      | some e => edges := edges.modify e fun x => { x with count := x.count + 1 }
-      | none =>
-        edgeIx := edgeIx.insert k edges.size
-        edges := edges.push { src := n, dst, action := a, delivered := p.acts.length,
-                              effects := p.effects.length }
-  return (nodes, edges, size, queue.size)
+      let k := s!"{n} {a.claim} {a.trigger.name} {dst}"
+      if !edgeKeys.contains k then
+        edgeKeys := edgeKeys.insert k
+        edges := edges.push { src := n, dst, action := a, effects := p.effects.length }
+  return (nodes, edges, queue.size)
 
 def run (t : Target) (depth perNode maxStates : Nat) (out : System.FilePath) : IO UInt32 := do
-  let (nodes, edges, size, explored) ← explore t depth perNode maxStates
+  let (nodes, edges, explored) ← explore t depth perNode maxStates
   let nodeJson (i : Nat) (n : Node) : Json := Json.mkObj [("id", toJson i),
     ("sig", toJson n.sig), ("depth", toJson n.depth), ("explored", toJson n.explored)]
   let edgeJson (e : Edge) : Json :=
-    let r := refOf e.action
-    Json.mkObj [("from", toJson e.src), ("to", toJson e.dst), ("claim", toJson r.claim),
-      ("key", toJson r.key), ("trigger", Json.str (triggerOf e.action).name),
-      ("action", Json.str (actionLean e.action)), ("delivered", toJson e.delivered),
-      ("effects", toJson e.effects), ("count", toJson e.count)]
-  let json := Json.mkObj [("app", Json.str t.name), ("module", Json.str t.module),
-    ("depth", toJson depth), ("perNode", toJson perNode), ("maxStates", toJson maxStates),
-    ("states", toJson explored),
-    ("window", Json.mkObj [("w", toJson size.w), ("h", toJson size.h)]), ("typed", Json.str typed),
+    Json.mkObj [("from", toJson e.src), ("to", toJson e.dst), ("claim", toJson e.action.claim),
+      ("key", toJson e.action.key), ("trigger", Json.str e.action.trigger.name),
+      ("effects", toJson e.effects)]
+  let json := Json.mkObj [("app", Json.str t.name), ("depth", toJson depth),
+    ("states", toJson explored), ("typed", Json.str typed),
     ("claims", Json.mkObj (t.claims.map fun c => (s!"{c.id}", Json.str c.title))),
     -- Each claim's place (`in ^P`), and each place's, so a diagram can be drawn per place.
     ("places", Json.mkObj (t.claims.map fun c =>
